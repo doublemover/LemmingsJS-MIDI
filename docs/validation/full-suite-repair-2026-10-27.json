@@ -99496,4 +99496,2136 @@
     },
     "issue969": "Ready to close with387current/future readonly/save/reopen/registry/control-schema qualification and388explicit custom legacy rejection/loss/routing outcomes. Engine/render/listening quality and other sound family features remain separate owners."
   }
+,
+  "continuation389": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "issue": 1011,
+    "sourceParent": "c33516d9ae24bba29af8d86d0190832293476983",
+    "scope": "Actual work-cycle percussion acceptance and explicit occupancy/appearance material selection.",
+    "changes": [
+      "WorkResponse workChangePolicy selects solid, appearance or existing either default before successful-mutation admission, zero-work handling and normalized intensity.",
+      "Shared corpus runs actual production processors over explicit scored source geometry without monkeypatched processors/terrain. Browser uses immutable application modules, real MAIN.DAT masks/sprites, actual bound source-compilation worker and real canvas renderer.",
+      "192 ticks yield twelve 16-frame builder cycles and eight 24-frame miner cycles; three warning articulations share their single work roots.",
+      "Already-solid six-pixel brick separates attempt, zero successful addition and actual repaint. Fresh digger preserves three ordered operation IDs, source-edit revision pairs and 27 removed cells; operation/phase modes yield three/one attacks with identical real tick time.",
+      "Empty bashing has zero successful-removal strikes; phase-three steel decision produces one obstruction articulation. Interrupted miner releases once at tick10 and restarts with a fresh instance at tick30, without resetting the builder."
+    ],
+    "validation": {
+      "node": {
+        "command": "node node_modules/c8/bin/c8.js --check-coverage=false --include=js/app/procgen/workstation/physical/RhythmicResponses.js --reports-dir=.tmp/rook389-coverage --reporter=json-summary node_modules/mocha/bin/mocha.js test/procgen-actual-work-cycles.test.js test/procgen-rhythmic-responses.test.js test/procgen-physical-batch.test.js test/procgen-causal-music-engine.test.js test/builder-miner-score.test.js",
+        "passing": 50,
+        "failures": 0
+      },
+      "browser": {
+        "passing": 2,
+        "failures": 0,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "cases": [
+          {
+            "title": "authored durable tape preserves births transfer work and every captured control over 128 ticks",
+            "file": "procgen-workstation-authored-tape.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "authored-durable-tape-128",
+                "value": {
+                  "ticks": 128,
+                  "takeId": "take:authored:128",
+                  "parentCanonicalHash": "6b8e3d238f3816aa135d7cc462344401142c5171798d0172a49662544788f101",
+                  "parentDurableSequence": 270,
+                  "counts": {
+                    "ActionEntered": 2,
+                    "CommandApplied": 2,
+                    "ActorBorn": 2,
+                    "FlightArcStarted": 1,
+                    "undefined": 10,
+                    "FlightArcUpdated": 25,
+                    "ActorLaneTransferred": 1,
+                    "MotionCommitted": 48,
+                    "ContactSpanBegan": 1,
+                    "ContactSpanUpdated": 127,
+                    "TerrainWorkCommitted": 8,
+                    "ActionCycleCompleted": 8,
+                    "FlightArcEnded": 1,
+                    "ActionExited": 1,
+                    "ActorTerminated": 1
+                  },
+                  "controls": [
+                    {
+                      "tick": 10,
+                      "generation": 1,
+                      "input": {
+                        "kind": "tempo",
+                        "bpm": 90
+                      }
+                    },
+                    {
+                      "tick": 12,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "world-speed",
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 14,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "external-observation",
+                        "sourceId": "captured:external-port",
+                        "effect": "observation-only",
+                        "timestamp": 1234.567,
+                        "bytes": [
+                          144,
+                          60,
+                          1
+                        ]
+                      }
+                    },
+                    {
+                      "tick": 16,
+                      "generation": 1,
+                      "input": {
+                        "kind": "mapping",
+                        "revision": 2
+                      }
+                    },
+                    {
+                      "tick": 20,
+                      "generation": 1,
+                      "input": {
+                        "kind": "instrument-performance"
+                      }
+                    },
+                    {
+                      "tick": 30,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "intervention-cancel",
+                        "commandId": "authored:cancelled-policy"
+                      }
+                    },
+                    {
+                      "tick": 63,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 0
+                      }
+                    },
+                    {
+                      "tick": 63,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 64,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": true,
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 128,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 0
+                      }
+                    }
+                  ],
+                  "midpoint": 141,
+                  "midpointHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                  "expectedHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                  "recordingMs": 207,
+                  "replayMs": 169,
+                  "full": {
+                    "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                    "actualPhysicsHash": "e8f798e52abe719347bf5460804c48f40dfb1f216a397881ed22fa37a481a179",
+                    "artifactIntegrity": {
+                      "canonicalHash": "6b8e3d238f3816aa135d7cc462344401142c5171798d0172a49662544788f101",
+                      "finalizationHash": "aa0970876b6151e3c996b9a0a09e434c39ff43dc80f442db161679c9b1b932da",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 128,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [
+                      {
+                        "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                        "checkpointId": "[\"take:authored:128\",\"checkpoint\",141]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 141,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 64,
+                        "timelineMatch": true
+                      },
+                      {
+                        "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                        "checkpointId": "[\"take:authored:128\",\"checkpoint\",270]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 270,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 128,
+                        "timelineMatch": true
+                      }
+                    ],
+                    "comparedBatches": 128,
+                    "comparedIntents": 18,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:full",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                      "binding": "immutable-application-generation",
+                      "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                      "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 0,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "6b8e3d238f3816aa135d7cc462344401142c5171798d0172a49662544788f101",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 270,
+                    "throughSequence": 270,
+                    "tick": 128,
+                    "ticksExecuted": 128,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "repeated": {
+                    "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                    "actualPhysicsHash": "e8f798e52abe719347bf5460804c48f40dfb1f216a397881ed22fa37a481a179",
+                    "artifactIntegrity": {
+                      "canonicalHash": "6b8e3d238f3816aa135d7cc462344401142c5171798d0172a49662544788f101",
+                      "finalizationHash": "aa0970876b6151e3c996b9a0a09e434c39ff43dc80f442db161679c9b1b932da",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 128,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:repeated",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                      "binding": "immutable-application-generation",
+                      "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                      "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 270,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "6b8e3d238f3816aa135d7cc462344401142c5171798d0172a49662544788f101",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 270,
+                    "throughSequence": 270,
+                    "tick": 128,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "seek": {
+                    "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                    "actualPhysicsHash": "97f848673e30d3423c654b4136f995c4ec7cfb08c0a4cf187f34cf8e9814d327",
+                    "artifactIntegrity": {
+                      "canonicalHash": "6b8e3d238f3816aa135d7cc462344401142c5171798d0172a49662544788f101",
+                      "finalizationHash": "aa0970876b6151e3c996b9a0a09e434c39ff43dc80f442db161679c9b1b932da",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 64,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:seek",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                      "binding": "immutable-application-generation",
+                      "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                      "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 141,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "6b8e3d238f3816aa135d7cc462344401142c5171798d0172a49662544788f101",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 141,
+                    "throughSequence": 141,
+                    "tick": 64,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "branch": {
+                    "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                    "actualPhysicsHash": "97f848673e30d3423c654b4136f995c4ec7cfb08c0a4cf187f34cf8e9814d327",
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                        "binding": "immutable-application-generation",
+                        "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                        "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                      "binding": "immutable-application-generation",
+                      "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                      "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "fromCheckpointSequence": 141,
+                    "generation": 1,
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-physical-branch-boundary",
+                    "sourceCanonicalHash": "6b8e3d238f3816aa135d7cc462344401142c5171798d0172a49662544788f101",
+                    "sourceFinalizationHash": "aa0970876b6151e3c996b9a0a09e434c39ff43dc80f442db161679c9b1b932da",
+                    "sourceTakeId": "take:authored:128",
+                    "sourceTakeRevision": 15,
+                    "status": "validated-by-current-runtime-reperformance",
+                    "throughSequence": 141,
+                    "tick": 64,
+                    "ticksExecuted": 0,
+                    "version": 2
+                  },
+                  "childTakeId": "take:authored:128:child",
+                  "cache": {
+                    "entries": 2,
+                    "maximumEntries": 16,
+                    "estimatedBytes": 17832,
+                    "maximumBytes": 4194304,
+                    "refusals": 0,
+                    "failure": null,
+                    "reservation": {
+                      "enabled": false,
+                      "owner": "causal-reperformance-checkpoint-cache",
+                      "kind": "qualified-replay-checkpoints",
+                      "category": "checkpoint",
+                      "generation": 0,
+                      "declaredBytes": 4198400,
+                      "maxBytes": 536870912,
+                      "state": "reserved",
+                      "error": null
+                    }
+                  },
+                  "sourceUnchanged": true,
+                  "sourceVersions": {
+                    "generator": "procgen-workstation-2",
+                    "causalRandom": "fnv1a32-avalanche-v1",
+                    "causalProbabilityPolicy": 1,
+                    "terrainChallenge": 3,
+                    "populationRandom": 1,
+                    "worldCheckpoint": 2,
+                    "stallCascade": 2,
+                    "physicalBatch": 1,
+                    "physicalMusic": 13,
+                    "swarmReducer": 1,
+                    "phraseCargo": 1,
+                    "releaseGesture": 1,
+                    "physicalFeedback": 1,
+                    "physicalPlaybackAdmission": 1,
+                    "instrumentPerformance": 4,
+                    "project": 2,
+                    "numericCanonicalization": "finite-f64-minus-zero-v1",
+                    "mappingRevision": 1,
+                    "applicationExecution": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                      "closureDigest": "2f0d5b98e46fd7a86c45a431067827022a7a59c5d3a38e05a21ecec817b0f649",
+                      "codeDigest": "10e9181d4dbdc937c6b0504f32c175d791b3ef8ec0904f30ad2975517c6b0d69",
+                      "assetDigest": "20cc288d89c6cefc7ee96cc79f4c4252b13c221058665681bf62992ceeecf197",
+                      "harnessVersion": "browser-survey-v1",
+                      "stateSchema": 11,
+                      "realmId": "5248f531-0ff4-4af5-8ef9-8368c04300a6",
+                      "capabilityProfile": "browser-survey-core",
+                      "binding": "immutable-application-generation",
+                      "identityRecipe": "normalized-data-slot-v2-instruments"
+                    }
+                  },
+                  "scope": "Actual authored physical/semantic tape and silent current-runtime continuation; source and external observations are retained data, not a device/archived/acoustic qualification.",
+                  "realIndexedDbReopen": true,
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0
+                }
+              }
+            ]
+          },
+          {
+            "title": "actual work-cycle intents survive 0 15 and 120 source-relative desktop paint cadences",
+            "file": "procgen-workstation-work-cycles.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-work-cycle-render-cadence",
+                "value": {
+                  "summaries": [
+                    {
+                      "renderFps": 0,
+                      "paints": 0,
+                      "canonicalHash": "f1fd37c8a81a97d05bf2dd79551c37d18e40f5aa1c2db118eb2e85bbbfc9b35f",
+                      "measuredCycles": {
+                        "builder": 12,
+                        "miner": 8,
+                        "ratio": "3:2"
+                      },
+                      "display": {
+                        "state": "ready",
+                        "reason": null
+                      },
+                      "scope": "Actual action/operation facts, causal response intents and source-relative production canvas paint cadence; no acoustic, device or wall-FPS claim."
+                    },
+                    {
+                      "renderFps": 15,
+                      "paints": 57,
+                      "canonicalHash": "f1fd37c8a81a97d05bf2dd79551c37d18e40f5aa1c2db118eb2e85bbbfc9b35f",
+                      "measuredCycles": {
+                        "builder": 12,
+                        "miner": 8,
+                        "ratio": "3:2"
+                      },
+                      "display": {
+                        "state": "ready",
+                        "reason": null
+                      },
+                      "scope": "Actual action/operation facts, causal response intents and source-relative production canvas paint cadence; no acoustic, device or wall-FPS claim."
+                    },
+                    {
+                      "renderFps": 120,
+                      "paints": 460,
+                      "canonicalHash": "f1fd37c8a81a97d05bf2dd79551c37d18e40f5aa1c2db118eb2e85bbbfc9b35f",
+                      "measuredCycles": {
+                        "builder": 12,
+                        "miner": 8,
+                        "ratio": "3:2"
+                      },
+                      "display": {
+                        "state": "ready",
+                        "reason": null
+                      },
+                      "scope": "Actual action/operation facts, causal response intents and source-relative production canvas paint cadence; no acoustic, device or wall-FPS claim."
+                    }
+                  ],
+                  "pixels": [
+                    {
+                      "renderFps": 15,
+                      "width": 1920,
+                      "height": 1080,
+                      "paintedCells": 2073600,
+                      "renderedActors": 2
+                    },
+                    {
+                      "renderFps": 120,
+                      "width": 1920,
+                      "height": 1080,
+                      "paintedCells": 2073600,
+                      "renderedActors": 2
+                    }
+                  ],
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0,
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "build": "39bc0cd754960af5f346f1a342c5d4bded7b27c2aa1c448a7bf12cc20d630a12",
+                  "fixtures": {
+                    "clock": {
+                      "facts": 525,
+                      "intents": 96,
+                      "operations": [
+                        {
+                          "eventId": "procgen:42:1:1:0:9",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:1",
+                          "operationOrdinal": 1,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 56,
+                            "changedAppearanceCells": 56,
+                            "targetY": 164,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 56
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:2:0:13",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:2",
+                          "operationOrdinal": 2,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 48,
+                            "changedAppearanceCells": 48,
+                            "targetY": 164,
+                            "sourceEditRevisionBefore": 56,
+                            "sourceEditRevisionAfter": 104
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:9:0:30",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:1",
+                          "operationOrdinal": 1,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 79,
+                            "sourceEditRevisionBefore": 104,
+                            "sourceEditRevisionAfter": 110
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:25:0:70",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:2",
+                          "operationOrdinal": 2,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 1,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 78,
+                            "sourceEditRevisionBefore": 110,
+                            "sourceEditRevisionAfter": 116
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:25:0:72",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:3",
+                          "operationOrdinal": 3,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 1,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 165,
+                            "sourceEditRevisionBefore": 116,
+                            "sourceEditRevisionAfter": 123
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:26:0:76",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:4",
+                          "operationOrdinal": 4,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 1,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 165,
+                            "sourceEditRevisionBefore": 123,
+                            "sourceEditRevisionAfter": 144
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:41:0:114",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:3",
+                          "operationOrdinal": 3,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 2,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 77,
+                            "sourceEditRevisionBefore": 144,
+                            "sourceEditRevisionAfter": 150
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:49:0:137",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:5",
+                          "operationOrdinal": 5,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 2,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 166,
+                            "sourceEditRevisionBefore": 150,
+                            "sourceEditRevisionAfter": 157
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:50:0:141",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:6",
+                          "operationOrdinal": 6,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 2,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 166,
+                            "sourceEditRevisionBefore": 157,
+                            "sourceEditRevisionAfter": 178
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:57:0:158",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:4",
+                          "operationOrdinal": 4,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 3,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 76,
+                            "sourceEditRevisionBefore": 178,
+                            "sourceEditRevisionAfter": 184
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:73:0:198",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:5",
+                          "operationOrdinal": 5,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 4,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 75,
+                            "sourceEditRevisionBefore": 184,
+                            "sourceEditRevisionAfter": 190
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:73:0:200",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:7",
+                          "operationOrdinal": 7,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 3,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 167,
+                            "sourceEditRevisionBefore": 190,
+                            "sourceEditRevisionAfter": 197
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:74:0:204",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:8",
+                          "operationOrdinal": 8,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 3,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 167,
+                            "sourceEditRevisionBefore": 197,
+                            "sourceEditRevisionAfter": 218
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:89:0:242",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:6",
+                          "operationOrdinal": 6,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 5,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 74,
+                            "sourceEditRevisionBefore": 218,
+                            "sourceEditRevisionAfter": 224
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:97:0:265",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:9",
+                          "operationOrdinal": 9,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 4,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 168,
+                            "sourceEditRevisionBefore": 224,
+                            "sourceEditRevisionAfter": 231
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:98:0:269",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:10",
+                          "operationOrdinal": 10,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 4,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 168,
+                            "sourceEditRevisionBefore": 231,
+                            "sourceEditRevisionAfter": 252
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:105:0:286",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:7",
+                          "operationOrdinal": 7,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 6,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 73,
+                            "sourceEditRevisionBefore": 252,
+                            "sourceEditRevisionAfter": 258
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:121:0:326",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:8",
+                          "operationOrdinal": 8,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 7,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 72,
+                            "sourceEditRevisionBefore": 258,
+                            "sourceEditRevisionAfter": 264
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:121:0:328",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:11",
+                          "operationOrdinal": 11,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 5,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 169,
+                            "sourceEditRevisionBefore": 264,
+                            "sourceEditRevisionAfter": 271
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:122:0:332",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:12",
+                          "operationOrdinal": 12,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 5,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 169,
+                            "sourceEditRevisionBefore": 271,
+                            "sourceEditRevisionAfter": 292
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:137:0:370",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:9",
+                          "operationOrdinal": 9,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 8,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 71,
+                            "sourceEditRevisionBefore": 292,
+                            "sourceEditRevisionAfter": 298
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:145:0:393",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:13",
+                          "operationOrdinal": 13,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 6,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 170,
+                            "sourceEditRevisionBefore": 298,
+                            "sourceEditRevisionAfter": 305
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:146:0:397",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:14",
+                          "operationOrdinal": 14,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 6,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 170,
+                            "sourceEditRevisionBefore": 305,
+                            "sourceEditRevisionAfter": 326
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:153:0:414",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:10",
+                          "operationOrdinal": 10,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 9,
+                          "outcome": "changed",
+                          "warning": "last-bricks",
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 70,
+                            "sourceEditRevisionBefore": 326,
+                            "sourceEditRevisionAfter": 332
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:169:0:455",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:11",
+                          "operationOrdinal": 11,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 10,
+                          "outcome": "changed",
+                          "warning": "last-bricks",
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 69,
+                            "sourceEditRevisionBefore": 332,
+                            "sourceEditRevisionAfter": 338
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:169:0:458",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:15",
+                          "operationOrdinal": 15,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 7,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 171,
+                            "sourceEditRevisionBefore": 338,
+                            "sourceEditRevisionAfter": 345
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:170:0:462",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:16",
+                          "operationOrdinal": 16,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 7,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 171,
+                            "sourceEditRevisionBefore": 345,
+                            "sourceEditRevisionAfter": 366
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:185:0:500",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:12",
+                          "operationOrdinal": 12,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 11,
+                          "outcome": "changed",
+                          "warning": "last-bricks",
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 68,
+                            "sourceEditRevisionBefore": 366,
+                            "sourceEditRevisionAfter": 372
+                          }
+                        }
+                      ]
+                    },
+                    "solid": {
+                      "facts": 7,
+                      "intents": 4,
+                      "operations": [
+                        {
+                          "eventId": "procgen:42:1:1:0:5",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:1",
+                          "operationOrdinal": 1,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 0,
+                            "changedAppearanceCells": 6,
+                            "targetY": 79,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 6
+                          }
+                        }
+                      ]
+                    },
+                    "dig": {
+                      "facts": 12,
+                      "intents": 8,
+                      "operations": [
+                        {
+                          "eventId": "procgen:42:1:1:0:5",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:1",
+                          "operationOrdinal": 1,
+                          "operationKind": "dig",
+                          "phase": 0,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 9,
+                            "changedSolidCells": 9,
+                            "changedAppearanceCells": 9,
+                            "targetY": 78,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 9
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:1:0:7",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:2",
+                          "operationOrdinal": 2,
+                          "operationKind": "dig",
+                          "phase": 0,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 9,
+                            "changedSolidCells": 9,
+                            "changedAppearanceCells": 9,
+                            "targetY": 79,
+                            "sourceEditRevisionBefore": 9,
+                            "sourceEditRevisionAfter": 18
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:1:0:9",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:3",
+                          "operationOrdinal": 3,
+                          "operationKind": "dig",
+                          "phase": 0,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 9,
+                            "changedSolidCells": 9,
+                            "changedAppearanceCells": 9,
+                            "targetY": 80,
+                            "sourceEditRevisionBefore": 18,
+                            "sourceEditRevisionAfter": 27
+                          }
+                        }
+                      ]
+                    },
+                    "empty": {
+                      "facts": 31,
+                      "intents": 8,
+                      "operations": [
+                        {
+                          "eventId": "procgen:42:1:2:0:5",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:1",
+                          "operationOrdinal": 1,
+                          "operationKind": "bash",
+                          "phase": 2,
+                          "cycleOrdinal": 0,
+                          "outcome": "no-change",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 35,
+                            "changedSolidCells": 0,
+                            "changedAppearanceCells": 0,
+                            "targetY": 70,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 0
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:3:0:6",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:2",
+                          "operationOrdinal": 2,
+                          "operationKind": "bash",
+                          "phase": 3,
+                          "cycleOrdinal": 0,
+                          "outcome": "no-change",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 20,
+                            "changedSolidCells": 0,
+                            "changedAppearanceCells": 0,
+                            "targetY": 70,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 0
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:4:0:7",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:3",
+                          "operationOrdinal": 3,
+                          "operationKind": "bash",
+                          "phase": 4,
+                          "cycleOrdinal": 0,
+                          "outcome": "no-change",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 29,
+                            "changedSolidCells": 0,
+                            "changedAppearanceCells": 0,
+                            "targetY": 70,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 0
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:5:0:8",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:4",
+                          "operationOrdinal": 4,
+                          "operationKind": "bash",
+                          "phase": 5,
+                          "cycleOrdinal": 0,
+                          "outcome": "no-change",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 45,
+                            "changedSolidCells": 0,
+                            "changedAppearanceCells": 0,
+                            "targetY": 70,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 0
+                          }
+                        }
+                      ]
+                    },
+                    "steel": {
+                      "facts": 30,
+                      "intents": 4,
+                      "operations": [
+                        {
+                          "eventId": "procgen:42:1:2:0:6",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:1",
+                          "operationOrdinal": 1,
+                          "operationKind": "bash",
+                          "phase": 2,
+                          "cycleOrdinal": 0,
+                          "outcome": "no-change",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 35,
+                            "changedSolidCells": 0,
+                            "changedAppearanceCells": 0,
+                            "targetY": 70,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 0
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:3:0:8",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:2",
+                          "operationOrdinal": 2,
+                          "operationKind": "bash",
+                          "phase": 3,
+                          "cycleOrdinal": 0,
+                          "outcome": "protected",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 20,
+                            "changedSolidCells": 0,
+                            "changedAppearanceCells": 0,
+                            "targetY": 80,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 0
+                          }
+                        }
+                      ]
+                    },
+                    "interruption": {
+                      "facts": 275,
+                      "intents": 52,
+                      "operations": [
+                        {
+                          "eventId": "procgen:42:1:1:0:9",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:1",
+                          "operationOrdinal": 1,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 56,
+                            "changedAppearanceCells": 56,
+                            "targetY": 164,
+                            "sourceEditRevisionBefore": 0,
+                            "sourceEditRevisionAfter": 56
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:2:0:13",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:2",
+                          "workOperationId": "1:work:2",
+                          "operationOrdinal": 2,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 48,
+                            "changedAppearanceCells": 48,
+                            "targetY": 164,
+                            "sourceEditRevisionBefore": 56,
+                            "sourceEditRevisionAfter": 104
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:9:0:30",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:1",
+                          "operationOrdinal": 1,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 79,
+                            "sourceEditRevisionBefore": 104,
+                            "sourceEditRevisionAfter": 110
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:25:0:74",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:2",
+                          "operationOrdinal": 2,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 1,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 78,
+                            "sourceEditRevisionBefore": 110,
+                            "sourceEditRevisionAfter": 116
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:30:0:94",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:5",
+                          "workOperationId": "1:work:3",
+                          "operationOrdinal": 3,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 13,
+                            "changedAppearanceCells": 13,
+                            "targetY": 165,
+                            "sourceEditRevisionBefore": 116,
+                            "sourceEditRevisionAfter": 129
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:31:0:98",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:5",
+                          "workOperationId": "1:work:4",
+                          "operationOrdinal": 4,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 0,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 34,
+                            "changedAppearanceCells": 34,
+                            "targetY": 165,
+                            "sourceEditRevisionBefore": 129,
+                            "sourceEditRevisionAfter": 163
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:41:0:125",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:3",
+                          "operationOrdinal": 3,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 2,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 77,
+                            "sourceEditRevisionBefore": 163,
+                            "sourceEditRevisionAfter": 169
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:54:0:159",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:5",
+                          "workOperationId": "1:work:5",
+                          "operationOrdinal": 5,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 1,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 166,
+                            "sourceEditRevisionBefore": 169,
+                            "sourceEditRevisionAfter": 176
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:55:0:163",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:5",
+                          "workOperationId": "1:work:6",
+                          "operationOrdinal": 6,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 1,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 166,
+                            "sourceEditRevisionBefore": 176,
+                            "sourceEditRevisionAfter": 197
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:57:0:170",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:4",
+                          "operationOrdinal": 4,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 3,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 76,
+                            "sourceEditRevisionBefore": 197,
+                            "sourceEditRevisionAfter": 203
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:73:0:209",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:5",
+                          "operationOrdinal": 5,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 4,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 75,
+                            "sourceEditRevisionBefore": 203,
+                            "sourceEditRevisionAfter": 209
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:78:0:222",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:5",
+                          "workOperationId": "1:work:7",
+                          "operationOrdinal": 7,
+                          "operationKind": "mine",
+                          "phase": 1,
+                          "cycleOrdinal": 2,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 56,
+                            "changedSolidCells": 7,
+                            "changedAppearanceCells": 7,
+                            "targetY": 167,
+                            "sourceEditRevisionBefore": 209,
+                            "sourceEditRevisionAfter": 216
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:79:0:226",
+                          "actorId": 1,
+                          "actionInstanceId": "1:action:5",
+                          "workOperationId": "1:work:8",
+                          "operationOrdinal": 8,
+                          "operationKind": "mine",
+                          "phase": 2,
+                          "cycleOrdinal": 2,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 68,
+                            "changedSolidCells": 21,
+                            "changedAppearanceCells": 21,
+                            "targetY": 167,
+                            "sourceEditRevisionBefore": 216,
+                            "sourceEditRevisionAfter": 237
+                          }
+                        },
+                        {
+                          "eventId": "procgen:42:1:89:0:253",
+                          "actorId": 0,
+                          "actionInstanceId": "0:action:2",
+                          "workOperationId": "0:work:6",
+                          "operationOrdinal": 6,
+                          "operationKind": "build",
+                          "phase": 9,
+                          "cycleOrdinal": 5,
+                          "outcome": "changed",
+                          "warning": null,
+                          "physicalPayload": {
+                            "attemptedCells": 6,
+                            "changedSolidCells": 6,
+                            "changedAppearanceCells": 6,
+                            "targetY": 74,
+                            "sourceEditRevisionBefore": 237,
+                            "sourceEditRevisionAfter": 243
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 172,
+            "covered": 170,
+            "skipped": 0,
+            "pct": 98.83
+          },
+          "statements": {
+            "total": 172,
+            "covered": 170,
+            "skipped": 0,
+            "pct": 98.83
+          },
+          "functions": {
+            "total": 13,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 258,
+            "covered": 185,
+            "skipped": 0,
+            "pct": 71.7
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\RhythmicResponses.js": {
+          "lines": {
+            "total": 172,
+            "covered": 170,
+            "skipped": 0,
+            "pct": 98.83
+          },
+          "functions": {
+            "total": 13,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 172,
+            "covered": 170,
+            "skipped": 0,
+            "pct": 98.83
+          },
+          "branches": {
+            "total": 258,
+            "covered": 185,
+            "skipped": 0,
+            "pct": 71.7
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "collectionCorrection": "First browser command used unquoted PowerShell @boundary and collected zero cases. Preserved the failed collection log and reran the correctly quoted command; no runtime/source edits were needed.",
+      "qualifiedSources": [
+        {
+          "path": "js/app/procgen/workstation/physical/RhythmicResponses.js",
+          "bytes": 23522,
+          "sha256": "63d3d134f3018a6fb8bcbf09c17282539a6fa74ef8a4affb0f9a3c80ff2474a2"
+        },
+        {
+          "path": "test/procgen-rhythmic-responses.test.js",
+          "bytes": 10633,
+          "sha256": "4572da669075f32579e6414f5303aba8e505c8c97052cd9584a0a1cbce59f78a"
+        },
+        {
+          "path": "test/helpers/actualWorkCycles.js",
+          "bytes": 12181,
+          "sha256": "ce0e5925bec4f9b88624a0bef0e412a7abad8f192e0ea33f155d9f50a0301aae"
+        },
+        {
+          "path": "test/procgen-actual-work-cycles.test.js",
+          "bytes": 1779,
+          "sha256": "1bae819dc2922a5995b9aeb665b22a5b07d420c47d846b0b1981082df27a345d"
+        },
+        {
+          "path": "e2e/procgen-workstation-work-cycles.spec.js",
+          "bytes": 6964,
+          "sha256": "2d24a5dae6ef00c8232aea49a877279eab3890fe11d493a0435faacf9e537c5b"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "sha256": "ca59f5cd8d454fc7310cfaad3fb0320ab2ec944826d402dd53ec9b336ff9e9fb",
+          "files": 293
+        }
+      ]
+    },
+    "evidence": [
+      {
+        "path": ".tmp/rook389-node.log",
+        "bytes": 5025,
+        "sha256": "683a8a093d83a939f5b6ed99aeb5ce25bd3377185436845888715af449b7d0bd"
+      },
+      {
+        "path": ".tmp/rook389-playwright.json",
+        "bytes": 321189,
+        "sha256": "54cb4a25df044fbd6b60cf5da816472c562a2cc06a2d786b041014c0c403b169"
+      },
+      {
+        "path": ".tmp/rook389-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": ".tmp/rook389-static.log",
+        "bytes": 4262,
+        "sha256": "c03807561df770b7f0fb67805cd18c65621ea8cf42e571985bb1cf6a8f58c31e"
+      },
+      {
+        "path": ".tmp/rook389-coverage/coverage-summary.json",
+        "bytes": 698,
+        "sha256": "25747150dccfb15b4f1eb2719f66c3fcb37410fb445c83f6ef00b3b340b9b6d6"
+      },
+      {
+        "path": ".tmp/rook389-playwright-collection-first.log",
+        "bytes": 217,
+        "sha256": "312101849ffb949eb54e9c33f8ef0ed6531cb51ea1471e1aa57d6530dfabb2f1"
+      }
+    ],
+    "limits": [
+      "Paint cadence is scheduled per simulated source second; it is deterministic presentation isolation evidence, not a wall-FPS or acoustic benchmark.",
+      "No physical MIDI or AudioContext opened; live project and source world remained unchanged.",
+      "RhythmicResponses coverage 98.83% lines/100% functions/71.7% branches; unexercised crowd/ricochet/flight estimator, restore and capacity branches remain, not a claim of complete response-domain qualification.",
+      "Latest fully source-verified full CI remains383/77e057fa;388 main CI is still running. No repeated full local suite."
+    ],
+    "issueOutcome": "Close1011 after commit/push; topology, sound DSP and protocol hardware owners remain separate."
+  }
 }

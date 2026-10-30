@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Let physical work-cycle mappings select occupancy or appearance changes explicitly, keeping already-solid brick attempts separate from successful material addition.
+
 - Refuse custom legacy instrument loss before project conversion, report per-lane grammar/sound changes, and preserve valid external routing explicitly.
 
 - Preserve opaque future instrument controls through read-only inspection and save/reopen; retain valid dictionary keys in unsupported patch archives and refuse future-schema authoring.

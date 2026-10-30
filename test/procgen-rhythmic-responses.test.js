@@ -13,6 +13,11 @@ const batch = (tick, facts, actors = []) => ({ version: 1, worldId: 'scene', gen
 const environment = { membership: () => ({ status: 'complete', includes: true }), routeCoordinate: () => null };
 
 describe('physical rhythmic response interpretation', () => {
+  it('requires an explicit supported material-change policy and preserves the existing either default', () => {
+    for (const workChangePolicy of ['solid', 'appearance', 'either']) expect(validateRhythmicResponse({ type: 'workCycle', workChangePolicy }, 'WorkResponse').workChangePolicy).to.equal(workChangePolicy);
+    expect(validateRhythmicResponse({ type: 'workCycle' }, 'WorkResponse').workChangePolicy).to.equal('either');
+    for (const workChangePolicy of ['energy', '', 0, {}, []]) expect(() => validateRhythmicResponse({ type: 'workCycle', workChangePolicy }, 'WorkResponse')).to.throw('change policy');
+  });
   it('preserves exact 6:12 arrival intervals, real gaps and separately typed distance evidence', () => {
     const pickup = validatePickupGate({ id: 'arrival', geometry: { kind: 'segment', points: [{ x: 40, y: -10 }, { x: 40, y: 10 }] } });
     const graph = { version: 1, revision: 1, pickups: [pickup], instruments: [input('crowd', 'CrowdArrival', { type: 'crowdInterval', pickupId: 'arrival', intervalToGate: 0.5 })] };

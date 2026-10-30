@@ -220,3 +220,28 @@ separate. Submitted-output worker columns reject physical-source options.
 The integrated workstation take-to-MIDI projection and the full external-clock/
 suspension export matrix remain open under #986/#1093. This API does not qualify
 those product paths, receiver timing, listening or archived exact execution.
+
+## Work-cycle material selection
+
+A `WorkResponse` with `response.type: 'workCycle'` follows completed physical
+operations, action-phase groups, sustained scrape lifetimes or actual cycle
+completion. Its optional `workChangePolicy` selects `solid` occupancy changes,
+`appearance` changes, or `either` (the existing default). Use `solid` with
+`mode: 'successful-mutation'` for added/removed material. Repainting an already
+solid brick can change appearance while adding zero occupied pixels.
+
+`includeZeroWork` and `includeObstruction` opt into attempted or protected work.
+Material articulation, including `last-bricks` and `steel`, selects the response
+to the same work fact; legacy sound effects do not add another strike. Grouping
+three synchronous initial dig rows into one action-phase attack preserves all
+three source event IDs and their individual source-edit revisions in the raw
+facts. It does not assign invented sub-tick times or replace a topology binding's
+selected revision. Intensity is a normalized count under the selected policy,
+with `intensityMeaning: 'normalized-changed-cell-count-not-energy'`.
+
+The shared `test/helpers/actualWorkCycles.js` corpus exercises production action
+processors over explicitly authored scored terrain. The Playwright case uses
+the immutable application, real mask decoding, real source-compilation workers,
+sprites and the production 1920x1080 canvas renderer. Its 0/15/120 paint cadences
+are scheduled per simulated source second to compare canonical facts/intents;
+they are not measurements of wall-clock FPS or acoustic timing.

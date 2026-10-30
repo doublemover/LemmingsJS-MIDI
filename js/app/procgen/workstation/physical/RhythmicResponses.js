@@ -18,12 +18,13 @@ export function validateRhythmicResponse(value, sourceKind) {
     const actionKinds = boundedList(value.actionKinds ?? ['build', 'bash', 'dig', 'mine'], 4, kind => { if (!['build', 'bash', 'dig', 'mine'].includes(kind)) throw new Error('Invalid work action.'); return kind; }, 'work actions');
     const phaseTriggers = value.phaseTriggers == null ? null : boundedList(value.phaseTriggers, 32, phase => { if (!integer(phase, 31)) throw new Error('Invalid action phase.'); return phase; }, 'work phases');
     if (!['operation', 'action-phase', 'successful-mutation', 'scrape', 'cycle-completion'].includes(value.mode ?? 'operation')) throw new Error('Invalid work-cycle mode.');
+    if (!['solid', 'appearance', 'either'].includes(value.workChangePolicy ?? 'either')) throw new Error('Invalid work-cycle change policy.');
     const cycleAccent = boundedList(value.cycleAccent ?? [1], 32, amount => readNumber(amount, 1, 0, 1, 'work-cycle accent'), 'cycle accents');
     if (!cycleAccent.length) throw new Error('Work-cycle accent cannot be empty.');
     const materialResponse = {};
     if (value.materialResponse != null && (!plain(value.materialResponse) || Object.keys(value.materialResponse).length > 32)) throw new Error('Invalid material articulation map.');
     for (const [key, articulation] of Object.entries(value.materialResponse || {})) { if (!identity(key) || !identity(articulation)) throw new Error('Invalid material articulation.'); materialResponse[key] = articulation; }
-    return freeze({ type: value.type, actionKinds, phaseTriggers, mode: value.mode ?? 'operation', cycleAccent, materialResponse,
+    return freeze({ type: value.type, actionKinds, phaseTriggers, mode: value.mode ?? 'operation', workChangePolicy: value.workChangePolicy ?? 'either', cycleAccent, materialResponse,
       includeZeroWork: value.includeZeroWork === true, includeObstruction: value.includeObstruction === true,
       fullIntensityCells: readNumber(value.fullIntensityCells, 32, 1, 65536, 'work normalization'),
       expressionDeadband: readNumber(value.expressionDeadband, 0.01, 0, 1, 'work expression deadband') });
@@ -107,7 +108,8 @@ export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192 } =
         const response = instrument.response;
         if (response.mode === 'cycle-completion') continue;
         if (!response.actionKinds.includes(fact.operationKind) || response.phaseTriggers && !response.phaseTriggers.includes(fact.phase)) continue;
-        const cells = Math.max(fact.physicalPayload?.changedSolidCells || 0, fact.physicalPayload?.changedAppearanceCells || 0), obstruction = ['steel', 'obstructed', 'steel-rejected', 'protected'].includes(fact.outcome);
+        const solid = fact.physicalPayload?.changedSolidCells || 0, appearance = fact.physicalPayload?.changedAppearanceCells || 0;
+        const cells = response.workChangePolicy === 'solid' ? solid : response.workChangePolicy === 'appearance' ? appearance : Math.max(solid, appearance), obstruction = ['steel', 'obstructed', 'steel-rejected', 'protected'].includes(fact.outcome);
         if (response.mode === 'successful-mutation' && !cells || !cells && !(obstruction ? response.includeObstruction : response.includeZeroWork)) continue;
         const group = response.mode === 'action-phase' ? `${instrument.id}:${fact.actorId}:${fact.actionInstanceId}:${fact.cycleOrdinal}:${fact.phase}` : `${instrument.id}:${fact.eventId}`;
         if (groupedWork.has(group)) { const entry = groupedWork.get(group); entry.sourceEventIds.push(fact.eventId); entry.cells += cells; entry.operations++; continue; }
@@ -153,7 +155,7 @@ export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192 } =
       emit(derived(fact, instrument, { sourceEventIds, ...(sampleGesture ? { sampleGesture } : {}), velocity01: instrument.velocity01 * accent * (cells ? intensity : 0.25),
         ...(lifecycle ? { lifecycle, responseScope: `work:${fact.actionInstanceId}`, lifetimeScope: 'actionInstance', expression: lifecycle === 'update' ? { pressure01: intensity } : {} } : {}),
         responseDescriptor: { type: 'work-cycle', actionInstanceId: fact.actionInstanceId, phase: fact.phase, cycleOrdinal: fact.cycleOrdinal, operations, changedCells: cells,
-          intensity01: intensity, intensityMeaning: 'normalized-changed-cell-count-not-energy', mode: response.mode, outcome: fact.outcome, warning: fact.warning ?? null } }));
+          intensity01: intensity, intensityMeaning: 'normalized-changed-cell-count-not-energy', workChangePolicy: response.workChangePolicy, mode: response.mode, outcome: fact.outcome, warning: fact.warning ?? null } }));
     }
     for (const fact of facts) if (fact.kind === 'ActorTerminated' || fact.kind === 'ActionExited') for (const [key, state] of states) {
       if (state.actorId !== fact.actorId || fact.kind === 'ActionExited' && state.actionInstanceId !== fact.actionInstanceId) continue;
