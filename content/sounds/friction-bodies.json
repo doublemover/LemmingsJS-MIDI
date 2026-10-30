@@ -1,0 +1,759 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.friction-bodies",
+    "version": "0.1.0",
+    "name": "Bowed and friction bodies",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "urn:lemmings:original:sealed-modal-friction:v1",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original bounded relative-velocity friction models and recipes; stability maps, spectral, device and listening qualification remains pending.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "friction.hairline",
+      "revision": 1,
+      "name": "Hairline",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "original",
+        "sealed-friction",
+        "signed-travel",
+        "hairline"
+      ],
+      "engine": {
+        "id": "worklet-friction",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:sealed-modal-friction:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original bounded relative-velocity friction models and recipes; stability maps, spectral, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "frictionKind": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "frictionDragSlope": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "frictionPressure01": {
+              "value": 0.4,
+              "unit": "normalized"
+            },
+            "frictionScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "frictionAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "frictionRequireSegments": {
+              "value": 1,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "frictionContact01": {
+              "value": 0.18,
+              "unit": "normalized"
+            },
+            "frictionBodyMix01": {
+              "value": 0.12,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.45,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "drag",
+          "name": "DRAG",
+          "mode": "onset-only",
+          "default01": 0.4444444444444445,
+          "smoothingMs": 0,
+          "perceptualDirection": "More observed travel speed reaches the virtual bow.",
+          "targets": [
+            {
+              "parameter": "frictionDragSlope",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "press",
+          "name": "PRESS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the bounded normalized friction force domain.",
+          "targets": [
+            {
+              "parameter": "frictionPressure01",
+              "minimum": {
+                "value": 0.25,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.55,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.22857142857142856,
+          "smoothingMs": 0,
+          "perceptualDirection": "Moves the virtual acoustic contact point; the world route stays fixed.",
+          "targets": [
+            {
+              "parameter": "frictionContact01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.45,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.4,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the signed body observation and authored body contribution.",
+          "targets": [
+            {
+              "parameter": "frictionBodyMix01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.3,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 2,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    },
+    {
+      "id": "friction.glass-drag",
+      "revision": 1,
+      "name": "Glass Drag",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "original",
+        "sealed-friction",
+        "signed-travel",
+        "glass-drag"
+      ],
+      "engine": {
+        "id": "worklet-friction",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:sealed-modal-friction:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original bounded relative-velocity friction models and recipes; stability maps, spectral, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "frictionKind": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "frictionDragSlope": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "frictionPressure01": {
+              "value": 0.25,
+              "unit": "normalized"
+            },
+            "frictionScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "frictionAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "frictionRequireSegments": {
+              "value": 1,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "frictionContact01": {
+              "value": 0.18,
+              "unit": "normalized"
+            },
+            "frictionBodyMix01": {
+              "value": 0.05,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 4,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "drag",
+          "name": "DRAG",
+          "mode": "onset-only",
+          "default01": 0.4444444444444445,
+          "smoothingMs": 0,
+          "perceptualDirection": "More observed travel speed reaches the virtual bow.",
+          "targets": [
+            {
+              "parameter": "frictionDragSlope",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "press",
+          "name": "PRESS",
+          "mode": "onset-only",
+          "default01": 0.4999999999999999,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the bounded normalized friction force domain.",
+          "targets": [
+            {
+              "parameter": "frictionPressure01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.4,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.22857142857142856,
+          "smoothingMs": 0,
+          "perceptualDirection": "Moves the virtual acoustic contact point; the world route stays fixed.",
+          "targets": [
+            {
+              "parameter": "frictionContact01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.45,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.16666666666666669,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the signed body observation and authored body contribution.",
+          "targets": [
+            {
+              "parameter": "frictionBodyMix01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.3,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 2,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    },
+    {
+      "id": "friction.rosin-grain",
+      "revision": 1,
+      "name": "Rosin Grain",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "original",
+        "sealed-friction",
+        "signed-travel",
+        "rosin-grain"
+      ],
+      "engine": {
+        "id": "worklet-friction",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:sealed-modal-friction:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original bounded relative-velocity friction models and recipes; stability maps, spectral, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "frictionKind": {
+              "value": 2,
+              "unit": "enum"
+            },
+            "frictionDragSlope": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "frictionPressure01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "frictionScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "frictionAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "frictionRequireSegments": {
+              "value": 1,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "frictionContact01": {
+              "value": 0.18,
+              "unit": "normalized"
+            },
+            "frictionBodyMix01": {
+              "value": 0.12,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.6,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "drag",
+          "name": "DRAG",
+          "mode": "onset-only",
+          "default01": 0.4444444444444445,
+          "smoothingMs": 0,
+          "perceptualDirection": "More observed travel speed reaches the virtual bow.",
+          "targets": [
+            {
+              "parameter": "frictionDragSlope",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "press",
+          "name": "PRESS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the bounded normalized friction force domain.",
+          "targets": [
+            {
+              "parameter": "frictionPressure01",
+              "minimum": {
+                "value": 0.35,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.65,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.22857142857142856,
+          "smoothingMs": 0,
+          "perceptualDirection": "Moves the virtual acoustic contact point; the world route stays fixed.",
+          "targets": [
+            {
+              "parameter": "frictionContact01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.45,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.4,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the signed body observation and authored body contribution.",
+          "targets": [
+            {
+              "parameter": "frictionBodyMix01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.3,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 2,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.friction.hairline",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "one-held-actor-source",
+        "observed-motion-supplies-bow-work",
+        "no-input-work-at-rest",
+        "sealed-relative-velocity-feedback",
+        "bounded-root-and-positive-loss"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "friction.hairline",
+          "algorithmRevision": "owned-implicit-modal-stribeck-friction-v1",
+          "preservedInvariants": [
+            "one-held-actor-source",
+            "observed-motion-supplies-bow-work",
+            "no-input-work-at-rest",
+            "sealed-relative-velocity-feedback",
+            "bounded-root-and-positive-loss"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only the original bounded source is available. Two storage slots and static work-dimension cost units are admission policy, not measured real-time capacity. Stable-tone, alias, cost and matched-level listening qualification is pending."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.friction.glass-drag",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "one-held-actor-source",
+        "observed-motion-supplies-bow-work",
+        "no-input-work-at-rest",
+        "sealed-relative-velocity-feedback",
+        "bounded-root-and-positive-loss"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "friction.glass-drag",
+          "algorithmRevision": "owned-implicit-modal-stribeck-friction-v1",
+          "preservedInvariants": [
+            "one-held-actor-source",
+            "observed-motion-supplies-bow-work",
+            "no-input-work-at-rest",
+            "sealed-relative-velocity-feedback",
+            "bounded-root-and-positive-loss"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only the original bounded source is available. Two storage slots and static work-dimension cost units are admission policy, not measured real-time capacity. Stable-tone, alias, cost and matched-level listening qualification is pending."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.friction.rosin-grain",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "one-held-actor-source",
+        "observed-motion-supplies-bow-work",
+        "no-input-work-at-rest",
+        "sealed-relative-velocity-feedback",
+        "bounded-root-and-positive-loss"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "friction.rosin-grain",
+          "algorithmRevision": "owned-implicit-modal-stribeck-friction-v1",
+          "preservedInvariants": [
+            "one-held-actor-source",
+            "observed-motion-supplies-bow-work",
+            "no-input-work-at-rest",
+            "sealed-relative-velocity-feedback",
+            "bounded-root-and-positive-loss"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only the original bounded source is available. Two storage slots and static work-dimension cost units are admission policy, not measured real-time capacity. Stable-tone, alias, cost and matched-level listening qualification is pending."
+    }
+  ]
+}

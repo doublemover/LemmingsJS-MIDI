@@ -4,20 +4,31 @@ import { midiSchedulerChannelMethods } from './MidiSchedulerChannelMethods.js';
 import { midiSchedulerRateMethods } from './MidiSchedulerRateMethods.js';
 import { midiSchedulerSendMethods } from './MidiSchedulerSendMethods.js';
 import { MidiGamePhraseQueue } from './MidiGamePhraseQueue.js';
+import { ownedMidiVoiceMethods } from './OwnedMidiVoices.js';
 
 class MidiScheduler {
   constructor(config = {}) {
     this.capture = null;
+    this._submissionObservers = new Set();
     this._disposed = false;
     this._cleanupDepth = 0;
     this._lifecycleVersion = 0;
     this.output = null;
     this._outputsById = new Map();
+    this._additionalOutputs = new Set();
+    this._outputLeases = new Map();
+    this._outputChannelScopes = new WeakMap();
+    this._connectionSequence = 0;
+    this._routeRevision = 0;
+    this._mpeRevision = 0;
+    this.lastCleanup = null;
     this.tickMs = 60;
     this._activeByChannel = new Map();
     this._activeNotes = new Map();
     this._usedOutputChannels = new Map();
     this._expressionByOutput = new Map();
+    this._mpeStatusByOutput = new WeakMap();
+    this._mpeFailureByOutput = new WeakMap();
     this._pendingNoteOns = new Map();
     this.gamePhrases = new MidiGamePhraseQueue();
     this._maxActiveNotes = 32;
@@ -31,9 +42,11 @@ class MidiScheduler {
     this._reservationSeq = 0;
     this._rateLaneActivity = new Map();
     this._rateLaneLastServed = new Map();
+    this._rateLanesByOutput = new Map();
     this._rateLaneStartMs = null;
     this._rateLaneCount = 1;
     this._throttleState = { dropped: 0, lastDropMs: -Infinity, reason: null };
+    this._throttleByOutput = new Map();
     this._maxMessagesPerSecond = 1000;
     this._maxBytesPerSecond = MIDI_BYTES_PER_SECOND;
     this._lastRateErrorMs = 0;
@@ -46,7 +59,8 @@ Object.assign(
   midiOutputObserverMethods,
   midiSchedulerChannelMethods,
   midiSchedulerRateMethods,
-  midiSchedulerSendMethods
+  midiSchedulerSendMethods,
+  ownedMidiVoiceMethods
 );
 
 export { MidiScheduler };

@@ -71,14 +71,15 @@ describe('ActionDrowningSystem behavior', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
   });
 
-  it('draw records death once frame >= 15', function() {
+  it('draw leaves death recording to manager removal', function() {
     const miniMap = { deaths: 0, addDeath() { this.deaths++; } };
     const sys = new ActionDrowningSystem(stubSprites);
     sys.setRuntime({ miniMap });
     const lem = new StubLemming();
     lem.frameIndex = 15;
     sys.draw({ drawFrame() {} }, lem);
-    expect(miniMap.deaths).to.equal(1);
+    sys.draw({ drawFrame() {} }, lem);
+    expect(miniMap.deaths).to.equal(0);
   });
 });
 

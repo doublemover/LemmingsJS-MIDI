@@ -11,7 +11,8 @@
   <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <link type="text/css" rel="stylesheet" href="css/icons.css">
   <link type="text/css" rel="stylesheet" href="css/procgen-workstation.css">
-  <script src="js/vendor/webmidi.js"></script>
+  <link type="text/css" rel="stylesheet" href="css/procgen-world-inspector.css">
+  <link type="text/css" rel="stylesheet" href="css/workstation-materials.css">
   <script type="module" src="js/app/procgenBoot.js"></script>
 </head>
 <body class="procgen-workstation">
@@ -20,19 +21,19 @@
     <span class="procgen-section-label">Run</span>
       <div class="procgen-speed-control" role="group" aria-label="Game speed">
         <span>Speed</span><div class="procgen-speed-segments">
-          <button id="procgenSpeedDown" type="button" aria-label="Decrease game speed" title="Decrease speed (-); Shift for five steps"><span class="visually-hidden">Decrease</span></button>
+          <button id="procgenSpeedDown" type="button" aria-label="Decrease game speed" title="Decrease speed"><span class="visually-hidden">Decrease</span></button>
           <output id="procgenSpeedReadout" aria-hidden="true"></output>
-          <button id="procgenSpeedUp" type="button" aria-label="Increase game speed" title="Increase speed (+); Shift for five steps"><span class="visually-hidden">Increase</span></button>
+          <button id="procgenSpeedUp" type="button" aria-label="Increase game speed" title="Increase speed"><span class="visually-hidden">Increase</span></button>
         </div><input id="procgenSpeed" type="number" min="0.1" step="0.1" value="3" aria-label="Exact game speed" title="Game speed multiplier">
       </div>
-    <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play (Space)">Pause</button><button id="procgenStep" type="button" title="Pause and advance one tick (])">Step</button></div>
-    <div class="procgen-button-group"><button id="procgenZoomOut" type="button" aria-label="Zoom out" title="Zoom out (Z)">−</button><button id="procgenFollow" type="button" title="Follow the leading living lemming (F)">Follow</button><button id="procgenZoomIn" type="button" aria-label="Zoom in" title="Zoom in (X)">+</button></div>
+    <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play the world">Pause world</button><button id="procgenStep" type="button" title="Pause and advance one tick">Step</button></div>
+    <div class="procgen-button-group"><button id="procgenZoomOut" type="button" aria-label="Zoom out" title="Zoom out">−</button><button id="procgenFollow" type="button" title="Follow the leading living lemming">Follow</button><button id="procgenZoomIn" type="button" aria-label="Zoom in" title="Zoom in">+</button></div>
     </div>
     <div class="procgen-control-section procgen-world-controls" role="group" aria-label="World generation">
     <span class="procgen-section-label">World</span>
     <details id="procgenSeedControls" class="procgen-advanced"><summary title="Generation seed and restart options">Seed</summary><div class="procgen-seed-controls">
     <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; Enter or Regenerate applies this seed"></label>
-    <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed (Backspace)">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
+    <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
     </div></details>
     <label title="Changing the lane count regenerates the run">Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="8"></label>
     <label>Lane height <input id="procgenLaneHeight" type="number" min="96" max="256" step="8" value="144" title="Physical pixels per lane; regenerates this run"></label>
@@ -95,8 +96,9 @@
         <label>Domain <select id="procgenSpanDomain"><option value="beats">Musical beats</option><option value="distance">Actor world distance</option></select></label>
         <label>Target <select id="procgenSpanTarget"><option value="velocity">Velocity</option><option value="note">Pitch offset</option><option value="pan">Pan</option><option value="duration">Duration</option><option value="timbre">Timbre</option></select></label>
         <button id="procgenSpanAdd" type="button">Add span</button>
-        <label><input id="procgenSpanVisible" type="checkbox" checked> Show rectangles</label>
-        <label><input id="procgenSpanEdit" type="checkbox"> Draw on lanes</label>
+        <label><input id="procgenSpanVisible" type="checkbox" checked disabled> Show rectangles</label>
+        <label><input id="procgenSpanEdit" type="checkbox" disabled> Draw on lanes</label>
+        <p id="procgenSpanToolStatus" role="status" aria-live="polite"></p>
 
       </div><p>Beat rectangles use a musical timeline across the screen; distance rectangles follow world X. Enable Draw on lanes to select, move, resize or draw a lane group. Camera dragging resumes when drawing is off.</p>
       <p id="procgenSpanTargetHelp"></p>
@@ -161,15 +163,15 @@
     </details>
     <details id="procgenHelpFields"><summary>Help and shortcuts</summary>
       <p>This is one shared world with live game-event rhythms. Lanes and physical height regenerate the seed; speed, crews, scouts, camera and musical controls update live. Listen locally unlocks browser synthesis once. SoundFont sample loading is unavailable.</p>
-      <p>F1 or ? opens Help. Arrows pan; Shift makes a larger pan. Drag to pan; wheel or Z/X zoom; Shift+wheel pans. F or double-click follows the leading living actor. Space pauses; ] pauses and advances one tick. Backspace regenerates. +/− change speed; Shift changes five steps. Right-click volume resets to 100%; right-click speed resets to 1x.</p>
+      <p id="procgenShortcutHelp">Drag to pan; wheel to zoom; Shift+wheel pans. Double-click follows the leading living actor. Keyboard shortcuts load with the active bindings.</p>
       <p>T arms a lane nuke; click the lane to start its real OHNO cascade. Shift+T queues all lanes. Escape cancels arming, closes Details and exits span drawing. Nukes advance with game ticks, so paused lanes wait. Text fields keep their editing keys; repeated shortcut keydowns are ignored.</p>
-      <p>Event patterns advance on actual triggers; timed phrases use the existing game-tick musical clock. Musical span bundles contain separate finite beat or distance ranges and never start an independent note stream. CCTV is optional and appears at full-stack zoom. Share this run includes core settings and camera, without character or detailed solver preferences.</p>
+      <p>Event patterns advance on actual triggers; timed phrases use the existing game-tick musical clock. Musical span bundles contain separate finite beat or distance ranges and never start an independent note stream. CCTV is optional and appears at full-stack zoom. A starting recipe link includes core generation settings and optional camera framing, not the current edited performance.</p>
     </details>
 
     <footer class="procgen-workspace-footer">
     <div class="procgen-controls-row">
-      <button id="procgenShare" type="button">Share this run</button>
-      <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
+      <button id="procgenShare" type="button" aria-haspopup="dialog">Share…</button>
+      <p id="procgenShareNotice" role="status">Review a starting recipe link or prepare a project or selected take file.</p>
     </div>
     <p id="procgenMetrics" role="status"></p>
     <p id="procgenStallStatus"></p>

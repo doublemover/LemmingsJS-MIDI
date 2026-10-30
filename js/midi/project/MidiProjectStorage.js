@@ -1,7 +1,9 @@
 import {
   createMidiProjectTemplate,
   createMidiProjectFromMidiConfig,
-  sanitizeMidiProject
+  sanitizeMidiProject,
+  importMidiProjectPayload,
+  MIDI_PROJECT_VERSION
 } from './MidiProject.js';
 
 const PROJECT_STORAGE_KEY = 'lemmings.midi.project.v1';
@@ -26,12 +28,53 @@ const LEGACY_MIDI_STORAGE_KEYS = Object.freeze([
   'lemmings.midi.ui.audition'
 ]);
 
-const safeGetItem = (storage, key) => {
+const MAX_STORED_CHARACTERS = 8 * 1048576;
+const storageRead = (storage, key) => {
+  if (typeof storage?.getItem !== 'function') return { state: 'unavailable', key, raw: null, diagnostic: 'Storage is unavailable.' };
+  let raw = null;
   try {
-    return storage?.getItem?.(key) ?? null;
-  } catch (e) {
-    return null;
+    raw = storage.getItem(key);
+    if (raw == null) return { state: 'absent', key, raw: null };
+    if (typeof raw !== 'string' || raw.length > MAX_STORED_CHARACTERS) return { state: 'unsupported', key, raw, diagnostic: 'Stored data exceeds the admitted format or size.' };
+    return { state: 'ready', key, raw, parsed: JSON.parse(raw) };
+  } catch (error) {
+    return { state: error instanceof SyntaxError ? 'corrupt' : 'unavailable', key,
+      raw,
+      diagnostic: error instanceof SyntaxError ? 'Stored data is not valid JSON.' : 'Stored data could not be read.' };
   }
+};
+const protectedRead = outcome => !['ready', 'absent'].includes(outcome.state);
+const versionError = message => Object.assign(new Error(message), { code: 'unsupported-version' });
+const admitProject = value => {
+  if (value?.version !== MIDI_PROJECT_VERSION) throw versionError('Stored MIDI project version is unsupported. Export it before resetting storage.');
+  return importMidiProjectPayload(value);
+};
+const rejectedRead = (outcome, error) => ({ ...outcome, parsed: undefined,
+  state: error.code === 'unsupported-version' || /version|Legacy|conversion/.test(error.message) ? 'unsupported' : 'corrupt', diagnostic: error.message });
+const readStoredMidiProjectOutcome = storage => {
+  const outcome = storageRead(storage, PROJECT_STORAGE_KEY);
+  if (outcome.state !== 'ready') return { ...outcome, project: null };
+  try { return { ...outcome, parsed: undefined, project: admitProject(outcome.parsed) }; }
+  catch (error) { return { ...rejectedRead(outcome, error), project: null }; }
+};
+const readStoredMidiProjectTemplatesOutcome = storage => {
+  const outcome = storageRead(storage, TEMPLATE_STORAGE_KEY), templates = [], rejected = [];
+  if (outcome.state !== 'ready') return { ...outcome, templates, rejected };
+  const envelope = outcome.parsed;
+  if (!envelope || Array.isArray(envelope) || envelope.version !== MIDI_PROJECT_VERSION || !Array.isArray(envelope.templates) || envelope.templates.length > 4096)
+    return { ...rejectedRead(outcome, versionError('Stored template library format/version is unsupported.')), templates, rejected };
+  const ids = new Set();
+  for (let index = 0; index < envelope.templates.length; index++) {
+    const entry = envelope.templates[index];
+    try {
+      if (entry?.version !== MIDI_PROJECT_VERSION) throw versionError('Stored template version is unsupported.');
+      if (typeof entry.id !== 'string' || !entry.id.trim() || ids.has(entry.id)) throw new Error('Stored template identity is invalid or duplicated.');
+      ids.add(entry.id); templates.push(createMidiProjectTemplate(admitProject(entry.project), entry));
+    } catch (error) { rejected.push({ index, id: typeof entry?.id === 'string' ? entry.id : null,
+      state: rejectedRead(outcome, error).state, diagnostic: error.message, rawPayload: entry }); }
+  }
+  return { ...outcome, parsed: undefined, state: rejected.length ? rejected.some(entry => entry.state === 'unsupported') ? 'unsupported' : 'corrupt' : 'ready', templates, rejected,
+    diagnostic: rejected.length ? 'Stored template library is protected because some entries cannot be admitted. Export the original data before explicitly resetting it.' : null };
 };
 
 const safeSetItem = (storage, key, value) => {
@@ -61,46 +104,31 @@ const cleanupLegacyMidiProjectStorage = (storage) => {
 
 const saveMidiProjectWithOutcome = (storage, project) => {
   const clean = sanitizeMidiProject(project);
+  const existing = readStoredMidiProjectOutcome(storage);
+  if (protectedRead(existing)) return { project: clean, persisted: false, reason: existing.state === 'unavailable' ? 'unavailable' : 'protected-storage', readState: existing.state, diagnostic: existing.diagnostic };
   return { project: clean, ...safeSetItem(storage, PROJECT_STORAGE_KEY, JSON.stringify(clean)) };
 };
 
 const saveMidiProject = (storage, project) => saveMidiProjectWithOutcome(storage, project).project;
 
 const readStoredMidiProject = (storage) => {
-  const raw = safeGetItem(storage, PROJECT_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    return sanitizeMidiProject(JSON.parse(raw));
-  } catch (e) {
-    return null;
-  }
+  return readStoredMidiProjectOutcome(storage).project;
 };
 
 const readStoredMidiProjectTemplates = (storage) => {
-  const raw = safeGetItem(storage, TEMPLATE_STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    const entries = Array.isArray(parsed) ? parsed : parsed.templates;
-    if (!Array.isArray(entries)) return [];
-    return entries
-      .map(template => createMidiProjectTemplate(template?.project, template))
-      .filter(template => template.id);
-  } catch (e) {
-    return [];
-  }
+  return readStoredMidiProjectTemplatesOutcome(storage).templates;
 };
 
 const saveStoredMidiProjectTemplates = (storage, templates) => {
   const clean = Array.isArray(templates)
     ? templates.map(template => createMidiProjectTemplate(template?.project, template))
     : [];
-  safeSetItem(storage, TEMPLATE_STORAGE_KEY, JSON.stringify({ version: 1, templates: clean }));
+  if (!protectedRead(readStoredMidiProjectTemplatesOutcome(storage))) safeSetItem(storage, TEMPLATE_STORAGE_KEY, JSON.stringify({ version: 1, templates: clean }));
   return clean;
 };
 
 const saveMidiProjectTemplateWithOutcome = (storage, project, options = {}) => {
-  const templates = readStoredMidiProjectTemplates(storage);
+  const existing = readStoredMidiProjectTemplatesOutcome(storage), templates = existing.templates;
   const previous = options.asNew ? null : templates.find(entry => entry.id === (options.id || project.templateId));
   const templateOptions = { ...(previous ? { name: previous.name, createdAt: previous.createdAt } : {}), ...options };
   if (options.asNew) {
@@ -110,6 +138,8 @@ const saveMidiProjectTemplateWithOutcome = (storage, project, options = {}) => {
     templateOptions.id = id;
   }
   const template = createMidiProjectTemplate(project, templateOptions);
+  if (protectedRead(existing)) return { template, persisted: false, reason: existing.state === 'unavailable' ? 'unavailable' : 'protected-storage',
+    readState: existing.state, diagnostic: existing.diagnostic };
   const next = templates.filter(entry => entry.id !== template.id);
   next.push(template);
   const outcome = safeSetItem(storage, TEMPLATE_STORAGE_KEY, JSON.stringify({ version: 1, templates: next }));
@@ -153,6 +183,15 @@ const clearMidiProjectStorage = (storage) => {
   safeRemoveItem(storage, PROJECT_STORAGE_KEY);
 };
 
+const resetProtectedMidiStorage = (storage, { key, expectedRaw } = {}) => {
+  if (![PROJECT_STORAGE_KEY, TEMPLATE_STORAGE_KEY].includes(key) || typeof expectedRaw !== 'string') throw new Error('Reset requires the exact rejected storage record.');
+  try {
+    if (storage?.getItem?.(key) !== expectedRaw) return { reset: false, reason: 'storage-changed' };
+    if (typeof storage.removeItem !== 'function') return { reset: false, reason: 'unavailable' };
+    storage.removeItem(key); return { reset: storage.getItem(key) == null, reason: null };
+  } catch { return { reset: false, reason: 'unavailable' }; }
+};
+
 export {
   LEGACY_MIDI_STORAGE_KEYS,
   PROJECT_STORAGE_KEY,
@@ -161,8 +200,11 @@ export {
   clearMidiProjectStorage,
   loadMidiProject,
   readStoredMidiProject,
+  readStoredMidiProjectOutcome,
+  readStoredMidiProjectTemplatesOutcome,
   readStoredMidiProjectTemplates,
   resetMidiProjectStorage,
+  resetProtectedMidiStorage,
   resolveStoredMidiProjectTemplate,
   saveMidiProject,
   saveMidiProjectWithOutcome,

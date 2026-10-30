@@ -146,13 +146,13 @@ describe('Shared MIDI output budget', function() {
     });
   });
 
-  it('never throttles sustain release or Panic and clears pending ownership', function() {
+  it('never throttles owned releases and clears pending ownership without a shared-channel reset', function() {
     withFakeClockAndPerformance(() => {
       const { scheduler, calls } = fixture();
       for (let index = 0; index < 80; index += 1) send(scheduler);
       scheduler.allNotesOff();
-      expect(calls.some(call => call.type === 'cc' && call.cc === 64 && call.value === 0)).to.equal(true);
-      expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+      expect(calls.some(call => call.type === 'noteOff')).to.equal(true);
+      expect(calls.some(call => call.type === 'allNotesOff')).to.equal(false);
       expect(scheduler._activeNotes.size).to.equal(0);
       expect(scheduler._pendingNoteOns.size).to.equal(0);
       expect(scheduler._noteOffs).to.deep.equal([]);

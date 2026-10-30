@@ -36,6 +36,14 @@ const withSoundEvents = (events, fn) => {
 
 
 describe('MapObject', function () {
+  it('renders object frames from an immutable palette', function () {
+    const palette = new ColorPalette();
+    palette.setColorRGB(0, 10, 20, 30);
+    palette.setColorRGB(1, 40, 50, 60);
+    Object.freeze(palette);
+    const object = new MapObject({ id: 1, x: 0, y: 0 }, makeObjectImage(true, palette));
+    expect(Array.from(object.animation.frames[0].getBuffer())).to.deep.equal([palette.getColor(0), palette.getColor(1)]);
+  });
   useGlobalLemmings({ game: { showDebug: false } });
 
   it('anchors liquid contact inside its trigger region, ignoring animated bubbles and rims above it', () => {

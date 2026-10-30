@@ -1,7 +1,8 @@
 import { normalizeLaneHeight } from './ProcgenLaneGeometry.js';
+import { deriveSeed } from '../../core/seededRandom.js';
 const DEFAULT_STALL_POLICY = Object.freeze({ secondsWithoutProgress: 35, baseSpawnAllowance: 12,
   distanceGrowthPixels: 1200, additionalSpawnsPerGrowth: 4, maxSpawnAllowance: 64,
-  transitSafetyFactor: 1.75, initialTicksPerPixel: 2, releaseIntervalTicks: 54, cascadeMinTicks: 1, cascadeMaxTicks: 2, ticksPerSecond: 1000 / 60,
+  transitSafetyFactor: 1.75, initialTicksPerPixel: 2, releaseIntervalTicks: 54, cascadeMinTicks: 1, cascadeMaxTicks: 2, cascadeDecisionVersion: 2, ticksPerSecond: 1000 / 60,
   pileMinimumActors: 4, pileGrowthActors: 2, pileMinimumNonProgressSeconds: 8, pileSecondsWithoutProgress: 20,
   pileMaxSeconds: 60, pileSecondsPerGrowth: 3, workGraceSeconds: 10, pendingWorkGraceSeconds: 20 });
 const PILE_COLUMNS = 16, PILE_CELL_WIDTH = 24;
@@ -10,6 +11,7 @@ class ProcgenStallPolicy {
   constructor(laneCount, settings = {}, previousDistances = [], { laneHeight = 96 } = {}) {
     this.laneHeight = normalizeLaneHeight(laneHeight); this.pileRows = Math.ceil(this.laneHeight / PILE_CELL_WIDTH); this.pileSlots = PILE_COLUMNS * this.pileRows;
     this.settings = { ...DEFAULT_STALL_POLICY, ...settings };
+    if (![1, 2].includes(this.settings.cascadeDecisionVersion)) throw new Error('Unsupported stall cascade policy version.');
     this.lanes = Array.from({ length: laneCount }, (_, lane) => ({ maxX: 36, bestDistance: previousDistances[lane] || 0,
       previousDistance: previousDistances[lane] || 0, lastProgressTick: 0, spawnsSinceProgress: 0, spawned: 0, alive: 0,
       transitTicksPerPixel: this.settings.initialTicksPerPixel, probeSpawnTick: null, reason: null,
@@ -120,7 +122,9 @@ class ProcgenStallPolicy {
           if (actor.removed || actor.failureReason || actor.terminalReason || actor._stallDetonationQueued ||
               this.phase !== 'cascade' && (lane.reason !== 'sustained-growing-pile' || lane.detonationQueued)) continue;
           actor._stallDetonationQueued = true; this.cascade.push({ id: actor.id, tick: due });
-          due += this.settings.cascadeMinTicks + (actor.id % (this.settings.cascadeMaxTicks - this.settings.cascadeMinTicks + 1));
+          const decision = this.settings.cascadeDecisionVersion === 2
+            ? deriveSeed(actor.proceduralSeed ?? actor.spawnOrdinal ?? 0, 'procgen:stall-cascade-v2') : actor.id;
+          due += this.settings.cascadeMinTicks + (decision % (this.settings.cascadeMaxTicks - this.settings.cascadeMinTicks + 1));
         }
         for (const lane of this.lanes) if (lane.reason === 'sustained-growing-pile') lane.detonationQueued = true;
       }

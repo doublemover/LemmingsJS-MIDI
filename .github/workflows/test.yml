@@ -13,15 +13,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - run: npm run provenance:check
+      - name: Build source-bound CycloneDX SBOM
+        run: npm run --silent provenance:sbom > runtime-sbom.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: runtime-sbom
+          path: runtime-sbom.json
       - run: npm audit --audit-level=moderate
       - run: npx playwright install --with-deps chromium
       - name: Check changed-line whitespace
@@ -38,6 +45,22 @@ jobs:
       - run: npm run depcheck
       - run: npm run check-mcp-clients
       - run: npm run test-e2e:boundaries
+      - run: npm run test-e2e:workstation:smoke
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: workstation-browser-receipts
+          path: |
+            .tmp/browser-category-selection.json
+            .tmp/workstation-results.json
+            .tmp/workstation-result-qualification.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: browser-boundary-failures
+          path: test-results
+          retention-days: 7
       - name: Create localhost HTTPS cert
         run: |
           mkdir -p certs
@@ -69,7 +92,68 @@ jobs:
             fi
           fi
       - run: npm run coverage
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage
           path: coverage
+
+  native-midi-codec:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run qualify:native-midi-codec
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: native-midi-codec-${{ matrix.os }}
+          path: .tmp/native-midi-codec-qualification.json
+          if-no-files-found: error
+
+  lifecycle-engines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Prepare virtual audio output
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pulseaudio pulseaudio-utils
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=lemmings_ci
+          pactl set-default-sink lemmings_ci
+          pactl info
+      - run: npm run test-e2e:lifecycle
+        env:
+          LEMMINGS_LIFECYCLE_AUDIO_BACKEND: pulseaudio-null-sink
+          DEBUG: pw:browser
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: lifecycle-engine-receipts
+          path: |
+            .tmp/lifecycle-engine-results.json
+            .tmp/lifecycle-engine-qualification.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: lifecycle-engine-diagnostics
+          path: test-results
+          if-no-files-found: warn
+          retention-days: 7

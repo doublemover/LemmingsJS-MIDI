@@ -27,33 +27,51 @@ You can [Play](https://doublemover.github.io/LemmingsJS-MIDI/) and [Edit](https:
 
 For a private, local copy: 
 - Install [Node.js 20.19+ (20.x) or 22.12+](https://nodejs.org)
+- Node.js version policy from package engines: `^20.19.0 || >=22.12.0`.
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Install and run:
-  - `npm install`
+  - `npm ci`
   - `npm start`
-- Open https://localhost:8080
-- Open https://localhost:8080/editor.html for the standalone level editor.
+- Open [the local game](http://127.0.0.1:8080).
+- Open [the local editor](http://127.0.0.1:8080/editor.html) for the standalone level editor.
 - This repo is intended for local development and offline tooling, not npm distribution.
 
 If you hit an issue, _please_ open one: https://github.com/doublemover/LemmingsJS-MIDI/issues
 
-## MCP Quick Start
+## Optional MCP automation
 
 LemmingsJS-MIDI includes an MCP server for automation, state inspection, input
 control, and vision capture using Playwright sessions.
 
-- Run `npm run start-https` in a separate tab.
-- Add the following config to Codex CLI `config.toml` (version 0.77):
+- Keep the ordinary `npm start` server running in a separate terminal.
+- Install the Playwright browser required by your MCP setup (`npm run test-e2e:install`).
+- Configure your MCP client's stdio server entry. Replace the example absolute
+  path with your checkout's `mcp/server.js`; use your client's corresponding
+  configuration format:
 
-```toml
-[mcp_servers.lemmings]
-  command = "node"
-  args = ["C:\\Users\\sneak\\Development\\Lemmings-MIDI-CODEX\\mcp\\server.js"]
-
-[mcp_servers.lemmings.env]
-  LEMMINGS_MCP_BASE_URL = "https://localhost:8080"
-  LEMMINGS_MCP_PATH = "/?e2e=1"
+```json
+{
+  "mcpServers": {
+    "lemmings": {
+      "command": "node",
+      "args": ["/absolute/path/to/LemmingsJS-MIDI/mcp/server.js"],
+      "env": {
+        "LEMMINGS_MCP_BASE_URL": "http://127.0.0.1:8080",
+        "LEMMINGS_MCP_PATH": "/?e2e=1"
+      }
+    }
+  }
+}
 ```
+
+For optional HTTPS, first provide a certificate and private key at
+`certs/localhost.pem` and `certs/localhost-key.pem`, issued by a locally trusted
+authority and valid for `127.0.0.1`. Stop the HTTP server, run
+`npm run start-https`, and use `https://127.0.0.1:8080` (editor:
+`https://127.0.0.1:8080/editor.html`). Update the MCP base URL to that same origin
+when using HTTPS. Certificate setup and contributor/browser validation are
+separate from ordinary game/editor use; see [usage](docs/usage.md) and
+[MCP publishing](docs/mcp/publishing.md).
 
 ## Features
 

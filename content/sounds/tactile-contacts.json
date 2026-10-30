@@ -1,0 +1,894 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.tactile-contacts",
+    "version": "0.1.0",
+    "name": "Original tactile contacts",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Eight original integer-DDS synthetic sources; center, edge and brush source regions; no recordings or measured acoustic qualification.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [
+    {
+      "path": "tactile/tactile-open-soft-a.wav",
+      "sha256": "1b6178159bcfef48a8b2d5116d90570ab1e9fcc6d9953f2b528b249ef6f52c27",
+      "bytes": 48044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original open soft tactile source, alternate 0; no recording source.",
+        "modifications": [
+          "Generator integer-tactile-regions-v1; js/midi/content/ProceduralTactileSources.js; seed 1190892278; 32000 Hz mono PCM16; three 8000-frame regions with 16-frame intentional pre-silence and 256-frame edge fades; authored trim, unmeasured."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "tactile/tactile-open-soft-b.wav",
+      "sha256": "605e5d479e8e4c39db4f39a1705ab1427608b3409ed905f3c0a8aa6e96c8af81",
+      "bytes": 48044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original open soft tactile source, alternate 1; no recording source.",
+        "modifications": [
+          "Generator integer-tactile-regions-v1; js/midi/content/ProceduralTactileSources.js; seed 2080455205; 32000 Hz mono PCM16; three 8000-frame regions with 16-frame intentional pre-silence and 256-frame edge fades; authored trim, unmeasured."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "tactile/tactile-open-firm-a.wav",
+      "sha256": "9bdd7d95200b61dab8a519b67238c9ad8fc762519d6640f33f09f65feb17a239",
+      "bytes": 48044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original open firm tactile source, alternate 0; no recording source.",
+        "modifications": [
+          "Generator integer-tactile-regions-v1; js/midi/content/ProceduralTactileSources.js; seed 780578689; 32000 Hz mono PCM16; three 8000-frame regions with 16-frame intentional pre-silence and 256-frame edge fades; authored trim, unmeasured."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "tactile/tactile-open-firm-b.wav",
+      "sha256": "228272e1ae8e0d88754319abbc5fbc70ca3a81c75a16d727da5a6fb6ae4590e9",
+      "bytes": 48044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original open firm tactile source, alternate 1; no recording source.",
+        "modifications": [
+          "Generator integer-tactile-regions-v1; js/midi/content/ProceduralTactileSources.js; seed 343672658; 32000 Hz mono PCM16; three 8000-frame regions with 16-frame intentional pre-silence and 256-frame edge fades; authored trim, unmeasured."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "tactile/tactile-muted-soft-a.wav",
+      "sha256": "8dfb8ba3d249418e98ed2a141ba224d9212f1268890ea0f14eb281d6150b5c61",
+      "bytes": 48044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original muted soft tactile source, alternate 0; no recording source.",
+        "modifications": [
+          "Generator integer-tactile-regions-v1; js/midi/content/ProceduralTactileSources.js; seed 1243427771; 32000 Hz mono PCM16; three 8000-frame regions with 16-frame intentional pre-silence and 256-frame edge fades; authored trim, unmeasured."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "tactile/tactile-muted-soft-b.wav",
+      "sha256": "50d69606b851d984411bac0cdf181887508ef859e58327753683a62ede332e62",
+      "bytes": 48044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original muted soft tactile source, alternate 1; no recording source.",
+        "modifications": [
+          "Generator integer-tactile-regions-v1; js/midi/content/ProceduralTactileSources.js; seed 1894226792; 32000 Hz mono PCM16; three 8000-frame regions with 16-frame intentional pre-silence and 256-frame edge fades; authored trim, unmeasured."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "tactile/tactile-muted-firm-a.wav",
+      "sha256": "60765190a85d8bf5f0953353236347b974e7962129973f4ec013880b36759649",
+      "bytes": 48044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original muted firm tactile source, alternate 0; no recording source.",
+        "modifications": [
+          "Generator integer-tactile-regions-v1; js/midi/content/ProceduralTactileSources.js; seed 576720588; 32000 Hz mono PCM16; three 8000-frame regions with 16-frame intentional pre-silence and 256-frame edge fades; authored trim, unmeasured."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "tactile/tactile-muted-firm-b.wav",
+      "sha256": "b2fd23d08ce903b123150c99151580966353cd398ccdddf81f01610cf529d05a",
+      "bytes": 48044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original muted firm tactile source, alternate 1; no recording source.",
+        "modifications": [
+          "Generator integer-tactile-regions-v1; js/midi/content/ProceduralTactileSources.js; seed 412788255; 32000 Hz mono PCM16; three 8000-frame regions with 16-frame intentional pre-silence and 256-frame edge fades; authored trim, unmeasured."
+        ],
+        "declaredUse": "unknown"
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "id": "tactile.contact-body",
+      "revision": 1,
+      "name": "Tactile contact body",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "original-synthetic",
+        "sample-map",
+        "contact-articulations",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "native-sample",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original one-root tactile proof map; two intensity layers and two stable semantic alternates per open/muted gesture.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.04,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.7,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "tactile-open-soft-a",
+          "sha256": "1b6178159bcfef48a8b2d5116d90570ab1e9fcc6d9953f2b528b249ef6f52c27",
+          "bytes": 48044,
+          "kind": "sample",
+          "required": true
+        },
+        {
+          "id": "tactile-open-soft-b",
+          "sha256": "605e5d479e8e4c39db4f39a1705ab1427608b3409ed905f3c0a8aa6e96c8af81",
+          "bytes": 48044,
+          "kind": "sample",
+          "required": true
+        },
+        {
+          "id": "tactile-open-firm-a",
+          "sha256": "9bdd7d95200b61dab8a519b67238c9ad8fc762519d6640f33f09f65feb17a239",
+          "bytes": 48044,
+          "kind": "sample",
+          "required": true
+        },
+        {
+          "id": "tactile-open-firm-b",
+          "sha256": "228272e1ae8e0d88754319abbc5fbc70ca3a81c75a16d727da5a6fb6ae4590e9",
+          "bytes": 48044,
+          "kind": "sample",
+          "required": true
+        },
+        {
+          "id": "tactile-muted-soft-a",
+          "sha256": "8dfb8ba3d249418e98ed2a141ba224d9212f1268890ea0f14eb281d6150b5c61",
+          "bytes": 48044,
+          "kind": "sample",
+          "required": true
+        },
+        {
+          "id": "tactile-muted-soft-b",
+          "sha256": "50d69606b851d984411bac0cdf181887508ef859e58327753683a62ede332e62",
+          "bytes": 48044,
+          "kind": "sample",
+          "required": true
+        },
+        {
+          "id": "tactile-muted-firm-a",
+          "sha256": "60765190a85d8bf5f0953353236347b974e7962129973f4ec013880b36759649",
+          "bytes": 48044,
+          "kind": "sample",
+          "required": true
+        },
+        {
+          "id": "tactile-muted-firm-b",
+          "sha256": "b2fd23d08ce903b123150c99151580966353cd398ccdddf81f01610cf529d05a",
+          "bytes": 48044,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "1b6178159bcfef48a8b2d5116d90570ab1e9fcc6d9953f2b528b249ef6f52c27",
+        "605e5d479e8e4c39db4f39a1705ab1427608b3409ed905f3c0a8aa6e96c8af81",
+        "9bdd7d95200b61dab8a519b67238c9ad8fc762519d6640f33f09f65feb17a239",
+        "228272e1ae8e0d88754319abbc5fbc70ca3a81c75a16d727da5a6fb6ae4590e9",
+        "8dfb8ba3d249418e98ed2a141ba224d9212f1268890ea0f14eb281d6150b5c61",
+        "50d69606b851d984411bac0cdf181887508ef859e58327753683a62ede332e62",
+        "60765190a85d8bf5f0953353236347b974e7962129973f4ec013880b36759649",
+        "b2fd23d08ce903b123150c99151580966353cd398ccdddf81f01610cf529d05a"
+      ],
+      "sampleMap": {
+        "schema": "lemmings-sample-instrument-map/v1",
+        "mapId": "tactile.contact-map",
+        "revision": 1,
+        "articulations": [
+          {
+            "id": "center",
+            "name": "Open center"
+          },
+          {
+            "id": "edge",
+            "name": "Open edge"
+          },
+          {
+            "id": "brush",
+            "name": "Open brush"
+          },
+          {
+            "id": "muted",
+            "name": "Muted center"
+          },
+          {
+            "id": "muted-edge",
+            "name": "Muted edge"
+          },
+          {
+            "id": "muted-brush",
+            "name": "Muted brush"
+          }
+        ],
+        "neutralArticulationId": "center",
+        "selectionPolicy": {
+          "algorithmVersion": "stable-semantic-onset-fnv32-v1",
+          "seed": 7617217,
+          "advanceOn": "semantic-onset",
+          "unknownArticulation": "neutral",
+          "rootSelection": "nearest-lower-tie"
+        },
+        "releasePolicy": "owned-end",
+        "normalizationRef": null,
+        "rightsRef": "lemmings.tactile-contacts@0.1.0",
+        "zones": [
+          {
+            "id": "tactile-open-soft-a-center",
+            "articulationId": "center",
+            "roundRobinGroup": "center-soft",
+            "alternateIndex": 0,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "1b6178159bcfef48a8b2d5116d90570ab1e9fcc6d9953f2b528b249ef6f52c27",
+            "onsetFrame": 0,
+            "endFrame": 8000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-soft-a-edge",
+            "articulationId": "edge",
+            "roundRobinGroup": "edge-soft",
+            "alternateIndex": 0,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "1b6178159bcfef48a8b2d5116d90570ab1e9fcc6d9953f2b528b249ef6f52c27",
+            "onsetFrame": 8000,
+            "endFrame": 16000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-soft-a-brush",
+            "articulationId": "brush",
+            "roundRobinGroup": "brush-soft",
+            "alternateIndex": 0,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "1b6178159bcfef48a8b2d5116d90570ab1e9fcc6d9953f2b528b249ef6f52c27",
+            "onsetFrame": 16000,
+            "endFrame": 24000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-soft-b-center",
+            "articulationId": "center",
+            "roundRobinGroup": "center-soft",
+            "alternateIndex": 1,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "605e5d479e8e4c39db4f39a1705ab1427608b3409ed905f3c0a8aa6e96c8af81",
+            "onsetFrame": 0,
+            "endFrame": 8000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-soft-b-edge",
+            "articulationId": "edge",
+            "roundRobinGroup": "edge-soft",
+            "alternateIndex": 1,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "605e5d479e8e4c39db4f39a1705ab1427608b3409ed905f3c0a8aa6e96c8af81",
+            "onsetFrame": 8000,
+            "endFrame": 16000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-soft-b-brush",
+            "articulationId": "brush",
+            "roundRobinGroup": "brush-soft",
+            "alternateIndex": 1,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "605e5d479e8e4c39db4f39a1705ab1427608b3409ed905f3c0a8aa6e96c8af81",
+            "onsetFrame": 16000,
+            "endFrame": 24000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-firm-a-center",
+            "articulationId": "center",
+            "roundRobinGroup": "center-firm",
+            "alternateIndex": 0,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "9bdd7d95200b61dab8a519b67238c9ad8fc762519d6640f33f09f65feb17a239",
+            "onsetFrame": 0,
+            "endFrame": 8000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-firm-a-edge",
+            "articulationId": "edge",
+            "roundRobinGroup": "edge-firm",
+            "alternateIndex": 0,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "9bdd7d95200b61dab8a519b67238c9ad8fc762519d6640f33f09f65feb17a239",
+            "onsetFrame": 8000,
+            "endFrame": 16000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-firm-a-brush",
+            "articulationId": "brush",
+            "roundRobinGroup": "brush-firm",
+            "alternateIndex": 0,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "9bdd7d95200b61dab8a519b67238c9ad8fc762519d6640f33f09f65feb17a239",
+            "onsetFrame": 16000,
+            "endFrame": 24000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-firm-b-center",
+            "articulationId": "center",
+            "roundRobinGroup": "center-firm",
+            "alternateIndex": 1,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "228272e1ae8e0d88754319abbc5fbc70ca3a81c75a16d727da5a6fb6ae4590e9",
+            "onsetFrame": 0,
+            "endFrame": 8000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-firm-b-edge",
+            "articulationId": "edge",
+            "roundRobinGroup": "edge-firm",
+            "alternateIndex": 1,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "228272e1ae8e0d88754319abbc5fbc70ca3a81c75a16d727da5a6fb6ae4590e9",
+            "onsetFrame": 8000,
+            "endFrame": 16000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-open-firm-b-brush",
+            "articulationId": "brush",
+            "roundRobinGroup": "brush-firm",
+            "alternateIndex": 1,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "228272e1ae8e0d88754319abbc5fbc70ca3a81c75a16d727da5a6fb6ae4590e9",
+            "onsetFrame": 16000,
+            "endFrame": 24000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-soft-a-center",
+            "articulationId": "muted",
+            "roundRobinGroup": "muted-soft",
+            "alternateIndex": 0,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "8dfb8ba3d249418e98ed2a141ba224d9212f1268890ea0f14eb281d6150b5c61",
+            "onsetFrame": 0,
+            "endFrame": 8000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-soft-a-edge",
+            "articulationId": "muted-edge",
+            "roundRobinGroup": "muted-edge-soft",
+            "alternateIndex": 0,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "8dfb8ba3d249418e98ed2a141ba224d9212f1268890ea0f14eb281d6150b5c61",
+            "onsetFrame": 8000,
+            "endFrame": 16000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-soft-a-brush",
+            "articulationId": "muted-brush",
+            "roundRobinGroup": "muted-brush-soft",
+            "alternateIndex": 0,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "8dfb8ba3d249418e98ed2a141ba224d9212f1268890ea0f14eb281d6150b5c61",
+            "onsetFrame": 16000,
+            "endFrame": 24000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-soft-b-center",
+            "articulationId": "muted",
+            "roundRobinGroup": "muted-soft",
+            "alternateIndex": 1,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "50d69606b851d984411bac0cdf181887508ef859e58327753683a62ede332e62",
+            "onsetFrame": 0,
+            "endFrame": 8000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-soft-b-edge",
+            "articulationId": "muted-edge",
+            "roundRobinGroup": "muted-edge-soft",
+            "alternateIndex": 1,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "50d69606b851d984411bac0cdf181887508ef859e58327753683a62ede332e62",
+            "onsetFrame": 8000,
+            "endFrame": 16000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-soft-b-brush",
+            "articulationId": "muted-brush",
+            "roundRobinGroup": "muted-brush-soft",
+            "alternateIndex": 1,
+            "velocityMin01": 0,
+            "velocityMax01": 0.5,
+            "assetHash": "50d69606b851d984411bac0cdf181887508ef859e58327753683a62ede332e62",
+            "onsetFrame": 16000,
+            "endFrame": 24000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.8,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-firm-a-center",
+            "articulationId": "muted",
+            "roundRobinGroup": "muted-firm",
+            "alternateIndex": 0,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "60765190a85d8bf5f0953353236347b974e7962129973f4ec013880b36759649",
+            "onsetFrame": 0,
+            "endFrame": 8000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-firm-a-edge",
+            "articulationId": "muted-edge",
+            "roundRobinGroup": "muted-edge-firm",
+            "alternateIndex": 0,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "60765190a85d8bf5f0953353236347b974e7962129973f4ec013880b36759649",
+            "onsetFrame": 8000,
+            "endFrame": 16000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-firm-a-brush",
+            "articulationId": "muted-brush",
+            "roundRobinGroup": "muted-brush-firm",
+            "alternateIndex": 0,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "60765190a85d8bf5f0953353236347b974e7962129973f4ec013880b36759649",
+            "onsetFrame": 16000,
+            "endFrame": 24000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-firm-b-center",
+            "articulationId": "muted",
+            "roundRobinGroup": "muted-firm",
+            "alternateIndex": 1,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "b2fd23d08ce903b123150c99151580966353cd398ccdddf81f01610cf529d05a",
+            "onsetFrame": 0,
+            "endFrame": 8000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-firm-b-edge",
+            "articulationId": "muted-edge",
+            "roundRobinGroup": "muted-edge-firm",
+            "alternateIndex": 1,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "b2fd23d08ce903b123150c99151580966353cd398ccdddf81f01610cf529d05a",
+            "onsetFrame": 8000,
+            "endFrame": 16000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          },
+          {
+            "id": "tactile-muted-firm-b-brush",
+            "articulationId": "muted-brush",
+            "roundRobinGroup": "muted-brush-firm",
+            "alternateIndex": 1,
+            "velocityMin01": 0.5,
+            "velocityMax01": 1,
+            "assetHash": "b2fd23d08ce903b123150c99151580966353cd398ccdddf81f01610cf529d05a",
+            "onsetFrame": 16000,
+            "endFrame": 24000,
+            "rootCents": 6000,
+            "pitchRange": {
+              "minCents": 5400,
+              "maxCents": 6600,
+              "maxTransposeCents": 600
+            },
+            "gain01": 0.7,
+            "tuningCents": 0,
+            "loop": null,
+            "releaseRegion": null,
+            "chokeGroup": "tactile-body"
+          }
+        ]
+      },
+      "macros": [],
+      "causalBindings": [],
+      "voicePolicy": {
+        "maxVoices": 32,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      }
+    }
+  ]
+}

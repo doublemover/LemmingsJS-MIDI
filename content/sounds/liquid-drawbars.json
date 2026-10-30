@@ -1,0 +1,1705 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.liquid-drawbars",
+    "version": "0.1.0",
+    "name": "Liquid tables and additive drawbars",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original phase-aligned Fourier-frame and additive-partial recipes; dry local source variants without shared sends, resonance or drive.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "spectrum.base",
+      "revision": 1,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "spectral-frame",
+        "additive",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-spectrum",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original phase-aligned Fourier-frame and additive-partial recipes; dry local source variants without shared sends, resonance or drive.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.025,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.1,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.8,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.18,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.75,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.7,
+        "pan01": 0
+      },
+      "dependencies": [],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 6013,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-body",
+            "parameter": "body01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.03,
+            "factors": [
+              {
+                "id": "spectral-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": [
+          {
+            "id": "entry-edge",
+            "parameter": "edge01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.03,
+            "factors": [
+              {
+                "id": "spectral-entry",
+                "weight": 1
+              }
+            ]
+          }
+        ]
+      },
+      "causalBindings": [
+        {
+          "id": "completed-height-flow",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "scan01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ]
+    },
+    {
+      "id": "spectrum.bubble-reed",
+      "revision": 1,
+      "extends": "spectrum.base",
+      "name": "Bubble Reed",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "sourceMode": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "partialCount": {
+              "value": 16,
+              "unit": "enum"
+            },
+            "partialDecaySeconds": {
+              "value": 0,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "scan01": {
+              "value": 0.25,
+              "unit": "normalized"
+            },
+            "body01": {
+              "value": 0.3,
+              "unit": "normalized"
+            },
+            "edge01": {
+              "value": 0.65,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.01,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.18,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.4,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.12,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.3,
+          "smoothingMs": 0,
+          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "targets": [
+            {
+              "parameter": "body01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.65,
+          "smoothingMs": 0,
+          "perceptualDirection": "Open the source low-pass and additive spectral tilt; no resonant filter or drive is implied.",
+          "targets": [
+            {
+              "parameter": "edge01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "flow",
+          "name": "FLOW",
+          "mode": "onset-only",
+          "default01": 0.25,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move across sixteen original phase-aligned spectral frames without another attack.",
+          "targets": [
+            {
+              "parameter": "scan01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.38907562519182176,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change dry release duration for future onsets. Shared SPACE sends are unavailable.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spectrum.prism-pad",
+      "revision": 1,
+      "extends": "spectrum.base",
+      "name": "Prism Pad",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "sourceMode": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "partialCount": {
+              "value": 16,
+              "unit": "enum"
+            },
+            "partialDecaySeconds": {
+              "value": 0,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "scan01": {
+              "value": 0.55,
+              "unit": "normalized"
+            },
+            "body01": {
+              "value": 0.3,
+              "unit": "normalized"
+            },
+            "edge01": {
+              "value": 0.65,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.4,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.2,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.8,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 1.8,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.3,
+          "smoothingMs": 0,
+          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "targets": [
+            {
+              "parameter": "body01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.65,
+          "smoothingMs": 0,
+          "perceptualDirection": "Open the source low-pass and additive spectral tilt; no resonant filter or drive is implied.",
+          "targets": [
+            {
+              "parameter": "edge01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "flow",
+          "name": "FLOW",
+          "mode": "onset-only",
+          "default01": 0.55,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move across sixteen original phase-aligned spectral frames without another attack.",
+          "targets": [
+            {
+              "parameter": "scan01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.9771212547196624,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change dry release duration for future onsets. Shared SPACE sends are unavailable.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spectrum.acid-current-dry",
+      "revision": 1,
+      "extends": "spectrum.base",
+      "name": "Acid Current (dry table)",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "sourceMode": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "partialCount": {
+              "value": 16,
+              "unit": "enum"
+            },
+            "partialDecaySeconds": {
+              "value": 0,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "scan01": {
+              "value": 0.75,
+              "unit": "normalized"
+            },
+            "body01": {
+              "value": 0.05,
+              "unit": "normalized"
+            },
+            "edge01": {
+              "value": 0.85,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.12,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.5,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.09,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.05,
+          "smoothingMs": 0,
+          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "targets": [
+            {
+              "parameter": "body01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.85,
+          "smoothingMs": 0,
+          "perceptualDirection": "Open the source low-pass and additive spectral tilt; no resonant filter or drive is implied.",
+          "targets": [
+            {
+              "parameter": "edge01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "flow",
+          "name": "FLOW",
+          "mode": "onset-only",
+          "default01": 0.75,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move across sixteen original phase-aligned spectral frames without another attack.",
+          "targets": [
+            {
+              "parameter": "scan01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.3266062568876718,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change dry release duration for future onsets. Shared SPACE sends are unavailable.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spectrum.pipe-crew",
+      "revision": 1,
+      "extends": "spectrum.base",
+      "name": "Pipe Crew",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "sourceMode": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "partialCount": {
+              "value": 8,
+              "unit": "enum"
+            },
+            "partialDecaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "partial0Ratio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial0Gain": {
+              "value": 1,
+              "unit": "amplitude-linear"
+            },
+            "partial0T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial1Ratio": {
+              "value": 2,
+              "unit": "ratio"
+            },
+            "partial1Gain": {
+              "value": 0.25,
+              "unit": "amplitude-linear"
+            },
+            "partial1T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial2Ratio": {
+              "value": 3,
+              "unit": "ratio"
+            },
+            "partial2Gain": {
+              "value": 0.15,
+              "unit": "amplitude-linear"
+            },
+            "partial2T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial3Ratio": {
+              "value": 4,
+              "unit": "ratio"
+            },
+            "partial3Gain": {
+              "value": 0.08,
+              "unit": "amplitude-linear"
+            },
+            "partial3T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial4Ratio": {
+              "value": 5,
+              "unit": "ratio"
+            },
+            "partial4Gain": {
+              "value": 0.04,
+              "unit": "amplitude-linear"
+            },
+            "partial4T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial5Ratio": {
+              "value": 6,
+              "unit": "ratio"
+            },
+            "partial5Gain": {
+              "value": 0.025,
+              "unit": "amplitude-linear"
+            },
+            "partial5T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial6Ratio": {
+              "value": 7,
+              "unit": "ratio"
+            },
+            "partial6Gain": {
+              "value": 0.015,
+              "unit": "amplitude-linear"
+            },
+            "partial6T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial7Ratio": {
+              "value": 8,
+              "unit": "ratio"
+            },
+            "partial7Gain": {
+              "value": 0.01,
+              "unit": "amplitude-linear"
+            },
+            "partial7T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial8Ratio": {
+              "value": 9,
+              "unit": "ratio"
+            },
+            "partial8Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial8T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial9Ratio": {
+              "value": 10,
+              "unit": "ratio"
+            },
+            "partial9Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial9T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial10Ratio": {
+              "value": 11,
+              "unit": "ratio"
+            },
+            "partial10Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial10T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial11Ratio": {
+              "value": 12,
+              "unit": "ratio"
+            },
+            "partial11Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial11T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial12Ratio": {
+              "value": 13,
+              "unit": "ratio"
+            },
+            "partial12Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial12T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial13Ratio": {
+              "value": 14,
+              "unit": "ratio"
+            },
+            "partial13Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial13T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial14Ratio": {
+              "value": 15,
+              "unit": "ratio"
+            },
+            "partial14Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial14T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial15Ratio": {
+              "value": 16,
+              "unit": "ratio"
+            },
+            "partial15Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial15T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "scan01": {
+              "value": 0.3,
+              "unit": "normalized"
+            },
+            "body01": {
+              "value": 0.7,
+              "unit": "normalized"
+            },
+            "edge01": {
+              "value": 0.8,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.008,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.05,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.9,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.2,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.7,
+          "smoothingMs": 0,
+          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "targets": [
+            {
+              "parameter": "body01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.8,
+          "smoothingMs": 0,
+          "perceptualDirection": "Open the source low-pass and additive spectral tilt; no resonant filter or drive is implied.",
+          "targets": [
+            {
+              "parameter": "edge01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "flow",
+          "name": "FLOW",
+          "mode": "onset-only",
+          "default01": 0.3,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move across sixteen original phase-aligned spectral frames without another attack.",
+          "targets": [
+            {
+              "parameter": "scan01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change dry release duration for future onsets. Shared SPACE sends are unavailable.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spectrum.glass-drawbars",
+      "revision": 1,
+      "extends": "spectrum.base",
+      "name": "Glass Drawbars",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "sourceMode": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "partialCount": {
+              "value": 12,
+              "unit": "enum"
+            },
+            "partialDecaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "partial0Ratio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial0Gain": {
+              "value": 0.7,
+              "unit": "amplitude-linear"
+            },
+            "partial0T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial1Ratio": {
+              "value": 2,
+              "unit": "ratio"
+            },
+            "partial1Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial1T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial2Ratio": {
+              "value": 3,
+              "unit": "ratio"
+            },
+            "partial2Gain": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "partial2T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial3Ratio": {
+              "value": 4,
+              "unit": "ratio"
+            },
+            "partial3Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial3T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial4Ratio": {
+              "value": 5,
+              "unit": "ratio"
+            },
+            "partial4Gain": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "partial4T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial5Ratio": {
+              "value": 6,
+              "unit": "ratio"
+            },
+            "partial5Gain": {
+              "value": 0.15,
+              "unit": "amplitude-linear"
+            },
+            "partial5T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial6Ratio": {
+              "value": 7,
+              "unit": "ratio"
+            },
+            "partial6Gain": {
+              "value": 0.35,
+              "unit": "amplitude-linear"
+            },
+            "partial6T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial7Ratio": {
+              "value": 8,
+              "unit": "ratio"
+            },
+            "partial7Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial7T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial8Ratio": {
+              "value": 9,
+              "unit": "ratio"
+            },
+            "partial8Gain": {
+              "value": 0.2,
+              "unit": "amplitude-linear"
+            },
+            "partial8T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial9Ratio": {
+              "value": 10,
+              "unit": "ratio"
+            },
+            "partial9Gain": {
+              "value": 0.1,
+              "unit": "amplitude-linear"
+            },
+            "partial9T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial10Ratio": {
+              "value": 11,
+              "unit": "ratio"
+            },
+            "partial10Gain": {
+              "value": 0.15,
+              "unit": "amplitude-linear"
+            },
+            "partial10T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial11Ratio": {
+              "value": 12,
+              "unit": "ratio"
+            },
+            "partial11Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial11T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial12Ratio": {
+              "value": 13,
+              "unit": "ratio"
+            },
+            "partial12Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial12T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial13Ratio": {
+              "value": 14,
+              "unit": "ratio"
+            },
+            "partial13Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial13T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial14Ratio": {
+              "value": 15,
+              "unit": "ratio"
+            },
+            "partial14Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial14T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial15Ratio": {
+              "value": 16,
+              "unit": "ratio"
+            },
+            "partial15Gain": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "partial15T60Scale": {
+              "value": 1,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "scan01": {
+              "value": 0.8,
+              "unit": "normalized"
+            },
+            "body01": {
+              "value": 0.2,
+              "unit": "normalized"
+            },
+            "edge01": {
+              "value": 0.9,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.006,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.08,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.8,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.3,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.2,
+          "smoothingMs": 0,
+          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "targets": [
+            {
+              "parameter": "body01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.9,
+          "smoothingMs": 0,
+          "perceptualDirection": "Open the source low-pass and additive spectral tilt; no resonant filter or drive is implied.",
+          "targets": [
+            {
+              "parameter": "edge01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "flow",
+          "name": "FLOW",
+          "mode": "onset-only",
+          "default01": 0.8,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move across sixteen original phase-aligned spectral frames without another attack.",
+          "targets": [
+            {
+              "parameter": "scan01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.5880456295278406,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change dry release duration for future onsets. Shared SPACE sends are unavailable.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "spectrum.falling-stars",
+      "revision": 1,
+      "extends": "spectrum.base",
+      "name": "Falling Stars",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "sourceMode": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "partialCount": {
+              "value": 16,
+              "unit": "enum"
+            },
+            "partialDecaySeconds": {
+              "value": 2.4,
+              "unit": "s"
+            },
+            "partial0Ratio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "partial0Gain": {
+              "value": 1,
+              "unit": "amplitude-linear"
+            },
+            "partial0T60Scale": {
+              "value": 1.0,
+              "unit": "ratio"
+            },
+            "partial1Ratio": {
+              "value": 2,
+              "unit": "ratio"
+            },
+            "partial1Gain": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "partial1T60Scale": {
+              "value": 0.7142857142857143,
+              "unit": "ratio"
+            },
+            "partial2Ratio": {
+              "value": 3,
+              "unit": "ratio"
+            },
+            "partial2Gain": {
+              "value": 0.35,
+              "unit": "amplitude-linear"
+            },
+            "partial2T60Scale": {
+              "value": 0.5555555555555556,
+              "unit": "ratio"
+            },
+            "partial3Ratio": {
+              "value": 4,
+              "unit": "ratio"
+            },
+            "partial3Gain": {
+              "value": 0.25,
+              "unit": "amplitude-linear"
+            },
+            "partial3T60Scale": {
+              "value": 0.45454545454545453,
+              "unit": "ratio"
+            },
+            "partial4Ratio": {
+              "value": 5,
+              "unit": "ratio"
+            },
+            "partial4Gain": {
+              "value": 0.2,
+              "unit": "amplitude-linear"
+            },
+            "partial4T60Scale": {
+              "value": 0.3846153846153846,
+              "unit": "ratio"
+            },
+            "partial5Ratio": {
+              "value": 6,
+              "unit": "ratio"
+            },
+            "partial5Gain": {
+              "value": 0.18,
+              "unit": "amplitude-linear"
+            },
+            "partial5T60Scale": {
+              "value": 0.3333333333333333,
+              "unit": "ratio"
+            },
+            "partial6Ratio": {
+              "value": 7,
+              "unit": "ratio"
+            },
+            "partial6Gain": {
+              "value": 0.15,
+              "unit": "amplitude-linear"
+            },
+            "partial6T60Scale": {
+              "value": 0.2941176470588235,
+              "unit": "ratio"
+            },
+            "partial7Ratio": {
+              "value": 8,
+              "unit": "ratio"
+            },
+            "partial7Gain": {
+              "value": 0.12,
+              "unit": "amplitude-linear"
+            },
+            "partial7T60Scale": {
+              "value": 0.2631578947368421,
+              "unit": "ratio"
+            },
+            "partial8Ratio": {
+              "value": 9,
+              "unit": "ratio"
+            },
+            "partial8Gain": {
+              "value": 0.11,
+              "unit": "amplitude-linear"
+            },
+            "partial8T60Scale": {
+              "value": 0.23809523809523808,
+              "unit": "ratio"
+            },
+            "partial9Ratio": {
+              "value": 10,
+              "unit": "ratio"
+            },
+            "partial9Gain": {
+              "value": 0.1,
+              "unit": "amplitude-linear"
+            },
+            "partial9T60Scale": {
+              "value": 0.2173913043478261,
+              "unit": "ratio"
+            },
+            "partial10Ratio": {
+              "value": 11,
+              "unit": "ratio"
+            },
+            "partial10Gain": {
+              "value": 0.08,
+              "unit": "amplitude-linear"
+            },
+            "partial10T60Scale": {
+              "value": 0.2,
+              "unit": "ratio"
+            },
+            "partial11Ratio": {
+              "value": 12,
+              "unit": "ratio"
+            },
+            "partial11Gain": {
+              "value": 0.07,
+              "unit": "amplitude-linear"
+            },
+            "partial11T60Scale": {
+              "value": 0.18518518518518517,
+              "unit": "ratio"
+            },
+            "partial12Ratio": {
+              "value": 13,
+              "unit": "ratio"
+            },
+            "partial12Gain": {
+              "value": 0.06,
+              "unit": "amplitude-linear"
+            },
+            "partial12T60Scale": {
+              "value": 0.17241379310344826,
+              "unit": "ratio"
+            },
+            "partial13Ratio": {
+              "value": 14,
+              "unit": "ratio"
+            },
+            "partial13Gain": {
+              "value": 0.05,
+              "unit": "amplitude-linear"
+            },
+            "partial13T60Scale": {
+              "value": 0.16129032258064516,
+              "unit": "ratio"
+            },
+            "partial14Ratio": {
+              "value": 15,
+              "unit": "ratio"
+            },
+            "partial14Gain": {
+              "value": 0.04,
+              "unit": "amplitude-linear"
+            },
+            "partial14T60Scale": {
+              "value": 0.1515151515151515,
+              "unit": "ratio"
+            },
+            "partial15Ratio": {
+              "value": 16,
+              "unit": "ratio"
+            },
+            "partial15Gain": {
+              "value": 0.03,
+              "unit": "amplitude-linear"
+            },
+            "partial15T60Scale": {
+              "value": 0.14285714285714285,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "scan01": {
+              "value": 0.6,
+              "unit": "normalized"
+            },
+            "body01": {
+              "value": 0.1,
+              "unit": "normalized"
+            },
+            "edge01": {
+              "value": 0.9,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.003,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.1,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.15,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.1,
+          "smoothingMs": 0,
+          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "targets": [
+            {
+              "parameter": "body01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0.9,
+          "smoothingMs": 0,
+          "perceptualDirection": "Open the source low-pass and additive spectral tilt; no resonant filter or drive is implied.",
+          "targets": [
+            {
+              "parameter": "edge01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "flow",
+          "name": "FLOW",
+          "mode": "onset-only",
+          "default01": 0.6,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move across sixteen original phase-aligned spectral frames without another attack.",
+          "targets": [
+            {
+              "parameter": "scan01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.43753063169584994,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change dry release duration for future onsets. Shared SPACE sends are unavailable.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

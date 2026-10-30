@@ -25,7 +25,7 @@ class ProcgenBlockerBypass {
   prove(actor, maxWork = MAX_BYPASS_WORK) {
     const world = this.world;
     if (!world?.terrain || !world.workerLimits.builders || actor?.action !== world.actions[State.WALKING] || !actor.lookRight || actor.canClimb || actor.hasParachute || actor.failureReason || actor.terminalReason || actor.removed) return { proposal: null, probes: 0 };
-    const triggers = world.triggerManager?.byLane[actor.laneIndex] || [];
+    const triggers = world.triggerManager?.getLaneTriggers(actor.laneIndex) || [];
     if (triggers.length > 64) return { proposal: null, probes: 0, failure: 'blocker-observation-limit' };
     const target = triggers.find(trigger => trigger.type === Types.BLOCKER_LEFT && trigger.owner?.action === world.actions[State.BLOCKING] &&
       !trigger.owner.removed && !trigger.owner.failureReason && !trigger.owner.terminalReason && trigger.owner.x - actor.x >= 26 && trigger.owner.x - actor.x <= 32 && Math.abs(trigger.owner.y - actor.y) <= 2);

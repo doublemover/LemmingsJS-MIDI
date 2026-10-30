@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { performance } from 'node:perf_hooks';
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 const args = Object.fromEntries(process.argv.slice(2).map(arg => arg.replace(/^--/, '').split('=')));
 const root = path.resolve(args.repo || '.'), out = path.resolve(args.output || '../lemmings_optimization_artifacts');
 await fs.mkdir(out, { recursive: true });
@@ -36,17 +37,17 @@ for (const laneCount of args.renderOnly ? [] : lanes) for (const cosmetics of [f
   }
   results.simulation.push({ laneCount, cosmetics, warmup: 400, ticks: 1200, runs }); await save(); console.log(JSON.stringify({ laneCount, cosmetics, means: runs.map(run => run.tickMs.mean), p95: runs.map(run => run.tickMs.p95) }));
 }
-for (const laneCount of [1, 32, 1024]) {
+for (const laneCount of [8, 128, 1024]) {
   const world = new ProcgenLaneWorld({ masks, terrain, sprites, laneCount, seed: 42, cohorts: true, spawnSpreadTicks: 12 });
   for (let i = 0; i < 600; i++) world.step();
   for (const scale of [3, 1, 0.125, 1 / 256]) {
     if (args.baseline && scale < 1) continue;
-    const counters = { uploads: 0, draws: 0 }, renderer = new ProcgenLaneRenderer({ canvas: canvas(1280, 720, counters), world, assets: { groundPieces: terrain.pieces }, windowRef: { performance, devicePixelRatio: 1 } });
+    const counters = { uploads: 0, draws: 0 }, renderer = new ProcgenLaneRenderer({ canvas: canvas(MIN_DESKTOP_VIEWPORT.width, MIN_DESKTOP_VIEWPORT.height, counters), world, assets: { groundPieces: terrain.pieces }, windowRef: { performance, devicePixelRatio: 1 } });
     renderer.scale = scale; renderer.follow = false; renderer.cameraX = 100;
     const coldStart = performance.now(); renderer.render(); const coldMs = performance.now() - coldStart;
     for (let i = 0; i < 20; i++) renderer.render();
     const times = []; for (let i = 0; i < 160; i++) { const t = performance.now(); renderer.render(); times.push(performance.now() - t); }
-    const result = { laneCount, scale, canvas: [1280, 720], sourceRaster: [renderer.buffer.width, renderer.buffer.height], coldMs, staticMs: stats(times), counters };
+    const result = { laneCount, scale, canvas: [MIN_DESKTOP_VIEWPORT.width, MIN_DESKTOP_VIEWPORT.height], sourceRaster: [renderer.buffer.width, renderer.buffer.height], coldMs, staticMs: stats(times), counters };
     const moving = []; for (let i = 0; i < 40; i++) { renderer.cameraX++; const t = performance.now(); renderer.render(); moving.push(performance.now() - t); }
     result.movingMs = stats(moving); results.render.push(result); console.log(JSON.stringify(result)); await save(); renderer.dispose();
   }

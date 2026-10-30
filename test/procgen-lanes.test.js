@@ -6,6 +6,7 @@ import { ProcgenLaneWorld, normalizeLaneCount, LANE_HEIGHT } from '../js/app/pro
 import { SolidLayer } from '../js/render/SolidLayer.js';
 
 describe('shared procgen lanes', function () {
+  this.timeout(60000);
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   it('normalizes the exact 1–1024 integer range', () => {

@@ -258,6 +258,30 @@ const createControllerHarness = ({
 };
 
 describe('midiUiController sequencer', function() {
+  it('preserves an uncommitted focused edit across background refresh and exports the committed value', () => {
+    const { controller, doc, view } = createControllerHarness();
+    controller.bindMidiUi();
+    try {
+      const note = doc.getElementById('midiMappingNote'); note.focus(); note.value = '79';
+      controller.refreshMidiUiFromConfig(); controller.refreshMidiUiFromConfig();
+      expect(note.value).to.equal('79');
+      expect(controller.getProject().sources.find(source => source.id === 'sfx-1').mapping.note).to.equal(60);
+      note.dispatchEvent({ type: 'change', target: note });
+      controller.exportProject();
+      expect(JSON.parse(view.downloads.at(-1).text).project.sources.find(source => source.id === 'sfx-1').mapping.note).to.equal(79);
+    } finally { controller.dispose(); }
+  });
+
+  it('replaces a focused draft when an explicit project edit changes its model', () => {
+    const { controller, doc } = createControllerHarness(); controller.bindMidiUi();
+    try {
+      const note = doc.getElementById('midiMappingNote'); note.focus(); note.value = '79';
+      controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 84 } });
+      expect(note.value).to.equal('84');
+      controller.refreshMidiUiFromConfig(); expect(note.value).to.equal('84');
+    } finally { controller.dispose(); }
+  });
+
   it('wires game and role audition to one actual synth graph and closes the graph once', async () => {
     await withFakeClockAndPerformance(async () => {
 

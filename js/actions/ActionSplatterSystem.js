@@ -3,7 +3,7 @@ import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
-import { getRuntimeMiniMap, getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 class ActionSplatterSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -11,12 +11,6 @@ class ActionSplatterSystem extends ActionBaseSystem {
   }
   triggerLemAction(lem) {
     return false;
-  }
-  draw(gameDisplay, lem) {
-    super.draw(gameDisplay, lem);
-    if (lem.frameIndex === 15) {
-      getRuntimeMiniMap(this.runtime)?.addDeath(lem.x, lem.y);
-    }
   }
   process(level, lem) {
     lem.disable();

@@ -1,0 +1,1470 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.granular-biomes",
+    "version": "0.1.0",
+    "name": "Synthetic granular biomes",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Four original integer-arithmetic synthetic texture sources and actor-owned granular recipes; not field recordings. No acoustic qualification claimed.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [
+    {
+      "path": "biomes/rain-glass.wav",
+      "sha256": "d87299a2c76b9fc07f77e3dcee35c2f03c46c65558bdedaaba6c275ca3d0dbce",
+      "bytes": 128044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original synthetic rain-glass texture; no recording source.",
+        "modifications": [
+          "Generator integer-biome-textures-v1; source js/midi/content/ProceduralBiomeSources.js; seed 19114775; 32000 Hz PCM16; 256-frame edge fade."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "biomes/gravel-choir.wav",
+      "sha256": "443f5744233e5709b8526b24f012c85742b523460af923ed57170ac8e1f4271e",
+      "bytes": 128044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original synthetic gravel-choir texture; no recording source.",
+        "modifications": [
+          "Generator integer-biome-textures-v1; source js/midi/content/ProceduralBiomeSources.js; seed 164117793; 32000 Hz PCM16; 256-frame edge fade."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "biomes/water-lens.wav",
+      "sha256": "9a0933f6e7ff4e295e1db9b484ef84332f16412aff5c616f74fb9fb9457e6b99",
+      "bytes": 256044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original synthetic water-lens texture; no recording source.",
+        "modifications": [
+          "Generator integer-biome-textures-v1; source js/midi/content/ProceduralBiomeSources.js; seed 82272683; 32000 Hz PCM16; 256-frame edge fade."
+        ],
+        "declaredUse": "unknown"
+      }
+    },
+    {
+      "path": "biomes/rust-breath.wav",
+      "sha256": "456b53f169a166a9ef00509eea4fb419f920b51693a6a39ce4fb1b9e67d48558",
+      "bytes": 128044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "derived-data",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original synthetic rust-breath texture; no recording source.",
+        "modifications": [
+          "Generator integer-biome-textures-v1; source js/midi/content/ProceduralBiomeSources.js; seed 111617217; 32000 Hz PCM16; 256-frame edge fade."
+        ],
+        "declaredUse": "unknown"
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "id": "biome.rain-glass",
+      "revision": 1,
+      "name": "Rain Glass",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "granular",
+        "synthetic-source",
+        "actor-owned-cloud",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-granular",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original granular cloud recipe over an original synthetic source. Internal grains are DSP children of one held action gate.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pitchRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "regionStart01": {
+              "value": 0.04,
+              "unit": "normalized"
+            },
+            "regionEnd01": {
+              "value": 0.96,
+              "unit": "normalized"
+            },
+            "motionRequired": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "reverse": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "rootHz": {
+              "value": 261.6255653005986,
+              "unit": "Hz"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "position01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "densityHz": {
+              "value": 24,
+              "unit": "Hz"
+            },
+            "grainMilliseconds": {
+              "value": 25,
+              "unit": "ms"
+            },
+            "spread01": {
+              "value": 0.1,
+              "unit": "normalized"
+            },
+            "activity01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "tone01": {
+              "value": 0.85,
+              "unit": "normalized"
+            },
+            "freezePosition": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.012,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "source",
+          "sha256": "d87299a2c76b9fc07f77e3dcee35c2f03c46c65558bdedaaba6c275ca3d0dbce",
+          "bytes": 128044,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "d87299a2c76b9fc07f77e3dcee35c2f03c46c65558bdedaaba6c275ca3d0dbce"
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      },
+      "macros": [
+        {
+          "id": "crowd",
+          "name": "CROWD",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Sparse to dense grain children within one held cloud.",
+          "targets": [
+            {
+              "parameter": "densityHz",
+              "minimum": {
+                "value": 12,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 36,
+                "unit": "Hz"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "SCALE",
+          "mode": "onset-only",
+          "default01": 0.041666666666666664,
+          "smoothingMs": 0,
+          "perceptualDirection": "Short grain flecks to overlapping source texture.",
+          "targets": [
+            {
+              "parameter": "grainMilliseconds",
+              "minimum": {
+                "value": 20,
+                "unit": "ms"
+              },
+              "maximum": {
+                "value": 140,
+                "unit": "ms"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scan",
+          "name": "SCAN",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Earlier to later positions in the permitted source region.",
+          "targets": [
+            {
+              "parameter": "position01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "weather",
+          "name": "WEATHER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
+          "targets": [
+            {
+              "parameter": "spread01",
+              "minimum": {
+                "value": 0.2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "scale"
+            },
+            {
+              "parameter": "tone01",
+              "minimum": {
+                "value": -0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "add"
+            }
+          ]
+        }
+      ],
+      "causalBindings": [
+        {
+          "id": "completed-motion-density",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "densityHz",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "Hz",
+          "outputMin": -2,
+          "outputMax": 6,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "completed-height-scan",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "position01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 19114775,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-scan",
+            "parameter": "position01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "cloud-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      }
+    },
+    {
+      "id": "biome.gravel-choir",
+      "revision": 1,
+      "name": "Gravel Choir",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "granular",
+        "synthetic-source",
+        "actor-owned-cloud",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-granular",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original granular cloud recipe over an original synthetic source. Internal grains are DSP children of one held action gate.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pitchRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "regionStart01": {
+              "value": 0.04,
+              "unit": "normalized"
+            },
+            "regionEnd01": {
+              "value": 0.96,
+              "unit": "normalized"
+            },
+            "motionRequired": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "reverse": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "rootHz": {
+              "value": 261.6255653005986,
+              "unit": "Hz"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "position01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "densityHz": {
+              "value": 12,
+              "unit": "Hz"
+            },
+            "grainMilliseconds": {
+              "value": 70,
+              "unit": "ms"
+            },
+            "spread01": {
+              "value": 0.65,
+              "unit": "normalized"
+            },
+            "activity01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "tone01": {
+              "value": 0.6,
+              "unit": "normalized"
+            },
+            "freezePosition": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.012,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "source",
+          "sha256": "443f5744233e5709b8526b24f012c85742b523460af923ed57170ac8e1f4271e",
+          "bytes": 128044,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "443f5744233e5709b8526b24f012c85742b523460af923ed57170ac8e1f4271e"
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      },
+      "macros": [
+        {
+          "id": "crowd",
+          "name": "CROWD",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Sparse to dense grain children within one held cloud.",
+          "targets": [
+            {
+              "parameter": "densityHz",
+              "minimum": {
+                "value": 6,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 18,
+                "unit": "Hz"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "SCALE",
+          "mode": "onset-only",
+          "default01": 0.4166666666666667,
+          "smoothingMs": 0,
+          "perceptualDirection": "Short grain flecks to overlapping source texture.",
+          "targets": [
+            {
+              "parameter": "grainMilliseconds",
+              "minimum": {
+                "value": 20,
+                "unit": "ms"
+              },
+              "maximum": {
+                "value": 140,
+                "unit": "ms"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scan",
+          "name": "SCAN",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Earlier to later positions in the permitted source region.",
+          "targets": [
+            {
+              "parameter": "position01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "weather",
+          "name": "WEATHER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
+          "targets": [
+            {
+              "parameter": "spread01",
+              "minimum": {
+                "value": 0.2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "scale"
+            },
+            {
+              "parameter": "tone01",
+              "minimum": {
+                "value": -0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "add"
+            }
+          ]
+        }
+      ],
+      "causalBindings": [
+        {
+          "id": "completed-motion-density",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "densityHz",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "Hz",
+          "outputMin": -2,
+          "outputMax": 6,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "completed-height-scan",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "position01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 164117793,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-scan",
+            "parameter": "position01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "cloud-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      }
+    },
+    {
+      "id": "biome.water-lens",
+      "revision": 1,
+      "name": "Water Lens",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "granular",
+        "synthetic-source",
+        "actor-owned-cloud",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-granular",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original granular cloud recipe over an original synthetic source. Internal grains are DSP children of one held action gate.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pitchRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "regionStart01": {
+              "value": 0.04,
+              "unit": "normalized"
+            },
+            "regionEnd01": {
+              "value": 0.96,
+              "unit": "normalized"
+            },
+            "motionRequired": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "reverse": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "rootHz": {
+              "value": 261.6255653005986,
+              "unit": "Hz"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "position01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "densityHz": {
+              "value": 8,
+              "unit": "Hz"
+            },
+            "grainMilliseconds": {
+              "value": 120,
+              "unit": "ms"
+            },
+            "spread01": {
+              "value": 0.2,
+              "unit": "normalized"
+            },
+            "activity01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "tone01": {
+              "value": 0.75,
+              "unit": "normalized"
+            },
+            "freezePosition": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.012,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "source",
+          "sha256": "9a0933f6e7ff4e295e1db9b484ef84332f16412aff5c616f74fb9fb9457e6b99",
+          "bytes": 256044,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "9a0933f6e7ff4e295e1db9b484ef84332f16412aff5c616f74fb9fb9457e6b99"
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      },
+      "macros": [
+        {
+          "id": "crowd",
+          "name": "CROWD",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Sparse to dense grain children within one held cloud.",
+          "targets": [
+            {
+              "parameter": "densityHz",
+              "minimum": {
+                "value": 4,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 12,
+                "unit": "Hz"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "SCALE",
+          "mode": "onset-only",
+          "default01": 0.8333333333333334,
+          "smoothingMs": 0,
+          "perceptualDirection": "Short grain flecks to overlapping source texture.",
+          "targets": [
+            {
+              "parameter": "grainMilliseconds",
+              "minimum": {
+                "value": 20,
+                "unit": "ms"
+              },
+              "maximum": {
+                "value": 140,
+                "unit": "ms"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scan",
+          "name": "SCAN",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Earlier to later positions in the permitted source region.",
+          "targets": [
+            {
+              "parameter": "position01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "weather",
+          "name": "WEATHER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
+          "targets": [
+            {
+              "parameter": "spread01",
+              "minimum": {
+                "value": 0.2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "scale"
+            },
+            {
+              "parameter": "tone01",
+              "minimum": {
+                "value": -0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "add"
+            }
+          ]
+        }
+      ],
+      "causalBindings": [
+        {
+          "id": "completed-motion-density",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "densityHz",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "Hz",
+          "outputMin": -2,
+          "outputMax": 6,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "completed-height-scan",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "position01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 82272683,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-scan",
+            "parameter": "position01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "cloud-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      }
+    },
+    {
+      "id": "biome.rust-breath",
+      "revision": 1,
+      "name": "Rust Breath",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "granular",
+        "synthetic-source",
+        "actor-owned-cloud",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-granular",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original granular cloud recipe over an original synthetic source. Internal grains are DSP children of one held action gate.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pitchRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "regionStart01": {
+              "value": 0.04,
+              "unit": "normalized"
+            },
+            "regionEnd01": {
+              "value": 0.96,
+              "unit": "normalized"
+            },
+            "motionRequired": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "reverse": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "rootHz": {
+              "value": 261.6255653005986,
+              "unit": "Hz"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "position01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "densityHz": {
+              "value": 32,
+              "unit": "Hz"
+            },
+            "grainMilliseconds": {
+              "value": 45,
+              "unit": "ms"
+            },
+            "spread01": {
+              "value": 0.4,
+              "unit": "normalized"
+            },
+            "activity01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "tone01": {
+              "value": 0.35,
+              "unit": "normalized"
+            },
+            "freezePosition": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.012,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "source",
+          "sha256": "456b53f169a166a9ef00509eea4fb419f920b51693a6a39ce4fb1b9e67d48558",
+          "bytes": 128044,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "456b53f169a166a9ef00509eea4fb419f920b51693a6a39ce4fb1b9e67d48558"
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      },
+      "macros": [
+        {
+          "id": "crowd",
+          "name": "CROWD",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Sparse to dense grain children within one held cloud.",
+          "targets": [
+            {
+              "parameter": "densityHz",
+              "minimum": {
+                "value": 16,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 48,
+                "unit": "Hz"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "SCALE",
+          "mode": "onset-only",
+          "default01": 0.20833333333333334,
+          "smoothingMs": 0,
+          "perceptualDirection": "Short grain flecks to overlapping source texture.",
+          "targets": [
+            {
+              "parameter": "grainMilliseconds",
+              "minimum": {
+                "value": 20,
+                "unit": "ms"
+              },
+              "maximum": {
+                "value": 140,
+                "unit": "ms"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scan",
+          "name": "SCAN",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Earlier to later positions in the permitted source region.",
+          "targets": [
+            {
+              "parameter": "position01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "weather",
+          "name": "WEATHER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
+          "targets": [
+            {
+              "parameter": "spread01",
+              "minimum": {
+                "value": 0.2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "scale"
+            },
+            {
+              "parameter": "tone01",
+              "minimum": {
+                "value": -0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "add"
+            }
+          ]
+        }
+      ],
+      "causalBindings": [
+        {
+          "id": "completed-motion-density",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "densityHz",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "Hz",
+          "outputMin": -2,
+          "outputMax": 6,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "completed-height-scan",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "position01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 111617217,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-scan",
+            "parameter": "position01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "cloud-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      }
+    }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.rain-glass",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.rain-glass",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.gravel-choir",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.gravel-choir",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.water-lens",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.water-lens",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.rust-breath",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.rust-breath",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    }
+  ]
+}

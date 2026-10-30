@@ -1,5 +1,7 @@
 import { BaseLogger } from '../util/LogHandler.js';
 
+const storageFinalizers = typeof FinalizationRegistry === 'function' ? new FinalizationRegistry(reference => reference.release()) : null;
+
 /**
  * Reads binary data through a logical window over a backing byte array.
  * Explicit offsets are logical offsets relative to this reader's window.
@@ -21,6 +23,12 @@ class BinaryReader extends BaseLogger {
 
   /** @type {number} Current absolute position (relative to #data) */
   #pos;
+
+  #readyPromise;
+  #storageGroup = null;
+  #storageReference = null;
+  #storageRegistration = null;
+  #released = false;
 
   /** @type {string} File name (for logging/debug) */
   filename;
@@ -57,7 +65,7 @@ class BinaryReader extends BaseLogger {
      * For synchronous sources it resolves immediately with the data array.
      * @type {Promise<Uint8Array>}
      */
-    this.ready = Promise.resolve();
+    this.#readyPromise = Promise.resolve();
 
     // Set initial offsets to allow property access before async load
     this.#hiddenOffset = offset;
@@ -71,7 +79,10 @@ class BinaryReader extends BaseLogger {
       dataLength = 0;
       this.log.log('BinaryReader from NULL; size: 0');
     } else if (dataArray instanceof BinaryReader) {
-      this.#data = dataArray.data;
+      dataArray.#assertAvailable();
+      this.#data = dataArray.#data;
+      if (dataArray.sourceIdentity) Object.defineProperty(this, 'sourceIdentity', { value: dataArray.sourceIdentity });
+      if (dataArray.#storageGroup) this._attachStorageLease(dataArray.#storageGroup);
       dataLength = dataArray.length;
       baseHiddenOffset = dataArray.hiddenOffset;
       this.log.log('BinaryReader from BinaryReader; size: ' + dataLength);
@@ -87,7 +98,7 @@ class BinaryReader extends BaseLogger {
       this.#data = new Uint8Array(0);
       dataLength = 0;
       this.log.log('BinaryReader from Blob; reading asynchronously');
-      this.ready = (async () => {
+      this.#readyPromise = (async () => {
         let buf;
         if (typeof dataArray.arrayBuffer === 'function') {
           buf = await dataArray.arrayBuffer();
@@ -101,16 +112,16 @@ class BinaryReader extends BaseLogger {
         } else {
           throw new Error('Blob reading not supported');
         }
+        this.#assertAvailable();
         this.#data = new Uint8Array(buf);
         dataLength = this.#data.byteLength;
         if (length == null) length = dataLength - offset;
         this.#hiddenOffset = offset;
         this.#length = length;
         this.#pos = this.#hiddenOffset;
-        return this.#data;
       })();
       // constructor returns immediately; callers should await this.ready
-      this.ready.catch(() => {}); // avoid unhandled rejection
+      this.#readyPromise.catch(() => {}); // avoid unhandled rejection
       return;
     } else {
       // Generic object: treat as array-like
@@ -123,12 +134,47 @@ class BinaryReader extends BaseLogger {
     this.#hiddenOffset = baseHiddenOffset + offset;
     this.#length = Math.max(0, Math.min(length, dataLength - offset));
     this.#pos = this.#hiddenOffset;
-    this.ready = Promise.resolve(this.#data);
   }
 
-  /** @returns {Uint8Array} Backing data array */
+  get ready() {
+    return this.#readyPromise.then(() => { this.#assertAvailable(); return new Uint8Array(this.#data); });
+  }
+
+  /** @returns {Uint8Array} Independent copy of the backing bytes. */
   get data() {
-    return this.#data;
+    this.#assertAvailable();
+    return new Uint8Array(this.#data);
+  }
+
+  /** Return an owned copy of this reader's logical window. */
+  copyBytes() {
+    this.#assertAvailable();
+    return new Uint8Array(this.#data.subarray(this.#hiddenOffset, this.#hiddenOffset + this.#length));
+  }
+
+  _attachStorageLease(group, role = 'consumer') {
+    if (this.#storageReference) throw new Error('BinaryReader storage is already leased');
+    this.#storageGroup = group;
+    this.#storageReference = group.acquire(role);
+    this.#storageRegistration = {};
+    storageFinalizers?.register(this, this.#storageReference, this.#storageRegistration);
+  }
+
+  _retainStorageLease(role = 'pending') { return this.#storageGroup?.acquire(role) || null; }
+  _setStorageLeaseRole(role) { this.#storageReference?.setRole(role); }
+  _isStoragePinned() { return this.#storageGroup?.pinned || false; }
+
+  release() {
+    if (this.#released) return;
+    this.#released = true;
+    storageFinalizers?.unregister(this.#storageRegistration || {});
+    this.#storageReference?.release();
+    this.#storageReference = null; this.#storageGroup = null; this.#storageRegistration = null;
+    this.#data = new Uint8Array(0); this.#length = 0; this.#pos = this.#hiddenOffset = 0;
+  }
+
+  #assertAvailable() {
+    if (this.#released) throw new Error('BinaryReader has been released');
   }
 
   /** @returns {number} Logical start offset */
@@ -147,6 +193,7 @@ class BinaryReader extends BaseLogger {
   }
 
   #resolveReadOffset(offset) {
+    this.#assertAvailable();
     if (offset === undefined || offset === null) return this.#pos;
     return this.#hiddenOffset + Math.trunc(Number(offset));
   }
@@ -294,6 +341,7 @@ class BinaryReader extends BaseLogger {
    * @param {number} newPos - New logical offset (relative to logical 0).
    */
   setOffset(newPos) {
+    this.#assertAvailable();
     this.#pos = newPos + this.#hiddenOffset;
   }
 

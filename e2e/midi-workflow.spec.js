@@ -27,6 +27,7 @@ test('sound editing is primary and device choices explain their disconnected sta
 
 test('simple Exit editing changes the effective trigger voice and shows the active key', async ({ page }) => {
   await page.locator('#midiViewProject').click();
+  await page.locator('.midi-starting-palettes > summary').click();
   await page.locator('#midiGamePresetSelect').selectOption('game-minor');
   await page.locator('#midiGamePresetApply').click();
   await page.locator('#midiViewSounds').click();

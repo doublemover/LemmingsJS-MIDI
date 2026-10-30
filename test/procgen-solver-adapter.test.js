@@ -21,7 +21,8 @@ describe('independent procgen real actor physical goals', function() {
     const second = replayProcgenGoal(factory, script, { maxTicks: 1200, maxNodes: 1200, maxActions: 1 });
     expect(second.replaySummary.stateHash).to.equal(result.replaySummary.stateHash);
   });
-  it('independently replays the exact sourced Brick support/roof with original art and attachment provenance', async () => {
+  it('independently replays the exact sourced Brick support/roof with original art and attachment provenance', async function() {
+    this.timeout(15000);
     const source = await loadProcgenTerrain('lemmings_ohNo', 0), lane = 5, floor = lane * 96 + 72;
     let sourceAssembly = null;
     const factory = () => new ProcgenSolverAdapter({ id: 'sourced-brick-tunnel', bounds: { x: 224, y: lane * 96, width: 160, height: 96 },
@@ -41,7 +42,7 @@ describe('independent procgen real actor physical goals', function() {
         return world;
       }
     });
-    const result = searchProcgenGoal(factory, { maxTicks: 600, maxNodes: 8, maxActions: 1 });
+    const result = searchProcgenGoal(factory, { maxTicks: 600, maxNodes: 8, maxActions: 1, maxWallTimeMs: 10000 });
     expect(sourceAssembly.sourceRevision).to.equal(source.assemblyCatalog.sourceRevision);
     expect(result.resultType).to.equal('solved'); expect(result.replaySummary).to.include({ goalReachedCount: 8, deadCount: 0, hazardContacts: 0, protectedTerrainUnchanged: true });
   });

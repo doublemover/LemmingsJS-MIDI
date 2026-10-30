@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Production instrument material specimen</title>
+<link rel="stylesheet" href="/css/procgen-workstation.css"><link rel="stylesheet" href="/css/workstation-materials.css">
+<style>
+body.procgen-workstation{margin:0;padding:24px;box-sizing:border-box;min-height:100vh;height:auto;overflow:auto}h1{font-size:20px}#specimen{display:grid;grid-template-columns:repeat(3,minmax(480px,1fr));gap:12px}article{border:1px solid var(--material-line);padding:10px}h2{font-size:14px;margin:0 0 8px}.specimen-controls{display:flex;gap:12px;align-items:center}.studio-lane-performance{width:184px;flex:none}.specimen-actions{display:grid;gap:8px}button{min-height:32px}.specimen-state{border-top:1px solid var(--material-line);padding-top:6px;margin-top:8px}.studio-lane-display{padding:6px;height:32px;box-sizing:border-box}.greyscale{filter:grayscale(1)}
+</style></head><body class="procgen-workstation">
+<h1>Production instrument materials · shared CSS and real parameter controls</h1>
+<p>Platform UI and monospace fonts; original CSS surfaces, no external assets. State names remain visible without color.</p>
+<main id="specimen"></main><button id="outside">Outside exact entry</button>
+<script type="module">
+import { createParameterKnob } from '/js/app/controls/ParameterKnob.js';
+const states = ['idle','hover','focus','pressed','selected','queued','stale','disabled','error'];
+const controls = [], commits = [], identity = {}, owner = document.getElementById('specimen');
+for (const state of states) {
+  const row = document.createElement('article'), heading = document.createElement('h2'), body = document.createElement('div'), performance = document.createElement('div'), display = document.createElement('div'), buttons = document.createElement('div'), status = document.createElement('p');
+  row.dataset.materialState = state; heading.textContent = state; body.className = 'specimen-controls'; performance.className = 'studio-lane-performance'; buttons.className = 'specimen-actions';
+  display.className = 'studio-lane-display'; display.textContent = state + ' · 0 dB'; performance.append(display);
+  for (const [name, quantity, min, max, value, presentation] of [['Level','lane-gain',0,2,1,'fader'],['Pan','stereo-position',-127,127,0,'knob']]) {
+    const control = createParameterKnob({ document, window, compact: true, contextName: state + ' · ' + name, presentation,
+      descriptor: { id: state + '-' + name, name, quantity, unit: '', min, max, defaultValue: value, step: name === 'Level' ? 0.01 : 1 }, value,
+      readOnly: state === 'disabled', pending: state === 'queued', getIdentity: () => identity, commit: next => commits.push({ state, name, next }), focusFallback: () => document.getElementById('outside') });
+    control.element.classList.add(name === 'Level' ? 'studio-lane-fader' : 'studio-lane-pan'); performance.append(control.element); controls.push(control);
+  }
+  for (const label of ['Momentary', 'Latch']) { const button = document.createElement('button'); button.textContent = label; button.type = 'button'; if (label === 'Latch') button.setAttribute('aria-pressed', String(['pressed','selected'].includes(state))); button.disabled = state === 'disabled'; buttons.append(button); }
+  status.className = 'specimen-state'; status.textContent = state === 'error' ? 'Error · value refused' : state === 'stale' ? 'Stale · last observation only' : state === 'queued' ? 'Queued · awaiting acceptance' : state + ' · authored control';
+  row.append(heading, body, status); body.append(performance, buttons); owner.append(row);
+}
+window.materialSpecimen = { controls, commits, identity };
+</script></body></html>

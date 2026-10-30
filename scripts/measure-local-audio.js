@@ -1,6 +1,7 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { chromium } from '@playwright/test';
+import { LOCAL_AUDIO_SOURCES, launchAudioEvidenceBrowser } from './audio-evidence-runtime.js';
 import { installWebMidiStub } from '../e2e/helpers/webmidiStub.js';
 
 const option = (name, fallback) => process.argv.find(arg => arg.startsWith('--' + name + '='))?.slice(name.length + 3) || fallback;
@@ -10,8 +11,9 @@ const label = option('label', 'current');
 const moduleUrls = Object.fromEntries(Object.entries({
   preview: 'js/app/midi-ui/browserNotePreview.js', scheduler: 'js/midi/MidiScheduler.js', capture: 'js/midi/capture/MidiOutputCapture.js'
 }).map(([key, path]) => [key, new URL('/' + path, url).href]));
-const browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--mute-audio'] });
-const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+const { browser, environment } = await launchAudioEvidenceBrowser();
+const context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT })
+  .catch(async error => { await browser.close(); throw error; });
 const page = await context.newPage(), errors = [];
 page.on('pageerror', error => errors.push(error.message));
 await installWebMidiStub(page);
@@ -155,8 +157,9 @@ try {
       externalEnabled: window.WebMidi?.enabled || false };
   }, moduleUrls);
   evidence.errors = errors;
+  evidence.environment = environment;
   evidence.sourceHashes = Object.fromEntries(await Promise.all([
-    'js/app/midi-ui/browserNotePreview.js', 'js/midi/scheduler/MidiSchedulerChannelMethods.js',
+    ...LOCAL_AUDIO_SOURCES, 'js/midi/scheduler/MidiSchedulerChannelMethods.js',
     'js/midi/scheduler/MidiSchedulerSendMethods.js', 'js/midi/scheduler/LocalAudioVoiceBudget.js'
   ].map(async path => [path, createHash('sha256').update(await fs.readFile(path)).digest('hex')])));
   await fs.mkdir(directory, { recursive: true });

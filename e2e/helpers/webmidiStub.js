@@ -1,5 +1,6 @@
-export async function installWebMidiStub(page, { withDevices = true, permission = 'granted' } = {}) {
-  await page.addInitScript(({ withDevices, permission }) => {
+export async function installWebMidiStub(page, { withDevices = true, permission = 'granted', outputCount = 1, sameOutputName = false, trackOutput = false, reverseOutputs = false } = {}) {
+  await page.addInitScript(({ withDevices, permission, outputCount, sameOutputName, trackOutput, reverseOutputs }) => {
+    let requests = 0, sent = 0; const messages = [], outputCounts = Object.create(null);
     const createPort = (type, id, name) => {
       const listeners = new Map();
       const port = {
@@ -22,7 +23,7 @@ export async function installWebMidiStub(page, { withDevices = true, permission 
         },
         open: async () => {},
         close: async () => {},
-        send: () => {},
+        send: bytes => { if (!trackOutput) return; sent++; outputCounts[id] = (outputCounts[id] || 0) + 1; if (messages.length < 4096) messages.push({ outputId: id, bytes: Array.from(bytes) }); },
         clear: () => {},
         _emit(eventName, event) {
           for (const handler of listeners.get(eventName) || []) handler(event);
@@ -78,10 +79,12 @@ export async function installWebMidiStub(page, { withDevices = true, permission 
 
     if (withDevices) {
       addPort('input', 'pw-input-1', 'Playwright Input', { emit: false });
-      addPort('output', 'pw-output-1', 'Playwright Output', { emit: false });
+      for (let index = 1; index <= outputCount; index++) addPort('output', 'pw-output-' + index, sameOutputName ? 'Identical keyboard' : index === 1 ? 'Playwright Output' : 'Playwright Output ' + index, { emit: false });
     }
 
+    if (reverseOutputs) { const entries = [...outputs].reverse(); outputs.clear(); for (const [id, port] of entries) outputs.set(id, port); }
     const requestMIDIAccess = async () => {
+      requests++;
       if (permission === 'denied') {
         const error = new Error('Permission denied');
         error.name = 'NotAllowedError';
@@ -115,6 +118,8 @@ export async function installWebMidiStub(page, { withDevices = true, permission 
     }
 
     window.__WEBMIDI_STUB__ = {
+      metrics() { return { requests, sent, outputs: { ...outputCounts }, messages: messages.map(value => ({ outputId: value.outputId, bytes: [...value.bytes] })) }; },
+      reorderOutputs(ids) { const previous = new Map(outputs); outputs.clear(); for (const id of ids) if (previous.has(id)) { outputs.set(id, previous.get(id)); previous.delete(id); } for (const [id, port] of previous) outputs.set(id, port); },
       sendInput(data, inputId = 'pw-input-1') {
         const input = inputs.get(inputId);
         if (!input) return false;
@@ -149,5 +154,5 @@ export async function installWebMidiStub(page, { withDevices = true, permission 
         };
       }
     };
-  }, { withDevices, permission });
+  }, { withDevices, permission, outputCount, sameOutputName, trackOutput, reverseOutputs });
 }

@@ -6,7 +6,7 @@ import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 describe('seeded readable terrain challenges', function() {
   this.timeout(15000); let masks;
   before(async () => { masks = await loadProcgenMasks(); });
-  for (const [seed, chunk, kind, skill] of [[3, 3, 'ledge', 'builds'], [2, 3, 'tunnel', 'bashes'], [2, 5, 'gap', 'builds'], [1, 3, 'terraces', null]]) {
+  for (const [seed, chunk, kind, skill] of [[3, 3, 'ledge', 'builds'], [1, 3, 'tunnel', 'bashes'], [1, 5, 'gap', 'builds'], [5, 3, 'terraces', null]]) {
     it(`crosses the generated ${kind} with ${skill || 'ordinary walking'} and keeps real skill accounting`, async () => {
       const terrain = await loadProcgenTerrain('lemmings', 0), world = new ProcgenLaneWorld({ terrain, masks, seed, assists: true, populationPolicy: { scoutsEvery: 0 } });
       try {

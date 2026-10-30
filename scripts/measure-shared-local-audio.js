@@ -1,12 +1,15 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
+import { admitPcmMetrics } from '../js/app/midi-ui/PcmEvidence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { chromium } from '@playwright/test';
+import { LOCAL_AUDIO_SOURCES, launchAudioEvidenceBrowser } from './audio-evidence-runtime.js';
 
 const root = process.cwd(), directory = path.resolve(root, 'temp/shared-local-audio-evidence');
-const sources = ['js/app/midi-ui/browserNotePreview.js', 'js/midi/scheduler/LocalAudioVoiceBudget.js'];
-const browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--mute-audio'] });
-const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, permissions: [] });
+const sources = LOCAL_AUDIO_SOURCES;
+const { browser, environment } = await launchAudioEvidenceBrowser();
+const context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT, permissions: [] })
+  .catch(async error => { await browser.close(); throw error; });
 const page = await context.newPage(), errors = [];
 page.on('pageerror', error => errors.push(error.message));
 // Fulfilled loopback URLs load the real modules without a server or external request.
@@ -20,9 +23,10 @@ await page.route('**/*', async route => {
 });
 try {
   await page.goto('http://127.0.0.1:8138/');
-  const browserModuleUrl = new URL(sources[0], 'http://127.0.0.1:8138/').href;
+  const browserModuleUrl = new URL('js/app/midi-ui/browserNotePreview.js', 'http://127.0.0.1:8138/').href;
   const evidence = await page.evaluate(async moduleUrl => {
     const { BrowserNotePreview } = await import(moduleUrl);
+    const { admitPcmBuffer, measurePcmWindow } = await import('/js/app/midi-ui/PcmEvidence.js');
     const reports = [];
     for (const masterVolume of [1, 4]) {
       const sampleRate = 48000, seconds = 0.85, raw = new globalThis.OfflineAudioContext(12, sampleRate * seconds, sampleRate);
@@ -53,16 +57,9 @@ try {
       const afterAuditionStop = { gameVoices: game.getState().activeVoices, auditionVoices: audition.getState().activeVoices, gameGate: game.output.isVoiceActive(1), enabled: graph.getState().enabled };
       await raw.resume(); await panic; const panicSeconds = raw.currentTime; graph.panic(); await raw.resume();
       const buffer = await rendering;
-      const measure = (channels, fromSeconds = 0, toSeconds = seconds) => {
-        const from = Math.ceil(fromSeconds * sampleRate), to = Math.min(buffer.length, Math.floor(toSeconds * sampleRate));
-        let square = 0, peak = 0, fullScaleSamples = 0, aboveKneeSamples = 0;
-        for (const channel of channels) {
-          const values = buffer.getChannelData(channel);
-          for (let index = from; index < to; index++) { const v = Math.abs(values[index]); square += v * v; peak = Math.max(peak, v); if (v >= 1) fullScaleSamples++; if (v > 0.7) aboveKneeSamples++; }
-        }
-        return { rms: Math.sqrt(square / ((to - from) * channels.length)), peak, fullScaleSamples, aboveKneeSamples, frames: to - from };
-      };
-      const report = { masterVolume, accepted, peakRetainedVoices, contexts, compressors, ceilings, oscillators, auditionStopSeconds, panicSeconds, afterAuditionStop,
+      const samples = admitPcmBuffer(buffer, 12);
+      const measure = (channels, fromSeconds = 0, toSeconds = seconds) => measurePcmWindow(channels.map(index => samples[index]), sampleRate, fromSeconds, toSeconds);
+      const report = { requiredPcm: { channels: 12, frames: buffer.length, scope: 'all-retained-channels' }, masterVolume, accepted, peakRetainedVoices, contexts, compressors, ceilings, oscillators, auditionStopSeconds, panicSeconds, afterAuditionStop,
         mix: measure([0, 1]), preCeiling: measure([2, 3]), final: measure([4, 5]),
         concurrent: { final: measure([4, 5], 0.05, 0.25), game: measure([6, 7], 0.05, 0.25), audition: measure([8, 9], 0.05, 0.25) },
         gameOnly: { final: measure([4, 5], auditionStopSeconds + 0.04, 0.55), game: measure([6, 7], auditionStopSeconds + 0.04, 0.55), audition: measure([8, 9], auditionStopSeconds + 0.04, 0.55) },
@@ -73,7 +70,11 @@ try {
     return { backend: 'OfflineAudioContext', clock: 'audio sample clock', acousticReceipt: false, physicalMidiReceipt: false, externalMidiEnabled: !!window.WebMidi?.enabled,
       limits: { cases: 2, framesPerCase: 40800, channels: 12, voices: 24, configuredSimultaneousCap: 32, pendingCap: 64, sessions: 4 }, reports };
   }, browserModuleUrl);
+  for (const report of evidence.reports) {
+    admitPcmMetrics(report, ['mix.rms', 'mix.peak', 'preCeiling.rms', 'preCeiling.peak', 'preCeiling.fullScaleSamples', 'final.rms', 'final.peak', 'final.frames', 'concurrent.game.rms', 'concurrent.audition.rms', 'gameOnly.game.rms', 'gameOnly.audition.peak', 'postPanic.peak']);
+  }
   evidence.errors = errors;
+  evidence.environment = environment;
   evidence.sourceHashes = Object.fromEntries(await Promise.all(sources.map(async file => [file, createHash('sha256').update(await fs.readFile(path.join(root, file))).digest('hex')])));
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(path.join(directory, 'shared-mix.json'), JSON.stringify(evidence, null, 2) + '\n');

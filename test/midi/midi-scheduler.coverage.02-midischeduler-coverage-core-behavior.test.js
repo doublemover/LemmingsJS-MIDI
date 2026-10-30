@@ -9,10 +9,10 @@ import { withFakeClock, withFakeClockAndPerformance } from '../support/timers.js
 describe('MidiScheduler coverage: core behavior', function() {
   it('initializes MPE when output is already set', function() {
     const calls = [];
-    const output = makeOutput([1], calls);
+    const output = makeOutput([1, 2], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     scheduler.setOutput(output);
-    scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [] } });
+    scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     expect(calls.some(call => call.type === 'bendRange')).to.equal(true);
   });
 
@@ -141,22 +141,22 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(scheduler._noteOffTimerId).to.equal(0);
   });
 
-  it('sends all-notes-off using MPE master defaults', function() {
+  it('does not reset an unused MPE master', function() {
     const calls = [];
     const output = makeOutput([1], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1 } });
     scheduler.setOutput(output);
     scheduler.allNotesOff();
-    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(false);
   });
 
-  it('falls back to the MPE master channel when unset', function() {
+  it('does not claim a fallback MPE master when unset', function() {
     const calls = [];
     const output = makeOutput([1], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 0, memberChannels: [] } });
     scheduler.setOutput(output);
     scheduler.allNotesOff();
-    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(false);
   });
 
   it('setConfig handles null configs and triggers init with output', function() {
@@ -193,7 +193,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 3 });
     expect(scheduler._allocateChannel()).to.equal(3);
 
-    scheduler.setConfig({ mpe: { enabled: true, masterChannel: 9, memberChannels: [2] } });
+    scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     scheduler._memberChannels = [2];
     expect(scheduler._allocateChannel()).to.equal(2);
 
@@ -258,12 +258,12 @@ describe('MidiScheduler coverage: core behavior', function() {
     });
     scheduler.setOutput(output);
     scheduler._maxActiveNotes = 1;
-    scheduler._activeNotes.set(1, { note: 60, channel: 1, startedAt: 0 });
-    let stolen = false;
-    scheduler._stealOldestNote = () => { stolen = true; };
+    scheduler.sendNote({ note: 60, channel: 1, durationTicks: 0 });
     scheduler.sendNote({ note: 62, velocity: 64, durationTicks: 0, pan: 80, timeMs: scheduler._nowMs() });
-    expect(stolen).to.equal(true);
+    expect(calls.filter(call => call.type === 'noteOff').map(call => call.note)).to.deep.equal([60]);
+    expect(scheduler._countSoundingNotes()).to.equal(1);
     expect(calls.some(call => call.type === 'cc')).to.equal(true);
+    scheduler.dispose();
   });
 
   it('arms timers and processes note offs with missing outputs', function() {
@@ -287,7 +287,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     scheduler.setOutput(output);
     scheduler.allNotesOff();
-    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(false);
 
     scheduler._activeByChannel.set(2, { note: 60, token: 1, startedAt: 0 });
     let stopped = false;
@@ -296,12 +296,13 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(stopped).to.equal(true);
   });
 
-  it('clearQueue resets both planned and sent rate windows', function() {
+  it('clearQueue removes planned work while retaining recent physical traffic', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-    scheduler._rateSent = [{ timeMs: 0, count: 1, bytes: 3 }];
-    scheduler._ratePlanned = [{ timeMs: 1, count: 1, bytes: 3 }];
+    const now = scheduler._nowMs();
+    scheduler._rateSent = [{ timeMs: now, count: 1, bytes: 3 }];
+    scheduler._ratePlanned = [{ timeMs: now + 1, count: 1, bytes: 3 }];
     scheduler.clearQueue();
-    expect(scheduler._rateSent).to.have.length(0);
+    expect(scheduler._rateSent).to.have.length(1);
     expect(scheduler._ratePlanned).to.have.length(0);
   });
 
@@ -313,7 +314,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(initCalls).to.equal(0);
   });
 
-  it('initMpe skips missing channels and defaults master channel', function() {
+  it('initMpe rejects missing member channels without touching the master', function() {
     const calls = [];
     const scheduler = new MidiScheduler({
       mpe: { enabled: true, memberChannels: [2], pitchBendRange: { semitones: 2, cents: 0 } }
@@ -322,8 +323,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     calls.length = 0;
     scheduler._initMpe();
     const bendRange = calls.filter(call => call.type === 'bendRange');
-    expect(bendRange).to.have.length(1);
-    expect(bendRange[0].id).to.equal(1);
+    expect(bendRange).to.have.length(0);
   });
 
   it('nowMs prefers performance when available', function() {
@@ -371,16 +371,16 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(scheduler._activeByChannel.has(1)).to.equal(true);
   });
 
-  it('allocateChannel falls back to the master channel', function() {
+  it('allocateChannel rejects a master-only zone', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 9, memberChannels: [] } });
     scheduler._memberChannels = [];
-    expect(scheduler._allocateChannel()).to.equal(9);
+    expect(scheduler._allocateChannel()).to.equal(null);
   });
 
-  it('allocates channel 1 when the MPE master is falsy', function() {
+  it('rejects a memberless zone when the MPE master is falsy', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 0, memberChannels: [] } });
     scheduler._memberChannels = [];
-    expect(scheduler._allocateChannel()).to.equal(1);
+    expect(scheduler._allocateChannel()).to.equal(null);
   });
 
   it('allocates default channel 1 when unspecified', function() {

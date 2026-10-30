@@ -170,11 +170,13 @@ const historyStoreColdBlockStorageMethods = {
       this._coldBlockBytes += encodedBytes.length;
     }
     block.cold = true;
+    block.wasCompacted = true;
     block.encoding = encoding;
     block.encodedBytes = sharedBytes;
     block.encodedStoreKey = storeKey;
     block.decoded = null;
     this._coldBlockCount += 1;
+    this._coldBlocksCreated++;
 
     for (let tick = block.startTick; tick <= block.endTick; tick += 1) {
       const entry = this.deltas[tick];
@@ -207,6 +209,7 @@ const historyStoreColdBlockStorageMethods = {
     block.encodedStoreKey = null;
     block.decoded = null;
     this._coldBlockCount = Math.max(0, this._coldBlockCount - 1);
+    this._coldBlocksThawed++;
   },
 
   _cleanupDeltaBlock(blockStart) {
@@ -228,6 +231,7 @@ const historyStoreColdBlockStorageMethods = {
       }
       this._coldBlockCount = Math.max(0, this._coldBlockCount - 1);
     }
+    if (block.wasCompacted) this._coldBlocksRetired++;
     this._deltaBlocks.delete(blockStart);
   },
 

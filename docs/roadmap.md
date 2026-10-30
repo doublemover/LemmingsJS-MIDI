@@ -470,11 +470,9 @@ than broad sequencer rewrites.
   - preview with current key/scale/global shaping.
   - visible output log and all-notes-off/panic.
 - Layout:
-  - desktop: stable DAW-like workspace with transport, browser, track/mixer, and
-    inspector regions.
-  - tablet: collapsible browser/inspector with the sequencer grid still usable.
-  - phone/narrow: task-focused single-column flows for setup, browse, edit, and
-    audition without clipped labels.
+  - desktop at 1920x1080 minimum: stable DAW-like workspace with transport,
+    browser, track/mixer, and inspector regions. Phone and tablet layouts are
+    outside the product scope.
 - Accessibility:
   - semantic controls.
   - focus order matching visual order.
@@ -2014,3 +2012,8087 @@ Receipts: `temp/procgen-surveys/acceptance/survey-16e82578ac28bafc/report.json`,
 - [ ] Before any 64-world campaign, review the measured resource checkpoint, reserve storage for required comparisons and add compressed trace export. Never delete pinned originals to admit more diagnostics.
 - [ ] Cover fatal worker exit, HTTP disconnect and conditional qualification/storage exhaustion branches with narrow faults; preserve the existing coverage thresholds.
 - [ ] Investigate the retained wall guard timeouts and real gap counterexample as bounded routing work, preserving the original predicates and source semantics. Unknown validity remains an exclusion, not a favorable result.
+
+## Open-issue implementation continuation (October 23, 2026)
+
+The current inventory contains 288 open issues. Continue implementation solo on
+`codex/all-open-issues-20261022`, commit and push complete batches, and refresh
+draft PR #1243 after every 20 continuation commits. The owner requested runtime
+tests only after all open-issue code is implemented. Formatting and static
+dependency analysis continue; newly authored runtime fixtures are unexecuted.
+Earlier measurements above apply only to their recorded revisions.
+
+Recent foundations include opaque audio execution retirement, append-only
+causal journal indexes, cross-page score joins, recoverable stopped take tails,
+bounded coverage uncertainty, scoped MIDI route grants, independent teardown,
+immutable browser generations, complete offline installation and fresh-worker
+survey execution identity. Startup now resolves fresh, recipe, document,
+recovery and previous-setup modes through the existing load transaction and
+publishes preferences after world commit. These are implementation statements,
+not acceptance or acoustic/native-device qualification receipts.
+
+Subsequent implementation batches add bounded sound manifests, typed compilation,
+immutable renderer pins, staged rights-aware archives, durable registry ownership,
+isolated audition, exact lane references and the sound library. Streaming causal
+archive inspection uses admitted worker verification. Physical playback connects
+actual worklet reductions to actor presentation through owned execution and clock
+correlation; control-reference WAV rendering uses the same sine kernel. The take
+workbench compares detached worlds and owns explicitly stepped, recoverable
+branches. These implementations still require the deferred acceptance matrix;
+advanced sound families, real-take audio, native device and listening work remain.
+
+The browser-master capture now has a bounded stereo PCM processor, admitted host
+storage, explicit frame gaps/interruption evidence and a workstation save dialog.
+Its streamed WAV includes the tap and coverage manifest. Memory-backed PCM is
+retained for retry until discard/expiry; this does not provide browser-crash
+recovery, physical-take rendering, private cue exclusion or acoustic evidence.
+Capture ownership fixtures are authored and await the deferred validation pass.
+
+Cue routing now separates a deliberately selected media-element output from
+live-output rehearsal, with explicit quotas that cannot steal live voices. The
+single foreground audition owner and shared PRELISTEN rail connect sound-library
+auditions, route changes, capture inclusion and actual source retirement. Physical
+device separation, multichannel identification, latency and combined workload
+qualification remain deferred; the UI does not claim private headphone routing.
+Native cue errors are reduced to fixed public classifications before reaching
+status or capture manifests. Worklet control auditions require scoped actual
+application receipts and clock progress; admission alone cannot authorize Apply.
+Native scheduling remains labeled as API evidence. Receipt/privacy fixtures are
+authored and await the deferred validation pass.
+
+The workstation now shares an admitted InstrumentDisplayScheduler with PRELISTEN.
+Bounded per-surface mailboxes coalesce transport, playheads, MIDI text and monitor
+updates; resize reads precede scheduled writes. Hidden/offscreen surfaces suspend
+and resume from their latest snapshot. Visible lane lookups use one stable-ID
+index per lane-array revision, and unchanged geometry does not resize the renderer.
+Bounded UI cost distributions and coalesced/skipped/error counters are inspectable.
+No timing target, idle soak or audio-independence result is claimed before the
+deferred browser/profile pass; scheduler fixtures are authored and unexecuted.
+The owned sine kernel now supports fixed-size complete state cuts bound to exact
+engine/patch/graph/rate/profile identities, including future controls and ramps.
+This prepares restoration and chunked/cropped rendering; live restoration/UI and
+continuity qualification remain outstanding. Audio evidence tooling now derives
+its server/hash inventory from the complete static module closure.
+The new causal sine render core consumes bounded covered intent snapshots in an
+explicit new local realization, with captured source-clock boundaries, immutable
+intent/source hashes, silent preroll, exact crop or declared bounded/derived tails,
+and simultaneous dry lane taps from one graph. It rejects unknown held ancestry,
+unsupported expression, unqualified timing and capacity rather than inventing attacks
+or replaying current physics. The fixed worker requires immutable engine identity
+and admits PCM/encoding/transfer overlap. Host/UI integration is connected; authored
+PCM/stem/crop/cancellation fixtures remain unexecuted.
+The causal render host retains exact source and computation ownership through
+publication of checked master/stem export artifacts. The saved-take inspector now
+opens a sine-revoice dialog with range/rate/tail/all-lane-stem choices, bounded
+progress, cancellation and separate download/save/retry/discard. Replacement
+failure preserves the previous bundle; unknown cleanup remains explicit. Missing
+clock/held ancestry is shown before enabling render. Component fixtures use a
+declared test adapter and do not stand in for immutable-build worker/browser
+qualification. General engines, admission-history reconstruction and physical
+master/cue equivalence remain outside this first adapter.
+New intents retain their actual source tick duration. The shared render timing
+adapter validates captured tempo/rate epochs and beat consistency, qualifies
+fractional-tick placement, and removes the source origin before adding fractional
+time. Complete onset-set capacity planning uses frame/source-order ties rather
+than actor traversal order. The worker manifest records timing provenance/hash;
+timing, numeric-origin and fractional-order fixtures remain unexecuted.
+Pinned instrument preparation/routing now follows the 1,024-lane project bound
+while keeping renderer children and candidate preparation separately capped.
+Routing metadata and active candidate input overlap grow through shared admission;
+unknown renderer cleanup retains accounting. A required pinned revision cannot
+silently fall back to the basic oscillator when preparation is absent or stale.
+Live lane and offline sine adapters share one authored hold/release policy.
+Large-lane and policy fixtures are authored and unexecuted.
+The new native FM adapter connects two/four-operator graphs to existing owned
+voices, library audition and pinned-lane preparation. Index-to-Hz conversion,
+independent envelopes, bounded pitch settling and child source accounting are
+explicit. Register-based index reduction is labeled an estimate, not a spectral
+qualification. Native hidden DSP state/offline/receipt limits stay explicit.
+FM Forge now supplies Glass Rivet, Copper Tine, Alarm Bloom and Rubber Bolt as
+typed source recipes through staged library compilation/audition/install/Apply.
+Selected ratios/index timing remain visible. The compiler distinguishes index
+from Hz and retains archived v1 explanations. Full physical/macro bindings,
+feedback/sends and spectral/listening gates remain; content, adapter and browser
+fixtures are authored and unexecuted with the consolidated validation pass.
+Typed macro curves now survive into executable patch data and native onset
+planning. A deterministic replace/add/scale order precedes the final domain
+clamp; receipts carry effective targets. FM Forge authors onset HARDNESS, RING
+and stepped ALLOY. Separate lane overrides use one committed control gesture,
+are captured on semantic onsets and do not mutate held voices or physical RNG.
+One-shot release policy follows the actual onset envelope. Continuous controls,
+identity/physical composition, momentary/controller pickup and audio/listening
+qualification remain; the new macro fixtures have not run.
+Native onset performance now composes keyed actor/event variation and typed
+completed-fact bindings between macros and the final safety clamp. Variation
+uses versioned ordered encoding, bounded named latent factors, no mutable RNG
+or identity cache, and an explicit event-only fallback. Amount/Reroll timbre
+are separate saved musical controls captured on onsets. FM Forge revision 3
+authors small correlated ratio/decay variation and work-cell-driven color;
+cells/pixels are not force or energy. Missing measured fields skip the binding
+with a receipt. Continuous bindings, actor locks, noise-state support and the
+deferred PCM/listening/physical qualification remain outstanding.
+The native modal adapter now realizes 4–8 authored damped-sine modes inside one
+owned voice, with explicit T60 seconds, two authored strike-gain sites, bounded
+register taper/omissions, onset L1 normalization and all-child source accounting.
+Modal body decay, onset envelope and host release are separate; one-shot holds
+follow the selected body's actual longest mode. The library prepares Timber,
+Slate, Glass, Sheet metal and Unclassified source recipes with MASS/HARDNESS/
+DAMPING/HOLLOW, identity variation and typed work-strength bindings. This is a
+musical impulse-response adapter, not a feedback resonator/FEM pickup or verified
+terrain-material resolver. Source/model/content/browser fixtures remain deferred
+with real PCM, spectral, listening and combined cost qualification.
+The new owned pluck source shares the existing command/receipt/lease lifecycle
+with sine and has a separate fixed 24-field ABI. Delay, excitation scratch and
+per-voice state are preallocated and admitted before worklet construction.
+Actor/event-seeded comb-shaped noise initializes a bounded fractional-delay
+feedback string; two optional damped body modes share the same logical voice.
+An absolute 128-frame excitation-write budget reports actual kernel rejection
+without shifting onsets. The host advertises the bounded pitch/bend profile and
+accounts optional body complexity. Exact pluck DSP restore and offline rendering
+are unavailable; pitch/decay/quality and workload fixtures are authored, unrun.
+Source design context: https://faustlibraries.grame.fr/libs/physmodels/ documents
+waveguide/termination/exciter building blocks. This first-party loop does not
+compile or wrap a Faust MIDI instrument and makes no library qualification claim.
+Pluck tuning uses a first-order allpass fractional delay, with the loop filter's
+phase delay removed at the fundamental and its attenuation included in the
+bounded target loss. This avoids treating a linear-interpolated delay's extra
+loss as the authored T60. These are model equations, not measured tuning/decay.
+Reference: https://www.dsprelated.com/freebooks/pasp/First_Order_Allpass_Interpolation.html
+Plucked Garden now stages four original recipes through the same library flow,
+with BODY/PICK/DAMP/SPARK, deterministic siblings/strikes and typed work-strength
+inputs. A distinct held-voice damping control ramps string/body loss without
+retriggering excitation. Live contexts are explicitly limited to 44.1/48/96 kHz.
+The macro panel remains next-onset; physical continuous-damping mapping is still
+outstanding. Content, actual-kernel damping and immutable-browser fixtures are
+authored and unexecuted. No pitch/decay, listening or hardware result is claimed.
+Travel phase, committed distances and crossing positions now live in a distinct
+immutable articulationState field. DSP expression contains only actual engine
+controls, so strict native/worklet adapters no longer reject distance-derived
+onsets for carrying geometric metadata. A metadata-only held update is recorded
+as a semantic observation without queueing a DSP command or claiming application.
+The original completed-fact timestamps and interpolated-position evidence remain
+unchanged. Real strict-adapter and dispatcher regression fixtures are authored
+and await the consolidated validation pass.
+The new artificial choir kernel shares owned commands, leases, measured display
+and source retirement. Eight bounded voice slots each retain independent seeded
+breath, a harmonic-bank voiced table/chorus and three double-precision trapezoidal
+SVF formants. Original vowel landmarks morph in log frequency; SIZE moves the
+formants without rewriting pitch. Live vowel/breath/size/chorus/vibrato/bandwidth
+controls use audio-domain ramps with an 8 ms minimum and bounded coefficient cadence.
+No recordings, anatomical model, words or person imitation are involved. Exact
+choir state cuts/offline output remain unavailable; held/ramp/determinism fixtures
+are authored and unexecuted. Mathematical reference: Andrew Simper's
+https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf ; no external DSP runtime
+or complete MIDI wrapper is imported. Source-specific telemetry now names pluck/
+choir correctly, preserves float headroom and omits their unsupported sine phase.
+The eight-level (1–128 harmonics) exciter bank is authored offline as a pinned
+first-party source module; worklet construction copies it without generation
+trig. Phase-aligned adjacent levels blend under the pitch/chorus/vibrato limit;
+typed table bytes and the separate immutable JavaScript table heap estimate are
+admitted before construction. Artificial Choir now stages four original recipes
+through the existing compile/archive/audition/install/apply transaction, with
+executable onset macros and seeded variation. Runtime and listening fixtures
+remain unexecuted; full scene integration remains.
+Continuous completed-fact bindings now recompute choir timbre and held-pluck
+damping from an immutable onset baseline, with source-specific safe targets,
+bounded audio-domain slew and no new notes or simulation RNG. Actor indexes
+avoid scanning unrelated held voices; missing measurements hold their previous
+qualified value. Captured source-kind subscriptions survive semantic checkpoints
+and old renderer ownership survives lane replacement. Update overflow releases
+affected owners rather than leaving stale sound. Contact-anchor metadata now
+uses articulationState, consistent with travel metadata. Compiler v8 retains
+the continuous declarations. Take checkpoints now retain at most 1024 lane
+performance inputs (typed macro/variation controls and continuous source kinds)
+without copying full patch definitions. Changes retain only modified lane
+entries and are admitted at the current world boundary, including one atomic
+record for a combined mapping/control edit. Re-performance restores that
+provider before the semantic engine, retains held subscriptions, and compares
+performance metadata at component checkpoints. The new capture profile declares
+instrument-performance state explicitly. Runtime replay and DSP fixtures remain
+authored and unexecuted.
+
+The new owned spectral oscillator source supplies the shared kernel for #1041/
+#1202: 16 original phase-aligned frames, five harmonic levels with bounded
+pitch-dependent blending, and a separate 16-partial additive mode with authored
+ratios, gains and per-partial T60 scales. Scan/body/edge controls retain phase
+and use the existing audio-domain ramps. Table mode rejects unused additive
+layout edits; additive mode tapers/omits out-of-register components. Fixed typed
+storage, immutable bank heap estimates and per-voice source costs enter shared
+admission. Compiler v9/catalog/artifact/runtime preparation and real application
+receipts support the eighth engine. Six family recipes now stage through the
+shared library and audition/install/apply transaction: Bubble Reed, Prism Pad,
+Acid Current (dry table), Pipe Crew, Glass Drawbars and Falling Stars. BODY/EDGE/
+FLOW/RING affect actual onset values; completed world height contributes an
+explicit calibrated FLOW offset to held actors. Source data pins its generator
+metadata/Float32 SHA-256. Shared SPACE sends and Acid Current resonance/drive
+remain unavailable, with those limits shown in the library. Fixtures remain
+unexecuted. PWM/distortion/sync, exact state,
+offline spectrum output and measured capacity/alias/listening acceptance remain.
+
+Control-budget retirement now suppresses the same held physical scope instead
+of allowing the travel path to reopen it on that observation or a later tick.
+Suppressed scopes share the held-owner capacity, retire at causal lifecycle/
+mapping/source boundaries and persist in semantic checkpoints. New mapping
+revisions use distinct voice IDs so old release tails cannot collide with a
+new mapping's owned gate. Physical music/performance source versions record
+these semantics. Source/host-queue fixtures cover actual choir/pluck/spectrum
+control application, missing observations and independent attack identity;
+they remain authored and unexecuted.
+
+Owned source wire layouts, sample-rate/register limits, seeded birth fields,
+continuous controls and resource/source-cost estimates now live in fixed
+source profiles shared by preparation and onset admission. The host retains
+one queue/execution/lease/retirement implementation for all four owned sources.
+Spectrum table-layout checks use precomputed field IDs before allocation;
+expression membership is retained per backend instead of rebuilding arrays in
+the control hot path. Choir admission now conservatively includes immutable
+table heap estimates in both host and worklet realms. Existing actual-kernel
+host fixtures cover the extracted path and remain unexecuted.
+
+PCM source preparation now owns bounded immutable planar Float32 banks before
+the upcoming sample/granular worklet adapters. It retains a decoded asset pin
+through chunked copying, reserves exact source/copy storage and an explicit
+native digest workspace estimate, rejects nonfinite or magnitude-over-16 data,
+and pins the actual decoded PCM SHA-256 separately from its encoded asset hash.
+At most two independent processor-input copies can be outstanding. Source
+discard cancels unfinished copies and holds storage until readers actually
+retire; unknown pin/resource release remains explicit. Absolute monotonic
+deadlines are checked between cooperative chunks. This is source preparation,
+not an exposed granular instrument or runtime/audio qualification; adapter,
+asset-stage/library integration and granular rendering remain next.
+
+The bounded granular source kernel now has eight parent clouds with 16 fixed
+grain slots each, an absolute 128-frame birth budget, xorshift content RNG,
+20–140 ms precomputed Hann windows and coherent per-grain pitch/duration/position
+snapshots. Scan and pitch are separate; source-position hold is distinct from
+PCM/field freeze. A motion-gated mode stops replenishment at zero activity;
+held-action mode is explicit. Source edges fade and clip without invented wrap
+samples. Both native source rate and decoded rate enter cursor conversion.
+Linear-resampling quality is unqualified. The common owned kernel now preserves
+stereo source channels with a declared balance pan law, measures pre-pan stereo
+RMS/peak, and calls source release/retirement hooks so Panic cannot orphan grain
+children. Grain-state inspection is bounded and on request. Kernel/stereo/
+control/pool fixtures are authored and unexecuted. This source is not yet
+advertised in the catalog: PCM preparation, profile/host handoff, asset staging
+and the family UI must be connected next.
+
+The ninth renderer now connects that pool to the owned host: one validated
+decoded sample pin becomes a hashed PCM bank and an independently reserved
+processor clone. Ready publication verifies the actual worklet bank hash and
+retires preparation readers before connecting audio. Changed source assets
+require another prepared renderer, preserving old held PCM. Root ratio/region
+limits are checked before voice allocation; each cloud charges its full 16-child
+budget. Compiler v10, schema/catalog/artifact identity, stereo measurement metadata
+and one-shot duration cover the source. Consumer-owned audio reservations now
+join producer retirement instead of being freed by bulk session cleanup while
+copying/hashing; backend disposal joins bounded pending preparations. The rare
+maximum hash-derived seed is clamped into uint32. Host/kernel handoff and resource
+failure fixtures remain unexecuted. Sound-archive asset materialization, shared
+WAV metadata inspection and granular family/library controls remain next; linear
+resampling, offline/exact-state and measured capacity/listening are unqualified.
+
+Source dimensions/storage formulas now live in a small shared layout module.
+The host no longer eagerly executes choir/spectrum/window data modules on the
+main page to read constants; explicit worklet URL literals preserve static
+artifact discovery. Module heap estimates are retained once per context until
+its actual closed state, including canceled or failed preparation, rather than
+being freed with the last node while the module remains resident. Native heap
+sizes remain estimates. Fixed table preparation now runs in an admitted dedicated worker, with exact
+Float32 byte identities, bounded startup/copy estimates and processor handoff
+acknowledgment before audible publication. The audio realm adopts prepared
+arrays; it no longer parses the large numeric source modules. Cancellation and
+producer retirement stay charged until acknowledged. Final live source-loading
+qualification is deferred.
+Module-lifetime fixtures are authored and unexecuted.
+
+Staged and installed single-WAV material now has a shared browser-audio owner.
+An admitted worker verifies complete RIFF layout, source rates/frames, hashes
+and finite float samples before native decoding. Library auditions and pinned
+lane preparation use the same bounded encoded/decoded cache and hand pins to
+the granular host; missing material keeps publication unavailable. Blob readers,
+worker results, native decode and copied PCM keep independent lifetime joins.
+Four original integer-arithmetic synthetic biome sources now have pinned WAV
+identities, source seeds and generator ancestry, with Rain Glass, Gravel Choir,
+Water Lens and Rust Breath recipes. Their held-action gates own bounded clouds;
+completed motion/height controls density and scan. CROWD/SCALE/SCAN/WEATHER are
+explicit onset controls. Private local regeneration runs in an admitted worker
+and the final content publisher writes the same source bytes. These are synthetic
+textures, not field recordings. Dry original-source and permitted-region
+comparisons now use the same pinned decoded source, foreground audition lease
+and native sample owner. They preserve source-frame identity and forward rate,
+limit preview to eight seconds, and have separate receipts that cannot authorize
+Apply or replace the actual instrument control audition. Multi-source/derived
+adapters remain implementation work. Runtime, cancellation and audible checks are deferred.
+
+Fixed control-reference WAV preparation now uses the actual sine, pluck, choir
+and spectrum kernels, including the shared seed derivation, default macro and
+variation composition, source-specific command width and fixed bank verification.
+Missing physical observations stay explicit in the manifest. Rendering begins
+from silence and records the output tap before the shared owner/master graph.
+This extends control references; causal-take/offline-state support for the newer
+sources remains separate work. All runtime renders and PCM comparisons are deferred.
+
+The local host now admits 20 bounded renderer owners, covering the 17-child lane
+router, two preparing candidates and one foreground cue owner. Each retained
+backend has its own metadata reservation joined through actual retirement.
+Cue logical voices and source cost units are now separate: the workstation keeps
+four cue gates with 16 reserved source units, enough for one granular cloud,
+while preserving live quotas and denying cue theft of live voices. Cue gate and
+lease-extension checks enforce both bounds. These are declared cost estimates;
+combined device/workload qualification remains deferred.
+
+Causal revoice now offers sine, seeded pluck, artificial formants and spectral
+frames through the same audio-frame kernels, range/preroll, source-clock timing,
+release policies and simultaneous lane stems. Source-specific width, voice limits,
+seeds, macro defaults, identity variation and retained completed physical updates
+share the live source profiles. A new target uses its own macro defaults;
+captured physical observations drive its bindings only when present in the source.
+Missing observations are reported, never invented. Planning accounts for retained
+per-voice control state before allocating long histories. Empty initial voice
+boundaries still apply: this forward render does not add arbitrary new DSP state
+cuts or reconstruct missing held ancestry. Granular asset render handoff and
+native offline engines remain separate implementation work. Runtime, PCM and
+cross-browser qualification is deferred until the implementation pass is complete.
+
+Granular material now has a source-rate PCM decoder variant within the same
+encoded/decoded asset cache. A worker validates WAV identity and decodes 8/16/24/32
+bit integer or 32 bit float samples to pinned planar Float32 at the original rate,
+without a live AudioContext or native resampling. Native sample voices and dry
+source comparisons keep the native-context AudioBuffer variant. Cloud bank
+preparation verifies the decoded PCM digest as well as the encoded asset hash.
+Background cancellation exposes producer quiescence so temporary input retirement
+is joined before caller workspaces are released; unknown producers stay charged.
+Source-rate conversion in the grain kernel remains linear and unqualified for
+alias safety. Granular control-reference WAVs and causal render APIs now consume this path
+through owned PCM bank loans. The render worker verifies actual planar bytes,
+peak and the complete bank metadata hash before constructing the same grain
+kernel. Its manifest retains encoded/source/decoded identities and the explicit
+linear resampling profile. Main input copies remain reserved until the render
+producer has retired; cleanup joins copies, original banks and decoded pins
+before publishing files. The take dialog now captures the selected lane
+instrument reference on open, offers its exact revision beside the four generic
+source presets, and resolves its pinned material through the shared cache without
+enabling live audio. The reference has its own retained metadata reservation.
+Changing lane selection does not replace the captured render target; reopening
+can select a new revision. Unavailable native offline engines stay visible as
+unsupported choices.
+
+Native oscillator/FM/modal offline driving now shares the live host's voice
+lifetime and interval admission code. Its private driver owns an isolated native
+OfflineAudioContext, schedules explicit frame targets in suspended quantum
+windows and taps the master plus at most fifteen stereo lane stems from one
+graph. Complete terminal intervals are scheduled with each onset; dense windows
+are bounded before continuing. Cancellation disconnects owned sources and joins
+the bounded native producer instead of assuming every browser implements
+OfflineAudioContext.close(). Native PCM stays reserved through its consumer.
+Native oscillator/FM/modal control-reference preparation now drives this
+adapter without enabling live audio, then lends its native planar PCM to an
+admitted immutable-build worker for float WAV encoding and hashing. Encoding
+checks complete channel lengths and finiteness, preserves float headroom and
+crops simultaneous taps at shared frame zero. Producer and consumer retirement
+both precede release. Causal-take rendering now includes oscillator, native FM and modal bodies
+through this same backend. A shared preflight retains original world/actor/voice
+identity, source-clock timing, per-onset variation and recorded onset physical
+causes. Native terminal intervals use the actual source release duration and
+modal register plan. Each voice gets a separate execution identity without
+rewriting its musical identity. Full forward preroll and all simultaneous native
+taps are admitted before PCM allocation; the portable native limit is fifteen
+stereo lane stems, versus sixteen for owned kernels. The dialog offers native
+presets and exact saved native references when OfflineAudioContext is available.
+Native sample material, shared effect returns and arbitrary held-state restoration
+remain implementation work. All runtime qualification remains deferred; new
+encoder and native causal-preflight fixtures have been authored but not executed.
+
+Native offline rendering now acquires the shared background execution slot
+before creating its context or PCM. Its existing audio leases account for PCM
+and graph storage; the queue reservation covers dispatch metadata. Cancellation
+and deadlines retain the slot through actual native producer drainage, including
+confirmation after an interim unknown cancellation. The latest issue refresh
+adds #1256 (289 inventoried issues). Its shared native ADSR repair reconstructs
+truncated ramp endpoints, including zero attack/decay and earlier repeated
+releases. Initial envelopes and lease renewal use the same bounded linear
+scheduler, preserving attack/decay even when a lease tail begins inside them.
+New API-double ownership, analytical envelope and real ConstantSource browser
+fixtures are authored for the later consolidated pass, not executed evidence.
+
+The shared asset cache now accepts an explicitly owned offline native decode
+context without opening the live context. Its native rate/decoder cache identity
+is shared with live consumers; borrowed context requests must join cancellation
+through the accepted decode producer. Material preparation forwards this lifetime
+contract. A private native-render material adapter uses a one-frame silent
+OfflineAudioContext to decode through the same provider, then drains that context
+before lending native buffer pins. Native render batches also check current
+request ownership at each scheduling frontier. Sample-map content and native
+sample product rendering remain implementation work. Ownership fixtures are
+authored; no runtime decode, native render or tests were executed in this pass.
+
+Authored sample maps now have a bounded immutable schema and stateless semantic
+onset selector in the existing sound-content compiler (typed-recipes-v11).
+Maps declare gesture layers, half-open velocity intervals, nearest-root ranges,
+contiguous alternates, source-frame regions, explicit forward/sustain loops,
+owned release children and authored gain/tuning trims. Native seam crossfades
+remain rejected. Selection uses original onset/actor/asset revision identity,
+never playback acceptance or actor traversal counters. Exact world/lane/kit
+scope distinguishes choke ownership; missing gestures use only the declared
+neutral policy and report that fallback. Captured causal mapping rules can
+retain explicit sampleGesture/sampleKitId tags without adding physical events.
+Compiler render identity excludes display labels/evidence references and includes
+the effective map; source credits and measurement references remain separate.
+Decoded asset admission verifies every mapped region before activation. Product
+sample-backend wiring, the original proof pack and offline sample rendering
+remain work; selector and metadata fixtures are authored and unexecuted.
+
+Mapped native samples now use the actual sample backend in library audition
+and saved lane preparation. The shared material cache pins up to 32 unique
+sources, and backend preparation validates all map regions against real source
+bounds before admitting a voice. Each prepared map has a conservative metadata
+reservation joined through its retirement. Selection receipts retain the map,
+zone, velocity layer, alternate and seed without PCM. The chosen authored gesture
+is part of the immutable control fixture hash; it cannot share another gesture's
+fixture identity merely because timing and expression are the same. The library offers authored
+gesture audition choices and the physical-rule editor captures gesture/kit tags.
+Same-kit choke intervals are preflighted before admission, retaining source-tail
+quotas and kit isolation. Later tail chokes cannot reopen a captured ended gate.
+Causal sink receipts retain bounded actual map-selection evidence, separately
+from kernel application or audible output. Sample main/child release scheduling preserves truncated
+ramps and an already playing original release when a future choke is canceled; selected-region duration informs bounded one-shot hold. Offline clock mode
+uses render-frontier/source retirement instead of expiry timers. The native render
+material helper now lends up to 32 pinned native source buffers. Two earlier text
+encoding conversions in library labels and this roadmap are repaired. Original
+tactile proof material and native sample control/take export remain work; runtime,
+UI, source-pitch/loop and resource qualification remain deferred.
+
+Mapped native samples now render controls and causal takes through the same
+sample backend, using isolated offline material decoding and the shared cache.
+Native buffers never pass through the encoding worker: the main-thread offline
+producer supplies planar PCM after quantum-bounded scheduling and joined
+retirement. The saved-instrument option supports the exact installed sample map;
+control WAVs retain their selected gesture fixture hash. Source-rate regions,
+relative varispeed pitch, per-onset hold and conservative release-child bounds
+share live definitions. Causal preflight models exact kit-scoped chokes before
+logical gate capacity and explicitly rejects controls after a newly realized
+choke. Bounded selection API receipts expose their retained/omitted coverage;
+they do not certify native applied frames, acoustic output or prior admission
+history. Five owned and four native sources now have implementation paths.
+Original tactile proof material and advanced sample traversal still remain;
+all runtime, PCM, resource and browser fixtures stay unexecuted until the final
+consolidated validation pass.
+
+The original tactile proof pack now authors eight procedural sources (one C4
+root, two intensity layers, two alternates and open/muted contacts). Three actual
+source regions per file expose center/edge/brush through six gesture labels and
+24 zones, with exact half-open velocity layers and a plus/minus six-semitone
+varispeed range. Its existing library preparation/audition/render path shares the
+same source provider and admitted material generation worker as synthetic biomes.
+Generation dispatch is now explicit by pinned original generator revision; native
+or pure-source decoding uses the shared asset cache. The publisher materializes
+the same fixed hashes without checked-in binaries. Metadata reports authored
+trims and unmeasured normalization; no recording or acoustic evidence is invented.
+Source identities/recipes were authored; compiler, unit, browser, PCM, pitch,
+listening and memory qualification stay deferred. Three-root expansion, advanced
+loops, source traversal and exact DSP-state restoration remain work.
+
+The custom-source kernel state adapters now capture pluck delay/allpass/body
+memory, choir phase/noise/filter memory, spectrum partial/filter memory and
+complete granular cloud/grain/birth state. They include the committed future
+command heap, gate/envelope/interpolation state and receipt frontier at the
+kernel's declared output frame. Extended core widths use an explicit format
+version while the existing sine byte ABI remains unchanged. Source cuts bind
+exact engine, patch, graph, rate, slot profile and immutable fixed/PCM bank
+hashes. Little-endian transfer buffers are bounded, exclusive and preallocated;
+checksum/shape/state validation precedes destination mutation. Mutable DSP memory
+is copied independently and display subscriptions require new observation.
+These are concrete kernel adapters, not a qualified live scrub/restore claim:
+block-boundary transport, journal-cursor custody and staged sink replacement still
+need integration. Uninterrupted/chunked PCM, attack/held/release/future-control,
+asset mismatch, corrupt state and independent memory fixtures are authored for
+all source rates and remain unexecuted with runtime testing deferred.
+
+Causal owned-source output can now stage a fresh kernel from a complete source
+cut at the chosen range boundary after covered silent preroll. The render loop
+splits exactly at that frame, keeps the immutable plan/cursor and slot-to-stem
+routes, and restores independent mutable memory before output continues. The
+transfer is preallocated and included with the temporary second kernel in the
+worker's admitted workspace. Fixed banks and PCM stay shared read-only; source
+state bytes receive a SHA-256 and an explicit planner frontier in the manifest.
+Cancellation checks bracket staging, restore and hashing, and successful staging
+clears the temporary transfer. The existing take-render dialog offers this as an
+experimental owned-source reconstruction choice. Native sources explicitly keep
+forward history. This is worker-local range reconstruction, not live-host queue
+capture, a persisted take checkpoint or a qualified exact scrub claim. Deferred
+PCM fixtures compare full graph and simultaneous stems across a cut inside a
+control ramp. Live block transport and canonical cursor/sink replacement remain.
+
+Owner-local creative effect hosting now prepares immutable typed stereo graphs
+with bounded nodes/edges, stable DAG order, complete-path tail/latency/storage
+admission and compounded gain bounds. Arbitrary cycles reject; feedback is owned
+inside one explicit bounded stereo delay operator. Its preallocated ring supports
+two-sample linear fractional taps, causal bounded tape glide or a fixed two-tap
+linear jump crossfade. A second jump during transition explicitly refuses. The
+feedback path has lowpass/DC-block state, a declared gain ceiling and nonfinite/
+state-amplitude containment. Continuous wet/feedback use an explicit 8 ms time
+constant. These are unqualified creative processors, not a final output limiter.
+
+The shared browser channel now has an owned insertion/dry point before its
+existing master or explicit cue destination. Session and physical playback APIs
+prepare a graph without enabling audio, preserve the committed graph on candidate
+failure, and admit at most two current/tailing revisions. Input crossfades leave
+old owned energy until its hard audio-clock deadline; neutral, tail, mute and
+Panic have separate transitions. Native graph retirement waits for processor
+acknowledgment before releasing graph/route/channel storage. An unavailable or
+failed producer keeps an explicit unknown reservation. Context module ownership
+allows five source modules plus one effect module, held until context closure.
+The graph/control UI, authored Dub Quarry rack, convolution, typed detector paths,
+shared nonlinear/spectral/body processing, offline effect taps and full acceptance
+remain implementation work. Routing, fractional impulse, transition refusal and
+producer-ownership fixtures are authored; runtime and DSP qualification stay
+postponed with the consolidated validation pass.
+
+Quarry Echo now has an original source/dry/send/delay/return topology and an
+existing-workstation dialog. Momentary THROW changes only the source-send gain;
+release leaves the existing return connected, while TIME, FEEDBACK and RETURN
+request bounded native controls. Gain nodes declare a maximum amplitude envelope
+used for graph headroom admission. A control receipt includes graph definition
+hash and owner route revision; releasing a gesture from an older route cannot
+change a replacement rack. Native control submission and actual render application
+remain separate. Runtime diagnostics retain the immutable application identity
+and requested parameter state. No control enables audio or opens MIDI output.
+
+Optional saved owner-rack defaults are validated in procgen projects and use a
+newer graph revision for each edit. They preserve physical mapping and lane
+identities, roundtrip through project sanitization, and participate in history.
+The dialog loads/saves defaults separately from live control gestures. Saved
+rack edits are blocked during an active causal take until their journal contract
+is implemented. Effect gesture persistence/replay, causal per-voice throws,
+input coloration/AGE/spring recipes, matched A/B and offline effect-return taps
+still remain work. The UI explicitly identifies the current gesture-recording
+limit; master PCM capture can retain actual played output. Schema, headroom,
+project roundtrip and stale-gesture ownership fixtures are authored and unrun.
+
+Native convolution bodies now have a bounded immutable IR descriptor, explicit
+mono/stereo/native-true-stereo layout and shared native decode ownership. Four
+channels are admitted only for IR assets; sample voices keep their two-channel
+limit. The same encoded/decoded cache verifies actual WAV kind/layout/rate/frames
+and joins accepted native decoding before cancellation releases an owner. Each
+convolver retains an independent graph pin through the final native buffer clear
+and disconnect, even when its material provider retires its own reader loan.
+
+Admitted worker analysis scans copied native PCM for finite coefficients, RMS,
+absolute coefficient sums and normalization/headroom bounds. Native RMS scaling
+and separate calibration gain are explicit; four-channel bounds conservatively
+sum all matrix paths. Source plane hashes identify the analyzed host byte order;
+no acoustic, room, latency or cross-browser equivalence evidence is inferred.
+The graph host sets normalization before assigning the buffer, prepares new
+convolvers for replacement, and reserves decoded material plus separate native
+copy/algorithm estimates. Four bodies and 64 MiB decoded IR inventory are graph
+ceilings, subject to the shared budget and two-revision overlap admission.
+Unknown native latency propagates as null and requires the explicit uncompensated
+policy; it never becomes a zero-latency alignment claim. Native disposal precedes
+IR pin retirement. Delay-state containment also reports an owned fault so the host
+can name and bypass its branch. Source/layout/normalization/gain/assignment-order/
+pin-lifetime fixtures are authored. Original procedural bodies, their focused UI,
+convolution offline output, measured latency and all runtime qualification remain
+work; no tests, native renders or content builds ran in this implementation pass.
+
+Original convolution bodies now include reproducible mono Hollow Spring,
+stereo Stone Courtyard and four-channel Crossed Gallery source data. The shared
+material provider generates and verifies their encoded identities through its
+existing admitted worker, then uses the same native decode/cache/analysis path.
+The Quarry dialog selects these bodies, saves their exact graph/asset defaults,
+performs momentary source sends and SPACE return changes, and preserves prior
+tails across prepared replacements. Controls are locked during preparation.
+These are original synthetic bodies with explicit native RMS normalization and
+reference gain, not measured hardware/room responses or qualified level matches.
+Source-data authoring wrote identity metadata only; no binary is committed.
+Native latency, offline convolution, source-bound throws, listening and all
+remaining acceptance gates are still pending. No runtime tests ran.
+
+The shared effect runtime now implements an original bounded nonlinear chain:
+ordered cubic/fold transfers, direct or stable first-order ADAA, real local 2x/4x
+polyphase up/down filters with pinned source coefficients, explicit HP/DC stages
+and a kernel-owned binary64 state transfer. Native graph preparation verifies
+the exact configuration identity and reserves full state/alignment estimates;
+four nonlinear islands is the current unqualified graph limit. Fractional FIR/
+small-signal ADAA group delay and frequency-dependent phase/droop are explicit.
+Native parameter queues are bounded and refusals cannot become accepted receipts.
+Quarry Tape adds the shared cubic preamp and AGE drive/feedback-darkening control
+without replacing final protection. Quality changes prepare another graph.
+Arithmetic, restoration, silence and graph fixtures are authored, not executed.
+Native WaveShaper comparison, ADAA2/WASM precision variants, host-wide state cuts,
+offline full-effect rendering, alias/cost/latency/level/listening qualification
+and the remaining effect recipes/causal gestures are still required.
+
+Issue #1258 now has one owned-profile footprint interface with named
+`{ sampleRate, voices, pcm }` fields. All five source adapters distinguish PCM
+from capacity; low-level voice validation stays strict. Live admission uses the
+actual full processor capacity, while control/causal/state-cut renders use the
+actual configured capacity and exact PCM bytes. Non-PCM null/undefined material
+no longer enters a low-level voice argument. Resource-present live preparation,
+all-rate capacity/storage parity and direct control/state-cut regressions are
+authored for the deferred acceptance pass; no runtime tests have run.
+
+Issue #1257 now gives each classic long-session replay probe explicit
+transport ownership. It waits for meaningful retained history, verifies both
+seeks and the restored tick/exposed physical projection/history before resuming
+only a previously running workload. Failed restoration invalidates and stops
+the run. Required raw telemetry, completed forward ticks, sustained progress,
+sampled active/paused/probe time, complete replay receipts and profile-specific
+history turnover gates prevent a tiny initial advance from passing an idle
+window. Cold compaction/thaw/retirement counters report actual owner operations.
+Controlled actual-E2E/TimeTravelController integration fixtures are authored,
+including failed/incomplete seeks and originally paused state; no browser run,
+benchmark, runtime test or throughput result is claimed.
+
+The #1131 v11 artifact producer/consumer regression now admits the emitted
+`cost.sampleZones` and nested `display.sampleMap` with strict type, inventory,
+unknown-field and archived-map consistency checks. V11 counts must be explicit
+and equal the actual zone count; non-map counts are zero. Earlier supported
+compiler artifacts retain their exact archived bytes with an implicit zero
+count and cannot claim the v11 sample-map capability. Whole-family compile/
+readmission, malformed-count/display, legacy-read and existing display-versus-
+render-identity fixtures are authored. CLI/background compilation share this
+validator; build/publication and runtime acceptance remain deferred.
+
+The bounded creative delay now has a complete kernel-owned state transfer:
+immutable rate/configuration identity, independent stereo ring/filter storage,
+write/frame cursors, glide/jump frontier, feedback/wet/tone smoothing, fault and
+Panic flags. The shared little-endian effect-state helper validates CRC, layout
+and every domain before mutating DSP. Transfer buffers are exact/exclusive and
+retain their full cost; no checkpoint work or allocation enters sample().
+Forward-continuation, corruption/foreign-state, alias refusal and Panic fixtures
+are authored at all supported rates/modes. Host-wide capture/queue cuts and
+full-graph offline restoration remain work; these kernel APIs are unqualified
+and no runtime/DSP tests ran.
+
+Graph dry/parallel alignment now uses an owned fixed stereo fractional-delay
+kernel with exact reserved ring storage, including sub-sample delays below one
+frame. It shares code/state transfer with the planned offline graph path and
+loads in the existing single effect module. Native graph preparation shares one
+ABI/configuration/ACK/fault/retirement adapter for all owned processors. Used
+delay/nonlinear/alignment revisions now bind graph identity. Linear two-tap
+alignment remains frequency-dependent and is not a broadband phase-null claim.
+Impulse, state and actual-kernel host/resource fixtures are authored; full-graph
+render integration and all execution qualification remain pending.
+
+The owned causal renderer now has a full shared effect DAG path using the
+same delay/nonlinear/fractional-alignment kernels as live graph hosting. Every
+source aggregate/preroll frame passes through that single graph; dry lane taps
+and up to eight actual shared node-output taps are captured simultaneously.
+Ranges retain prior effect excitation, and bounded tail/output/worker storage
+include the complete graph and tap set. Manifests bind graph definition, used
+processor revisions, exact graph hash and source/tap scope. Authored static
+defaults are explicitly a new realization, not replay of unstored live gestures.
+Native convolution/native source full-effect adapters, public render-owner/UI
+wiring, host-wide state cuts and all runtime qualification remain work.
+Arithmetic/shared-nonlinearity, simultaneous tap and crop fixtures are authored
+but unexecuted; no tests, native renders or content builds ran.
+
+The public causal render owner and dialog now select explicit dry, Quarry
+Echo/Tape or compatible saved owner defaults, with a separate new source-send
+amount and optional simultaneous shared-return WAV. They retain exact graph/
+processor/tap identity through worker admission, complete memory/output bounds
+and per-file artifact validation. A mismatched/failed candidate preserves the
+prior complete bundle. Saved defaults remain unchanged and bypassed/native-body
+racks are not silently activated. The UI identifies static new realization
+versus unreplayed live gestures. Owned sources are wired; native source/effect
+postprocessing and convolution adapters, graph-wide cuts, gesture capture/replay
+and all runtime/PCM/listening acceptance remain work. No runtime tests ran.
+
+All four native source profiles now feed the same owned effect graph in the
+admitted encoding worker, after their actual source-only OfflineAudioContext
+completes. Full preroll excitation is retained; processed master/shared returns
+come from one graph and original dry planes remain unchanged. Graph/hash/ABI/
+tap manifests and worker transfers cover the complete 25-file owned profile
+(24 for native sources). Native sample decoded-byte footprints and retained
+native PCM are included before source/worker admission. The dialog supports
+these explicit effect revoices for all nine implemented source profiles. No
+additional context is created by the effect pass. Native IR offline processing,
+recorded effect gestures/causal voice sends, graph-wide state cuts, remaining
+DSP/content/world features and all deferred acceptance still remain. No runtime
+unit/browser/PCM/performance/listening tests or content builds ran.
+
+The latest repository refresh adds #1259–#1263 to the inventory (296 known
+issues). Next correctness work is the held-out exemplar/report contradiction,
+shared WALK read/action accounting, per-endpoint solver surface bindings, and
+finite multi-entrance birth/minimap-death lifecycle ownership. Their reported
+producer/consumer paths are reviewed before further new DSP work.
+
+Committed interval admission now checks future overlaps and lease extensions
+across native, sample and worklet voices, with separate live/cue source and tail
+quotas. Atomic host-side lease batches preserve terminal queue capacity. Logical
+admission and actual kernel application remain separate receipts. Measured cost
+profiles, request-set canonicalization and combined device stress still require
+the deferred qualification pass.
+
+Journal verification now admits checkpoint/chunk loading, canonical validation
+and hashing through the shared worker owner, using exact new byte/object counts
+and explicit legacy bounds. Owned queries now select records in the worker and
+retain result/index reservations through reader retirement. Detached replay owns
+its checkpoint/page loans through actual source/world retirement. Score projection
+and causal-parent views now adopt owned pages and publish retained worker snapshots
+with bounded cause links. Sound-only revoice now retains a bounded independent
+snapshot with exact source hash, coverage and explicit boundary-state limits;
+it preserves captured intent identity without synthesizing attacks or rerunning
+physics. Full playback/render integration and acceptance qualification remain.
+
+- [ ] Finish shared background job execution for import, export encoding,
+  recovery and asset preparation under the shared worker/memory admission owner.
+  Registered import/export/checksum/hash jobs now share admission with exact
+  replay and content-coalesced terrain decode/fingerprinting. Active/candidate
+  decoded consumers retain independent leases through runtime retirement.
+  Combined stress and failure qualification remains deferred with runtime tests.
+- [ ] Complete remaining issue contracts in dependency batches, preserving
+  authored sound/content, physical semantics and output ownership requirements.
+- [ ] After implementation, run deferred unit, real-browser, interruption,
+  performance and artifact qualification gates; repair failures and record their
+  exact revisions. Keep unsupported hardware/listening evidence explicit.
+- [ ] Reconcile every open issue against its complete acceptance requirements
+  before closure. No issue is closed merely for adding a schema or fixture.
+
+### Continuation 141 — newest correctness reports (#1259–#1263)
+
+Finite gameplay entrance batches now recheck admission before opening an entrance,
+allocating an actor identity or publishing spawn effects. Final non-exit removal
+is the only minimap death-marker boundary: drowning, splatting, oh-no, frying,
+explosion, missing-action and off-world producers no longer publish duplicate
+markers. Explosion markers therefore appear on final removal after its particle
+animation; rendering and replay drawing are presentation only.
+
+Solver geometry retains each endpoint index, anchor, snap radius and unresolved
+binding. Named spawn/exit graph edges use those bindings exclusively, with an
+explicit weighted-distance and stable-ID tie policy; aggregate continuity remains
+an any-entrance diagnostic, and route skeletons remain unverified until replay.
+Passive WALK proofs debit one local ledger before every unique terrain read or
+shared action advance; every caller adds the returned action steps before an
+admission early return. Selected holdout successes retain reproducibility and
+sensitivity evidence, but explicitly defer independent qualification when no
+unseen corpus was declared. The final report and immutable exemplar archive can
+complete without relabelling observed worlds or declaring an improvement.
+
+Actual manager/MiniMap/history, solver-island, shared-action budget and survey
+coordinator/evidence-store regression fixtures are authored. Their execution and
+all runtime/PCM/browser qualification remain deferred until implementation of all
+open-issue code. These reports remain open pending complete acceptance evidence.
+
+### Continuation 142 — native-source convolution export (#1012, #1015, #1070, #1155)
+
+Native oscillator/FM/modal/sample causal rendering can now prepare the same native
+convolution graph, material pins and normalization used live. One offline context
+captures the complete processed owner, selected dry lanes and actual shared node
+returns simultaneously; the aggregate native output has at most fifteen stereo
+taps beyond the master. No per-lane or per-actor convolution rerender is used.
+The encoding worker verifies graph, IR identity/layout, decoded coefficient
+hashes, normalization and gain bounds before accepting native processed channels.
+It does not run those channels through the graph a second time. Unknown native
+algorithmic latency remains null, separately from authored predelay.
+
+IR analysis completes before native execution admission, avoiding nested worker
+slot deadlock. Ordinary dry-source renders retain admission-before-allocation.
+Native producer completion and graph disconnection/buffer clearing precede IR pin
+and storage retirement; unresolved preparation custody keeps reservations held.
+The render surface offers Hollow Spring, Stone Courtyard and Crossed Gallery for
+native sources and active compatible saved body defaults. This first native
+profile supports gain/bus/convolution graphs. Owned-source convolution staging
+and graphs mixing convolution with owned delay/nonlinear processors remain to be
+implemented; those combinations currently return named refusals before output.
+
+API/codec and source-planning fixtures cover all supported IR layouts and sample
+rates, normalization ordering, receipt tampering, simultaneous tap channel order
+and material retirement. All execution, real-browser PCM/latency, listening and
+performance qualification remain deferred with the rest of the backlog.
+
+### Continuation 143 — owned-source convolution staging (#1012, #1015, #1046, #1155)
+
+All five owned source kernels can now supply complete dry master/lane PCM history
+through a separate admitted worker stage. Independent full-plane buffers carry
+source/artifact identity, sample rate, frame coverage and byte hashes. Their
+computed-result lease remains held while a native body graph verifies and copies
+the data. One bounded OfflineAudioContext plays that exact PCM at the same rate,
+applies the shared native body, and captures master/dry lanes/returns together.
+Hash validation precedes native copying; chunked copies yield to the UI. The
+requested crop is applied only after the complete source and body history has
+run. Owned source state cuts remain distinct from hidden native convolution state.
+
+The foreground owner now supports native body presets with every realized source,
+keeps source PCM and native output loans through their respective producer
+retirement, and retains unresolved custody on failure. Final encoding checks the
+owned-source worker receipt against the native input hashes and application
+revision. No temporary WAV, decode roundtrip, separate lane bounce or additional
+live AudioContext is introduced. Native input copies and complete preroll output
+are included in preflight alongside IR, source-material and encoding overlap.
+Mixed convolution/owned-processor graphs still require their separate adapter.
+
+Direct kernel full-history/crop/state-cut fixtures and staged native API/codec
+fixtures are authored. Their execution, real-browser PCM equivalence and all
+remaining acceptance qualification stay deferred until all open-issue code is
+implemented.
+
+### Continuation 144 — complete mixed native/worklet effect graphs (#1015, #1070, #1155, #1218)
+
+Convolution can now share the actual native graph and OfflineAudioContext with
+owned delay, nonlinear and fractional alignment processors. Preparation loads and
+connects trusted processors without waiting for an offline render thread that has
+not started. Private rendering then verifies each initialization ABI before
+publication. Every processor on an output/selected-return path emits a terminal
+receipt binding its configuration, contiguous frame-zero history, final padded
+quantum, state bytes and zero fault/Panic state. The encoder verifies the complete
+processor inventory and those terminal receipts with the IR analysis; a late fault,
+missing acknowledgment or mismatched ABI cannot become a published WAV.
+
+Preparation failure retires the private context through a bounded admitted drain,
+so module lifetime estimates and processor disposal do not depend on messages from
+an unstarted thread. Context closure is explicitly reconciled with the module
+cache before storage retirement. Unknown custody retains reservations. Internal
+alignment processor identities use a namespace unavailable to authored node IDs.
+Owned and native sources use the same complete graph, shared input sum and
+simultaneous dry/return taps. Native convolution latency stays unmeasured; no
+physical timestamps or scheduling horizons are moved to compensate for it.
+
+An original Tape + Spring rack now combines the existing preamp, dark echo and
+one shared Hollow Spring with a restrained fixed blend into the common return.
+The live controls and causal revoice selector expose the same authored topology.
+Live effect gesture journaling and source-bound throws remain outstanding.
+
+Deferred API fixtures cover readiness emitted only after render start, terminal
+receipt omission, late faults, bad ABI and preparation failure cleanup. Terminal
+protocol and combined-rack fixtures are authored. No runtime/browser/PCM/listening
+or performance qualification has been run during this continuation.
+
+
+### Continuation 145 — typed envelope/control graph and reactive return ducking (#1163)
+
+Effect ports now distinguish mono/stereo audio, normalized detector envelopes and
+linear gain modulation. Invalid casts, ambiguous control fan-in, implicit master
+sources and graph cycles fail preparation. Shared detectors can feed independently
+configured depth/polarity mappings without making their source audio audible.
+Original peak and trailing RMS kernels use fixed reference normalization, linked
+stereo energy, bounded preallocated state and explicit amplitude 1/e time constants.
+The RMS sum is updated in constant time with compensated arithmetic and exact
+silence drain. Mapping uses either linear amplitude or a prepared dB lookup; native
+AudioParam modulation and owned offline rendering use the same typed graph.
+Followers declare reactive zero-lookahead timing and separate RMS window age.
+Kernel snapshots retain window, accumulator, envelope and frame frontier; complete
+graph restoration still requires deterministic preroll.
+
+External source activation checks context, owner, generation, tap, channel layout
+and an upstream source pin before committing the candidate. Disconnecting a route
+feeds zero and releases toward the authored neutral mapping. Source pins remain
+owned until graph producer retirement. The existing live owner offers its actual
+post-fader upstream bus; arbitrary cross-lane and pre-fader source realization
+remain outstanding. Focused rack diagnostics request bounded DSP activity receipts,
+separate from the signal-rate modulation clock. The original Quarry Duck recipe
+shapes only the echo return from the owner source, preserving its separate dry path.
+Live and causal revoice selectors expose the same authored recipe. The parallel
+Tape + Spring branch also now attenuates its IR input by the declared body gain
+bound, keeping its convex blend within the echo branch headroom.
+
+Step/RMS/time-constant, stereo antiphase, state continuation, typed port rejection,
+shared detector, inaudible donor, depth/polarity, missing-input release and candidate
+activation isolation fixtures are authored but unrun. Cross-lane bus realization,
+true multiband vocoder, live gesture journaling and source-bound throws remain
+outstanding. All runtime/browser/PCM/listening/performance qualification remains
+deferred until implementation of all open issue code.
+
+
+### Continuation 146 — terrain undo transaction ordering (#1264)
+
+Terrain replay now applies previous values in exact reverse write order, including
+reverse span traversal and the matching reverse color/value offsets. Forward replay
+retains original write order. The existing append-only terrain log, cold codec and
+bounded scratch/storage policy stay compatible; undo adds no pixel-sized allocation
+or per-tick coalescing map. This restores pre-tick collision and RGB values after
+overlapping builders, same-value writes, interleaved edits and build-then-dig work.
+
+Authored regression fixtures use real Level, palette, builder and digger producers,
+recording and delta application. They compare complete mask/RGBA snapshots through
+warm spans, sentinel-backed cold decode, thaw and legacy index logs. Actual
+TimeTravelController fixtures rewind, replay and branch from restored ground.
+Execution remains deferred with all other acceptance tests as requested.
+
+
+### Continuation 147 — actual configurable multiband vocoder (#1185, dependency of #1165)
+
+The effect graph now registers a true donor/carrier vocoder with separate typed
+inputs, immutable 8/12/16/32-band topology and the original configurable geometric
+bank. Defaults span 120–6000 Hz by geometric cell boundaries. Receipts retain every
+actual centre, nominal bandwidth, Q, digital coefficient, pole radius and filter
+realization. This uses the RBJ constant-zero-dB-peak bandpass equations documented
+in the [W3C Audio EQ Cookbook](https://www.w3.org/TR/audio-eq-cookbook/), not the
+stock Faust bank with a fixed 12800 Hz upper centre. Nominal bandwidth is named
+explicitly; measured digital reconstruction/coloration remains unqualified.
+
+A preallocated binary64 kernel filters mono or linked stereo donor bands and an
+independent stereo carrier, then applies signal-rate amplitude 1/e followers and
+fixed reference/depth/baseline/per-band gain/sum trim. There is no instantaneous
+AGC. Stable complex poles and an analytic absolute impulse-sum bound constrain
+filter state and complete summed headroom before admission; nonfinite/excessive
+state quarantines the processor. Missing input feeds zero, lets stored filter
+energy decay and releases to the authored baseline. Filter phase remains frequency
+dependent; the mode is reactive with no lookahead. Typed graph timing aligns the
+carrier route without silently delaying the donor to create lookahead.
+
+The same kernel runs inside the actual two-input Worklet and owned offline graph.
+Ready receipts compare the resolved bank as well as the immutable configuration;
+full-bank coefficients participate in the SHA-256 graph identity. State-cut
+compatibility uses a separate explicitly named coefficient fingerprint. Native
+mixed-convolution receipts retain and check the bank alongside terminal frame/fault
+fences. Kernel snapshots preserve every filter/envelope history; whole graph state
+still uses preroll. Graph diagnostics count actual filters and followers, separately
+from unmeasured CPU/deadline capacity. Focused inspection distinguishes donor/carrier
+availability, levels and envelope activity.
+
+Authored fixtures cover rates/band counts, real owned-graph parity, mono donor order,
+linked antiphase energy, spectral band selection, dry preservation, missing donor,
+nonfinite containment, topology/state incompatibility and exact state continuation.
+They remain unrun. Tools Talk stays unavailable until its resolved 12-band bank,
+listening, spectral transfer and device cost are qualified. Live/offline cross-lane
+bus realization is the next routing dependency; neither a kernel foundation nor
+an unexecuted fixture completes #1185 or #1165 acceptance.
+
+
+### Continuation 148 — simultaneous causal donor lane realization (#1163, #1185, #1046)
+
+Causal source planning now separates exported dry stems from internal detector lane
+taps. The owned source pass captures their bounded union once, feeds preallocated
+sidechain samples into the complete shared effect graph, and exports only selected
+stems/returns. Missing and connected-silent sources carry different presence bits;
+followers and vocoder donor/carrier diagnostics retain that distinction. Stored
+filter energy can decay after its input disappears. An explicit stereo-to-mono
+operator supports mono donor banks without silently casting typed ports.
+
+Native source renders now execute every selected effect graph in the actual same
+OfflineAudioContext, including graphs with only owned processors. Trusted upstream
+owner/lane pins activate before native rendering and remain owned through producer
+retirement. For owned-source/native-body staging, source PCM carries a separate
+exact lane-plane inventory including unexported donors. Native analysis taps receive
+those planes without adding another audible lane sum to the already complete master.
+The final native channel budget covers selected WAV stems and shared returns, while
+source history/copy/transfer preflight accounts for internal donor planes separately.
+
+Receipts record the actual source/tap membership, missing status, same-frame clock
+and full-history-before-crop policy. The new sound-only realization has a unity
+owner fader, making its declared pre/post owner taps equivalent; historical live
+mute/solo and effect gestures are explicitly not recreated. The encoding worker
+checks source-plane inventories/hashes, donor membership, native initialization,
+terminal fences and the same immutable application build for all native effects.
+Live owner/cross-lane pre/post tap realization remains separate outstanding work.
+
+Authored production-kernel fixtures compare full causal renders, dry stems, unexported
+donor effects and exact cropped preroll, with no additional semantic onsets. API
+staging fixtures check donor planes independent of exported stems, missing sources,
+route receipt tampering and resource retirement. Additional typed mono-adapter and
+connected-silent/absent source fixtures are authored. All remain unrun, along with
+browser, spectral/listening and performance qualification for the complete backlog.
+
+
+### Continuation 149 — real live owner pre/post-fader taps and epoch replacement (#1163)
+
+Live channels now have an explicit unity source-input node before owner volume,
+expression and pan, alongside the existing post-fader/pre-effect input. Classic
+preview voices and all nine native/owned instrument producers enter that source
+node. Same-owner sidechain pins select the actual requested pre/post tap with the
+same context and session generation; master returns and cue destinations cannot
+be used as upstream sources. Both taps retain per-voice source envelopes and pan;
+owner fader/expression/pan affect only the post tap. Channel resource estimates and
+failure/normal retirement include the new native node.
+
+An effect host from an earlier stopped session generation must retire completely
+before the next enabled generation prepares another graph. Preparation and source
+pins also reject stale session generations. This prevents reusing an old host and
+resource epoch after stop/re-enable. API fixtures check both tap connection points,
+retained dry routing, source disconnection and subsequent epoch preparation. They
+remain unrun. Live cross-lane taps and their owned Worklet producer buses are still
+outstanding; this continuation does not claim full #1163 acceptance.
+
+
+### Consolidated test repair (October 25, 2026)
+
+Pulled the issue branch through `2c956c83`; fetched master was already integrated.
+Repaired the integrated runtime contracts in a frontloaded pass, then retested the
+failures together before the final full run. Fixes cover independent binary
+ownership, bounded worker envelopes, immutable effects, audio admission and
+retirement, checkpoint/replay ownership, incoming-session graph restoration,
+paired survey identities and resumable evidence, and close fire-bridge followers.
+Fixtures now use the current generator/compiler profiles, real paged worker
+transport, explicit resource leases and settlement boundaries.
+
+- **Validation:** `npm test` passed all **5,371 tests**, including the runtime-global
+  and critical type-check guards; exit status 0. Total runner time was 239.51s,
+  above its advisory 180s budget; budget enforcement was not enabled.
+- **Static checks:** `npm run format`, whitespace checks and runtime provenance
+  verification passed (10 components, 188 files).
+- **Focused coverage:** BinaryReader's 17 direct tests passed with 96.18% line
+  and 87.95% branch coverage. Further direct unit coverage can exercise duplicate
+  lease attachment, invalid logical windows and EOF boundary guards.
+- **Acceptance boundary:** This validates the local Node suite, not browser,
+  listening, hardware or performance-soak acceptance for the open issue backlog.
+
+
+### Continuation 150 — live cross-lane native/Worklet source buses (#1163, #1185, #1165)
+
+The refreshed GitHub inventory contains 248 open issues. The remaining code is
+being reviewed by shared dependencies, starting with complete live signal routes,
+then captured effect performance, dependent sound recipes/scenes and their editing
+surfaces. Broad validation is deferred until the remaining development is written.
+The existing benchmark receipt, long-session transport and native ADSR repairs
+remain in place for their later full acceptance audits.
+
+Live physical rendering now publishes stable resolved lane identities to the
+shared audio owner. Each declared donor owns distinct stereo pre/post lane-fader
+taps, with no automatic audible destination. Native oscillator/FM/modal/sample
+voices register their actual upstream source and post gain/pan nodes. All five
+owned Worklet producers expose the same taps from their real shared sample pass,
+using fixed output storage and slot-token-qualified routing. No extra source
+rendering, semantic onsets, meter polling or UI-rate modulation is introduced.
+Pre taps retain source envelopes/pan; post taps additionally include lane gain,
+pan, mute and solo. The owner master remains downstream of both lane taps.
+
+At most eight distinct donor lanes can be pinned concurrently across effect
+consumers. Staged graphs share a donor; individual voice, source renderer, lane
+identity and native bus storage are admitted before allocation. Deleting a lane,
+stopping its session or replacing its epoch disconnects the actual producer and
+notifies all consumer pins before resource release, so followers decay naturally
+to neutral. Unknown retirement preserves reservations. Declared silent lanes stay
+connected-silent; undeclared lanes remain missing. Old source processor builds are
+rejected by new pinned build identities and the explicit live tap handshake.
+
+API and production-kernel fixtures cover native pre/post isolation, donor sharing,
+source deletion, finite capacity, slot reuse and sample-exact stereo sums at
+44.1/48/96 kHz. They are authored but deliberately unrun. Browser routing, device
+cost and listening acceptance remain deferred; this does not close those gates.
+
+
+### Continuation 151 — interlocking source recipes and real stereo ring DSP (#1165)
+
+The shared graph now includes a typed two-input bipolar ring processor. Independent
+100 Hz highpasses feed two original 2x polyphase FIR input paths, a bounded donor
+multiplier and the original FIR decimator. Source order, linked frame clock,
+16-frame FIR delay, frequency-dependent highpass phase, fixed drive, L1/output
+bounds and conservative memory/tail profiles are explicit. The live two-input
+Worklet and owned offline graph use the same binary64 kernel. Both native mixed
+graph initialization and terminal receipts check its exact coefficients/config;
+full graph identity includes the actual fixed filter realization. Complete CRC-
+protected state transfers preserve both input histories, decimator histories,
+cursors, source-presence and diagnostic frontiers, with all checks before mutation.
+
+Four original rack recipes now connect actual declared donor/carrier lane taps:
+Tools Talk's resolved 12-band 120–6000 Hz bank; Rust Bloom's stereo ring return;
+Footstep Air's filtered full-band follower; and a prepared one-way Mirror Breath
+swap. Each keeps the original owner dry path, adds a bounded carrier-only return
+and emits no semantic onsets. WHO SPEAKS, BITE and AIR use explicit prepared
+revisions; MERGE controls the active return. The route panel distinguishes source
+connection and latest DSP receipts without a new animation-rate polling loop.
+Saved defaults reuse project Undo and existing explicit saved-rack revoice; they
+do not silently journal live effect gestures. Master capture remains available.
+
+The rack is reachable from Quarry Echo's Interlocking lanes control. It stages
+route changes, supports source swaps, cancellation, bypass/tail clear and scoped
+retirement, and rejects self donors before preparing a graph. Empty source taps
+remain distinct from unavailable lanes. Processor tap summation is skipped when
+no donor is connected. Standalone APIs declare lanes even while the world is
+paused so initial preparation cannot permanently bind a false missing source.
+
+Authored fixtures cover all recipes/rates, real ring sidebands and stereo polarity,
+unchanged aligned dry output, exact state continuation, invalid/foreign state,
+source loss and Panic. Runtime, browser, spectral/listening and cost qualification
+remain deliberately deferred with the implementation-first backlog pass.
+
+
+### Continuation 152 — actual travel-driven comb/flange and bounded cubic delay (#1188, #1211)
+
+The shared delay now offers an explicit third-order four-tap Lagrange realization,
+with a two-sample minimum and support beyond its nominal ring bound. Its maximum
+interpolation L1 is 1.25. The cubic profile caps feedback at 0.35 and includes the
+filter/interpolation absolute bound in graph gain and conservative tail estimates.
+Linear interpolation keeps its own declared profile. Jump transitions can reject
+busy requests or coalesce exactly one latest target behind the current two taps;
+returning to the current target cancels that pending request. State cuts retain
+the complete fractional transition/pending frontier. The processor revision is
+bumped; neither cubic interpolation nor glide claims alias-free modulation.
+
+Rail Comb and Return Flange are original prepared recipes with 0.8–6 ms and
+0.4–8 ms ranges, convex dry/wet mixing, optional explicit polarity inversion,
+128–512 world-pixel sweeps, conservative feedback and chosen glide/jump behavior.
+Their control reads the existing sustained signed-distance articulation intents
+from the canonical travel accumulator. No private distance accumulator, free-running
+LFO, additional musical begin or camera-derived motion is introduced. Idle facts
+send no repeated control. Reversal/wrap use a smooth spatial curve; discontinuities
+end the source binding or require explicit prepared rebind. Source end disarms
+motion and holds the last timbre; the owner rack persists until explicit bypass,
+replacement or retirement. Known smoothing and admitted delay contents may finish.
+
+The Travel color surface is reachable from Quarry Echo, lists current eligible
+physical voices, and stages actor binding together with the real effect graph.
+A voice that ends during preparation cannot publish an unattended binding. All
+updates retain the exact owner graph token, physical source IDs, signed distance
+and the shared source/audio-clock frame. Delivery receipts are API scheduling
+evidence and can be captured with the take; static saved-rack revoice does not
+claim to replay these gestures. Stop/dispose releases the motion owner, and stale
+control retirement cannot bypass another surface's later effect graph.
+
+Authored fixtures exercise cubic impulse weights at 44.1/48/96 kHz, minimum and
+maximum taps, repeated/coalesced jumps, mid-transition restore, wrap/reversal,
+selected-voice isolation and actual CausalMusicEngine travel intents without extra
+notes. They remain unrun. Allpass-notch/through-zero modes, full gesture replay,
+browser alias/cost/listening qualification and the remaining issue backlog remain
+separate work; no completed acceptance is inferred from this implementation.
+
+
+### Continuation 153 — travel-driven normalized lattice notches (#1188, #1211)
+
+Hollow Steps now shares the existing actor-travel control owner with comb/flange,
+using eight normalized first-order lattice stages per channel, paired at four
+frequencies. Every moving scattering matrix preserves input plus stored energy;
+feedback is owned, delayed by one sample and capped at .25. The declared gain
+bound is an induced L2 energy bound, separately labeled from instantaneous peak
+fault containment. Coefficients slew toward real travel-derived frequency targets;
+there is no free-running LFO or invented musical attack.
+
+The same processor runs in the Worklet and owned offline graph, with exact
+coefficient identity, state transfer, bounded automation, retirement/completion
+receipts and Panic. Phase/group delay remains frequency dependent and is not
+misrepresented as a compensated fixed delay. The source UI exposes four moving
+notches, conservative dry/wet and feedback bounds, and explicit processed polarity.
+
+Fixtures for time-varying energy conservation, static magnitude, mid-modulation
+restore and full-graph control were authored but remain unrun. The hard two-second
+tail ceiling, notch shape, modulation sidebands, browser cost and listening need
+the deferred qualification pass. Through-zero flange uses two strictly causal positive delays around an explicit
+4.2 ms creative reference, with a signed relative-delay domain. This reference is
+not graph alignment or negative physical latency; neutral bypass restores the
+immediate owner dry path. Its route/rate fixture is also deferred. Gesture replay
+and other remaining issues are not claimed complete.
+
+
+### Continuation 154 — owned spectral freeze and Glass Hold (#1134, #1071)
+
+An original prepared radix-2 transform and stereo STFT renderer now support
+512/1024/2048 windows with quarter-window hops. Periodic sqrt-Hann analysis and
+synthesis use a fixed overlap normalization; zero-padded startup is processed so
+an initial impulse is not discarded. The causal overlap-add path declares N
+frames of delay. The new preserve-dry graph policy deliberately leaves immediate
+dry attacks unaligned; it does not pretend that the spectral path has no delay.
+
+Freeze captures only a complete connected digital source window on the next
+global hop after a discrete request. Receipts distinguish warming, pending,
+ready, frozen, releasing, source unavailable and captured silence, with the actual
+analysis interval. Per-channel instantaneous frequency evolves the held phase;
+prepared pitch remap, neighboring-bin blur and high-frequency damping stay
+bounded. Captured magnitudes are attenuated using a conservative spectral L1
+peak bound, never boosted from silence. This is a bounded-history peak policy,
+not a claim that a sustained frozen output has the same total energy as its input.
+
+All transform plans, scratch, spectra, overlap and input rings are allocated at
+prepare time and included in the resource profile. Exact state transfer covers
+phase, magnitudes, normalization, source availability, hold and overlap frontiers.
+The same kernel is wired into live Worklets and complete-graph offline rendering,
+including identity/completion receipts, source retirement, bounded hold/thaw and
+Panic. A latched state has explicit ownership and a hard hold deadline.
+
+Glass Hold is reachable from Quarry Echo and can select the physical owner or
+an actual lane tap. Momentary/latch controls release on their declared gestures;
+prepared reconfiguration uses the shared graph transaction. Wet-only audition is
+explicit. Save defaults does not save captured spectra: transient material is
+marked unavailable after reload, and actual played output can use master capture.
+Requested note IDs are not inferred to be contributing PCM provenance. Portable
+frozen assets, next-eligible-causal-event gating, Dust Loop/Breath Imprint, live
+gesture replay and causal capture attribution remain pending.
+
+Complex transform roundtrip, impulse/noise-like stereo identity at all three
+rates/windows, exact mid-hold restore, capture timing, silence/missing source,
+maximum hold, dry timing and full-graph fixtures are authored and unrun. Measured
+latency/error, browser hop/worst-block cost, pitch/blur quality and listening remain
+deferred; this implementation does not close the qualification acceptance.
+
+
+### Continuation 155 — persistent sparse sympathetic audio bodies (#1135, #1157)
+
+The owned graph now has a shared stereo modal network with at most 64 bodies,
+eight modes per body, 512 total modes/edges and degree four. These are hard
+construction limits, not qualified real-time capacities. Each mode is a damped
+complex rotation. Sparse edges apply a canonical sequence of contractive
+identity-to-Givens transforms; no arbitrary feedback matrix or all-pairs crowd
+network is generated. The excitation vector is normalized against the maximum
+prepared contraction radius, and pickups have bounded norm. Internal finite-state
+and energy containment is independent of master limiting. The conservative input
+normalization still needs musical level calibration; it is not a listening claim.
+
+COUPLE and DAMP move continuously within that domain. Retune, excitation-body,
+pickup and topology edits prepare a new graph; the existing owner retains the
+old tail. Native and offline adapters share the same kernel, exact configuration,
+receipts and state codec. The codec now optionally carries bounded exact immutable
+configuration bytes outside its fixed header, so large body topologies cannot
+alias a small state identity or overflow the transfer header. Existing layouts
+without configuration bytes keep their previous layout. Canonical UTF-8 encoding
+also runs without DOM encoding globals, allowing the same identities to be
+constructed in the Worklet realm; Unicode equivalence fixtures remain deferred. Body energy is inspected
+only on demand and is explicitly modeled audio energy, not terrain deformation.
+
+String Trellis, Metal Constellation and Undertone Basin expose three original
+sparse topologies, prepared TOUCH/TUNE, direct versus sympathetic pickup audition,
+and actual owner/lane excitation taps through the Shared bodies surface. Basin
+coupling is explicitly fundamental-mode-only, not mislabeled as a lowpass filter.
+Actual source PCM excites persistent state; actor end stops that excitation while
+body memory can ring. No new semantic onset or physical intervention is emitted.
+Terrain anchors, per-contact preparation slots, admitted body-command ancestry,
+and the Resonance Terrarium proof scene remain pending integrations.
+
+Decay/contraction, superposition, stereo polarity, exact/foreign state restore,
+full-graph input, invalid coupling and 8/32/64-body construction/accounting fixtures
+are authored and unrun. Those sizes are comparison fixtures, not measured deadline
+or memory acceptance. Device benchmarks, macro level matching and listening remain
+in the deferred qualification pass.
+
+
+### Continuation 156 — sidechain publication and bounded tail input gates (#1015, #1163)
+
+Live sidechain inputs now start at zero in the prepared graph, and the owner arm
+output stays zero throughout asynchronous source activation. The commit boundary
+opens sidechain and owner input ramps together. Donor audio cannot become audible
+merely because a staged lane pin connects before the route is published.
+
+A retiring graph ramps its sidechain input to zero along with owner input, rather
+than abruptly severing a donor during ring/vocoder processing. Pins remain owned
+until the admitted tail producer retires; Panic and disposal still detach them.
+Diagnostics label evaluated API gate values separately from rendered evidence.
+The standalone graph activation API retains explicit immediate activation, while
+the host selects silent staging. A deferred fixture holds activation across an
+asynchronous boundary and checks silent candidate output, exact gate ordering,
+old-tail ownership and complete resource release. Runtime validation remains
+postponed with the rest of the development backlog.
+
+The committed graph also receives a lifetime distinct from its preparation UI
+token. Finishing a dialog request or beginning a later revision no longer makes
+the active/retiring graph's native control predicate stale. Candidate validity
+still gates publication, and owner/context validity still gates the committed
+lifetime. Publication schedules the candidate gates before retiring the previous
+arm so a rejected candidate gate does not unnecessarily cut the working graph.
+A second deferred fixture covers completed UI tokens, later requests, live
+controls, retained old tails and final owner retirement.
+
+
+### Continuation 157 — captured effect commands and bounded owned revoice (#1070, #1046, #1071, #1188)
+
+Actual graph publications, accepted parameter commands and lifecycle requests now
+enter the existing causal take's sink-outcome records. They retain immutable graph
+identity, owner-route revision, per-stream sequence, actual context rate/frame and
+an existing source-intent/audio-clock anchor. Physical travel controls also retain
+their contributing fact IDs; a manual gesture does not invent physical ancestry.
+Clock rebases invalidate stale anchors. Capture/append failures mark effect-history
+coverage gaps rather than silently qualifying an incomplete gesture performance.
+The default capture profile is physical-basic-v12; other profiles must explicitly
+include this state kind. No competing recorder or transport was introduced.
+
+The render surface can explicitly choose captured FX commands independently of
+static authored defaults. It reconstructs one unchanged owned graph from cleared
+initial memory, projects original audio-frame deltas through captured intent time,
+preserves same-frame command order and recreates the owner's input/sidechain fade.
+Source and return taps are still taken simultaneously from the full graph. The
+source journal remains immutable; its separate command-plan hash is bound in both
+main-thread and worker preflight and checked again before artifact publication.
+All parameter domains are validated before allocating the output PCM. Analysis
+frame origin is retained for the spectral kernel's global hop grid.
+
+This is API-command revoice, not exact live PCM/DSP reconstruction. Graph swaps,
+in-range mute/bypass/Panic/stop, missing clock anchors, native convolution and
+native-source command revoice explicitly fail this first profile. Spectral requests
+can be replayed, but original source readiness and the actual captured window are
+not reconstructed from API submission alone. Preexisting effect memory is cleared;
+master capture remains the actual digital-output evidence. Dry stems remain source
+dry; owner gates and creative dry scaling belong to the complete master. These
+limits are visible before render rather than replaced by a silent static fallback.
+
+Fixtures for clock/rate projection, original-history immutability, preparation
+silence, owner fades, same-frame replacement, domain preflight, coverage/route
+rejection and actual take-journal-to-WAV host integration are authored and unrun.
+Runtime/browser/audio qualification remains deferred. Voice-scoped throws, full
+multi-graph/lifecycle replay and portable captured spectral assets remain pending.
+
+
+The integration also closes an owner-stop hole exposed by latched effects: a
+session now retires all of its effect producers even when another owner keeps the
+shared context running. All route-arm outputs mute before asynchronous disposal.
+Re-enabling an owner waits for that producer retirement; complete retirement
+restores its dry path, and unresolved retirement retains accounting and blocks
+reuse. Other owners remain independent. A deferred lifecycle fixture covers a
+latched producer, concurrent owner, pending acknowledgement and rapid re-enable.
+Effect command construction is skipped when no causal take is recording.
+
+
+### Continuation 158 — selected causal-voice throws and overlapping source taps (#1070, #1163, #1046)
+
+Quarry can now prepare THROW for an immutable selection of admitted causal voice
+IDs/generations, independently of owner-sum sends. Same-lane unrelated voices and
+later onsets are excluded. The dry owner path stays intact. Pre/post lane taps are
+explicit; post-fader is the initial selection policy. Saved defaults remain owner
+sum, while transient selections and command history belong to the performance.
+Quarry controls retain the prepared route token so an old surface cannot perform
+a replacement rack. Initially unadmitted or entirely ended selections fail preparation before replacing
+the current rack; release closes new send input and retains admitted echo memory.
+
+Native oscillator/FM/modal and sample voices can feed overlapping lane/selection
+buses. Worklet routing uses bounded token-fenced bitmasks, accumulating all taps
+in the same source pass. A routing acknowledgement barrier, emitted after the actual source render quantum,
+precedes source pin publication, preventing a reused output slot from exposing its previous routing.
+Cancellation/retirement settles that barrier; bookkeeping is bounded per producer
+and bus. Ended kernel routes release their idle rendering cost without clearing a
+new slot token. Source routing protocol/build identities are bumped explicitly.
+
+Offline owned rendering captures lane and selected-voice sums simultaneously,
+with at most sixteen combined source taps. Selections preserve exact semantic
+voice/generation identity and do not fall back to the owner mix when absent.
+Native-source/native-convolution selected-source export remains explicitly
+unavailable in this adapter; live native throws are independent of that limit.
+The causal engine exposes a bounded small voice view so source inspection does
+not clone full travel, motif, encounter and checkpoint state.
+
+Source bus memory estimates now include bounded fan-in connection overhead and
+producer routing/barrier metadata. Same-lane isolation, overlapping native pins,
+source retirement/acknowledgement, immutable selection validation, actual offline
+selection taps, multi-mask PCM invariance at three rates and ended-token cost
+fixtures are authored and unrun. Browser routing latency, full source/export
+matrices, correlated gain, click behavior and listening remain in the deferred
+qualification pass.
+
+Captured lane performance inventories now resolve physical source indices into
+stable project IDs at each recorded onset, including covered lane reorders.
+Revoice carries a separate bounded routing timeline derived from the existing
+instrument-performance journal; semantic intents remain unchanged. Live and
+rendered cross-excitation therefore address the same donor IDs. Missing coverage,
+conflicting indices and unbound onsets reject explicitly. Legacy takes without
+an inventory retain their explicit numeric source namespace and do not guess
+stable IDs. Render manifests hash the routing evidence. Fixtures are authored;
+runtime validation remains deferred with the broader implementation batch.
+
+### Continuation 159 — pinned scene contracts and candidate ownership (#1097, #1151, #1175)
+
+The scene layer now has an immutable versioned manifest validator, exact-version
+registry, bounded metadata pages, user-derived parent/override identities and
+future-schema inspection without activation. Physical controls expose units,
+ranges and geometry/physical/sound ownership. Complete patch references, world
+source/score references, physical observation requirements, paused transport,
+landmarks, source credits and authored resource bounds are explicit.
+
+Dependency preflight resolves the complete enabled variant: source, score,
+patch definitions, engine artifacts, parameter schemas, assets and observations.
+Optional missing material remains distinct from required missing dependencies.
+Named approximations require an explicit choice and retain changed-behavior
+receipts. Embedded/frozen playable material can remain available while optional
+source lineage cannot regenerate it. These are availability/API receipts, never
+listening or measured realtime-capacity evidence.
+
+The new candidate loader serializes preparation/retirement, fences selection and
+live document/routing identity, retains late canceled resources until confirmed
+retirement, and requires complete admission before exposing Apply. Its only
+publication policy is a synchronous fenced stopped replacement with a paused,
+unarmed receipt; it never implies a seamless transition. Isolated rehearsal is
+an optional independently owned adapter, and absence is explicit. Metadata
+selection and checks cannot mutate the active world. Final confirmation rechecks
+the base, preserving concurrent edits and output choices. Failed retirement stays
+charged and blocks replacement; committed state remains distinct from cleanup.
+
+These modules are the shared contract foundation. The boot/world candidate
+adapter, installed scene catalog, scene browser/cue integration, authored scores,
+save/reopen lineage and browser proof paths remain pending; no scene issue is
+marked complete by this contract work. Four/eight-lane sparse/medium/dense content,
+closure, lineage, future versions, cancellation and base-change fixtures are
+authored but unrun. Runtime testing remains deferred until implementation ends.
+
+Boot candidates now construct with deferred presentation: no animation callback,
+physical ticking, visibility listener, camera input or canvas resizing is admitted
+until explicit publication activation. A candidate cannot resume/step itself while
+unpublished, and cancellation does not own the active canvas backing store.
+Ordinary runtime creation retains immediate activation. Real-world candidate
+fixtures cover paused activation and canceled-candidate canvas preservation;
+these join the deferred runtime batch. Long-lived staged world leases and the
+scene-specific publication adapter remain the next integration step.
+
+### Continuation 160 — real staged score worlds and initial scene browser (#1097, #1151, #1048)
+
+Boot now exposes one owned, unadvanced world candidate with a synchronous guarded
+publication method. The same path serves ordinary startup/replacement and scene
+loading. Prepared scene worlds retain their world budget until either handoff or
+confirmed retirement; cancellation cannot activate their renderer or clock.
+Sound-only lane aliases no longer choose staged terrain families: explicit world
+theme IDs select terrain. Fresh score starts ignore prior cumulative distances.
+
+The initial installed catalog contains two original Crossing Corridors scores
+(four/eight lanes), pinned to the executing immutable build, one exact original
+sine definition and the real committed crossing observation. Per-corridor gates
+use new sorted source-lane selectors; unrelated corridors no longer trigger each
+other's mappings. Held sources leaving declared lanes end explicitly. This adds
+physical music source revision 7. These are initial crossing scores, not stand-ins
+for the six larger named scene-content issues.
+
+The actual adapter compiles pinned patches against bound engine descriptors,
+admits the combined shared source pools, prepares the real world through boot,
+and configures its physical authoring before returning a candidate. The initial
+adapter handles local, asset-free original variants; sampled material, external
+routing variants and named score substitutions require their own preparation
+adapters and fail explicitly. Audio contexts remain gesture-enabled. Publication
+adopts one new document, resets its clock/history, preserves the immutable scene
+origin and leaves transport paused. Saved projects retain the complete starting
+manifest/recipe alongside their independent current world checkpoint. Reopening
+checks exact origin hashes and executing build instead of silently reinterpreting
+an old score on a new source version.
+
+A lazy Scenes drawer now uses bounded metadata pages, mechanism/density/lesson
+filters, keyboard selection, physical landmarks, requirement/source details,
+explicit Prepare/Load/Cancel and the existing saved-project entry point. Selection
+never loads a world. Source-unbound builds remain inspectably unavailable. Load
+uses the existing final unsaved-edit confirmation and rechecks document/routing
+identity afterward. Active capture/history/world operations block scene admission.
+The initial UI explicitly leaves isolated rehearsal and starting-world thumbnails
+unavailable; authored approximations, cue/stage transitions, derived-scene export,
+more score content and full first-use/browser/reopen proof paths remain pending.
+
+Installed-catalog closure, origin round-trip/build mismatch, real world/patch
+preparation, lane-isolated crossings and held-source transfer fixtures are
+written, not run. All runtime validation remains in the final combined pass.
+
+### Continuation 161 — protected stage surface and one prepared NEXT owner (#1175)
+
+Stage mode now collapses file controls, structural world controls, step cells and
+the deep inspector while retaining the world, lane mix, performance controls and
+explicit Play/Pause/Stop/Panic. A compact CURRENT/NEXT strip names the candidate,
+preparation state and stopped-replacement policy. GO consumes the existing scene
+loader; it cannot create a second scene, note clock or transition. The browser can
+retain a ready candidate for the visible stage cue; ordinary close/cancellation
+retires it. Exit stage releases that preparation and restores the previous chrome.
+No scene automatically resumes after GO.
+
+Command and edit guards reject structural history/file/world/sound/routing changes
+while stage is active, including global legacy regeneration shortcuts before they
+mutate settings or suspend output. Mix/macros, actual release/junction performance,
+recording controls, camera, Stop/Panic and cleanup remain deliberate operations.
+Prepared-base readiness now includes actual transport and output identity; UI GO
+is disabled after the base changes, before publication. Capture/world/history
+admission rules still apply. Stage view state is presentation-local and is never
+silently restored from a saved project's UI data.
+
+Policy, cleanup, stale-base readiness and paused-GO fixtures are authored and
+unrun. Isolated rehearsal, measured seamless transitions and browser/accessibility
+qualification remain pending; no crossfade animation implies continuity. This
+implements the stopped-replacement policy only, with explicit unavailable paths
+for absent preview/transition adapters.
+
+### Continuation 162 — bounded observed sample cursor (#1130, #1224)
+
+Advanced owned sample playback now has a source/output-frame cursor contract and
+preallocated segment owner. Original-source endpoints convert through the pinned
+decoder rate. Explicit output-frame intervals retain reversals, gaps and seek
+boundaries; a full queue rejects rather than discarding an unrendered turn. No
+future motion is extrapolated and no private cumulative travel state is created.
+Linear or named zero-endpoint smoothstep interpolation preserves exact segment
+endpoints, with derivative admission including smoothstep's 1.5 peak factor.
+
+Prepared stop/wrap/reflect policies are distinct. Reflection uses decoded sample
+centers; wrap preserves fractional positions at the seam. At rest or after source
+coverage ends, the cursor holds and its gain fades to zero over an authored
+5–20ms bound. Explicit seeks expose a bounded two-head mix to the future reader.
+Reset reuses storage. State cuts retain the queue, actual position, rest/seek
+frontiers and immutable bank/map/rate identity, with validation before mutation.
+
+Cursor and source-rate fixtures are written and unrun. This is a renderer
+component, not a second physical mapper or a completed sampler. The bandlimited
+reader, sample-map capability extension, actual Worklet source, release children,
+shared source/PCM admission, capture/offline wiring and canonical travel adapter
+remain the next implementation span. Spectral, seam, browser and listening
+qualification remains deferred with all other runtime validation.
+
+### Continuation 163 — prepared bandlimited sample reader (#1130, #1024)
+
+The next sampler component is an original 128-tap Blackman-windowed sinc reader,
+with 128 phase intervals and nineteen logarithmic rate rows. Convex phase/rate
+interpolation avoids per-sample coefficient allocation. Each selected rate pair
+uses a conservative next-row cutoff for read derivatives up to four decoded
+frames/output frame. Finite-window alias rejection remains a measured gate, not
+a consequence assumed solely from the nominal cutoff. The primary interpolation
+foundation is [Julius O. Smith's windowed-sinc discussion](https://dsprelated.com/freebooks/pasp/Windowed_Sinc_Interpolation.html);
+no third-party implementation is imported.
+
+The existing fixed-bank worker prepares the coefficients cooperatively, verifies
+the generated byte hash, and admits the larger startup/copy footprint. Coefficients
+use a 2^-24 grid with exact row DC repair; this is a coefficient representation,
+not a 24-bit audio-quality claim. Build-time identity generation records the exact
+coefficient L1 bound (2.392466902732849) and 1,254,912-byte table. Render reads have
+no mutable filter history or extra physical lookahead: they access immutable sound
+material only. Stereo shares the same coefficients and explicit integer PCM guard
+regions; clamp/zero/wrap/reflect edge fetches are bounded. Fractional logical loop
+coordinates and seam crossfades remain the sample-source owner's job.
+
+The bank identity was generated as development data. Table/DC, fractional-phase,
+stereo, guard and high-tone alias fixtures are authored but unrun. Actual Worklet
+sample-source/release layering, sample-map capability publication, aggregate PCM
+ownership, travel wiring and live/offline integration remain in progress. No
+real-time voice capacity or listening quality is claimed by these components.
+
+The cursor also rejects an explicit seek that would overlap an already admitted
+seek fade. This bounds the future source to two simultaneous read heads without
+silently replacing one still contributing to the output. Continuous observed
+segments remain admissible through that fade, and the seek frontier is included
+in state validation. The fixed-bank result bound includes metadata overhead as
+well as the larger coefficient plane.
+
+### Continuation 164 — bounded multi-asset PCM sets (#1130, #1133, #1162)
+
+Advanced sample voices now have a shared multi-asset preparation owner. Up to
+thirty-two exact assets fit within one sixteen-MiB decoded-plane cap across attack,
+loop and release sources. Exact aliases deduplicate; conflicting variants reject
+before copying. Stable sorted asset indices and aggregate metadata/PCM identities
+bind the complete set, while each existing bank retains its verified source-rate,
+channel and PCM evidence. No per-actor PCM copy is introduced.
+
+Processor-copy loans share the existing bounded bank ownership path. Ready readers
+retain every source through Set discard, pending copies cancel coherently, and
+complete retirement is required before releasing aggregate metadata. Partial or
+unknown copy/consumer retirement retains accounting and blocks new set copies.
+A shared strict descriptor contract now serves individual and aggregate offline
+verification; actual plane storage and cross-asset aliases are checked before
+hashing, while stereo channels may share their own bank's contiguous buffer.
+
+Deduplication, stereo ownership, aggregate admission, later-bank cancellation,
+reader quiescence and tamper fixtures are written and unrun. Source-map selection,
+release-layer commands, actual sample Worklet registration and travel/render
+integration remain the next span. Runtime validation remains deferred.
+
+
+### Continuation 165 — carried donor routing at the audio frame (#1058, #1163, #1080)
+
+A carried voice now schedules its destination source lane alongside its fader
+control, even when both lanes have identical gain and pan. The original renderer,
+voice identity, articulation and selected-voice donor membership remain owned by
+the onset. Native routes use charged, bounded pairs of pre/post gain gates with
+an eight-millisecond causal fade. Late donor attachment observes the same actual
+scheduled curves. Old gates retire against AudioContext time, with at most eight
+retained lane paths and sixteen future automation points per voice/path. Routing
+failure invalidates every dependent donor graph before retaining unknown custody.
+
+Owned sources use stable lane tokens, independent of the eight reusable live tap
+slots. A scheduled MIX control applies the new identity only at its target render
+frame. Selected-voice membership stays on the control port, while lane tokens and
+actual fade state live in the fixed kernel owner. Retired/reused tap slots cannot
+redirect future transfers into unrelated donors. Tokens never recycle within the
+audio owner; metadata is charged in blocks, with a 4096-identity lifetime cap and
+an explicit refusal requiring a fresh owner at exhaustion. Runtime build identities,
+routing protocol, state ABI and declared typed storage advance together. Snapshot
+storage includes pending onset identities and in-flight fades without changing the
+existing source voice stride.
+
+Causal revoice resolves stable lanes at original onsets and explicit transfer
+intents only. Inventory reorder does not move held sources. The same owned pass
+renders dry lanes and selected-voice groups with convex transfer weights, including
+state cuts inside a fade. Native offline rendering shares the actual source-bus
+owner and native voice backend, with a separate bounded native-only tap inventory;
+master audio remains one direct source sum. Transfer commands are disclosed as
+derived realization controls and do not add musical onsets. Overlapping fades
+refuse explicitly instead of allocating a third active lane basis.
+
+Frame-boundary, identical-fader, stale-slot, selected-group, late native attachment,
+pruning, offline native no-retrigger, reorder and state-cut fixtures are written.
+They remain unrun with the rest of the frontloaded development pass. This closes
+a source-routing implementation gap; it is not an acoustic, browser, performance
+or complete backlog qualification claim. Sample-engine integration follows.
+
+
+### Continuation 166 — advanced maps through the existing sample content owner (#1130, #1133, #1224)
+
+The existing immutable sample-map schema now has an explicit owned renderer
+profile. It declares forward, reverse or position-driven source traversal, bounded
+loop crossfades and linear/equal-power seam gain laws. Position policies name
+stop/wrap/reflect, interpolation, observed derivative admission, rest/seek slew
+and wrap seams. The native-forward profile retains its previous normalized render
+identity and rejects advanced maps rather than dropping unsupported fields.
+Patch activation checks the actual engine capability; archived display metadata
+can inspect the supported owned profile without granting playback capability.
+
+Owned map preparation consumes the same deterministic semantic-onset selector
+and verified aggregate PCM metadata. Fractional original-to-decoded region and
+loop endpoints stay explicit; integer filter guards are separate. Attack and
+release assets resolve together, with pitch/rate limits checked for both before
+onset publication. Position-driven playback explicitly gives varispeed pitch to
+observed cursor derivative; note pitch selects the authored zone, and independent
+pitch offsets refuse. No release or cursor observation reselects an attack.
+
+Prepared loop metadata declares a fixed-period symmetric edge-held seam policy;
+a crossfade does not silently shorten the authored loop period. Actual sample
+rendering of this policy remains the next implementation step. Two logical voices,
+two layers, up to four read heads per voice and preallocated thirty-two-segment
+cursor pools have declared storage bounds, not a qualified real-time capacity.
+Preparation does not copy PCM or advance selection. Native compatibility, gain-law
+identity, frame conversion, selected release rates, position policy and unsupported
+read-domain fixtures are authored and unrun. The actual sample Worklet, shared
+backend/offline integration and travel mapper remain in development.
+
+
+### Continuation 167 — pooled sample layers on the shared kernel (#1130, #1224, #1079)
+
+The owned sampler now has a real source and processor kernel on the existing
+command heap, voice identity, source-tap and display infrastructure. It reads
+shared private PCM through the prepared sinc bank, preserves fractional forward
+and reverse playheads, and uses fixed-period symmetric edge-held seam heads with
+an explicit gain law. Sustain-loop release waits for a seam-safe exit instead of
+changing an active crossfade abruptly. The conservative peak policy covers
+correlated seam heads and simultaneous attack/release layers; mono sources use
+equal-power pan and stereo/mixed sources use the existing stereo-balance policy.
+No resampling quality or native timbre equivalence is inferred from that bound.
+
+Position cursors use preallocated views into fixed queue/scalar planes. Segment
+admission has a pure preflight path and field-based application; reading a sample
+does not allocate a loop policy or a cursor command. Settled rests skip source
+reads and output zero. Seeks use one held old head alongside at most two current
+seam heads; a release child keeps the total at four. Continuous pitch changes
+preserve source phase. Position-driven pitch remains tied to committed source
+coordinate derivative.
+
+A release-trigger sample is a child of its original logical voice and selected
+map entry. Its own envelope survives the parent envelope reaching zero. Child
+velocity, region, source-rate conversion and frame deadline remain explicit;
+generation cancellation and Panic fade all layers without spawning another
+release. The common kernel now lets such sources own their envelope completion
+while retaining the existing gate, command and retirement evidence. Cancellation
+release lengths also normalize to integer output frames before state capture.
+
+Source cuts contain all pooled cursor planes, actual playheads, layer envelopes,
+future controls and the exact prepared map configuration. Verification checks
+configuration, source/PCM identities, cursor domains and shared gate ancestry
+before staging any mutation; immutable PCM and filter coefficients stay shared.
+Forward/reverse period, child lifetime, position reversal/rest, cancellation,
+same-pitch ownership and complete state-cut fixtures are authored and unrun.
+The processor is implemented, but engine catalog publication, live preparation,
+sample-map onset commands, offline fixtures and canonical travel integration are
+still pending. It is deliberately not yet advertised as an available sampler.
+
+
+### Continuation 168 — prepared sampler ownership and processor retirement (#1130, #1079, #1162)
+
+The shared Worklet backend can now prepare the pooled sampler from a complete
+multi-asset PCM set and the existing sample-map selector. A ready processor must
+report the exact map/PCM/filter identity and support explicit state retirement.
+Changing the prepared map or decoded material requires another renderer. Every
+required asset and both selected layer pitch domains are checked before onset
+publication. Per-onset selection, source-frame derivative and release ownership
+have an owned-source receipt rather than a native-API label. Runtime metadata and
+maximum configuration storage are charged before processor allocation; source
+heap estimates now participate in the shared runtime reservation.
+
+The same voice accepts bounded position segments through execution and routed
+backend handles. Host and processor share one pure segment admission rule, retain
+future coverage/reversal/seek frontiers and reject overlap or excessive derivative
+before enqueue. A later processor refusal faults the source owner instead of
+silently continuing an obsolete path. Four-second release-child admission is
+clipped by the existing voice interval. Same-kit choke controls use a forced
+all-layer fade and never trigger another release; same-frame losers are silent.
+Explicit semantic release remains distinct from preview cleanup and Panic.
+
+A shared ownership audit found that native node disconnect alone did not confirm
+private PCM retirement. Current processors now drop their DSP/source graph in a
+fenced control-port operation, acknowledge the completed state release and return
+false from subsequent processing. Runtime reservations wait for that receipt or
+confirmed AudioContext closure. Missing or malformed acknowledgement retains the
+concrete producer and unknown accounting. Pending retirement is distinct from a
+failed retirement, including fault/dispose bookkeeping. Existing native disconnect
+evidence is retained for legacy API doubles, not promoted into measured acoustic
+or browser-resident-memory evidence.
+
+Preparation, missing/changed material, release tails, exact kit choke, position
+control, processor reference release, closure and unknown-retirement fixtures are
+written and unrun. Formatting/lint and provenance are the only checks in this
+frontloaded pass. The sampler remains absent from the public engine catalog and
+fixed offline adapter until material/audition/render and canonical travel wiring
+are complete. No new real-time capacity, listening or clean-CI claim is made.
+
+
+Lane-mix failure cleanup now carries an explicit force flag through native and
+owned backend ends. It can shorten an existing release and stop every child
+without treating cleanup as another semantic release. Native choke rebuilding
+retains that force policy. Source-forced release has its own kernel reason code,
+so its receipt is not mislabeled as Panic. Matching active-child cleanup fixtures
+are authored for both renderers and remain unrun.
+
+
+### Continuation 169 — shared sampler auditions and offline planning (#1130, #1162, #1058)
+
+The owned sampler now has a pinned two-slot engine descriptor, lane preparation,
+complete multi-asset source material, authored gesture controls and a fixed WAV
+adapter. Live and offline auditions resolve the same immutable onset identity and
+map selection. Forward/reverse loops, source-rate conversion, selected release
+children and fractional-region reading use the same processor. Position auditions
+carry a clearly labeled authored outbound/return source-frame program; they do not
+claim canonical physical traversal. Public capability metadata distinguishes the
+advanced renderer from the existing native forward-only sample profile.
+
+Offline causal planning counts full release/choke tails against the physical pool
+while enforcing the patch's logical gate limit separately. Forced choke events
+stop every owned layer without triggering another release. Finished custom-source
+slots retire before commands at the exact reuse frame. Captured lane inventories
+include explicit carried-voice transfers, and pitch updates preflight both selected
+reader domains. Position-driven causal export still refuses absent canonical
+travel binding instead of producing an unexplained silent cursor.
+
+Source material preflight charges the complete decoded PCM aggregate before
+decoding; render loans verify the exact asset inventory. Isolated auditions admit
+a four-second maximum child tail and retain actual kernel-end evidence separately
+from command application. Their selection receipts now include the actual asset
+and stable selection seed. Stereo Float32 WAV writing has a shared bounded encoder.
+
+Multi-rate forward/reverse/position control exports, deterministic selection,
+original release ownership and exact frame reuse fixtures are authored and unrun.
+Only formatting/lint and source provenance checks accompany this development
+batch. Listening, spectral/capacity qualification, the full suite and CI remain
+deferred until the remaining development backlog is implemented.
+
+
+### Continuation 170 — canonical physical source-position traversal (#1224, #1115, #1130)
+
+Travel intents retain immutable observations from the canonical accumulator:
+world/actor/generation, scope instance, metric/orientation, evidence precision,
+world origin, before/after coordinates and discontinuity/direction epochs. Held
+voices publish observed rests without beginning another note. Actor-journey
+identity continues across action changes; contact/action scopes retain their
+existing explicit lifecycle. Physical music interpretation advances to revision 8
+and the capture profile to physical-basic-v13 so old histories are not silently
+promoted into newly covered travel evidence.
+
+Position-driven sample regions may bind an authored traversal recipe to an exact
+physical mapping. Tape footpath consumes canonical signed-axis distance; one-way
+rubbing requires unsigned contact-path distance. Precision requirements, source
+frame/pixel units, origin offset, read-rate bound and end-at-discontinuity policy
+are explicit. Unsupported route coordinates and pitch-preserving glass traversal
+remain unavailable rather than borrowing another coordinate meaning or claiming
+stretch qualification. The existing sample-map owner retains asset selection.
+
+The shared planner maps only completed observations. Ordered writes in one tick
+occupy equal subspans of that observed tick duration beginning at its audio commit
+target; this is labeled interpolation, not measured intra-tick timing. There is
+no future-distance extrapolation or second cumulative distance clock. Real
+reversals remain separate segments. Scope/epoch/source-coordinate/output coverage
+checks prevent accidental jumps, overlap and unsupported read speeds.
+
+Live onset admission includes the initial cursor segment in the same processor
+command, and routed/execution-owned updates use the same planner as causal export.
+Normal release follows already admitted completed travel. A forced choke cancels
+future controls for that exact slot/token and ends every layer; it does not create
+a release articulation. Finishing a segment exactly at release retains its true
+endpoint. Position auditions remain an explicitly authored control program, with
+physical evidence reserved for the canonical adapter.
+
+Authored fixtures cover outbound/rest/return across walking/fall/landing, scope
+reset, absent contact/precision, ordered reversal within a tick, output-rate units,
+live owner continuity and identical forward/state-cut offline rendering. These
+fixtures are unrun. Only source formatting/lint, syntax and provenance checks have
+been performed; acoustic, listening, spectral and real-time qualification await
+the consolidated acceptance pass after the remaining development work.
+
+
+### Continuation 171 — actual sampler state inspection (#1130)
+
+Sampler tools can request one deduplicated, request-fenced processor snapshot.
+The response identifies its completed output frame, prepared PCM/map, selected
+zone and asset, original-rate region, nominal note ratio, actual decoded read
+derivative, unwrapped source cursor, loop activity/turns and the original release
+child. The main owner verifies frame/asset/range bounds and projects only bounded
+metadata; PCM and coefficient planes never enter UI state.
+
+Timeout, wrong producer/request identity and renderer retirement cannot publish
+a stale response as current state. Disposing the owner rejects a pending read.
+The retained diagnostic remains labeled processor state at its reported frame,
+not acoustic output. Actual child-state and pending-read retirement fixtures are
+authored and unrun; broad runtime validation remains deferred.
+
+
+### Continuation 172 — travel-owned circular spectra on the additive core (#1226, #1202)
+
+The existing spectral Worklet has an octave-circular additive mode, rather than a
+separate timer or playback engine. Its resolved recipe separates the frequency
+lattice reference (55 Hz by default) from the Gaussian amplitude-envelope center
+(700 Hz), declares width as log-frequency standard deviation, caps the authored
+band below 0.4 of the output sample rate and reserves eight to ten fixed slots
+including silent recycling guards. Period ratios other than exactly two are
+rejected by content validation and runtime preflight. Original phase policy and
+amplitude normalization are explicit; perceptual endlessness is not asserted.
+
+Canonical signed-axis observations determine unwrapped cycle phase from origin
+and pixels/cycle. Scope, mapping, evidence precision, discontinuity epoch and
+completed-tick interpolation are fenced. Journey phase survives ordinary action
+changes; an action-scoped patch resets only at its authored instance. A rest holds
+distance phase while an observed owned gate may sustain its current tone. Reverse
+travel uses floor-based negative phase, not JavaScript negative remainder. Live
+and offline updates use one planner and one shared execution owner. Normal release
+follows the final admitted observation; rejected source controls fault their owner.
+
+The spectral source prepares circular views and oscillator slots before onsets.
+In-band carrier phases survive octave reindexing; only silent outer guards are
+recycled. Sine lookup is shared with the existing additive renderer, and control
+weights refresh at a bounded interval with convex amplitude interpolation and a
+declared 0.8 L1 bound. Source cuts retain the unwrapped phase/frontier, integer
+lattice state, carrier phases, gains and resolved recipe planes. Restore validates
+these before changing the shared gate and rehydrates only active source caches.
+
+Original Endless Stair, Counter-walk and explicit action-scope instrument recipes
+are available through the existing content collection. CLIMB, WINDOW, CENTER and
+WEIGHT are onset controls, with their units and scope visible. Typed compilation
+advances to v12 for octave/cycle/count quantities while preserving prior archived
+artifact admission. Directed-route coordinates, non-octave variants, contact-only
+stepping-stone realization and the authored Impossible Staircase world remain
+separate pending integrations.
+
+Frequency/reference, Gaussian-width, negative phase, wrap handoff, ten-second rest,
+forward/return, all three output rates, peak bounds, actual kernel state cuts,
+original content and canonical causal-render fixtures are authored and unrun.
+Formatting/syntax/provenance are the only current checks. Spectral seams, measured
+render cost, listening direction/ambiguity and browser acceptance remain deferred.
+Primary historical foundation: [Shepard (1964), original-paper scan](https://www.brainmusic.org/MBB91%20Webpage/Pitch_I_Shepard.pdf).
+
+
+### Continuation 173 — immutable sound-seed window foundation (#1154, #1164, #1170)
+
+Owned master captures, individual causal render files and frozen seeds now share
+a bounded source-window reader. It checks the original WAV inventory and exact
+embedded manifest, copies only the selected PCM region, admits one original
+reader at a time and awaits its retirement before publishing a private window.
+Streamed captures yield between bounded chunks. Reader cancellation and unknown
+retirement retain concrete ownership and resource accounting.
+
+The shared background worker analyzes stereo min/max envelopes at bounded
+resolutions, raw/baked peak and RMS, clipping, silence and channel correlation.
+Only explicit edge fades change samples; no normalization, pitch inference or
+silence removal is implicit. Exact frame/rate and parent-manifest identities,
+printed effects and at most sixteen ancestry links are embedded in a new Float32
+WAV. Missing captured frames remain labeled missing through nested trimming; a
+fully baked seed can play without retaining its original take. Regeneration and
+playback prerequisites are separate.
+
+The latest-generation analysis owner retains the previous candidate on failure,
+serializes source replacement, fences stale worker results, and retires workers,
+input windows, artifacts and waveform reservations in dependency order. Asset,
+compile, audition and durability readiness remain independent. Each rendered
+file now exposes its actual immutable manifest for harvesting a selected stem or
+return rather than substituting the bundle manifest.
+
+Impulse, streamed sole-reader, stereo anti-phase, clipping, gap propagation,
+nested-source and resource-retirement fixtures are authored and unrun. The compact
+editor, seed recipe compiler and project application integration are the next
+dependent work. Only formatting, syntax and provenance checks accompany this
+development batch.
+
+
+### Continuation 174 — harvest dock, seed recipes and fixed-rate playback (#1154, #1164, #1170)
+
+Completed captures and individual revoice files can open a compact dock beneath
+the world. The selected source identifies LIVE CAPTURE/OFFLINE REVOICE, exact tap,
+original frame count/rate and immutable source reference. Numeric trim/fade fields,
+separate touch/keyboard handles, single-frame nudges, cached stereo min/max plots,
+frame/time rulers and bounded zoom share the original frame domain. Optional
+low-amplitude edge-crossing suggestions show their displacement and require an
+explicit edit followed by a new freeze. Hollow ancestry marks distinguish old
+material from the next actor's semantic onset. Missing/unknown coverage, silence,
+clipping and stereo correlation stay separate from preparation failures.
+
+Hammer seed and explicitly named recorded Route relic compile to the existing
+owned sampler. Unpitched now means actual fixed source-rate playback in attack,
+release, live/offline selection and processor diagnostics, with no inferred root.
+Pitched zones retain explicit varispeed limits. A voice-owned one-pole tone filter
+uses semantic onset velocity, independently of output gain, with bounded cutoff
+and terminal fade. BODY, EDGE and DAMP are onset macros. Source state retains and
+validates filter histories. The sampler runtime advances to owned-sample-v4-fixed-rate;
+the command width and shared voice stride are unchanged.
+
+Ice dust uses the existing actor-owned granular source with declared 65 ms grains,
+16 Hz density, bounded 40–90 ms/8–24 Hz macros and observed horizontal world
+position controlling source position. Its current renderer requires a declared
+root; the UI precisely refuses Unpitched Ice dust while keeping sampler recipes
+available. Completed motion causes now retain measured positionXWorldPixels;
+instrumentPerformance identity advances to 4 and capture profile to
+physical-basic-v14. Old captures are not relabeled as containing this field.
+
+Each seed pack contains its verified WAV plus a deterministic, hashed recipe with
+pitch declaration, printed processing and bounded ancestry. Raw ancestors are
+regeneration evidence rather than required playback assets. Original WAV annotation
+and recipe/frame inventory are compared before staging. Compilation uses the
+shared bound worker; normal content verification, isolated foreground audition,
+IndexedDB commit and undoable lane selection are reused. Asset, patch, audition
+and durable readiness are independent. Failed storage preserves inspectable and
+exportable in-memory material; failed or canceled preparation preserves the old
+patch. The default recipe adds no creative effect graph and flags printed effects
+for destination-send review.
+
+Audition has an explicit one-pass or three-pass choice with an eight-second sample
+window per pass. Stop, Escape, dock close, Panic and page suspension cancel the
+owned preview. A trim/recipe revision fences stale results and prevents applying
+an older patch. Disposal retires previews before stages, seed readers before
+capture/render owners, and preserves accounting on unknown retirement.
+
+Recipe identity/closure, fixed-rate attack/release, sampler filter, stale compile,
+private pack verification and retirement fixtures are authored and unrun. No
+runtime suite, listening, browser layout, touch, storage reload or end-to-end
+onset-count qualification is claimed. BODY FIT/COMPONENTS, derived rebuilds and
+advanced warp remain subsequent dependent work.
+
+
+### Continuation 175 — linked stereo component analysis (#1178, #1170)
+
+The same seed dock now has a COMPONENTS page with three aligned cached stereo
+waveform strips. A bounded shared-worker job computes linked root-mean-channel
+spectral magnitudes, temporal/frequency median estimates and real soft masks over
+the unchanged complex phase of both channels. The original first-party FFT is
+reused at 512/1024/2048 points, quarter-window hops and periodic square-root Hann
+analysis/synthesis. A second spectral pass avoids retaining all complex planes.
+Each job has explicit matrix/frame/memory limits, cooperative progress and
+latest-draft cancellation. No Python or external runtime dependency is shipped.
+
+Transient-like and sustained-like Float32 components preserve source alignment;
+the residual is their actual time-domain complement. A separate neutral
+recombination artifact and measured maximum/RMS/relative error accompany the exact
+window, padding, crop, mask margin and linked-stereo recipe. Every component embeds
+its parent asset/manifest identity, frame domain, printed effects and algorithm
+revision. These are estimates, not isolated miners, instruments or physical modes.
+Low reconstruction error does not qualify perceptual separation.
+
+Selecting original, a component or neutral recombination feeds the same recipe,
+compile, isolated audition, durable installation and undoable lane application
+path. An additional dry material comparison uses the existing native source-rate
+prelisten adapter, capped at eight seconds. Its receipt cannot satisfy instrument
+control-audition readiness. Foreground prelisten serializes these comparisons.
+The derived owner keeps last-good artifacts on failure, retires accepted workers
+before source windows, and keeps component readers before waveform/accounting
+release. Trim changes visibly invalidate derived readiness.
+
+Silence, impulse, sustained tone, mixed attack, stereo anti-phase, neutral
+reconstruction, cancellation, quota bounds, source-rate comparison and ownership
+fixtures are authored and unrun. Formatting and syntax checks only. Creative
+simultaneous sample/granular/modal child graphs, saved per-component revoicing,
+modal estimation and browser/listening acceptance remain dependent work.
+Reference algorithm context: [librosa 0.11.0 HPSS documentation](https://librosa.org/doc/0.11.0/generated/librosa.decompose.hpss.html);
+this is an original bounded implementation, not a measured oracle match.
+
+
+### Continuation 176 — inspectable body-fit baseline and modal recipe (#1177, #1170)
+
+BODY FIT now runs in the same bounded shared-worker/source-window ownership path.
+It begins with linked stereo Hann spectral peaks, refines frequency using local
+phase tracks, fits amplitude log-decay, and solves stereo damped cosine/sine
+coefficients. Growing, insufficient, out-of-range or poorly exponential tracks
+are declined. Confidence remains a baseline estimate; clipping, observed fraction
+of amplitude T60 and minimum observation-limited mode separation are explicit.
+Silence can produce a declined estimate with an unchanged residual rather than
+invented modes. Root pitch, material, geometry and impact force are not inferred.
+
+The original FFT supports up to 65536 points only behind an explicit offline
+maximum; ordinary worklet construction still admits only 512/1024/2048. Observed
+frames and zero padding are separate receipt fields. The dock plots the actual
+linked source spectrum and estimated frequency marks, exposes exact frequency and
+T60 edits plus Pin/Remove/Merge, and refits saved choices under a new generation.
+Pinned modes survive automatic refinement of the remaining candidates. Spectrum,
+waveform and mode rows refresh on analysis changes rather than scanning PCM on
+presentation frames; rebuilt mode rows release their old listeners.
+
+Stereo phase-preserving reconstruction and its actual Float32 residual become
+independent immutable seed artifacts with original frame alignment and ancestry.
+Model RMS error is reported separately from neutral complement error. The common
+foreground dry-material comparison can audition either material after staging;
+its receipt does not mark a new instrument ready. Failed/stale fitting keeps the
+last-good artifacts and ordinary sampler/granular use available.
+
+A Found body recipe compiles selected estimates to the existing native modal
+engine with a separately declared reference pitch. Exact fit/selection receipts
+and the original frozen material remain in the content pack. New excitation is
+explicitly an approximation; the original stereo phases remain analysis evidence.
+The renderer's frequency-ratio and 2.5-second T60 limits reject unsupported modes
+before replacing a lane, without silent clamping. There are no extra semantic
+onsets for the fitted oscillator children.
+
+Known decays/phase, close-mode observation limits, padding, silence, growth,
+clipping, pinned/manual edits, stale cancellation and modal recipe fixtures are
+authored and unrun. No estimator accuracy, listening, performance-grid, production
+browser or Found Bell end-to-end qualification is claimed. Composite creative
+exciter/body graphs, richer body engines and lineage rebuild coordination remain
+subsequent development.
+Research context: [Lagrange and Scherrer, DAFx 2008](https://dafx.de/paper-archive/2008/papers/dafx08_21.pdf)
+and [Sirdey et al., DAFx 2011](https://www.dafx.de/paper-archive/2011/Papers/61_e.pdf).
+The shipped baseline is original code and is not an implementation or validation
+of their higher-resolution estimators.
+
+
+### Continuation 177 — explicit selected seed-lineage rebuild (#1236)
+
+Offering another revoice file to an occupied seed dock no longer replaces the
+current frozen material implicitly. Keep recorded material, independent harvest
+and a reviewed derived-branch plan are distinct choices. The plan binds the exact
+original take/revision/semantic hash, old/new resolved patch receipts, source rate,
+timeline origin, tap, complete parent frame range, fades and selected component/
+modal/recipe closure. Current captures retain their original source patch receipt
+in seed ancestry. Older origins lacking it remain playable and report regeneration
+unknown rather than acquiring fabricated provenance.
+
+Preflight reports missing prerequisites, unsupported realization and unknown
+coverage separately. A changed tail cannot silently shorten a selected region;
+a changed take, rate, origin or tap requires explicit new material/coordinates.
+Captured master PCM cannot masquerade as a covered semantic revoice. The selected
+DAG is bounded and cycle-checked; effective recipes and patch receipts contribute
+to the plan hash. Numerical reproducibility across builds remains unqualified.
+
+Preparation reuses the owned source-window, worker analysis, component, modal,
+content verification and isolated installation owners in dependency order. Only
+affected selected stages run. Original asset nodes, existing project references
+and other projects are never deleted or rewritten. A new branch gets new artifact
+hashes, exact analysis ancestry and its own compiled pack. Its waveform, changed
+hashes, staged patch and target freshness are visible beside the kept material.
+Audition, durable save and one undoable lane Apply remain explicit separate actions.
+Document, selected lane, project revision and lab/source revision fence publication
+and Apply. New source offers cancel old in-flight preparation.
+
+Failed/canceled preparation retains the original seed and previous complete branch.
+Retirement releases auditions before stages, modal before component parents and
+workers before input windows. Unknown retirement retains concrete owners and blocks
+further mutation. Durable material is kept if later project application fails.
+
+Matching-input plan identity, unchanged old material, changed source/tail/rate/tap,
+missing old patch receipt, missing component closure, isolated branch preparation,
+stale target, corrupted plan and reservation cleanup fixtures are authored and
+unrun. The integrated closure currently covers a direct revoice window, its
+components, fitted bodies and current ordinary recipes. Arbitrary imported DAGs,
+qualified warp/graft descendants, reinterpretation/reperformance coordination and
+shared two-project storage/browser acceptance remain subsequent work.
+
+
+### Continuation 178 — finite audio exciter into an actor-owned body (#1216, #1233)
+
+The existing owned sampler now optionally feeds a private 1–8 mode linear body.
+This is an actual audio-excitation path: silent PCM leaves every mode at zero.
+Detector envelopes, parameter modulation and sealed feedback ports reject the
+finite-audio template. A typed graft descriptor retains exact exciter/body/pickup
+references, declared calibration, articulation, cost dimensions and capability
+requirements. It compiles to an ordinary sampler patch, not a cable-graph runtime.
+
+Each modal state contracts by a damped complex rotation. Injection coefficients
+sqrt(1-r²)/sqrt(declared input energy), a measured cumulative stereo-input cap and
+an L1-bounded signed observation bound the state/output independently of master
+protection. Coefficients prepare at onset; the audio loop has no allocation or
+trigonometric/table construction. The input has 20 Hz DC blocking, declared finite
+support and a terminal drive fade. Calibration overflow caps the last injection,
+stops further drive and retains a processor diagnostic; the dry path stays under
+its own source envelope. This is normalized audio calibration, not physical force.
+
+A body tail continues after the sample gate/release and ends under its explicit
+four-second/owner deadline or forced fade. Both states remain on one logical
+source and reuse the existing physical pool/tail admission. Same-pitch actors own
+independent modal/DC/calibration state. Normal release preserves resonance;
+choke, Stop and Panic clear only the owned body. Loops, reverse/position-driven
+excitation and release-trigger layers are unavailable in this finite template.
+Independent bends reject rather than retuning a ringing body silently.
+
+Original tin/wood modal body components and a reviewed fitted body can receive a
+frozen seed. Exciter playback stays fixed-rate while the body has a separately
+declared root. EXCITE, BODY, DAMP and MIX map to real onset parameters with their
+equations visible in three compact EXCITER → BODY → PICKUP/MIX slots. Signed A/B
+pickup weights are authored observation maps, not spatial geometry. Replacements
+are next-onset-only; existing voices keep their prepared bodies. The same recipe,
+isolated cue, save/Apply and selected lineage-rebuild paths are reused.
+
+Sampler state storage expands to 144 scalars per slot, within its unchanged
+40-field command width and shared logical voice stride. Source cuts bind the exact
+body profile and validate radius, rotation, injection, observation, finite support,
+control and calibration state before mutation. Render cost includes modal count;
+byte reservations include the enlarged source plane. Live/offline control and
+causal renders retain the independent body tail budget. Current runtime becomes
+owned-sample-v5-feedforward-body with source configuration v3.
+
+Silent/excited input, tail ownership, calibration overflow, same-pitch isolation,
+forced cleanup, register rejection, complete state restore, typed-port rejection
+and normal compiled recipes have authored, unrun fixtures. Formatting/syntax and
+provenance only. Peak/decay/listening/device-grid qualification remains deferred.
+Continuous travel excitation, shared prepared surfaces, sealed reed/bow outer-body
+templates and their nursery scene remain subsequent work; they are not relabeled
+as supported by this finite-strike adapter.
+Context: [Bilbao, Ducceschi and Webb, DAFx 2019](https://dafx.de/paper-archive/2019/DAFx2019_paper_22.pdf)
+motivates explicit treatment of nonlinear feedback. This original feed-forward
+contraction does not implement that paper's nonlinear mechanical network.
+
+
+### Continuation 179 — contact-coordinate circular stepping stones (#1226)
+
+Circular spectra now have an explicit contact-coordinate mode alongside continuous
+canonical travel. A completed ContactSpanBegan support anchor or ContactResolved
+actor position projects a bounded immutable observation with world/generation,
+actor, mapping/graph revision, source event/sequence, contact instance and source
+tick. Support-cell coordinates and actor positions at a resolved contact have
+distinct labels. Partial/stale/missing observations cannot become valid contact
+pitch, and old captures are not promoted to containing these coordinates.
+
+A new onset samples the declared world axis, origin and pixels/cycle exactly once.
+Its one-frame constant phase segment adds no interpolated travel, timer ascent or
+extra semantic trigger. Negative phase uses the same floor-based lattice as the
+continuous adapter. The existing kernel, command width, partial pool and live/
+offline/state-cut paths are reused. Authored control auditions remain explicitly
+nonphysical and need no invented contact.
+
+The original Stepping stones recipe uses percussive envelopes and actual observed
+contact coordinates. It is available through the circular collection, now content
+version 0.2.0. Source/library and render summaries distinguish contact onsets from
+continuous signed-axis observations. Runtime becomes owned-spectrum-v8-contact-coordinate;
+physicalMusic is 9 and capture profile physical-basic-v15.
+
+Negative contact phase, identity/coverage rejection, source event ancestry and
+one-contact/one-onset revoice fixtures are authored and unrun; existing collection
+fixtures now expect the additional recipe. Formatting/syntax and provenance only.
+Directed-route coordinates, authored Impossible Staircase geometry and listening/
+spectral/browser acceptance remain pending independent integrations.
+
+
+### Continuation 180 — owned rectangular audio membrane foundation (#1210)
+
+An original centered-time, five-point finite-difference membrane is now an owned
+shared graph processor in both the live Worklet and offline kernel. The initial
+8/16-site interior grids have a one-cell fixed-zero Dirichlet halo. Lossless
+fundamental tuning derives lambda-squared from the discrete minimum eigenvalue;
+the actual two-dimensional Courant bound is enforced at <= .49, below .5.
+Positive centered velocity loss has separate prepared long/short amplitude T60
+coefficients. DAMP slews their positive interpolation; tuning/grid changes prepare
+a new graph and retain the old body's independently owned tail.
+
+The discrete energy is half the squared time difference plus half lambda-squared
+times the cross-time edge-gradient product. The strict Courant domain makes it
+positive. Bilinear excitation has L1 one and L2 <= one. Before each nonzero
+injection, an energy-norm triangle bound caps admitted force against the remaining
+unit energy budget. This is independent of output protection; cap counts remain
+visible. The positive energy lower bound derives a conservative displacement and
+pickup peak bound. Nonfinite/excess energy clears and quarantines only this body
+in live/owned graphs; a faulty offline render still cannot publish a clean receipt.
+
+Three Float64 wave planes and controls allocate at preparation, with no per-sample
+allocation or coefficient construction. Independent strike and left/right pickup
+coordinates use normalized interior-grid units, not meters/Newtons. Stereo input
+is explicitly (L+R)/2, including anti-phase cancellation. Moving a pickup changes
+observation only. The full plane rotation, wave history, smoothing targets, energy,
+frame and fault state transfer under exact rate/configuration identity. Graph-level
+restoration continues to use deterministic preroll. Cost includes grid updates,
+energy edges and update rate, with up to four prepared bodies plus host overlap.
+
+Quarry effects now expose a compact Rectangular skin surface: actual excitation
+bus, prepared grid/tuning/T60/return and independent live coordinate/loss controls.
+Inspection requests decimated 8x8 modeled-audio displacement and actual energy at
+the existing four-Hz maximum; it never drives DSP stepping or terrain deformation.
+Saved defaults reuse the normal rack; captured controls and causal revoice use the
+existing shared clock/receipt path. The authored rectangle explicitly has no
+terrain topology binding yet.
+
+Sine-mode independent reference, symmetry, small-signal superposition, positive
+loss, boundary zeros, observation-only movement, internal excitation caps, state
+restore, unsupported masks and 8/16-grid with 1/4-body cost fixtures are authored
+and unrun. No dispersion/deadline/listening/browser qualification is claimed.
+Mapped/admitted contact excitation, terrain revision binding, independent held
+preparation owners and proof scenes remain subsequent work for #1210/#1215.
+Research context: [Fontana and Rocchesso](https://arxiv.org/abs/cs/0101003)
+discusses geometry-dependent wave-mesh dispersion. This original finite-difference
+implementation does not copy or claim qualification of the Faust mesh.
+
+Static API review also corrected travel-effect reservation retirement to call the
+owned reservation release method, including source end and disposal paths.
+
+
+### Continuation 181 — localized loss preparation for shared skins (#1210, #1215)
+
+The rectangular body now has four distinct touch slots in its existing typed
+control adapter. Each patch contributes a normalized parabolic-disc loss field;
+the deterministic maximum combines overlapping patches. Positive centered-velocity
+loss changes the wave field locally, rather than multiplying the output gain or
+adding excitation. The field slews over eight milliseconds. Moving/releasing a
+patch cannot restore dissipated energy. A patch too small to reach any grid site
+is declined before mutation; coarse-grid silence is not called successful damping.
+
+Touch targets are sample-frame AudioParams, with Float32 targets shared by owned
+rendering. Constant blocks avoid per-frame field rebuilding; changing targets
+rebuild the preallocated target field once per sample at most. Current/target
+fields, exact touch slots and smoothing state join the actual source cut. Cost and
+byte admissions include the additional fields and worst-case target rebuild work.
+The worklet tolerates Float32 representation of the admitted radius endpoints,
+then retains canonical endpoints rather than quarantining legal .08/.18 controls.
+
+The skin view exposes two explicitly authored manual touch slots alongside
+independent strike and pickup coordinates. Preparing another graph resets those
+manual slots to released, and inspection projects actual backend touch state.
+These controls are not relabeled as physical contact owners. Contact-span bindings,
+map/topology revisions, old-tail rebinding and lesson/world integration remain the
+next mapping/ownership work. Runtime becomes owned-dirichlet-membrane-fd5-prepared-loss-v2.
+
+Local field support, two-slot independent release, no silent-source excitation,
+monotone energy while moving/releasing a patch, exact field-state restore and
+underresolved/Float32 endpoint fixtures are authored and unrun. This adds a
+loss-only preparation mechanism; compliant contacts, rattles and mass attachments
+remain unavailable. Formatting/syntax/provenance only; all runtime qualification
+is still deferred with the rest of the development pass.
+
+
+### Continuation 182 — mapped preparation commands and retained body ownership (#1210, #1215, #1233)
+
+Prepared surfaces are now a validated optional physical-graph feature. Named
+world-to-normalized maps retain authored region-instance, source-edit and bound
+terrain revisions. Loss-only touch and independent left/right pickup mappings
+consume actual completed support spans, source lanes/actions and source facts
+inside the existing causal music engine. They emit a separate bounded command
+stream, not note begins, child voices or a second UI collision mapper. The same
+semantic score timeline supplies command time; stationary observations refresh
+continuity, while unknown coverage, action/actor/contact loss and map changes
+release owned preparations. No camera or presentation clock supplies coordinates.
+
+The audio adapter binds an explicitly selected current membrane to document,
+physical execution/world/generation, surface/map, owner route, graph hash, node
+and processor revisions. An immutable bodyInstanceId hashes that identity. One
+DSP node cannot masquerade as multiple surface bodies. Four touch slots and one
+pickup owner per side admit independently; touch slots project to existing positive
+loss parameters, and pickup end retains its last observation without adding energy.
+Unchanged observations avoid repeated native automation writes. Admission and
+submission remain separate from applied/acoustic evidence.
+
+The existing graph host now addresses a retained body by its original route/hash,
+with its actual old-tail deadline. The supported cutover is keep-old-tail: held
+contacts remain on their exact old body, while new contacts use an explicitly bound
+replacement. Late old-map commands cannot prepare the new body. Physical contact
+or actor end closes every matching retained contribution, preserving another
+actor's touch. Closed-contact ledgers prevent late updates from resurrecting a
+released preparation. Other rebind/both policies are unavailable, not inferred.
+Unknown native cleanup retains binding metadata/reservation until actual body
+retirement; Stop/document retirement submit owned body clearing.
+
+Physical graph authoring can stage a reviewed rectangular contact map using the
+observed terrain revision. The skin surface selects/binds that saved map and
+projects CURRENT versus RETAINED TAIL body IDs and actual contact bindings. Manual
+touch inputs yield to assigned contact owners. Body-specific quarantine/Panic
+leaves unrelated graph branches alive. Message-port body Panic is captured as a
+separate operation; command revoice declines it because its applied audio frame
+is unknown rather than treating submission time as renderer proof.
+
+Mapped preparation commands and their original ancestry accompany each journal
+intent batch without changing musical onset counts. Logical held mapping state
+is checkpointed and checked against the physical frontier. Re-performance compares
+commands separately, branch recording retains them, and sound-only query explicitly
+distinguishes dry source output from captured effect commands. physicalMusic is 10
+and the capture profile is physical-basic-v16; older takes acquire no fabricated
+preparation coverage. The mapping observer and body metadata have bounded, separate
+resource estimates; exact audio body state remains in the existing DSP owner.
+
+Authored unrun fixtures cover stationary/unknown support, mapping state restore,
+multiple intentional musical begins beside one preparation, two touch owners over
+body replacement, stale maps, independent release, pickup limits, body alias
+rejection and unknown retirement accounting. Formatting/syntax/type/provenance
+checks are the only validation in this development pass.
+
+Mapped per-source strike coordinates/force envelopes, prepared modal-bar masks,
+qualified rebind/both policies, irregular terrain geometry, the Three hands lesson,
+spectral/listening/deadline and production-browser acceptance remain subsequent
+work. This batch establishes loss/pickup ownership on the fixed rectangle; it does
+not claim a qualified shared physical instrument or complete #1210/#1215 acceptance.
+
+
+### Continuation 183 — canonical directed-route circular spectra (#1226, #1182)
+
+The existing route atlas now retains a stable observed entry ID, previous completed
+coordinate/tick and actual last motion source event/sequence. Explicit teleports and
+coordinate jumps exceeding the observed movement plus declared projection tolerance
+invalidate the route. Qualified data is labeled completed-route-endpoint-projection;
+authored versus measured-trace geometry remains visible. Legacy state without a
+captured entry is not promoted to canonical directed-route evidence.
+
+The single TravelAccumulator now admits a qualified-route-arc-pixels variant with
+actorJourney lifetime, directed-route orientation and a held voice without distance
+crossing notes. It consumes the atlas after an actual entry, primes its reference
+at the first covered endpoint, and only the last motion fact for each completed
+actor tick projects that endpoint. A U path or ordered loop seam can advance route
+phase while signed world-X returns to zero. Actual backtracking within qualified
+route geometry reverses phase; stationary observed ticks add no distance. Unknown
+entry/order, stale/changed geometry, teleport or missing coverage ends the source
+instead of bridging a gap. Entry/revision identity and exact endpoint reference
+join canonical travel cuts. Route changes participate in mapping dependency fences.
+
+Circular control mode 2 consumes that canonical route evidence through the same
+owned partial pool, phase planner, live atomic commands, offline render and source
+state-cut path. It requires actorJourney and endpoint precision, retains its exact
+route/branch/entry and rejects a segment-precision claim or inconsistent distance
+origin. Compiled patches reject unsupported mode/scope/axis combinations before
+preview. The original Route staircase recipe joins the circular collection at
+version 0.3.0; a physical-graph staging action names the required route articulation.
+Source/library/render summaries distinguish route arcs, world axes and sampled
+contact coordinates without claiming perceptual endlessness.
+
+The source runtime becomes owned-spectrum-v9-route-coordinate; physicalMusic is 11
+and capture profile physical-basic-v17. Route revoice declines older capture
+versions. The physical observer memory estimate increases for the retained route
+metadata. Its numerical projection is authored route distance, not proof of an
+unobserved physical path between coordinate writes.
+
+Controlled atlas/accumulator fixtures cover U-route versus signed-X, a 1024-pixel
+ordered loop, observed rest, reversal, complete route-state restore, missing entry,
+teleport, foreign branch and segment-precision rejection. A short causal render/
+state-cut fixture and old-capture rejection are authored and unrun. Existing content
+fixtures now expect five circular recipes. Formatting/syntax/provenance only; no
+browser, spectral, listening or render-deadline qualification is claimed.
+
+The Impossible Staircase world, comparison oscillator and visual lesson remain
+pending. Reverse traversal through an ambiguous/unqualified loop seam still
+ends under the atlas policy; this batch does not infer route orientation there.
+Full multi-segment path qualification and broader route-atlas acceptance remain
+separate from this completed-endpoint adapter.
+
+
+### Continuation 184 — finite spatial sources inside persistent bodies (#1210, #1215)
+
+The membrane now accepts four independent fixed-point finite exciters through a
+64-command frame-addressed heap. Prepared 4/8/12 ms raised-cosine pulses have unit
+sample area; amplitude is normalized model impulse area, not Newtons. Stereo
+input and all source forces share one spatial L2 energy admission budget before
+injection into the existing wave field. The body, loss preparations and pickups
+persist after each source ends. There are no per-actor mesh copies or implicit
+restarts. Sample processing uses fixed typed storage without per-sample packets.
+
+The worklet reports queue admission, exact application and exclusive finite-end
+frames. Main-thread transport validates entire bounded receipt packets before
+releasing command ownership. Malformed evidence or uncertain delivery quarantines
+that body and retains its metadata until producer retirement. Offline completion
+requires every admitted strike to finish. Native owner routes expose exact body
+command submission and observers; old graph tail deadlines now include the last
+admitted finite drive. New strikes require the current body, while already queued
+sources remain with the retiring body. Owned graph export rejects quarantined or
+rejected body branches before artifact publication.
+
+Complete private state cuts include pending heap entries, active pulse cursors,
+receipt rings and their frame frontier. Authored fixtures cover spatial
+superposition, finite support, queue order/capacity, overlap rejection, panic,
+exact transfer and atomic malformed-receipt rejection. A separate capture repair
+marks rejected effect capture as a coverage gap for immediate and buffered
+outcomes. These fixtures are unrun; only formatting, syntax and provenance checks
+are performed during this development pass.
+
+This is the DSP/transport primitive. Physical mapping to finite source intents,
+captured body-strike replay and the multi-actor proof scene remain dependent work;
+API queue submission alone is never reported as applied acoustic evidence.
+
+
+### Continuation 185 — observed finite body sources and captured replay (#1210, #1215, #1233)
+
+A validated prepared-body instrument maps a direct ContactSpanBegan or
+ContactResolved semantic source to a saved surface ID/revision, one prepared
+4/8/12 ms pulse and normalized amplitude. Completed support evidence and matching
+terrain/map revisions are required. Resolved-contact terrain revision is retained
+only when the complete batch has identical before/after revisions. Unsupported
+travel, tonal, feedback and swarm compositions decline rather than silently
+retuning a shared body or changing source cardinality. Fixed prepared-body tuning
+is explicit; source note pitch does not retune the common field.
+
+The normal causal dispatcher now has an owned prepared-body sink. It resolves the
+actual current body, admits finite intervals against four simultaneous exciters,
+retains original intent/voice/onset/contact/map/body ancestry and awaits exact DSP
+application/end or actual body retirement. One source end releases only its
+semantic gate; it cannot erase another actor's shared energy. Stop and execution
+replacement clear the owned bodies through their existing host. Metadata and
+retirement uncertainty remain bounded/accounted. Two intentionally mapped intents
+from one contact stay two sources; mesh sites and finite DSP children add no
+semantic begins.
+
+Applied finite commands join the existing effect-performance capture with exact
+source-intent audio-frame anchors and processor acknowledgment evidence, without
+claiming acoustic output. Captured replay checks unique source ancestry, mapped
+revision, amplitude, pulse and exact node, then drives the common owned body at
+the projected source frame. Original body-force sources receive no additional dry
+oscillator. Explicit new-target source-only revoice remains a distinct operation.
+Tail planning includes the final finite support; incomplete histories, overlapping
+fifth exciters and malformed acknowledgment evidence decline.
+
+Effect capture now retains at most sixteen pre-anchor graph/control packets in a
+separate reservation until the first actual source clock arrives. A changed
+context/execution, overflow or retirement without an anchor marks a coverage gap.
+Normalization uses mutable local copies only where needed and preserves immutable
+input content: membrane Float32 controls, prepared surface sorting and identity
+validation no longer try to mutate frozen canonical copies.
+
+The physical graph editor stages observed strike mappings; the existing skin view
+explains fixed tuning and shows actual queued/active finite exciters. Runtime
+physicalMusic becomes 12 and capture profile physical-basic-v18. Authored fixtures
+cover mapping cardinality, stale maps, source/end ownership, capacity, acknowledged
+replay without duplicate notes, source-state cuts and pre-anchor capture ownership.
+All runtime fixtures remain unrun under the requested frontloaded development
+policy. Native browser equivalence, listening, device qualification, compliant
+collision/rattle models and the Three Hands proof scene remain pending.
+
+
+### Continuation 186 — original offline solid-to-modal foundry (#1217)
+
+The original foundry implements constant-strain tetrahedral elasticity with
+explicit SI material/scale assumptions, lumped mass, mass whitening and bounded
+cyclic Jacobi diagonalization. It verifies positive nonoverlapping volumes,
+closed manifold boundary and face connectivity, rejects unused/degenerate inputs,
+checks the expected rigid modes, and reports actual residual/orthogonality error.
+Angular frequency, damped frequency and amplitude T60 have distinct units; the
+analytic decay contract uses ln(1000)/(zeta*omega), addressing the candidate's
+reported 2π ambiguity without importing its native solver.
+
+Original bar, slotted plate and asymmetric pebble source generators use curated
+excitation vertices and independent pickup directions. Assets retain mesh/source
+and solver-build hashes, full signed mass-normalized mode shapes and separate
+signed site vectors. Explicit 8/16/32-mode selection ranks the supported curated
+site-response residue energy and reports retained numerical salience. Unsupported
+or negligible modes are excluded and insufficient tiers decline without fallback.
+
+A bounded offline calibration path renders same-onset signed modal impulses at
+all sites using one conservative all-site peak calibration. It writes ordinary
+fixed-rate sampler recipes with the complete mesh/material/solver/asset closure;
+playback uses existing sample maps, not a live FEM engine. Two fixed shared worker
+job kinds expose solve and calibration under normal admission. The standalone
+build tool compiles normal sound packs and publishes immutable hash directories
+plus an atomic head, retaining last-good output on failure or cancellation.
+
+Authored numerical fixtures cover affine strain energy, symmetric stiffness,
+lumped mass, rigid rotation, six rigid modes, modulus scaling, exact angular T60,
+malformed/canceled/budgeted sources, forged decay units, selected-site response
+and ordinary pack compilation. They are unrun. The build command has also not
+been executed. Only formatting/syntax/provenance checks belong to this frontloaded
+pass.
+
+This provides the production baseline, not comprehensive #1217 acceptance.
+Mesh-refinement qualification (a refined bar is authored), level-matched listening,
+render/runtime device measurements, in-app foundry controls and Pocket Foundry's
+actual physical-zone proof scene remain pending. Output labels distinguish
+algebraic convergence from geometric/acoustic/perceptual qualification.
+
+
+### Continuation 187 — foundry preparation, prelisten and canonical application (#1217)
+
+A compact foundry dialog now prepares an original solid through one fixed,
+128-MiB shared worker operation: geometry validation, eigensolve, all-site
+calibration and normal sound compilation. Actual immutable worker build identity
+must match the requested solver build. Worker-owned generated buffers use the
+existing bounded page transfer path. The main thread constructs original source
+data without performing the geometry solve or overlap analysis there.
+
+The generated pack then goes through the existing verified archive reader,
+sound-content registry and isolated installation owner. Compilation, selected-site
+prelisten and durable installation are separate readiness states. Apply uses the
+canonical lane sound transaction/Undo boundary. Explicit shape, tier, rate and
+sample duration plus document/project/lane fences prevent a stale candidate from
+applying to a changed target. Retained previous material survives failed or
+canceled preparation. Active producer or material retirement uncertainty keeps its
+concrete reservation and blocks new preparation.
+
+Site auditions use the ordinary sampler articulation and declared finite sample
+hold. No physical collision or route is invented for the preview. Close, Escape,
+output Stop/Panic and page suspension cancel pending preparation and stop the
+foreground cue. Existing stage-command protection also covers the new authoring
+action. Readiness and actual solver/source/mode receipts remain visible without
+claiming acoustic material or mesh-resolution accuracy.
+
+An additional authored ownership fixture stages a real generated body through API
+doubles, rejects stale preparation while retaining the previous pack, requires
+independent audition/install before Apply and checks final reservation retirement.
+All runtime/UI fixtures and actual worker/browser preparation remain unrun. The
+Pocket Foundry physical-zone scene, mesh-refinement qualification and listening/
+device measurements remain pending; this UI does not promote those absent gates.
+
+
+### Continuation 188 — authored selected-mode loss on shared bars (#1215)
+
+The existing persistent modal network now prepares up to four explicit nonnegative
+mode-loss masks. Each has a fixed body mode inventory, normalized weights
+and additional amplitude-T60 seconds. A smoothed amount multiplies only a prepared
+contractive pole factor. Overlap takes the maximum additional pole depth per mode;
+release changes future decay without restoring already dissipated energy. Mask
+movement adds no excitation and no musical begin. The masks are expressly authored
+mode selections, not exact spatial finger damping or inferred material geometry.
+
+Felt Bridge adds one six-mode body with open amplitude T60 2/1.6/1.1/.8/.5/.3
+seconds at DAMP=0 and released masks, plus two complementary authored felt masks.
+The existing shared-body UI exposes their manual loss amounts, alongside the
+actual bus excitation and old-tail preparation policy. Live AudioParams, captured
+normal effect controls and owned graph rendering use the same Float32 targets and
+8-ms slew. Private state cuts include both active and target mask amounts and
+reject changed masks/rates/topology before mutation.
+
+Prepared depths, state planes and scratch factors are charged before allocation;
+mode-mask comparisons are computed once per mode/frame and reused by both stereo
+branches. Realization hashes bind the prepared pole factors. Runtime revision is
+owned-contractive-complex-modal-network-prepared-loss-v2. A faulty shared modal
+branch now quarantines locally in live/owned graph processing; export still
+requires all branches healthy and cannot publish a silently partial result.
+
+Authored fixtures check the open T60 oracle, selected versus untouched modal loss,
+silent preparation, independent mask targets/release, monotonic energy, exact
+in-flight slew restoration, foreign-mask rejection and normal graph controls.
+They remain unrun. Only formatting/syntax/provenance checks are performed here.
+Observed contact ownership for named modal masks, travel-based pickup weighting,
+Three Hands/Felt Bridge physical proof lessons and listening/device qualification
+remain dependent work; manual controls are never labeled observed contacts.
+
+
+### Continuation 189 — observed ownership of authored modal masks (#1215, #1233)
+
+Saved prepared surfaces can now map completed supported contacts to named
+mode-loss masks. The schema keeps this distinct from a spatial touch radius and
+pickup coordinates. The actual owner host inventories which preparation kinds
+and masks each current/retained processor exposes. Binding checks the exact
+body/map/execution identity, available mask names and released manual targets;
+pending future manual automation also prevents an ambiguous handoff. The shared
+parameter scheduler exposes a read-only future-event predicate for that fence.
+
+Each source contact retains its own bounded mask contribution. The main-thread
+owner computes the maximum amount among actual owners of each mask; releasing a
+weaker owner leaves the stronger target unchanged and avoids a redundant native
+write. Contact end removes matching contributions across retained bodies while
+unrelated actors remain. Held bindings stay with their original prepared body;
+new contacts require the explicitly bound current body. Stale old-map updates
+cannot change replacement masks. Unknown native scheduling quarantines only the
+owned body and retains concrete metadata.
+
+The physical editor stages a reviewed Felt Bridge map using the observed terrain
+revision. Shared bodies can bind that saved map and inspect actual contact owners;
+manual mask inputs disable while the body has physical ownership. API targets and
+actual acoustic evidence remain separate. Mode-loss updates use existing effect
+capture and deterministic command preroll. physicalMusic becomes 13 and capture
+profile physical-basic-v19. A related capacity fix applies one-pickup-owner
+admission to current-observed-contact updates as well as explicit begins.
+
+Authored fixtures cover zero-onset mapping, same-mask aggregation, independent
+release, old-tail replacement, stale map rejection, unsupported preparation kinds,
+manual/future-automation handoff and the pickup update admission boundary. They
+remain unrun; formatting/syntax/provenance and the critical typecheck are the only
+checks in this development pass. Named physical lessons, route-driven pickup
+weighting, measured spectral contrasts, listening and device qualification remain
+pending.
+
+
+### Continuation 190 — private physical scene rehearsal (#1151, #1187, #1175)
+
+The staged scene candidate lends one cooperatively captured, admitted checkpoint
+while remaining at tick zero. Commit declines while a reader is owned; candidate
+retirement cancels and joins capture before retiring world assets. A separate
+asset-backed inspection world restores that checkpoint, observes every actual
+physical batch for six source-clock seconds, and retains bounded causal intents.
+Incomplete observations, onset rejection, stale document/source/route identity,
+unsupported assets/shared bodies or capacity exhaustion decline the rehearsal.
+CURRENT and NEXT are never stepped by that simulation.
+
+One admitted worker renders the pinned lane definitions sequentially and mixes
+those actual source realizations with the scene's static gain, stereo pan,
+mute and solo values. Each lane retains its exact definition, source trace,
+intent and PCM hashes. The single cue WAV reports its new private source,
+bounded boundary release and pending independent render/listening qualification;
+it is not a historical take or an acoustic receipt. Source copying, the private
+world, interpretation, render result and native playback buffer have separate
+budget and retirement ownership.
+
+Rendered PCM now has an ordinary cue-session adapter: bounded complete Float32
+WAV parsing, PCM digest verification, cooperative native-buffer copying, one
+source-quota admission and short explicit edge fades. It participates in shared
+foreground audition, source handoff, Stop/Panic, session disposal and unknown
+native ownership retention. The chosen monitor route is preserved. Rehearsal on
+live output is truthfully included in master capture; a separate-device route
+is excluded. Explicit audio and Prelisten setup precede scene rehearsal.
+The browser exposes preparation, playback/source details and Stop rehearsal;
+normal paused scene publication still uses the existing candidate fence.
+
+The scene audit also fixes canonical normalization trying to mutate a frozen
+copy. A shared lightweight background-job contract replaces divergent kernel
+and admission lists: shape foundry, seed analysis/decomposition/modal fitting
+and scene rehearsal now have actual worker admission and require workers even
+when their request envelopes are small. Heavy work cannot silently use the
+bounded main-thread fallback.
+
+Ownership, malformed wave, cancellation/fence, private-reader, empty-source
+silence and worker-admission fixtures are authored but unrun. Development stays
+frontloaded; only formatting, syntax, provenance and limited critical typecheck
+checks are used here. Named authored layouts, thumbnails, sampled/shared-body
+scene materialization, full browser acceptance and listening/device evidence
+remain pending.
+
+
+### Continuation 191 — independent authored modal pickup observation (#1215, #1233)
+
+Prepared sympathetic networks may now own a bounded two-dimensional table of
+signed mode-observation weights with independent left/right positions. Every
+grid-point vector must have L2 norm at most one; bilinear convex interpolation
+retains that bound without separately normalizing away site-level dynamics.
+Changing either observation reads the existing complex state and changes neither
+excitation, modal loss nor coupling. Four coordinates slew over eight milliseconds;
+all current/target positions transfer through exact state cuts. The audio loop
+uses preallocated coefficients and weight scratch, with declared storage and
+per-frame operator counts. Pickup movement on an unexcited body stays silent.
+
+Live worklet parameters, native scheduling, deterministic owned rendering and
+captured control replay share the same prepared coordinate contract. The exact
+network revision, authored table, control targets and field identity participate
+in graph preparation and retained-body ownership. A saved surface map can assign
+actual complete supported contacts to separate left/right observers; each side
+admits one owner, contact end holds its last observation, and old contacts remain
+with the original ringing body during replacement. Future manual pickup automation
+must finish before physical handoff. No preparation command creates a note.
+
+Felt Bridge now includes an explicit signed x-varying response field, manual left
+and right observation controls, renderer-reported position inspection and a staged
+observed-contact map. Its y field is deliberately invariant. Both content and UI
+label the weights as authored response data, not solved geometric mode shapes.
+Manual controls disable under physical ownership; arbitrary networks without a
+prepared table decline position controls. The two authored loss masks retain their
+independent per-contact maximum aggregation and positive-loss contract.
+
+Fixtures cover unchanged internal state under movement, silence, unit observation
+bounds, independent positions, in-flight restoration, foreign-grid rejection,
+unsupported tables, future manual automation, pickup owner capacity, retained-body
+replacement and hold-last release. They are authored but unrun. Formatting,
+syntax/provenance and the limited critical typecheck remain the checks for this
+frontloaded development pass. Geometric foundry-derived pickup fields, the complete
+Three Hands lesson, measured spectra, listening and device qualification remain
+pending.
+
+
+### Continuation 192 — bounded nested-mesh foundry comparison (#1217, #1239)
+
+Original bar refinement now preserves the exact curated strike/pickup positions;
+the finer shoulder had previously moved to another coordinate. The refined source
+is revision three. A dedicated fixed comparison profile covers all eight lowest
+elastic modes, with declared 5% fine-reference frequency error, mass-weighted MAC
+at least 0.9, and a separate near-degenerate-subspace policy. These are authored
+numerical tolerances, not measured material, hearing or device-capacity promises.
+
+The comparator verifies both immutable modal artifacts and actual model identity,
+scale, material, constraints and source sites. It matches every coarse vertex to
+one fine coordinate, requires each fine tetrahedron inside one coarse parent and
+checks complete parent-volume coverage. It then reassembles each elastic system
+and recomputes full-vector residuals, mass orthogonality and Rayleigh damping;
+forged converged metadata plus a recomputed content hash is insufficient. Correlation
+uses the common coarse lumped-mass metric. A bounded global one-to-one assignment
+handles changed mode ordering; unobservable fine modes are reported explicitly.
+Nearly degenerate modes require future subspace comparison and cannot receive an
+individual-vector qualification by selecting a favorable basis.
+
+A shared-admission worker performs both real original-source solves and comparison.
+The foundry binds the result to its exact existing coarse body, document/draft,
+actual worker build, profile and receipt digest. Stale/canceled/unknown producer
+outcomes retain the old body and comparison; retained receipt metadata is budgeted
+and retired with its stage. UI displays comparison separately from compilation,
+audition and durability. It changes no sound, saved pack or resource tier.
+
+`npm run qualify:shape-refinement -- --name=rook` writes content-addressed complete
+coarse/fine inputs and a comparison package under dist, with a publication lock,
+atomic current-result head and complete cleanup. Out-of-tolerance or inconclusive
+results remain inspectable and return nonzero. No foundry pack is installed or
+promoted. Exact solver/comparison closures, domain, sites, tolerances, correspondence,
+errors and unqualified acoustic/listening/device dimensions remain in the receipt.
+
+Metric, global-assignment, real nested-domain, forged-eigenpair, stale owner and
+cancellation fixtures are authored but unrun. Neither the CLI nor the new numerical
+fixtures has executed in this frontloaded pass. Only format, syntax, provenance
+and limited critical typecheck checks are used. An observed comparison result,
+degenerate-subspace support, larger refined shape families, geometric pickup fields,
+physical scene lessons and listening/device qualification remain pending.
+
+
+### Continuation 193 — observed travel audio into private modal bodies (#1216, #1233)
+
+The ordinary owned sampler now supports a second explicit one-way body template:
+canonical signed journey travel drives frozen audio into a private modal body.
+The existing sample cursor owns direction, reflection, rest, missing coverage and
+frame segments. Only actual cursor motion can admit body input; there is no time
+oscillator, invented travel accumulator or periodic source. Rest closes the drive
+and clears only the exciter DC memory; existing modal state continues its decay.
+Semantic end admits the existing bounded four-second body tail. Same-pitch actors
+retain separate cursor, DC, calibration, modal and retirement state.
+
+This source uses the sampler reader's verified peak normalization rather than a
+fictional finite-energy budget for an indefinitely held gesture. Each modal
+injection is (1-r)/(2*sqrt(2)*inputPeak), combining the DC filter's L1 bound of two
+with a bounded stereo input. Positive radii contract and the signed L1 pickup
+remains bounded. A violated input-peak contract latches further body input off,
+retains the tail and reports the fault; the dry path remains independent.
+Finite sample grafts retain their energy-capped support policy. Exact cuts include
+the actual semantic release frontier and reject another prepared source policy.
+No per-sample allocation or extra semantic source is introduced.
+
+Typed descriptors distinguish observed audio, detector and sealed-feedback ports.
+The compiler produces an ordinary saved sampler patch with pinned source/body/
+observation references, exact traversal binding and EXCITE/BODY/DAMP/MIX macros.
+The seed lab selects a committed local sustained signed-axis journey mapping and
+an explicit source-frames/world-pixel scale. A physical-editor helper stages that
+mapping for review; it does not move actors or start output. New body tuning stays
+separate from source varispeed. Original frozen PCM and baked ancestry are retained.
+The selected derived rebuild path carries the exact traversal binding into its
+separate branch instead of silently replacing the source's physical contract.
+
+Sampler source/profile revisions and its worklet's actual runtime identity advance
+together. Fixed footprints, source/voice admission, command transport, cue ownership,
+old-tail replacement and offline/state-cut rendering keep their existing owners.
+Authored fixtures cover silence without motion, input after the finite-support
+window, motion/rest/tail, independent actors, peak violation, exact restored PCM,
+typed rejection, canonical mapping and ordinary pack compilation. They remain
+unrun. Only formatting, syntax/provenance and limited critical typecheck checks
+are used in this development pass. Procedural sand/cloth-to-body variants, sealed
+bow/reed outer-body templates, the complete Nursery scene, matched-level spectra,
+listening and device qualification remain pending.
+
+
+### Continuation 194 — explicit component printing and selected rebuilds (#1170, #1178, #1236)
+
+The seed lab now prints creative recombinations of the existing immutable linked
+stereo transient/sustained/residual outputs. Explicit branch gain/mute/solo,
+transient drive, sustained one-pole lowpass, residual one-pole highpass and output
+gain are prepared through a worker-only admitted job. Input checks bind all three
+component hashes to one decomposition recipe, original source, rate, generation,
+zero delay and exact frame crop. The original frozen PCM remains selectable.
+No analysis rerun is required to change only composition controls.
+
+The printed recipe preserves all parent references, processing equations, source
+rate, filter terminal state and explicit end crop, normalization policy and
+original printed-effect annotation. Actual neutral reconstruction and creative
+output difference are reported independently. The new asset is labeled printed
+processing with no new semantic onsets; it is not presented as live independent
+layers, perceptually isolated sources or an acoustic receipt. The owner joins all
+four source-window/producer retirements, preserves previous output on failure and
+retains unresolved ownership instead of releasing accounting early. Worker output
+transport can transfer the actual seed component and waveform buffers. Seed-window
+release now acknowledges synchronously as required by the shared worker service;
+returning an async callback previously made otherwise completed preparation retain
+an unknown admission lease. The new ownership fixture uses the real paged service
+and endpoint with an explicit test-only build identity, rather than bypassing that
+release contract in a direct kernel stub.
+
+Selection, fitting, compilation, audition, save and Apply use existing owners.
+Edited controls invalidate prepared descendants; Stop, Escape, suspension and
+ordered disposal cancel/join the new work. Rebuild plans add the exact selected
+composition closure before any fitted body or patch; fitted grafts explicitly
+depend on both material and body nodes. New branches preserve original artifacts
+and other project references. Cue copy now distinguishes separate-device cue
+(excluded from capture) from live-output rehearsal (included).
+
+Neutral PCM equivalence, creative branch equations, filter/mute, mixed-parent and
+crop rejection, cancellation, four-reader retirement and composed rebuild-plan
+fixtures are authored but unrun. Only formatting, syntax, provenance and limited
+critical typecheck checks are used in this development pass. Live Hammer/Cloud,
+Bowed Scrap and Hollow Tool layer templates, independent warp qualification,
+matched-level/listening/browser/device evidence and the complete combined runtime
+validation pass remain pending.
+
+
+### Continuation 195 — solved bar-edge pickups and common-reference excitation (#1215, #1217)
+
+The original pocket bar now produces an optional shared eight-mode edge field in
+the existing admitted foundry worker. It verifies the immutable asset, reassembles
+the elastic system and recomputes all retained eigenpair residuals and mass
+orthogonality. Four actual connected top-edge vertices supply signed z-displacement
+observations. Piecewise-linear edge interpolation uses the existing bounded
+bilinear kernel with duplicated y rows: x is edge position, y is explicitly
+invariant. A single maximum-L2 pickup reference preserves relative site response.
+The field receipt stores actual meter positions, direction, full source/mesh/body/
+solver identities, selected modes, normalizations and algebraic evidence, and is
+included as a generated-data parent in the normal content pack.
+
+The shared modal network adds an explicit signed excitation vector and common
+reference norm. This preserves sign and differences between the three solved
+strike sites instead of independently renormalizing each site's response. Its
+contractive bound, no per-sample allocation, old-tail ownership, state cuts and
+ordinary effect graph owners remain intact. Configuration identity advances to
+v4 and includes the complete new input policy. This is normalized complex-mode
+audio excitation, not a force-calibrated second-order elastic response. Three
+nonnegative squared-site mode masks are labeled positive diagonal approximations,
+not full rank-one point-damping operators. Unsupported shapes/refinements or exact
+tiers decline without hidden frequency, decay or mode substitutions.
+
+The foundry offers its selected strike to Shared bodies. The UI owns a charged
+independent candidate copy, then prepares the actual selected source bus through
+the existing graph owner. Its two pickup positions read the same ringing state;
+manual loss, observed-contact ownership, Save defaults, Panic and replacement
+use existing owners. The foundry pack and shared route remain distinct explicit
+actions. Field/candidate storage follows complete or unknown retirement rather
+than being released with a still-held reference.
+
+Actual-node projection, common-reference/sign preservation, silent observation,
+independent pickup movement with identical modal state, state-cut continuation,
+forged-vector rejection, cancellation and normal content-closure fixtures are
+authored but unrun. Only format, syntax/provenance and limited critical typecheck
+checks are used. Full two-dimensional solved surface fields, physical force/point
+loss calibration, refined families, Three Hands and Pocket Foundry performance
+lessons, mesh/listening/device qualification and combined runtime validation remain
+pending.
+
+
+### Continuation 196 — authored realization profiles with explicit unknown evidence (#1239, #1131)
+
+Canonical recipe sources can declare bounded realization groups. Profiles bind
+actual compiled patches, immutable renderer/schema receipts, definition/render and
+normalized effective-input hashes, dimensions and structural cost. They name
+required/preserved invariant claims, changed audible properties and fallback
+transitions rather than a universal quality number. Alternatives must share the
+actual macro-unit, pitch-expression, causal-binding and source articulation/frame/
+traversal interface. Cycles, missing recipes, incomplete invariants, unexplained
+sound differences and unowned mid-voice/cost-free transitions are rejected. A
+next-onset transition explicitly retains and charges the previous source tail.
+
+The optional metadata uses typed-recipes-v13; sources without profile groups
+retain v12 output. Pack admission independently rederives profile records from
+archived actual patches, rejecting changed hashes/dimensions or imported runtime
+qualification claims. Every imported profile remains authored/unqualified for
+numerics, listening, device cost and automatic admission. Requested, prepared and
+effective admitted identities are separate. Explicit alternative selection asks
+the existing patch owner to prepare/apply; metadata never downgrades an active
+voice or changes physical timing. Partial exports retain only complete groups so
+missing alternatives cannot be advertised as available.
+
+Initial FM, struck-modal, granular-biome and circular-travel content now states
+honest single-profile limits, as do generated shape instruments and finite/motion
+seed grafts. No cheaper operator, arbitrary first-N mode set, altered spatial
+pulse density, per-actor replacement of shared state or reduced circular illusion
+is represented as qualified equivalence. The sound library shows selected profile
+claims, limits and missing evidence. Fixtures cover actual compiled alternatives,
+legacy output, different effective sound, structural mismatch, fallback cycles,
+transition/overlap rejection, import tampering and selected export retirement.
+They remain unrun. Only format, syntax/provenance and limited critical typecheck
+checks are used. Device/rate-scoped measured profiles, source admission/history
+integration, pressure boundaries, same-take comparison and listening qualification
+remain pending before automatic profile transitions or comprehensive acceptance.
+
+
+### Continuation 197 — finite practice scores and an actual zero-note control (#1097, #1110, #1151)
+
+The installed score catalog now adds One Foot, One Sound, Space Becomes Rhythm
+and Quiet Control when the exact bound owned pluck renderer is available. They
+use a visible world-anchored swept pickup and explicit local patch references.
+The first score admits one finite entrant; the second admits two attempts with
+explicit lane phases at ticks 1 and 13. Actual paths still determine crossing
+intervals. Quiet Control starts with paused birth admission and no actors; running
+transport/display cannot produce physical crossings or new attacks. Missing pluck
+support leaves these scores unavailable and preserves the existing crossing
+scores rather than silently changing instruments.
+
+Physical score recipes can pin an initial normalized release gesture. The world
+constructor validates and installs it before any cohort exists, without a forged
+manual command or a default extra cohort. Later live changes retain the existing
+next-cohort intervention path. Finite attempts, capacity misses, generation
+invalidation, birth facts and checkpoint continuation keep existing population
+owners. Boot installs the same policy before its initial recovery anchor. The
+scene adapter checks the exact unspent gesture and empty initial world before
+rehearsal or publication; the saved project carries the same authored defaults.
+Fresh Load resets an attempt; pickup edits and new performed release gestures
+use existing physical authoring. Output and transport remain explicit.
+
+Fixtures cover initial finite/paused releases, exact actual birth ticks, absence
+of fabricated requested-command facts, rejection of late initialization, complete
+scene preflight, a separate restored checkpoint, genuine crossing intents, no
+actor/no-attack control and unchanged original tick-zero state. They are authored
+but unrun. Only format, syntax/provenance and limited critical typecheck checks
+are used. Installed-terrain/browser audition, the full teach-and-assess owner,
+progress persistence, reset/back/skip/reopen journeys, the remaining work/path/
+harmony lessons and larger authored physical scenes remain pending.
+
+
+### Continuation 198 — owned motion-gated procedural material textures (#1179, #1216)
+
+A separate owned texture source now implements sand/cloth/crackle/foam without
+sample loops or a time-driven birth oscillator. Complete canonical signed-axis
+travel uses the existing bounded coordinate validator and output-frame frontier;
+its 128-pixel internal coordinate scale is not a pitch cycle. Scope, actor/world/
+generation/mapping, source IDs, precision and coverage stay bound. At rest no new
+noise field samples or pulse births are admitted. Reversal revisits actual spatial
+cells in the same source. Tiny filter/modal states are flushed at a declared
+floor; no per-sample object, timer or buffer allocation is introduced.
+
+The actor-seeded spatial hash supplies jittered bipolar pulses or linearly
+interpolated cloth noise. Thirty-two child slots per actor and a shared 32-birth
+budget per absolute 128-frame bucket cap work independently of callback size.
+Crackle has 1–4 source-owned offspring, 2–12 ms spacing and no births outside the
+admitted span. Motion/end cancels children not yet started, including exact-boundary
+starts; finite active Hann bursts may finish. Explicit speed/density and offspring
+energy references, positive spectral filters and contractive modal injection bound
+the signal. Foam uses two Q0.9 bands around 700/1600 Hz with correlated input gain;
+its BODY meaning is distinct from sand/cloth/crackle amplitude-T60 control.
+
+The normal owned backend, quota/admission, output routes, generation/epoch/token
+commands, Stop/Panic, retirement, display health and causal rendering own this
+source. The source footprint includes every pulse/mode/state array; eight actor
+slots remain an implementation capacity, not a measured device tier. Eleven
+immutable engine artifact profiles now include its actual transitive code. The
+compiler and library expose four original ordinary saved recipes with explicit
+onset-only GRAIN/DRAG/SHADE/BODY mappings and honest single-profile limits. A fixed
+audition/render uses the same kernel with an eight-pixel/40ms authored control
+program followed by rest, explicitly not physical evidence. Real use requires a
+compatible held canonical travel mapping; no independent note-pitch bend is offered.
+
+The profile explicitly supports semanticResume and rejects exact audio-state
+transfer before mutation. Original filter, burst and modal history are not claimed
+to survive that resume. Authored fixtures cover stationary silence, source cardinality,
+render-block invariance, rest/reverse, independent seeds, absolute bucket/slot
+caps, exact-boundary cancellation, canonical ownership rejection, compiled recipes
+and the common live/offline control program. They are unrun. Only format, syntax/
+provenance and limited critical typecheck checks are used. Physical-scene/browser
+integration, measured pulse/spectral/alias/cost evidence, matched-level listening,
+Material Ribbon, fitted external-body variants, exact texture state transfer and
+sealed bow/reed families remain pending before comprehensive acceptance.
+
+
+### Continuation 199 — spatial texture → private body grafts (#1216, #1233, #1179)
+
+The owned texture source now has an explicit one-way external-body port. Its
+80-scalar onset binds 1–8 positive-decay modal rotations, fixed onset body tuning,
+EXCITE, intrinsic BODY T60, DAMP and independent dry/body MIX. Audio input comes
+from the actual spatial exciter after its spectral filters, without the original
+short material resonator. Only observed motion replenishes the external body;
+finite burst/filter dry tails do not sneak excitation across a rest or END.
+Signed pickup weights share one maximum-L1 reference. Injection uses the declared
+peak bound and (1-r)/(2 sqrt(2)), with 0.4 observation gain; invalid/overflowing
+input stops replenishment while existing modal state retains positive decay.
+All modes and observation arrays are preallocated and included in source bytes.
+No detector envelope or extracted bow/reed feedback port is accepted.
+
+The seed lab exposes all four spatial exciters paired with the original tin/wood
+body or a reviewed fitted body. The ordinary compiler, immutable archive,
+audition, save, undoable lane apply and exact-target/stale-draft owners handle the
+result. Frozen material is body-analysis/regeneration ancestry, never sampled by
+this instrument. Fitted frequencies/decays/weights and original hashes remain
+visible in the contract. Tin pollen is a named sand/tin starting combination.
+The selected source, fitted/composed parents and texture selection also join the
+explicit revoice rebuild plan. A failed replacement leaves the original patch.
+
+This tier is next-onset only: existing actors retain their body, coefficients and
+observation. The separate four-second linear owned release envelope and final
+cutoff are explicit; changing BODY never overwrites intrinsic loss with exciter
+support. Live body position, force calibration, exact texture snapshots, shared
+world bodies and feedback-family extraction are not claimed. Fixtures cover
+motion/rest/end contraction, silent excitation, invalid preparation without
+mutation, complete retirement, all four compiled choices, fitted ancestry,
+macro equations, bounds and absence of audio sample playback. They are authored
+but unrun. Format, syntax/provenance and limited critical type checks are used;
+runtime/render/listening/device acceptance and complete nursery/comparison scene
+journeys remain deferred with the rest of the development batch.
+
+
+### Continuation 200 — observed physical practice lessons (#1110, #1097, #1151)
+
+Versioned LessonDefinition content now binds exact installed setup and zero-note
+scene hashes, prediction, allowed intervention, expected physical/musical
+comparison, separate optional hearing evidence, hints and a fresh zero-tick reset
+policy. The installed catalog authors the first two actual practice scenes;
+unsupported work/path/harmony and advanced journeys are not substituted with
+fictional setups. The scene browser exposes Learn this physical cause only for
+those installed definitions.
+
+One small lesson owner observes the existing complete causal batch stream. It
+requires a genuinely empty/no-onset control before each attempt, then an explicit
+prediction, unchanged baseline and actual source-linked pickup begins after the
+allowed physical change. Pickup lessons compare the real geometry; spacing
+lessons require both different actual birth intervals and different observed
+arrival intervals for new actors. Changed requested settings alone cannot pass.
+Arrival comparison is explicitly completed-tick precision. Source IDs must join
+current-world MotionCommitted facts and live snapshot actors. Stale documents,
+generations, gaps, incomplete batches and unrelated graph/sound changes cannot
+produce success. Evidence and receipt sets remain bounded; no tutorial timer,
+autoplay, hidden intervention, extra actor or independent sound source is added.
+
+The panel uses existing staged world preparation/publication and paused transport
+for explicit empty/setup/reset loads, plus Back/Skip/Close/re-entry. Epoch-fenced
+cancellation keeps obsolete prepares and receipts from grading another attempt.
+It does not enable local audio, MIDI, recording or any permission. Physical
+success, backend acceptance and user-reported hearing remain separate; accepted
+intents do not claim rendered PCM or human hearing. Visual evidence is available
+without audio. Small versioned progress persists under an independent local key,
+never inside musical projects; denied storage leaves a session-only result and
+replay still requires new evidence. Closing retains the user's playable world.
+
+Fixtures cover zero control, prediction and actual variation; unrelated/foreign
+causes, stale epochs/generations, missing batches, incomplete coverage; requested
+spacing without changed physical results; sound-off/rejected/stale receipts;
+separate progress reopening/denied storage; exact catalog references and observed
+Reset/Back/Skip/Close/re-entry. They are authored but unrun. Runtime/browser,
+controller and usability qualification, the remaining three authored lesson
+worlds, save/reopen/fossil/memory journeys and genuine human prediction/listening
+results remain pending. Only format, syntax/provenance and limited critical type
+checks are used during this development pass.
+
+
+### Continuation 201 — retain texture travel across causal receipts and revoice (#1179, #1111)
+
+The dispatcher now retains the typed textureTravel receipt for owned begin and
+canonical travel updates alongside their exact intent, batch, source IDs and
+sink epoch. It previously projected only circular/sample travel, discarding this
+new source's canonical receipt from live delivery history and take capture.
+Revoice manifests now name texture spatial travel and semanticResume explicitly,
+without labeling coordinates as circular pitch cycles. Source-specific preflight
+and continuity failures use the texture label; circular render metadata remains
+unchanged. Authored fixtures cover dispatcher/callback/history retention and an
+actual causal-engine movement/rest/reversal sequence rendered as one owned source.
+They remain unrun with the combined runtime acceptance pass. Only formatting,
+syntax/provenance and limited critical type checks are performed here.
+
+
+### Continuation 202 — owned texture source-state cut implementation (#1179, #1001, #1045)
+
+The texture kernel now joins the existing owned-source state envelope as a new
+kind, rather than implementing a separate checkpoint owner. Its five exact-size
+Float64 arrays retain exciter/filter/correlation/cursor state, all modal states,
+finite pulses (including actual birth frame), signed observation weights and the
+shared absolute-128-frame admission quota. Output scalars, queued parent commands,
+release, mix and lane-routing/core ancestry share the existing CRC and exact
+artifact/patch/graph pins. This supersedes the semanticResume-only implementation
+of continuations 198–201 at the kernel API boundary; arbitrary live-host/audio
+checkpoint preservation remains a separate integration and qualification task.
+
+Validation runs before any target mutation. It checks complete storage shapes,
+retired zero state, source/core token/epoch/generation/pitch/release frontiers,
+contiguous rendered-frame cursor, bounded spatial spans, native coefficient
+reconstruction, positive external modal loss/register/injection, signed L1
+observation, state energy/peak bounds, finite burst membership/amplitudes and
+absolute-frame quota. Bankless original texture state is pinned by the core
+artifact and patch identities; no synthetic sample-bank hash is introduced.
+The extension preserves older source kinds and their byte layouts. Runtime build
+identity advances while the 80-scalar command ABI remains unchanged.
+
+Authored fixtures cover all four exciters at 44.1/48/96 kHz, independent restored
+buffers and varied render partitions; queued begin/reverse/end, at-rest/private
+body tail, completed retirement, future crackle offspring and preserved quota;
+plus valid-checksum forged arity/coefficient/core/quota, wrong identity, corrupt
+checksum and aliased/incorrect transfer rejection without target mutation. They
+are unrun. Only formatting, syntax/provenance and limited critical type checks
+are performed. Profile and manifest text explicitly retain pending PCM/browser
+qualification; this implementation does not promote a measured device tier or
+cross-browser/listening guarantee.
+
+
+### Continuation 203 — bounded authored scene terrain compilation (#1097, #1110, #1099)
+
+A versioned initial-source geometry format now describes 1–8 ordered physical
+lanes, at most eight 128-pixel chunks per lane, 64–128-pixel lane height and at
+most 64 ordered half-open solid/air/steel rectangles per lane. Explicit opaque
+packed colors share exact cells with collision and steel; top profiles come
+from those same final cells. Initial empty air and ordered clears remain actual
+voids, not decorative images over another collision source. This is original
+source geometry, not a fake applied intervention or simulated player gesture.
+
+The compiler is registered in the existing worker-only shared admission path.
+It checks complete raster/collision/hash peak capacity before allocation, reports
+bounded chunk units and supports cancellation/current-source fences. All planes
+for all chunks occupy one exact-size transferable buffer. The endpoint transfers
+that allocation once; clients create immutable view descriptors over its
+independently owned result rather than cloning hundreds of planes. Canonical
+layout SHA-256, storage SHA-256, explicit native byte order and exact storage
+shape are verified before adoption. Larger hidden backing buffers and foreign
+byte-order buffers are rejected. There is no heavy main-thread fallback.
+
+Fixtures cover final solid/steel/raster agreement, ordered air cuts and seams,
+source immutability/reproducibility, real geometry hash changes, malformed and
+oversized sources, peak denial, chunk-boundary cancellation, corrupt/foreign
+identity/byte-order/backing storage and a one-buffer endpoint ownership transfer.
+They are authored but unrun. Only formatting, syntax/provenance and limited
+critical type checks are used. The next dependency is the actual staged terrain
+provider, checkpoint source-profile compatibility and authored lesson/world
+layouts; this compiler alone does not yet replace installed world geometry or
+qualify the remaining scene/lesson journeys.
+
+
+### Continuation 204 — staged owned terrain source and checkpoint profile (#1097, #1110, #1045)
+
+The optional initialTerrainLayout score recipe now resolves through an actual
+owned ProcgenScoredTerrain provider. Boot compiles its original rectangles in the
+shared bound worker before constructing the world, installs exact collision and
+raster chunks before any actor/recovery anchor, and retains the complete result
+lease for the source lifetime. Dimension/source/byte-integrity checks reject an
+unavailable or mismatched candidate without changing the active world. Reopening
+a source scene recompiles the exact embedded initial geometry before restoring
+its state; it does not replace geometry with an approximate procedural floor.
+
+All terrain query channels use the same immutable compiled planes in the bounded
+initial extent. Existing sparse world edits retain their own overlay. Lane seeds
+bind explicit installed themes; unknown lanes cannot borrow a different scored
+chunk. No procedural physical objects or fine-growth appearance schedule is
+inserted inside the initial source. Outside its finite extent the original base
+source remains available, with the declared static source/growth policy. The
+provider exposes original source/layout/storage hashes and charged typed bytes,
+not an invented musical cause or measured performance tier. Geometry hashes also
+join physical-authoring/junction source-compatibility checks.
+
+Scored checkpoint assignments use component codec 2, preserving codec 1 for
+ordinary terrain. Restore checks the source profile, exact layout hash, actual
+lane seeds, theme assignments and original terrain settings before mutating any
+world owner. Foreign/future source profiles cannot be restored through ordinary
+terrain, and a scored source cannot accept an unrelated ordinary checkpoint.
+The existing staged scene adapter verifies the actual bound worker result before
+publication. This is optional source support; authored work/path/harmony score
+layouts and their complete lesson journeys remain the next development batch.
+
+World teardown now has explicit reader → source → provider dependencies through
+the existing retirement scope. A renderer/world failure keeps geometry results,
+assets, provider leases and candidate reservations owned. Boot failure cleanup
+uses the same path. This fixes the previous concurrent release ordering, which
+could return a new source lease while a renderer still owned a read. Producer
+retirement and synchronous result-release acknowledgements remain mandatory.
+
+Fixtures cover the production paged worker transport, collision/raster agreement,
+source reset/rebinding, unbound/already-canceled preparation, confirmed ordered
+read/result/base/provider retirement, false result acknowledgement, unknown
+readers, and actual world checkpoint continuation with unchanged target state on
+forged settings/seeds/future/plain-source restore. They are authored but unrun.
+Only format, syntax/provenance and limited critical type checks are performed;
+world/renderer/browser, visual/playability, CPU/heap and recovery qualification
+remain deferred to the combined acceptance pass.
+
+Continuation 204 ownership follow-through: top-level world replacement also retains the active-world allocation and provider owners until the complete asynchronous reader/source chain confirms retirement. Unresolved source retirement retains the charge; the outer owner cannot infer completion from a requested Stop. An authored deferred-reader allocation fixture is added with the other pending runtime cases.
+
+
+### Continuation 205 — complete authored five-lesson development pass
+
+- Added three distinct bounded initial geometry scores: a finite two-entrant
+  changed-material work bench, one-entrant direct/stepped junction route, and
+  three-entrant formation field. All use the bound-worker source provider and
+  start paused with explicit finite releases. The new recipe assist policy is
+  manual-only; initial junction definitions are installed before the recovery
+  anchor. No scene invents an applied skill or junction command.
+- Installed all five versioned lesson manifests on the existing scene owner.
+  The advanced observer is read-only and bounded to 16 entrant tracks, 64 manual
+  command links and the small assessment records. Work requires a quiet actual
+  walking baseline plus two distinct version-2 changed-solid contact operations
+  rooted in an accepted manual skill. Route delay requires a current admitted
+  junction configuration, a new post-switch entrant, accumulated actual motion
+  and a changed observed arrival duration at the unchanged pickup. Formation
+  requires changed actual birth/spatial spread and qualified pitch assignment,
+  followed by a later onset carrying the changed declared timbre macro.
+- Added an explicit work-change policy to causal mappings: solid, appearance or
+  attempted contact. Existing mappings retain their behavior when absent. New
+  teaching maps select changed solid cells so a repaint cannot masquerade as a
+  productive brick. No operation is multiplied into a roll or inferred from SFX.
+- The formation field declares ratios 1,9/8,5/4,3/2,5/3 with its 220 Hz reference
+  represented at 6900 semantic cents. It uses actual bounded formation assignment;
+  BRIGHTNESS is an onset-only typed pluck macro. Sound/physical identity checks,
+  backend acceptance and explicit reported hearing remain separate.
+- Scored checkpoint assignments now retain the complete bounded original layout
+  alongside its digest, allowing independent inspection/rehearsal to compile its
+  own owned source. The inspection reader/source/provider dependency chain keeps
+  both source results and its outer world reservation charged until confirmed
+  retirement. Exact source/settings verification still precedes restoration.
+- Authored grouped fixtures cover exact source/catalog/dependency identities,
+  manual work/operation phases and solid-versus-appearance filtering, actual
+  direct/stepped traversal, changed formation and subsequent macro onset,
+  independent checkpoint continuation and invalid/unrelated cause rejection.
+  Shared explicit base fixtures do not substitute for installed asset or browser
+  qualification; initial source cells use the production worker/compiler.
+- Runtime tests/builds/browser/audio/listening/performance and usability sessions
+  remain deferred in accordance with the development-first request. The full
+  Builder-Miner Workshop, Glass Orbit and other large named scenes, advanced
+  learning journeys and their acceptance remain open. Five implemented lesson
+  observers do not establish completed issue #1110 acceptance.
+
+
+### Continuation 206 — retain and reconstruct acknowledged spectral windows
+
+- Added typed processor capture metadata with actual observed request frame,
+  exclusive N-frame interval, profile/grid/rate identity, monotonic capture serial
+  and original energy/attenuation evidence. The kernel cut retains its new
+  request frontier under the bumped spectral algorithm identity. No captured PCM
+  or native node is serialized.
+- Routed dedicated acknowledgments through the native graph, current owner arm,
+  bounded session observers and existing effect-performance capture/journal.
+  The worklet admits four outstanding metadata receipts and requires matching
+  source-epoch credits; exhaustion quarantines that graph. A conservative 128 KiB
+  transport estimate is charged in the prepared source profile. Diagnostics remain
+  separate from this acknowledgement; no per-frame capture serialization occurs.
+- Published spectral graphs mark the new evidence policy. Revoice validates
+  complete serial/request-window coverage, same-frame replacement, one clock
+  owner, original sample rate and exact analysis grid. It stages capture at the
+  original window frontier and checks the new owned graph actually captured the
+  complete interval. Missing prehistory/acknowledgments, late render traversal,
+  unavailable input and changed rate/grid fail rather than fabricating readiness.
+  An early explicitly canceled request creates no capture. Interval matching is
+  linear after chronological sorting, with no audio-thread history search.
+- The original metadata and new realization remain distinct: this re-analyzes
+  rendered input from cleared memory, not original spectral/PCM/host restoration.
+  Earlier command-only histories retain their limited disclosure. General
+  multi-graph/lifecycle replay, native convolution command replay, arbitrary live
+  audio cuts, content/play-scene work and their acceptance remain pending.
+- Authored the 44.1/48/96 kHz × 512/1024/2048 grouped window/reference fixtures,
+  exact final-frame boundary, invalid/missing/foreign/uncovered/rate cases, early
+  thaw, unavailable/late source, state-cut metadata, capture-owner clock and
+  four-credit worklet containment cases. No runtime/numerical/browser/audio test
+  has been executed in this frontloaded pass. Static checks precede the commit;
+  consolidated validation and real listening/cost results remain pending.
+
+
+### Continuation 207 — original sealed friction model foundation
+
+- Added bounded Hairline, Glass Drag and Rosin Grain source specifications: signed
+  observed bow velocity, normalized pressure/contact/body controls, explicit
+  110–660 Hz root domain and two provisional source slots. The original model is
+  not yet registered as a selectable engine; its owned source adapter, typed patch
+  compiler/profile, travel receipts, exact cuts and ordinary recipes follow in the
+  next dependency batch. This does not mark #1136 implemented or qualified.
+- Added a preallocated sealed relative-velocity nonlinear feedback kernel with
+  positive modal midpoint integration, exact digital-pole frequency/T60 coefficient
+  conversion, sixteen bounded bisections and a declared uniqueness bound. Actual
+  bow motion supplies work; friction/linear losses are nonnegative, and a numerical
+  energy-defect guard contains invalid state before output. Rest/end remove input
+  work while the existing body relaxes. Two signed common-reference observations
+  and DC blocking read the same independently owned body; no oscillator or attack
+  clock supplies hidden friction motion.
+- Rosin roughness is a positive four-pixel spatial field, with the time-correlation
+  interpretation explicitly restricted to the stated observed speed interval.
+  Invalid future/span/frontier changes, shared/overlapping state and corrupt energy
+  are rejected or quarantined under the bounded source contract.
+- Authored unrun grouped rate/family energy balances, stationary silence, rest/end,
+  pressure, reversal, render partition, future motion, invalid input/alias and
+  independent-source containment fixtures. Primary research was inspected for the
+  energy/relative-velocity background; the source defines its own original scalar
+  model. No numerical probe, runtime, listening, stability map or device cost
+  measurement has run. Long sustain and full engine/content acceptance remain open.
+
+
+### Continuation 208 — owned friction travel, content and exact kernel cuts
+
+- Integrated the original sealed model as `worklet-friction`: typed conditional
+  pressure/contact controls, onset-only body tuning, bounded two-slot owned source,
+  static source-cost policy, existing gate/lease/release, cancellation and panic.
+  Canonical completed signed-axis microsegments retain actor/scope/event ancestry;
+  rest supplies no bow work, reversal reuses the parent source, and unsupported
+  live pitch bends fail. No public graph feedback or additional MIDI owner opens.
+- Added exact kernel state transport with independent storage and pre-mutation
+  validation of positive modal coefficients, source/core identities, reserved
+  fields, motion frontier, pressure, solver/cumulative energy and readout state.
+  Future commands and parent release remain owned by the existing core. Arbitrary
+  live host restoration and PCM-equivalent continuation remain unqualified.
+- Added three ordinary original recipes, DRAG/PRESS/EDGE/BODY macros, realization
+  interfaces, library preparation, explicit 78-pixel/650-ms control audition and
+  owned offline/physical-take revoice receipts. Control movement is not a physical
+  take and slot/cost limits are not measured device capacity or qualified tiers.
+- Authored grouped rate/family integration, queued/active/reverse/rest/end/retired
+  cuts, forged valid-checksum state, two same-pitch opposing sources, canonical
+  ancestry, control renders and one-gate physical revoice fixtures. Added an
+  unrun sixty-second speed/pressure/rest/reversal runner with numerical, DC,
+  autocorrelation and process-cost observations; it makes no automatic acoustic
+  qualification claim. Runtime tests, browser/device, full stability region,
+  alias/tone/listening and the Bow Orchard proof scene remain pending for #1136.
+- Static-only checks are performed before this commit. No numerical runner,
+  runtime test, build, browser/audio/listening or CI qualification has run here;
+  the consolidated validation and repair pass remains deferred as requested.
+
+
+### Continuation 209 — authored Bow Orchard physical score
+
+- Installed Bow Orchard only with the exact sealed friction/canonical travel
+  capability. Its worker-compiled 1024-pixel route and far steel stops are shared
+  by collision/pixels/surface; two finite staggered entrants drive Hairline and
+  Glass Drag with signed held journey motion. The score binds world/engine/schema,
+  embedded patches, observation and recipe hashes through existing scene owners.
+- Added explicit manual assistance policy, paused loading, no PCM/backing pattern,
+  one onset PRESS macro per patch and the separate held channel-pressure contract.
+  No missing source is replaced by an oscillator; authored slot/cost bounds remain
+  unmeasured. The informational scene control names its onset boundary honestly.
+- Authored unrun origin/dependency closure, unavailable-source, committed
+  movement/rest/reversal/one-gate and actual compiled-terrain physics fixtures.
+  Stability, sound/continuity, browser, device and listening acceptance remain
+  pending; the scene is an authored score, not an acoustic qualification result.
+  Runtime validation continues to wait for the remaining implementation pass.
+
+
+### Continuation 210 — original sealed breath/modal wind foundation
+
+- Added original Hollow Reed, Air Pipe and experimental Overblown Branch
+  specifications with bounded AIR/BITE/LENGTH/LEAK/bell domains, distinct
+  pressure/pitch limits, acoustic-size units and zero expression-pressure floor.
+  They are artificial modal wind models, not measured clarinet/flute emulations
+  or copied Faust components. They are not yet selectable engine profiles.
+- Added preallocated positive-loss implicit modal integration and a saturating
+  negative-resistance force port. Twenty fixed bisections solve a strictly
+  increasing bounded scalar residual; a conservative slope-product bound admits
+  the stated rate/control domain. The discrete energy balance separates actual
+  source-port work and passive body loss, with finite/energy fault containment.
+- Seeded filtered breath is subordinate to pressure, with 30/80-ms attacks and
+  120/300-ms breath-release ramps. LENGTH changes acoustic size explicitly, not
+  route geometry. The experimental branch uses threshold hysteresis and one
+  energy-preserving register change per owned gesture, with no new source attack.
+- Authored unrun grouped-rate energy, zero-pressure silence/relaxation, end/tail,
+  partition/seed, register-hysteresis, invalid domain/frame/storage and independent
+  fault-containment fixtures. Full pressure/pitch stability regions, long sustain,
+  dropout/register/pitch/spectrum/DC/device measurements and levelmatched listening
+  remain pending. Owned adapter/cuts, content, expression and Breathing Stairwell
+  are the next dependency work for #1137, not completed acceptance here.
+
+
+### Continuation 211 — owned wind expression, ordinary content and exact cuts
+
+- Integrated `worklet-wind` with the existing two-slot gate/lease/lifecycle,
+  per-actor channel pressure, typed patch schema/compiler, artifact/profile
+  closure, lane preparation and owned control/offline/revoice paths. Conditional
+  source domains validate the actual onset-Hz/acoustic-size ratio. Unsupported
+  live bend fails; an internal register change retains its original token.
+- Added independently owned exact kernel cuts and pre-mutation validation of
+  source/core pins, positive coefficients, register/hysteresis banks, pressure,
+  filter observations and cumulative energy. Deterministic noise age validates
+  through an O(log age), bounded 32-bit linear jump rather than replaying samples.
+  This API does not qualify an arbitrary live host checkpoint or PCM equivalence.
+- Added three ordinary original recipes with AIR/BITE/LENGTH/LEAK onset macros,
+  sealed semantic interfaces, honest single-profile limits and existing library
+  preparation/audition/save/apply. Held channel pressure is distinct from onset
+  macros. The explicit pressure fixture contains no physical-take claim and the
+  source introduces no external feedback loop, PCM or additional MIDI owner.
+- Authored unrun rate/family exact cuts, future queue/register/rest/end/retired
+  boundaries, same-pitch pressure independence, cancellation/Panic, forged
+  valid-checksum state, noise jumps, conditional onset admission and ordinary
+  control-render fixtures. Added the unrun three-rate pressure/pitch/bite grid
+  and sixty-second sustain runner, reporting numerical/DC/register/pitch/process
+  observations separately from acoustic/device qualification.
+- Breath scene/gesture proofs, full stability/dropout/register region review,
+  alias/tone, actual device worklet cost, PCM continuation and levelmatched
+  listening remain pending for #1137. Static-only checks precede the commit;
+  runtime/build/browser/audio/CI qualification continues to wait for the combined
+  validation pass after remaining development, as requested.
+
+
+### Continuation 212 — authored Breathing Stairwell and pre-birth abilities
+
+- Added bounded lane-indexed authored actor birth capabilities as a source policy,
+  installed before any actor/action and emitted in ActorBorn ancestry. Scene
+  recipes, stage preflight, Boot/session/independent inspection and checkpoint
+  validation retain the exact policy. A mismatched source or forged graph/header
+  policy rejects before world mutation; ordinary worlds keep no authored policy.
+  This does not introduce a timed intervention program or automatic skill repair.
+- Installed Breathing Stairwell only with its pinned sealed wind/held-pressure
+  engine. Two finite climber/floater entrants use a worker-compiled 80-pixel rise,
+  high shelf and descent/landing. Real action entry plus committed motion admits
+  the held voice, observed world height shapes pressure, fall-to-float is legato,
+  and walking/landing removes replenished breath through action exit ownership.
+- Bound original Hollow Reed/Air Pipe patches, acoustic controls, manual assistance,
+  source/recipe/observation closure and paused staged publication. Existing physical
+  terrain/release editing changes actual route height/entry spacing; acoustic
+  LENGTH remains separate. Static poll, transport or UI movement creates no onset.
+- Authored unrun source/origin/preflight, motion-admission/height/legato/landing,
+  lane-policy bounds, pre-first-birth checkpoint/resume/foreign-policy rejection
+  and actual compiled-source climbing/floating/causal-expression fixtures. They
+  provide no observed playability, PCM, device or user-listening result yet. The
+  wind pressure/pitch stability map, sustained/tail/alias/cost acceptance and all
+  other remaining backlog development continue before consolidated validation.
+
+
+### Continuation 213 — captured ordinary effect lifecycle revoice
+
+- Added captured mute/tail/neutral/Panic replay for one ordinary owned effect
+  graph. Actual captured API frames drive the declared input/dry envelopes and
+  immediate wet mute/clear policy; tail retirement uses the declared bounded
+  transition-plus-maximum-tail frontier. A muted graph can retain controls; a
+  detached graph cannot accept another command. Missed lifecycle frontiers fail.
+- Shared return taps are explicitly before the owner output lifecycle gate. The
+  new render is a cleared realization of API operations, not original live PCM,
+  observed device application, exact host memory or polling-retirement timing.
+- Processor-owned bodies/spectral state, body-only port Panic, owner-stop lacking
+  tail disposition, native convolution command scheduling and multiple graph
+  replacement still need their own lifecycle evidence and remain rejected.
+- Authored unrun three-rate/four-mode scheduling parity against the actual owner
+  host, muted controls/internal taps, detachment, late-frontier, pre-mutation and
+  processor-boundary fixtures. Existing unsupported-lifecycle coverage now uses
+  the still-unsupported owner-stop case. No runtime/browser/audio/CI validation
+  has run; the combined validation/repair pass remains deferred.
+
+Queued controls accepted before a detach keep their original submission ancestry:
+neutral/Panic cancel them; tail retains those inside its declared deadline.
+Commands actually submitted after detach still fail. The prepared replay records
+canceled/retained sequence IDs and never mutates the captured history. These
+additional scheduling fixtures are authored but unrun.
+
+
+### Continuation 214 — named resonator correspondence assets and candidates
+
+- Added bounded named endpoint and resolved morph-map contracts with exact source/
+  endpoint/map hashes, explicit signed site correspondence, unmatched modes,
+  reviewed pair identities, parameter curves and distinct transition policies.
+  Distributed membrane state is not accepted as a replaceable mode-table body.
+- Added worker-only candidate analysis using log frequency/decay and available
+  declared signature similarity, deterministic global assignment with unmatched
+  alternatives, explicit anchors and close/degenerate/incomplete confidence flags.
+  Extracted the existing bounded assignment primitive for reuse while preserving
+  the shape-refinement wrapper and its failure contract. No solver RNG or
+  per-frame frequency sorting supplies a mapping identity.
+- Resolved preparation rejects stale hashes, changed topology/maps, duplicate pairs
+  and missing playable coupling. Parameter previews use positive log frequency/
+  amplitude-T60, one raised-cosine common signed reference and explicit unmatched
+  contribution windows, preserving exact endpoints and bounded L1 without hidden
+  renormalization. A dual-body blend cannot masquerade as an intermediate body;
+  held renderer/perceptual qualification is explicitly false.
+- Added original four-to-six synthetic proof inputs and explicit four pairs/two
+  emerging modes. Authored unrun exact-source/endpoint, 101-point rate/band/L1,
+  close crossing/ambiguity, missing-signature, stale/corrupt mapping, blend,
+  assignment and worker/cancellation fixtures. These do not establish numerical,
+  acoustic, held-state, admission/tail/restore or perceptual qualification.
+- Seed/foundry authoring UI, actual fixed/held/dual-state renderer integration,
+  Metamorphic Bridge and listening remain development/acceptance work for #1225.
+  Static-only checks precede this commit; runtime/build/browser/CI validation
+  remains deferred until the remaining development pass is complete.
+
+
+### Continuation 215 — owned correspondence review and map export workflow
+
+- Added a bounded endpoint/candidate/resolved-map owner over shared worker
+  admission. Exact source revisions, explicit pair/site review and prepared
+  parameter state remain separate; source/draft edits invalidate the map, failed
+  preparation keeps the last reviewed map, and old completion cannot publish.
+- Added source/proof import, fixed signed weight/site inspection, pair selectors,
+  ambiguity/alternative and unmatched display, explicit review checkboxes and a
+  next-onset parameter-preview slider in the existing seed laboratory. This starts
+  no audio and exposes no unsupported continuous-playback control. Endpoint edits
+  redraw by source revision, including same-ID coefficient changes.
+- Added independently staged JSON export through the existing export owner.
+  Bounded pending operations, overlap reservations, producer acknowledgment,
+  cancellation and ordered disposal keep unknown resources charged and settle
+  accepted operations. No new document/asset store or automatic live lane edit.
+- Authored unrun real worker/export, last-good map, stale completion, unknown
+  retirement, source-hash import and accessible proof→review→preview fixtures.
+  Compatible fitted/foundry observation adapters, actual fixed/held/dual-state
+  rendering, scene motion, state/tail/admission/restore and listening remain
+  development/acceptance work for #1225. Static-only checks precede the commit;
+  runtime/build/browser/CI qualification remains deferred as requested.
+
+A map export is an independently copied immutable payload. Its known active
+reader can outlive map-view metadata retirement under the existing export lease;
+that copy remains charged until its reader/digest retires. Unknown producer or
+export-budget acknowledgments still prevent a false complete receipt.
+
+
+### Continuation 216 — private paired-body state and control-reference rendering
+
+- Added an original retained unit-complex modal body for up to eight explicitly
+  reviewed named slots. Positive log frequency/amplitude-T60 and fixed common
+  signed coupling retain source identity through crossings, reversals and
+  unmatched windows. Morph changes rotate synthetic state without reseeding;
+  they supply no body input work or semantic onset. This is not mechanical
+  projection, perceptual equivalence or a device capacity claim.
+- Added bounded finite-force work/positive-loss accounting and containment, cached
+  unchanged coefficients, explicit body Panic and independent exact kernel cuts.
+  Restore validates profile/map/rate/CRC, signed poles/coupling, work/energy,
+  pending control versus previous readout and filter state before mutation.
+- Preserved distinct transition authority: next-onset maps cannot perform held
+  updates, while paired-held references require a newly reviewed held policy.
+  Blend and larger topology have no silent substitution in this renderer.
+- Added the worker-only bounded six-second endpoint/out-and-back Float32 WAV
+  reference path with explicit finite Hann excitation, PCM identity, private-state
+  receipts and no physical-take/acoustic qualification claim. It introduces no
+  MIDI owner or free-running note pattern and has not been invoked in this pass.
+- Authored unrun supported-rate norm/loss, rapid reversal, rest/no hidden work,
+  exact/pending cuts, forged state, profile policy, Panic/isolation, complete
+  control WAV and canceled/stale/workspace fixtures. Actual live graph/route and
+  reference-workflow integration, Metamorphic Bridge, full PCM/alias/decay/device
+  measurements and levelmatched listening remain pending for #1225. Static-only
+  checks precede the commit; consolidated runtime validation remains deferred.
+
+
+### Continuation 217 — cached control references and isolated Prelisten workflow
+
+- Connected reviewed maps to bounded shared worker reference preparation with
+  complete renderer/map/endpoint/program/rate/build identity, exact frame/profile
+  admission, PCM hash verification and a three-entry immutable LRU cache. The
+  current reviewed source remains distinct from cached frozen data. No stale
+  completion publishes and no cache hit starts playback implicitly.
+- Added separate render, existing isolated Prelisten, stop/cancel and WAV export
+  controls. The moving program requires an explicitly reviewed paired-held policy;
+  ordinary onset maps remain onset-only. Private cue preparation retains its
+  source lease/storage through cancellation settlement, fences route/clock/source
+  changes and serializes replacement so an old pending cue cannot attack later.
+- Source/payload/metadata overlap remains charged until acknowledged retirement.
+  Shared consumers, decoded cue ownership, old frozen-cache reuse, independent
+  export copies and unknown retirement have separate lifetimes. This introduces
+  no MIDI owner, world advancement or free-running note accompaniment.
+- Added fit-panel wrapping/scroll behavior for long mode IDs and reference controls.
+  Authored unrun controlled lease/cache/identity/stale/replacement/stop/export
+  fixtures using explicitly labeled zero-PCM contract envelopes. They do not claim
+  actual rendered-body, browser, device or listening evidence; the separate real
+  kernel/reference fixtures also remain unrun.
+- Actual live graph/route application, Metamorphic Bridge, full PCM/alias/decay,
+  moving-control worklet cost and matched-level listening remain pending for
+  #1225. Static-only checks precede this commit; the combined runtime/CI validation
+  pass still waits for the remaining development implementation, as requested.
+
+
+### Continuation 218 — canonical paired-body graph and observed route MORPH
+
+- Added an immutable paired-modal-body graph profile using exact reviewed endpoint,
+  mapping and derived-profile hashes. The publishing native/owned host verifies
+  all hashes before creating a producer; synchronous worklet admission rebuilds
+  bounded coefficients from the full source descriptors. At most two eight-mode
+  bodies are admitted per graph, with explicit coefficient/state/metadata storage,
+  absolute output containment, positive loss and conservative tail deadlines.
+- Integrated the native worklet, deterministic owned graph, processor readiness
+  and offline completion inventories, retained body inspection, body-only Panic
+  and normalized MORPH automation. Shared canonical owner audio excites one body;
+  no note owner, source onset, actor timing or distributed membrane state changes.
+- Connected the review panel to fenced canonical publication, manual MORPH,
+  observed sustained signed-distance travel, cancellation, retained tails and
+  Panic. Real travel uses a bounded clamped smoothstep route coordinate; existing
+  periodic travel coloration retains its prior curve. Source edits invalidate
+  pending publication and manual receipt authority while the old frozen body
+  remains intact. Closing the panel leaves the canonical graph with its owner.
+- Authored unrun supported-rate graph/profile/primitive parity, no-input-work,
+  signed cancellation, invalid endpoint/profile/policy, body containment, real
+  intent ancestry, endpoint clamping and controlled live-publication/cancel/stale
+  owner fixtures. Applied processor lifecycle replay remains explicitly refused
+  without actual timing evidence. Static checks only; no runtime validation ran.
+- Metamorphic Bridge scene staging, prepared blend, fitted/foundry signature
+  adapters, moving-control cost, PCM/spectral/decay/device measurements and matched
+  listening remain pending for #1225 and the combined qualification pass.
+
+
+### Continuation 219 — finite Metamorphic Bridge and initial score-body owner
+
+- Installed the original one-entrant Metamorphic Bridge score behind the pinned
+  friction capability. Its authored floor and far steel stop provide real signed
+  travel and reversal. One sustained actor journey excites one reviewed shared
+  dry/bright body; a clamped 512-pixel coordinate retraces without added attacks.
+- Added exact original endpoint generation matching the existing proof asset and
+  explicit stable-ID anchors. Scene recipes carry a bounded initial mechanism;
+  preflight verifies endpoint/map hashes, the actual sustained local mapping and
+  the one-body cost before world publication. Scene origin/recovery already bind
+  the complete immutable recipe and therefore retain these authored sources.
+- Explicit audio arming prepares the body through the existing canonical graph
+  owner. Local source frame admission stays unavailable until this preparation
+  succeeds; a missed source is not replayed or repaired. The route binds only the
+  first accepted matching begin, preserves its event ancestry and freezes after
+  source end. A performer replacement is not silently overwritten. Stop cancels
+  pending work; temporary source/profile storage remains charged until settlement.
+- Added unrun exact proof/catalog/dependency/origin, no-output-before-audio-enable,
+  coalesced body preparation, accepted/rejected begin, foreign graph, cancellation,
+  resource retirement and actual finite-world reversal/one-journey fixtures.
+- Static checks only. The private scene rehearsal adapter still explicitly refuses
+  shared-body scenes until it can reproduce their complete control path. Bridge
+  browser/PCM/route measurements, moving-control cost and matched-level listening
+  remain pending; this experimental authored score is not acoustic qualification.
+
+
+### Continuation 220 — complete isolated rehearsal of the reviewed route body
+
+- Extended private scene rehearsal to the exact one-body initial morph mechanism.
+  The candidate loans its verified recipe; the worker checks its complete hash,
+  source build, body count and sustained mapping before preparing DSP. Other
+  unsupported shared-body topologies still fail explicitly. Source and recipe
+  DTOs are sealed independently of caller edits.
+- Mixed the same bounded assetless lane renders through one owned paired-body
+  graph and projected only the first matching journey's actual signed-distance
+  intents into MORPH. Canonical order, source interval and source end are checked;
+  no onset or motion is manufactured. Native and owned paired-body adapters use
+  the same Float32 automation coordinate. The body receives the same owner sum
+  rather than a separate body for each lane or actor.
+- Retained the complete declared body-tail window after the source boundary tail,
+  with bounded workspace, cooperative cancellation and explicit offline fault
+  refusal. The retained WAV manifest binds exact recipe, graph, map/profile,
+  source voice/generation, control-schedule hash, tail and numerical diagnostics.
+  The cue owner rejects foreign body/recipe results before playback.
+- Authored unrun supported-rate real private-world-source/DSP render, same-input
+  repeat identity, complete tail/no extra onset, stale/missing recipe, workspace,
+  cancellation and stale-owner fixtures. This is new isolated rehearsal PCM, not
+  historical performance, browser/device or acoustic evidence. All runtime and
+  listening checks remain deferred for the combined qualification pass.
+
+
+### Continuation 221 — intact wind/friction output into private modal bodies
+
+- Added the third typed graft family for #1216: intact sealed wind or friction
+  stereo output feeds an independently owned 1–8-mode linear outer filter. The
+  parent feedback model, force calibration, pressure, motion and register policy
+  remain untouched. Internal interaction/detector ports and arbitrary feedback
+  interconnection are rejected. This family reuses the existing contracting
+  sample-body kernel rather than introducing another resonator implementation.
+- Added preallocated per-voice body coefficients/state/control scratch. Parent
+  audio is explicitly divided by 32 before DC-blocked contracting injection;
+  original dry gain is independent. Source end closes outer input while its
+  positive body tail remains inside the explicit four-second parent envelope.
+  EXCITE/BODY/DAMP/MIX affect only the next prepared outer body. No additional
+  source onset or actor owner exists, and two same-pitch actors retain independent
+  parent and outer-body state. Storage/cost count both components and overlap.
+- Integrated engine parameter schemas, compiler component roles, source admission,
+  live/owned adapters and complete private cuts. Wind/friction command ABIs are
+  explicitly revised; old incompatible cuts are not reinterpreted. Outer state,
+  frozen controls, poles, observations, unused storage, parent onset/pitch/release
+  and canonical retirement are validated before any restore mutation.
+- Connected ordinary compiled Glass breath/Bowed shell recipe variants, original
+  tin/wood/light-glass or reviewed fitted bodies, seed-panel anatomy, existing
+  audition/durable apply and selected lineage rebuild. Friction requires its exact
+  committed local signed-axis journey; the frozen seed stays body ancestry and
+  is not secretly played. Body edits prepare new voices while old actors retain
+  their complete instrument. There is one honest unqualified realization tier.
+- Authored unrun source-invariance/two-actor/three-rate exact-cut, independent
+  storage, queued release, Panic, forged outer pole/unused field, ordinary compiler,
+  fit ancestry, input/tail-domain and interaction-port fixtures. Static checks only;
+  actual PCM, spectra, decay, device cost and matched-level listening remain
+  deferred. Additional strike/FM grafts, comparison stems and Instrument Nursery
+  still need their complete end-to-end content/workflow and qualification.
+
+
+### Continuation 222 — explicitly owned two-endpoint control blends
+
+- Added the prepared-dual-body-blend strategy for #1225 control references. Exact
+  reviewed map/endpoints produce two fixed self-correspondence profiles, each
+  bounded to eight modes. Both complete states receive the same finite control
+  input and retain independent positive-loss tails. MORPH changes only raised-
+  cosine convex readout weights; no intermediate physical object or mode-state
+  transfer is asserted. Ten states, not six paired slots, are charged for the
+  original four/six-mode proof.
+- Added strict bounded profile reconstruction, exact endpoint/self-map/derived
+  hashes and explicit two-body state/cost receipts. Rapid reversals do not reseed
+  or drop either side. The common reference strategy now owns separate decoder
+  identity and validates both the renderer revision and actual body count.
+- Connected reviewed blend policy selection, truthful readout-only preview,
+  worker control rendering, complete cache keys, isolated Prelisten and WAV
+  export. Onset-only and paired-held authorities remain distinct. Live prepared
+  blend graph publication is still explicitly unavailable until its dedicated
+  graph adapter counts both endpoints and tails; there is no silent pairing.
+- Authored unrun three-rate endpoint/readout, hidden-side ringing, positive-loss
+  balance, no-input energy, Panic, stale/forged profile, policy rejection, actual
+  bounded control WAV and controlled cache-body-count fixtures. Static checks
+  only; numerical/device/listening qualification remains deferred.
+
+
+### Continuation 223 — canonical live prepared blends and true endpoint cost
+
+- Connected prepared two-endpoint blends to ordinary native/owned owner graphs,
+  manual and observed signed-distance MORPH, retained body inspection, body-only
+  Panic and exact processor readiness/offline-completion identity. Both fixed
+  endpoint states share one upstream semantic source and keep their own tails;
+  graph restoration remains explicitly deterministic preroll.
+- Added dedicated blend graph/processor identity and full source verification
+  before producer creation. State, full source/profile metadata, worklet module
+  preparation and overlap are reserved. Processing receipts count two bodies
+  and all ten proof modes instead of one paired six-slot body. Graph body count,
+  state headroom and transition admission remain bounded; rejection preserves
+  the prior graph. A new map cannot overwrite a stale live body revision.
+- Enabled the reviewed authoring panel's live blend application without silently
+  changing policy. Manual or one admitted physical travel owner controls only
+  convex readout weights. Next-onset, paired-held and blend remain distinct
+  capabilities. Initial one-body scene mechanisms retain their narrower exact
+  adapter; generic shared-body scene rehearsal is not silently approximated.
+- Authored unrun supported-rate graph/direct parity, full endpoint cost, bad
+  profile, budget refusal, Panic, oversized-endpoint/last-good and control-cache
+  fixtures. Combined runtime/browser/PCM, cost, alias/decay and matched-level
+  listening evidence remains deferred. Fitted/foundry endpoint/signature adapters
+  and their workflow are still separate remaining work for #1225.
+
+
+### Continuation 224 — fitted/foundry endpoints and explicit interaction signatures
+
+- Added the bounded worker-only derived endpoint path for #1225. Exact saved fit
+  recipe/parent hashes retain selected stable mode IDs, frequency and amplitude
+  T60. Excitation/pickup weights remain unknown: spectral amplitude and stereo
+  phase are not independent physical interaction signatures. Users can enter
+  explicit signed values or deliberately choose the fixed ±1/8 synthetic preset
+  for up to eight modes, then review/publish a new immutable signature revision.
+- Solved shape inputs verify the complete retained source/asset and signed modal
+  projections. Explicit strike/left/right sites, selected indices or the existing
+  curated eight-mode salience tier, and one common scalar reference produce exact
+  signed endpoint weights. Unsupported frequency/loss and too-small references
+  fail with concrete source details. No mode clamping, independent endpoint
+  normalization, inferred physical identity or unreviewed correspondence occurs.
+- Added complete derived endpoint/source documents and hash validation, atomic
+  last-good publication, bounded source/signature/display metadata, independent
+  JSON export delivery and common-reference compatibility checks. Worker workspace
+  is reserved before source text/copies; canceled or stale results never publish.
+  Unknown producer retirement retains its leases and blocks new preparation.
+- Connected saved-fit/file import, direct current-fit offers, actual foundry site
+  selectors and independently charged immutable body-source readers to the same
+  authoring panel. Source readers can outlive their parent view with their own
+  reservation. Correspondence/pair/site review still precedes render/live use;
+  signature edits invalidate the draft map while the frozen live body stays owned.
+- Authored unrun fit/non-inference, explicit-weight revision, signed solved-site
+  and portable source, foreign hash/projection, source-document export, delayed
+  completed result, producer cancellation, accessible preset/review and independent
+  foundry-reader lifetime fixtures. Static checks only; numerical, browser, device
+  and matched-level perceptual qualification remain deferred. Source parent
+  availability and regeneration are separate from a frozen endpoint's playback.
+
+
+### Continuation 225 — finite FM body graft and explicit audition readouts
+
+- Added the worker-only original 12 ms softened FM exciter for #1216. Its fixed
+  material rate, integrated frequency modulation, Hann support, weighted DC
+  removal and fixed peak cap are explicit. Prepared immutable bytes and generator
+  ancestry are hashed; no cross-build trigonometric byte identity, spectral or
+  perceptual qualification is asserted. No audio-thread oscillator or allocation
+  is added: the existing owned sampler feeds the existing private body kernel.
+- Connected the ordinary compiled seed-lab template and explicit lineage rebuild.
+  Felt lightning selects the original dry wood body; other original or reviewed
+  fitted bodies remain explicit choices. Body root and positive modal T60 are
+  independent from the fixed-rate short exciter. The captured parent is retained
+  as body/regeneration ancestry and its PCM is not secretly replayed. The worker
+  prepares material before compilation; cancellation, failed preparation and
+  unresolved producer retirement preserve/charge the previous instrument.
+- Added explicit exciter-only and body-only private control auditions across
+  finite, observed texture and sealed-source grafts. They change only dry/body
+  readout at the original gain, retain the same authored control gesture and body
+  excitation/tail, and record the exact temporary definition hash. A comparison
+  cannot stand in for auditioning the full immutable patch before installation.
+  These references are not physical-take stems or matched-level listening proof.
+- Authored unrun three-rate finite support/DC/stereo/peak/ancestry, ordinary
+  compiler/macro/body loss, source mutation, stale/canceled worker, private pack,
+  failed-preparation/last-good and exact readout invariance fixtures. Static
+  checks only. Actual take-aligned four-way comparisons and Instrument Nursery
+  still need end-to-end scene content and runtime/listening qualification.
+
+
+### Continuation 226 — original Glass Orbit spatial-harp scores
+
+- Added nine installed #1100 dry-glass scores: finite solo, crossing duet and
+  small flock, each with a 12-tone pentatonic, explicit [1,9/8,5/4,3/2,5/3]
+  ratio field rooted at 220 Hz, or nineteen equal divisions of the octave.
+  Tuning variants share the exact same geometry, release/cohort policy, seed
+  and source patch. Five swept world gates have explicit direction/edit behavior;
+  no synthetic chord or attack runs underneath actual crossings.
+- Added visible long safe floors, far steel returns and direct/stepped physical
+  junction configurations through the existing empty-influence admission owner.
+  Each finite actor can cross the same gates on its real return. Requested,
+  pending, expired and rejected route changes remain physical outcomes, without
+  success accents or replacement actors. Small-flock voicing uses the existing
+  observed formation/field owners, with at most three members sounding at once.
+- Added a validated source-bound embedded patch reference helper and the original
+  dry glass FM patch, HARDNESS and RING onset controls, explicit original gain,
+  requirements, cost/overlap bounds, paused loading and manual-only assistance.
+  GATE SPREAD and TUNING describe their existing explicit physical-authoring and
+  scene-prepare owners; this does not claim an automatic tuning/gate macro.
+  Missing FM capability omits these scores rather than substituting a body.
+- Authored unrun inventory/dependency/origin, identical-world tuning, explicit
+  220/275/330 Hz target, formation/finite-cohort, absent-engine, actual compiled
+  terrain/reversal, empty-world silence and same-trace/two-tuning fixtures.
+  Runtime, backend pitch error, five-minute cost and human legibility/listening
+  qualification remain deferred. Trellis, Pocket Cathedral, spectrum/period and
+  Metamorphic Rail orchestrations remain separate work; no issue is closed.
+
+
+### Continuation 227 — explicit scene blend ownership and full private rehearsal
+
+- Added the explicit v2 scene morph mechanism for #1225's prepared two-endpoint
+  blend. The v1 mechanism remains paired-only. Each endpoint is bounded to eight
+  modes; admission/state report two bodies and the sum of their actual modes.
+  Paired mechanisms retain their eight-slot bound. Source/site/map verification
+  and the exact sustained signed-X journey remain mandatory before publication.
+- Extended world preparation, private rehearsal admission, actual owned-graph
+  rendering and cue receipts to count both endpoint states and tails. Workers
+  cannot publish a one-body cost receipt for a two-body strategy. Receipts bind
+  map/profile/graph/recipe, strategy, actual mode count and physical control
+  schedule; host cue admission checks the same cost/strategy. Unknown and stale
+  ownership retains the existing cancellation/retirement path.
+- Installed Metamorphic Bridge · Prepared endpoint blend alongside the explicit
+  paired score. It shares identical finite cohort, terrain, friction patch,
+  journey mapping and signed-distance control law. Both endpoints receive the
+  same source audio; only convex readout weights change. Both tails persist on
+  reversal and source end. This is not a mechanical intermediate material or
+  a silent replacement for correspondence morphing.
+- Authored unrun v1/blend refusal, complete installed-origin/dependency closure,
+  identical source/world, counted canonical graph/single binding and three-rate
+  actual private-source/full-tail blend fixtures. Undercounted scene rendering
+  is refused. Numerical/device cost, PCM continuity, paired-versus-blend listening
+  and browser workflow qualification remain deferred with the combined pass.
+
+
+### Continuation 228 — owned buffered-warp coordinates and committed automation
+
+- Added the bounded source/algorithm plan for #1186: immutable original asset,
+  original source rate and exclusive frame region, declared material root,
+  prepared/output rate, independent traversal and pitch ratios, fixed formant
+  policy, reset/preroll seeks/loops, exact artifact/configuration identities and
+  separately reported input latency, output latency and preparation lead. The
+  starting matrix is deliberately 0.75/1/1.5 traversal and -12/0/+12 semitones;
+  unqualified reverse/freeze/formant capabilities are rejected. Plan validation
+  is not artifact, DSP, device or listening evidence.
+- Added an ephemeral owned renderer queue derived from existing canonical
+  commands, rather than another journal. It retains the inactive prefix, sorts
+  target frames, replaces only the same frame, reconstructs implicit source
+  positions after insertion, preserves explicit seeks and rejects stale command
+  sequence/source epochs. Source seconds convert with sourceRate/outputRate;
+  pitch ratio never accidentally changes duration or source cursor speed.
+- Monotonic prepared prefixes remain frozen through their exact acknowledgment.
+  Future edits stay available; committed/pending history cannot be rewritten.
+  Known-unpublished rejection permits retry, while unknown publication keeps the
+  prefix locked. Local invalidation does not assert backend retirement. Stop
+  before output, finite exclusive ends and loop-edge history resets remain
+  explicit. Late preparation never silently moves the physical onset.
+- Re-read the pinned official Signalsmith wrapper's scheduling path. Its mutable
+  schedule remains unsuitable for direct unsorted forwarding; no wrapper/vendor
+  file was copied or patched. The actual bounded core adapter, prepared-rate PCM
+  ownership, worker baking, live processor integration and numerical/perceptual
+  qualification remain development work. This source/mapping/queue foundation
+  does not expose a pretend ready stretch backend.
+- Authored unrun exact source-rate conversion, target insertion/replacement,
+  pending/future commit races, stale sequence/epoch, cancellation, stop-before-
+  output, unknown publication, finite end, explicit seek/loop and preparation-
+  deadline fixtures. Only formatting/syntax/type/provenance checks are intended
+  before the deferred combined runtime pass.
+
+
+### Continuation 229 — pinned direct-core host and bounded materialization
+
+- Fingerprinted the exact #1186 upstream 1.3.2 Emscripten source at
+  a670068d9aeb64913331d5cc29337b19a457a7df and its embedded 64,494-byte WASM
+  without evaluating/compiling either artifact. Both SHA-256 identities and the
+  exact minified C binding ABI are explicit. The compiled bytes include their
+  Linear dependency behavior; source-build reproducibility remains unestablished.
+  No upstream wrapper, Blob loader, arbitrary eval or vendor source was patched.
+- Added an admitted-worker direct core host: verified copied bytes, explicit
+  configuration, separate actual core latency reports, deterministic constructor
+  randomness, private stereo input/output buffers and bounded heap growth only
+  during preparation. Nonzero seek/process/flush capacity priming covers all nine
+  starting rate/pitch points. Normal process/flush reuse fixed views, reject
+  source/output aliasing and stop on nonfinite/out-of-contract output. Source
+  seek does not secretly run every output block. Core/reset RNG history and
+  deterministic-preroll restoration remain explicit.
+- Added the static materializer with pinned size/hash, bounded download or exact
+  local source, output restricted to workspace dist, preserved mismatched existing
+  outputs and lossless binary extraction. No binary is committed. A separate
+  explicit 27-point real-WASM finite/stereo/cost probe is authored but unrun.
+  Its eventual output cannot certify browser cost, source onset mapping, pitch
+  spectra, allocator activity, matched-level listening or a playable quality tier.
+- Added unrun invalid artifact/configuration/workspace, output preservation,
+  download-bound and path-escape fixtures. The core host has not been executed.
+  Compilation, live/offline sample mapping, PCM conversion and reader leases,
+  worker baking, command application and performance/quality acceptance remain
+  separate required adapter work. Static checks alone do not make this a ready
+  instrument or close #1186.
+
+
+### Continuation 230 — prepared-rate source ownership and finite warp worker bake
+
+- Added #1186 private prepared-rate PCM through the existing owned bandlimited
+  reader. Source storage is copied, never detached or used as scratch. Conversion
+  zero-pads outside the selected region, retains original coordinates and plane
+  hashes, stages downsampling inside the reader's derivative domain, and records
+  exact ceil/crop behavior. Invalid/too-short resolution, nonfinite/oversized
+  input, stale source and cancellation fail before publication.
+- Added the worker-only finite sound-seed warp bake using the exact pinned core,
+  complete 128 MiB admission, concrete configuration/latency, bounded chunks,
+  independent pitch/traversal and immutable output hashes. Original source rate
+  converts before submission to the core. Named read-ahead, discarded preroll,
+  global rounded input frontier, finite body duration and separately counted
+  core flush tail remain explicit; no audio outside the source region is read.
+- Bakes preserve original parent sample rate, region, ancestry and printed-effect
+  meaning. They create new material without moving the world, source event or
+  physical onset. No normalization/clipping, hidden loop, detector substitution
+  or parent backing layer repairs an unavailable conversion/core. Core references
+  retire before the surrounding worker producer's ordinary acknowledgment.
+- Authored unrun private-copy/lifetime, four real conversion paths, stereo
+  anti-phase, high-rate staging, region/read bounds, cancellation and exact-core/
+  workspace refusal fixtures. Added an explicit 27-point real offline bake probe
+  with coarse sine-pitch/stereo and source/body/tail receipts. Neither this probe
+  nor the core smoke probe has run; they cannot publish a quality tier.
+- UI source-bank acquisition/bake delivery, complete lineage rebuild, live
+  WarpVoice/automation/preroll/loop integration, actual onset/impulse/spectral
+  acceptance and device/listening qualification remain development work. The
+  finite bake is an experimental worker capability, not a ready live backend.
+
+
+### Continuation 231 — immutable browser core packaging and independent readers
+
+- Connected #1186's exact prepared core bytes to immutable browser staging.
+  The CLI first performs bounded static materialization; the builder verifies
+  its workspace cache and adds the actual bytes/hash to the generation's code
+  inventory. The lower-level builder remains network-free and can produce an
+  explicitly core-absent generation. Foreign caches, symlinks/escapes, path
+  conflicts and changed bytes fail before generation publication.
+- Added the owned generation-local core material reader, without runtime
+  third-party fetch or executable Blob/eval. It verifies length/digest, charges
+  fetch/copy workspace before reading and retains it through stream cancellation
+  acknowledgment. A missing asset, generation change or mismatched byte leaves
+  the prior cache intact. Unknown retirement remains charged and blocks new
+  producers. Canceled waiters do not cancel a separate consumer's cache fetch;
+  eight bounded waiter slots prevent abandoned Promise accumulation.
+- Material is an immutable independently reserved Blob. Existing borrowed
+  readers may outlive cache authority with their own charged artifact lease;
+  clearing the view/cache does not claim their consuming jobs retired. Actual
+  prepared reader copies belong to the worker admission that requests them.
+- Authored unrun cache/unbuilt generation, route/hash, oversized/canceling and
+  unknown stream, bounded canceled-waiter, foreign-cache build refusal and
+  independent real-byte reader lifetime fixtures. The explicit core probe now
+  includes the latter lifetime check; it has not run. Static checks only.
+- Seed-lab bake delivery and live streaming automation are still development
+  work. No browser build, WASM compilation/execution, numerical probe, runtime
+  suite or CI qualification has run during this implementation-first stretch.
+
+
+### Continuation 232 — explicit finite warp material and ordered rebuilds
+
+- Connected the exact owned application core reader to the seed lab's admitted
+  worker bake. Traversal, pitch and output rate are separate explicit controls;
+  preparing material does not select it, compile an instrument or enable audio.
+  Selecting the result declares fixed-rate source playback. Changed controls,
+  source/region edits and stale parent components fence publication and use.
+- The host verifies actual result bytes, WAV coordinates, embedded annotation,
+  recipe/core identities, frame inventory and waveform bounds before retaining
+  a new immutable candidate. Source windows, transferred core copies, worker
+  results and host digest/copy overlap have distinct counted ownership. Failure,
+  cancellation or unknown retirement retains the prior published material.
+- Extended selected-branch rebuild order through original, components/printed
+  composition, finite warp, optional modal fit and instrument compilation. Plans
+  preserve exact parent/core/configuration hashes and reject missing inputs,
+  modal-to-warp cycles and oversized fitted warp parents before work begins.
+  Rebuild execution verifies the prepared core/configuration before proceeding.
+- Authored synthetic-DSP workflow fixtures for output-rate/ancestry, independent
+  reader retirement, delayed stale results, explicit fixed-rate UI selection and
+  preserved prior candidates, plus ordered/cyclic/missing rebuild cases. These
+  fixtures are unrun and make no numerical core or audible-quality claim.
+- Static checks only. Live WarpVoice streaming/automation, onset/spectral/tail
+  acceptance, browser/device cost, matched-level listening and the combined
+  runtime/CI pass remain pending; finite material is not a qualified live tier.
+
+### Continuation 233 — finite Builder-Miner dialogue and operation-owned attacks
+
+- Added six explicit #1099 score entries: dialogue, staggered pair and a third
+  bashing crew, each with separately named dry FM and four-mode modal recipes.
+  Equivalent realizations retain identical physical recipes and causal mapping.
+  Original modal tables have positive finite loss, distinct strike responses and
+  no material-identification or perceptual qualification claim.
+- Authored adjacent finite benches, bounded excavation above a steel floor,
+  one entrant per lane, exact work stations and manual-only world policy. A
+  performer must explicitly arm the existing physical feedback owner to request
+  each station's skill once, or assign skills manually. No scene load silently
+  arms automation. Actual commands and outcomes use the existing journal.
+- Only operation-accurate successful solid changes create attacks. Station
+  crossings, requested/rejected assignments, animation/SFX, protected work and
+  exhausted material produce no replacement notes. No crew or terrain is
+  replenished to complete a phrase. Existing lane mute/solo and later-onset
+  hardness edits leave physical work independent.
+- Authored unrun real-world fixtures for builder/miner phase and operation
+  ratios, bounded command counts, third-crew bashing, unarmed/empty silence,
+  unchanged physical motion under sound edits, immutable source closure and
+  explicit modal/FM variants. Geometry, action-phase runtime results, resource
+  costs, audio separation and listening acceptance remain unestablished.
+- Prepared multisample/friction, talking tools, phrase cargo, live graft and
+  shared-body variations remain separate work; these six dry scores do not
+  claim the complete scene issue is closed. Combined validation remains deferred.
+
+
+### Continuation 234 — atomic same-take graft readout comparison
+
+- Added #1216's four-readout preparation over the existing isolated take renderer:
+  an explicitly pinned original, exciter only, body after the same excitation
+  and full graft. Four ordinary render owners run sequentially under the shared
+  worker/resource admission. All outputs must share the exact saved take
+  revision, semantic history, build, sample rate, crop and frame inventory.
+- Dry/body readouts change only the existing graft readout and remove its mix
+  macro. Source assets still resolve against the real unchanged installed pack;
+  no modified patch is misrepresented as an installed immutable revision. Each
+  WAV retains its actual rendered definition hash; the comparison inventory
+  binds original references, derivations, actual file digests and tail receipts.
+- Comparison ranges are bounded to sixteen seconds, four bounded render manifests
+  and 64 MiB of actual output. Common tail policies retain per-readout truncation
+  details. Fixed authored gain is preserved without loudness normalization. A
+  missing renderer/asset, different source/build/frame domain, stale request or
+  canceled late producer cannot publish a partial set. Prior active readers
+  prevent replacement. Independent producer cleanup is attempted separately;
+  unknown retirement retains its charged metadata and blocks further work.
+- The take render dialog can explicitly pin an original instrument, then prepare
+  the saved graft on that take. Existing file selection, delivery and seed
+  inspection handle all four readouts. Opening, rendering and comparison do not
+  enable live audio, overwrite a take or install/apply the readout patches.
+- Authored unrun synthetic-render ownership fixtures for sequential admission,
+  actual digest binding, exact material references, source/build/frame mismatch,
+  failed/stale/canceled preparation, borrowed prior files and independent cleanup
+  failure. They establish no numerical DSP, acoustic or listening result.
+- Static checks only; real same-take numerical/tail comparisons, isolated audible
+  comparison, Instrument Nursery and device/listening qualification remain in
+  the deferred combined acceptance pass and remaining development backlog.
+
+
+### Continuation 235 — authored scene racks and three finite Dub Quarry routes
+
+- Added #1102 tight-tunnel, open-courtyard and long-gallery pluck/echo studies.
+  Three finite actors own bass, a longer physical reply and wood-color arrivals.
+  Route widths, reply-end pickups, steel reversals and a safely admitted
+  direct/stepped junction determine actual arrivals. No bass loop, automatic
+  replacement crew or note-only route substitution is present.
+- Scene recipes can carry exact saved effect defaults into the existing project
+  owner. A source-bound renderer requirement is mandatory and shared-morph/rack
+  combinations require a separately composed profile. The initial profile is
+  complete owned gain/delay routing with bounded state/latency/tail, without
+  native convolution, capture readiness or unsupported source dependencies.
+- Dub Quarry's saved send starts at zero. The performer explicitly loads saved
+  defaults and prepares Quarry Echo, then uses its existing momentary THROW,
+  focus/cancel handling, voice selection, bypass and Panic. Loading a scene
+  neither activates audio nor turns saved settings into a performed gesture.
+- Private rehearsal renders the actual source prefix through the exact static
+  rack and records definition/processing hashes. Its four-second tail preview
+  reports the graph's full declared maximum and whether the preview truncates
+  that bound. It never calls this a complete tail or replayed live throw.
+  The host validates exact recipe, graph identity, source and tail inventory.
+- Authored unrun finite route/arrival, silent empty-world, exact project-default
+  staging, source-linked real-DSP rehearsal, missing/stale rack, unsupported
+  topology and source-closure fixtures. Extended long-route fixture horizons to
+  include the required return crossings at the engine's actual walking step.
+- Static checks only. Geometry, live echo gestures, stopped-source tail corner
+  metrics, audio/physical cause displays, measured cost and listening remain
+  unqualified. Cargo Journey echo, tape/duck variants, room zones and the shared
+  gallery body remain separate development; the complete issue remains open.
+
+
+### Continuation 236 — native-source private rehearsal and exact input accounting
+
+- Added the missing native FM/modal/oscillator private-scene path used by Glass
+  Orbit and the dry Workshop scores. Existing OfflineAudioContext preparation
+  runs outside the worker; at most four assetless native lanes and 32 MiB of
+  retained PCM are admitted sequentially. Native samples remain unavailable
+  without their separate material adapter. No owned oscillator impersonates a
+  native source, and cross-browser bit identity remains explicitly unclaimed.
+- Factored the lane revoice/source identity shared by native preparation and the
+  worker mixer. The worker independently replans captured intents, verifies
+  exact source/definition/engine/build, completed frame interval and native
+  receipt, then uses the existing native WAV encoder and common lane mix.
+  Missing, duplicate, stale or unrelated native PCM is rejected before output.
+- Native PCM remains reserved through snapshot-copy acknowledgment. Retained
+  plans, channel planes, transport/encoding overlap and mixed output are counted
+  separately. Cancellation waits for an accepted native producer; unknown
+  release is retained, never blindly retried. Independent lane releases still
+  run when one fails, and upstream partial retirement reaches the cue owner.
+- Corrected inspected JSON byte accounting: array commas and object colons/
+  commas now match canonical serialized bytes, including empty containers.
+  The old conservative separator count could reject requests sized from their
+  exact canonical payload. Structural/retained-object estimates remain separate.
+- Moved Glass Orbit's evenly spaced first gate closer so its finite private
+  prefix can include a real source attack. Pitch declarations, finite actors,
+  source ownership and reverse-return behavior retain their existing policies.
+- Authored unrun mechanical native-PCM fixtures for exact plans, worker encoding,
+  handoff lifetime, late cancellation, partial preparation and independent
+  unknown cleanup, plus exact JSON byte-boundary/Unicode fixtures. These are
+  not native synthesis, onset, browser, acoustic or listening qualification.
+- Static checks only. Explicit private Workshop station arming, composite layer
+  families, live warp and the other roadmap work remain development; combined
+  runtime/numerical/browser validation and CI qualification remain deferred.
+
+
+### Continuation 237 — explicitly armed private Workshop stations
+
+- Added a separate scene-browser action to rehearse authored work stations only
+  in the cold private world. Ordinary rehearsal stays unarmed; CURRENT, NEXT and
+  live feedback state remain unchanged. The initial profile permits at most
+  eight one-shot, actual-pickup, source-actor skill assignments, without layer
+  loops, substituted actors or unbounded retries.
+- Reused the existing physical feedback/intervention owner. Private requests,
+  queue admission, actual applied/rejected facts and pending commands at the
+  prefix boundary are independently retained. A crossing/request adds no
+  musical onset; successful real work operations still own the attacks. Prefix
+  cleanup cancels remaining private commands without advancing the world.
+- The source and render bind an exact station ledger and report requested,
+  applied, rejected and pending counts. Malformed, duplicate or inconsistent
+  ledgers fail before a cue is published. The scene browser shows those actual
+  prefix counts; it does not present a requested skill as completed work.
+- Private listener detachment, station controller, interpretation, clone and
+  checkpoint-reader retirement now retain explicit dependencies. Independent
+  cleanup is attempted even when a sibling fails; a still-used world is not
+  released under an unacknowledged listener/controller. Retired ledger storage
+  cannot be visited again, while an already captured source remains immutable.
+- Authored unrun real-world station/work, finite outcome, canceled pending
+  assignment, unsupported/cold-world policy and explicit-loader-policy fixtures.
+  Their eventual runtime results are separate from native synthesis, audio,
+  physical-take history and listening acceptance. No runtime suite has run.
+- The Workshop can now request its authored private work phrase through the
+  native rehearsal adapter, subject to the deferred runtime/browser pass.
+  Composite layers, remaining scene variations and other roadmap development
+  remain open; all acceptance and CI claims are still pending.
+
+
+### Continuation 238 — complete fixed-bank ownership for source children
+
+- Prepared the #1178 live-layer dependency boundary: a source can declare one
+  primary and one distinct auxiliary fixed bank. Dependencies resolve against
+  existing exact bank identities before any producer starts; there is no new
+  table generator or unverified coefficient substitution.
+- Live worklet preparation now owns a complete sequentially prepared bank set
+  through its existing initialization acknowledgment. Primary-only engines keep
+  their processor payload shape. Source profiles can declare an auxiliary bank
+  from their effective parameters, and the offline control factory resolves
+  the same dependency list through the existing worker table computation.
+- Every bank reader retires independently. Later preparation failure or a
+  canceled but still-running producer retains storage until settlement; partial
+  upstream/reader retirement keeps metadata charged and cannot be retried as
+  successful release. Individual bank preparation now returns a concrete partial
+  retirement receipt for an unresolved producer/release, preserving the cause
+  without mutating a possibly frozen cancellation error. Pure dependency resolution stays separate from host job
+  preparation, avoiding a worker-to-host job-service import cycle.
+- Authored unrun dependency, complete-set, cancellation, partial preparation,
+  independent release and unknown-upstream fixtures with explicit mechanical
+  table doubles. No materialization, kernel execution or numerical table claim.
+- This is the live composite-source preparation foundation; no current content
+  enables auxiliary banks yet. Layer DSP, complete state/command handling,
+  recipes and UI remain required development. Runtime/CI validation is deferred.
+
+
+### Continuation 239 — one owned source for aligned seed children (#1178)
+
+- Added the explicit `worklet-seed-layers` engine, two physical source slots and
+  a separate 56-field command/state profile. One semantic onset owns an
+  original-rate transient, an independently pitched bounded grain cloud and an
+  original-rate residual with positive amplitude loss. The complete three-bank
+  PCM inventory is prepared once; the frozen parent is ancestry, never another
+  backing layer. Source gains conservatively count the worst permitted grain
+  overlap and both filtered readers; declared per-source cost sums the existing
+  primitive units (96 at the maximum modal tier), not a measured CPU promise.
+- Hollow Tool replaces only the sustained path with its exact fitted positive
+  loss modal body, using the existing contracting feedforward owner. Separate
+  child clocks, birth closure, forced retirement, envelopes and declared tails
+  remain under the root gate. Configuration pins both fixed banks, complete PCM,
+  analysis/reconstruction and modal-fit receipts. Exact state transfer includes
+  the cloud/grains, residual loss, envelope and modal tail without changing the
+  existing sampler ABI. No render-loop arrays or scratch graphs are allocated.
+- Connected saved patch validation/compiler identities, live/offline material,
+  control fixtures, causal rendering and the seed lab. Hammer/Cloud and Hollow
+  Tool have explicit compile choices; Hollow Tool requires a fit of the exact
+  sustained component. Three independently borrowed immutable artifacts must
+  retire before replacement; missing, canceled or stale preparation preserves
+  the previous patch. Existing sampler maps retain their separate selection and
+  release-child behavior. The private fixture has one authored onset and no
+  unsupported live pitch changes or physical-performance claim.
+- Authored unrun complete-inventory, ancestry, recipe, three-rate state transfer,
+  child shutdown, natural EOF, forced queued-control cancellation and changed
+  configuration fixtures. Static syntax/import, critical type and provenance
+  checks pass. No runtime/audio/browser/benchmark tests were run.
+- Bowed Scrap remains explicitly unavailable until actual contact-begin and
+  contact-scoped motion admission are connected; its typed ancestry alone is
+  not playable content. Broad acceptance/CI and the remaining backlog remain
+  deferred to the consolidated validation phase after development.
+
+
+### Continuation 240 — real contact-begin travel observations (#1178)
+
+- Added a separately authored `contactTravel` policy for local support-contact
+  mappings. The existing causal contact-span owner creates the sole onset and
+  the existing travel accumulator supplies completed motion coordinates for
+  that same actor/span. Rest and physical reversal retain unsigned contact-path
+  coordinates; contact end, unknown coverage, scope change, discontinuity or
+  update exhaustion ends the held source instead of synthesizing another one.
+- Added pure seed admission/planning helpers that require actual completed
+  contact-begin evidence, bind source events and scope identity, and convert
+  recorded ordered spans into bounded grain-window position/activity controls.
+  Finite source coordinates, exact segment timing, required path precision and
+  no-extrapolation remain explicit. These are source-control receipts, not an
+  acoustic or perceptual qualification.
+- Authored unrun real-engine contact/motion/checkpoint/end, false-onset, scope
+  loss and incompatible-policy fixtures. This commit supplies observations and
+  planning only; Bowed Scrap remains unavailable until its DSP latch, live and
+  offline command adapters and explicit audition controls are connected.
+
+
+### Continuation 241 — Bowed Scrap live/offline contact latch (#1178)
+
+- Connected the real contact-begin proof and completed travel spans to the same
+  owned three-child source. Only that contact begin starts the transient. The
+  sustained child interpolates its finite grain-window coordinate within each
+  admitted ordered span and derives birth activity from observed displacement;
+  rest, missing spans and gaps open no new births. Grain pitch stays independent.
+  Source end closes every input; existing bounded grain/release tails retain the
+  same root owner. A held contact may outlive the transient/residual material.
+- Live and causal/offline adapters check contact identity, event order, position
+  continuity, finite coordinates and lease coverage before the existing command
+  transport. Snapshots carry the bounded motion latch and compare it with child
+  position/activity, pitch, core frame and owner deadline. Accepted lease renewal
+  now notifies this composite source through an optional shared-kernel hook;
+  released sources cannot use renewal to revive input or extend their tail.
+- Added an explicit physical-scene editor template, reviewed-save requirement,
+  contact mapping choice and Bowed Scrap recipe in the seed lab. Private audible
+  and offline control fixtures use a separately typed authored contact/motion
+  program with `physicalTakeEvidence:false`; it cannot be mislabeled as observed
+  world contact. The ordinary scene/contact end owner remains authoritative.
+- Extended authored unrun three-rate mid-span state, rest/gap birth closure,
+  held-contact EOF, lease renewal/revival rejection, false evidence and complete
+  three-family recipe fixtures. Formatting, syntax/import checks, critical types
+  and static provenance pass (10 components / 335 files). No runtime, browser,
+  audio/listening, benchmark or full-suite validation was run. The three layer
+  families are implemented; #1178 acceptance and the remaining backlog are open.
+
+### Continuation 242 — Switchyard, Glacier and fixed-cohort Rescue studies (#1098, #1101, #1103)
+
+- Added three finite dry FM Switchyard arrangements, actual flight/work/ricochet
+  mappings, one-shot builder/blocker stations, a reusable safe step junction and
+  two explicitly owned zero-send echo variants. The blocked return has no
+  substitute snare. Refactored Dub Quarry to use the same unchanged step geometry.
+- Added three dry Hollow Ooh Glacier arrangements and an optional Spectrum
+  descent palette with identical physical recipes. Actual flight owns held
+  voices; the small choir's support drone is explicitly intentional. Grain and
+  freeze editions remain pending rather than appearing as nonfunctional controls.
+- Added crossing, unresolved-delay and actual-loss Rescue studies in original
+  pluck, dry choir and local modal palettes. Explicit worker commands may enroll
+  the canonical crew owner. A saved cadence can require an exact crew count and
+  rejoin region in addition to complete unique route prerequisites and unchanged
+  revisions; legacy completion policies preserve their canonical representation.
+- Authored real-world trace, empty-world, terminal-loss, palette/control
+  invariance and complete-cohort fixtures. Corrected older score fixtures to
+  select engines by identity instead of catalog position. These fixtures are
+  unrun. Formatting, 21-file syntax/import checks, critical types and static
+  provenance pass (10 components / 335 files). No runtime or listening tests ran.
+- These are explicit dry studies, not acceptance of the full scene issues.
+  Sample-kit, speech, shared-body, captured grain/freeze, sealed-wind, physical
+  geometry qualification, private demo takes and listening variants remain open.
+
+### Continuation 243 — same-take graft readout PRELISTEN (#1216, #1233, #1208)
+
+- Prepared original/exciter/body/full graft files now play from frame zero through
+  the existing foreground PRELISTEN lease and PCM cue session. Other prepared
+  causal WAVs use the same bounded owner. Authored gain remains fixed; only the
+  monitor level and existing eight-millisecond edge fades affect playback.
+- File loans, read/hash overlap, source selection, route revision and audio clock
+  remain bound through preparation and playback. Stop, discard, close, suspension
+  and foreground handoff retire the same producer. Unknown retirement keeps its
+  file loan and resource charge. Render source disposal waits for cue retirement.
+- The dialog exposes selected-file play/stop and the shared route monitor, with
+  a sixteen-second total cue limit including tails. A playback admission receipt
+  is explicitly not listening qualification or a recording of the original live
+  PCM. Added six synthetic transaction/lifetime fixtures, all unrun.
+- Formatting, five-file syntax/import checks, critical types and static provenance
+  pass (10 components / 335 files). No runtime, browser, audio/listening or full
+  suite checks ran. Instrument Nursery and broader anatomy acceptance remain open.
+
+### Continuation 244 — solved two-coordinate bar pickup field (#1217, #1215)
+
+- Added an explicit top-face alternative to the existing one-dimensional bar
+  edge. Its eight nodes and six triangles must be the exact exposed Tet4 faces,
+  including their diagonals. Both normalized coordinates project signed solved
+  nodal displacement using one reference over the whole field. The renderer uses
+  the actual triangular affine interpolation; it does not substitute bilinear
+  geometry or renormalize each pickup position.
+- Foundry preparation, worker input, ordinary pack ancestry and shared-body
+  offering retain the chosen field kind. The two pickups observe the existing
+  shared modal state independently. Mesh convergence, acoustic accuracy and
+  listening remain unqualified; the diagonal loss model remains explicitly an
+  approximation, and other solids/refinements do not receive a fabricated field.
+- Authored unrun boundary/projection, triangle-oracle, two-coordinate movement,
+  unchanged-state/silence, snapshot, package and stale-source fixtures. Formatting,
+  nine-file syntax/import checks, critical types and static provenance pass
+  (10 components / 335 files). No solver, DSP, browser or full-suite test ran.
+
+### Continuation 245 — explicit signed site loss in shared bodies (#1215, #1217)
+
+- Added a positive rank-one site operator over the real velocity quadrature of
+  the declared normalized complex-modal energy model. It preserves signed cross
+  terms and the site's null space. The exact positive loss flow is prepared once;
+  amount interpolates identity and that contraction, and multiple sites compose
+  in pinned slot order after diagonal loss and existing mode/scattering evolution.
+  The audio loop allocates no arrays and evaluates no new exponentials.
+- The common reference retains between-site gain; no site is renormalized.
+  Existing diagonal masks retain their old contract. Point projection only
+  removes energy, leaves displacement unchanged during its loss substep, and
+  releasing a contact cannot restore dissipated energy. Snapshots and graph hashes
+  include the exact operator and coefficients. This is a split modal audio model,
+  not evidence of calibrated material, force or acoustic accuracy.
+- Foundry controls explicitly choose diagonal versus signed point loss. The
+  shared-body panel now exposes both pickup coordinates for solved surface fields
+  and keeps invariant vertical controls disabled for edge/authored row copies.
+- Authored three-rate analytic, null-space, cross-mode, multi-contact contraction,
+  silence, single-application, state-restore and foundry closure fixtures, unrun.
+  Formatting, nine-file syntax/import checks, critical types and static provenance
+  pass (10 components / 335 files). No DSP, solver, browser or full-suite tests ran.
+
+### Continuation 246 — exact scene lookup beyond browser pages (#1151, #1110)
+
+- Added an indexed latest-supported scene lookup independent of page ordering.
+  Explicit content versions remain hash-pinned; unsupported future schemas stay
+  inspectable without hiding an older supported scene. Lesson installation uses
+  that index, and lesson loading resolves its exact saved reference directly.
+- Removed a brittle whole-catalog count from a practice fixture. Added unrun
+  eighty-leading-scene regression coverage and supported/future version-order,
+  immutability and wrong-hash cases. Formatting, five-file syntax/import checks,
+  critical types and static provenance pass (10 components / 335 files). Runtime,
+  browser and full-suite validation remain deferred.
+
+### Continuation 247 — active score physical controls (#1098, #1101, #1102, #1151)
+
+- Added a compact panel for the currently loaded scene. Authored nominal entry
+  spacing and entry spread submit the existing next-cohort release command while
+  preserving the finite actor promise, pause state and other release fields.
+  Safe-route selectors use exact current junction configuration IDs and the
+  existing wait-for-safe-boundary command. Requested/pending values and realized
+  policy/geometry are displayed separately; queuing never becomes a success cue.
+- Whole-world and junction-definition changes fence stale controls. Deep sound,
+  terrain, field, echo and named-scene controls open their existing editors.
+  Lane macros stay in their established gesture/Undo owner; stage mode keeps its
+  existing edit restrictions. Display/listener ownership retires with the panel.
+- Added unrun UI fixtures for release field independence, retained finite cohort,
+  pending versus realized routes, stale generations/definitions, editor delegation
+  and disposal. Formatting, three-file syntax/import checks, critical types and
+  static provenance pass (10 components / 335 files). No browser, runtime, audio,
+  listening or full-suite validation ran; direct grouped macro performance and
+  the larger scene acceptance/demonstration backlog remain open.
+
+### Continuation 248 — point-loss decay units (#1215, #1217)
+
+- Renamed the new signed point operator's typed time to
+  `velocityProjectionT60Seconds`. Its exact loss substep damps a unit-reference
+  velocity projection; subsequent oscillation and other loss operators determine
+  the complete ringing amplitude decay. It must not inherit the diagonal mask's
+  `extraAmplitudeT60Seconds` claim. The inspectable equation and decay meaning now
+  state that distinction; the prepared coefficient and audio algorithm are unchanged.
+- Updated foundry generation and authored analytic fixtures. Formatting, three-file
+  syntax/import checks, critical types and static provenance pass (10 components /
+  335 files). Runtime, numerical, browser and listening validation remain deferred.
+
+### Continuation 249 — atomic authored scene macros (#1098, #1101, #1103, #1152)
+
+- Added a bounded canonical scene-macro action for one to eight exact authored
+  lanes. The current scene hash, declared normalized control, pack/definition
+  hashes, onset-only capability and every baseline must all match. Missing,
+  duplicate, omitted, replaced or stale targets reject the whole action before
+  publishing any lane. Unrelated controls/lanes remain shared and unchanged.
+- One project edit advances only affected lane revisions and carries their exact
+  changed-field metadata into the existing history, causal performance capture
+  and runtime projection. It changes no instrument reference, physical graph,
+  actor, release policy or held voice. Active individual gestures and pending
+  world/sound/take transactions fence the grouped Apply operation. Stage admits
+  this typed performance edit while retaining its other edit restrictions.
+- Active-scene sound controls now accept explicit normalized values for later
+  causal onsets, project mixed saved values honestly and disable replaced sources.
+  Deep lane editing retains its existing owner. Blank physical numeric requests
+  are rejected instead of becoming an implicit zero spread.
+- Authored unrun atomicity, second-target failure, exact source/baseline, no-op,
+  structural sharing, unchanged runtime inputs, Stage and UI projection fixtures.
+  Formatting, ten-file syntax/import checks, critical types and static provenance
+  pass (10 components / 335 files). Runtime, browser, audio/listening and full-suite
+  validation remain deferred; demonstration and broader scene acceptance are open.
+
+### Continuation 250 — pinned stretch heap-image ABI boundary (#1186)
+
+- Added a bounded WASM section/instruction walker for the prospective prepared
+  state transport. It fails closed on shared/unknown storage, unsupported
+  reference state, automatic start, extra globals, internal memory growth and
+  table mutation. It decodes immediates rather than treating their bytes as
+  instructions. This is structural inspection, not module execution or DSP proof.
+- Static inspection of the exact 64,494-byte pinned core finds 59 defined
+  functions, one mutable i32 stack global initially 72,800, one fixed five-entry
+  function table, no start function and no internal memory-growth/table-writing
+  instructions. External host growth remains separately guarded by the adapter.
+- Added an export-only derivation exposing that stack global for a future
+  quiescent runtime guard. Every non-export section and DSP instruction remains
+  byte-identical. The 64,518-byte derivation is pinned to SHA-256
+  `e5c48b760aac995264c12b32fc941e5ccc91eb5dc2c05cec6403ec0b5e05875f`.
+  Original cache material is unchanged; no binary was committed.
+- Added authored unrun malformed/immediate/state/export/stale-owner fixtures.
+  Formatting, five-file syntax/import checks, critical types, static provenance
+  (10 components / 335 files) and the explicit binary derivation/hash inspection
+  pass. No WASM compilation/instantiation, DSP, browser, listening or full-suite
+  test ran. Prepared heap capture/restoration and live WarpVoice remain pending.
+- Also made replaced scene-macro lanes with no local instrument return the
+  actionable replacement error before dereferencing their missing reference.
+
+### Continuation 251 — worker-owned initial stretch image capture (#1186, #1234)
+
+- Added opt-in capture after the existing pinned core's worker configuration and
+  nine-point capacity priming. Both stack checks require the exported quiescent
+  frontier. The private copied whole heap, export-only module bytes, exact I/O
+  pointer/extent, RNG frontier and complete configuration have independent hashes.
+  This is an initial empty-source image, not an arbitrary held-state snapshot.
+- Capture requires at least 192 MiB and increases its admitted peak with the heap
+  limit to cover capture/hash/transfer overlap. The ordinary non-image path keeps
+  its configuration contract. Later core operations do not mutate the retained
+  initial copy; reference disposal is distinct from producer retirement.
+- Added one worker-only job to the existing background service, actual build
+  fencing, explicit retained-byte inventory and owned module/heap buffer transfer.
+  It creates no worker pool. The existing worker acknowledgment remains the
+  producer frontier; copying bytes cannot establish that retirement.
+- Authored unrun workspace, build, image/hash/coordinate, independent-copy,
+  original-path and source-disposal fixtures. Formatting, five-file syntax/import
+  checks, critical types and static provenance pass (267 worker modules;
+  10 components / 336 source files). No WASM compilation/execution, runtime,
+  browser, audio/listening or full-suite test ran. Verified image transport,
+  restoration, live source ownership and cost qualification remain pending.
+
+### Continuation 252 — bounded compiled-module worker output (#1186, #1234)
+
+- Initial stretch image jobs can now carry their already compiled immutable
+  `WebAssembly.Module` through the existing acknowledged snapshot transport.
+  One explicit output capability permits at most one native module; input
+  receivers override any forged capability to false. The main service enables
+  it only for the exact image job under a bound execution identity. Other jobs
+  retain the plain-data restriction. Modules are structured-cloned, never added
+  to an ArrayBuffer transfer list or converted into executable project JSON.
+- Sender/receiver node and peak limits charge a declared 16 MiB code estimate,
+  and retained-byte receipts include it. This is a conservative logical charge,
+  not measured browser memory or a device tier. Actual heap/module byte buffers
+  retain their separate existing transfer and producer-retirement frontiers.
+- Authored unrun cloning, source preservation, default denial, spoof/duplicate,
+  capacity, cancellation, job-specific output and forged-ingress fixtures. Image
+  fixtures inspect the returned module/stack export without claiming audibility.
+  Formatting, seven-file syntax/import checks, critical types and static provenance
+  pass (267 worker modules; 10 components / 336 source files). No WASM compilation,
+  instantiation, runtime, browser, listening or full-suite test ran. Material
+  verification, restoration, the live adapter and measured cost remain pending.
+
+### Continuation 253 — sealed material and worker image restoration (#1186, #1138)
+
+- Added a strict initial-image profile for pinned module/stack identity, actual
+  prepared sample rate, I/O coordinates, whole-heap extent, RNG frontier and
+  initial-only restoration meaning. Worker capture validates this profile before
+  publication. An arbitrary held-state label cannot become an initial image.
+- Added non-render verification of independent module-byte, heap and complete
+  configuration hashes with admitted copy/hash overlap. The resulting bank keeps
+  private buffers, exposes bounded whole-heap copying and explicitly reserved
+  independent forks, and separates data-reference disposal from producer evidence.
+  Actual worker receipt/build ownership remains with the caller.
+- Added a worker-only restorer using the returned compiled module, fresh memory
+  and independent RNG. It copies the verified initial heap without rerunning
+  constructors or configuration, checks actual block/interval/latency exports and
+  stack frontiers, and retains fixed I/O views. Normal process/seek/flush paths
+  allocate no JS arrays; post-construction memory growth is refused. This does
+  not prove the core's internal allocator behavior or permit live render-thread
+  instantiation. The live setup/voice adapter remains a separate pending step.
+- Authored unrun source/restored control-history equality, private forks, independent
+  runtimes, tampering, configuration/build/rate/peak rejection and lifetime fixtures.
+  Formatting, five-file syntax/import checks, critical types and static provenance
+  pass (268 worker modules; 10 components / 337 source files). No WASM compilation,
+  instantiation, DSP, browser, listening or full-suite tests ran.
+
+### Continuation 254 — bounded buffered stretch history (#1186, #1138)
+
+- Added an explicit zero-new-input buffered output operation to both direct and
+  initial-image core owners. A successful seek admits one history window;
+  processing, flush, reset or a changed pitch consumes/invalidates it. An unused
+  buffered API leaves existing finite-bake diagnostics and identities unchanged.
+- Added a private prepared-PCM history owner bound to the original asset/region,
+  original and output clocks, complete core configuration/artifacts and separate
+  input/output latency reports. It copies and hashes both planes under an explicit
+  peak reservation, reads only selected prepared material with zero boundaries,
+  and invokes pitch/seek/buffered output with fixed history storage. Source timing,
+  automation publication, loop reconstruction and producer retirement remain with
+  the eventual voice owner; this does not install or qualify a live warp voice.
+- Authored unrun coordinate/cross-rate rounding, source-copy isolation, history
+  consumption, stale reset/pitch, direct/restored buffered equality, hash/clock/
+  artifact rejection, cancellation and fault/lifetime cases. Formatting, five-file
+  syntax/import checks, critical types and diff whitespace pass. No WASM, DSP,
+  browser, listening or full-suite tests ran.
+
+### Continuation 255 — original graft ancestry and Nursery pair (#1216, #1233)
+
+- Added explicit original authored model ancestry for procedural texture and
+  intact wind/friction outer-body templates. The model bytes and typed contract
+  are separately hashed generated data; there is no fictional PCM, take or fitted
+  recording. Mixed original/seed ancestry, mismatched models and unbacked fits are
+  refused. The existing frozen-seed path retains its complete identity/result.
+- Installed Instrument Nursery's original pair: one finite entrant supplies Tin
+  pollen through actual signed journey motion; another supplies Glass breath
+  through observed non-spawn flight. The intact feedback calibration is sealed,
+  dry/wet observation retains the same excitation, and no body child becomes a
+  semantic onset. EXCITE/BODY/DAMP/MIX use the existing atomic scene macro action.
+  The catalog retains exact original model/template text as well as requirements.
+- The third finite hammer/FM route still requires prepared immutable sample
+  material plus the scene asset-pin adapter. This pair is named and described as
+  such; it does not claim the complete three-template Nursery or measured acoustic
+  usefulness. Scene geometry, physical trace fixtures, same-take PCM comparisons,
+  device cost and matched-level listening remain unqualified.
+- Authored unrun compiled-origin, complete legacy identity, model mismatch,
+  metadata/hash closure, actual-world motion/flight, empty world and dry/body
+  physical-trace fixtures. Formatting, seven-file syntax/import checks, critical
+  types, diff whitespace and static provenance pass (10 components / 337 files).
+  No runtime, browser, numerical, audio, listening or full-suite tests ran.
+
+### Continuation 256 — graft ancestry and scene sample pins (#1130, #1186, #1216)
+
+- Corrected material preparation's assumption that every dependency must be a
+  playable sample. It now bounds/traverses the complete immutable file ancestry,
+  verifies non-playback bytes with SHA-256 under explicit read/hash reservations,
+  and decodes only declared sample references. Availability receipts distinguish
+  verified data dependencies from playable samples. Corruption, missing ancestors,
+  cancellation and unresolved reader retirement do not publish usable material.
+- Removed the lane adapter's blanket rejection of asset-backed procedural
+  instruments. Such lanes still resolve their actual engine, exact definition and
+  complete verified dependency closure; a data-only texture/wind/friction graft
+  receives no invented PCM pin or extra source.
+- Added owned source-rate scene preparation through the shared material provider.
+  Exact live PCM pins, original rate/frame/channel identity and decoder revision
+  are checked before a candidate world is constructed. Native-context sample
+  decoding remains unavailable through this path, and audio enable remains an
+  explicit later user action. The candidate holds pins through commit/cancel and
+  releases them only after world/checkpoint readers retire; unknown retirement
+  retains pins and the scene plan charge. Live renderers acquire their own copies
+  or pins when audio is enabled. Sample-based rehearsal remains a separate pending
+  profile, rather than accepting metadata as rendered audio evidence.
+- Authored unrun real compiled graft/data closure, mixed WAV+recipe, procedural
+  lane application, corrupt/missing ancestry, cancellation, unknown-reader charge,
+  source-rate scene admission, paused commit and ordered retirement cases.
+  Formatting, seven-file syntax/import checks, critical types, diff whitespace and
+  static provenance pass (10 components / 337 files). No runtime or audio tests ran.
+
+### Continuation 257 — selected finite strike in three-route Nursery (#1216, #1233)
+
+- Added three-route Nursery assembly around an exact saved finite sample/FM graft.
+  The reference's engine/artifact/schema, definition, fixed-rate forward map,
+  finite calibration and four onset macros are checked before assembly. The
+  selected source/body and ancestry remain intact; only an actual safe non-spawn
+  landing excites the third route. Missing or terminal landings create no hit.
+- Scene identity includes the complete selected immutable reference, including
+  its pack/ancestry identity. Each score owns three finite entrants, the original
+  travel and sealed-air routes, exact asset requirements and the full voice bound.
+  Metadata assembly is separate from source-byte/PCM admission during Prepare.
+- Connected a compact scene-browser action to the selected saved lane graft.
+  Assembly selects an inspectable candidate without preparing or publishing a
+  world; Prepare and paused Load remain explicit actions. Document/selection
+  changes fence late results, unavailable sources retain the current selection,
+  and one-at-a-time/eight-distinct-score admission bounds dynamic catalog work.
+- Authored unrun actual finite FM/wood recipe preservation, artifact/map/domain
+  refusal, identity/capacity/cancellation, three-actor landing/empty-world traces
+  and browser publication/disposal cases. Sampled private rehearsal, actual PCM
+  comparison, geometry, device cost and listening evidence remain pending.
+  Formatting, six-file syntax/import checks, critical types and static provenance
+  pass. Fetch confirms no missing master commits (386 ahead / 0 behind before this
+  commit). No runtime, DSP, browser or full-suite tests ran.
+
+### Continuation 258 — source-backed private scene rehearsal (#1111, #1216, #1233)
+
+- Connected existing owned PCM preparation to private scene rehearsal. At most
+  four PCM-backed lanes and 16 MiB of aggregate source PCM are admitted; up to
+  eight owned lanes may carry separately verified data ancestry. No live-input
+  recorder, replacement clock, source decoder or second audition owner was added.
+- Prepared banks retain private input copies and actual dependency receipts. The
+  worker verifies exact lane/engine/definition bindings and its complete PCM
+  payload through the existing causal renderer. Compact definition, descriptor
+  and dependency-closure receipts are compared before any cue plays. Generated
+  JSON ancestry is explicitly verified by the shared provider before handoff;
+  the render worker does not claim to have independently received/rehashed it.
+- Handoff drops main input references and starts owned bank retirement, while the
+  rehearsal still joins that receipt before releasing its outer storage. Reentrant,
+  unacknowledged and failed reader retirement retain charges. Existing assetless
+  and separately prepared native lane paths preserve their input/result profiles.
+  Native-context sampled rehearsal remains unsupported through this adapter.
+- Nursery's third route can use this sampled private preview. Its manifest now
+  declares the aggregate FlightArc observation as well as lifecycle facts. The
+  cue remains a new private physical phrase with an explicit half-second boundary
+  release; it is not historical-take, full-decay or listening qualification.
+- Authored unrun real bank/payload/owned-render cases with mechanical source pins
+  and intents, changed/missing PCM, ancestry/index refusal, data-only sources,
+  capacity, cancellation and unknown-retirement cases. Actual source decoding and
+  scene geometry remain separate qualification. Formatting, eight-file syntax/
+  import checks, critical types and static provenance pass (268 worker modules;
+  10 components / 337 files). No runtime, browser, DSP or full-suite tests ran.
+
+
+### Continuation 259 — original prepared Circuit Workshop and bounded kit capacity
+
+- Added a worker-only original finite-source producer for deep/short kicks,
+  body/noise snares, rim, four-lobe clap, six toms, three choked hats and crash.
+  Clean, dusty, industrial and finite printed-room variants preserve actual WAV
+  hashes, source clocks, production models, component counts and the exact
+  application/renderer identity. Sources use fixed authored gains, finite edge/DC
+  handling and band-limited additive metal; no limiter or normalization claim.
+- Added immutable DrumKitDefinition and saved-reference binding. Local GM keys
+  select articulations independently of hardware fallback; unmapped notes name
+  their rim approximation. This tier refuses retuning, declares lane/kit-instance
+  hat ownership and validates actual decoded source frames/rate/channels. Each
+  composite source remains one semantic strike and one owned sample reader.
+- Sound Library now prepares and stages complete verified kits through shared
+  background jobs and archive ownership. Existing Apply/Hold preview preserve
+  the exact kit data. Canceled, failed or unknown producers/readers keep their
+  copy-workspace charges until retirement; publication never applies a lane.
+- Raised the owned sampler ceiling to sixteen, with each instance allocating its
+  declared patch capacity and zone count. Live readiness, memory quotations,
+  offline rendering and held-state validation use that same capacity. A prepared
+  renderer refuses a capacity change rather than resizing held state. Small
+  existing patches retain compact cursor storage; the runtime/configuration
+  identities explicitly change with the storage shape.
+- Corrected Nursery's mutable score copies and counted shared scene source pools
+  by their actual immutable renderer-instance key rather than once per lane.
+- Authored deferred cases for all four source variants, archive corruption,
+  saved kit/clock drift, cancellation/unknown retirement, sixteen-voice held
+  state continuation and live preparation capacity. This is an unqualified
+  prepared-source edition: live oscillator controls, per-strike source retuning,
+  a shared ROOM send, remaining GM models/schemes, physical Switchyard wiring,
+  spectrum/headroom, device and listening evidence remain implementation or
+  qualification work. The later repair run below exercises the Node/runtime
+  cases; browser, device and listening qualification remain separate.
+
+### Continuation 260 — full-suite repair batch and CI packaging
+
+- Frontloaded repairs for the 150 recorded failures across immutable recipe
+  construction, canonical macro controls, scene catalog/native/owned rehearsal
+  contracts, exact PCM layout/ancestry, source voice retirement and capacity,
+  resource leases, mutable monitor routes, and physical journey/contact facts.
+- Sustained travel updates retain one held voice without also emitting distance
+  pulses. Distance-attack articulation remains separate. Actual walk/landing,
+  occupancy direction and route discontinuity facts now drive their intended
+  owners; fixtures use actual command feedback and structured causal clocks.
+- Corrected stale fixture contracts, source/runtime pins, descriptor order and
+  explicit producer/reader retirement. Added negative checks for PCM aliasing,
+  unprepared voice slots and zero-byte logical leases. Long deterministic source
+  and physical fixtures receive explicit correctness timeouts.
+- The final combined Node run completed with 6,198 passing and one stale held
+  voice expectation, after the original 150 failures cleared. All 92 input hashes
+  remained unchanged during that run. The remaining fixture now requires one
+  active voice and no duplicate onset; its follow-up is validated separately.
+  See `docs/validation/full-suite-repair-2026-10-27.json` for the source receipt.
+- CI packaging merges duplicate npm CycloneDX dependency references while
+  preserving every dependency edge. Dependency repairs remove the current audit
+  findings; MCP editor records use explicit string keys compatible with Zod 4.
+  The combined follow-up passed all 172 articulation/Nursery/provenance/MCP
+  cases. Formatting, undefined-call checks, critical types, dependency checking,
+  release readiness, MCP compatibility and schema-validated SBOM generation pass;
+  dependency audit reports zero vulnerabilities. Browser qualification helpers
+  now resolve their serialized imports against the browser document URL.
+- Final full `npm test` on clean published head `5002e618` passed all 6,203 cases
+  in 369.84 seconds. The receipt preserves that revision, environment and log
+  digest separately from the earlier repair run. CI also exposed historical
+  branch whitespace and a local CRLF versus committed LF provenance mismatch;
+  both receive byte-only cleanup. CI coverage/browser qualification remains
+  the final published-head check.
+- Browser follow-through found a frozen-palette startup failure and a focused
+  pitch-spelling/caret regression. Palette lookups now live in a shared WeakMap
+  with invalidation on color edits; Frame and MapObject no longer mutate source
+  palettes. The clip inspector preserves equivalent typed pitch spelling while
+  focused and still displays external note changes. All 45 focused Node cases
+  and all 13 browser boundary cases pass (43.4 seconds for the browser batch).
+
+- Final smoke follow-through: MCP protocol smoke passes. History sampling now
+  observes the complete final interval and records sampling duration separately
+  from seek-probe time. All 14 benchmark helper/gate cases and the complete
+  benchmark smoke batch pass with unchanged workload targets and thresholds.
+
+- CI full coverage reached 6,198 passing and one environment-sensitive runner
+  fixture failure, while meeting every threshold (90.1% lines/statements,
+  83.46% branches, 88.17% functions). The fallback fixture now supplies its
+  intended base explicitly; all 28 runner tests pass under c8 with
+  GITHUB_BASE_REF=master. Production source and coverage thresholds are unchanged.
+
+- A subsequent CI run exposed a terminal host-clock versus game-frame race
+  (history ratio 0.4995). Each history observation now joins a completed browser
+  frame before reading state. The deterministic stale-state regression, all
+  43 combined benchmark/runner cases and the actual smoke batch pass; workload
+  targets and thresholds remain unchanged.
+
+### Continuation 261 — reservation frontiers and truthful benchmark producers (#1122, #1254, #901)
+
+- The preceding checkpoint 5951f72d is fully green in CI: 6,200 instrumented
+  tests, 90.09% lines/statements, 83.46% branches and 88.17% functions. All
+  original 150 failures are repaired; their 33 issue owners now record that CI
+  evidence. The following development is a separate frontloaded batch.
+- Ordinary and independent-local capacity admission now runs at dispatch, counts
+  sounding owners separately, preserves a sounding owner on setup refusal, and
+  records explicit terminal reasons. Immediate onsets displace only overlapping
+  queued intervals; nonoverlapping reservations survive. Pending reservations
+  have an independent finite bound. Authored fake-clock cases cover cancellation,
+  same-pitch/timed-off/chord ordering, output ownership and unavailable capacity.
+- Browser benchmark receipts now distinguish requested rates from completed
+  tick/monotonic-time throughput, actual RAF gaps and existing logic/render
+  execution measures. Observation storage is bounded and overflow is invalid.
+  Version-two receipt admission requires actual work and the declared population.
+- MIDI CPU rows use deterministic chronological workloads and real CPU clocks,
+  with separate successful-work and saturated-rejection rows, per-repetition
+  admissions/submissions/rejections and cleanup evidence. Rejected attempts no
+  longer qualify a successful-work row.
+- History qualification captures independently observed forward state and full
+  terrain mask/RGB without scanning the archive. Applied target/return states
+  are compared exactly; actual cold-decode/cache-hit counters distinguish first
+  touches and repeats. Bounded retained checkpoint payloads are retired after
+  probing. No-op and actor/terrain corruption controls are authored. Existing
+  terrain undo #1264 was already closed; its 24 production-owner regressions
+  are confirmed by the green checkpoint.
+- Both maintained direct-Mocha subsets now route through shared runner categories
+  while preserving their exact files and guard order. The package-script guard
+  scans every maintained Mocha command. Coverage retains its instrumented owner.
+- Runtime validation of this new batch is deferred while development continues;
+  formatting, syntax and critical-type checks are the current preflight scope.
+
+- Preflight passes: formatting, syntax for 23 changed/new modules, critical
+  types, undefined-call scan, dependency checking and runtime provenance
+  (10 components / 340 files). New runtime fixtures remain deliberately unrun.
+
+### Continuation 262 — bounded capture provenance and direct benchmark scenes
+
+- #1047: master PCM manifests now include an exact source-frame segment map and
+  bounded host observations of monitor routes, owner graph/effect revisions and
+  score-clock anchors. These observations explicitly retain unknown applied
+  frames; they do not claim processor acknowledgments or acoustic evidence.
+  Private cue owners are excluded. Unscored master sources remain explicit.
+- Provenance is capped at 48 observations and 64 KiB of retained text allowance
+  within the existing capture metadata reservation. Refusal stops capture and
+  preserves the admitted prefix. Context/rate replacement cannot append samples
+  under the old WAV clock. Observation subscriptions retire with capture.
+- #1254: CI on a692adf2 exposed the direct benchmark entrance pool using an empty
+  sequence list instead of the requested population. Pool construction now
+  includes the requested count and expands for later larger runs. The admission
+  check remains strict. Regression fixtures cover direct and expanding scenes.
+- Regression fixtures cover provenance ownership, bounds, score anchors, cue
+  exclusion, route changes, metadata exhaustion and sample-rate interruption.
+  Runtime validation is batched after this implementation pass. Critical types
+  passed; no new runtime success is claimed here yet.
+
+- Executed follow-through: initial combined run 6,251/11; all residual fixes
+  frontloaded, then complete retest **6,266 passing / zero failures** (377.51s).
+  Browser benchmark smoke passes with actual measurements and independent
+  replay parity. Future endpoint/link windows now include reserved attacks and
+  releases, closing the discovered far-future release-burst overbooking gap.
+  Static checks pass; #901 is closed with its 29 passing wrapper cases.
+  The source/log-bound evidence is in the full-suite repair receipt. Actual
+  live-tap/decoder, cold/soak/native-device and listening qualification remain
+  separate; no current-head CI success is claimed before its run completes.
+
+### Continuation 263 — explicit game-clock exhaustion (#910)
+
+- GameTimer no longer resets its finite tick counter to zero. Invalid horizon
+  assignments refuse before mutation; forward stepping refuses before before-tick
+  notification, and animation catch-up suspends at the last valid tick without
+  scheduling another frame. Diagnostics expose exhaustion. Explicit seek/rewind
+  and new-timer restart remain separate; delegated rewind retains its owner result.
+- Trigger cooldowns retain an unreachable terminal signed-counter sentinel
+  instead of wrapping and reopening. The bounded deadline is recorded before
+  history packing; invalid values refuse before changing cooldown/history.
+- Nine boundary fixtures cover manual and RAF stepping, foreground auto-resume,
+  unchanged remaining time, real trigger/history chronology and explicit recovery.
+  Complete focused `npm test game`: **939 passing / zero failures** (11.80s);
+  formatting, shared preflights, whitespace and provenance pass. No repeated full
+  suite was needed for this isolated follow-through; CI validates the new head.
+
+### Continuation 264 — actual cold replay and stable repeated MIDI work (#1254)
+
+- The independent oracle preserves time-distributed live forward checkpoints
+  within its existing caps, retires points outside retained history and exposes
+  checkpoint ticks/sampling provenance. History receipts include browser/host
+  metadata. Focused bench/workflow categories include semantic-producer fixtures
+  and shared-runner regressions.
+- `npm test bench workflow`: **99 passing / zero failures** (12.99s). Required-cold
+  browser replay passes at both speeds: 3,003/6,038 ticks retained, 3/15 cold
+  blocks, 2/3 timed cold decodes and 51/83 warm-repeat cache hits. Exact applied
+  state/terrain and start restoration pass; seek p95 is 7.1/5.3 ms on the recorded
+  Windows/Chromium host.
+- Router/scheduler each admit 8,400 attacks and submit 8,400 terminal releases in
+  each of four measured repetitions. Saturated rows reject all 8,400 attempts per
+  repetition. Final owned gates, queues and timers are zero.
+- Full CI is green on b58e7ae1: **6,266 passing under coverage**, 90.18% lines,
+  83.44% branches and 88.19% functions; browser/protocol/benchmark/static/policy
+  and dependency checks pass. The receipt distinguishes that checkpoint from
+  this later batch. Long soak, hardware/native and listening evidence remain
+  separate.
+
+### Continuation 265 — replacement frontier and complete-window supervision
+
+- #1122: ordinary/local budget and shared-controller victims release at onset
+  before replacement setup/Note On. Unsupported setup is refused before victim
+  release. Late adapter refusal is contained as partial dispatch; the old gate
+  is not automatically reconstructed. Local source capacity is checked again
+  after setup. Terminal reasons identify budget/same-pitch/controller replacement.
+- #1254: history defaults cover the maximum configured scenario windows plus
+  startup/probe allowance. Parent soak supervision derives from that producer
+  configuration, including inherited duration/speed overrides. Workload windows
+  are unchanged; explicit producer/parent deadlines remain hard limits. Target
+  span may still end a scenario early; actual duration remains in the receipt.
+- Initial MIDI collection: 2,393 passing / two outdated ordering expectations.
+  All follow-through fixes were collected before the combined retest:
+  **2,499 passing / zero failures** (61.31s), plus actual browser benchmark smoke
+  with valid measurements and no failures/diagnostics. Formatting, shared static
+  guards, undefined calls, whitespace and provenance pass. Long-soak, native and
+  listening qualification remain separate.
+
+### Continuation 266 — span-name commit caret and duplicate-event ownership
+
+- CI on 3afff28e exposed one failed browser boundary: a backward name selection
+  collapsed to the end across a project refresh. Span fields now reject detached
+  input events and unchanged values, and restore active text selection after
+  parent commit refreshes. No duplicate Undo intent is produced for one edit.
+- Regression covers parent caret clobber, repeated renders, duplicate changes,
+  stale detached events and blur commits that must not steal focus.
+- **2,396 MIDI cases pass** (67.49s), all **13 browser boundaries pass** (47.1s),
+  and the formerly flaky boundary passes **10 consecutive runs** (59.8s).
+  Formatting, shared guards, undefined calls, whitespace and provenance pass.
+  The receipt preserves the failed CI scope separately from these executed fixes.
+
+### Continuation 267 — bounded forward catch-up and truthful soak retention
+
+- History qualification pauses the canonical owner, requests the required bounded
+  cap and verifies the applied policy before sampling. A 60,000-tick target cannot
+  silently run against the default 24,000-tick endless cap.
+- Forward clock frames admit at most 120 ticks and preserve integer tick debt
+  across internal speed adaptation. Pause/resume reanchors the clock; retired
+  callbacks cannot advance or cancel a newer run. Startup credits admitted work.
+- The original 30,000-tick probe timed out before this repair. Its retest reached
+  **30,103 ticks**, produced **109 cold blocks**, decoded four cold targets with
+  exact independent state/terrain parity, restored the start and passed the
+  **13.4ms seek p95** gate.
+- **3,431 combined game/MIDI/benchmark/workflow cases pass** (49.54s), all
+  **13 browser boundaries pass** (42.7s), and static/provenance checks pass.
+  Parent 9d0ce9ad completed full CI with **6,284 passing** and clean browser,
+  policy and dependency gates. Supported long-soak qualification remains separate.
+
+### Continuation 268 — inline MPE route evidence and explicit alternatives
+
+- The lane output selector now shows the actual manager/member/reserved channels,
+  pitch ranges, setup refusals, retained previous configurations and exhaustion
+  policy. Empty/invalid zones remain visible before a destination is connected.
+- Manual assumptions and submitted zone messages explicitly remain receiver
+  unverified. Shared MIDI 1 expression, browser preview, voice rejection/stealing
+  and manual/submitted setup are explicit choices; project policies participate
+  in Undo. No automatic master/shared-channel fallback is introduced.
+- Display updates retain the selector and its focus; retired controls cannot
+  publish edits. The maintained CI boundary list includes workstation views.
+  The musical-header fixture now observes the completed deferred display write.
+- **120 MPE/controller/MIDI-owner cases** and all **20 browser boundaries** pass.
+  The receipt retains earlier batch failures and their focused follow-through.
+
+### Continuation 269 — bounded independent replay digests
+
+- The supported soak reached 60,000 ticks at 30/60/120x but correctly refused
+  replay qualification when repeated full terrain snapshots displaced required
+  checkpoints from the 32 MiB oracle. Its failed receipt is preserved.
+- Independent live-forward checkpoints now retain SHA-256 digests of complete
+  state and terrain. The per-checkpoint serialization bound remains enforced;
+  twelve distributed targets fit without relaxing the required sample count.
+  Hashing completes before another sample is admitted and stays outside timed
+  reconstruction. Retired asynchronous owners cannot publish or pause a new one.
+- Shared admission validates digest algorithms, matching hashes and serialization
+  bounds. Actor, terrain and no-op negative controls remain strict. All **79
+  benchmark cases pass**. The supported retest now passes at all three speeds:
+  spans **60,079 / 60,014 / 60,109 ticks**, **226 / 226 / 227 cold blocks**,
+  **16 / 13 / 16 timed first-touch cold decodes**, twelve warm-repeat targets
+  apiece and seek p95 **28.1 / 17.7 / 27.0ms** against the unchanged 400ms gate.
+  Every replay has matching SHA-256 state/terrain evidence and restores its
+  starting boundary. Retained oracle digests occupy **3,536 bytes per scenario**.
+
+### Continuation 270 — project naming dismissal and browser save ownership
+
+- Naming dialogs now cancel on an owned backdrop gesture. Inside drags, foreign
+  pointers and cancelled gestures cannot dismiss the dialog or submit a name.
+- The real workstation/IndexedDB browser matrix passes all sixteen paused/playing
+  conditions: explicit Cancel, Escape, close, backdrop, editable empty names,
+  repeated saves, successful copies and quota refusal. Cancellation performs no
+  document writes, keeps identity/project/stored bytes, and restores playback
+  exactly once when needed. Failure keeps the previous saved record intact.
+- **81 parameter/controller/formatter cases** and both production-source browser
+  scenarios pass (6.3s). Naming scenarios join the maintained CI boundary batch.
+- Formatting now globally excludes generated builds, traces, reports, coverage
+  and vendor directories. Actual source guards remain enabled. A first attempt
+  had reformatted generated copies; automatic approval review refused deleting
+  the generated snapshot, which was preserved. Fresh installed-generation startup
+  also stalls with pending module requests; that separate qualification remains
+  unresolved and is not represented by the passing source-app naming matrix.
+
+### Continuation 271 — cached module EOF and installed offline startup
+
+- The preceding installed-startup stall is repaired: Chromium left **70 cached
+  one-byte BYOB EOF reads pending**, blocking module imports. Generation reads
+  now use the ordinary stream reader while preserving header-first size refusal,
+  byte/chunk bounds, bounded slabs, cancellation and immutable content hashes.
+- **16 generation/parameter/formatter cases pass**. The actual installed ProcGen
+  generation starts online and reloads offline under the same bound build identity
+  (6.7s); the two naming matrices also pass in the combined **three-scenario
+  browser batch** (27.4s). This installed-startup regression joins CI boundaries.
+- Formatting, critical types, undefined calls, whitespace and runtime provenance
+  pass. Optional worklet/WASM, receiver and complete scene conformance remain
+  separate from this executed startup/offline-reload result.
+
+### Continuation 272 — physical-first semantic MIDI realization
+
+- Canonical physical intents now reach the selected MIDI destination through the
+  existing scheduler, with an independent performance clock and matching intent,
+  voice, sink and execution identities across admission and actual submission.
+  Browser audio and MIDI retain separate clocks and execution-lease requirements;
+  hardware timestamps cannot become audio-frame capture anchors.
+- Opaque voice handles own held/future attacks, bounded rate-reserved expression
+  and exact terminal frontiers. MPE keeps equal-pitch actors separate. Ordinary
+  same-pitch collisions are refused; MIDI1 quantization and unavailable expression
+  or audio-specific travel are explicit losses. Refused cleanup preserves unknown
+  ownership, blocks new endpoint admission and never resets its bend or reuses it.
+- MIDI activation notifications bind routes only after connection completes.
+  Subscribers are bounded and isolated, and repeated unrelated audio state does
+  not rescan routes. Live output statistics separate queued and submitted notes;
+  route diagnostics expose unconfirmed owned releases.
+- **2,424 MIDI cases**, **114 ownership/controller cases**, **45 canonical take,
+  checkpoint and projection cases**, and all **four related browser scenarios**
+  pass. The real default physical scene sends actual API bytes with no pattern
+  cells or AudioContext, records source identities, and clears owned gates on
+  Stop/Panic/disconnect. Final receipt alignment passes 18 cases and the current
+  source browser check passes. Static/provenance checks pass; origin/master is
+  fully contained. Physical receiver/acoustic conformance remains separate.
+- The preceding 81967853 full CI checkpoint is green with **6,312 passing** and
+  **23 browser boundaries**. This later implementation has its own executed
+  results above. Full CI at 44b773da also passes: **6,333 cases**, **24 browser
+  boundaries**, 90.21% line/statement coverage, and all remaining gates green.
+
+### Continuation 273 — payload-free project paging and recoverable selection
+
+- Fresh IndexedDB databases start with completed legacy migration. Upgraded
+  databases scan keys and compact metadata, skipping modern checkpoint payloads.
+  Legacy transfers retain their sources, yield after one checkpoint, and publish
+  a completion marker only if no concurrent legacy writer changed its revision.
+  Browsing rechecks that compact marker, including writes from other tabs.
+- Picker cancellation aborts metadata cursors and selected checkpoint reads.
+  Project deletion removes checkpoint and metadata atomically. Page changes keep
+  keyboard focus on the visible rows. A failed isolated world preparation keeps
+  the selection lease alive, allowing another selection or a successful retry.
+- Native Chromium fixtures populate **100 and 1,000 records**, each with a
+  controlled **128 KiB opaque checkpoint payload**. A 40-item page reads **42
+  metadata records / 3,866 UTF-8 JSON bytes**, **zero checkpoint payload bytes**,
+  and retains **19,660 additional JS heap bytes** after collection in both runs.
+  Complete browsing also reads no payloads; selecting one record reads exactly
+  its 128 KiB. These are controlled storage fixtures, not recorded performances
+  or measurements of IndexedDB's internal wire encoding.
+- **94 storage/controller cases** and **12 browser boundaries** pass, including
+  equal-timestamp cursors, another connection's rename/delete, sparse search,
+  in-flight cancellation, late legacy writes, recovery source preservation,
+  keyboard paging, malformed checkpoint rejection, retry and actual project open.
+  The first browser pass exposed a disabled More button losing focus; that defect
+  is fixed and the complete related browser batch passes. New paging scenarios
+  are included in the maintained CI boundary list. Full CI for this later batch
+  will be verified after push; the green 44b773da checkpoint remains distinct.
+
+### Continuation 274 — checkpoint admission, deep capture and completed-frame evidence
+
+- Checkpoint admission rejects method-shadowing class properties, redirected
+  executable resource bindings, array element/length overrides, invalid trigger
+  cooldowns, mismatched lane-array types/lengths, nonfinite frontier/actor
+  positions, duplicate actor IDs and invalid active-actor references before
+  allocating imported class instances or publishing owners. Signed zero remains
+  lossless. Active actors retain their original runtime binding.
+- Capture now drives child encoders iteratively while retaining depth-first wire
+  order. A 5,001-node imported chain can be captured and restored again; a
+  6,001-node capture cancels cooperatively and recaptures under its paused owner.
+  Cycles and shared identity remain intact. Typed-array decode fills its admitted
+  allocation directly, removing the intermediate full-size mapped array.
+- Exact comparisons with the previous production codec at 0/300/1,200 ticks
+  preserve every serialized byte. Ten samples per implementation/scenario record
+  local timing distributions in the receipt; this is compatibility evidence, not
+  a universal speedup claim.
+- **124 checkpoint/storage/controller cases** and **eight related browser
+  boundaries** pass. A valid control project opens, then **28 malformed imports**
+  are refused through the real file/worker/candidate path while preserving the
+  live world, checkpoint, project, identity, history, configured routes and saved
+  bytes. Oversize refusal performs no read. The slowest controlled refusal is
+  1,025.4 ms on this host; these fixtures do not claim maximal-project peak-memory
+  or exhaustive seeded lifecycle qualification. Issue #987 remains open for
+  those broader bounds and counter/workload evidence.
+- CI at 32541f0c passes **all 29 browser boundaries**, static, policy, dependency
+  and HTTPS MCP gates, then refuses a history smoke ratio of 0.499333 against the
+  unchanged 0.5 minimum; coverage does not run after that failure. The history
+  observer could run before the timer in the same RAF cohort. It now joins a
+  completed cohort before sampling, with a deterministic reversed-registration
+  regression. **29 benchmark cases** and the actual complete smoke batch pass:
+  history ratios **0.503667 / 1.005667**, 100 ms frame p95 and 101.58 median ticks/s.
+  Thresholds and workloads remain unchanged. Full CI for the combined later
+  implementation must be checked after push.
+
+### Continuation 275 — native ADSR PCM and authoritative terminal scheduling
+
+- Full CI at cb78e475 passes **6,347 cases**, **30 browser boundaries**, all
+  benchmark/protocol/static/policy/dependency gates, and 90.21% line/statement,
+  83.46% branch and 88.18% function coverage. The preceding history smoke refusal
+  is retained in the receipt alongside its completed-cohort repair.
+- Native oscillator/FM/modal and sampled voices accept an earlier replacement
+  release while ignoring later repeats. The offline driver now validates and
+  submits explicit end events. A queued sample release child is replaced only
+  after its previous source is retired, keeping the original selection, decoded
+  pin, gain and main onset; stale source callbacks cannot retire its replacement.
+- Musical sample release and forced cleanup have separate bounded terminal
+  records. Choke rebuild applies the primary release followed by the earliest
+  cleanup, preserving the already-declared main and child envelopes. Forced tails
+  cannot outlive their original endpoint. Future pitch changes rebuild the child
+  through the primary release without moving cleanup or retriggering selection;
+  neutral pressure/pan updates avoid unnecessary child-envelope work.
+- The first actual PCM pass exposed forced cleanup reviving the sample main
+  envelope; the API doubles had passed. The repaired path passes **2,429 MIDI
+  cases** and the consolidated browser PCM matrix at **44.1/48/96 kHz**:
+  **48 ConstantSource boundary/repeat cases**, **nine oscillator/default-FM/modal
+  cases**, and **three sample/choke/forced-child matrix rows**. Ahead scheduling
+  matches submission after real offline suspension. Default FM releases during
+  its 1.4-second decay; oscillator release occurs during attack.
+- Maximum constant-source prefix error is 5.96e-8 and tail error 8.70e-7;
+  production oscillator/FM/modal prefix/scheduling error is 2.24e-8, tail error
+  1.68e-7, and output after the terminal is exactly zero. Sample child/choke/forced
+  errors stay below 2.87e-7 with zero final output. Every production render returns
+  declared exact/estimated resources and fixture pins after caller release.
+  Generated constant sample buffers qualify envelope/source ownership, without
+  claiming decoder, device/acoustic or live Panic-button delivery conformance.
+  These three browser scenarios are now maintained CI boundaries.
+
+### Continuation 276 — complete browser inventory and grouped runtime repairs
+
+- Full CI at d08d99ab passes **6,352 Node cases**, **33 browser boundaries** and
+  all benchmark/protocol/static/policy/dependency gates. The additional complete
+  231-case browser inventory found 51 failures, 178 passes and two existing
+  benchmark skips. Every one of the **229 non-benchmark cases** now has a passing
+  result across the frozen full run and final grouped follow-through batches.
+- Replay verifies the declared Signalsmith WASM through the existing exact-file
+  hash/path/budget checks. Frozen decoded images retain preview signatures solely
+  in their WeakMap. Compact desktop chrome wraps into an automatic grid row;
+  expert field pairs use their intended grid without clipping controls.
+- Terrain/object rendering, assembly support checks and hazard presentation use
+  non-retaining terrain revision peeks. Physical reads keep their original
+  retention and capacity policies. Six native sound changes preserve the exact
+  1,000-tick physical checkpoint and causal event order without relaxing hashes.
+- Lane declarations reconcile source generations; Enable waits for native source
+  and effect retirement. Pending acknowledgement is distinct from refusal, which
+  keeps its owner blocked. Completion removes only its own cached entry. Actual
+  worklet voice measurements now reach the physical actor display after audition.
+- Enter/Space retain native button, summary and link activation on both edges;
+  focused range controls retain global Help and shared game-speed detents.
+  Malformed recipes expose a visible, focused fresh-start action. Explicit
+  complementary pattern entry creates four authored phrases instead of retaining
+  an invalid empty list, while physical defaults remain empty.
+- Redo refreshes its inspector when historical change metadata has no current
+  reducer action. Seek/Stop/restore clear stale resume ownership; an empty held
+  list cannot erase newly admitted notes. Real held-pattern capture, disarmed
+  restoration, resume and tempo change keep one voice without duplicate starts.
+- Browser fixtures use explicit neutral projects/complementary purposes, current
+  recovery/version contracts, normalized positions, owned naming dialogs and the
+  actual bounded row/dock layout. The survey boundary can generate 18 real
+  bounded trials. PCM validation scans every sample before aggregate finite/peak
+  assertions, removing millions of synchronous assertion calls.
+- Final affected Node checks pass **232 cases**; the MIDI category passes
+  **2,431 cases**. The frozen full browser run passed 225 cases with four remaining
+  failures, followed by a 50-case related batch and the final two corrected
+  journeys, leaving no unaddressed browser failures. These are scoped runs, not
+  a claim of another redundant all-green full browser invocation. Formatting,
+  critical types, undefined calls, provenance and whitespace checks pass; master
+  is already contained. Eight new cases join maintained CI. Full CI for this
+  combined commit must be checked after push; the wider GitHub backlog remains.
+
+### Continuation 277 — reviewed recipe sharing and owned performance handoff
+
+- A compact, lazy-loaded sharing sheet previews the canonical starting recipe,
+  omitted performance state and unverified recipient compatibility before its
+  primary Copy action. Camera framing is optional and does not change recipe
+  identity. Links scrub unrelated query/fragment state; unsupported authored
+  scenes are explicitly refused rather than silently reduced to their seed.
+- Clipboard success follows the real API acknowledgment. Permission denial
+  preserves a selected read-only URL and keyboard instructions. Closing the
+  sheet fences late clipboard completion and aborts its export preparation;
+  changed committed recipes require renewed review. Escape belongs to the modal
+  before its originating drawer. Paused recipes use the owned transport speed.
+- Performance preparation selects the finished causal take archive when one is
+  selected, otherwise a clearly scoped current project checkpoint. It delegates
+  to existing verification, encoding, resource and delivery owners, preserves
+  source hashes and partial coverage, and requests no download until a separate
+  delivery action. Canceled or superseded preparation cannot replace a newer
+  artifact or move focus into a reopened sheet.
+- CI for f17f4f71 passed 39 of 41 browser boundaries, then stopped before
+  coverage. Native level navigation now waits for its asynchronous load owner
+  before accepting the next activation. The capture failure also reproduced
+  locally: a pre-start worklet render-clock gap was treated as a discontinuity
+  inside the recorded interval. Warm-up now remains outside that interval;
+  repeated or skipped frames after the first captured frame still stop capture.
+  Failure traces are retained by CI for diagnosis.
+- The grouped owner checks pass 161 cases, including cancellation, supersession,
+  clipboard fallback, warm-up and strict post-start clock failure. Real browser
+  checks cover every admitted recipe field with clean and incompatible saved
+  preferences, actual camera framing, clipboard acknowledgment and denial,
+  narrow geometry, immutable take selection and separate file delivery. Final
+  grouped follow-through passes all seven sharing/navigation cases and three
+  real captures (102,272 / 102,144 / 101,249 frames), with canceled save retry,
+  finite PCM and nonzero peaks. The validation receipt preserves failed attempts
+  and truthful partial-prefix results. Full CI for 98a66cba subsequently passes
+  **6,384 Node cases / 43 browser boundaries**, all static, protocol, benchmark,
+  policy and dependency checks, with **90.24% lines/statements, 83.47% branches,
+  88.21% functions**. Its capture boundary produces a Ready, acknowledged
+  54,144-frame WAV. The remaining GitHub backlog still needs its own work.
+
+### Continuation 278 — desktop switchyard and qualified walking observations
+
+- The supported minimum is 1920x1080 desktop. Browser fixtures now share that
+  baseline and test larger 2560x1440 and 3840x2160 desktop resolutions. Phone,
+  tablet and orientation cases are removed; capture/qualification/performance
+  scripts and documented desktop/qhd/uhd capture presets follow the same scope.
+  Earlier subminimum viewport results remain historical diagnostics, outside
+  target acceptance. AGENTS.md records the product constraint explicitly.
+- The lazy switchyard provides one shared world/dock destination and policy,
+  solid applied and ghost pending notches, canonical blocking/expiry and
+  supersession receipts, cancellation, protected definition editing and world
+  epoch fences. Projection uses bounded collision-aware anchors, distinct port,
+  safety and observed path marks, and scoped inspector controls. Keyboard and
+  mouse ownership preserve native selection, camera yielding and disposal.
+- Traversal requires complete, continuous accepted coordinate-write facts from
+  the current world and applied junction. Requests, downstream actors, coarse
+  endpoints and stale geometry cannot invent a crossing. Tracks and historical
+  paths are bounded and resource admitted. Ordinary walking now supplies its
+  real accepted movement; reverted wall attempts and failed actions add none.
+- One grouped run passes **335 Node cases / 16 desktop browser cases**, including
+  all three desktop sizes, actual world requests/crossings, paused hash stability,
+  mouse cancellation, native Escape, clipboard fallback and fullscreen resize.
+  A real 160-tick twin-world case preserves physical batches, canonical physics
+  hashes and nonempty causal music intents with/without observation. Formatting,
+  critical types, undefined-call scan, provenance and whitespace checks pass.
+  Full CI is pending for this continuation; 98a66cba is the prior green checkpoint.
+- #1232 still needs the full branching-route/musical-difference, Stage/cue and
+  seek/reload qualification matrix. The receipt preserves the fixture/source-path
+  fixes and the explicit correction from out-of-scope phone validation.
+
+### Continuation 279 — desktop guidance and observed-actor handoff
+
+- Remaining active testing guides now specify desktop 1920x1080 minimum and
+  QHD/UHD capture options; old mobile/orientation directions are removed.
+- The switchyard refreshes its owned renderer before handing a real observed
+  actor to the existing world inspector and explicitly revealing that actor.
+  Both production desktop switchyard cases pass, including exact actor selection,
+  overlay retirement and mouse/native keyboard cancellation. Formatting passes.
+  This is a scoped follow-through; full CI remains separate.
+
+### Continuation 280 — history conflict admission and serial acceptance
+
+- Pending world Undo/Redo now serializes conflicting physical graph, junction,
+  fragment and release authoring, while compatible musical edits remain visible
+  and are replayed against the committed or restored source. Queued strings are
+  charged in UTF-16 bytes under the existing 1MiB/256-command bound; failure before
+  publication removes only its unadmitted command.
+- The grouped run passes **121 Node cases / one real built-browser boundary**.
+  It covers exact note 81, repeated Undo/Redo, success/failure/cancel/dispose,
+  saved JSON reopen and truthful dirty/Save acknowledgment, gesture/chord/no-op
+  history, physical admission pressure and recorded graph edit/Undo/Redo with
+  fresh monotonic mappings in a verified journal. The browser rebuild retains
+  note 81, rejects conflicting physical edits and preserves its world through
+  later musical Undo/Redo at the 1920x1080 desktop baseline.
+- Existing retained-history accounting already includes lane arrays. Under the
+  configured 65,536-byte test bound, 24 edits retain 38,304 bytes at 8 lanes and
+  61,344 at 128; 1024 lanes retain six entries / 58,344 bytes and drop 18 older
+  entries. Undo/Redo preserves the charge. These are conservative logical charges,
+  not process heap measurements. Formatting, types, undefined calls, provenance
+  and whitespace pass. Full CI for this continuation remains pending.
+
+### Continuation 281 — reconcile issue scope with desktop minimum
+
+- Inspected all 233 remaining open issues for phone/tablet/mobile layout targets.
+  Closed #1035 (touch-first mobile layout) and #1090 (Android/iOS MIDI hosts) as
+  **not planned**, following the owner's explicit 1920x1080 desktop minimum.
+  This does not claim either mobile feature was implemented or qualified.
+- Corrected desktop acceptance/dependencies in #1009, #1031, #1072, #1076,
+  #1082, #1085 and #1203; #1232 already carries the desktop correction. Desktop
+  keyboard/IME, mouse/pointer cancellation, fullscreen/resize, accessibility,
+  lifecycle and source-ownership requirements remain. 231 issues remain open.
+
+### Continuation 282 — canonical zone value identity after nonzero restore
+
+- Full desktop CI for 74067889 passes **6,408 Node cases / 44 browser boundaries**,
+  every static/protocol/benchmark/policy/dependency check, and **90.28% lines and
+  statements / 83.46% branches / 88.21% functions**. Master capture is Ready with
+  56,064 acknowledged frames. That checkpoint precedes continuation 280.
+- CI for 33a6e89e passes 44/45 boundaries, then stops before coverage. The saved
+  trace reproduces the failure exactly from tick 2: all physical batches match,
+  but restored and newly planned terrain descriptors contain two equal source
+  zones rather than one shared JS object. The physical projection consequently
+  retained 1,354 nodes instead of 1,352 despite identical immutable zone values.
+- Generated zones/group arrays are now frozen. Canonical physics projection
+  interns only complete recognized zones with exact source/geometry and declared
+  external asset bindings. Mutable state, unknown fields, changed geometry/source
+  groups/anchors and malformed references remain significant or rejected. No
+  physics algorithm, admission threshold or equality assertion is weakened.
+- One grouped run passes **160 Node cases / three real native sound-isolation
+  repetitions**. Each starts at tick 2, restores the same initial hash, performs
+  six native sound changes across 1,000 real ticks and retains the original
+  control hash and byte-identical physical trace. Failure attachments now retain
+  bounded actual state differences before assertions. Formatting, types,
+  undefined calls, provenance and whitespace pass; new full CI remains pending.
+
+
+### Continuation 283 — shared configured desktop commands
+
+- Full CI at 43334e61 is green: **6,422 Node cases / 45 desktop browser
+  boundaries**, every required check, **90.28% lines/statements, 83.49% branches,
+  88.21% functions**. Ready master capture acknowledges 108,161 frames with no
+  clock discontinuity. Closed #984 after this checkpoint and its concurrent
+  history matrix; 230 issues remain open.
+- World controls and workstation history/pattern actions now share one configured
+  command dispatcher. Native/ARIA/text/modal/composition ownership precedes world
+  aliases; held keys carry source, selection and binding revisions. Destructive
+  commands never repeat. Captured gestures cancel only for explicit transitions.
+- Commands search is keyboard accessible, source bound and limited to 48 visible
+  entries; disabled actions remain visible. Stale targets and detached controls
+  cannot execute. Deep editors receive one modal after the search closes. Shared
+  custom bindings generate platform labels, neutral loading titles and Help.
+- Stage now rejects legacy world nuke at its canonical owner. Separate musical
+  Panic/Stop commands have no default binding and can be explicitly configured
+  for emergency use inside dialogs without publishing a gesture draft or nuke.
+- The grouped pass succeeds: **181 Node cases / 21 desktop browser cases**, one
+  opt-in benchmark skipped. The world alias matrix covers 47 aliases across two
+  profiles and seven ownership contexts (329 zero-or-one assertions). Production
+  browser cases use a populated eight-lane world and verify delayed custom
+  configuration, real Saved Projects/native controls, Stage protection, owned
+  repeat, stale search and actual deep-editor handoff. Types, undefined calls,
+  provenance, formatting and whitespace pass. New full CI remains pending.
+
+
+### Continuation 284 — keyed editing identity and explicit conflicts
+
+- Full CI at 0607eec4 is green: **6,446 Node cases / 48 desktop browser
+  boundaries**, every required check, **90.29% lines/statements, 83.53% branches,
+  88.22% functions**. Ready master capture acknowledges 56,064 frames with no
+  clock discontinuity. Closed #999 with this evidence; GitHub now has 229 open
+  issues. That checkpoint excludes this field/lifetime continuation.
+- Inspector fields, lane headers, pattern cells and faders reconcile through
+  entity keys and stable IDs. Current callbacks replace stale render closures;
+  text/IME buffers, caret and exact DOM identity survive unrelated project edits
+  and desktop resize. Retained parameter renderers avoid repeated observer and
+  gesture allocation. Persistent fader callbacks do not capture retired lanes.
+- Same-field external text/numeric edits expose explicit **Keep my edit / Use
+  current value** choices. Blur cannot implicitly overwrite or replace those
+  choices mid-click. Removed schema fields retire callbacks and announce focus
+  return to the named inspector tab. View revision/document/selection leases
+  reject stale sound-selector completions.
+- One canvas has one mounted view. Replacement retires A before B borrows it;
+  late form/frame callbacks or repeated A disposal cannot erase B. Renderer
+  replacement and final retirement restore their exact original attachments.
+- The grouped pass succeeds: **165 Node cases / 29 desktop browser cases**, one
+  opt-in benchmark skipped. Production cases use the populated application for
+  actual text/numeric conflicts, composition, caret, resize and canonical Undo.
+  Component cases additionally exercise exact header/fader/cell identity,
+  removed-field focus and A→B renderer/DOM retirement. Types, undefined calls,
+  provenance, formatting and whitespace pass. New full CI remains pending;
+  broader global transport draft conflicts and real screen-reader smoke remain
+  separate #998 completion checks.
+
+
+### Continuation 285 — global drafts and desktop parameter geometry
+
+- Global transport values now update their admitted field baselines. BPM preserves
+  focused drafts and exposes same-field conflicts; document identity fences
+  edits before repaint and discards retired document drafts. Enter commits once,
+  Escape restores, and empty/nonfinite/out-of-range numeric values stay invalid.
+  Nullable MIDI notes preserve the distinction between explicit clear and zero.
+- Pending/read-only knob changes cancel captured gestures, retain focusable
+  read-only values, mark actual authority and disable mutation actions. Unchanged
+  fader text no longer rewrites a lane node. Tab strips survive normal selection
+  changes without a false removed-control announcement.
+- Actual 1080p visual review found clipped action controls and shared button rules
+  overriding circular caps. One labeled control group now uses the full inspector
+  width. Both tested desktop DPRs retain a 44x44 CSS-pixel circular target and
+  visible decrement/increment/Reset controls at 250px/304px inspector widths.
+- CI for 85195110 passes 52/53 browser boundaries, then stops before coverage on
+  NaN computed style from a junction element handle. Retained artifact 12771155329
+  has SHA-256 399504470ac7ba2cf3de375caca7c2b100f5d1fc2bdc71347dd8fd1139031178.
+  The boundary now queries the current connected path and measures it in one
+  synchronous browser task, retaining every geometry/physics assertion.
+- The grouped pass succeeds: **190 Node cases / 35 desktop browser cases**, one
+  opt-in benchmark skipped. At each DPR, 60 real pointer samples and an outside
+  viewport release publish one edit with zero lane child replacements and the
+  same paused physical hash. Reassigning the lane cancels the next draft with no
+  commit. Final 1920x1080 geometry was visually reviewed. Types, undefined calls,
+  provenance, formatting and whitespace pass. New full CI remains pending;
+  #994 hardware/relative-baseline/assistive-device and #998 real desktop
+  screen-reader qualification remain explicit.
+
+### Continuation 286 — operational state and reviewed MIDI activation
+
+- One read-only operational snapshot and compact strip separate world state,
+  musical transport, browser context, reviewed note destination, clock roles,
+  controller evidence and output pressure. Exact blockers have explicit priority;
+  storage/recovery, uncertain owned releases and lost clock cannot be displaced
+  by ordinary silence. Details disclose requested versus measured simulation and
+  base versus effective musical tempo without claiming audible delivery.
+- The strip borrows the canonical Listen/Panic nodes. Output notifications,
+  pause changes and metric receipts invalidate the existing bounded display
+  scheduler, including when musical transport is stopped. Compact source getters
+  avoid full audio resource graphs and retained-record scans; immutable lane mix
+  summaries are cached by source identity. Recovery uses existing command owners
+  with source guards and Stage policy, never a second stream or clock.
+- Native dialogs expose Stop/Panic through the same canonical output owners.
+  Pointer activation keeps text focus and does not submit a draft; safety cancels
+  captured edits before release. Weak dialog ownership and two document listeners
+  avoid retaining removed modal trees; replacing or disposing the view retires
+  callbacks and removes its connected controls.
+- MIDI discovery and activation are separate. Discovery requests access only
+  explicitly, never activates a destination, and retains the reviewed endpoint
+  ID/name. Same-name choices include IDs. No first-enumerated fallback remains;
+  route loss/reconnect never rearms. Permission denial/revocation, empty catalog,
+  missing destination, API failure and preparation remain distinct. Removing
+  inactive B leaves active A and its messages unchanged.
+- Save errors remain visible through ordinary edits until a current successful
+  Save or logical document replacement. Assigning the first durable ID preserves
+  the current UI edit owner. Internal BPM entry edits base tempo; external-clock
+  tempo remains observed and read-only. No-source-event recovery opens the
+  existing isolated lesson without loading a world or enabling output.
+- CI for 059dc669 passed 55/56 desktop boundaries, then stopped before coverage
+  on a late click after an owned pointer cancellation. Pattern gestures now own
+  pointer-generated commits; keyboard activation remains explicit. Pointer
+  capture is released on owned completion/cancellation. The time-based click
+  suppression window is removed. Eight unchanged lane-status text writes are
+  also removed while retaining the zero-mutation DPR assertions.
+- Validation results and exact source/log hashes are recorded in the existing
+  full-suite receipt. One full Node run passed **6,503 cases** before the final
+  modal/sensing follow-through; **413 current focused cases** pass afterward.
+  The full desktop browser pass reached 59 passing cases with two identified
+  failures. The final grouped seven-case retest passes after repairing the new
+  test's checkpoint hash call and a stale display-action activation race. Native
+  dialog Panic preserves the draft/project/physical hash; paused sensing changes
+  preserve note-route/clock identity and send no bytes. Full remote CI and broader
+  independent controller/clock/backend
+  production journeys remain explicit
+  completion checks for #1072; no real device, acoustic or assistive-device
+  certification is inferred. The minimum viewport remains 1920x1080 desktop.
+
+### Continuation 287 — actual pause, context recovery and isolated lessons
+
+- Full CI for cd22832b is green: **6,500 coverage cases / 62 desktop boundaries**,
+  all required checks, 90.28% lines/statements, 83.52% branches and 88.16%
+  functions. Its master capture honestly stops Partial after a 128-frame render
+  clock discontinuity, preserving 33,408 captured frames. This is not a Ready
+  recording claim and does not certify the later changes below.
+- The simulation runtime exposes a frozen four-scalar operational getter for
+  pause, activation, running and clock-driven ownership. The strip reads actual
+  pause authority instead of relying only on a UI flag or requested multiplier;
+  no full world/debug scan is introduced.
+- An interrupted suspended context now offers Resume browser audio. Actual
+  engine errors and resource denial keep their higher-priority explanations.
+  Controller details disclose ingress epoch, observation domain and report-time
+  evidence age. Different clock domains and negative chronology leave age unknown.
+- Installed lesson recovery is admitted only by the verified application engine
+  capability and confirmed metadata. Source preview offers physical-mapping
+  review. Metadata preparation neither loads a lesson world nor enables output.
+- **335 focused Node cases and all 10 browser journeys pass** after one grouped
+  correction pass. Production cases exercise real context suspend/resume, external
+  clock waiting/loss/explicit restart without note-route reactivation, a built-app
+  no-event lesson with identical project/paused physical hash and no test notes,
+  and a source-preview mapping fallback. Earlier named destination, denial,
+  reconnect, native dialog and sensing cases remain in the same passing group.
+  Types, undefined calls, provenance, formatting and whitespace pass. Current
+  full CI remains a separate check; no device, acoustic or assistive certification
+  is inferred from these browser and virtual-port observations.
+
+### Continuation 288 — startup preparation and explicit failure recovery
+
+- Initial world preparation and failure are separate operational states. The
+  bootstrap reports its failure after installing the existing Start fresh owner;
+  the strip offers that exact action only while it exists. Output activation stays
+  disabled and Panic remains reachable. A failed unpublished world cannot enter
+  Stage. Failure text and recovery identity are bounded and source-bound.
+- Successful world publication clears the initial failure. Late startup errors
+  cannot relabel an already committed world; a stale recovery callback cannot
+  navigate after that publication. No second startup pipeline or output fallback
+  is introduced.
+- **173 focused Node cases / 12 desktop browser boundaries pass** in the grouped
+  run, plus types, undefined calls, provenance, formatting and whitespace. The new
+  production case holds a real MAIN.DAT request: preparation remains visible,
+  Listen is disabled and Panic works. HTTP 503 produces the exact world-failed
+  state; Panic preserves it and sends zero MIDI bytes. Existing Start fresh then
+  opens a valid fresh world. The malformed-recipe recovery boundary also passes.
+- The latest fully green checkpoint remains cd22832b (6,500 coverage cases / 62
+  desktop boundaries); later full CI is tracked separately. Its acknowledged
+  Partial master recording remains explicit. This follow-through completes the
+  implemented #1072 startup/busy-state journey without claiming device, acoustic
+  or assistive-device certification.
+
+### Continuation 289 — MIDI request evidence and observational CI repairs
+
+- Sustain, Pitch bend and Pressure no longer reset their picture to a fictional
+  zero on render. Blank unknown values, last requested value, accepted API
+  submission and unknown receiver state remain separate. Target keys bind logical
+  document, lane, backend generation, endpoint lease epoch, channel and parameter.
+  Inactive-device/input changes and first Save preserve the valid target; endpoint
+  reuse, document/channel changes and retired inputs cannot redirect a command.
+- Retention is bounded to 64 primitive records with a lazy 256 KiB owned charge,
+  admitted before any send. Invalid/denied requests cannot emit bytes, evictions
+  become unknown, stale acknowledgments cannot confirm a newer request, and
+  retirement releases the charge. Stage queries remain read-only. Explicit
+  offline requests retain their text baseline while reporting submission and
+  receiver uncertainty; reconnect never replays them.
+- CI at e7e42463 passed 64/67 browser boundaries and stopped before coverage.
+  Artifact 12778926657 has SHA-256
+  650e2c948b3b169eabd101eb7be8a7a7449ed6bc1e989ea0637fbc7f21e14583.
+  The lesson hash failure exposed a real observational write: the RAF sampler
+  was adding achieved TPS to the physical timer. Throughput now lives solely in
+  runtime diagnostics; a paused real-runtime regression preserves the same full
+  physical checkpoint hash across three frame callbacks. No hash assertion or
+  canonical physics projection rule is weakened.
+- The held-note boundary observes the actual active gate and pauses/captures in
+  one browser task, retaining its exact one-voice/queued-phrase assertions.
+  Startup interception waits for the real asset request: the CI trace had fetched
+  2,623 modules but had not reached MAIN.DAT within the old five-second predicate.
+  All required preparing/failure/Panic/fresh-recovery assertions remain.
+- The grouped pass succeeds at **274 Node cases / 18 browser boundaries**, including
+  all three repaired CI failures. A final four-case MIDI group passes after the
+  offline text-baseline follow-through. Exact signed bytes, invalid-entry
+  rejection, tab/rerender/Save retention, inactive removal, endpoint reuse and
+  stale callback rejection are exercised against real production modules and
+  virtual ports at 1920x1080. Types, undefined calls, provenance, formatting and
+  whitespace pass. This fixes #996's MIDI evidence counterexample; the per-lane
+  OLED pages/live causal adapter remain separate development. Current full CI
+  remains pending; the last green checkpoint is cd22832b.
+
+### Continuation 290 — bounded live lane displays at the desktop minimum
+
+- Add retained two-line lane readouts with manual Identity/Cause/Parameter/Output
+  pages and an explicit full-name/evidence dialog. Owned focused drafts temporarily
+  override the selected page; output/parameter errors take priority. Display
+  choices create no project edit, MIDI send, backend activation or physical write.
+- Join canonical facts, immutable intents and exact sink receipts after dispatch,
+  with separate isolated UI error handling. Bound interest to eight visible lanes
+  plus the selected lane, four intents/sources/receipts per owner and 512 inspected
+  inputs per collection per batch. Report omissions; missing facts, revisions,
+  render measurements and receiver readback stay unknown. Late submissions require
+  the exact retained sink/execution/batch/generation identity.
+- Use the existing demand-driven scheduler, retained text nodes and one lazy owned
+  storage reservation. Replacing the document/world fences old receipts; hiding
+  a display skips obsolete images. Past causes keep source ticks and stale age,
+  without an independent animation/audio clock or invented signal meter.
+- Preserve all fader/phrase actions in headers sized for the 1920x1080 desktop
+  minimum. Include physical/pattern row requirements in the projection cache key
+  and reconcile a mode change immediately, preventing a delayed row-count change
+  during a captured inspector drag. No phone/tablet viewport cases are added.
+- Correct measured simulation speed to use the base tick duration rather than the
+  requested-speed-adjusted interval. Fifty achieved ticks/s at a 60ms base tick
+  reports 3x, even when the requested interval is 20ms.
+- The preceding aefa1709 full CI is green: 6,515 coverage cases / 71 desktop
+  boundaries; all checks pass. Master capture is Ready at 57,728 contiguous frames.
+  That checkpoint excludes this continuation. Current grouped validation is
+  recorded separately in the canonical validation receipt. #997 still needs
+  world-projected counted causal marks, drilldown and its complete output matrix;
+  an OLED cause page alone does not close that issue.
+
+### Continuation 291 — output-off truth and exact receipt explanation
+
+- Visual inspection found intentional browser output-off inheriting the mixer's
+  generic disconnected state and masking all lane pages. Readouts now consume
+  canonical operational context: intentional local/MIDI off, preparation, local
+  failure and endpoint loss stay distinct. Cause/Parameter/Output pages remain
+  selected while paused; the Identity page retains the paused indication.
+- Expanded details separate current project/evidence revisions and patch identity
+  from frozen intent pitch/velocity, historical graph revision and each retained
+  sink receipt's target frame/time domain/execution epoch. API submission with a
+  degraded representation remains both degraded and explicitly receiver-unknown.
+- A late receipt overflowing the bounded retained range now makes coverage Partial.
+  Rejection uses its explicit cross glyph; inactive or failed output cannot reuse
+  an admission glyph as a current activity signal.
+- The focused follow-through passes 181 Node cases / four OLED desktop browser
+  cases. The preceding grouped pass is 178/37; these are separate overlapping
+  cohorts. Full remote CI must qualify the current published head before closure.
+
+### Continuation 292 — projected causal history and runtime-bound references
+
+- Project committed physical-to-musical source coordinates through the existing
+  accepted presentation host. Add static action/outcome marks, counted dense
+  bundles and native keyboard/text drilldown for exact source/intent/sink IDs,
+  frozen target values and target clock domains. No nearest-actor/BPM attribution
+  or individually rendered/shared-body acoustic evidence is invented.
+- Bound history to 64 intents / 120 simulation ticks, visible lanes plus selection,
+  24 mounted bundles and the existing per-batch/source/receipt bounds. Retain
+  source coordinates and termination tombstones; explicitly count eviction,
+  expiry, missing coordinates, offscreen/pending and omitted ranges. Extend owned
+  storage accounting and retire both history and view state.
+- Add a geometry-only presentation subscription and preserve full entity demand
+  for existing inspectors. Promotion to entity inspection requires a fresh frame;
+  geometric cause display does not add an actor/object inspection pass.
+- Add a runtime-binding epoch to display source identity. Same-seed reconstruction
+  can reuse world/generation/event IDs; old history, detached marks and frozen
+  explanations cannot bind to the new run. Native dialogs keep canonical output
+  safety and retain frozen text when the source leaves the history window.
+- Treat independent sink results as mixed when a local rejection coexists with
+  MIDI admission/submission. Keep same-sink degradation and explicit terminal
+  cancellation distinct; API submission remains separate from receiver/audibility.
+- Full CI at bfec9575 is green: **6,532 coverage cases / 75 desktop boundaries**,
+  all checks, 90.26% lines/statements, 83.50% branches and 88.23% functions. Master
+  capture is Ready at 57,600 frames with no clock discontinuity. **#1072 is closed**
+  on this complete operational-status/rate/recovery evidence. That checkpoint
+  excludes continuation292; its validation is recorded separately in the receipt.
+- #997 still requires individually correlated local-render/shared-body/transfer
+  qualification and the complete outcome matrix. Historical unknown stages and
+  aggregate effects cannot substitute for that evidence.
+
+### Continuation 293 — producer-stamped mapping provenance without take changes
+
+- Add an optional isolated canonical-producer observer for construction evidence.
+  Preserve canonical intent bytes and serialized engine checkpoints, so take
+  replay retains strict intent comparison. Forward the evidence through the
+  existing physical playback owner and bounded per-batch UI observer.
+- Distinguish graph-at-construction revision from the definition's introducing
+  revision. Keep held origins across unrelated graph edits and attribute old-voice
+  termination to its old definition after a replacement. Restore saved owner
+  epochs where present; missing legacy origins remain unknown. Use own-property
+  checks for restored IDs that coincide with Object prototype member names.
+- Cap diagnostic allocation at 512 records per batch plus one omission summary.
+  Observer failure cannot change dispatch. Join metadata only by exact intent,
+  batch, generation and mapping, reject impossible/conflicting revisions, and
+  preserve receiver/render/individual-eligibility uncertainty.
+- Refresh only the first-party background-job-worker component hash after the
+  tracked canonical source change. The 271-file inventory and NOASSERTION terms
+  remain the same; provenance verification still covers 10 components/340 files.
+- Current source and validation scopes are recorded in the canonical receipt.
+  This fills historical mapping provenance for live displays; #997 still retains
+  individually correlated local-render/shared-body/transfer qualification and
+  the complete output-path/eligibility coverage matrix.
+- Fix saved-session receipt ownership at document adoption. Stop hardware MIDI
+  activation on commit while preserving endpoint review; rearm the default route
+  only on an explicit inactive-to-active MIDI transition. Catalog/connection
+  refresh and inactive-device removal do not rearm. The restore regression
+  requires the new source binding, producer provenance and actual API submission.
+- Full CI at 4c389855 passes **6,546 coverage cases / 80 desktop boundaries**, all
+  checks, with a Ready 56,192-frame master capture. **#996 is closed** on the full
+  OLED/projection/ownership qualification; #1072 remains closed. This checkpoint
+  excludes continuation293's additional mapping/session follow-through.
+
+### Continuation 294 — transfer-safe source attribution and processor receipts
+
+- Keep physical source identity separate from intent target identity and current
+  mix. Missing references can be enriched by a retained observed fact regardless
+  of lane traversal order. Shared facts never borrow the voice owner's actor;
+  derive only the projection row from an observed coordinate when its lane is
+  absent. Conflicting copies retain text and counts without selecting an actor
+  or coordinate for a mark. Clip marks against the physical row.
+- Retain current target mix per owned intent, rather than per shared cause, and
+  show the selected lane/revision separately from historical admission. Keep
+  independent source-actor tombstones and preserve their first termination tick.
+- Forward exact batch/intent/generation, sink, execution and body identity with
+  existing finite-strike processor receipts. Preserve the existing captured
+  strike schema. Join late receipts only against the already retained matching
+  sink/execution; qualify applied-frame, sample-rate, graph and owner evidence.
+  Explain command application without claiming individual PCM or audibility.
+- Cover two mapped sources into one shared body through the actual finite
+  kernel, command transport, backend, bounded history and display adapter. Cover
+  reversed transfer traversal, unknown/shared actors, conflicting copies,
+  invalid application evidence and frozen selected-intent/missing-window text.
+- Keep the full output/eligibility/transfer/revoice acceptance matrix for #997
+  explicit until its remaining producer and production journeys are qualified.
+  All browser journeys retain the 1920x1080 desktop minimum.
+- The grouped pass finishes with **374 focused Node / 50 desktop browser cases**
+  passing, plus format, critical types, undefined calls and unchanged provenance.
+  Targeted coverage records 97.69% lines across the five changed UI/backend
+  modules; remaining retirement/error and observer branches stay explicit.
+- Full CI at ac8c23fc is green: **6,554 coverage cases / 81 desktop boundaries**,
+  all checks, with Ready master capture at 55,168 frames and no reported clock
+  discontinuity. This qualifies all prior work and excludes continuation294.
+
+### Continuation 295 — exact producer lineage and complete outcome distinctions
+
+- Retain bounded immutable score epoch/tick/subtick/beat/precision and source
+  milliseconds/tick duration, onset/action IDs, transfer and prior voice/lane,
+  requested crossfade, termination reason and producer completeness/drop count.
+  Share one copy/explanation adapter between OLED and causal history. Keep
+  missing fields unknown and avoid changes to canonical intent/take bytes.
+- Distinguish queued cancellation, driver release submission, source suppression,
+  rejection, degradation and processor command application. A body Panic keeps
+  its earlier applied frame while reporting the later canceled exciter. Retain
+  typed terminal reasons and keep API release separate from receiver evidence.
+- Preserve zero-source recovery/mapping-boundary ends as explicitly unrooted,
+  text-only intent references. They keep actual voice/reason/time/coverage, with
+  no invented physical source ID, actor or world mark. Native history labels and
+  headings make this distinction visible; all references share existing bounds.
+- Add canonical producer/output/history cases for carry, revoice, release/attack,
+  silent handoff, unavailable destinations, real owned-MIDI voice-budget denial,
+  queued cancellation versus submitted release, observer-missing trace, actual
+  incomplete-source recovery and expiry. Extend actual finite-body kernel/host
+  coverage through Panic; keep shared energy separate from actor audibility.
+- Extend native browser journeys with exact producer time, real shared offline
+  convolution tail output that cannot upgrade individual render evidence, and
+  actual held-mapping replacement with keyboard/text-only old-voice inspection.
+- Scan all 227 remaining open issues for desktop-scope wording and correct the two contradictory original
+  UI acceptance lines: #993's 390px proposal and #1227's unspecified narrow layout.
+  Both now require the established 1920x1080 desktop minimum and larger desktop
+  resolutions. Existing out-of-scope and historical device notes stay explicit.
+- Final grouped qualification passes **433 focused Node / 30 affected desktop
+  browser cases**, plus the preceding wider 51-case browser cohort. Formatting,
+  critical types, undefined calls and unchanged 10-component/340-file provenance
+  pass. Six changed modules record 97.88% lines and 83.63% branches in the focused
+  coverage collection; repository full-suite coverage thresholds stay unchanged.
+- Full CI at 3b0d476a passes **6,561 coverage cases / 81 desktop boundaries**, all
+  checks. Its capture reports Partial after a 128-frame render-clock discontinuity,
+  rather than Ready; the earlier ac8c23fc Ready receipt remains separately valid.
+  This checkpoint excludes continuation295, whose full CI must qualify #997.
+
+### Continuation 296 — scoped bottom dock and transactional graphical curves
+
+- Replace the permanent right column with a closed-by-default Perform workspace,
+  explicit Inspect/Overview modes and one resizable bottom dock. Join module/world
+  row geometry, preserve physical lane height and let virtualization reduce the
+  visible row count instead of shrinking readable controls.
+- Keep layout migration/height/mode in UI preferences, independent of explicit
+  seed startup and canonical history. Name actual lane/editor/curve targets and
+  qualified selected-entity references. Preserve source leases when closed and
+  cancel gestures on geometry, Stage, blur, removal and document replacement.
+- Add proper tab semantics/navigation, return focus, pointer/keyboard resize and
+  accessible size controls. Keep passive backend/receipt refresh from opening a
+  deep editor. Remove obsolete subminimum Stage/browser styling.
+- Replace comma-only CC editing with one bounded graphical/exact draft owner:
+  stable diagram points, labeled axes, native point selection/numeric fallback,
+  snap/unsnap, pointer/keyboard edits and one explicit Apply transaction. Keep
+  invalid/IME and partial numeric drafts, require explicit conflict resolution,
+  preserve drafts across lane changes and never redirect stale callbacks.
+- Cap retained editors at 32 and reserve 256 KiB per editor. Reclaim clean old
+  contexts first; disclose a full dirty cache instead of silently dropping edits.
+  Persist only accepted canonical curves, with no second note/audio clock.
+- Move the existing world inspector into one explicit Selection tab, leaving
+  the other editor's full scroll area available. Keep its existing source owner
+  and entity demand. Mark shared graph/world scope explicitly, open the dock for
+  deliberate junction inspection and route observed-actor inspection to Selection.
+  Cancel every captured presentation gesture before workspace/Stage/geometry
+  changes; preserve invalid numeric/IME buffers and do not publish a draft.
+- Frontload new pure/DOM cases and native journeys at 1920x1080, QHD and UHD,
+  including text enlargement, geometry/physics/output invariance, scoped Undo,
+  partial drafts, keyboard/foreign-pointer ownership and independent preferences.
+  Final qualification passes **348 focused Node / 10 affected desktop browser
+  cases**, after a wider 79-pass/one-failure/one-opt-in-skip browser cohort.
+  Fix the remaining nested-select Escape propagation and a real paused-canvas
+  clearing bug: boot resize observers now defer backing allocation to the renderer
+  and leave unchanged fallback dimensions intact. Actual canvas pixel assertions
+  prevent blank terrain from qualifying as a successful layout capture.
+  Measured closed terrain width is 90.32%, 92.76% and 95.18% at the three desktop
+  resolutions, with eight visible rows; the open dock reduces rows at 1080p.
+  Formatting, types, undefined calls and unchanged runtime provenance pass.
+  Add all seven dock journeys to the required boundary command. Full CI for this
+  continuation remains pending; #993's material/quiet-bar work remains open.
+- Full CI at 86d89b82 is green: **6,575 coverage cases / 83 desktop boundaries**,
+  all checks, 90.28% lines/statements, 83.55% branches, 88.25% functions; master
+  capture Ready at 53,888 frames with no reported discontinuity. **#997 is closed**
+  against that exact source. This checkpoint excludes continuation296.
+
+### Continuation 297 — required browser workflow selection and real failure gates
+
+- Give the shipped workstation one declarative Playwright project with automatic
+  discovery and a separate desktop project. Collect actual full/smoke cases,
+  validate each discovered file and required capability, fail zero selection and
+  publish source-bound hashes/counts instead of relying on an older explicit list.
+- Run bounded workstation smoke in PR CI and the full transport/recovery/route
+  matrix in immutable-source maintenance CI. Retain separate owned servers and
+  fresh browser contexts; upload selection/results and failure traces.
+- Route workstation, future worker, storage-schema and boot changes to nested
+  music integration as well as ProcGen contracts; expose the separate UMP codec,
+  stream and lowering category without interpreting it as hardware qualification.
+- Qualify a real candidate display preparation failure, intact live document,
+  world/history/route/checkpoint, and a later explicit successful retry. Add the
+  combined accepted-actor mapping edit, lane switch and Undo journey; name the
+  actual shared mapping target in the dock rather than only its containing graph.
+- Add isolated browser fault qualification for Save Cancel, failed-load rollback,
+  causal delivery and local signal output. Require an applied-fault receipt and
+  exactly one behavioral gate failure; never edit production files for mutants.
+- The first full workstation project run reports **94 passing / two failures /
+  one opt-in benchmark skip**. Fix the omitted hold-preview dock entry together
+  with all eight sound-library workflow entries; automatically discover any
+  workstation-named spec, including sound-content fixtures and nested files.
+  The new rollback case exposes a real publication bug: refuse an unavailable
+  replacement display while a live runtime exists, before retiring that runtime.
+  Preserve the cold-start display-unavailable fallback and qualify explicit retry.
+  The combined selected-actor mapping/lane/Undo journey passes.
+- Collection and result gates now bind runtime/CSS/provenance as well as tests
+  and helpers, require the same collected/executed case set and actual passes
+  for every required capability. An explicitly tagged benchmark is the only skip.
+  Focused Node checks pass 86 cases; final expanded browser/fault qualification
+  remains pending.
+- Expanded 107-case qualification reports **103 passing / three failures / one
+  opt-in benchmark skip**. Both cold-display fallback and actual failed-load
+  rollback/retry now pass. All three new failures identify the same duplicate
+  accessible macro name on its group and inner generic node; retain the named
+  group and operative slider/numeric names, remove the redundant generic label,
+  and add typed-control audition/application to the required PR capabilities.
+  Recheck the affected sound/dock/recovery journeys and four deliberate faults
+  together; let current-source CI qualify the broader smoke and full Node gates.
+- Pushed fc42e9b0 CI passes 89 desktop boundaries and fails only the omitted
+  sound-content actor-view dock entry; Node coverage was consequently skipped.
+  Its independent master capture is Ready at 53,632 frames. Keep the previous
+  fully green 86d89b82 checkpoint separate until current-source CI passes.
+- Refresh all GitHub issue pages after #997 closure: **226 open issues**, including
+  101 still carrying acceptance/qualification audits. Use the required browser
+  gate and real rollback/output faults to finish #1084/#1031 first. Then batch
+  #993/#995's quiet global controls, fast lane shaping and coherent materials
+  together; preserve the existing typed control owner and shared row projection.
+  Do not interpret old generic green checks as hardware, acoustic, multi-engine
+  or actual assistive-technology qualification for those remaining issues.
+- All four isolated Save/rollback/causal/audio fault gates detect their applied
+  faults. The final affected cohort passes 18 cases but catches an early native
+  repeated 128-frame boundary in master capture. Preserve the correct producer
+  refusal and Partial prefix; the existing test accepted Partial only after
+  observing Recording and a long interval, which races legitimate early refusal.
+  Qualify early terminal prefixes with exact frame/discontinuity/WAV retention
+  checks. Ready still requires the long interval and nonzero finite PCM. Add
+  deterministic forward/backward terminal-prefix assertions; do not retry away
+  or relabel the real native discontinuity.
+- Final grouped qualification passes **126 focused Node / 19 affected native
+  browser cases**, with all four deliberately broken Save/rollback/causal/audio
+  paths detected by their behavioral gates. The final master capture is **Ready
+  at 101,760 captured frames**, peak 0.0227358341, zero nonfinite samples and no
+  reported clock discontinuity. Retain the earlier 640-frame Partial as separate
+  evidence. Collection selects 107 full / 80 smoke cases across 21 files, bound
+  to 1,036 source inputs. Formatting, critical types, undefined calls and unchanged
+  runtime provenance pass. Current-source CI remains pending; the final targeted
+  run is not presented as a single all-107 pass for the final source.
+- Full CI at **3705b1a5 is green: 6,591 coverage / 102 browser cases** (22 other
+  desktop, 80 required workstation smoke), with every capability/source gate
+  passing and no smoke skips. Coverage is 90.24% lines/statements, 83.54% branches
+  and 88.23% functions. Its separate master capture is Ready at 53,888 frames,
+  finite nonzero PCM and no reported discontinuity. **#1031 is closed** against
+  this source. #1084 retains the complete maintained-project receipt. This
+  checkpoint excludes the new continuation298 composition work.
+
+### Continuation 298 — quiet instrument chrome, compact lane shaping and materials
+
+- Implemented one shared semantic chassis/cap/glass/engraving and functional/state
+  palette, with fixed light direction and high-contrast/reduced-effects/forced
+  color variants. Keep lane identity separate from parameter function; require
+  explicit known roles and retain neutral treatment for unknown macro semantics.
+- Reused typed parameter controls for compact retained Level/Pan controls with
+  one owned exact-entry popover per visible control, independent of the dock.
+  Move the original input/actions rather than copying value owners; retain
+  partial/IME/conflict buffers and prevent hide/resize from publishing a draft.
+  Keep source leases, two-stage Escape, focus return, bounded virtualization and
+  scale-aware anchored geometry; no new audio or simulation clock.
+- Grouped advanced/project/library/edit controls into native keyboard-reachable
+  menus, keeping live health, Panic, trusted output activation, warnings and
+  actual prepared-file status outside collapsed menus. Preserve the original
+  control nodes/listeners and source ownership. Native focus settling prevents
+  a body focus gap from dismissing a conflict choice before its click. Numeric
+  updates retain their existing text nodes. Original borrowed controls restore
+  once, including Status details, without consuming an outside action.
+- Final grouped validation passes 161 focused Node cases, the complete required
+  workstation project (117 pass, one explicit benchmark skip), all fourteen
+  required capability gates and 22 other desktop boundaries. Collection binds
+  22 files and 1,060 inputs, including the material HTML fixture. Earlier cohorts
+  (101/16/1 and 115/2/1) remain separate from this final source. The actual master
+  capture is Ready at 53,760 frames with finite nonzero PCM and no discontinuity.
+- Archived 48 captures cover production eight-lane 1080p/QHD/UHD layouts, DPR
+  1/1.5/2, normal/high-contrast, a shared real-control contact sheet with reduced
+  effects/forced colors/greyscale, and explicitly labeled CSS enlargement.
+  Actual rendered text meets 4.5:1 and conservative required marks meet 3:1;
+  effects preserve hit bounds and decoration does not intercept controls.
+  Native browser UI zoom and actual assistive-device qualification remain
+  distinct work. Platform font stacks and original CSS add no bundled assets.
+- Formatting, critical types, undefined calls, whitespace and unchanged
+  10-component/340-file provenance pass. Remote 53dfb6c2 passes all 113 browser
+  cases and 6,602 Node cases, then fails one independent evidence-writer fixture
+  at Mocha's two-second default. Coverage is 90.24/83.54/88.24 percent;
+  published fully green 3705b1a5 remains separate. Follow through on motion-policy,
+  large-lane navigation and remaining desktop assistive qualification next.
+
+### Continuation 299 — bounded independent evidence-writer qualification
+
+- Give the two-process immutable-publication fixture an explicit 10-second
+  process deadline and 15-second test allowance under instrumented CI startup.
+  Both independent writers now signal readiness before receiving a shared
+  publication release. Preserve exactly one committed result and one conflict,
+  with no retained staging file. Bound captured process output and await closed
+  pipes; abort/kill and drain both owners before temporary-directory cleanup.
+- All 27 evidence-store cases pass under c8, including independent publication,
+  killed writers and both hard-link recovery boundaries. Production storage
+  semantics and the validated desktop UI remain unchanged. Formatting and
+  whitespace pass. Published 1c818cc3 is fully green: 6,603 coverage Node cases
+  and 113 browser cases (22 desktop / 91 required workstation smoke), every
+  capability passing and no smoke skips. Coverage is 90.23/83.54/88.24 percent.
+  Master capture is Ready at 106,112 frames with finite nonzero PCM and no
+  discontinuity. Closed #993/#1084 on that checkpoint and the archived complete
+  workstation receipt. Local continuation300 is excluded from this result.
+
+### Continuation 300 — shared instrument motion policy
+
+- Frontload one bounded, observable presentation policy for system reduction,
+  explicit reduced/frozen modes, pause/visibility and interruptible finite
+  transitions. Bind renderer effects, DOM, dock and automatic view selection to
+  the same owner, retaining static evidence and live data. Keep physical clocks,
+  output, actual source age and canonical history outside this presentation
+  timeline. Fence replacement/disposal and release listeners/transition leases.
+- Persist the View preference and share its owner with actor effects, CCTV and
+  automatic cameras. Use the existing render clock, lazy bounded transition
+  storage and fenced subscriptions; reduced/frozen views retain static evidence
+  while source expiry uses actual time. Explicit camera gestures remain usable.
+- Grouped validation passes 225 focused Node cases under c8. The full workstation
+  project collects 123 cases: 120 pass, two new fixture assumptions fail and one
+  benchmark is explicitly skipped. Correct the fixtures to use canonical
+  operational status and the actual World Replay seed action; all three affected
+  motion journeys then pass together. Production JavaScript is identical across
+  these browser cohorts. Do not represent the combined evidence as a single
+  final-source full-project run. The broad run's actual master capture is Ready
+  at 55,296 frames with finite nonzero PCM and no discontinuity.
+- Motion-policy line coverage is 100 percent; actor effects and CCTV exceed
+  96 percent in the focused Node cohort. Native captures confirm the paused
+  eight-lane desktop and forced-color reduced presentation. Format, critical
+  types, undefined calls, provenance and whitespace checks pass. Viewport flash,
+  maximum simultaneous effects, held-tail/device qualification, actual browser
+  UI zoom and assistive-device checks remain separate acceptance work.
+
+### Continuation 301 — native desktop browser zoom and material review
+
+- Qualify actual Chromium automatic tab zoom through a permission-free test
+  extension in one disposable profile. Native 100/200/100 percent round trips
+  report 3984×2305 / 1992×1152 / 3984×2305 logical workspaces, base DPR1 and
+  effective DPR1/2/1, CSS zoom1 and visual scale1. No product viewport falls
+  below the supported 1920×1080 desktop minimum. No user browser is modified.
+- Both native journeys pass together. Eight lane heads, transport, exact-entry
+  errors and the World dock remain in bounds; world checkpoint/tick, music,
+  history, routes and output counts remain identical. All nine real-control
+  states fit at 200 percent. The 102 measured text samples have minimum 6.23:1
+  contrast; no cap target is intercepted. Forced colors/reduced motion preserve
+  specimen geometry and buffered edits never publish.
+- Inspect the complete instrument/contact-sheet captures and retain five hashed
+  3984×2305 PNGs. Chromium's native screenshot method fixes Playwright's cropped
+  zoom output; reject any capture smaller than the physical viewport. Keep the
+  initial geometry-only cohort distinct from the corrected full capture cohort.
+  Collection binds 125 workstation cases / 98 smoke / 25 files / 1068 inputs.
+- This completes #995's remaining native zoom/material review. Existing DPR,
+  contrast, low-effects, greyscale, high-contrast and 1080p/QHD/UHD evidence is
+  retained in continuation298. Actual assistive-device qualification remains
+  under #1042; this browser run does not claim an acoustic/device/AT pass.
+
+### Continuation 302 — stable lane search, paging and clock-test boundaries
+
+- Add bounded lane-name/role/ID search with sixteen keyed matches per page,
+  exact offscreen selected/solo/armed counts and one-step return. Feed armed
+  targets from the actual fixed MIDI Learn lease and current recording target.
+  Reuse the existing View menu. Jumps focus the selected lane; a replacement
+  document retires old result nodes and query state. No sound/route/world command
+  is dispatched by search, paging or jump.
+- Anchor paging by the first visible stable lane ID through insertion/removal/
+  reorder, and accumulate pixel/line/page wheel deltas with bounded residue,
+  direction and idle reset. Modified zoom gestures retain their native handling.
+  Search buffers/carets/IME and unchanged result focus survive unrelated edits.
+  Index rebuilds occur on project revision, never on every display frame.
+- Focused Node coverage passes 158 cases, including 1/8/64/1024-lane admission,
+  duplicate/long names, removed anchors, exact breadcrumbs, source replacement
+  and bounded mounted results. The motion/native-zoom/view/navigation browser
+  cohort is recorded separately from the operational-status cohort below.
+- Remote ce3a713f passes 22 desktop and 95 workstation cases, then fails a clock
+  fixture that incorrectly demands silence after an explicitly authorized Start
+  and clock pulse. Preserve zero-note assertions during lost/waiting phases;
+  assert running transport after the authorized pulse. All eleven operational
+  journeys pass together. Coverage Node CI was skipped after the browser failure;
+  fully green 1c818cc3 remains the independent baseline.
+- Fresh GitHub inventory contains 222 open issues after closing #993/#1084/#995.
+  #1033 remains open for named group/collapse/pin metadata, visual reorder and
+  arbitrary visible-row projection without physical stripe/route reassignment,
+  retained offscreen edit drafts, and a ten-minute navigation/listener soak.
+  Its search/jump/paging implementation is usable independently of those items.
+
+### Continuation 303 — lane organization and arbitrary physical-row presentation
+
+- Frontload group/collapse/pin and visual-order metadata with independent
+  count/byte-bounded undo, source namespaces, stable lane colors, full-project
+  offscreen breadcrumbs and search filtering that never changes canonical lane
+  order, physical stripe IDs, routing or world state. Default contiguous windows
+  retain the original renderer path. Arbitrary windows share one world/evidence/
+  motion owner through at most eight budgeted raster surfaces, with explicit
+  physical-row mapping and projection invalidation on changes.
+- Retain at most sixteen logical exact-entry drafts across row virtualization;
+  descriptors live outside DOM closures, and restoration checks source lease,
+  descriptor signature/functions and current authored value. Native composition
+  resumes as an explicit review conflict. No hidden draft publishes or retains
+  a detached control. Track organization/draft/surface diagnostics separately.
+- Grouped validation passes 222 distinct focused Node cases (167 core/control/
+  renderer and 55 lifecycle/effect/CCTV/provider-lease cases). The complete
+  workstation project passes 128 cases with two explicit benchmark skips and all
+  fourteen capability gates. Archive 62 captures and the source-bound full report.
+  Its master PCM is finite/nonzero but explicitly Partial: a 128-frame render-clock
+  gap stopped the capture after 44,672 retained frames. Do not relabel it Ready.
+- A final accessible-name refinement exposes exact offscreen selected/solo/armed
+  counts. All twelve navigator Node cases and both affected native journeys pass
+  afterward. The archived full cohort precedes only that label/spec refinement;
+  its source binding stays distinct from the final focused cohort.
+- Native fixtures prove physical raster equality and stable colors through visual
+  reorder, an owned MIDI API hold/route identity (receiver/acoustic state unknown),
+  fixed Learn target breadcrumbs, collapse/pins, empty searches and typed draft
+  restoration. Pinning explicitly reveals its lane instead of leaving it above a
+  preserved paging anchor. Physical-only lanes are not falsely marked as armed
+  pattern-recording targets. Explicit incoming saved organization restores while
+  old document history retires.
+- Repair both prior-head CI browser failures: frame a paused junction explicitly,
+  and keep validation checkpoint work from starving a live musical clock. Capture
+  cooperatively under unchanged-world/tick/project ownership, hash in Node, and
+  prepare the lesson catalog while stopped. The complete physics assertion remains;
+  the isolated lesson journey passes at normal and four-times desktop CPU stress.
+- Close #1197 using its unchanged provider sources, passing named regression
+  records in green 1c818cc3, and current runtime-lease regression. #1033 remains
+  open for the authored real-wall-clock ten-minute 1024-lane navigation/DOM/
+  surface/history/listener/heap soak and pinned-physical-actor follow-through.
+  No long-duration or acoustic/device/assistive-technology pass is claimed yet.
+
+### Continuation 304 — qualified navigation lifetime and physical actor return
+
+- Complete the real-wall-clock 1024-lane navigation soak at published e4257a80:
+  600,646 ms, 570 cycles, 1920×1080 Chromium 153 and sixteen reported hardware
+  threads. Query changes, visual moves and pins retain eight display scheduler
+  registrations, at most eight raster views and at most 247,426 bytes of history.
+  DOM varies from 866 to 1,306 nodes and returns to 1,306. Raster reservations peak
+  at 22,285,512 of 67,108,864 admitted bytes. Interaction costs are p50 10.4 ms,
+  p95 18.2 ms and p99 21.3 ms. Post-GC used heap samples span 52.18–52.75 MB;
+  backing storage grows from 55.50 to 58.79 MB, so no flat-backing-memory claim is
+  made. Paused physics, canonical source, routes and MIDI metrics remain exact.
+- Correct the inspector Reveal callback to resolve the physical stripe through
+  its stable canonical lane ID and the navigator owner. Writing a physical index
+  directly into visual firstLane could not reveal reordered, collapsed or filtered
+  rows. Shared reveal expands the target group and clears an excluding search
+  without replacing the musical selection or enabling camera follow.
+- All five native navigation journeys pass together; the ten-minute benchmark
+  explicitly skips in this short cohort because its separate wall-clock run is
+  recorded above. An actual physical actor selected through its presented art
+  remains pinned through nine visual moves, group collapse and an excluding
+  search, then returns via the native Reveal action in the correct mapped row.
+  World/project/history/routes/output remain unchanged. Archive four captures.
+- The focused Node cohort passes all 125 assertions. Its c8 process exits one
+  because whole-suite coverage thresholds apply to this intentionally partial
+  file selection; preserve that diagnostic rather than claiming a full coverage
+  gate. Critical types, formatting, undefined calls and whitespace pass.
+- #1033 implementation and its named software acceptance are complete. Keep the
+  broader motion/audio/device/assistive qualification under their owning issues.
+  Fresh inventory before this closure is 221 open issues. #1207 now distinguishes
+  nineteen already passing unchanged artifact-owner cases from its remaining
+  dedicated browser/native-picker and reverse-preparation integration matrix.
+
+### Continuation 305 — ordered relative controller algebra
+
+- Add a bounded raw-32-bit controller mutation owner using the existing UMP codec,
+  with endpoint/epoch/group/channel/type/bank/index identity, explicit provenance,
+  revision tickets, ordered saturation and retained fine-step precision. Derive
+  step/enum/significant-bit presentation without discarding the raw accumulator.
+- Connect explicit verified-baseline policy to the existing port lowering,
+  reservation and recording owners. Resolve relative requests to absolute packets;
+  retain original gestures only as diagnostics. Reject unknown/stale/out-of-order
+  state without writes. Retire uncertain partial writes and route/profile/program/
+  Panic baselines; do not synthesize CC96/97 or imply receiver confirmation.
+- Frontload arithmetic, precision, replay, namespace, late report, capacity and
+  real port lifecycle regressions before one grouped check: 85 cases pass, with
+  controller owner 100% line/function and 92.37% branch coverage. Critical types
+  and undefined calls pass. Add this owner to the explicit MIDI2 test category.
+  #1200 remains open
+  for native relative sending, verified PE discovery and end-to-end input/parameter
+  mapping; these depend on #978/#979/#981/#1022/#1091/#1201.
+- Both e4257a80 and c4faaed8 CI pass every required browser case (22 desktop plus
+  102/103 workstation smoke respectively), then fail before executing Node tests:
+  recursive Mocha discovery imports the browser-only zoom extension background
+  script. Central Node discovery now ignores test/support while explicit test
+  imports remain supported. A real Mocha subprocess regression passes, and one
+  whole-suite dry collection registers 6,673 tests with zero browser helper
+  discoveries. These are collection counts, not executed-suite pass counts.
+
+### Continuation 306 — resource-aware routes and isolated timing alternatives
+
+- Replace node-only route dominance with bounded priority labels carrying actual
+  cumulative skill use, required assignments, score and estimated ticks. Preserve
+  expensive prefixes that save a downstream skill. Enforce node/frontier, action,
+  estimated tick and measured wall-time budgets; distinguish estimates from replay
+  work and keep selected skeletons unverified. Stable code-point ties include fall
+  exposure and terrain mutation cost. Route hashes include resource receipts.
+- Search original applicability windows and lazy exact-tick alternatives from
+  isolated initial runners. Bound script/continuation tables, reject reused or
+  inconsistent source factories and stop on failed/asynchronous retirement. Exact
+  continuation keys include pending constraints, final postconditions and complete
+  synthetic terrain/actor/clock/policy state; resource dominance retains inventory.
+  Actual verifier ticks/nodes accumulate across attempts. A rescued final actor is
+  allowed to leave the active population; default generated scripts no longer
+  impose the contradictory active-at-completion postcondition.
+- Grouped solver validation passes all 80 cases, including earliest-fails/later-
+  builder-succeeds through real synthetic replay, repeated work counts, terrain
+  identity, resource/equivalence pruning, source isolation and independent real
+  procedural whole-crew goals. Preserve the initial 78-pass/one generated-
+  postcondition failure and the later 79-pass/one overloaded one-second semantic
+  fixture timeout. That fixture now requests an explicit ten-second wall budget
+  with its original finite tick/node/action limits and a fifteen-second test cap.
+- All nineteen affected desktop browser journeys pass together after correcting
+  Playwright readiness argument placement and the containing test lifetime. These
+  cover installed/offline startup, naming, import, paging, transport and all
+  workflow journeys, including the CI-failing queued launch. The archived cohort
+  precedes only final solver risk/invalid-window refinements and Node fixture
+  changes; browser-exercised readiness/runtime sources are unchanged afterward.
+- Focused coverage is recorded per module; add future regression coverage for
+  malformed graph/count combinations and adapter-specific source/failure branches
+  when those adapters gain isolated factories. Broader generated-level completeness
+  and multi-actor strategy remain outside #944/#945. Both named local search
+  contracts now have executed acceptance evidence and can close after publication.
+  Types, undefined calls, formatting, provenance and whitespace pass. New full CI
+  must execute coverage; prior2aba8eea passed22 desktop/102 smoke cases, failed one
+  thirty-second readiness fixture and skipped Node coverage.
+
+### Continuation 307 — authored neighborhood and variation-session foundation
+
+- Add bounded, versioned FM Forge, modal, pluck, single-voice Circuit and wind/
+  graft neighborhoods. Canonical SHA-256 seeds are independent of world RNG.
+  Preserve parent FM contour direction, explicit/macro locks, clamp explanations,
+  stable slot identity and named rejections without replacement retries.
+- Compile full resolved forks through the existing typed recipe compiler.
+  Revision v14 pins validated generator provenance inside the immutable pack;
+  v12/v13 behavior remains available. Preserve sample maps, seed layers, assets,
+  bindings, macros, voice policy, rights and one exact realization profile.
+- Add the source-fenced four-slot/four-pin session owner with retained-data and
+  operation bounds, explicit Compare/Keep/Apply callbacks, stale-result refusal,
+  cue-only release and retained unknown retirement. Pinning and generation never
+  play audio or alter the lane. The native dock and canonical audio/library
+  callback wiring remain the next implementation batch for #1112/#1204.
+- Forty-nine focused cases pass under coverage. Each of five families has a
+  repeated deterministic 64-seed definition corpus with 64 admitted definitions
+  and 64 distinct parameter sets. This is 320 seed/family cases, not an audio or
+  listening corpus. Additional cases cover conflicting locks, parent catalog
+  replacement/offline resolved reopening, reversed batches, old pins, missing
+  take/capability, pressure and unknown cue retirement.
+- Preserve immutable427232be CI: all22 desktop and103 workstation smoke cases
+  pass, including queued launch. Master Ready104705 frames, peak0.023317694664,
+  no clock gap/nonfinite samples. Node coverage reaches6679 passing/10 pending/
+  two assertion failures, with90.34% lines/statements,83.55% branches and88.30%
+  functions. This is not a green checkpoint; latest fully green remains1c818cc3.
+- Repair both failures together: use a fixed budget clock when comparing route
+  semantics; verify exactly one pause redraw followed by cached RAF frames so
+  presentation effects retire. Both pass in the focused cohort. Do not repeat
+  full local Node coverage; new immutable-head CI must supply that qualification.
+- Remaining qualification: native VARIATIONS controls; same immutable physical
+  take and matched-level cue; canonical Keep/reopen and prepared lane transaction;
+  finite/silent/missing-material/resource audio outcomes; sparse/dense render
+  corpus; actual assistive-technology and human musical-relatedness review.
+  #1112/#1204 remain open. #944/#945 are closed after the prior acceptance batch.
+
+### Continuation 308 — native variation dock, canonical Keep and real-take A/B
+
+- Mount VARIATIONS in the existing scoped dock. Compact authored knobs retain
+  exact-entry popovers; four keyed strips, four pins, keyboard navigation and
+  advanced seed/locks/provenance preserve focus without autoplay or world edits.
+  Correct full-width dock grid placement and use the shared dark material tokens.
+- Reuse the worker compiler, exact factory/installed-parent leases, archive,
+  verified reader and registry. Separate preparation and retained-stage lifetimes.
+  Keep stores exact content without requiring immediate playback; trim unused
+  parent assets/credits so selection archiving cannot change the generated hash.
+  Required references follow the canonical patch dependency inventory.
+- Render the selected lane of one immutable captured phrase through the existing
+  causal renderer for both parent and candidate. Match measured crop RMS by
+  attenuation only, cap resulting peak at0.8 and route discrete A/B through the
+  owned PRELISTEN PCM envelope. Retain actual source/candidate PCM hashes and
+  finite level evidence; silence, unavailable coverage/material and pressure
+  remain refusals. This is a new local realization of captured intents.
+- Keep and qualified Compare gate a held prepared lane transaction. Check source
+  identity again at publication; the accepted document revision is intentional.
+  Stop only the cue, then retain ordinary sound-only Undo and unchanged physics.
+- All255 grouped Node cases pass under coverage; all seven distinct native
+  browser journeys pass. Revalidate both variation journeys after the final
+  exact-asset/credit closure refinement. The final seven-case predecessor and
+  two-case follow-up have explicit source manifests. Earlier fixture-cleanup,
+  nonexistent Undo API and retained-stage lifetime failures remain recorded.
+- Real native1000-tick control and six-patch traces have equal physics and event
+  hashes, the same world object and unchanged hardware mapping; sound Undo keeps
+  the same physical boundary. Together with migration, slow/cancel/conflict,
+  held-renderer/tail and failure tests, #970 has completed software acceptance.
+- Isolated benchmark smoke passes with unchanged thresholds and replay gates:
+  p95frame66.7ms, p50TPS83.57, minimum history ratio0.58533 against0.5. Explicit
+  history sampling is7s: the former6s equaled the nominal500TPS time to reach its
+  3000-tick floor and left no scheduling margin. This benchmark precedes only the
+  pure fork asset/reference-closure refinement; clock/history/benchmark code is
+  unchanged afterward. Exact-head CI must still run its complete checks.
+- Preserve9e848ca3 CI:22 desktop+103 smoke pass, then history ratio0.498833 fails
+  the benchmark gate and Node coverage is skipped. Its master capture is Partial
+  at103552 frames after a128-frame clock gap; never relabel it Ready. The last
+  completely green full checkpoint remains1c818cc3.
+- Fresh three-page inventory has218 open issues before #970 closure. #1112/#1204
+  retain editable exact fork revisions, broader sparse/dense finite-audio and
+  relatedness/listening qualification, additional source/noise/pressure cases
+  and actual assistive-technology review. No full local Node suite is repeated.
+
+### Continuation 309 — explicit candidate revisions and truthful cue state
+
+- Create a distinct exact branch for explicit names and unlocked macro defaults.
+  Compiler v15 binds the complete immediate parent, original neighborhood and
+  previous/new values; reconstruct and compare the entire definition to reject
+  hidden changes. Preserve v12/v13/v14 content, exact assets and rights closure.
+  Repeated edits retain bounded ancestry without embedding recursive packs.
+- Add the advanced revision editor with shared exact-entry knobs. Old pins and
+  prepared comparisons survive; a child requires its own Keep and same-take
+  admission before Apply. Fence generation, edit completion and target changes.
+- Report actual cue playback through natural completion. Serialize rapid A/B
+  choices and fence superseded asynchronous work without losing the retained
+  comparison or allowing an old action message to overwrite a newer one.
+- All74 focused Node cases pass under scoped coverage. Both native variation
+  journeys pass; an extended physical-phrase journey also passes with a revised
+  macro/name, unchanged old pin/comparison, fresh child Compare, Apply and Undo.
+  Only the browser fixture changed between those native runs. No full local
+  suite is repeated; exact-head CI remains required after publication.
+- Promote031e0e15 as the latest fully green checkpoint:6712 Node passes,10
+  pre-existing pending,127 browser passes, all14 workstation capabilities,
+  benchmark/static/policy/dependency gates green. Coverage:90.22% lines and
+  statements,83.58% branches,88.27% functions. Its master capture is Ready at
+  107136 finite frames with no clock gap. Preserve earlier partial/failing runs.
+- #970 is closed completed. #1112/#1204 retain the graft-specific replacement
+  journey, broader sparse/dense finite-audio corpus, expanded source/pressure
+  cases, human relatedness/listening and actual assistive-technology review.
+
+### Continuation 310 — reviewed source branches and native lifetime repairs
+
+- Rebuild v4 snapshots manifests and recipes before asynchronous work. Bind the
+  complete replacement WAV digest, byte length, immutable reference and canonical
+  manifest hash. Refuse substituted same-label bytes, changed printed effects,
+  incompatible operation/channel/format and unavailable verification before jobs.
+- Preserve external target/draft fences through storage and the workstation's
+  lane transaction. Recheck at final publication and retire stale held previews.
+  Cancel safely before child owners exist; failed, stale and quota-denied work
+  retains the last complete branch and frozen material.
+- Separate archive preparation and retained-stage lifetimes for seed instruments,
+  foundry bodies, Circuit preparation and canonical prepared-content helpers.
+  Keep stale verification checks and charged leases through acknowledged cleanup.
+- Synchronize returned modal modes before computing Refit/Merge readiness in the
+  same paint. Resolve FM/modal control audition bends from the actual source
+  profile, recording requested/effective values; preserve fixed-tuning patches.
+- All78 focused Node cases pass under scoped coverage. A real native journey
+  captures96 physical ticks, renders a dry lane, freezes an exact onset crop,
+  fits/refits a body, auditions/saves/applies the original, saves an unselected
+  project snapshot, and deliberately rebuilds the same take/tap. The new fitted
+  body is auditioned, saved and applied with sound-only Undo. Both packs and the
+  unselected project reopen offline; physics and frozen material remain exact.
+- A separately prepared sampler graft correctly hits the existing cue source
+  quota, remains unqualified/unsaved and cannot Apply. Do not lower resource
+  limits or label that refusal a playback pass. #1236 retains sampler/texture
+  graft live-budget qualification and its second physical performance journey.
+- Preserve earlier native selector/tap, same-paint readiness, stage lifetime,
+  quota and fixed-bend failures with their exact reports. Final native source is
+  frozen and hashed. Refresh the existing273-file worker provenance hash after
+  its shared control fixture changes;10 components/342 files remain inventoried.
+- Latest immutable full CI b8e518de is green:6728 Node passes,10 pre-existing
+  pending,127 browser passes, all14 workstation capabilities and benchmark/static/
+  policy/dependency gates. Coverage90.21% lines/statements,83.61% branches,88.29%
+  functions. Its master is Partial at63232 finite frames after a128-frame gap;
+  keep the prior031e0e15 Ready107136-frame receipt separate. New-head CI remains
+  required after publication. No full local Node suite is repeated.
+
+### Continuation 311 — presented canvas authority and retired span inputs
+
+- Retired workstation span overlays no longer install renderer hooks or canvas
+  input listeners. Supported legacy drawing binds input only while explicitly
+  armed against a current presented frame. Hide, generation/projection/surface
+  replacement, renderer loss and disposal cancel drafts and detach input.
+  A disposed owner cannot rearm; a render exception cancels its pending gesture.
+- Publish bounded presentation-state changes to the legacy controls. Default
+  HTML fields are disabled before the first capability check. Workstation view
+  acquisition/release explicitly refreshes that same owner after installing its
+  projection, fixing the startup interval where Draw on lanes stayed enabled.
+  Identical frames do not repeat authority announcements.
+- All178 grouped Node cases pass under scoped coverage, including the original
+  no-frame/unsupported negative gesture, mid-drag mode/generation/projection/
+  renderer/surface loss, teardown, notification stability and real physical
+  authoring/history/controller transactions. Earlier37/1 was a new fixture's
+  null-versus-absent hook assertion; the initial two missing window qualifiers
+  were caught by formatting before any Node execution.
+- All3 native browser cases pass across12 strip/overlay, first/last-page and
+  dock scenarios:1920×1080 at DPR1/2 plus actual200% Chromium zoom. At200%, the
+  CSS viewport remains1992×1152; the3984×2305 screenshot captures the full native
+  viewport. Disabled-tool attempts and real pointer drags retain project,
+  document, physics, event sequence and MIDI-stub output exactly.
+- Preserve the first native3 failures that exposed stale enabled controls, and
+  the next3 fixture failures that searched without selecting Lane64. Final
+  source, result JSON, native geometry and screenshots are hashed. Basic type,
+  undefined-call, runtime-provenance and whitespace checks pass. #1169 has
+  completed its concrete software acceptance and can close after publication.
+- Continue #1117: its active/future MIDI cleanup is indexed, but canceling an
+  outer retained event marks range metadata dirty and getState still scans all
+  retained history. Replace that final scan before large-history qualification.
+
+### Continuation 312 — recording ranges independent of retained history
+
+- Replace dirty full-history range replay with a bounded128-event chunk tree.
+  Append updates aggregates; cancellation refreshes affected chunks only. Keep
+  exact sequence/time extrema through out-of-order timestamps, repeated extrema,
+  clearing, stale cancellation and finalization. Private index positions never
+  appear in serialized events. Reserve storage before allocation; unresolved
+  release remains charged and retired owners cannot rearm.
+- Pass the workstation resource budget to the recording owner. Admission refusal
+  keeps Record off and reports pressure, including the inspector's Record MIDI CC
+  action. Reject nonfinite clocks before creating pending cleanup entries.
+- All177 grouped Node cases pass. The new range owner measures100% lines/functions
+  and91.8% branches. The actual built Chromium runtime passes the opt-in benchmark
+  at1920×1080:64 alternating flush/Panic samples at each1k/10k/100k/1m CC history,
+  with one active and one future note. Every history survives, with at most132
+  event visits per cleanup. Browser p95 is approximately0.1ms at every size;
+  p99 is at most0.2ms, at the browser clock's coarse resolution. This times the
+  actual ports owner plus state reporting, not end-to-end buttons or hardware.
+- Reserve/retire receipts return to zero. At1m events browser collected heap
+  rises from42.09MB to155.44MB and returns to42.19MB; Node rises to232.08MB and
+  returns to5.58MB. The index's64.63MB reservation includes a conservative private
+  metadata estimate; total event-object heap is measured separately. Preserve
+  the initial175-case/native run and the fixture lifetime correction before the
+  final measurements. No flat whole-application memory or acoustic claim follows.
+- Full CI at018329d8 and8408b95c is green. Latest8408b95c passes6744 Node cases,
+  ten pre-existing pending,131 browser cases, all14 workstation capabilities and
+  benchmark/static/policy/dependency gates. Coverage90.21% lines/statements,
+  83.65% branches,88.31% functions. Its master is Ready with52864 finite frames
+  and no clock gap. #1169 is closed. Current312 CI requires publication.
+- #1117 stays open: worker/streamed MIDI export, pause/Panic button latency,
+  full-reference voice/route/sustain comparisons and disk-backpressure/disposal
+  qualification remain. Continue development on the synchronous export path.
+
+### Continuation 313 — admitted recording export and responsive cancellation
+
+- MIDI export now captures a stable prefix into25-byte typed columns per source
+  slot, yielding within bounded128-event checks/4096-event slices. Admission
+  precedes allocation. New appends preserve the prefix; cancellation, clearing,
+  document replacement and disposal fence its publication. Route IDs and text,
+  total workspace, event count, output size and SMF timing have explicit bounds.
+- An admitted worker selects actual accepted-output versus preview-intent
+  evidence, balances same-pitch FIFO lifecycles per route/channel, sorts stable
+  beat order and writes the exact SMF into owned bytes. Main-thread full-history
+  filter/copy/sort is removed from the production export handler. Worker output
+  transfers through existing acknowledged pages and remains charged until use.
+- Publish progress and Cancel preparation in the existing file panel. Cancel,
+  failure and staleness retain prior prepared bytes; Panic remains independent.
+  Exact worker execution/transport receipts are bound to the prepared artifact.
+- All212 grouped Node cases pass, including64 generated reference-byte corpora
+  with overlapping same-pitch voices, sustain, route separation, out-of-order
+  beats, canceled records, evidence selection, partial caps and tempo changes;
+  cancel/clear/dispose, admission-before-copy, owned result transfer and existing
+  streaming delivery/backpressure regressions pass in the same batch.
+- All3 native cases pass at1920×1080:99,991 actual workstation records export
+  through a dedicated worker; downloaded bytes equal the reference encoder,
+  cancellation preserves the prior file and paused physics, and cleanup remains
+  prompt. Production1000-event range cleanup and the opt-in1k–1m benchmark also
+  pass. The first native fixture imported the now-unreferenced legacy encoder
+  from the built generation; move reference comparison to Node against the
+  actual downloaded file. No runtime fallback or unsupported viewport is added.
+- Fix312 CI's catalog failure by adding the required real production smoke case
+  beside its opt-in benchmark. Preserve the required-file rule. Collection now
+  passes with all14 capabilities;312 Node/benchmark steps were skipped after
+  that catalog failure. Refresh worker provenance to276 files; all10 components
+  and345 inventoried files verify. No complete local suite is repeated.
+- #1117 retains actual pause/Panic button-tail latency, active-ledger reference
+  qualification and durable-write failure scope. #1092 retains its actual
+  10,000-tick storage/replay/branch and recording document-boundary acceptance.
+
+### Continuation 314 — actual ProcGen completed-work soak observations
+
+- Replace the retired classic __E2E__.game adapter and target frameTime samples
+  in bench-procgen-soak with actual workstation ownership, completed world-step
+  and all-render-call durations, RAF gaps and available long-task observations.
+  Refuse zero work, failed steps, changed generations/owners and unbound builds.
+- Bound each observation stream to4096 samples and host receipts to16384.
+  Percentiles identify their retained window; counts/means/maxima cover all
+  observations. Reset warmup explicitly and ignore earlier long-task entries.
+  Restore owned wrappers/listeners on teardown without clobbering later owners.
+- Bind receipts to the actual executing immutable generation, harness hashes,
+  source/diff hash, browser/OS/CPU, viewport/DPR, seed, lane/visible-row count and
+  selected output. Record actual births/live population and observed tick rate.
+  Heap is an allocator estimate; a requested limit cannot pass without readings.
+- All8 focused Node cases pass, covering bounded distributions, synthetic100ms
+  long-task observation, missing/stale adapters, failed physical steps, retirement
+  and rejected receipt/timing bounds. The native smoke passes at1920×1080 against
+  build aa636c45:100 observed physical steps match100 completed ticks over about
+  two seconds,18 host samples,9 births and123 actual render calls. Step p95/p99
+  2.3/3.5ms; all-render p95/p99 3.8/4.6ms;121 RAF gaps p95/p99 about16.8ms. These
+  are short smoke observations, not stable-runner performance budgets.
+- Preserve the initial native refusal for an invented capability profile; use
+  the existing browser-survey-core profile without broadening its contract.
+  Catalog collection passes141 full/112 PR cases across32 files and14 required
+  capabilities. Formatting, critical types, undefined calls and provenance pass.
+- #1087 remains open for8/128/1024-lane controlled workloads, real100ms persistence
+  stalls, Save/New and concurrent preparation, observer overhead A/B, physical
+  event hashes and end-to-end input/audio tails. Next address the recording
+  document-boundary gap under #1092 while remote313 full CI continues.
+
+### Continuation 315 — retained MIDI source boundaries across New/load
+
+- Bind a recorded MIDI prefix to its originating project generation/document.
+  Successful New and session publication stop recording before moving to the
+  new generation; retained events/source identity remain available for export.
+  An earlier prefix cannot be rearmed into another project state. Export uses
+  the originating document reference. Failed New publication retains the
+  current recording owner; disposed controllers cannot rearm or clear data.
+- Show Retained MIDI and its source boundary in Record. Add an explicit Clear
+  MIDI recording action in Edit, enabled only after stopping with retained data.
+  Clearing permits a new buffer identity and leaves prepared files and causal
+  takes intact. Held input notes mark the earlier window incomplete; subsequent
+  real releases are not forged into the stopped log.
+- All224 grouped Node cases pass, including the exact record/stop/New/load
+  regression, armed New/load with held input, failed New and independent worker,
+  export delivery/backpressure and soak ownership cases. All3 native recording
+  cases pass at1920×1080, including actual IndexedDB saveDocument/loadDocument,
+  unchanged old MIDI events, rearm refusal, visible Retained MIDI state and a
+  native click on Clear followed by a fresh one-tempo recording. Worker export
+  still matches400370 reference bytes and production range cleanup passes.
+- Preserve the zero-test command preflight caused by PowerShell consuming an
+  unquoted @boundary filter; the correctly quoted cohort runs3 real cases with
+  no skips. Collection passes142 full/113 PR cases across33 files and all14
+  required capabilities. Format, critical types, undefined calls, provenance
+  and whitespace checks pass. No full local suite is repeated.
+- #1092 remains open for the actual10000-tick durable tape/replay/seek/branch and
+  corruption/source-mismatch journey. In-memory MIDI preservation is not a
+  durable tape or evidence that project checkpoints contain MIDI. #1117 retains
+  actual button-tail latency, active-ledger reference and durable failure scope.
+
+### Continuation 316 — bounded seek proofs and long durable physical tapes
+
+- Retain verified component-checkpoint proofs only across the same immutable
+  take/runtime versions/assets/live world owner. Bound metadata to16 entries and
+  4MiB, reserve before retaining, evict oldest and retire on owner/source changes.
+  Weak live-world references avoid keeping an obsolete performance alive.
+  Admission/size refusal falls back to full replay; unknown retirement stays
+  charged. Comparisons remain silent and exact archived execution stays unbound.
+- Capture accepted transport edges before pumping physics. Version2 combines
+  playing and finite physical speed, including paused zero. Direct, stage and
+  clock transitions and tempo enter the tape once in accepted order. Preserve
+  legacy version1 semantics. This fixes a native final clock-state mismatch.
+- Bound chunk grouping by canonical nodes as well as bytes/record count, keeping
+  the existing200000-node limit and atomic admission groups. Refuse an oversized
+  indivisible group before advancing its prefix and account for dense temporary
+  objects. Query pages share already admitted immutable coverage under their
+  index lease; no repeated copy or mismatched64KiB coverage cap remains.
+- All192 grouped replay/cache/branch/journal/archive/resource/controller/transport
+  cases pass. Dense worker verification, oversized atomic-group refusal and
+  >64KiB coverage lifetime are explicit regressions. Static checks pass. Native
+  long-run qualification is being finalized before publication; preserve earlier
+  clock, dense-chunk and query-coverage failures with their exact receipts.
+- Promote313 and315 full CI to green in the canonical receipt:6763/6771 Node,
+  133/135 browser and all14 capabilities respectively. Latest315 coverage is
+  90.28% lines/statements,83.70% branches,88.34% functions. Master capture Ready,
+  103296 finite frames without a clock gap. Fresh GitHub inventory:216 open
+  issues; #1092 remains open for the full intervention/input/corruption and
+  archived-runtime qualification corpus. No full local suite is repeated.
+
+### Continuation 317 — bounded durable source worker windows
+
+- Verification and query pages now share bounded windows of at most16 chunks,
+  4MiB canonical bytes and500000 canonical nodes. Admit memory before storage
+  reads, preflight aggregate decoded shape before parsing, then verify every
+  source hash/canonical inventory and selected range. Keep atomic source order,
+  page count/byte limits and ancestor branch cutoffs. Retain selected results
+  under the query lease and release workers/input without dropping that charge.
+- Preserve bounded source ID and first sequence across worker failures and the
+  workbench's failure state. Keep the prior receipt, clear failure on a new
+  operation and permit comparison after repairing the source. Cancel continues
+  charging input until actual preparation settles; unknown retirement stays
+  charged. Refresh only the first-party worker provenance hash.
+- All104 grouped journal/branch/replay/worker/source cases pass. A65-chunk trace
+  uses four16-chunk jobs plus one single-chunk job and the initial checkpoint;
+  every reference still verifies. Corrupt and missing sources retain their exact
+  sequence/ID, cancellation releases after settlement and restored sources work.
+  The native64-tick full replay/seek/branch passes with batching. The earlier316
+  10000-tick cohort finalized all ticks but hit its600-second stored-replay
+  deadline. Preserve that timeout; long qualification remains pending here.
+- Native actual IndexedDB fault qualification is in progress. Preserve its
+  initial ineffective corruption fixture, which selected a string absent from
+  the first transport-only chunk; require an actual changed byte before the
+  negative comparison. No successful corruption journey is claimed yet.
+- Defer seven optional DSP/rendering producers until their registered job runs,
+  then recheck cancellation/owner state before calling them. Their literal
+  imports remain in the trusted worker closure. The worker's static graph drops
+  from233 modules/1904198 bytes to111 modules/about741000 bytes; this is source inventory,
+  not a measured startup or interaction-latency budget. Add bounded verification
+  and physical replay progress to the workbench, fenced to its active operation.
+- All140 grouped cases pass after lazy loading, including actual worker/kernel
+  paths for rendering, fixed banks, scene rehearsal, warp and initial stretch
+  image restoration. Types, undefined calls, provenance and the145-full/115-smoke
+  browser catalog pass. Final native fault/short/long cohort is running on this
+  build. Preserve the earlier batching-only long-run timeout as well; batching
+  alone has not qualified the full10000-tick journey.
+- Native sequential verification now uses one admitted worker with a fixed,
+  existing IndexedDB database and readonly transactions, one source chunk at a
+  time. Return bounded metadata to the unchanged host chain checks; bind host
+  storage lifetime/connection and close native readers on completion or failure.
+  Refuse schema creation/upgrade and retain legacy/no-worker behavior.
+- All272 grouped affected cases pass, followed by6 stored-reader lifecycle cases
+  and41 worker/stream cases (283 distinct named cases across the cohorts). The
+  additional cases exercise malformed metadata before opening, blocked/error
+  late-open cleanup, readonly cancellation and default kernel scheduler use.
+  Native corruption/missing/future-source recovery and64-tick replay pass with
+  the sequential reader. The first large pass reached its180-second admission
+  deadline; preserve that failure. Kernel yields now use the shared scheduler
+  helper, matching snapshot transport, with its existing timer fallback and
+  unchanged work/memory/time limits. Final native qualification is running.
+- Full CI at published316 is green:6781 Node/136 browser, all14 capabilities and
+  static/benchmark/protocol/policy/dependency gates; coverage90.28/83.71/88.37.
+  Its capture is Partial at35840 finite frames after a128-frame clock gap, kept
+  separate from315's Ready103296-frame capture. Do not upgrade that result.
+- Sequential native verification passes its corruption/missing/version and short
+  replay journeys. Shared scheduler yields remove raw nested-timer overhead
+  without changing the180-second job or600-second harness deadlines. The next
+  long pass reached physical tick4447, then correctly refused a query window
+  requiring103073015 accounted bytes with96253463 available. Preserve this
+  failure; it is memory pressure rather than a physics-parity mismatch.
+- Query windows now shrink after a pure admission refusal, before loading input.
+  If even one more decode cannot coexist with the retained page, return that
+  page with the first unconsumed source cursor and resume after release. Keep
+  all hard limits, source order and stored data. All85 affected cases pass,
+  including new controlled-pressure regressions for both paths with no lost
+  records, no reads for refused windows and complete reservation release.
+  Final native qualification is running with this fix.
+
+- Split the causal worker kernel from optional producers and share one bounded
+  JSON/UTF8 inspector. The worker entry imports7 static modules/33497 bytes and
+  its causal path13/62536 before the stored-reader dependency; all280 owned
+  worker files remain in provenance. These are static inventories, not heap or
+  latency measurements. The combined300 affected Node cases pass.
+- The thin worker completes10000 replay ticks with matching final physics in
+  431064.4ms and repeats the final comparison with zero ticks in37863.1ms. Its
+  complete seek/branch journey still exceeds600000ms. Preserve that timeout.
+- Checkpoint proof reuse now binds take revision and finalization evidence,
+  verifies the restored physical hash, and accounts encoded bytes/nodes instead
+  of multiplying every text character by64. A fresh branch can reuse a proved
+  fork checkpoint; unqualified checkpoints still replay from the beginning.
+  The57 affected cases pass, including revision/evidence changes and independent
+  branch advancement. One initial new assertion expected the wrong receipt
+  shape; the corrected assertion checks the actual boundary qualification.
+- Add a private owned canonical header proof cache (4096 entries/4MiB). Native
+  inspections always reread and rehash current stored bytes, reuse only earlier
+  validated headers, and release metadata after active inspection work settles.
+  Unknown retirement remains charged. The final109 affected cases pass; source
+  corruption/missing bytes still fail after cache warmup and repair succeeds.
+  Final native64/10000-tick, fault-recovery and MIDI workflows are running with
+  unchanged512MiB/180s worker and600s test limits.
+
+- The final-cache native pass reaches10000 replay ticks, then refuses the final
+  component checkpoint:150026775 accounted bytes requested,127477629 available.
+  Source faults,64 ticks and MIDI export pass. End query pages at component
+  boundaries and retire them before admitting checkpoint decoding. All39 other
+  affected replay/branch/storage cases pass; the new boundary fixture passes
+  after correcting its duplicate initial-checkpoint count. The next actual
+  native pass keeps every original memory/time cap and is in progress.
+
+### Continuation 318 — pinned original authored scene recipe links
+
+- Implement version2 recipe links with exact scene/content revision, scene hash,
+  source build and physical score hash. Camera is presentation only. Refuse
+  missing/duplicate identities, generator overrides and incompatible source or
+  assets; preserve prior recovery and output ownership on failure/cancellation.
+- Reuse original-score materialization and the staged scene world/sound/mapping
+  owners. Exclude current edits, actors and takes explicitly. Authored startup
+  stays paused; the first native pass found and repaired a bindRuntime auto-play
+  leak. Later revisions and misleading supplied project/settings are fenced.
+- All61 distinct affected Node cases pass across the broad60 and final7 cohorts.
+  All9 distinct desktop journeys pass:8 existing sharing/startup journeys plus
+  the corrected authored-scene navigation on clean/populated profiles, exact
+  identity/source refusal and paused silent tick0. Source hashes, failure and
+  receipts are retained in the canonical validation record. Full CI is pending
+  publication. Continuation317 replay work above is still local development.
+
+### Continuation 319 — late fullscreen request ownership
+
+- Retire a late fullscreen entry after its owner was disposed. Bind callbacks to
+  the active root owner and document generation; an obsolete request/disposal
+  cannot exit a newer owner of the same root or restore earlier focus. Preserve
+  actual browser-event authority, rejection and rapid queued exit behavior.
+- All6 component cases and2 real desktop browser journeys pass. Native
+  Permissions-Policy denial preserves paused world/project/document/output
+  ownership and retry; actual entry/exit retains the same world/canvas and
+  accepted geometry at1920x1080 and2560x1440. Full CI is pending publication.
+  #1203 stays open for the remaining desktop zoom/DPR/draft/accessibility matrix.
+
+### Continuation 317 qualification completed
+
+- Reuse private canonical proofs for query decoding after rehashing current
+  bytes. Bind reference, byte/node inventory and record-count profile; freeze
+  the bounded proof inventory before queued input preparation. Corrupt bytes
+  and unknown proof retirement remain refused/charged. All93 affected cases
+  pass. The earlier uncached-marker native journey still exceeded600000ms
+  after a matched10000-tick replay and a matched5000-tick midpoint seek.
+- Add an explicit marker checkpoint option through the current recorder owner.
+  Reserve64MiB of estimated snapshot workspace before copying, store a real
+  component at the admitted marker sequence and serialize Stop behind storage.
+  Normal markers remain lightweight. All154 grouped controller/replay/branch/
+  source cases pass, including admission-before-copy and held checkpoint Stop.
+- The final4 actual native journeys pass, including the complete10000-tick
+  take:355544.2ms for the first replay,8030.9ms for zero-tick final comparison,
+  7429.3ms for zero-tick midpoint seek, independent32-tick branch, immutable
+  parent/live project, offline reopen and zero audio/MIDI permission requests.
+  The cohort also passes source corruption/missing/future-version repair and
+  the99991-record worker MIDI/reference export. Keep600s/180s/512MiB caps.
+- The named Node cohorts cover307 distinct affected cases. Exact archived
+  execution remains unbound; this native base window does not replace every
+  explicit intervention/terrain/transfer/tempo/external-input negative corpus.
+  #1092/#1162/#1234/#1161 stay open for their stated remaining scopes. Native
+  source hashes and every earlier failure are retained in the canonical receipt.
+
+### Continuation 320 — instrument resource entry without classic view
+
+- Construct the configured resource factory directly during workstation world
+  preparation. Preserve provider/resource leases and existing transactional
+  retirement without a temporary classic view or its application-context state.
+- Defer bootstrap/classic view/editor loading to explicit legacy initialization
+  and E2E loading to its query opt-in. Fence obsolete imports before allocation
+  or publication. Literal deferred entries remain visible to the packager.
+- The static local entry graph drops835 modules/8059998 source bytes to774/
+  7660239. E2E modules drop10 to0; the remaining3 editor-path imports are shared
+  asset/style/model data. This is inventory, not measured startup/heap/latency.
+- All18 current Node cases and22 actual desktop browser journeys pass, including
+  blocked optional classic/editor/E2E modules, pinned original scene startup,
+  recovery/recipes/sharing, and complete legacy compatibility at1920px minimum.
+  Keep #1161 open for optional hardware/creative graph and measured startup/
+  first-sound/offline/package scope. Exact-head full CI remains pending.
+
+### Continuation 321 — defer creative tool views
+
+- Load seven optional creative views through literal dynamic imports. Preserve
+  their existing owners and retirement; keep the synchronous foundry-model
+  handoff to the sympathetic map until that source lifetime is separately owned.
+- Fence publication by document/revision/world/lane/stage identity and the latest
+  interaction. Escape, pointer interaction, suspension and retirement cancel late
+  openings. Module failures remain local; opening a tool activates no audio.
+- Static source inventory changes774 modules/7660239 bytes to760/7499895.
+  This is source reachability, not a measured startup or transfer budget.
+- All121 affected Node cases pass. Thirteen native command/tool cases pass;
+  the expanded Escape/pointer/error case also passes on the combined final batch.
+  Critical types, undefined calls, provenance and browser category checks pass.
+  Keep #1161 open for its remaining startup/first-sound/offline/hardware scope.
+
+### Continuation 322 — synchronous render selection ownership
+
+- Full CI320 passed115 workstation cases and failed the derived-seed rebuild:
+  the replacement file was master while the original source was a captured dry
+  lane. The source/tap compatibility guard correctly rejected that replacement.
+- Disable file selection/harvest/delivery synchronously before render preparation,
+  including four-way comparison. Resolve files only against the displayed bundle
+  and preserve prior artifacts when preparation fails. Keep compatibility guards.
+- All12 renderer/graft-owner Node cases and all3 combined native workflows pass:
+  real phrase/dry-stem render, deferred tool interaction and full fitted-body
+  rebuild/frozen shared-project/over-budget graft refusal. The rebuild asserts
+  disabled controls in the same JavaScript turn as Prepare, before display writes.
+- Full local suite is not repeated. Publish the combined changes for complete CI;
+  the failed320 run skipped MCP/benchmark/coverage and remains in the receipt.
+
+### Continuation 323 — explicit MIDI library loading
+
+- Remove the synchronous516017-byte vendor script from the ProcGen document.
+  Load that unchanged classic library only on explicit Connect/Discover, sharing
+  one pending request with a15s deadline, cleanup and retry after failure.
+- Keep current-owner checks before permission requests and after completion;
+  Panic, disposal, changed worlds and stopped discovery cannot activate a late
+  destination. Attach/remove device observers to their actual loaded owner.
+- All136 affected Node cases pass; the loader measures100% lines/functions and
+  94.73% branches. All22 distinct native desktop journeys pass across the batch
+  and its focused installed-case correction, including offline loading, failed
+  script retry, Panic, legacy MIDI and the dedicated download/Blob sink cases.
+- The first installed fixture waited on a request the service worker could
+  satisfy itself; it timed out. Hold actual script insertion instead, then load
+  the real library. The corrected native case passes without changing deadlines.
+  Native MIDI access is a declared empty-port fixture, not hardware evidence.
+  #1161 remains open for measured startup, precache and wider optional scope.
+
+### Continuation 324 — archive preparation and source retirement
+
+- Own archive preparation with cancellation and a four-read pending cap. New
+  project/MIDI/archive preparation supersedes the previous owner; late rejection
+  or completion cannot replace a newer artifact or its status. Display the actual
+  archive phase, allow Discard before a first artifact exists, and keep the old
+  prepared file on cancellation. Suppress presentation after disposal.
+- Retain pending archive reads through disposal, then release journal proofs and
+  close storage only after those reads settle. Unknown pending reads consume the
+  cap rather than being forgotten when cancellation is requested.
+- All144 controller/artifact/archive Node cases and8 grouped native journeys pass.
+  The new immutable-build case exercises actual stored-source workers through
+  archive→project, archive A→B, Cancel and Discard; source world/tick/output remain
+  unchanged. Native sharing and the99991-record MIDI exporter pass alongside it.
+  Two earlier Node assertions caught stale phase publication and asynchronous
+  digest updates; the final guards and current-artifact assertions pass.
+- #1207 retains trusted-gesture native OS-picker qualification where supported.
+  The dedicated browser download and Blob/controlled-writable journeys now have
+  executed receipts from323. No filesystem durability claim is made.
+
+### Continuation 325 — intrinsic numeric evidence and classified world owners
+
+- Canonical schema3 reads actual typed-array/DataView slots and native collection
+  entries. Array accessors, unsupported objects and cycles are refused; sparse
+  holes differ from undefined/null. Preserve signed zero, nonfinite tags, extrema,
+  integer/BigInt views and subview dimensions without invoking spoofed metadata.
+- State schema4 includes future admission/assistance settings, birth ownership,
+  junctions, feedback and terrain-score state. Classify every own world data field;
+  a new unclassified owner or root accessor refuses projection. Old canonical2/
+  state3 receipts cannot qualify as current evidence.
+- Controlled terrain owns private proofs for generated chunks. Warm/cold or
+  reordered unchanged collision caches project to the same geometry source;
+  changed actual pixels remain visible and injected unproved chunks are refused.
+  Ground-query diagnostics do not change logical identity. Wider generated-source
+  cache normalization and the complete continuation/negative corpus remain open.
+- All65 affected survey Node cases and two native browser cases pass. Canonical
+  code measures100% lines/functions and95.52% branches; controlled terrain100%
+  lines/94.28% branches. Browser vectors agree exactly with Node and real controlled/
+  source replay remains compatible with explicit unbound execution. Keep #1223 open.
+- Full322 CI is green:6819 Node/10 pre-existing pending,141 browsers (24desktop/
+  117workstation), all14 capabilities, MCP/benchmark/static/policy/dependency checks.
+  Coverage90.71% lines/statements,83.72% branches,88.41% functions. Its separate
+  capture is Ready at61952 finite frames with no clock gap.323 onward are excluded.
+
+### Continuation 326 — logical terrain edit identity
+
+- Replace resident/cold storage layout in survey hashes with sorted nonzero
+  logical edit runs. Merge adjacent equal spans, omit empty patches, and read
+  native map entries without invoking LRU access, owner hooks or cold decoding.
+  Compaction/restoration leave the real state unchanged; pixel edits do not.
+- Refuse duplicate keys, inconsistent raw lengths, overlapping/out-of-range or
+  zero cold spans and accessor-backed metadata. State schema5 explicitly retires
+  earlier projection contracts; canonical numeric schema3 remains unchanged.
+- All71 affected Node cases and two native survey/browser-vector cases pass.
+  The new identity owner measures100% lines/functions and96.55% branches. Real
+  world hashes survive actual compact/restore, and browser cold-run identity
+  agrees with resident data. Generated descriptor/collision cache normalization
+  and the full continuation/negative corpus remain open under #1223.
+- Full324 CI is green:6836 Node/10 pre-existing pending,144 browser (24desktop/
+  120workstation), all14 capabilities and all static/MCP/benchmark/policy/dependency
+  gates; coverage90.72% lines/statements,83.71% branches,88.42% functions. This
+  capture is Partial at55936 finite frames after a128-frame clock gap.322's
+  separate Ready61952-frame capture is retained.325 onward are excluded.
+
+### Continuation 327 — completed-batch overflow and explicit recovery
+
+- Close the remaining #1113 dense-boundary check with real1024/1025-actor worlds
+  and the unchanged4096 normal/256 terminal-fact limits. A held source ends on
+  overflow and remains disarmed through the next complete boundary. Explicit
+  rearm starts a fresh voice identity; it does not resurrect the old held state.
+- Compare whole fact/snapshot digests, intent identities and recovery frontiers
+  across independent main-thread and real Node/browser execution workers. Transfer
+  actual committed batches to another live engine; only an explicit rearm message
+  clears its recovery state. The desktop instrument shows and executes recovery.
+- All41 grouped physical-batch/engine/playback Node cases and two native cases
+  pass. Initial fixtures incorrectly placed the blocker in air or kept semantic
+  transport paused; grounding the actual blocker and enabling semantic transport
+  for the deliberate step exercise the intended domain without activating output.
+  Earlier failure logs remain in the receipt. #1113 can close; no hardware or
+  acoustic qualification is inferred.
+- Full325 CI is green:6843 Node/10 pre-existing pending,145 browser (24desktop/
+  121workstation), all14 capabilities and static/MCP/benchmark/policy/dependency
+  gates. Coverage90.72% lines/statements,83.72% branches,88.43% functions; its
+  separate capture is Ready at103681 finite frames with no clock gap.326 onward
+  remain outside that checkpoint.
+
+### Continuation 328 — finite release performance qualification
+
+- Close #1052 with the actual desktop Save/Perform surface: Save leaves physical
+  state untouched; Perform admits exactly five real slots and downstream travel
+  gate attacks. At declared capacity all five attempts miss without attacks;
+  freeing capacity creates no backlog. A new explicit command admits five new
+  births and attacks, each carrying the actual source identity after birth.
+- Extend identical-log real-world comparisons to shared timestamps from bursty
+  30Hz/144Hz presentation, beyond a constant wall-time offset. Existing current-
+  cohort freeze, next-cohort change, locked/adaptive pressure, checkpoint/reset,
+  malformed input and stale editor cases remain in the same26-case passing batch.
+- Both native cases pass; no audio/MIDI output is activated and no source world
+  is replaced. Node coverage reaches100% lines for release policy/population/view;
+  browser workflows are additional execution, not Node coverage. Further optional
+  browser V8 coverage would quantify the invalid/cancel paths already guarded by
+  the bounded editor. No acoustic or physical-device qualification is inferred.
+- Full326 CI is green:6849 Node/10 pre-existing pending,145 browser (24desktop/
+  121workstation), all14 capabilities and static/MCP/benchmark/policy/dependency
+  gates; coverage90.72% lines/statements,83.73% branches,88.43% functions. Its
+  capture is Ready at55552 finite frames without a gap. All current production
+  changes are included;327/328 add acceptance fixtures to that source.
+
+### Continuation 329 — shared completed draw rows and discovery repair
+
+- Build bounded draw rows and wide-sprite membership in the completed actor pass,
+  removing the second live scan from rendering. Cache retained counts directly;
+  keep geometry/appearance/generation ownership current under lease pressure.
+  Existing immutable leases retain exact prior facts and event-batch identity.
+- All61 grouped Node cases and six native desktop cases pass. Real worlds with
+  and without indexed consumers produce identical batches, intents and physical
+  checkpoint hashes. Native camera/CCTV/render queries pass with live iteration
+  trapped; unchanged pixels, effects and recovery remain qualified at1920x1080+.
+- The1000-sample8/128/1024-lane benchmark visits32 candidates (33 at p99 in one
+  sparse case), with zero extra projection publications per draw query. Retained
+  admission estimates are55488/872448/6972416bytes; these are not V8 heap samples.
+  #1053 retains non-materializing contact sampling and broader allocation evidence.
+- Full327 and328 passed browser/static/MCP/benchmark gates, then failed recursive
+  Node discovery because the worker fixture executed on the main thread. Guard
+  that entry and explicitly import it in the regression cohort. Preserve both
+  failed checkpoints; full326 remains the latest verified green production run.
+
+### Continuation 330 — non-materializing lane contacts
+
+- Read resident/cold edits without restoration or LRU updates; use cached source
+  masks, retained descriptors, active growth plans and prepared authored masks
+  without generating or composing terrain. Missing data is explicit partial
+  coverage and cannot create a gap condition. Readiness uses the physical row.
+- Invalidate same-tick observation caches by completed projection revision and
+  refuse stale ownership under leased publication pressure. Real worker copies
+  cannot mutate a held source frame; failed publication/retirement conservatively
+  retains budget ownership until acknowledged release.
+- All77 distinct affected Node cases pass across the final grouped run and added
+  cache regression; two native1920x1080+ cases pass with source generation and
+  edit restoration trapped. The first native contact fixture had no born actor;
+  explicit physical steps establish one before measurement. Its failure is retained.
+  Projection, edit retention and observation reach100% scoped lines/functions.
+- #1053 can close on shared completed indexes, measured visible-query scaling,
+  bounded version admission, immutable worker copies, real physical/music parity
+  and native pixel/camera/CCTV/source-read evidence. Query timing and conservative
+  byte estimates do not establish V8 heap, browser FPS or hardware/audio behavior.
+
+### Continuation 331 — transactional placement-mask replacement
+
+- Preserve the previous placement tile and clipped-frame ownership through new
+  candidate construction, sampling and shared admission. Enforce the existing
+  mask ceiling over retained plus staged bytes; evict unrelated LRU entries or
+  refuse before allocating. Count actual mask allocations, staged and peak bytes.
+- All57 affected Node cases pass, including exact/over-limit aggregate masks,
+  invisible entries, replacement failures, source transforms/dependencies, reveal,
+  reset and bounded scroll. Five distinct native desktop cases pass across the
+  recovery cohort and two cache fixtures, including a real checkpoint restore.
+  Cached/uncached pixels and physical hash agree; only relevant tiles rebuild.
+- The100-sample1920x1080 eight-row probe at8/128/1024lanes allocates no masks or
+  clip samples for distant edits/animation. Uncached rows allocate2400masks and
+  sample2880000pixels; local retained edits sample120000pixels with28800retained/
+  30000peak bytes. Local validation/host load was not isolated. #1055 can close
+  on the cache contract; no GPU, heap-soak or acoustic qualification is inferred.
+
+### Continuation 332 — changed-lane physical mix propagation
+
+- Carry trusted non-retaining lane-collection ancestry to the mix owner. Reuse
+  states/declarations on unrelated edits and update only touched mix rows. Full
+  validation remains for unknown ancestry, structural changes or global solo-mode
+  transitions. Skip macro performance derivation outside take ownership.
+- All144 affected Node and six native desktop cases pass. The1000-edit probe at
+  8/128/1024lanes allocates500 state rows for500 real mix changes and none for500
+  unrelated labels at every size. Real8/128-lane controller edits preserve other
+  lane identity, physics/output and existing launch/focus/IME behavior.
+- Lane mix and change-index owners reach100% scoped lines/functions. Refresh the
+  bound worker provenance digest without changing its280-file closure. #985 stays
+  open for navigation/view propagation and complete controller/persistence latency.
+
+### Continuation 333 — authored startup ownership at ensemble capacity
+
+- The broader benchmark exposed startup cloning a full project through the small
+  journal metadata quota. Copy and freeze the project through the existing authored
+  snapshot verifier, sharing only its privately verified immutable subtrees. Keep
+  the original metadata quota and authored tree limits; do not serialize a large
+  project just to transfer in-memory ownership. Input remains mutable and detached.
+- All172 grouped snapshot/startup/controller/recovery cases and four native
+  startup/document/recovery journeys pass, including128/1024-lane64-step projects.
+  The explicit three-size browser benchmark now runs. Controller edit p99 is
+  0.5/0.9/2.4ms; full results and the prior admission failures are retained.
+- The synthetic host excludes real audio/IndexedDB and120Hz scheduling. Smaller
+  launch cases each contain one task over16ms; heap data is unavailable. #985
+  remains open for production propagation and full task-budget qualification.
+
+### Continuation 334 — actual edit workload and honest preference failure
+
+- Run the actual instrument controller at8/128/1024lanes with64-step patterns,
+ 480 iterations targeting120Hz,960 admitted/recorded MIDI packets and64 complete
+  launch acknowledgments per size. Physical state/output remain unchanged. Preserve
+  source/host hashes, lateness, task distributions, long tasks and preference state.
+- Expose current-document requested/durable revision and bounded failure details;
+  discard stale pending/error/durability claims after document replacement. Absent
+  storage is unavailable.128 distinct Node cases pass; writer lines reach100%.
+- The128-lane preference snapshot exceeds its footprint;1024-lane snapshot
+  reservation exceeds the available shared budget. Deadline lateness also grows
+  at1024lanes. These are actual unresolved #985 findings; no budget increase or
+  successful persistence qualification is inferred from completed input work.
+- Full329 CI is green:6860Node/10 pre-existing pending,150browser (24desktop/
+  126workstation), all14capabilities and static/MCP/benchmark/policy/dependency
+  gates. Coverage90.72% lines/statements,83.75% branches,88.46% functions. Its
+  capture is Partial at58880finite frames after a128-frame clock discontinuity.
+  Earlier Ready captures remain separate.330 onward require their own full runs.
+
+### Continuation 335 — bounded authored preference publication
+
+- Store authored fields and lanes as small IndexedDB pages. Encode up to eight
+  lanes per admitted worker, stage bounded batches, then atomically publish the
+  complete generation and collect only pages outside the two retained generations.
+  Reuse privately verified immutable subtrees. Keep the existing shared resource
+  caps and a32MiB private encoded overlap; interrupted writes retain the previous
+  committed score. Expiring writer leases permit bounded orphan cleanup.
+- Read a consistent generation in one native transaction with small per-page
+  decoding. Full previous-setup restoration refuses corruption; explicit startup
+  authority can ignore unrelated corrupt preferences. Retain separate physical
+  recovery/checkpoint semantics and legacy custom-adapter compatibility.
+- All237 grouped Node cases and12 distinct desktop journeys pass. The actual
+  four64-step-pattern workload saves and reloads8/128/1024lanes with960 admitted
+  and recorded MIDI packets per size. Peak live encoded staging stays below831KB;
+  measured save callbacks stay below3ms. The1024case finishes persistence57.7s
+  after edits and reloads in10.972s. Actual throughput is120.19/120.15/99.17Hz;
+  launch samples still exceed16ms at every size. #985 remains open for these
+  concrete latency/task-budget findings and broader authored memory ownership.
+- Full334 CI is green:6886Node,155browser (24desktop/131workstation), all14
+  capabilities and static/MCP/benchmark/policy/dependency gates. Coverage90.74%
+  lines/statements,83.79% branches,88.48% functions; ten pre-existing pending.
+  Its80640-frame capture is Partial after a128-frame clock discontinuity.335
+  requires its own full run; the capture does not change the successful CI result.
+
+### Continuation 336 — committed worker source digest
+
+- The335CI run stopped at provenance: its digest included four CR bytes that
+  Git normalized out of BackgroundJobKinds.js. Restore that working file to its
+  committed LF bytes and recalculate the worker digest; runtime semantics and
+  the completed335validation are unchanged. Verify filtered Git source bytes
+  before publishing the corrected manifest. Full336CI remains independent.
+
+### Continuation 337 — current navigation deltas and retained launch cells
+
+- Keep a private current navigation projection and apply trusted changed-lane
+  deltas. Gain/step edits retain its labels/indexes and organization history;
+  rename/role, structural, skipped-ancestry and new-document cases remain current.
+  Advance this projection after acknowledgments and unselected step edits too.
+- Retain same-length launch cell DOM and focus. Resolve callbacks through their
+  live row so keyed reconciliation cannot use an old detached slot; rebuild rows
+  for changed lengths. Skip acknowledgment Undo serialization and use ID lookup
+  for input targets.183 Node and22 distinct desktop journeys pass, including the
+  final offselected-step/launch/later-edit ancestry sequence.
+- The final actual8/128/1024-lane profile saves/reloads every score and admits all
+  960 MIDI packets per size. Individual edits/launches have no samples over16ms;
+  launch p99 is3.5/4.7/8.8ms, and achieved iteration rate is about120Hz throughout.
+  Scheduling lateness p99 still reaches153.3ms at1024; initial/coalesced saving
+  finishes65.74s after edits and reload takes19.138s. #985 remains open for this
+  jitter and cold-work latency, with search/summary caching and finer persistence
+  reuse next. Complete authored/native memory qualification remains separate.
+- Full336CI has passed provenance, static gates and desktop boundaries and is
+  running workstation smoke;337 requires its own run. Full334 remains the latest
+  completely verified CI checkpoint.
+
+### Continuation 338 — bounded search/summary and phased workload evidence
+
+- Cache one immutable search page and unchanged group presentation state.
+  Maintain indexed solo membership through current lane deltas; summarize only
+  solo/armed entries while preserving physical-order jump priority. Sparse launch
+  acknowledgments use lane ID lookup, retain unrelated identities and allocate
+  their lane array only on an actual change.186 Node cases pass.
+- Fourteen distinct native desktop journeys pass across navigation and dock
+  workflows; the existing optional ten-minute benchmark remains explicitly skipped.
+  Update the old dock persistence fixture to await the actual committed IndexedDB
+  preference header before navigating. This repairs the sole336CI browser failure
+  (134workstation and24desktop cases had passed; Node coverage did not run).
+- The full actual8/128/1024 profile again saves/reloads every score and records
+  all960 input packets per size. Search/index build once per size; indexed summary
+  visits1920members at every size rather than scanning the entire ensemble.
+  All individual edit/launch samples remain within16ms, and actual iteration rate
+  is about120Hz. Launch p99 is2.0/3.9/6.5ms; scheduling lateness p99 remains
+  3.17/14.33/80.80ms. The1024cold/coalesced save takes52.85s after editing and
+  reload10.026s. These timings come from a shared development host.
+- Retain bounded native Long Task timestamps and overlapping workload regions.
+  No observed task of at least50ms lies entirely inside the traffic phase; setup
+  and the deliberately unyielded64-launch burst overlap the observed tasks. This
+  does not certify all asynchronous work below16ms or establish hardware timing.
+- Review #985 against its original acceptance matrix when full338CI completes;
+  close reasonably if that run is clean, preserving cold-save/heap/timing limits.
+  Then continue independent backlog work; #1193cross-tab performance ownership
+  and #1162combined memory qualification remain separate open requirements.
+
+### Continuation 339 — foreground preference quiescence and command dismissal
+
+- Full338CI passed static/provenance,24desktop and135workstation cases, then
+  rejected saved-project load:335708160candidate bytes with325301913available
+  while background preferences retained memory. Keep the shared cap unchanged.
+- Foreground load/save/import/export/rebuild work cancels active preferences and
+  awaits actual producer retirement. Nested holds retain only the latest revision;
+  stale document work is discarded before encoding. Unknown retirement blocks
+  admission and is reported through disposal rather than claiming released memory.
+  Paged writes and stored-checkpoint preparation await cancellation quiescence.
+- The repaired native load exposed a Project menu overlay intercepting the World
+  tab afterward. Activated commands now close their menu, preserve editing fields
+  and return focus only when a dialog has not taken it.
+- All252 grouped Node cases and20 distinct native desktop journeys pass, including
+  deliberately stalled native preference work, save/load/reroll/replay/New/Undo,
+  current preference resumption, corruption and dock persistence. Writer/pages/
+  retirement helper lines reach100%; broader branches and combined native-memory
+  qualification remain separate. Collection is167full/137smoke across46files.
+- Publish this repair with its own full CI.334 remains the latest completely
+  verified green checkpoint;338did not reach coverage/MCP/benchmark. Review #985
+  against its original acceptance after clean CI, retaining measured cold-save,
+  scheduling and heap limits. Resume preserved #1193cross-tab work independently.
+
+### Continuation 340 — cooperative browser audio and capture ownership
+
+- Hold one same-origin Web Lock for actual browser performance lifetime. Bounded
+  versioned broadcast messages request handoff; only a native lock grant admits
+  output. Never queue autoplay, steal a lock or infer a stopped peer from missing
+  heartbeats. Cancel obsolete requests, retire late grants and retain unknowns.
+  Keep 32 sources, 32 peer records, 64 observers and one pending takeover. Local document
+  identity stays local; broadcast only bounded status, roles and opaque IDs.
+- Gate actual browser notes and master taps. Explicit takeover stops transport,
+  controller recording/thru and the causal take, waits for capture-tap retirement
+  and native context suspension, then releases ownership. Failed shutdown stays
+  silent. Missing/blocked Locks exposes explicit uncoordinated playback with a
+  visible warning. Lifecycle revalidation never resumes output automatically.
+- Normalize native numeric cancellation diagnostics and fence superseded or
+  retired lane-preparation callbacks. A dismissed command's name dialog returns
+  focus to its visible menu heading. This repairs 339 CI's sole remaining failure:
+  24 desktop/136 workstation cases passed, including the former load failure; later
+  coverage/MCP/benchmark stages did not run.
+- All 416 grouped Node cases and 34 distinct native desktop journeys pass. Actual
+  two-tab activation/takeover/owner closure and the native capture-worklet handoff
+  pass with the operational, save/load/Undo/replay, focus and DPR 1/1.5/2 workflows.
+  The handoff capture is Partial: 18,560 source/received frames, abrupt owned stop
+  classified as panic, zero indexed gaps and an acknowledged end. It is not Ready.
+  Core ownership coverage is 98.96% lines/84.85% branches/100% functions. Category
+  collection is 172 full/142 smoke across 47 files. Full 340 CI remains independent.
+- #1193 remains open: next bind reviewed MIDI/router, raw/thru and clock byte
+  submissions and owned cleanup to this lease; finish cue-role reporting and the
+  actual frozen/BFCache/failure matrix. #998 still needs real desktop screen-reader
+  smoke. #985 awaits original-acceptance review after clean current CI, preserving
+  the existing cold-save/scheduling/heap limits. 334 remains the latest complete
+  green CI checkpoint. Continue solo, with implementation frontloaded.
+
+### Continuation 342 - owned MIDI performance and foreground admission
+
+- Bind reviewed MIDI/router, native byte lowering, raw/thru and standalone clock
+  output to the shared performance lease. Independent workstation ownership and
+  generation-bound cleanup keep failed releases owned. Saved/reconnected clock
+  targets require explicit activation; late arming preserves external clock input.
+- Preserve instrument preparation when no MIDI output was acquired, wait for prior
+  audio retirement before reactivation, and report actual live/cue/capture roles.
+  Offer explicit MIDI takeover after destination review; Web Locks stay authoritative.
+- Store revision-bound lane counts for small-document checksum admission. The
+  saved-load overlap and measured-worklet failures from 341 CI pass locally.
+- All 573 grouped Node tests and 35 distinct native desktop cases pass. The final
+  35-case runtime batch passed 32; its three old takeover expectations were fixed
+  in fixtures only, then all seven ownership journeys passed on the same runtime.
+  Capture handoff is Partial:panic with 9,472 source/received frames, no indexed gap
+  and an acknowledged end. Separate user-stop capture is Ready with 53,760 finite
+  frames and peak 0.0228269100189209. Neither establishes external MIDI acoustics.
+- Keep #1193 open for actual frozen/BFCache/failure/cancel qualification. Continue
+  with raw-batch route fencing and that lifecycle matrix while full CI runs. #985
+  still awaits current clean CI and original-acceptance review; #998 needs actual
+  desktop screen-reader evidence. Latest complete green CI remains 334.
+
+### Continuation 343 - raw route plans and actual native lifecycle
+
+- Capture raw MIDI plan routes before reservation and reject replacement callbacks
+  across bank/program, UMP lowering and raw note setup. All106 grouped Node cases pass.
+- Qualify actual Chromium freeze/thaw and BFCache history return, native shutdown
+  refusal, canceled takeover, absent BroadcastChannel, reload during a pending
+  performance claim, and closure during actual worklet capture. All7 lifecycle
+  cases and19 distinct adjacent native desktop journeys pass across final batches.
+  The same realm receives pagehide.persisted and pageshow.persisted, returns paused
+  without output ownership, and requires explicit activation. No retained capture
+  PCM is claimed after destroying its owner realm.
+- Fix harness eligibility: require HTTP revalidation without no-store and select
+  full Chromium new-headless mode for BFCache. Preserve the initial browser reasons
+  and the two corrected error-state fixture expectations in continuation343.
+- Close #1193 against its default same-origin desktop contract. Keep #1009 open for
+  remaining recovery/storage/canceled-navigation and wider supported-engine cases.
+  Full342 CI is still running;334 remains the latest complete green checkpoint.
+  Continue solo through the remaining backlog while full CI completes.
+
+### Continuation 344 - native navigation, storage and full green CI
+
+- All10 actual Chromium lifecycle cases pass. A real canceled beforeunload retains
+  the same edited world, native output owner and playing transport without pagehide.
+  BFCache now also proves active playback returns paused in the exact same world.
+- A held actual preference Worker survives BFCache and commits current authored
+  revision1 with no pending encoded bytes. Controlled unavailable IndexedDB retains
+  dirty revision1 only in the same cached realm and honestly reports durable -1.
+  No application runtime change was required; broader #1009 acceptance stays open.
+- Full342 CI is green at f5236b74:6,999 Node passes,10 pre-existing pending,168
+  browser passes (24desktop/144workstation), all14 capability/static/provenance/
+  policy/dependency/MCP/benchmark gates. Coverage90.77% lines/statements,83.81%
+  branches,88.49% functions. Actual browser master is Ready:105,216 finite frames,
+  no clock discontinuity, peak0.02346622943878174. Preserve acoustic/durability limits.
+- Close #985 against its original changed-data acceptance, measured8/128/1024-lane
+  workload and this clean full run. Preserve the disclosed lateness/cold-save/heap
+  and task-observer limits. #1193 remains closed. Continue solo; next cover actual
+  close-during-save/rebuild and exact recovery durability while343/344CI runs.
+
+### Continuation 345 - actual closure during save and rebuild
+
+- All12 actual Chromium lifecycle cases pass. Hold only the JavaScript completion
+  callback after a real named-document IndexedDB commit, close the source realm,
+  then load exactly revision2 of the same document through the real project picker.
+- Close an actual preparing world rebuild after saving/checkpointing its baseline.
+  A new page loads the unchanged named source and verifies the complete recovery
+  generation1 with matching seed42 and8-lane world/project. Output remains off
+  and transport paused. No application runtime change was required.
+- Keep IndexedDB/API acknowledgement distinct from filesystem/power-loss durability.
+  #1009 remains open for the wider-engine/background lifecycle matrix. Matching
+  Firefox/WebKit runtimes are installed for the next separate qualification.
+  Continue solo with implementation frontloaded; no repeated full local suite.
+
+### Continuation 346 - cold history and complete performance suspension
+
+- Fix cold history reconstruction restarting musical transport; only the initial
+  reconstructed entry is held paused. Explicit Play and later requested rebuilds
+  remain available. Page suspension now disarms recording/thru and stops browser
+  and MIDI performance output; direct MIDI Stop retires its registration before
+  reactivation, so a subsequent takeover releases the new generation's notes.
+- Grouped qualification:270 Node passes and12 actual Chromium lifecycle passes.
+  Eight distinct Firefox155/WebKit26.6 desktop cases qualify cold history,
+  saved preferences, exact named revision2 reload/load and unavailable recovery.
+  The final eight-case run passed seven; one Firefox process crashed before its
+  assertions, then the isolated unchanged case passed. Retain the initial failures.
+- Firefox qualifies real native audio reactivation. Windows WebKit has no native
+  AudioContext and qualifies honest unavailable output only. Playwright disables
+  those engines' BFCache; do not count cold reconstruction as retained-world
+  qualification. An unavailable store cannot preserve unsaved source after realm
+  destruction. Actual desktop background/foreground remains unqualified: native
+  window minimization and tab switching did not emit document.hidden here.
+- Add separate Firefox/WebKit CI coverage without inherited Chromium flags or
+  MIDI grants. Full345 CI is independently green:7,002 Node passes,10 pre-existing
+  pending,180 browser passes, all14 capabilities and static/provenance/policy/
+  dependency/MCP/benchmark gates. Its capture is explicitly Partial:50,048 finite
+  frames after a128-frame render-clock discontinuity. Preserve prior Ready evidence
+  separately. #1009 and #1086 remain open for their remaining platform matrix.
+
+### Continuation 347 - native semantic parity and independent engine gates
+
+- All11 native engine cases pass without retries/skips/crashes on the final local
+  profile. Chromium153.0.8010.12, Firefox155 and WebKit26.6 produce identical initial
+  and final physics hashes, the same eight asset identities and1,078 complete
+  causal facts across64 actual ticks of the same eight-lane recipe. Muted physics
+  parity does not qualify rendered PCM or acoustic/device behavior.
+- Require all three engines and every expected case, complete/nonempty causal
+  evidence, paused transport, observer cleanup and matching physics/causal/assets.
+  Eight fault-injection checks plus adjacent config/catalog checks pass24 Node
+  cases. A before/after1,246-file runtime closure and exact harness hashes reject
+  source changes during qualification; CI retains the complete inventory artifact.
+- Each destructive journey owns a separate browser process; Firefox requests
+  software WebRender explicitly. Earlier native boot crashes remain recorded:
+  process isolation alone did not eliminate them. Three diagnostic audio repeats
+  passed; the final eleven-case profile passed once. No universal stability or
+  hardware GPU claim follows from those observations.
+- 346's Linux engine job passed six cases but Firefox audio stayed suspended and
+  another boot crashed. Provision a PulseAudio null sink for digital CI audio;
+  Linux execution of this fix remains pending. Windows WebKit's absent AudioContext
+  remains explicit. Do not label346 fully green merely from its separate main job.
+- Continue solo through the remaining backlog; #1086 retains denied/unavailable
+  capability, graphics, owner-count and physical-device qualification, and #1009
+  retains actual desktop background and Firefox/WebKit BFCache journeys.
+
+### Continuation 348 - permission, worker and display failure boundaries
+
+- All18 desktop engine cases pass without retries/skips/crashes;58 grouped Node
+  tests, critical types, formatting, undefined calls and10-component/350-file
+  provenance pass. The same64-tick physics/causal/asset parity gate stays mandatory.
+- Actual Chromium permission denial causes exactly one delegated native MIDI
+  request after explicit activation and none during startup or automatic retry.
+  The rejected route stays off; a separate explicit action starts native browser
+  audio without another MIDI request. Treat both NotAllowedError and legacy
+  SecurityError as denied/blocked in discovery and selected-output activation.
+- Each engine recovers an explicitly unavailable canvas through Retry display,
+  retaining the exact world/project and paused tick. With worker construction
+  blocked, native IndexedDB Save remains usable at named revision2. Stored Load
+  refuses at its checksum worker, preserves the exact current dirty source/world
+  and stored revision, then an explicit retry loads the saved revision paused.
+  Controlled API faults are not native GPU/worker-device qualification.
+- Correct the initial worker fixture assumption: named Save does not require a
+  checksum worker. Its successful revision2 commit was correct; the initial batch
+  passed15/failed3 before moving the fault assertion to actual Load ownership.
+- 347's Linux engine job now passes all11 cases with the PulseAudio null sink,
+  including actual Firefox and WebKit AudioContext activation/navigation/restart.
+  Physics/causal hashes match Windows as well. Both347jobs are now green:7,013
+  Node passes,10 pre-existing pending and191 browser passes (24desktop/156main/
+  11engine), all14 capabilities and static/provenance/policy/dependency/MCP/benchmark
+  gates. Coverage90.77% lines/statements,83.82% branches,88.52% functions. Preserve
+  its explicit Partial71,424-frame capture after a128-frame discontinuity.348has
+  independent scoped qualification and CI.346's main job passed
+  7,005 Node/180 browser cases and Ready115,328-frame capture, but its engine job
+  failed, so346 remains a failed whole-workflow checkpoint.
+- Focused output coverage is91.80% lines/statements,75.00% branches,88.88%
+  functions across20 cases. Whole-project coverage thresholds remain unchanged.
+  Additional focused coverage can target coordinator admission, takeover,
+  document-identity and local-state callbacks; native ownership journeys exercise
+  these paths separately. Continue the named remaining #1086/#1009 matrix and
+  the lane-transfer acceptance before considering those broader issues complete.
+
+### Continuation 349 - executable native codec and focused editor ownership
+
+- Build a pinned C++20 peer from original application sources, ni-midi2, cmidi2
+  and libremidi headers. Keep external sources unchanged in the ignored dependency
+  cache; reject revision drift, tracked changes and untracked dependency files.
+  Windows qualification passes 8,829 commands plus four bounded protocol faults:
+  5,379 valid typed constructor comparisons, 1,304 scaling cases, 2,048 seeded
+  whole-batch cases, literal family packets, maximum capacity, malformed tails,
+  caller mutation and each later callback error/exception position. Native
+  big-endian bytes cross the JS codec without losing word order or payload bits.
+- Use the actual pinned error API (`stdx::error::is_set()`), private input snapshot,
+  complete prevalidation and explicit pointer/count boundary. Preserve accepted
+  prefixes and failed-packet uncertainty. The pinned libremidi typed container
+  still reports zero Flex/Stream words; cmidi2's reserved widths and low-velocity
+  lowering and ni-midi2's absent parameter lowering remain explicit limitations.
+  This is controlled synchronous callback qualification, with no OS/device I/O.
+  Add Windows/Linux CI jobs; [build and scope](native-midi-codec.md).
+- Keep #977/#980/#1143/#1094 open for actual companion/transport integration,
+  canonical native ingress, remaining type/bridge semantics, allocation/retirement
+  faults and OS/device/workflow matrices. Codec receipts do not qualify those.
+- Fix a focused numeric draft overwritten by a background MIDI UI refresh.
+  Preserve the focused field only while the project identity is unchanged;
+  explicit edits still replace it. Both regressions pass among 93 controller
+  tests; three native 1920x1080 desktop journeys cover export/reload, persistence
+  and selected-source learning. Critical types, undefined calls and provenance
+  also pass. No full local suite was repeated.
+- 348's 18-case Linux engine job passed, but its main job failed one desktop
+  export assertion (expected note79, received69). It never reached workstation
+  smoke/coverage, so348 is not a full green checkpoint. This span fixes that edit
+  path; keep347 as the latest fully verified checkpoint until all new jobs pass.
+
+### Continuation 350 - bounded pattern admissions and immutable sink receipts
+
+- Add a bounded immutable sink receipt registry with full supplied causal/route
+  identity, sequence/version checks, explicit target and acknowledgement clocks,
+  monotone evidence stages and a bounded history ring. Unknown physical batch
+  identity remains null. A later acknowledgement cannot rewrite a newer receipt
+  or a retired route. [Contract](sink-admission.md).
+- Give deferred pattern notes a cancellable pending owner, separate from active
+  voices. Validate generation, route, mute/solo, slot and deadline at settlement;
+  cancel on transport flush, project/route changes, reset and controller edits.
+  Keep uncertain cancellation charged against the bound. Deferred checkpoint
+  diagnostics never restore as sounding notes. Resume targets only an accepted
+  sink in the same route, while restoring counters preserves deterministic IDs.
+- Track controller acceptance per sink, retry only refused targets, suppress
+  duplicate pending values and cancel obsolete deferred values before replacement.
+  Attempt budgets stay separate from active admission. Production selected
+  preview/MIDI callbacks return frozen captured identities and honor retry targets.
+- Grouped validation:218 Node cases and seven real 1920x1080 desktop journeys
+  pass, plus format/critical types/undefined/provenance. Focused eleven-case
+  diagnostic coverage: registry100% lines/statements/functions,85.88% branches;
+  pattern engine80% lines/statements,71.67% branches,78% functions. The focused
+  subset intentionally omits much of the existing musical/automation matrix;
+  use the grouped musical suite to cover it, and extend invalid identity,
+  cancellation acknowledgement and receipt-capacity boundaries where useful.
+- Keep #1059 open for the remaining canonical physical-dispatcher receipt identity,
+  acknowledgement/deferred integration and actual combined-output acceptance.
+  Shared resource charging remains with its resource owner; pattern callback
+  conformance is not physical hardware qualification.
+- 349's native codec jobs pass on both Windows and Linux. Its engine job passed17
+  cases but Firefox's target crashed during initial boot of the audio-navigation
+  case; its whole workflow is not green. Preserve the failure. Add browser process
+  debug logs and failure trace uploads without retries or changing required cases.
+  The main job remains independent and the last full green checkpoint stays347.
+
+### Continuation 351 - desktop gesture retirement and source fences
+
+- Give the shared document gesture arbiter bounded lifecycle cancellation for
+  owning capture loss/cancel, Escape, window blur, hidden documents and native
+  modal opening. Foreign pointer events cannot terminate another owner. Release
+  registered capture in finally, including throwing cancellation callbacks; retain
+  a new reentrant owner rather than releasing its capture with the old one.
+- Revalidate source identity at canonical project publication, view patches,
+  span synchronization and camera updates. An observed A-to-B-to-A source change
+  cannot revive the old lease. Camera zoom/restored transforms and world
+  generations fence the old drag; rejected capture does not strand ownership.
+  Pattern, span and camera captures register their stable target explicitly.
+- 183 grouped Node cases and nine real1920x1080 desktop browser journeys pass.
+  The latter cover one-transaction draw/erase, foreign release, native capture
+  loss, real Escape, controlled window blur, native modal opening, source A/B/A,
+  disposal and the next actual camera pan. Browser-injected trusted pen events
+  also commit one transaction and ignore a controlled foreign pointer release.
+  No phone/tablet emulation or subminimum viewport is used. The blur/hidden
+  branches do not qualify actual OS background or physical pen hardware.
+- Focused32-case coverage: arbiter100% lines/statements/functions and93.24%
+  branches; camera96.68% lines/statements,80% branches,92.30% functions. Suggested
+  remaining focused coverage includes vertical leader-follow adjustment and wheel
+  pan/zoom branches; existing broader camera/browser scopes remain separate.
+  Format, critical types, undefined calls, provenance and browser category gates
+  pass. Category inventory now contains193 full/163 smoke workstation cases and
+  all14 required capability gates.
+- Keep #1000 open for actual concurrent native contacts and the remaining physical
+  authoring and MIDI sound-dial source A/B and A/B/A transaction matrix. The shared
+  owner fixes and pattern/camera evidence do not substitute for those tools.
+- 349's main job is green:7,019 Node passes/10 pre-existing pending,180 browser
+  passes and coverage90.77% lines/statements,83.82% branches,88.53% functions. Its
+  engine job failed17/18 after a Firefox boot crash, so349 remains a failed whole
+  workflow. 350's engine and both codec jobs pass; its main job is independent.
+  Keep347 as the latest full checkpoint until all four new required jobs pass.
+
+### Continuation 352 - source-safe sound dials and registered control capture
+
+- Register stable capture targets for sound ranges, typed knobs, automation SVG,
+  dock resize and the terrain brush. A failed brush capture restores its prior
+  selection instead of stranding a painted draft. Keep owned sound updates live
+  while validating a reentrant source change; observing B ends A's history group
+  even when A returns before the update call finishes. Retired input redraws the
+  current authored value and cannot edit or group the newly selected sound.
+- 46 scoped Node cases and12 desktop browser cases pass. Actual MIDI dial A/B and
+  A/B/A journeys retain separate source values, reject stale input, preserve
+  Undo/Redo, and admit a fresh gesture without requesting MIDI. Two simultaneous
+  browser-injected trusted mouse/pen contacts have distinct IDs: pen-up leaves
+  mouse ownership and zero edits; mouse-up commits the single changed stroke.
+  All final fixtures remain1920x1080 desktop, without mobile emulation.
+- Strengthen cancellation fixtures to paint an off cell and witness native
+  gotpointercapture before inducing loss. Releasing a pending capture request
+  before that event does not constitute observed capture loss. Native range
+  capture belongs to Chromium's thumb, so qualify its native events and logical
+  lease rather than falsely requiring the public input capture flag to be true.
+  Scroll manual pointer targets into view before measuring coordinates; retain
+  351's six Linux fixture refusals at the old capture precondition as failures.
+- Focused46-case coverage reports workbench84.96% lines/statements,60.86% branches,
+  87.87% functions; curve editor87.23%/75%/76.19%; knob86.66%/66.46%/75%.
+  PhysicalAuthoringView and WorkstationDock are not loaded by that Node subset.
+  Complete their native gesture/fault/removal matrix next, alongside the remaining
+  curve paths, before closing #1000. Whole-project thresholds remain unchanged.
+- Advance the verified full checkpoint to350 (`7c20efd7`): all four jobs pass,
+  7,030 Node tests/10 pre-existing pending and198 browser cases (24desktop,
+  156workstation,18engine), all14 capability gates, static/provenance/policy/
+  dependency/MCP/benchmark gates. Coverage90.78% lines/statements,83.81% branches,
+  88.54% functions. All engines agree on64 ticks/1,078 facts and the exact physics,
+  causal and asset identities; Linux Firefox/WebKit use actual AudioContexts with
+  the named PulseAudio null sink. Codec hashes agree across Windows and Linux.
+- The same checkpoint has actual Ready59,649 finite master frames, user stop,
+  no observed clock discontinuity and peak0.023256301879882812. This is digital
+  capture evidence, with no acoustic/disk-durability claim. Preserve347's earlier
+  Partial71,424-frame result and349's failed whole workflow separately. CI executes
+  a PR merge checkout; its raw dirty flag is retained, and all five changed runtime
+  hashes match350's published receipt. 351's engine/codec jobs pass but its main
+  job fails six old fixture capture preconditions, so it is not fully green.
+
+### Continuation 353 - complete desktop gesture transactions
+
+- Preserve the physical terrain brush's first lease when another contact is
+  refused. Curve/dock publications revalidate source identity, including observed
+  A→B→A, before a draft can continue.
+- Retire an unhandled owning release when native pending capture disappears.
+  Cleanup runs on the next task after window commit handlers and cannot cancel a
+  reentrant replacement owner. Capture loss cancels; it never publishes a draft.
+- The final grouped pass has41 Node passes and37 browser passes at1920×1080:
+  terrain/curve/dock capture loss, Escape, controlled blur, modal opening, source
+  replacement, removal, disposal, capture rejection and native concurrent contact
+  startup. Every isolated tool journey recovers a fresh camera pan; production
+  terrain Apply advances exactly one real boundary and survives physical
+  Undo/Redo. Existing native pen and window paint commits remain covered.
+- Close #1000's software interaction acceptance after publication. Keep actual
+  OS-background, physical tablet/pressure and device qualification with the broader
+  platform owners. The new grouped checks do not advance the full CI checkpoint;
+ 350 remains the latest verified full green head.
+- Preserve initial native-input and event-order failures in the canonical receipt.
+  Correct352's empty parsed-attachment array by adding the3 recovered exact JSON
+  attachments here; retain the published352 entry and raw report hashes unchanged.
+  Focused Node coverage is a measurement of this subset, not a project-wide gate.
+
+### Continuation 354 - canonical physical sink admissions
+
+- Capture supplied world/onset/event and per-sink connection, endpoint and route
+  identity through physical admission and immutable versioned acknowledgements.
+  Reserve pending capacity before callbacks; canceled or stale deferred replies
+  cannot revive an execution. Unconfirmed cancellation remains bounded and owned.
+- Wire actual scheduler attack/expression/release submission acknowledgements into
+  the canonical receipt. Keep target and acknowledgement clock domains distinct.
+  Semantic observations request no output; they cannot create resumable pattern
+  notes or cache unsent CC values. Count deferred settlement once and retain
+  physical history in an O(1) circular buffer.
+- 108 grouped Node cases pass. Eight native desktop gesture journeys and eight
+  production output/causal/six-sound1000-tick journeys pass; final identity and
+  semantic guards have Node coverage plus a final overlapping production MIDI
+  browser pass. No full local suite is repeated.
+- Keep #1059 open for simultaneous native-audio/MIDI qualification from the same
+  completed physical boundary. Shared resource charging and physical receiver/
+  acoustic evidence retain their separate owners and limits.
+- 352 CI passed the engine and both native codec jobs, but the main job failed six
+  standalone capture preconditions (26 desktop and158 workstation cases passed).
+  Linux's geometric target center was at a clipped row edge; the fixture now
+  chooses the actual visible hover point and waits for trusted capture. New Linux
+  CI remains independent.350 is still the last verified full green checkpoint.
+
+### Continuation 355 - combined native output acceptance
+
+- Finish #1059 software acceptance with one replacement physical owner sending the
+  same actual completed builder boundary to native browser audio and the
+  production MIDI scheduler. The old owner retires completely first.
+- Four native browser journeys pass: both sinks succeed, MIDI independently
+  refuses, actual AudioContext suspension preserves MIDI, and pre-submission
+  cancellation produces zero PCM peak and zero MIDI notes. Successful native PCM
+  windows are finite; actual retirement completes with zero remaining voice
+  owners and sessions. The MIDI adapter is virtual and explicitly authorized by
+  the trusted enable action; receiver/acoustic qualification remains separate.
+- All37 affected desktop control journeys also pass with real HTML document
+  fixtures, foreground pages and capture acquired inside the native target.
+  Keep native capture assertions. The combined grouped result is41 passes; no
+  Node/full local suite is repeated for these browser-only fixtures.
+- 353 Linux main failed19 capture preconditions (174 workstation passes); engine
+  and both native codec jobs passed.354 main failed one existing desktop startup
+  wait (25 desktop passes) before workstation execution; its other three jobs
+  passed. Current fixture fixes still need independent Linux CI.350 remains the
+  last verified full green checkpoint; address the desktop startup wait next.
+
+### Continuation 356 - installed startup observation
+
+- The exact installed-generation online/offline case passes unchanged locally and
+  again after explicit page foregrounding and timer-based readiness observation.
+  Preserve its30-second predicate limit; add exact lifecycle/script, visibility/
+  focus, worker, resource and failure diagnostics without retries or skipped work.
+- 354's retained trace has no failed HTTP responses and completes resource loading
+  in about3.5 seconds, but the installed page remains at Loading at the30-second
+  deadline. No deterministic application import failure was reproduced. The new
+  observations still need independent Linux CI; do not call the main job green.
+- One native desktop case passes with bound build identity online/offline, two
+  lanes and paused transport. Formatting, critical types and undefined calls pass;
+  no full local or Node suite is repeated. Continue remaining transfer/backlog
+  work while the independent CI matrix runs.
+
+### Continuation 357 - held actor transfer and MIDI lane safety
+
+- Qualify #1058 with actual floating/climbing actions, two opposite same-pitch
+  actors, all four policies, before/after checkpoint restoration, mute, disconnect
+  and reversed production lane projection. Five resumed completed batches, intents
+  and full causal state match with canonical physics hashes. Retire every output
+  owner with balanced scheduler attacks/releases. Close the software acceptance.
+- Reconcile held MIDI owners when lanes become muted, zero gain, solo suppressed
+  or removed. Recheck stable lane identity at the actual queued driver frontier;
+  restored controls create no rebound attack. Preserve uncertain release ownership.
+- Report MIDI crossfade as an explicit release-and-attack representation loss.
+  Unavailable destinations release without a nonexistent replacement crossfade.
+- Final grouped validation:87 Node cases,23 real transfer/safety scenarios and41
+  desktop browser journeys pass. Critical types, formatting, undefined-call and
+  category checks pass. Coverage is scoped to this subset; no full local rerun.
+- 356 Linux desktop startup passes, but main CI still fails16 native capture
+  preconditions (181 workstation passes). Engine CI has17 passes and one Firefox
+  process crash; both native codec platforms pass. Full Chromium/new headless
+  passes the control group locally with added native move/capture diagnostics;
+  independent Linux qualification remains.350 is still the last full green head.
+
+### Continuation 358 - real sustained action qualification
+
+- Fix actual producer/policy name mismatches: shared walk/hoist/jump/shrugging/
+  oh-no/splatter facts match canonical action voice policies without rewriting
+  physical history. Normalize motion admission and same-action transitions too.
+- Qualify #1014 in12 actual physical action scenarios through production MIDI
+  ownership, including1000-tick blocker, three natural transition policies,
+  expressive same-pitch climbers, rejected assignment, motion admission, silent
+  checkpoint continuation, shared object reuse, completed cohort reset and overlay.
+- Correct357 fixture timing: host time advances20ms at speed3, not60ms. Require
+  four actual balanced attacks/releases for revoice and releaseAndAttack, two for
+  carry/silentHandoff, and no late-attack/stale-expression receipts. Preserve the
+  published357 raw observations;358 supersedes that limited driver qualification.
+- Final grouped pass:75 Node cases,23 strengthened transfer scenarios and five
+  production output browser journeys pass. ActionVoicePolicy has100% lines/
+  functions and80.72% branches in the scoped coverage. No full local rerun.
+- 357 main CI stops at a stale first-party worker provenance digest; refresh that
+  exact component and verify the gate. Its18-case engine job and both native codec
+  jobs pass. The full Chromium native-control choice still needs Linux main CI.
+  350 remains the last verified full green checkpoint. Close #1014 software scope.
+
+### Continuation 359 - preserve effective clock and reject unmapped exports
+
+- Owned legacy speed projection no longer overwrites the transport timer or view
+  speed. Native keydown across game/BPM and linked/unlinked policies records the
+  effective control before actual pump batches; clamped BPM400 keeps3.333x/18ms
+  rather than the requested5x/12ms. Controlled blur and delayed keyup preserve it.
+- Direct/worker SMF paths share strict numeric nonnegative beat validation and
+  safe integer quantization. Missing time cannot silently become tick zero.
+- 104 affected Node cases and five native desktop clock-input journeys pass;
+  formatting/types/undefined/category/provenance checks pass. MIDI snapshot has
+ 100% scoped coverage; the three other MIDI export modules have100% lines.
+  No full local suite is repeated. Refresh the exact first-party worker digest.
+- Keep #986 open for typed physical-source export/crop/quantization, full reopened
+  input re-performance and undurable-admission controls. The paused single Step
+  observes the existing zero-speed60000ms floor; a nominal paused-step contract
+  remains required and is not advertised as completed timing acceptance.
+- 358 main CI has reached workstation smoke; engine and both native codec jobs
+  pass. Linux full Chromium capture qualification is still independent.350 remains
+  the last verified full green checkpoint. Continue solo through the backlog.
+
+### Continuation 360 - nominal paused Step and rejected take controls
+
+- Separate transport nominalSpeed from paused/waiting effective0. The physical
+  control owner records nominal input, performs one real Step and records restored
+  zero. At5x the source interval is12ms, replacing359's observed60000ms floor.
+- Refused/throwing active-take clock input halts before the physical pump and
+  fences further Play/Step until the take is saved or recovered. A denied actual
+  durable checkpoint supplies the regression; storage admission is not a promise
+  that previously accepted asynchronous persistence cannot later fail.
+- All215 grouped controller/transport/UI/re-performance cases pass, including
+ 10000-tick retained state/fact/intent parity. All five native keyboard journeys
+  reopen through the production comparison workbench and match physical, semantic,
+  timeline and replay-settings checkpoints without changing the live world.
+  Scoped coverage, static/provenance/category checks pass; no full local rerun.
+- Keep #986 open for typed physical-source export/crop/quantization and the rest
+  of its catch-up/suspension/external-clock matrix.358 independent main CI remains
+  in workstation smoke; its engine and both native codec jobs pass.350 is still
+  the last verified full green checkpoint. Continue solo through remaining work.
+
+### Continuation 361 - native capture loss through concurrent input
+
+- Full Chromium qualifies the16 previously failing Linux capture-acquisition
+  preconditions.358 main passes26 desktop and196 workstation cases, failing one
+  curve concurrency case that cancels after trusted capture loss and then waits
+  for disabled Apply. CDP cleanup had obscured the original wait.
+- Qualify healthy concurrent commits and actual capture-loss cancellation as
+  separate outcomes. Observe native release calls; reject any premature
+  application release. Cancellation requires zero edits, restored draft, retired
+  owner and a fresh successful captured edit. Keep native capture assertions.
+- Add deterministic curve/pattern capture transfers after actual mouse capture;
+  do not mix this setup with emulated pen device transitions. All39 affected
+  desktop journeys pass, including fresh camera recovery and production terrain
+  Apply/Undo/Redo. Formatting/types/undefined/category checks pass; no Node or full
+  local suite is repeated for these browser-only changes.
+- 359 main passes26 desktop/200 workstation cases, including all five native
+  clock-input cases. It fails the old curve wait and one canceled-beforeunload
+  case whose world survives but transport stops. Engine/native jobs pass. Inspect
+  that remaining lifecycle state next; typed source-time export remains queued.
+ 350 remains the last verified full green head; Linux follow-through is pending.
+
+### Continuation 362 - measured wake gaps and gesture guard lifetime
+
+- Retain the existing250ms unsafe-wake policy and expose immutable performance-ms
+  diagnostics for host stalls, failed timing drivers and delayed external MIDI.
+  A canceled unload preserves the exact edited world, audio context and lease;
+  a measured unsafe gap stops transport and requires explicit Play.
+- Bind document/window pointer guards only for an active gesture. Finish, cancel,
+  throwing retirement and failed registration remove listeners and pending release
+  fallback timers before a callback can acquire a replacement owner. This fixes
+  both360 full-suite failures: camera disposal and failed renderer construction.
+- All131 grouped ownership/transport/runtime/re-performance cases and45 native
+  desktop capture/lifecycle journeys pass. Source hashes and exact442ms unsafe
+  wake evidence are retained in canonical continuation362; no full local suite is repeated.
+- Full360 CI passes26 desktop,202 workstation and18 engine cases plus both native
+  codec jobs, but its Node suite has7096 passes,10 pending and two listener-cleanup
+  failures. Coverage thresholds pass (90.8% lines,83.86% branches,88.6% functions).
+  These are fixed here; independent CI follow-through remains.350 is still the
+  latest verified full green checkpoint. #1009 retains the named supported-engine
+  BFCache/background gaps; typed source-time export is the next development span.
+
+### Continuation 363 - typed physical MIDI time lowering
+
+- Add explicit source-score SMF lowering through a captured PhysicalScoreClock,
+  one selected epoch and declared origin/end. Derive tempo from recorded segments,
+  preserve selected leading/trailing silence and reject uncovered/backward time,
+  foreign worlds, stale beats, causal inversion and cross-epoch flattening.
+- Preserve independent same-cause voices and canonical order at quantized ties.
+  Embed a bounded timing report with beat rounding, accumulated encoded tempo
+  error, collapsed physical times/tempo changes and exact crop/end placement.
+  Submitted-output worker columns reject physical-source timing options.
+- All72 grouped timing/MIDI/worker/render-clock Node cases pass. The new timing
+  module and direct writer have100% scoped lines/functions; timing branches97.1%.
+  The actual99990-event worker/cancel/Panic/download browser journey passes.
+  Formatting, types, undefined calls, provenance and changed-line checks pass.
+  Refresh only the first-party worker digest; no full local suite is repeated.
+- Keep #986/#1093 open: workstation take-to-protocol projection, external-clock/
+  suspension export integration, route-aware ExportPlan and lossless UMP Clip
+  files are not supplied by this timing API. Current full CI remains independent;
+ 350 is still the latest verified full green head. Continue solo through backlog.
+
+### Continuation 364 - native display recovery and CCTV partial ownership
+
+- Release each partial CCTV surface immediately after allocation/null/throwing
+  context failure; retain shared parent surfaces. Keep physical step failures out
+  of paint recovery. The final77 affected Node cases pass.
+- Add render-recovery fixtures to the required workstation project and PR smoke.
+  Exercise native DPR1/2 context/scenery/callback/CCTV faults, failed retries,
+  living actor rasters, exact native RGBA, physical/event hashes and overlay state.
+- Exercise100 native recovery/desktop-raster cycles on one retained renderer,
+  repeated unchanged layouts, actual1920×1080→3840×2160→1920×1080 viewport changes
+  and post-GC JS heap samples. All six distinct final browser cases pass in two
+  disjoint groups. Peak ledger62,411,468 bytes stays below64MiB; post-GC JS heap
+  grows547,056 bytes. Exact source/overlay/CCTV/world hashes match. Close #1057
+  software acceptance; broader platform scope remains under #1086.
+- Preserve initial fixture failures: private projection mutation competed with
+  the owning view; PNG clips included the separately scheduled DOM cause layer.
+  Native RGBA stayed identical. Compare native pixels and overlay text/geometry
+  after its100ms display cadence refresh, without changing production layout.
+- 361 full CI passes26 desktop/204 workstation and all engine/native jobs, but
+  retains the same two Node listener failures fixed in362 (7096 passes/10pending).
+  362 main passes7100 Node cases/10pending, leaving a camera mock that lets
+  document guards overwrite its only canvas pointerup handler; give it a distinct
+  native EventTarget document without changing ownership assertions.
+  362 engine CI has17 passes and a Firefox signal11 process crash during initial
+  pause of the unavailable-storage journey; retain diagnostics and rerun only that
+  failed job.363 engine and both codec jobs pass; full coverage remains separate.
+ 350 remains the latest verified fully green checkpoint until all four jobs pass.
+
+- Published364 camera fixture is Git-normalized LF. Its original qualified raw
+  hash used CRLF; the publication guard error did not stop the commit chain.
+  Compare the exact published tree, retain the mismatch and correction, and
+  re-run all77 affected Node cases successfully against the published bytes.
+  Other five source hashes and final native browser/runtime bytes match exactly.
+
+### Continuation 365 - recorded MIDI source and output plans
+
+- Require one recorded output per compatibility file so overlapping channel/program/
+  pitch namespaces cannot merge. Preserve deliberate unisons and canonical order.
+  Prefer API-accepted output over intent/input copies; expose explicit source-layer
+  API choice. Snapshot bounded route counts once; the worker rebuilds them itself.
+- Add a searchable16-row nonmodal output chooser under the admitted source owner.
+  Cancel, source mutation and view retirement settle its promise and preserve any
+  previous prepared artifact. Keep Panic available and reject detached old buttons.
+- Embed source/protocol/time/route choices, counts and output hash without raw IDs.
+  Derive initial tempo from the captured boundary; label an unobserved retained
+  prefix or caller-declared fallback rather than substituting current UI BPM.
+- Final grouped pass:210 Node cases and three native desktop export journeys,
+  including separate same-channel device files, real unisons,35-route paging,
+  cancel/stale-source retirement and99990-event worker preparation/Panic/download.
+  Planner and snapshot have100% scoped lines/functions/branches. New planner joins
+  critical checkJs; format/types/undefined/provenance/category checks pass. Move
+  physical timing tests under the procgen category. No full local suite repeated.
+- 363 full CI:7129 Node passes/10pending and the same single camera mock failure
+  repaired in364;26 desktop/205 workstation and18 engine cases plus native codec
+  jobs pass.362 engine rerun passes18 after the retained original signal11 crash.
+  364 main is in full coverage with its engine/native jobs green.350 remains the
+  latest verified full green checkpoint until every required job passes.
+- Keep #986/#1093 open for integrated physical-take protocol export, the remaining
+  clock matrix, source/time placement UI, endpoint epochs, full lowering reports
+  and independently qualified lossless UMP Clip Files. Continue solo.
+
+### Continuation 366 - original UMP Clip File codec and full green checkpoint
+
+- Implement the published Clip header, big-endian UMP framing, DCS/DCTPQ,
+  configuration ordering and distinct Start/End boundaries. Preserve exact groups,
+  MIDI2 release/control resolution, Flex tempo/meter and equal-time presentation.
+  Explicit section end ticks retain configuration duration and trailing silence;
+  long gaps insert bounded clockstamp/NOOP pairs without compressing time.
+- Snapshot typed input columns before yielding; preflight exact output size and
+  multipart workspace. Validate complete imported files, framing, markers,
+  safe tick sums and multipart completion before exposing owned result columns.
+  Preserve unknown data without dispatch. Refuse prohibited Property Exchange
+  and explicitly unsupported untimed profile prefaces/timed profile copies.
+- Add worker-only encode/decode jobs using admitted paged transport and original
+  result-buffer transfers. Retain cancellation/source ownership. Add the codec
+  to critical checkJs and MIDI2 test selection; pin development-only independent
+  file readers in the lockfile and update the worker provenance closure.
+- Final grouped qualification:119 Node cases; codec100% scoped lines,
+  96.15%functions/95.78%branches; one1920×1080 native desktop worker case compares
+  all100000 UMP events and timestamps through independent jzz-midi-smf1.9.9,
+  verifies canceled-source retirement and zero retained accounted memory.
+  Independent Node fixtures cover both writer directions, elapsed tempo timing,
+  group/release/per-note/Flex precision, unisons, maximum deltas and invalid input.
+  Correct the initial independent helper call and immutable-generation test URL;
+  preserve both failed fixture attempts in canonical evidence. No full local rerun.
+- Promote364 at c068278a to the latest verified full green checkpoint:7134 Node
+  passes/10preexisting pending,26 desktop/211 workstation/18 engine cases,
+  all14 workstation capability gates, Windows/Linux8829-command native codec
+  jobs, benchmark/MCP/policy/dependency review green. Coverage90.8%lines,
+  83.9%branches/88.62%functions. All1136 workstation and1248 engine source
+  entries match the published Git tree; all8 native source entries match on both
+  platforms. This checkpoint is separate from subsequent implementation commits.
+- Keep #1093 open for original UMP capture, source/endpoint/epoch/time projection,
+  product file controls and full compatibility loss reports. No device/DAW claim.
+  Keep #986 open for physical-take projection and the remaining clock matrix.
+
+### Continuation 367 - recorded MIDI source, time and connection projection
+
+- Expose submitted-output preference, submitted-only and authored-intent choices
+  plus original-position or recording-boundary timing in the Project menu.
+  Hold those choices during preparation; later choices preserve prepared files.
+  Refusing an empty requested source layer preserves the previous artifact.
+- Partition snapshot routes by output ID, connection epoch and route revision.
+  Reused IDs require an explicit captured route-index selection when ambiguous;
+  balancing and file serialization never pair voices across these boundaries.
+  Preserve simultaneous unisons. Label unrecorded connection identity; do not
+  infer missing historical epochs. Carry known numeric identity in the manifest.
+- Rebase from the earliest captured transport boundary, retaining all relative
+  silence and tempo values. The worker derives the origin from actual tempo rows
+  independently; forged/missing summaries and predating selected messages fail.
+  Original-position defaults retain their existing complete reference bytes.
+- Group related Node and desktop export qualification after implementation;
+  cover source selection, origin/tempo placement, reused endpoint identities,
+  route revision/unknown boundaries, refusal/cancellation and large worker jobs.
+  Final233 Node cases pass; snapshot has100%lines/functions/branches, planner
+  100%lines/functions and95.65%branches. Five distinct native desktop journeys
+  pass: three final route/source/time cases plus unchanged100000-event Clip and
+  99990-event compatibility worker cases. Retain the intermediate exact-label
+  fixture failure after adding “connection unrecorded”; update that exact
+  expected label and pass all three route journeys without changing runtime.
+  Preserve #986/#1093 for physical-take and original-UMP product integration,
+  remaining clock cases and complete compatibility loss reporting. Continue solo.
+
+### Continuation 368 - bounded original UMP ingress capture
+
+- Capture each original UMP request once before route lowering or relative-control
+  resolution. Preserve exact words, source resolution/identities, numeric IDs and
+  endpoint epochs without claiming that the original packet was submitted.
+  Keep byte adapter observations separate. Refused route/lowering requests remain
+  authored intent; repeated identical requests remain distinct.
+- Preserve explicit score beats; retain missing beats as unmapped and qualify
+  original source completeness. This is captured-request coverage, not inferred
+  note-boundary closure. Bound attributed metadata and total retained estimates;
+  charge growing owned reservations and retain unknown retirement. Keep capture
+  refusal from changing musical delivery. Share existing cap/clear/source owners.
+- Select original UMP versus MIDI1 in recording inspection. Tag original packets
+  outside compatibility columns, refuse UMP-only MIDI1 export and report excluded
+  originals in mixed files. The direct writer also refuses implicit lowering;
+  direct note balancing now respects known connection/route boundaries.
+- Continue original source projection, completeness/boundary sidecars and product
+  Clip controls under #1093. Retain #986's physical-take/clock matrix work. Frontload
+  each related development span before grouped checks; no full local repeat.
+- Qualification:220 grouped Node cases and two native1920×1080 journeys pass.
+  Original capture has100%scoped lines/functions and90.41%branches. Native original
+  requests retain all16 packets once, with refused lowering distinguished from
+  capture; UMP-only compatibility refusal retains the previous file. The existing
+  100000-event independent Clip worker roundtrip remains exact. Mixed compatibility
+  files count excluded originals and retain only the selected MIDI1 messages.
+- Promote365/c1d14e99 to the verified full green checkpoint:7145 Node passes with
+  10preexisting pending,26desktop/213workstation/18engine cases, all14 capabilities,
+  both native codec jobs and benchmark/MCP/policy/dependency checks. Coverage is
+  90.77%lines/83.91%branches/88.62%functions. Verify all1138 workstation,1249engine
+  and8native source entries against that Git tree and both native output hashes.
+  Later366 engine CI records17passes and a Firefox content-process signal11 during
+  initial boot before the project transaction; retain diagnostics. GitHub refuses
+  its isolated rerun while the overall workflow is still running; retry only that
+  job once the workflow finishes. Root cause remains unproven.
+
+### Continuation 369 - original capture callback and source lifetime ownership
+
+- Commit original packet ownership before record/pressure observers run. Own the
+  caller packet and fence delivery against route, policy, scheduler, Panic and
+  flush changes during those callbacks. Refuse nested mutation while capture is
+  pending; preserve authored intent independently of later byte submission.
+- Bound retained export sources to32 per capture. Clearing starts a new owner;
+  old original metadata remains charged while any source or snapshot producer
+  retains it. Early release waits for producer settlement. Disposal drops live
+  recording rows before the capture reservation can retire.
+- Grouped qualification:233 related Node cases and two native1920×1080 journeys
+  pass. Original capture has100%lines/functions and92.63%branches. Preserve
+  original-source Clip projection, optional attribution/boundary sidecars, product
+  controls and physical-take projection as remaining #1093/#986 work.
+- Promote366/79d2dd54 to the verified full green checkpoint:7162 Node passes with
+  10preexisting pending,26desktop/214workstation/18engine cases,14capabilities,
+  both native codec jobs and benchmark/MCP/policy/dependency checks. Coverage is
+  90.79%lines/83.94%branches/88.64%functions. Verify1140workstation/1251engine and
+  both8file native inventories against that Git tree; native8829command outputs
+  agree. Keep the original Firefox signal11 failure, diagnostics, earlier403
+  retry refusal and successful isolated18case rerun; root cause remains unproven.
+  Later development has its own qualification scope. Continue solo.
+
+### Continuation 370 - original UMP Clip product projection and safe inspection
+
+- Build a retained original-word source with bounded attribution and captured
+  tempo. Independently validate its complete packet/route/epoch/clock inventory
+  in an admitted worker. Select one output connection; retain equal-time order
+  and deliberate unisons. Never reconstruct original UMP from byte aliases.
+- Expose original authored Clip intent, explicit tempo authority and existing
+  route/timing controls. Preserve original Flex tempo; reject a transport overlay,
+  absent clocks and backwards score segments. Report960PPQ nearest-tick placement;
+  captured transport generates labelled derived Flex tempo. Initial meter, note
+  closure and trailing duration are not invented.
+- Offer optional external attribution/coverage JSON with exact Clip SHA-256,
+  source identity, packet indices and ExportPlan. Prepare both owned artifacts
+  before replacing the previous pair. Manifest delivery keeps Clip retry ready;
+  cancellation/failure keeps the old pair and retirement disposes both.
+- Validate imports in a worker as data, preserving the unchanged validated file
+  for explicit delivery. Setup/notes never reach hardware; project/physical
+  playback import remains unavailable. Keep physical-take protocol projection,
+  submitted UMP capture, full compatibility losses, unsupported Clip prefaces and
+  independent DAW/receiver work open under #986/#1093/#1063. Continue solo.
+- Final260 related Node cases and six native1920×1080 journeys pass. Both new
+  critical-typed modules have100%lines; combined88.88%functions/82.41%branches.
+  Native controls independently preserve selected original words/ticks, bind the
+  optional manifest to file bytes, retain canceled/invalid prior exports and leave
+  world/document state unchanged on inspection. The100000-event independent
+  roundtrip and all three existing route/source/timing journeys remain green.
+  Browser collection is247full/217smoke across53files. No full local repeat.
+- Promote368/338df071 to the full green checkpoint:7175Node/10preexisting pending,
+  26desktop/216workstation/18engine,14capabilities, both native codec jobs and
+  benchmark/MCP/policy/dependency checks. Verify1141workstation/1252engine and
+  both8file native inventories against that Git tree. Coverage90.79%lines,
+  83.95%branches,88.64%functions. Later source has independent CI scope.
+
+### Continuation 371 - physical take to independently voiced MIDI1
+
+- Project a verified finalized semantic take into a new MIDI1 realization from
+  its captured PhysicalScoreClock. Bound source/page/intents, require covered
+  closed note inventories and one clock epoch; refuse unsupported state/body
+  reconstruction instead of inventing notes or flattening epochs.
+- Preserve canonical intent order as its own timing contract. Retain actual
+  nullable fact sequences, exact score mapping, source tempo and crop end silence;
+  never replace facts with synthetic ordinals or current UI BPM. Expand each
+  intent stably, preserving release/reset before channel reuse on quantized ties.
+- Allocate up to fifteen independent melodic channels, excluding percussion10.
+  Configure RPN bend range/program and onset state, regenerate sounding pitch
+  from cents/reference frequency, and reject voice exhaustion/excess expression.
+  Report replaced timbre, capacity,7bit/14bit errors, low-velocity promotion and
+  unobserved release velocity in the embedded source/timing/lowering manifest.
+- Add Physical take MIDI1 target-program controls and worker-only preparation.
+  Final205 related Node and four native1920×1080 journeys pass. The actual
+  captured physical phrase independently parses at captured tempo after UI BPM
+  changes, preserves world/project, requests no MIDI permission and retains the
+  previous artifact after cancellation/invalid target. Existing three Clip
+  journeys, including100000events, remain green. Both timing/projection modules
+  have100%lines; combined95.65%functions/92.09%branches. Critical checkJs passes.
+  Collection248full/218smoke across54files; no full local suite repeat.
+- Continue the pause/external-clock/suspension matrix, arbitrary boundary crops,
+  multiple epochs, native/MPE/CI Profile targets and receiver/DAW qualification
+  under #986/#1093/#1063. The single closed-epoch MIDI1 product path is implemented;
+  those broader policies remain open. Continue solo while later CI proceeds.
+
+### Continuation 372 - captured clock-epoch selection and closed cuts
+
+- Select one captured clock epoch per physical MIDI file, with a searchable paged
+  desktop choice and explicit API epoch. Exclude world-clock epochs before the
+  initial captured boundary; report selected/excluded intents and epoch ordinal.
+- Validate the initial clock as a normalized value-preserving prefix of the final
+  clock. Compare fixed segment fields, independent of canonical property order.
+  Replay all retained semantic lifetimes and validate identity/epoch/time order,
+  including excluded prefixes. Refuse a note crossing either side of the chosen
+  cut; no pickup or release is invented. Retain global empty boundary requirements.
+- Final209 related Node cases and eight distinct native1920×1080 journeys pass.
+  Six unchanged Clip/route journeys pass in the initial group; both physical
+  journeys pass after fixture-only menu/transition corrections with identical
+  application and worker source. Preserve the initial7pass/1fixture-failure report.
+  The stored two-epoch fixture qualifies IndexedDB/worker/chooser behavior, not
+  actual generation-transition physics. All three timing/projection/epoch leaves
+  have100%lines; combined82.14%functions/91.27%branches. Collection249full/219smoke
+  across54files. Critical types/static/provenance checks pass; no full local repeat.
+- Promote369/9e7bffb6 to full green:7188Node/10preexisting pending,26desktop,
+  216workstation,18engine,14capabilities, both native codec jobs and benchmark/
+  MCP/policy/dependency checks. Verify1141workstation/1252engine/both8native source
+  inventories against that Git tree and identical native corpora/outputs. Coverage
+  90.79%lines/83.96%branches/88.65%functions. Later source remains separate CI.
+- Continue arbitrary boundary reconstruction, pause/external-clock/suspension
+  export matrix, actual generation-transition qualification and native/MPE/CI
+  Profile targets/receivers under #986/#1093/#1063. Continue solo.
+
+### Continuation 373 - Playwright file delivery and real browser filesystem
+
+- Replace the uncommitted manual-dialog qualification harness with Playwright
+  coverage in the production workstation export suite. Use trusted Save clicks
+  and controlled picker outcomes; the successful selected handle and writable
+  are real browser OPFS objects, with read-back equal to the actual anchor bytes.
+- Cover cancellation/retry, exact prepared identity/hash/length, suggested names,
+  permission/capability fallback, real transaction rollback around controlled
+  write/close failures and delayed acknowledgement ownership. A pending native
+  call retains its source lease until settlement. Preserve the live world/project.
+- All six Playwright desktop journeys pass at1920×1080, including the unchanged
+  archive replacement/cancel/discard case. Collection254full/224smoke across54
+  files. Static/category checks pass; application runtime source is unchanged.
+  Native OS dialogs, user filesystem grants, real disk faults and power-loss
+  durability remain distinct from this automated browser coverage. Continue the
+  backlog without a desktop Computer Use dependency or another full local run.
+
+### Continuation 374 - Playwright recording control tails and pending storage
+
+- Compare eight seeded complete preview-intent histories after16phases of
+  overlapping same-pitch/multiroute notes, disordered timestamps, future
+  cancellation and repeated flush/Panic. All201 related Node cases pass.
+- Measure trusted Stage Pause/Stop/Panic at1k/10k/99k retained records with64
+  samples per operation. Post-click-task p99 is at most16.3ms and second-rAF
+  p99 at most30.2ms in this Chromium run; at most132 records revisited and no
+  observed long tasks overlap sample windows. Keep all history. Separate owner
+  benchmark covers1k/10k/100k/1m; await actual retirement before zero-budget checks.
+- Real IndexedDB document write remains pending while trusted Panic completes
+  with22record revisits and preserves10003records/world/tick. Release controlled
+  transaction keepalive and observe actual revision1 durable acknowledgement.
+  No physical disk/power-loss, acoustic or hard realtime claim. Four distinct
+  Playwright cases pass across the documented groups, all at1920×1080. Preserve
+  the initial premature-retirement assertion and Stage fixture refusal.
+- Promote372/eda85f9e to full green:7208Node/10preexisting pending,26desktop,
+  219workstation,18engine,14capabilities, both native codec jobs and benchmark/
+  MCP/policy/dependency gates. Verify1146workstation/1257engine/both8native
+  inventories against that Git tree; native corpora/output hashes agree.
+  Coverage90.76%lines/83.95%branches/88.61%functions. Later test source is separate.
+- Close the bounded recording-index/export-performance work in #1117 with these
+  receipts; full physical-tape replay corpus remains #1092 and combined system
+  performance qualification remains #1087. Continue solo with Playwright.
+
+### Continuation 375 - generated terrain cache identity and clean source mining
+
+- Bind survey state6 to actual generated recipe/pack themes and lane/source
+  assignment. Privately receipt descriptor/collision/growth/zone content at
+  creation; validate native cache entries without querying terrain or changing
+  residency. Omit pristine caches, refuse modified/unproved/stale-pointer data.
+  Stream typed checksums without canonical expansions; weak receipt tokens do
+  not retain terrain/world owners. Numeric canonical schema3 stays unchanged.
+- Initial70affected Node cases pass. The broader group has143passes and one
+  independent source-miner failure from ignored .tmp validation ZIPs. Exclude
+  nested .tmp output while retaining explicitly selected source roots and real
+  source-archive failures. All17final miner/assembly checks pass, including exact
+  checked-in book regeneration. Preserve the original failure and all artifacts.
+- All three related Playwright journeys pass at1920×1080. Actual pack cache
+  warmth preserves identity; six altered/unproved physical sources refuse with
+  exact kind/key and recover after repair. World/tick/project remain unchanged.
+  Original numeric/controlled and actual controlled/generated replay stay green.
+  No archived exact-execution, hardware or acoustic qualification is inferred.
+- Cache evidence leaf has93%Node lines,100%functions and84.44%branches. Extend
+  nonempty route-contract/object/accessor metadata and remaining intrinsic
+  negative vectors. Refresh292worker source files;10components/361files pass
+  provenance. Collection257full/226smoke across54files; critical/static checks pass.
+- #1223 remains open for authored/prepared terrain wrappers, the complete source
+  projection audit and speed/intervention/contact continuation/negative corpus.
+  Latest fully verified CI remains372/eda85f9e; later374 CI is running. Continue solo.
+
+### Continuation 376 - authored source ownership and actual physical continuations
+
+- State7 captures owned authored geometry, validated prepared storage and frozen
+  seed/record bindings. Refuse unknown providers, missing/cloned bindings and
+  unbound seed remaps. Stream source bytes once without copying or rehashing
+  immutable aliases. Pack and authored sources carry explicit private ownership.
+- Project typed state through intrinsic numeric encoding, use native Set
+  traversal and refuse nested own data accessors before evaluation. Shared
+  Node/browser cases retain true speed, accepted builder-command and contact
+  continuity differences and verify their distinct subsequent clocks/facts/state.
+- Final101related Node cases and all five Playwright journeys pass together
+  after preserving array holes separately from explicit undefined. The earlier
+  source-scoped groups remain recorded. Actual catalog Prepare/Load owns838656compiled source
+  bytes; mask/steel/pixel/profile changes refuse and recover without changing
+  the paused world/project/output. Controlled/generated replay stays compatible.
+- Preserve the initial fixed-simulation-time fixture assertion and hidden
+  native-option locator timeout; final fixtures use observed batch duration and
+  the named scene list. All five final browser cases use the same final source.
+  Evidence owner94.57%Node lines/100%functions/85.21%branches; extend remaining
+  metadata object/accessor vectors. Static/critical/provenance checks pass;
+  collection259full/228smoke across54files. Fetched master has no incoming work.
+- Keep #1223 open for proof/audit of world fast collision/edit aliases and
+  assisted/challenge/wall caches, remaining negative metadata and exact archived
+  execution binding. Provider cache integrity alone does not establish those
+  world cache contracts. Latest verified full CI remains372/eda85f9e. Continue solo.
+
+### Continuation 377 - physical fast-cache binding and continuation truth
+
+- Reproduce two schema7 false matches at5ab8c9cc: wrong last-chunk or detached
+  edit pointers change actual ground true→false while the physical hash stays
+  identical. State8 now validates bounded slot/index/lane/source ownership,
+  including the edit owner last-value cache, without queries or LRU mutation.
+- Bind controlled chunks to private source owners and generated chunks to
+  actual seed/key/configuration. Preserve pristine held/rebuilt chunks and
+  authored rows retained through legitimate rebinding; refuse divergent old
+  data, foreign owners, cloned rows and detached edit aliases.
+- Include wall/revision and valid assisted-column continuation in physical
+  identity because they can affect future answers. Keep invalid assistance
+  scratch diagnostic. Do not claim unproved warm/cold wall equivalence.
+- Final103related Node and all five1920×1080 Playwright cases pass together.
+  The shared nine-refusal corpus recovers every source and preserves real
+  compaction/rehydration, held pristine sources and passive missing lookups;
+  metadata getters remain uninvoked. New world-binding owner100%lines/functions,
+  76.92%branches; extend malformed shape/index/accessor and retained-generated
+  negatives. Preserve the initial inactive-pointer fixture failure.
+- Promote374/97eeed53 to full green:7216Node/10preexisting pending,26desktop,
+  225workstation,18engine,14capabilities, both native codec jobs and all static/
+  benchmark/MCP/policy/dependency gates. Verify1146workstation/1257engine/both8
+  native source inventories against that Git tree and identical native corpora
+  and output hashes. Coverage90.77%lines/83.97%branches/88.61%functions.
+- Continue #1223 with explicit classification/qualification of physical
+  authoring, crew/topology/projection and other known world behavior owners
+  outside the current stateOwners list. Retain remaining negative metadata
+  corpus and archived execution binding separately. Continue solo.
+
+
+### Continuation 378 - physical authoring, crew and topology evidence
+
+- State9 retains authoring acceptance revisions, full crew prerequisites and
+  topology lineage/configuration/budgets; outstanding private publications
+  refuse qualification. Rejected topology diagnostics and crew censor counts
+  remain outside physical identity. Prior state8 receipts stay unqualified.
+- Strict command/source metadata includes hidden own data and refuses accessors,
+  functions, symbols and unsupported objects. Common asset property names cannot
+  silently hide fields on these bounded behavioral owners. No getter executes.
+- All175related Node cases and17Playwright cases pass as one source-bound batch
+  at1920x1080, including all selected survey/report/replay controls, actual
+  authored Prepare/Load and shared continuation corpora. Paired production
+  authoring acceptance, crew completion coverage and topology identities differ.
+  Survey core100%lines/functions and90.98%branches; topology92.75%lines,90.9%
+  functions and83.72%branches. Static/critical/provenance/category gates pass.
+- Continue #1223 with actual actor processing order, active registry and causal
+  fact identity/capacity continuation. Current checkpoint-compatible physics
+  projection and exact archived execution are separate contracts. Full377 has
+  passed engine/native/static/desktop jobs and is still running the main job;
+  latest fully source-verified checkpoint remains374/97eeed53. Continue solo.
+
+
+### Continuation 379 - actual processing order and causal continuation
+
+- Reproduce six state9 omissions at17af0056. State10 includes actual actor
+  processing order, causal fact identity/capacity and physical simulation
+  interval. Private weak actor associations do not extend actor lifetimes.
+- Refuse detached/overridden actor registries, duplicate/foreign actors, wrong
+  stall-work aliases, pending physical facts and missing/quarantined required
+  survey observers. Delivery queues, passive listeners and error counters stay
+  diagnostic; legacy sequence is retained only in full state.
+- Final176related Node and17desktop Playwright cases pass together. Actual
+  paired next batches reverse motion order, advance distinct event IDs, report
+  four lost facts under zero fact capacity and advance1020vs990ms clocks.
+  All12binding refusals recover with zero getters. Continuation owner100%lines/
+  functions,95.34%branches; survey core100%lines/functions,91.29%branches.
+  Static/critical/provenance/category gates pass; no full local suite repeat.
+- Continue #1223 with retained generated hazard/route descriptor and source-asset
+  pointer binding, because generic ignored asset field names must not conceal
+  future physical decisions. Checkpoint-compatible projection and archived
+  exact execution remain separate. Continue solo; minimum1920x1080 desktop.
+
+
+### Continuation 380 - retained hazard and growth source authority
+
+- State11 binds actual generated hazard descriptors/object slots to their owned
+  lane/seed/chunk/source. Verify held descriptors after eviction and retain real
+  trigger metadata. Strict evidence DTOs preserve all fields; the first new
+  Node/browser regression caught the generic image encoder dropping them.
+- Verify retained growth plans/descriptors after both caches evict them, retain
+  their owned hash and prove each queued state belongs to the current map.
+  Pristine eviction stays equivalent; changed/unproved/detached owners refuse.
+- Final177related Node and18Playwright cases pass together at1920x1080. The
+  independent browser source verifies four saved assets/3183139bytes, six hazard
+  and three growth refusals, source repair and zero getters without live world,
+  tick, project or output changes. Comparison remains explicitly execution-unbound.
+  Core/world binding owners100%lines/functions; broader hazard/source branches
+  remain coverage follow-ups. Static/critical/provenance/category gates pass.
+- Full377 main CI failed one export fixture during startup before its picker
+  action:227workstation cases passed; engine/native jobs pass. Inspect preserved
+  trace before diagnosing or changing waits. Coverage did not run after that
+  failure. Latest fully verified checkpoint remains374/97eeed53. Continue solo.
+
+
+### Continuation 381 - immutable export document startup and issue closure
+
+- Export fixtures await final immutable document navigation before evaluating
+  workstation globals. Preserve unchanged timeouts and all real file/ownership
+  actions; attach bounded page/request/startup diagnostics only on failure.
+  Six Playwright export cases pass together at1920x1080; runtime source is
+  unchanged from380. No Node or full local suite repeat for a fixture-only edit.
+- Retain377 CI:227workstation passes and one pre-picker startup timeout. Trace
+  shows bootstrap→immutable navigation and an aborted RawByteLease module
+  request; a definitive source-level transport cause is unproven. Later378
+  workstation smoke passes with the prior fixture and coverage is in progress.
+  No timeout increase, automatic retry or application transport fix is claimed.
+- Close #1223 with the final177Node/18Playwright state11 evidence and preserved
+  numeric, source/coverage, continuation and hazard/growth refusal corpus.
+  Coverage follow-ups do not imply a100%branch claim. #988 checkpoint projection,
+  #1213 prefix reuse and #1242 archived execution remain separate. Continue solo.
+
+
+### Continuation 382 - source-verified full378 checkpoint
+
+- Promote17af0056 CI40982798991:7232Node/10pre-existing pending,26desktop,
+  228workstation and18engine cases,14capabilities, both native codec jobs and
+  static/benchmark/MCP/policy/dependency gates pass. Coverage90.78%lines,83.97%
+  branches and88.64%functions. Benchmark measurement is valid at31104ms.
+- All1148main/1259engine/both8native source entries match the published Git tree;
+  native8829-command/four-fault corpora and output hashes agree across platforms.
+  Preserve raw mergehead/dirty flags and downloaded artifact hashes.
+- This confirms375-378 application/fixture work in the complete suite. Later
+  state10/11 and immutable-export fixture work retain their scoped passes and
+  separate full CI. Preserve377 original startup failure; no inferred source
+  transport repair or all-backlog completion claim. Continue solo.
+
+
+### Continuation 383 - checkpoint continuation domain and replay fidelity
+
+- Keep simulation projection2 stable for sound/display checks. Add continuation
+  projection1 with authoring/crew/topology and active assistance owners, known
+  diagnostic exclusions and missing-owner refusal. Replay/reuse qualification
+  uses continuation; version2 replay/branch receipts expose both named scopes.
+- Refuse pending topology in synchronous/cooperative captures. The first stronger
+  batch found replay inserting an uncaptured fallback authoring graph into null
+  checkpoint state. Preserve that owner and use the interpreter fallback; do
+  not conceal this discrepancy by weakening the projection. Preserve17failures.
+- Final96related Node and all three1920x1080 Playwright cases pass together.
+  Node includes10000tick replay/transfer/work/tempo/speed/external observations.
+  Real browser64tick durable replay/seek/branch carries both scopes; six native
+  sound choices preserve1000tick simulation/facts; shared owner/refusal vectors
+  pass. Prior10000tick browser work is not newly qualified by this shorter run.
+- Provenance100%lines/95%functions/85.22%branches; replay98.51%lines and branch
+  88.2%lines with remaining negative/retirement coverage listed in the receipt.
+  Static/critical/provenance/category gates pass; add the newly imported topology
+  module to the293file worker closure (10components/362files). No full local run.
+- #988 still retains executing-build/source/asset incompatibility acceptance;
+  #1092 retains its wider durable input/invalid source corpus; #1213 still needs
+  exact sibling-prefix acceleration. This is current-runtime compatibility, not
+  archived execution. Full383 CI remains separate from verified378. Continue solo.
+
+
+### 2026-10-29 — Rook continuation384: causal application identity and desktop compatibility
+
+- New causal captures pin bounded executing-build/code/closure/asset/harness/schema/realm scalars. Preflight, replay and branch receipts distinguish actual active build, recorded requirements and protocol/current-runtime parity. Optional build provenance never makes legacy takes unreadable or attests caller-supplied code. Exact causal replay still refuses before world allocation with its precise unqualified-realm reason.
+- Persistent Physical take UI explains protocol/assets and matching, changed or legacy builds. The already completed1242 survey worker,1119 dependency manifest and1096 deployment ownership are separate existing implementations; do not duplicate or mark them open.
+- Final74affected Node cases and all3Playwright journeys pass at1920x1080:15preflight variants allocate zero worlds; actual32tick legacy/changed-code/matching captures compare with visible explanations;64tick durable replay/seek/branch/reopen preserves the parent/live world with audio/MIDI off. Keep the first2pass/1fail fixture-page-refresh attempt. No repeated full local suite.
+- Source-verified full380 CI is green:7234Node/10pending,273browser (26desktop/229workstation/18engine),14capabilities; coverage90.78lines/83.97branches/88.65functions; benchmark30561ms,valid. All1149main/1260engine/both8native entries match cbb9b8a4. Later384 CI remains separate.
+-988 still needs the complete cross-version/tampered-byte matrix;1092 wider authored durable-input/semantic-invalid qualification;1213 exact sibling-prefix acceleration. Canonical continuation384 binds source bytes, results and coverage followups.
+
+
+### 2026-10-29 — Rook continuation385: semantic causal-input refusals
+
+- The previous be0c7bd8 dispatcher accepted hash-valid external bytes256, timestamp strings and unknown tempo fields as matched-current-runtime; preserve the three actual-mask/zero-tick counterexamples. Explicit payload schemas now refuse malformed/unknown controls before applying effects, preserve legacy transport and bound observation bytes/times. Mapping revisions must advance before configuration.
+- Every record failure retains chunk ID/sequence/tick/kind and the last accepted prefix. Nested feedback/performance validators and isolated retirement remain the owners. Observation-only inputs never query devices.
+- Final92affected Node and all4Playwright desktop cases pass together at1920x1080. Shared27case corpus includes one valid observation and26refusals with exact diagnostics. Real IndexedDB/Physical panel retains originals, restores the16tick parent and reopens identically; existing build matrix,64tick replay/seek/branch and controls also pass. Preserve the first3pass/1fail raw-versus-enriched reopen fixture error. No runtime/helper changes after Node qualification and no repeated full local suite.
+- New input validator100%lines/functions/branches; replay98.55%lines/79%branches. Static/critical/category and10component/362file provenance gates pass. Latest source-verified fullCI remains380; subsequent heads are separate.1092 still retains its broader authored durable input corpus;988 cross-version/actual-byte qualification and1213 prefix acceleration remain.
+
+
+### 2026-10-29 — Rook continuation386: complete authored durable tape
+
+- Shared real-mask production world/semantic/journal fixture guarantees actual births, lane transfer, terrain work and applied commands alongside tempo/speed/mapping/performance edits, canceled future policy, paused physical stepping/resume and retained observation-only external bytes. No independent simulator or new tape format.
+- One Node128tick case and both128/10000tick Playwright windows pass at1920x1080. Native IndexedDB full continuation replay, zero-tick final/midpoint reuse, independent32tick child and identical original reopen preserve the source/live project with zero audio/MIDI opens. The10000window contains2births,1transfer,12work facts and2applied commands; later sparse ticks are deliberate and do not qualify dense throughput. recording2654.5ms/replay2097.7ms are harness observations only.
+- Close1092 with the combined315document-boundary,317actual generated10000tick/seek/branch/offline,383continuation,384build-binding,385semantic-invalid and386authored-positive evidence.988 exact/cross-version and1213 sibling acceleration remain separate. No production source changed, no repeated92case/full local suite; format/category/whitespace pass. Latest fully source-verified CI remains380 pending later artifact audit.
+
+
+### 2026-10-29 — Rook continuation387: opaque saved instrument definitions
+
+- Read future definitions as bounded data through one current-schema gate before interpreting macros, variation or causal bindings. Inspector and performer owners retain read-only data; future parents cannot be edited into present recipes. Fix numeric/default/spaced JSON dictionary keys in unsupported archives while retaining prototype/structure bounds.
+- Final 121 affected Node and all five Playwright journeys pass at 1920x1080: supported definition resolution; future99 opaque controls through visible Save As/new-realm IndexedDB reopen/export; normal legacy conversion Cancel/Accept/loss report/reopen; six sounds preserving 1000-tick physical/fact trace; built-library stage/audition/install/Apply; authored128-tick tape. Preserve the first archive-key/runtime failure and raw-key-order fixture correction.
+- Coverage97.21%lines/93.68%functions/84.71%branches across named content/performer owners; detailed gaps remain in continuation387. Static/critical/category and10component/362file provenance gates pass;293file worker SHA f622276191bd6cc3995453126477f93be38495b151de1929ab09bf8483e9a314.
+- Latest independently source-verified full383 CI is green:7236 Node/10pending,273browser,14capabilities, coverage90.78lines/83.98branches/88.65functions and valid30673msbenchmark. All1149main/1260engine/both8native files match77e057fa. Current387CI remains separate.
+- Keep969 open pending the original custom inline legacy patchDefinition/unknown alias conversion probe; do not infer complete custom migration from the normal conversion.1092 is completed in386;988/1213 remain separate.
+
+
+### 2026-10-29 — Rook continuation388: explicit custom legacy instrument outcomes
+
+- Reproduced the original969 inline my-body@7/user-foundry definition loss at a468b8da. Current lane admission and legacy conversion now reject unsupported inline/custom identities before defaulting; invalid explicit external routing also refuses. Error names the source fields/lane while preserving original bytes and live document/world.
+- Supported legacy conversion exposes per-lane replaced fields/removed steps/local realization and retains valid external program/bank/channel/output values. Confirmation names physical grammar/native alias changes. External routing edits leave pinned local reference identity unchanged.
+- Final 179 affected Node and all five Playwright desktop cases pass together at1920x1080: explicit custom rejection, normal Cancel/Accept/report/native reopen, opaque future Save As/new-realm reopen/export, six-sound1000tick invariance, real built-library staging/audition/install/Apply. Project coverage85.32%lines/89.47%functions/75.88%branches; wider reducer/trust/numeric paths remain explicit. No repeated full local suite.
+- Close969 using387+388 complete software contract and actual original probe correction. Listening/DSP quality remains in its owners. Latest source-verified fullCI remains383 (7236Node/273browser); later388CI is separate.
+
+
+### 2026-10-29 — Rook continuation389: actual work-cycle percussion
+
+- Add explicit solid/appearance/either work-response policy so an already-solid repaint cannot count as added material. Preserve existing either behavior and normalized changed-cell semantics.
+- Complete the shared actual-action acceptance corpus: 192-tick builder/miner 12:8 cycles, final warnings without extra attacks, three ordered initial dig edits/27 removed pixels with three-versus-one operation/phase mappings, empty/steel bashing and interrupted/restarted miner lifetimes without resetting another worker.
+- All 50 affected Node tests and two desktop Playwright journeys pass. Real immutable application/MAIN.DAT masks, actual bound source-compilation worker, sprites and production 1920x1080 canvas produce identical canonical facts/intents across 0/15/120 source-relative paint cadences (0/57/460 actual paints; hash f1fd37c8a81a97d05bf2dd79551c37d18e40f5aa1c2db118eb2e85bbbfc9b35f). This is presentation determinism, not a wall-FPS or acoustic benchmark. Active project remains unchanged; zero audio/MIDI opens.
+- Format, critical typecheck, browser category, whitespace and 10-component/362-file provenance gates pass. RhythmicResponses coverage98.83%lines/100%functions/71.7%branches; other estimator/restore/capacity branches remain explicit. Close1011 after publication. Latest source-verified full CI remains383; later388 main CI is running.
+
+
+### 2026-10-30 — Rook continuation390: actual flight/landing journeys
+
+- Preserve flight arc provenance on safe LAND facts, including final action travel once; support explicitly named safe/fatal/out-of-world articulations on existing strike roots and retain actual terminal reasons.
+- Actual source geometry and production walk/fall/float/pickup processors qualify short/long ledges (11/19 ticks), parachute (37), fatal (25), void (30), spawn-only filtering and zero-height controls. Parachute displacement74/travel76 retains the real upward pixel without a second arc or attack.
+- Final 74 affected Node and three Playwright desktop cases pass together, including authored128 durable tape and389 work-cycle display invariance. Classic/rounded_triangle source sprites paint different real pixels at1920x1080 but share canonical flight/fact/intent hash c72bf42e64f3347c0154936428b7f9d2d700359d24a1cb3f717fa457ae137c8b. Eight paused RAF paints preserve complete physical/semantic snapshots; restored continuation through56matches all future facts/intents. Live project/world/appearance unchanged; no audio/MIDI opens.
+- Preserve first fixture failures: capture began during initial setup; opaque event IDs were incorrectly parsed for tick. Final uses established source scene and authoritative simTick. Production runtime bytes were unchanged between the first and final grouped runs.
+- PhysicalFlightFacts100%lines/functions95.23%branches; RhythmicResponses99.43%lines100%functions77.19%branches. Format/critical/category/whitespace/provenance gates pass. Close1017 after publication. Latest independently source-verified fullCI remains383; later388/389 main CI is still running.
+
+
+### 2026-10-30 — Rook continuation391: real blocker response networks
+
+- Capture both participant action instances in one canonical blocker contact; bind the selected walker/blocker response to its real action owner. Clear a released/re-entered blocker counter independently, validate restored ownership transactionally, and align alternating/call-answer motif tags with the selected interval.
+- All177 affected Node and four desktop Playwright cases pass, followed by a stronger independent per-action ordinal assertion passing in both native and browser executions with unchanged canonical outputs. Opposite approaches, independently muted roles, four real bounce modes, queued release/re-entry, complete restore and actor removal/fresh IDs are exercised.
+- The100-actor coincident fixture retains100complete physical contacts;31dual-role attacks are admitted and169explicitly thinned, with the held resonance end preserved. At tick100, eight real RAF paints preserve full state; continuation through301matches834facts/68intents. The actual1920x1080renderer makes308paints; live project unchanged and zero audio/MIDI opens.
+- Lemming100%lines/functions80.74%branches; RhythmicResponses99.44%lines100%functions80.98%branches. Format/critical/category/whitespace/provenance pass; close992 after publication.
+- Independently compare388 CI receipts to c33516d9: all1153main/1261engine/both8native entries match,234workstation/18engine cases pass. Main coverage is still running; latest full green remains383 until that job and its logs are complete.
+
+
+### 2026-10-30 — Rook continuation392: real route periods and observed history
+
+- Correct route source timestamps and re-entry history, reject inconsistent branch/revision/lap/marker/source evidence before restore, and fix a real zero-tolerance projection discontinuity caused by subtracting rounded collinear coordinates. Preserve unknown coverage and selectively invalidated terrain.
+- Add on-demand bounded source-rooted period/frequency/request comparisons. A requested-period annotation changes the comparison without resetting traversal; fractional and unsafe coincidence cases remain explicit.
+- Final79 affected Node and two composed Playwright desktop journeys pass: actual120/160 and100/140circuits,118/158pixels of travel, wall-turn time, queued+2tick drift, shortcut/no false lap, stopped actor, odd request error,41transactional history refusals and unchanged future replay. Native full terrain-book regeneration passes byte-for-byte in12056ms.
+- Browser source pause480/resume through961matches1938facts/18intents. Actual1920x1080canvas makes296successful paints and projects lane1 while retaining both physical lanes. Renderer overscan draw count is not a visible-actor count; preserve that corrected fixture attempt and the earlier numerical failure. No audio/MIDI opens; live project unchanged.
+- Atlas coverage96.95%lines/94.44%functions/85.55%branches; period view100%lines/functions96.42%branches. Format/critical/categories/whitespace and10component/363file provenance pass (294worker files).
+- CI388 completed7252Node/10pending with one15s corpus-regeneration timeout; all278browser cases and native peers pass, independently matching1153main/1261engine/both8native source entries. Keep the full equality assertion and give only that integration case60s. Do not promote failed388; latest source-verified full green remains383 until new-head CI finishes.
+- Close991 after publication. Keep1182 open for marker-geometry binding, actual U/crossing branch and midpoint/reinterpretation history;990 for complete spacing workflows and optional response modes. Share the common route fixtures in the next pass.
+
+### 2026-10-30 — Rook continuation393: marker-bound routes and native loop reopening
+
+- Reproduce the independent-marker edit defect at9518f1a2, then privately bind prepared routes to physical marker definitions. Preserve pitch/requested metadata phase; selectively invalidate physical edits. Refuse observed unbound legacy history and copied/forged preparation; upgrade only empty legacy history without pose guessing.
+- Add declared maximum route-neighbor gap and deterministic group ordering. Actual U actors have41Euclidean versus104.12310562561765route pixels of separation; a48pixel route radius excludes their link. Opposite actual walkers coincide at80,80 on different marker-qualified branches; shared-entry alternatives remain ambiguous. Complete actor-projection permutation preserves all route state.
+- Capture route-definition history separately from generic physical-domain coverage. Reinterpretation refuses changed markers, endpoint-only history and a real take that never requested coordinates. Native IndexedDB reopen/seek200/resume401 preserves810future facts,6intents and complete observer state; original take unchanged.
+- One affected batch passes83Node cases and3Playwright desktop journeys, including circuit and authored128-tape regressions. Geometry canvases make47production paints at1920x1080 with camera changes; eight RAF callbacks leave source tick200 frozen. Active project unchanged; zero AudioContext or MIDI opens.
+- Atlas coverage99.43%lines/100%functions/87.38%branches; take91.58%lines/95.65%functions/64.06%branches. Remaining branches include malformed capture/profile/coverage and owned revoice paths; keep broad typing/ownership issues scoped separately. Format/critical/provenance/categories/whitespace pass. Full CI392 remains pending and latest source-verified full green remains383.
+- Close1182 after publication using shared392 selective-terrain/lap/hidden-row evidence plus this geometry/persistence pass. Continue990 for optional rhythm modes and the actual crowd arrival/compression/removal/opposing-stream/density matrix. No full local suite repeated.
+
+### 2026-10-30 — Rook continuation394: native asset-stream progress boundaries
+
+- CI392 completes237workstation cases and fails one native UMP case before its assertions: the world reports a decode error. The saved trace's28692-byte lemmings/VGAGR4.DAT is byte-identical to the repository. Lifecycle and both native jobs pass; the main Node/coverage steps are skipped. Keep392 failed and full-green383 unchanged.
+- A separate real ReadableStream probe reproduces a decode refusal on a valid empty default-stream chunk. Accept up to32consecutive empty chunks before progress, both during normal assembly and the admitted EOF probe; preserve byte ceilings, exact output and complete retirement. This fixes a demonstrated transport boundary without claiming the archived CI trace disclosed its chunk framing.
+- Add a Playwright immutable-app startup case that explicitly wraps the real terrain asset response in a native default stream with empty leading/trailing chunks. Run it with all native Clip journeys and real asset ownership/cache/decode cases. Preserve the original CI failure and qualify the completed affected batch together; do not add retry or deadline inflation to hide it.
+- After this targeted CI repair, continue990's optional rhythm modes and actual crowd matrix, then re-audit current full CI before claiming it clean.
+
+- Final affected batch passes143Node and16Playwright desktop cases in1s/52.6s, including all native Clip journeys and actual cache/decode/ownership boundaries. Stream coverage99.3%lines/100%functions/84.16%branches; format/critical/provenance/categories/whitespace pass. Preserve CI392 failure without attributing unseen framing or promoting it as full green.
+
+### 2026-10-30 — Rook continuation395: actual crowd intervals and bounded response ownership
+
+- Implement optional explicit ratio-folded and delayed responses while keeping literal physical arrivals as default. Retain the crossing cause and distinguish source from musical presentation time; clamp late/over-horizon folds explicitly. Bound and save pending musical ownership; validate restore before publishing, bind its cursor to the source boundary, and clear changed instrument/epoch ownership.
+- Frontload the actual scored-world matrix:6/12-tick arrivals; removal without replacement note; coincident actor ordering; opposing streams; deterministic density admission; and eight walkers with a real blocker release producing compression, expansion and longer breath. Compare30/240BPM, reversed complete actor projections and0/15/120 source-relative native paint cadences with no enabled pattern cells.
+- Native initial58cases pass. The first desktop pass finds an actual first-paint checkpoint defect: terrain rasterization calls the promoting edit lookup, changing editChunks._lastKey from0to5 while the source is paused. Preserve both the original trace and a diagnostic trace identifying the exact field. Replace only the display read with existing peekValue; retain the complete checkpoint assertion and qualify the repaired affected batch together.
+- Shared #1182 U/crossing, route-neighbor and unknown-history boundaries are complete in393; reuse those fixtures for the optional route metric without relabeling Euclidean pixels, route arc pixels or source time. No acoustic/device qualification is inferred from semantic notes.
+
+- Final runtime/renderer batch passes83Node and6Playwright cases; two focused native/browser crowd+route refinements pass with runtime bytes unchanged. Reference arrivals1/7/19, delayed9/15/27, folded33/39/45; removal leaves1/19; density retains1/13/25/37. Compression spans18..117pixels and gates3/6/32ticks. Source-relative0/15/120cadences make0/19/153paints; pause adds8without changing tick10 or complete checkpoint. Three pending responses resume the same324facts/16intents.
+- Direct U crowd mappings measure105.12310562561765qualified-route versus77.17512552629896Euclidean pixels at actual tick80arrival; ambiguous branches withhold route notes while the explicit Euclidean control responds. Runtime Rhythmic coverage99.51%lines/100%functions/87.28%branches; renderer native-unit coverage remains partial56.41%lines/51.35%functions/58.22%branches, supplemented by real desktop first-paint/camera coverage. Format/critical/provenance/categories/whitespace pass. Close990 after publication; full CI remains pending, latest independently source-verified full green383.
+
+### 2026-10-30 — Rook continuation396: actual formation harmony and verified CI393
+
+- Preserve formation identity and declared metric on unknown views. The actual U receipt also exposes a real2D geometry error: equal centroid radii produced zero neighbor distance for actors41pixels apart. Compute RMS radial dispersion and actual Euclidean nearest-selected edges, with stable ties and pairwise work capped at32representatives. Retain qualified route gap104.12310562561765separately.
+- Bind formation checkpoint version2 to definition signatures and anchor tuning. Reject thirteen corrupt observed histories transactionally; empty legacy history alone may upgrade. Actual four-walker chords spread2400to7200cents; fixed/follow/freeze/cluster choices retain voice ownership, just-ratio precision, missing historical roster members and bounded representatives. Static held voices do not retrigger; static pickup voices remain silent. Same leader/different followers produces different harmony.
+- Final affected49Node and3Playwright desktop journeys pass. Pause16/restore64 matches384facts/28intents; removal continuation317facts/21intents. Four-actor and coincident nearest ties, U-route and ambiguous branch refusals use actual source worlds. The1920x1080canvas makes24paints; active project unchanged and zero audio/MIDI opens. Preserve the initial unknown-view failure trace and the later measured0-versus41neighbor counterexample.
+- Independently verify full green CI393/ef7b88b1:7268Node/10pending,283browser(26desktop/239workstation/18engine), both native codec jobs and policy/dependency checks. Coverage90.79%lines/statements,84.11%branches,88.7%functions; valid39.316s benchmark. All1159main/1271engine/both8native inputs match published Git bytes; all four original archive digests match GitHub metadata. Promote latest verified full green from383to393; later source remains independently pending.
+- Current branch npm audit reports zero vulnerabilities; the default-branch alert does not apply. CI394 retains a native Linux Firefox SIG11 failure before assertions(17pass/1fail); that document journey passes locally in Windows Firefox, and CI395's full lifecycle job reports success. No retry/deadline inflation or unproven JavaScript crash repair. Continue current-head CI qualification and remaining backlog after closing1023.
+
+### 2026-10-30 — Rook continuation397: actual source-time rests and crew cadences
+
+- Bind activity checkpoint version2 to window scopes, timeout and held/completion policies plus referenced ensemble, route markers and topology. Refuse observed unbound legacy history and nine corrupt boundaries transactionally; upgrade only an empty initial legacy boundary. Expose named coverage reasons without generating filler attacks.
+- Actual walkers arrive1/7/19; timeout10 creates RestStarted17, RestEnded19 and the next distinct rest29. Empty/unvoiced static worlds stay silent; three held blocker drones retain ownership. Actual missing route/topology and capped membership remain unknown. Software mute/rejection preserves identical physical facts and rest causes while reporting independent output reasons.
+- Playwright pauses the source at8 for60.099wall seconds,234polls/paints and242total1920x1080canvas paints. Complete source/engine state stays frozen; restore through32matches144future facts and zero attacks. Native IndexedDB reopen/seek8 rejects an edited timeout transactionally and preserves the original manifest. Active project unchanged; zero audio/MIDI opens.
+- Three actual1800tick Rescue studies each admit exactly three actors. Complete passage at343produces one six-root cadence and three notes; blocked delay and real crew-loss produce none. Saved completion ownership survives1457actual committed source batches through1800with identical semantic state and no duplicate cadence. Qualification is semantic replay, not fresh feedback re-performance or acoustic evidence.
+- Final affected batch passes33Node and4Playwright desktop journeys, including crowd and formation regressions. Activity coverage100%lines/statements,92.3%functions,83.72%branches. Format/critical/provenance/categories/whitespace pass. Preserve the initial overbroad new-test failure; qualified U-route rests are valid, unknown intervals are not. Close1060 after publication.
+- Independently promote full green CI395/c8809464:7275Node/10pending,285browser(26desktop/241workstation/18engine), both native codecs and all policy/dependency gates. Verify1161main/1262engine+9harness/both8native inputs against Git and all four original archive digests against GitHub; valid36.338s benchmark,90.8%line coverage.
+- Keep CI396 native Linux Firefox signal11 during boot separate:17engine cases pass and1crashes before assertions; main still running. GitHub refuses a single-job rerun until that workflow finishes. Continue backlog development and current CI qualification; no full local suite repeated. Fresh inventory contains193open issues before this closure.
+
+### 2026-10-30 — Rook continuation398: actual chamber topology and bound history
+
+- Bind descriptors, excitation, held voices and engine snapshots to the full normalized topology definition. World restore validates source identity, generation, ROI/connectivity/mapping, time, ordered history and identity frontier before publishing. Clear in-flight analysis on restore/reconfiguration/reset so a matching numeric epoch cannot admit an old result. Failed/rejected jobs become explicit unknown and release pending ownership.
+- Actual source geometry measures two64pixel²sealed chambers, a one-pixel throat merge129, two64pixel²split children and an open65pixel²ROI component. Two actual contact voices begin once and both end at the merge; no geometry-only replacement attack. Actual diagonal masks yield two1pixel components under4-connectivity and one2pixel component under8. Undo/branch restores the exact source; stale edit/seek/generation jobs refuse. Seven corrupt physical topology histories and edited semantic definitions refuse transactionally.
+- Two actual diggers remove six9pixel rows with source revisions9/18/27/36/45/54 in one batch. End-of-tick interpretation binds all six to54 while preserving each local source revision. The four retained post-transaction results bind27/36/45/54exactly and omit the first two without catch-up. A real worker step overtakes an analysis request and its late result refuses. Actual steel/appearance-only work produces zero excavation notes. The measured tick charges7200post and1200final cells against262144per phase; DSP is separate.
+- Capture profile physical-basic-v21 records topology-definition signatures. Native IndexedDB reopen refuses changed ROI/body mappings and missing bound definitions without changing the original take. Pending analysis and actual162unknown source cells retain explicit geometry gaps after separate close/reopen. Known sealed pockets inside partial ROI do not certify global activity/capture; the source window remains unknown-coverage.
+- Final complete affected batch passes86Node and5Playwright desktop cases, including activity60wall seconds, Rescue, formation and actual work cycles. Topology canvas makes12production paints at1920x1080; eight paused frames leave tick3and complete checkpoint unchanged. Active project unchanged, no audio/MIDI opens. Descriptor coverage98.07%lines/100%functions/91.41%branches; owner100%lines/functions/81.2%branches. Format/critical/provenance/categories/whitespace pass. Preserve initial fixture/admission diagnostics and the partial-coverage finding; final source bytes are requalified together.
+- Independently promote full green396/cef914eb after its native-engine rerun:7276Node/10pending and286browser(26desktop/242workstation/18engine). All1162main/1271engine/both8native inputs match Git; all four raw archive digests and the main report digest match. Preserve the original Firefox signal11 and do not claim a JavaScript crash repair.
+- Keep1183open for incremental dirty-region invalidation,1194for authored Digging Ocarina content/realization, and1104for broader capture/re-performance requirements. Priority next: CI397 has243workstation passes and one paused-take comparison failure because candidate admission requests57671680bytes with14764987available. Main Node/coverage steps skip after that failure; its lifecycle and native jobs pass. Repair replay ownership/admission before further topology optimization; no full local suite repeated.
+
+
+### 2026-10-30 — Rook continuation399: bounded replay restore staging
+
+- Inventory validated input bytes/nodes without encoding another copy; admit bounded temporary restore ownership while preserving retained/high-water capacity and all hard limits. Normalize an immutable snapshot before publishing restored owners, reuse it at unchanged paused boundaries, and own nested imported voice data. Keep failed release charged and add preparation-stage diagnostics to replay refusals.
+- Nine Playwright desktop cases pass together: five native speed/clock modes including paused, sustained synth/queued phrase, external clock/SPP/loss, actual formation and native topology reopening. The paused fixture reduces declared peak accounted bytes from401934133to348460531 in separate before/after runs; this is not heap measurement or identical artifact comparison. Tight-headroom and nested ownership regressions pass.61affected Node pass together, then58focused coverage cases include one additional ownership case:62unique passes. No repeated full local suite.
+- Current published398 CI has all four jobs/policy/dependency review green; raw artifact/source qualification remains next, so396stays the latest independently verified checkpoint. The historical397 Linux admission refusal is retained; its exact allocation stage was not recorded and the local baseline did not reproduce it. New-source CI follows publication. Continue1183incremental dirty-region invalidation against the actual bounded reference, then1194authored chamber sound/content and remaining replay/performance acceptance.
+
+
+### 2026-10-30 — Rook continuation400: qualified regional topology invalidation
+
+- Track committed collision/source changes against declared ROIs plus read halo. Reuse qualified unchanged runs/lineage at each new global source revision with zero new analysis work; preserve full bounded analysis for dirty or untracked history. Atomic queued authoring invalidates only at commit; annotation/solid-color edits preserve collision geometry. Pending jobs retire on invalidation. Complete source qualification survives mask-buffer eviction; partial coverage invalidates on actual materialization at unchanged revision. No bounds allocation on ordinary pixel edits when no profiles are configured.
+- Final73Node and9Playwright desktop cases pass together, including actual work/lifecycle/native storage and all transport replay cases. The incremental corpus matches152full reference regional results over76observations, including64bounded edits, halo/throat/split/merge/remote edits, actual queued authoring and complete restored checkpoint equality. Record actual analyzed-cell savings and stress duration separately from DSP; this is regional invalidation, not per-component repair. Scoped owner/invalidation/descriptor coverage and raw browser receipts are in continuation400. Preserve cold-reference, query-counter symmetry and manifest file-count fixture diagnostics.
+- Independently verify full CI398/bf81145d:7281Node/10pending and289browser(26desktop/245workstation/18engine),90.81%lines84.22%branches88.71%functions,29.816second valid benchmark. All1164main/1271engine/both8native source inputs match Git; four original archive digests and main report digest match. Promote398as latest independently verified checkpoint and retain older failures. Current replay/incremental source requires its own CI.
+- Close1183after publication. Continue1194authored Digging Ocarina scene, existing body replacement/coupling, explicit220/110Hz targets and actual renderer evidence; listening remains separate. Broader replay/capture, mixed-scene performance, clock/epoch/UMP and remaining issue acceptance continue.
+
+
+### 2026-10-30 — Rook continuation401: authored cavity scores and native shared bodies
+
+- Register Clay chamber, Throat duet and Crumbled chimes with exact saved maps and native atomic chamber-size/throat controls. Actual64/256pixel geometry maps220/110Hz; duet keeps anchored220/330Hz bodies and enables coupling only through the committed cross-section. Preserve a real probed wall cell and explicit adjacent topologyAnchorId; default ambiguity and distant selection still refuse. Fragment copies remap the anchor.
+- Use the existing modal network/owner, count active plus retiring bodies (two clay/chime;four duet), and bind the actual shared graph/route/body/topology before the pinned exciter is admitted. Bound preparation sources to64/8MiB/50ms with original audio frames and ordered ends. Unknown cancellation stays charged and blocks reuse. Geometry never attacks; stale or late sources never catch up.
+-117affected Node and12Playwright desktop cases pass together. Actual browser maps/worker/restore coverage spans all three recipes; three successful dig roots and zero steel attacks retain source revisions. Unposed ordinary actors make genuine thin-wall contacts. Native scene loading, size256edit and explicit audio activation produce real internal PCM at a109.863Hz dominant FFT bin for the110Hz target, two accepted begin/end receipts and zero rejects/MIDI requests. FFT is32768at48kHz; level and listening judgments remain separate.
+- CI400 then reports7286Node/10pending/one terrain-retention failure after all289browser passes. Repair terrain-less reveal bookkeeping with a guarded bounds calculation and the established chunk-width fallback. Only this source changes after the larger batch;40Node and3native cavity/topology cases requalify the final source. Preserve all original diagnostics, including invalid fixture clock pacing and the router body refusal. No full local suite repeated.
+- Independently verify and promote399/4ad58522:7284Node/10pending,289browser,90.81%lines84.22%branches88.72%functions and35.232second valid benchmark. All1164main/1271engine/both8native inputs and original archive/report digests match Git/GitHub. Keep failed400 explicit; new-source CI follows publication.
+- Keep1194open. Next: native220Hz/throat/chime render and level comparisons, live body replacement/retained-tail and capture/restore matrices, then listening review. Also continue1104capture/revoice,1087mixed-scene performance, clock/epoch/UMP and the remaining issue backlog. Coverage follow-up includes broader routing/activation, repeated tail-capacity and browser-only workstation branches; current percentages are scoped, not a full-branch claim.
+
+
+### 2026-10-30 — Rook continuation402: native cavity bodies and durable changing geometry
+
+- Complete the six native recipe cases: Clay and Chimes64/256pixel targets220/110Hz, duet closed/open at anchored220/330Hz. Real internal PCM dominant FFT bins219.7266/109.8633Hz track the targets; each case has two accepted begin/end receipts, zero rejects and one AudioContext/no MIDI. Actual receiving-body worklet energy is zero when closed and positive only after the throat opens. Levels remain quiet; no listening/hardware claim.
+- Chamber controls now use recorded workstation intervention admission before queue publication, reject stale/read-only owners and prepare only bounded completed source chunks when explicitly requested. Real cold-mask fixtures preserve source revision. Availability requires the exact active route. A previous owned tail blocks new workspace allocation; the existing session notification resumes latest geometry while physical pumping is paused independently.
+- Both native Clay/Throat histories preserve an old graph, wait at the two-graph cap, return to the intended body without another strike and capture exactly three graphs. Native IndexedDB reopening and production comparison match full continuation/semantic/timeline/replay-settings checkpoints, preserving the live world; exactQualified remainsfalse. Pause world intentionally stops audio ownership, so the tail fixture explicitly pauses the production physics runtime only.
+- Repair a real canonical-journal replay bug: raw JSON property ordering made a restored unchanged region look unconfigured when it became dirty. Configuration/analysis/publication now use normalized definition signatures and coordinate bounds. Preserve bounded first-field/analysis-failure diagnostics without source payload retention. The actual incremental corpus now matches154full references, including a canonical-key dirty restore, while retaining the original strict full checkpoint continuation comparison.
+- Final254Node and18Playwright desktop cases pass together after all repairs. Preserve initial selector/owner/occupied/replay diagnostics, the scoped c8 gate mistake and the raw graph-reference fixture correction in continuation402. Source hashes, scoped coverage,300worker files and raw browser receipts bind the final code; no full local suite repeated.
+- Latest independently verified full green remains399;401has three required jobs/policy/dependency green and its main browser job in progress at last check. New source needs its own CI. Keep1194/1104/1087 open;1183receives the durable-restore follow-through.191issues remain in the refreshed open inventory. Next frontload private cavity cue/render support and matched-level comparisons, then the remaining clock/export, prefix-cache and performance backlog.
+
+
+### 2026-10-30 — Rook continuation403: actual private cavity cue and unadvanced candidates
+
+- Admit a bounded invariant initial-cavity prefix through the existing scene rehearsal owner and modal renderer. One complete actual ROI plus512maximum observed source revisions preserves exact contact/work mapping, component/map identity, source tick, pitch/reference and source ancestry. Refuse changed/partial/unknown geometry instead of substituting a final shape. Count active bodies separately from the scene retained-body bound; render the complete declared tail.
+- Retain16MiB geometry/key/compile metadata through actual reader/world/material/worker/cue retirement. Repair the existing shared snapshot maxBytes request to cover the already enforced16MiB PCM result allowance as well as its smaller semantic input; keep128MiB computation/shared admission. Report private preparation failures on the owning loader and quarantine unknown retirement.
+- Known source points outside the ROI one-cell adjacency band are excluded from that instrument after complete qualification; no attack or rejected-begin count. Preserve strict unknown geometry/in-region ambiguity refusals. Bound work-span exclusion to64entries. Actual private floor contacts and selected wall onset exercise both spatial scopes.
+-78affected Node pass; a focused four-case native preview batch passes, then all22Playwright desktop cases pass together on unchanged source. All three private cues produce real internal PCM through explicitly selected Prelisten, preserve CURRENT project/world/tick, and adopt NEXT afterward at tick0with zero active actors and its one finite entrant unspent. Native cancel retires preparation and leaves CURRENT unchanged. Existing native live recipes/tails/history, topology and transport/recovery remain green in the same final batch.
+- New source qualification is100%scoped lines/functions and90.66%branches; inspect broader changed modules from the same V8 data without rerunning tests. Preserve first overlong fixture/cancel, stale two-scene catalog expectation, outside-ROI fixture coordinates, private source exclusion and snapshot-transport diagnostics. Source/receipt digests and301worker files bind final code; no repeated full local suite.
+- Full CI401reports7301Node/10pending/one stale catalog failure after all291browser passes; repaired crossing/cavity fixture is in the78-case batch. CI402has both native codec jobs green, one native Firefox signal11 lifecycle crash after17passes, and main still in progress at last check. A single-engine retry was refused because GitHub requires the parent run to finish. Keep399as latest independently verified full green. New source requires its own CI; continue work while CI runs.
+- Keep1194/1104/1087open. Initial-cavity private cue is now implemented; next prepare matched-level original render comparisons and broader live worker/captured graph-history acceptance, then the remaining191issue backlog including clock/export, exact branch prefixes and mixed-scene performance. Listening/hardware remain separately unqualified.
+
+
+### 2026-10-30 — Rook continuation404: native recorded clocks and closed physical MIDI crops
+
+- Add inclusive closed tick crops inside a captured clock epoch. Replay full semantic ownership before the cut, refuse crossing/foreign/uncovered/reversed bounds, retain selected silence and separate crop exclusions from epoch exclusions. Native Project controls and the owned export worker bind both ticks to the verified source; refusal preserves the prior artifact.
+- Qualify actual unposed actors through tempo/speed changes, native paused nominal Step, a controlled200ms catch-up wake, a500ms host stall and explicit resume, external input clock loss/Continue/Stop and native IndexedDB reopen. Parse SMF note/lifecycle order, captured tempo map, silence/end placement and elapsed-time error independently from the recorded clock segments. A later UI tempo change cannot replace the capture.
+- Replace synthetic-only generation evidence with a declared pre-take wall/stall score and an ordinary cohort cascade/restart at tick174. Two native chooser/worker files preserve separate origins, each has8note events, and the reopened take matches270batches/16intents plus complete continuation/semantic/timeline/replay-settings checkpoints. CURRENT remains unchanged; exactQualifiedfalse.
+-85affected Node and15final combined desktop Playwright cases pass. Three timing/projection/epoch leaves have100%scoped lines,83.33%functions and92.04%branches. Fourteen ticks in one actual catch-up wake retain distinct source time; the500ms gap halts before pumping. Largest independently measured SMF elapsed-time error in this matrix is0.47905312500006403ms. Preserve stale worker-declaration refusal, incorrect one-shot crop fixture and final native receipts/source hashes; no full local suite repeated.
+- CI402main has7306Node/10pending/one stale five-versus-two scene assertion already repaired in403. Its single failed engine job was requested again after parent completion; the new lifecycle job is running. Parent403has a separate Firefox content-process signal11 after17engine passes, both codecs green and workstation smoke still running. Retain399as latest independently source/archive/report-qualified full green.
+- Keep986/1093/1104open. Next qualify the same clock/late-output matrix through actual native local-audio and controlled MIDI sinks, then complete1194matched levels, broader worker bodies and captured graph-history render. Arbitrary mid-note pickups still refuse; additional UMP/MPE/CI Profile and receiver/DAW paths remain separate. The191-issue backlog continues.
+
+
+### 2026-10-30 — Rook continuation405: requested parking checkpoint
+
+- Park at the next pushed commit as requested. Completed implementation is404/bb8f8bf5;85affected Node and15final desktop Playwright pass, with source/worker/raw-receipt digests preserved. PR1243and986/1093/1104are updated. No live-sink405development has started.
+- CI404run41055130421has both native codecs, policy and dependency review green; main124060627973and engine124060628213are running. Parent403main is still in workstation smoke; its Firefox signal11engine failure awaits one retry after the parent finishes. Latest independently verified full green remains399.
+- The requested older402engine retry124058339965finished17passes/one Chromium capability assertion: e2e-portable/capabilities.spec.js:60expected Controlled worker construction failure, but .studio-statusreported Project preferences could not be stored. Export a project file to save. The exact cause is uninvestigated; preserve the original distinct Firefox process crash and this retry result. Inspect durable refusal/owner state and reporting before changing the fixture.
+- Resume with current CI qualification and that worker-failure status regression, then native audio/MIDI clock/late-output matrices for986and1194level/live-worker/graph-history work. Keep191remaining issues and existing limits explicit. Work remains paused at the user request; no all-complete claim.

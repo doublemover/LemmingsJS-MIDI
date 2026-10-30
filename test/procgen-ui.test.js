@@ -1,3 +1,5 @@
+import { getProcgenCommandDispatcher } from '../js/app/controls/ProcgenCommandDispatcher.js';
+import { DEFAULT_KEYBINDINGS } from '../js/input/KeybindingRegistry.js';
 import { expect } from 'chai';
 import fs from 'node:fs';
 import * as cheerio from 'cheerio';
@@ -8,8 +10,9 @@ import { normalizeSeed } from '../js/core/seededRandom.js';
 import { createProcgenUiController } from '../js/app/procgen/ProcgenUiController.js';
 import { TestDocument, createTestWindow } from './helpers/test-dom.js';
 import { registerElement } from './support/dom-fixtures.js';
-const fixture = (search = '', storedLanes = null, preferences = {}, restartResult = null) => {
+const fixture = (search = '', storedLanes = null, preferences = {}, restartResult = null, fetchBindings = null) => {
   const document = new TestDocument(), window = createTestWindow(document);
+  if (fetchBindings) window.fetch = fetchBindings;
   if (storedLanes != null) window.localStorage.setItem('lemmings.procgen.lanes.v1', JSON.stringify(storedLanes));
   for (const [key, value] of Object.entries(preferences)) window.localStorage.setItem(key, JSON.stringify(value));
   window.location = { search, href: `https://example.test/procgen.html${search}` };
@@ -21,7 +24,7 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
   }
   for (const [tag, ids] of [['div', ['procgenDrawer', 'procgenPanel', 'procgenSpanList']], ['details', ['procgenHelpFields']], ['canvas', ['gameCanvas']], ['button', ['procgenTab', 'procgenHelp', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear', 'procgenSpanAdd', 'procgenSpanPresetApply', 'procgenSpanUndo', 'procgenSpanRedo']],
     ['select', ['procgenMusicRecipe', 'procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode', 'procgenSpanDomain', 'procgenSpanTarget', 'procgenSpanPreset']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders', 'procgenLaneHeight', 'procgenCctvEnabled', 'procgenScoutsEvery', 'procgenScoutDelay', 'procgenSpawnSpread', 'procgenSpawnPriority', 'procgenSpanEdit', 'procgenSpanVisible']],
-    ['p', ['procgenMusicStatus', 'procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus', 'procgenSpanHistoryStatus']]]) {
+    ['p', ['procgenShortcutHelp', 'procgenMusicStatus', 'procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus', 'procgenSpanHistoryStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -30,6 +33,52 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
   return { document, window, ui, timer, runtime, get restarts() { return restarts; }, el: id => document.getElementById(id) };
 };
 describe('compact procgen drawer', () => {
+  it('projects an owned speed synchronously without overwriting the transport clock before keyup', () => {
+    for (const effective of [0, 1.5, 400 / 120]) {
+      const f = fixture(); const requests = [];
+      try {
+        f.ui.setPhysicalControlOwner({ speed(value) { requests.push(value); f.timer.speedFactor = effective; f.ui.setSpeed(value, { owned: true }); return value; } });
+        f.ui.setSpeed(4); f.window.dispatchEvent({ type: 'keydown', key: '=', code: 'Equal', preventDefault() {} });
+        expect(requests).to.deep.equal([4, 5]); expect(f.ui.settings.speed).to.equal(5); expect(f.timer.speedFactor).to.equal(effective);
+        f.window.dispatchEvent({ type: 'blur' }); expect(f.timer.speedFactor).to.equal(effective);
+        f.window.dispatchEvent({ type: 'keyup', key: '=', code: 'Equal' }); expect(f.timer.speedFactor).to.equal(effective);
+      } finally { f.ui.dispose(); }
+    }
+  });
+  it('routes an immediate reviewed-output activation by current backend state rather than a delayed status-strip action', () => {
+    const f = fixture(); let starts = 0, discoveries = 0;
+    const state = { enabled: false, selectedBackend: 'midi', midiPermission: 'granted', selectedOutputId: 'reviewed', status: 'selected' };
+    try {
+      f.ui.local.getOperationalState = () => state; f.ui.local.start = () => starts++; f.ui.local.discover = () => discoveries++;
+      f.el('procgenListen').dataset.operationalAction = 'discover'; f.el('procgenListen').dispatchEvent({ type: 'click' }); expect(starts).to.equal(1); expect(discoveries).to.equal(0);
+      state.failureKind = 'permission-revoked'; f.el('procgenListen').dataset.operationalAction = 'activate'; f.el('procgenListen').dispatchEvent({ type: 'click' }); expect(starts).to.equal(1); expect(discoveries).to.equal(1);
+    } finally { f.ui.dispose(); }
+  });
+  it('keeps titles neutral while custom bindings load and generates help from the admitted registry', async () => {
+    let resolve; const pending = new Promise(done => { resolve = done; }), f = fixture('', null, {}, null, () => pending);
+    const calls = []; f.runtime.lanes = { renderer: { camera: { getState: () => ({ scale: 1 }), setZoom: value => calls.push(value) } } };
+    const press = code => f.window.dispatchEvent({ type: 'keydown', key: code.slice(3).toLowerCase(), code, preventDefault() {} });
+    try {
+      expect(f.el('procgenZoomIn').title).to.equal('Zoom in'); expect(f.el('procgenShortcutHelp').textContent).to.include('shortcuts are loading');
+      press('KeyZ'); expect(calls).to.have.length(0); resolve({ ok: true, json: async () => ({ bindings: { zoomIn: ['KeyG'], zoomOut: ['KeyH'] } }) });
+      await new Promise(done => setImmediate(done)); expect(f.el('procgenZoomIn').title).to.equal('Zoom in (G)'); expect(f.el('procgenZoomOut').title).to.equal('Zoom out (H)');
+      press('KeyZ'); press('KeyG'); press('KeyH'); expect(calls).to.deep.equal([1.1, 1 / 1.1]);
+      f.ui.setPhysicalControlOwner({ canShortcut: action => action !== 'zoomIn' }); expect(f.el('procgenZoomIn').title).to.equal('Zoom in');
+      f.el('procgenHelp').dispatchEvent({ type: 'click' }); expect(f.el('procgenShortcutHelp').textContent).to.include('Zoom world in: unavailable here');
+    } finally { f.ui.dispose(); }
+  });
+  it('does not publish a late configuration after its controller is disposed', async () => {
+    let resolve; const pending = new Promise(done => { resolve = done; }), f = fixture('', null, {}, null, () => pending), dispatcher = getProcgenCommandDispatcher(f);
+    f.ui.dispose(); const revision = dispatcher.bindingState().revision;
+    resolve({ ok: true, json: async () => ({ bindings: { zoomIn: ['KeyG'] } }) }); await new Promise(done => setImmediate(done));
+    expect(dispatcher.bindingState().revision).to.equal(revision); expect(dispatcher.inspect()).to.include({ installed: false, groups: 0 });
+  });
+  it('leaves Escape to an open modal without closing its originating drawer', () => {
+    const f = fixture(); f.el('procgenTab').dispatchEvent({ type: 'click', detail: 1 });
+    f.document.dispatchEvent({ type: 'keydown', key: 'Escape', composedPath: () => [{ tagName: 'DIALOG', open: true }] });
+    expect(f.el('procgenTab').getAttribute('aria-expanded')).to.equal('true');
+    f.document.dispatchEvent({ type: 'keydown', key: 'Escape' }); expect(f.el('procgenTab').getAttribute('aria-expanded')).to.equal('false'); f.ui.dispose();
+  });
   it('persists the opt-in recipe through the existing musical transaction and Undo without starting output', () => {
     const f = fixture(); expect(f.el('procgenMusicRecipe').value).to.equal('events'); expect(f.el('procgenMusicStatus').textContent).to.equal('Event music');
     f.el('procgenMusicRecipe').value = 'scenes'; f.el('procgenMusicRecipe').dispatchEvent({ type: 'change', target: f.el('procgenMusicRecipe') });
@@ -302,6 +351,16 @@ describe('compact procgen drawer', () => {
     press({ target: { tagName: 'INPUT', type: 'range' } }); f.window.dispatchEvent({ type: 'keydown', key: 'Escape' }); expect(canvas.classList.contains('nuke-armed')).to.equal(false);
     press({ shiftKey: true }); expect(calls).to.deep.equal([2, 'all']); f.ui.dispose();
   });
+  it('does not run a destructive shortcut inside a modal or during composition', () => {
+    const f = fixture(), calls = [];
+    f.runtime.world = { nukeAll: () => calls.push('all') };
+    const press = extra => f.window.dispatchEvent({ type: 'keydown', key: 'T', code: 'KeyT', shiftKey: true, preventDefault() {}, ...extra });
+    press({ target: { tagName: 'BUTTON' }, composedPath: () => [{ tagName: 'BUTTON' }, { tagName: 'DIALOG', open: true }] });
+    press({ target: { tagName: 'CANVAS' }, isComposing: true });
+    expect(calls).to.deep.equal([]);
+    press({ target: { tagName: 'CANVAS' } }); expect(calls).to.deep.equal(['all']);
+    f.ui.dispose();
+  });
   it('offers the shared catalog and never mounts hardware routing/studio controls', () => {
     const f = fixture(); expect(f.el('procgenPreset').children.length).to.equal(PROCGEN_GAME_EVENT_MIDI_PRESETS.length);
     expect(f.ui.local.getState().enabled).to.equal(false);
@@ -314,6 +373,36 @@ describe('compact procgen drawer', () => {
     expect(f.el('procgenDistance').textContent).to.equal('3,400 px');
     expect(f.el('procgenMetrics').textContent).to.include('1,024 alive'); expect(f.el('procgenMetrics').textContent).to.include('admission paused');
     f.ui.dispose(); f.el('procgenRestart').dispatchEvent({ type: 'click' }); expect(f.restarts).to.equal(0);
+  });
+  it('routes every declared world shortcut alias to zero or one command in each input context', () => {
+    const f = fixture(), camera = { pan() {}, setZoom() {}, getState: () => ({ scale: 3 }), followFrontier() {} };
+    f.runtime.world = { generation: 1, laneCount: 1, laneHeight: 96, actors: [], timer: f.timer, step() {}, nukeAll() {} };
+    f.runtime.lanes = { renderer: { camera }, pause() {}, resume() {}, step() {} };
+    const dispatcher = getProcgenCommandDispatcher(f), contexts = ['canvas', 'button', 'range', 'text', 'modal', 'composition', 'consumed']; let aliases = 0, assertions = 0;
+    const customBindings = Object.fromEntries(dispatcher.list().map((command, index) => [command.id, ['Ctrl+Alt+F' + (index + 1)]]));
+    try {
+      for (const custom of [false, true]) {
+        dispatcher.setBindings(custom ? { bindings: customBindings } : null);
+        for (const command of dispatcher.list()) {
+          const action = command.id.slice('world.'.length), bindings = custom ? customBindings[command.id] : action === 'followFrontier' ? ['KeyF'] : action === 'toggleShortcutOverlay' ? ['F1', 'Shift+Slash'] : action === 'cancelTools' ? ['Escape'] : DEFAULT_KEYBINDINGS.bindings[action];
+          for (const binding of bindings || []) {
+            aliases++; const parts = binding.split('+'), code = parts.at(-1), key = code === 'Space' ? ' ' : code;
+            for (const context of contexts) {
+              let prevented = 0, stopped = 0; const target = { tagName: context === 'button' ? 'BUTTON' : ['range', 'text'].includes(context) ? 'INPUT' : 'CANVAS', type: context === 'range' ? 'range' : 'text' };
+              const event = { key, code, shiftKey: parts.includes('Shift'), ctrlKey: parts.includes('Ctrl'), altKey: parts.includes('Alt'), metaKey: parts.includes('Meta'),
+                target, isComposing: context === 'composition', defaultPrevented: context === 'consumed',
+                composedPath: () => context === 'modal' ? [target, { tagName: 'DIALOG', open: true }] : [target], preventDefault() { prevented++; }, stopImmediatePropagation() { stopped++; } };
+              const native = context === 'button' && code === 'Space' || context === 'range' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code);
+              const blocked = ['text', 'modal', 'composition', 'consumed'].includes(context) || native;
+              const result = dispatcher.dispatch(event), label = binding + ' in ' + context; assertions++;
+              expect(result.status, label).to.equal(blocked ? 'owned-input' : 'executed');
+              expect(prevented, label).to.equal(blocked ? 0 : 1); expect(stopped, label).to.equal(blocked ? 0 : 1); if (!blocked) expect(result.id, label).to.equal(command.id);
+            }
+          }
+        }
+      }
+      console.info('Desktop world shortcut matrix: ' + JSON.stringify({ profiles: 2, aliases, contexts: contexts.length, assertions }));
+    } finally { f.ui.dispose(); }
   });
   it('restores camera, speed, pause, step and restart keys without stealing form input', () => {
     const f = fixture();
@@ -355,7 +444,7 @@ describe('compact procgen drawer', () => {
     f.runtime.lanes = { pause: () => calls.push('pause'), step: () => calls.push('step') };
     f.window.dispatchEvent({ type: 'keydown', code: 'BracketRight', preventDefault() {} });
     expect(calls).to.deep.equal(['pause', 'step']);
-    expect(f.el('procgenPause').textContent).to.equal('Play');
+    expect(f.el('procgenPause').textContent).to.equal('Play world');
     f.el('procgenStep').dispatchEvent({ type: 'click' });
     expect(calls).to.deep.equal(['pause', 'step', 'step']); f.ui.dispose();
   });
@@ -383,7 +472,7 @@ describe('compact procgen drawer', () => {
     f.runtime.lanes = { pause: () => calls.push('pause'), resume: () => calls.push('resume'), step: () => calls.push('step'), renderer: { camera: { followFrontier: () => calls.push('follow') } } };
     f.el('procgenSeed').value = 'forest'; f.el('procgenRestart').dispatchEvent({ type: 'click' });
     expect(f.ui.settings.seed).to.equal(normalizeSeed('forest')); expect(f.restarts).to.equal(1);
-    f.el('procgenPause').dispatchEvent({ type: 'click' }); expect(f.el('procgenPause').textContent).to.equal('Play');
+    f.el('procgenPause').dispatchEvent({ type: 'click' }); expect(f.el('procgenPause').textContent).to.equal('Play world');
     f.el('procgenStep').dispatchEvent({ type: 'click' }); f.el('procgenFollow').dispatchEvent({ type: 'click' });
     expect(calls).to.deep.equal(['pause', 'step', 'follow']);
     f.el('procgenMasterVolume').value = '180'; f.el('procgenMasterVolume').dispatchEvent({ type: 'input', target: f.el('procgenMasterVolume') });
@@ -395,6 +484,26 @@ describe('compact procgen drawer', () => {
     const f = fixture('?shape=classic&bodyColor=%23ffd447&accessory=crown&eyewear=monocle&speed=150&preset=game-lydian-lanterns&musicMode=phrase');
     expect(f.ui.settings).to.include({ speed: 150, preset: 'game-lydian-lanterns', mode: 'phrase' });
     expect(f.el('procgenPhrases').checked).to.equal(true); expect(f.ui.local.getState().enabled).to.equal(false);
+    expect(() => f.ui.getShareUrl()).to.throw('committed world');
+    f.runtime.world = { seed: 42, laneCount: f.ui.settings.laneCount, laneHeight: f.ui.settings.laneHeight, timer: f.timer };
     expect(new URL(f.ui.getShareUrl()).searchParams.get('shape')).to.equal(null); expect(f.ui.settings).to.include({ output: 'synth', sound: true, laneHeight: 144, pack: 1 }); f.ui.dispose();
+  });
+  it('shares the last committed generation while a replacement is pending', () => {
+    const f = fixture('?seed=42');
+    f.runtime.world = { seed: 42, laneCount: 3, laneHeight: 144, timer: f.timer };
+    f.runtime.recipeSettings = Object.freeze({ laneCount: 3, laneHeight: 144, pack: 2,
+      decoration: 'none', preset: 'game-iron-ensemble', mode: 'steps' });
+    f.ui.settings.laneCount = 8; f.ui.settings.pack = 5;
+    const plan = f.ui.getShareDescriptor().worldOptions;
+    expect(plan).to.include({ seed: 42, laneCount: 3, laneHeight: 144, pack: 2, speed: 3 });
+    f.ui.dispose();
+  });
+  it('shares the owned game speed while the paused physical timer is zero', () => {
+    const f = fixture('?seed=42&speed=2.25');
+    f.runtime.world = { seed: 42, laneCount: 3, laneHeight: 144, timer: { speedFactor: 0 } };
+    f.runtime.recipeSettings = Object.freeze({ laneCount: 3, laneHeight: 144, pack: 2, speed: 2.25, decoration: 'none', preset: 'game-iron-ensemble', mode: 'steps' });
+    const release = f.ui.setPhysicalControlOwner({ getRecipeSpeed: () => 4.5 });
+    expect(f.ui.getShareDescriptor().worldOptions.speed).to.equal(4.5); release();
+    expect(f.ui.getShareDescriptor().worldOptions.speed).to.equal(2.25); f.ui.dispose();
   });
 });

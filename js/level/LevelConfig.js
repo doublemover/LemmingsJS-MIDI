@@ -4,6 +4,7 @@ class LevelConfig {
     this.filePrefix = 'LEVEL';
     /** use the odd-table-file */
     this.useOddTable = false;
+    this.oddTableRequired = false;
     /** the names of the level groups */
     this.groups = [];
     /** sort order of the levels for each group

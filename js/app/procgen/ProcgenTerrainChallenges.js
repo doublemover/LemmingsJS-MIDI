@@ -1,18 +1,18 @@
+import { causalRandomDecision } from './workstation/CausalRandom.js';
 const CHALLENGE_KINDS = Object.freeze(['ledge', 'tunnel', 'gap', 'terraces']);
-const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return (n ^ (n >>> 16)) >>> 0; };
 
 // Teach distinct decisions between the safe entrance and the unrestricted
 // source landscape. Reserve the approach and exit before placing attachments.
 const planTerrainChallenge = ({ seed, chunk, left, right, height, varied = false }) => {
-  const schedule = mix(seed ^ 0x4a790edf ^ Math.imul(Math.floor(chunk / 16), 0x51ed270b));
+  const scheduleDecision = causalRandomDecision({ seed, namespace: 'terrain', mappingId: 'terrain-challenge', generation: 0, stableCauseId: `chapter:${Math.floor(chunk / 16)}`, drawPurpose: 'schedule' }), schedule = scheduleDecision.drawUint32;
   const deep = chunk >= 17 && (varied ? chunk % 16 === 1 + schedule % 5 || chunk % 16 === 9 + (schedule >>> 8) % 5 : chunk % 8 === 1);
   if (!deep && (chunk < 2 || chunk > 7 || !(chunk & 1))) return null;
   const chapter = deep ? Math.floor(chunk / 8) : 0;
-  const code = mix(seed ^ 0x36b12a7d ^ Math.imul(varied ? chunk : chapter, 0x5bd1e995)), kind = CHALLENGE_KINDS[(Math.floor(chunk / 2) + code % 4) % 4];
+  const shapeDecision = causalRandomDecision({ seed, namespace: 'terrain', mappingId: 'terrain-challenge', generation: 0, stableCauseId: `shape:${varied ? chunk : chapter}`, drawPurpose: 'geometry' }), code = shapeDecision.drawUint32, kind = CHALLENGE_KINDS[(Math.floor(chunk / 2) + code % 4) % 4];
   const floor = Math.min(height - 18, Math.max(32, Math.min(left, right)));
   const rise = kind === 'tunnel' ? 18 + (code >>> 8) % 7 : 8 + (code >>> 12) % 3;
   const start = (varied ? 42 : 56) + (code >>> 16) % (varied ? 23 : 5), width = kind === 'gap' ? 10 + (code >>> 20) % (varied ? 13 : 7) : 14 + (code >>> 20) % (varied ? 17 : 9);
-  return Object.freeze({ version: 2, ...(deep ? { chapter, stage: 'deep' } : {}), kind, floor, rise, start, width, end: start + width,
+  return Object.freeze({ version: 3, random: { schedule: scheduleDecision, shape: shapeDecision }, ...(deep ? { chapter, stage: 'deep' } : {}), kind, floor, rise, start, width, end: start + width,
     approach: 24, exit: 104, recoveryFloor: kind === 'gap' ? floor + 16 : null });
 };
 const challengeSurface = (challenge, x, left, right) => {

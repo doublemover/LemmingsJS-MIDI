@@ -11,7 +11,7 @@ import { GameVictoryCondition } from '../game/GameVictoryCondition.js';
 import { LemmingManager } from '../lemmings/LemmingManager.js';
 import { GameStateTypes } from '../game/GameStateTypes.js';
 import { SkillTypes } from '../game/SkillTypes.js';
-import { assertSolverSnapshotSize, extractSolverState, stableHash } from './SolverState.js';
+import { assertSolverSnapshotSize, extractSolverState, hashMask, stableHash } from './SolverState.js';
 
 const SYNTHETIC_RUNNER_KIND = 'synthetic';
 
@@ -169,6 +169,18 @@ class SyntheticSolverRunner {
 
   getSavedCount() {
     return this.lemmings.filter(lemming => lemming.saved).length;
+  }
+
+  forkForSearch(options = {}) {
+    return new SyntheticSolverRunner({ ...this, timer: { tick: this.tick } }, { ...this.options, builderLength: this.builderLength, maxSurvivableFall: this.maxSurvivableFall, ...options });
+  }
+
+  getSearchState() {
+    return { key: stableHash({ tick: this.tick, width: this.width, height: this.height,
+      ground: hashMask(this.groundMask, this.width, this.height), steel: hashMask(this.steelMask, this.width, this.height),
+      oneWay: this.oneWay, hazards: this.hazards, entrances: this.entrances, exits: this.exits, lemmings: this.lemmings,
+      needCount: this.needCount, releaseCount: this.releaseCount, builderLength: this.builderLength, maxSurvivableFall: this.maxSurvivableFall }),
+    inventory: { ...this.skills } };
   }
 
   getDeadCount() {
@@ -1015,6 +1027,7 @@ const createReplayFailure = ({
 
 const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
   const normalizedOptions = normalizeSolverOptions(options);
+  const replayNow = typeof options.now === 'function' ? options.now : () => Date.now(), replayStarted = replayNow();
   let created;
   try {
     created = resolveRunner(runnerOrSource, { ...normalizedOptions, maxSnapshotPixels: options.maxSnapshotPixels });
@@ -1073,6 +1086,13 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
   };
 
   while (true) {
+    budgetUsage.wallTimeMs = Math.max(0, Math.floor(replayNow() - replayStarted));
+    if (budgetUsage.wallTimeMs > normalizedOptions.maxWallTimeMs) return timeout();
+    const pruning = options.onSearchContinuation?.({ runner, actionQueue, nextActionIndex, appliedActions, budgetUsage });
+    if (pruning) {
+      const result = createReplayResult({ resultType: SOLVER_RESULT_TYPES.UNKNOWN, summary: 'Previously covered search continuation pruned',
+        actions, budgetUsage, runner, appliedActions }); result.searchPruned = pruning; return result;
+    }
     while (nextActionIndex < actionQueue.length) {
       const item = actionQueue[nextActionIndex];
       if (runner.tick < item.start) break;

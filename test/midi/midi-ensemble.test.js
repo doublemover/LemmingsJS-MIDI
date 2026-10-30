@@ -20,6 +20,7 @@ describe('Lemming MIDI ensemble', function() {
       expect(spec).to.include({ ensembleRole: 'bass', pan: 0, spatialPan: true, explicitPan: true });
       for (const local of [false, true]) {
         const calls = [], output = makeOutput([2], calls), scheduler = new MidiScheduler(config);
+        output.channels[2].sendProgramChange = () => {};
         if (local) { output.supportsPerNotePan = true; output.supportsPerNoteInstrument = true; }
         try {
           scheduler.setOutput(output); scheduler.sendNote(spec, { laneIndex: 0, laneCount: 4 });
@@ -47,7 +48,8 @@ describe('Lemming MIDI ensemble', function() {
       const before = calls.length;
       scheduler.sendNote({ ...spec, note: 57, program: 29, pan: -42 });
       const changed = calls.slice(before);
-      expect(changed.slice(0, 2).map(call => call.type)).to.deep.equal(['noteOff', 'noteOff']);
+      expect(changed.map(call => call.type)).to.deep.equal(['noteOff', 'noteOff', 'program', 'cc', 'noteOn']);
+      expect(changed.filter(call => call.type === 'noteOff')).to.have.length(2);
       expect(changed.find(call => call.type === 'program').value).to.equal(29);
       expect(scheduler._activeNotes.size).to.equal(1);
       clock.tick(300);
@@ -79,7 +81,9 @@ describe('Lemming MIDI ensemble', function() {
   it('keeps dedicated ensemble role channels when global MPE is enabled', function() {
     withFakeClockAndPerformance(() => {
       const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [5, 6] } });
-      scheduler.setOutput(makeOutput([1, 2, 5, 6, 10], calls));
+      const output = makeOutput([1, 2, 5, 6, 10], calls);
+      output.channels[2].sendProgramChange = () => {};
+      scheduler.setOutput(output);
       scheduler.sendNote({ note: 45, channel: 2, program: 38, durationTicks: 1, ensembleRole: 'bass' });
       scheduler.sendNote({ note: 36, channel: 10, durationTicks: 1, ensembleRole: 'percussion', percussion: true });
       expect(calls.filter(call => call.type === 'noteOn').map(call => call.id)).to.deep.equal([2, 10]);
@@ -88,17 +92,20 @@ describe('Lemming MIDI ensemble', function() {
     });
   });
 
-  it('reserves edited ensemble channels from MPE setup and other source voices', function() {
+  it('rejects a conflicting MPE zone while retaining explicit ensemble channels', function() {
     withFakeClockAndPerformance(() => {
       const calls = [], config = playable(project());
       config.mpe = { enabled: true, masterChannel: 1, memberChannels: [2, 3, 4, 5, 10] };
       const scheduler = new MidiScheduler(config);
-      scheduler.setOutput(makeOutput([1, 2, 3, 4, 5, 10], calls));
-      expect(calls.filter(call => call.type === 'pitchBend').map(call => call.id)).to.deep.equal([1, 5]);
+      const output = makeOutput([1, 2, 3, 4, 5, 10], calls);
+      output.channels[2].sendProgramChange = () => {};
+      scheduler.setOutput(output);
+      expect(calls.filter(call => call.type === 'pitchBend')).to.deep.equal([]);
+      expect(scheduler.getOutputRouteState().mpeFailure).to.equal('reserved-mpe-channel');
       scheduler.sendNote({ note: 45, channel: 2, program: 38, durationTicks: 4, ensembleRole: 'bass' });
-      scheduler.sendNote({ note: 70, pitchBend: 0.5, durationTicks: 4 });
-      expect(calls.filter(call => call.type === 'noteOn').map(call => call.id)).to.deep.equal([2, 5]);
-      expect(scheduler._activeNotes.size).to.equal(2);
+      expect(scheduler.sendNote({ note: 70, pitchBend: 0.5, durationTicks: 4 })).to.equal(false);
+      expect(calls.filter(call => call.type === 'noteOn').map(call => call.id)).to.deep.equal([2]);
+      expect(scheduler._activeNotes.size).to.equal(1);
       expect(calls.filter(call => call.type === 'pitchBend' && call.id === 2)).to.have.length(0);
       scheduler.dispose();
     });

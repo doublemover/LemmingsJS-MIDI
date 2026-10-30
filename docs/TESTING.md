@@ -18,6 +18,9 @@ npm run bench-long-session-smoke # explicit long-session smoke profile
 npm run bench-performance-soak # long perf soak run (explicit opt-in)
 npm run bench-history-soak # long history soak run (explicit opt-in)
 npm run bench-long-session-soak # long replay/memory/event-queue soak run
+npm run build:browser # immutable generation for ProcGen browser profiling
+# Start the repository HTTP/HTTPS server, then use its actual origin:
+npm run bench-procgen-soak -- --name=rook --url=http://127.0.0.1:8080/dist/browser/procgen.html?seed=42 --duration=60000
 npm run test-workflow   # GitHub workflow helpers
 npm run test-tools      # command line tools
 npm run test-offline-tools # offline asset tooling
@@ -28,6 +31,18 @@ npm run test-mcp-smoke  # MCP stdio smoke test (requires start-https)
 npm run typecheck:critical # targeted checkJs guard for runtime-critical modules
 npm run release-readiness # release checklist gate (strict by default)
 ```
+The ProcGen soak uses the actual workstation adapter and bound executing browser
+generation. It reports completed step and all-render-call durations, actual RAF
+gaps, lifetime births and observed population. It rejects zero completed work,
+failed steps or a changed world owner. Each timing stream retains at most4096
+samples; percentiles explicitly distinguish the full observation set from the
+last bounded window, while counts/means/maxima cover the complete window. Host
+receipts retain at most16,384 observations. Heap is Chromium's allocator estimate;
+a requested heap limit fails qualification when those observations are absent.
+This probe does not establish input/audio tails, fixed-population comparisons,
+instrumentation overhead or native GPU/device performance; #1087 tracks those
+broader scenarios.
+
 Categories map to the ownership groups in `scripts/runTests.js`: `game` includes
 shared action, lemming, terrain, command, history and input checks; `midi` and
 `procgen` cover their complete domain suites. Unknown/shared source changes
@@ -39,9 +54,15 @@ is never the default comparison base. Missing PR targets fall back to the full s
 base ref, changed files, inferred categories, and Mocha args without running
 guards or tests.
 The maintained subset scripts (`test-core`, `test-bench-unit`,
-`test-workflow`, `test-tools`, `test-offline-tools`, and `test-editor`) all go
+`test-workflow`, `test-tools`, `test-offline-tools`, `test-editor`,
+`test:work-removal`, and `test-procgen-long`) all go
 through `scripts/runTests.js`, so they share the same runtime-global guard,
 critical typecheck guard, and runtime budget reporting as `npm test`.
+The work-removal category retains its twelve targeted files; procgen-long keeps
+its integration fixture separate from the default unit suite. Instrumented
+`coverage` commands own their Mocha process under c8; CI runs the static guards
+before that single full coverage pass. Unsupported ad-hoc raw npm entrypoints
+must use the explicit `test:raw:*` prefix.
 
 Tests that require significant manual setup or large downloads belong in
 [`excluded-tests.md`](excluded-tests.md). No tests are currently excluded.
@@ -69,7 +90,9 @@ npm run bench-smoke -- --soak
 
 `bench-history` is the replay-invariant guardrail for compression/rewind work:
 
-- It runs random seek/replay probes and fails on replay-hash divergence
+- It compares applied seek states and complete terrain mask/RGB with independent
+  checkpoints captured during forward execution, then restores the actual
+  starting state boundary. It fails on incomplete or unequal replay
   (`HISTORY_REQUIRE_REPLAY_PARITY`, defaults to `true`).
 - It fails when bounded history retention is not enabled
   (`HISTORY_REQUIRE_BOUNDED_RETENTION`, defaults to `true`).
@@ -77,6 +100,13 @@ npm run bench-smoke -- --soak
   (`HISTORY_REQUIRE_COLD_COMPACTION`, defaults to `true` for `default`/`soak`).
 
 `bench-hotpaths` now reports percentile and allocation diagnostics per section:
+
+Browser performance receipts measure completed ticks per monotonic elapsed time,
+actual RAF gaps, and logic/render execution spans. Requested timer rates are
+configuration fields. MIDI hot paths separate successful fixed work from saturated
+rejection, with deterministic workload clocks, real CPU timers, per-repetition
+admitted/submitted/rejected counts, and final cleanup evidence. These controlled
+CPU fixtures do not measure hardware or live audio throughput.
 
 - `avgMs`, `p50Ms`, `p95Ms`, `p99Ms`, `worstMs`
 - `allocBytesAvg`, `allocBytesP95`, `allocBytesWorst`
@@ -172,7 +202,11 @@ Remove-Item Env:\LEMMINGS_E2E_BASE_URL
 
 The service-worker smoke asserts same-origin scope instead of literal localhost,
 so the same spec should pass for localhost and non-localhost origins served by
-the configured HTTPS server.
+the configured HTTPS server. Disabled editor, ProcGen, test, and performance
+profiles skip registration without deleting existing workers. A page already
+controlled by this app's worker stays controlled until that owned registration
+is explicitly removed and the page reloads. Cache names include the app's
+deployment path; activation removes only older caches from that path.
 
 ## Visual capture smoke
 
@@ -214,9 +248,9 @@ while a lane is in progress, then run the standard gate before final closeout.
 
 | Area | Issues | Capture matrix | Required checkpoint commands | Disposable evidence |
 | --- | --- | --- | --- | --- |
-| MIDI polish | #957 | `midi-transport`, `midi-source-browser`, `midi-track-workspace`, `midi-clip-library`, `midi-inspector`, `midi-learn`, `midi-record`, `midi-output-status`; desktop/tablet/mobile when layout changes | `npm run test-e2e -- e2e/midi-ui.spec.js`; `npm run capture:e2e:midi -- --viewport=desktop --json`; `npm run capture:e2e:midi -- --viewport=tablet --json`; `npm run capture:e2e:midi -- --viewport=mobile --json` | `temp/e2e-captures/`, `temp/midi-lane-*.md` |
-| Editor productization | #954 | states `shell`, `canvas-palette-inspector`, `validation`, `save-import-export`, `playtest`; desktop required, tablet/mobile when controls change | `npm run test-editor`; `npm run test-e2e:harness`; `npm run capture:e2e:editor -- --viewport=desktop --json` | `temp/e2e-captures/`, `temp/editor-lane-*.md` |
-| Procgen productization | #955 | states `overview`, `frontier`, `newest-pieces`; desktop required for seed review, targeted mobile only for shell/layout changes | `npm run test-e2e -- e2e/procgen.spec.js`; `npm run capture:e2e:procgen -- --viewport=desktop --json`; `npm run bench-procgen-soak`; `npm run test-bench-unit` | `temp/e2e-captures/`, `temp/procgen-lane-*.md` |
+| MIDI polish | #957 | `midi-transport`, `midi-source-browser`, `midi-track-workspace`, `midi-clip-library`, `midi-inspector`, `midi-learn`, `midi-record`, `midi-output-status`; 1920x1080 minimum desktop; QHD/UHD when layout changes | `npm run test-e2e -- e2e/midi-ui.spec.js`; `npm run capture:e2e:midi -- --viewport=desktop --json`; `npm run capture:e2e:midi -- --viewport=qhd --json`; `npm run capture:e2e:midi -- --viewport=uhd --json` | `temp/e2e-captures/`, `temp/midi-lane-*.md` |
+| Editor productization | #954 | states `shell`, `canvas-palette-inspector`, `validation`, `save-import-export`, `playtest`; 1920x1080 minimum desktop; QHD/UHD when controls change | `npm run test-editor`; `npm run test-e2e:harness`; `npm run capture:e2e:editor -- --viewport=desktop --json` | `temp/e2e-captures/`, `temp/editor-lane-*.md` |
+| Procgen productization | #955 | states `overview`, `frontier`, `newest-pieces`; 1920x1080 minimum desktop for seed and shell/layout review | `npm run test-e2e -- e2e/procgen.spec.js`; `npm run capture:e2e:procgen -- --viewport=desktop --json`; `npm run bench-procgen-soak`; `npm run test-bench-unit` | `temp/e2e-captures/`, `temp/procgen-lane-*.md` |
 | Solver platform | #956 | no standalone screenshot gate until a UI/editor advisory surface changes; capture editor advisory or solver failure surfaces only when they are user-visible | `npm test`; focused `test/solver*.test.js`; `npm run test-e2e:harness` when runtime adapters or editor advisory flows change; MCP checks after solver tools change | `temp/solver-lane-*.md`, optional `temp/solver-failures/` |
 | Validation and closeout | #953 | capture docs and runner drift are checked by tests; do not create committed galleries or manifests | `npm run format`; `npm run check-undefined`; `npm run lint`; `npm run typecheck:critical`; `npm test`; `npm run test-bench-unit` | `temp/milestone-integration-*.md` |
 
@@ -241,3 +275,12 @@ qualified whole-crew routes remain ordinary regressions.
 compares the preserved old policy explicitly; ordinary regressions require the
 current policy to reach the real goal. Set `LEMMINGS_E2E_EXECUTABLE` to an installed
 Chromium-compatible browser path for local journeys; CI uses Playwright Chromium.
+
+History benchmark default supervision covers the maximum configured sampling
+windows across all selected speeds plus startup/probe allowance. The aggregate
+soak supervisor derives its history deadline from that producer configuration,
+including inherited `HISTORY_DURATION_MS` and `HISTORY_SPEEDS` overrides. This
+does not shorten any sampling window. Reaching the target span can still end a
+scenario early, and receipts retain its actual sampling duration. Explicit
+`HISTORY_MAX_RUNTIME_MS`, `--maxRuntime`, `BENCH_SMOKE_TIMEOUT_MS` or `--timeoutMs`
+limits remain hard limits; they are not silently raised to complete a profile.

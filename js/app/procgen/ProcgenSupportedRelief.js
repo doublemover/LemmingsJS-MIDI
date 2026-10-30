@@ -44,7 +44,7 @@ class ProcgenSupportedRelief {
     this.hazards.length = 0;
     const firstLane = Math.max(0, Math.floor(top / world.laneHeight)), lastLane = Math.min(world.laneCount - 1, Math.floor(bottom / world.laneHeight));
     for (let lane = Math.max(0, firstLane - 1); lane <= Math.min(world.laneCount - 1, lastLane + 1); lane++) {
-      const bucket = world.triggerManager?.byLane[lane] || [];
+      const bucket = world.triggerManager?.getLaneTriggers(lane) || [];
       if (bucket.length > 64) failure ||= 'blocker-limit';
       else for (const t of bucket) if (t.owner && t.owner !== actor && !t.owner.removed && !t.owner.disabled && !t.owner.failureReason && !t.owner.terminalReason &&
           t.owner.action === world.actions[State.BLOCKING] && overlap(bounds, t)) triggers.push({ x1: t.x1, x2: t.x2, y1: t.y1, y2: t.y2, type: t.type, ownerId: t.owner.id });

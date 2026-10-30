@@ -7,6 +7,174 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Export closed physical-take tick crops with captured tempo and speed history, explicit note-boundary refusal and independent desktop clock/export qualification.
+- Preview original cavity scenes through observed private geometry, the existing modal renderer and owned Prelisten cue; preserve unadvanced candidates, explicit spatial exclusions and bounded PCM transport.
+- Preserve cavity topology analysis after canonical journal restore by comparing normalized region definitions, with bounded field-level replay diagnostics.
+- Capture chamber edits before queue publication, prepare bounded cold collision masks on explicit requests, and resume current cavity bodies after owned tails retire.
+- Add three Digging Ocarina scores with native chamber edits, explicit modal mappings, owned body replacement and bounded excitation at original audio frames.
+
+- Preserve probed wall-contact anchors and authored adjacent chamber selection, and keep terrain reveal bookkeeping valid without an installed terrain object.
+
+- Invalidate chamber analysis by affected region and read halo, reuse qualified unchanged geometry across unrelated edits, and preserve honest analysis costs and restored ownership.
+
+- Scale replay restore staging to validated input, reuse normalized immutable checkpoints, and retain independent ownership of nested voice data.
+
+- Bind chamber descriptors and saved voices to their complete topology definitions, retire stale analysis across restore/reset, and refuse incompatible cavity reinterpretation.
+
+- Bind activity rest/cadence history to its source definitions and expose distinct missing route, topology, membership and source-window reasons.
+
+- Preserve formation identity on unknown views, compute actual 2D dispersion and selected-neighbor distances, and bind saved harmonic assignments to their definitions and tuning.
+
+- Add explicitly selected ratio-folded and delayed crowd responses with bounded saved ownership, preserve literal arrival gaps by default, and keep terrain painting from changing edit-cache checkpoint state.
+
+- Accept bounded empty byte chunks in default asset streams, including the final capacity probe, while retiring streams that repeatedly make no progress.
+
+- Bind route history to physical marker definitions, reject unavailable route reinterpretation evidence, and separate nearby sprites by qualified route distance.
+
+- Align route timestamps with pickup source time, reject inconsistent saved route histories before restore, and expose bounded measured/requested period comparisons without resetting physical phase.
+
+- Bind blocker response counters to each action instance, retain both participants' causal ownership, and keep alternating motif tags consistent with the selected interval.
+
+- Retain causal flight provenance on safe landing facts and allow separately named landing, fatal-fall and out-of-world strike articulations.
+
+- Let physical work-cycle mappings select occupancy or appearance changes explicitly, keeping already-solid brick attempts separate from successful material addition.
+
+- Refuse custom legacy instrument loss before project conversion, report per-lane grammar/sound changes, and preserve valid external routing explicitly.
+
+- Preserve opaque future instrument controls through read-only inspection and save/reopen; retain valid dictionary keys in unsupported patch archives and refuse future-schema authoring.
+
+- Refuse malformed hash-valid causal controls and stale mapping revisions, retaining the exact source chunk, sequence, tick and record kind for recovery.
+
+- Capture causal take application build provenance separately from protocol compatibility and explain matching, changed and legacy builds in replay and branch receipts and the take panel.
+
+- Qualify checkpoint reuse and physical branches with a separate complete continuation hash, preserving authoring, crew and topology state while keeping display-only simulation comparisons stable.
+
+- Verify retained hazard descriptors, object slots and queued growth plans against their owned terrain source, preserving physical trigger metadata through cache eviction and recovery.
+
+- Preserve survey actor processing order, causal fact capacity/identity and physical clock intervals; reject detached actor/work/observer bindings while excluding passive delivery counters.
+
+- Bind survey evidence to authoring revisions, crew prerequisites and topology lineage; refuse pending topology publications and unsupported or accessor-based command metadata.
+
+- Verify physical collision and edit cache bindings, retain wall and active-assistance continuations, and refuse ground-query states that previously produced identical survey hashes.
+
+- Bind authored scene evidence to verified source storage and immutable seed mappings, and preserve intrinsic numeric and physical continuation state without executing nested accessors.
+
+- Normalize verified generated-terrain cache residency in survey identity, refuse altered or unproved physical caches, and exclude temporary validation artifacts from terrain source mining.
+
+- Select a captured physical clock epoch per MIDI file, verify preserved clock history and refuse note lifetimes crossing its boundaries.
+
+- Revoice finished physical takes to MIDI1 from captured timeline segments, preserving independent voices and note boundaries while reporting target timbre and expression losses.
+
+- Export original authored UMP Clips per output connection with explicit tempo authority, optional SHA-bound attribution manifests, and safe worker-only import inspection.
+
+- Commit original UMP capture before observer callbacks, fence stale commands after route or Panic changes, and retain export metadata ownership until snapshot producers release.
+
+- Capture original UMP intent before lowering with owned words, explicit source timing and bounded attribution; refuse empty MIDI1 exports of UMP-only sources.
+
+- Expose recorded MIDI source and timing choices, rebase from captured recording boundaries, and keep reused output connection epochs and route revisions separate.
+
+- Encode and validate bounded UMP MIDI Clip Files in admitted workers, preserving original words, configuration/sequence timing and long silent gaps.
+
+- Prepare recorded MIDI files per output route, preserving independent same-channel voices, captured tempo and cancellable source ownership.
+
+- Release partial CCTV surfaces immediately on allocation or context failure, preserving shared render resources.
+
+- Export explicitly mapped physical MIDI time from captured speed and tempo segments, retaining crop silence, causal ties and timing quantization diagnostics.
+
+- Retire shared pointer guards with their active gesture and report measured transport wake gaps while preserving canceled-navigation worlds and output ownership.
+
+- Step paused physics at its recorded nominal rate, restore the stopped clock afterward, and halt before physical pumping when an active take refuses a clock input.
+
+- Preserve the transport clock when projecting legacy speed controls, and reject unmapped or unrepresentable recorded MIDI times instead of exporting them at tick zero.
+
+- Match real walking, hoisting and terminal action names in sustained voice policies while preserving physical source facts and independently owned transitions.
+
+- Release held MIDI voices when their stable lane becomes silent or unavailable, fence queued attacks at submission, and report unsupported crossfades without inventing replacement voices.
+
+- Own deferred physical output and immutable per-sink acknowledgements across route changes, preserve driver receipt identity, and keep semantic-only responses out of active notes and controller caches.
+
+- Preserve terrain drag ownership across competing contacts, cancel source-replaced curve/dock drafts, and retire unhandled releases without interrupting window-level paint commits.
+
+- Keep sound-dial edits and Undo bound to their source, restore displayed values after retired input, and register capture cleanup for curve, dock and terrain controls.
+
+- Release interrupted desktop pointer capture and prevent old paint or camera gestures from reviving after source and zoom changes.
+
+- Keep deferred pattern output outside active notes, cancel retired admissions, and retry controller values independently for each output sink.
+
+- Preserve focused MIDI editor drafts during background refreshes so exported projects retain the committed note value.
+
+- Report both current and legacy browser MIDI security denials explicitly, without retrying access or switching outputs automatically.
+
+- Restore reconstructed browser history entries paused, disarm MIDI thru and recording on page suspension, and release stopped performance registrations before reactivation.
+
+- Reject raw MIDI note and controller plans when reservation callbacks replace their captured output route.
+
+- Coordinate reviewed MIDI, raw/thru messages and standalone clock output with browser performance ownership, explicit takeover and acknowledged cleanup.
+- Admit saved-project checksum work using revision-bound lane metadata instead of reserving a maximum-size document for every load.
+
+- Bind observed contacts to exact retained modal loss masks, aggregate independent owners and fence manual automation before physical ownership.
+
+- Add Felt Bridge's six-mode shared body and independently releasable positive mode-loss masks with live/offline controls and exact preparation-state transfer.
+
+- Prepare original shape bodies in an admitted worker, prelisten explicit sites and save/apply through the existing sound-content owners.
+
+- Add an offline original-solid modal foundry with bounded tetrahedral solves, signed strike/pickup sites, numerical receipts and ordinary sampler pack builds.
+
+- Route observed contact intents into exact shared-body point forces and replay acknowledged strikes without duplicate dry notes.
+
+- Add frame-addressed finite spatial strikes to persistent shared membranes, with bounded exciter queues, exact DSP receipts and drive-aware body retirement.
+
+- Drive circular spectra from qualified directed-route endpoints with stable entry identity, owned rest/reversal and explicit capture precision.
+
+- Map observed contact preparations separately from notes, retain exact shared-body bindings through old tails, and journal their ownership and source ancestry.
+
+- Add independently releasable localized membrane loss patches, shared live/offline control targets and complete prepared-field state transfer.
+
+- Add an owned rectangular membrane with bounded discrete energy, independent stereo pickups, persistent graph tails and exact ringing-state transfer.
+
+- Scope Quarry throws to immutable causal voice selections, with acknowledged overlapping live taps and simultaneous owned-source export.
+
+- Capture effect API commands in causal takes and offer explicit owned-graph command revoice with clock anchors, coverage checks and bound replay manifests.
+
+- Keep staged sidechain returns silent until owner publication and fade retiring donor inputs into bounded tails.
+
+- Add persistent sparse sympathetic bodies and three original prepared maps, with contractive coupling, internal energy bounds and exact topology state transfers.
+
+- Add owned stereo spectral freeze and Glass Hold controls with explicit analysis timing, bounded transient material, phase restoration and an immediate dry path.
+
+- Add travel-driven Hollow Steps notches with normalized lattice DSP, explicit energy bounds, owned feedback and exact modulation state.
+
+- Add actor-travel comb/flange controls backed by bounded cubic delay, exact transition state and source-clock-qualified motion bindings.
+
+- Add prepared Tools Talk, Rust Bloom, Footstep Air and Mirror Breath lane interactions, including shared live/offline stereo ring DSP and owned state transfers.
+
+- Publish owned live lane pre/post-fader source taps across native and Worklet instruments, with bounded shared donor routing and explicit source retirement.
+
+- Fix checkpoint replay and branch retirement, resumable survey evidence, worker source bounds, audio render cleanup, local MIDI admission accounting, and close-follower containment at source fire bridges.
+
+- Add actor-owned action admission, legato/crossfade and hold limits, with explicit lane handoff policies and native/sample/worklet transition ramps.
+
+- Interpret real crowd arrivals, work phases, blocker pairs and flight arcs with actor-owned sustained responses, explicit grouping ancestry and portable estimator state.
+
+- Add indexed world-space pickup geometry, actor-owned occupancy, stable birth/crew ensembles and marker-qualified route coordinates with portable causal boundary state.
+
+- Journal completed physical steps and interventions for incremental recovery, cooperatively capture quiescent checkpoint bases, and atomically commit SHA-256-verified compressed pages with bounded replay/read ownership.
+
+- Propagate typed lane deltas through shared ID indexes, sparse performance journals and targeted visible controls; coalesce authored preference encoding in an admitted background worker with document-fenced publication.
+
+- Commit accepted world recipes independently of UI drafts, preserve each concurrent musical Undo boundary on terrain rollback, and publish immutable batch-identified actor snapshots with bounded reader leases.
+
+- Add typed transactional knob controls, shared pointer ownership across canvas and sound editors, inline validated project naming, and bounded paged project selection.
+
+- Hold bounded worklet credits through terminal acknowledgment, admit renderer replacement peaks before allocation, preflight aggregate object masks, and keep hidden/BFCache worlds explicitly paused without overdue clock bursts.
+
+- Preserve independent physical mapping lifetimes and qualified contact travel; journal manual interventions before mutation, disarm incomplete-source music until explicit recovery, fence stale inspection/export publication, and enforce per-observer telemetry budgets. Runtime and acoustic qualification deferred.
+
+- Fence staged effect and cue-route failures, rearm physical audio correlations after interruptions, serialize offline pack ownership, and preserve cold-history retirement evidence.
+
+- Retain bounded prepared ProcGen project and MIDI exports for exact retry, with separate anchor-request and writable-close delivery receipts.
+- Classify missing browser and Node pack resources consistently, keep seasonal fallback attempts and source provenance visible, verify optional pinned asset hashes, and make strict odd-table requirements explicit.
+
 - Add the ProcGen workstation with eight mixed tileset lanes, Strip/Overlay sequencing, role collections, inspectors, phrase editing, recording, automation and musical Undo.
 - Add a shared BPM/game transport, MIDI clock and transport synchronization, independent clock/note ports, channel conflict reporting and Standard MIDI File performance export.
 - Save versioned full-world checkpoints and musical sessions, with portable files, named browser projects and fresh seeds for new worlds.
@@ -91,6 +259,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Animate actual local note pitches and releases across event rows; move the persistent editor smoothly between layouts without per-frame canvas resizing.
 
 ### Added
+- Added bounded multi-asset PCM sets with aggregate identities, shared attack/release material and retirement through every processor-copy loan; sample-source integration remains in progress.
+- Added an original worker-prepared sample interpolation bank with rate-aware sinc reads, bounded PCM guards and explicit coefficient gain/memory identities; complete sampler integration remains in progress.
+- Added a preallocated observed sample cursor with exact source/output frame units, retained reversals, rest silence, explicit boundary policies and validated state transfer; reader/source integration remains in progress.
+- Added protected stage mode with CURRENT/NEXT cues, exact prepared-base GO, preserved lane performance controls and explicit stopped scene replacement.
+- Added a lazy physical-score browser with pinned four/eight-lane Crossing Corridors, shared-pool preflight, paused world publication and saved scene origins; causal mappings can select exact source lanes.
+- Added pinned physical-scene manifests, complete dependency/variant preflight and fenced candidate ownership; staged browser worlds defer animation and input until publication.
 - Replace hydro's pixel-warp wobble with 24 authored all-chrome articulated dance poses, fixed foot registration and native-rate previews; rebuild neon tubes and classic-style smoke curls.
 - Refine the casino hydro performer to a fully cobalt body, slim enamel triangle head, winged eyeliner and futuristic chrome/luminous stagewear while preserving the three dance loops.
 - Expand the casino into a playable Grand Revue with large marble/gold architecture, long festoon lights,192px image-generated triangle-headed hydro performers, modern chip inlays, and a dense smoke hazard using the shared action system.

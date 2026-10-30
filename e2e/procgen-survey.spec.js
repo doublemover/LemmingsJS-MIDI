@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { generateProcgenSurveyCandidates } from '../js/app/procgen/survey/ProcgenSurveyCandidates.js';
@@ -6,15 +7,17 @@ import { createSurveyServer } from '../scripts/procgen-survey/SurveyServer.js';
 import { runSurveyJobs } from '../scripts/procgen-survey/SurveyWorkerPool.js';
 import { createSurveySourceManifest, createNodeSurveyTrial } from '../scripts/procgen-survey/SurveyNodeWorld.js';
 import { normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyScenario.js';
+import { createBrowserSurveyFixtureReport } from './helpers/surveyReport.js';
 
 test.use({ permissions: [] });
 test.describe('procgen survey native boundary', () => {
   test('matches real controlled and source replay, keeps tile focus, and renders 64 queued logical candidates @boundary', async ({ page }, testInfo) => {
     test.setTimeout(60000);
-    const filename = process.env.LEMMINGS_SURVEY_REPORT; if (!filename) throw new Error('Set LEMMINGS_SURVEY_REPORT to the completed bounded qualification report');
-    const report = JSON.parse(await fs.readFile(filename, 'utf8')).value, errors = []; page.on('pageerror', error => errors.push(error.message));
+    const filename = process.env.LEMMINGS_SURVEY_REPORT;
+    const report = filename ? JSON.parse(await fs.readFile(filename, 'utf8')).value : await createBrowserSurveyFixtureReport(), errors = [];
+    page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => { window.__surveyOutputRequests = { midi: 0, audio: 0 }; navigator.requestMIDIAccess = () => { window.__surveyOutputRequests.midi++; throw new Error('Survey must stay muted'); }; window.AudioContext = class { constructor() { window.__surveyOutputRequests.audio++; throw new Error('Survey must stay muted'); } }; });
-    await page.goto('/procgen-survey.html'); await page.locator('#surveyFile').setInputFiles(filename);
+    await page.goto('/procgen-survey.html'); await page.locator('#surveyFile').setInputFiles({ name: 'browser-survey.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ value: report })) });
     await expect(page.locator('.survey-tile:visible')).toHaveCount(16);
     const first = page.locator('.survey-tile:visible').first(); await first.focus(); const identity = await first.getAttribute('data-trial-id');
     await page.evaluate(() => { const dashboard = window.__procgenSurveyDashboard; dashboard.load(dashboard.getReport()); dashboard.render(); });
@@ -25,7 +28,8 @@ test.describe('procgen survey native boundary', () => {
       const original = report.results.find(result => result.scenarioId === scene && result.candidate.kind === 'baseline');
       await page.evaluate(id => { delete window.__procgenSurveyReplayReceipt; window.__procgenSurveyDashboard.select(id); }, original.trialId);
       await page.locator('#surveyReplay').click(); await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
-      const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt); expect(receipt.matched).toBe(true); expect(receipt.independentSample).toBe(false); replays.push(receipt);
+      const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt); expect(receipt.matched).toBe(false); expect(receipt.compatibilityMatch).toBe(true);
+      expect(receipt.executionIdentity.status).toBe('unbound'); expect(receipt.independentSample).toBe(false); replays.push(receipt);
     }
     await expect(page.locator('.survey-tile:visible')).toHaveCount(2);
     const candidates = generateProcgenSurveyCandidates({ count: 64 }), scenario = report.manifest.scenarios[0];
@@ -52,8 +56,10 @@ test.describe('procgen survey native boundary', () => {
       await expect(page.locator('#surveyPause')).toHaveText('Resume all'); await page.locator('#surveyPause').click();
       await expect.poll(() => telemetry.size).toBeGreaterThan(0); await page.locator('#surveyPause').click();
       await expect.poll(() => lastState.paused).toBe(true); await page.locator('#surveyStep').click();
-      await expect.poll(() => lastState.reachedCheckpoint).toBeTruthy();
-      expect(lastState.ticks.every(record => record.tick === lastState.reachedCheckpoint)).toBe(true);
+      await expect.poll(() => lastState.stepReceipt?.status).toBe('reached');
+      expect(lastState.stepReceipt.selected.every(record => record.tick === lastState.stepReceipt.reachedCheckpoint)).toBe(true);
+      await expect(page.locator('#surveyStepReceipt')).toContainText(`Reached checkpoint tick ${lastState.stepReceipt.reachedCheckpoint}`);
+      await expect(page.locator('#surveyStepSelection')).toContainText(jobs[0].trialId);
       await page.locator('#surveyCancel').click(); const outcome = await pool; expect(outcome.cancelled).toBe(true); expect(outcome.results).toHaveLength(16);
       expect(outcome.results.every(result => !result.episodeComplete)).toBe(true); expect(states).toEqual(['resume', 'pause', 'step', 'cancel']);
       await testInfo.attach('survey-native-controls.json', { body: JSON.stringify({ states, lastState, statuses: outcome.results.map(result => ({ trialId: result.trialId, status: result.status, lastTick: result.lastTick })) }), contentType: 'application/json' });
@@ -103,8 +109,8 @@ test.describe('survey recorded review interactions', () => {
     await expect(page.locator('#surveyTick')).toHaveText('Tick 64');
   });
 
-  test('explains an absent baseline and fits a narrow review viewport', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+  test('explains an absent baseline and fits the supported desktop review viewport', async ({ page }) => {
+    await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
     await page.goto('/procgen-survey.html');
     const report = reviewFixture(); report.results = report.results.slice(1);
     await page.evaluate(value => window.__procgenSurveyDashboard.load(value), report);
@@ -260,7 +266,7 @@ test.describe('survey report and replay ownership', () => {
 });
 
 
-test('saved exact-source reports replay muted controlled and generated trials and reject changed bytes', async ({ page }, testInfo) => {
+test('saved reports compare current muted controlled and generated trials with explicit source uncertainty and reject changed assets', async ({ page }, testInfo) => {
   test.setTimeout(60000);
   const scenes = [normalizeSurveyScenario({ id: 'saved-controlled', horizonTicks: 64 }),
     normalizeSurveyScenario({ id: 'saved-generated', mode: 'generated', pack: 'lemmings_ohNo', groundSet: 0, horizonTicks: 64, laneHeight: 144 })];
@@ -283,15 +289,23 @@ test('saved exact-source reports replay muted controlled and generated trials an
     await page.locator('#surveyReplay').click();
     await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
     const receipt = await page.evaluate(() => window.__procgenSurveyReplayReceipt);
-    expect(receipt.matched).toBe(true); expect(receipt.independentSample).toBe(false); receipts.push(receipt);
+    expect(receipt.matched).toBe(false); expect(receipt.compatibilityMatch).toBe(true);
+    expect(receipt.executionIdentity.status).toBe('unbound'); expect(receipt.independentSample).toBe(false); receipts.push(receipt);
   }
   await page.route('**/js/app/procgen/survey/ProcgenSurveyCore.js', route => route.fulfill({ contentType: 'text/javascript', body: '// changed source bytes' }));
+  await page.evaluate(() => { delete window.__procgenSurveyReplayReceipt; });
+  await page.locator('#surveyReplay').click();
+  await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
+  await expect(page.locator('#surveyReplayStatus')).toContainText('The active build is unverified', { timeout: 30000 });
+  expect(await page.evaluate(() => window.__procgenSurveyReplayReceipt)).toMatchObject({ matched: false, compatibilityMatch: true, executionIdentity: { status: 'unbound' } });
+  const asset = Object.keys(sourceManifest.assetHashes)[0];
+  await page.route('**/' + asset, route => route.fulfill({ contentType: 'application/octet-stream', body: Buffer.from([0]) }));
   await page.locator('#surveyReplay').click();
   await expect(page.locator('#surveyReplayStatus')).toContainText('Replay source differs from the saved trial', { timeout: 30000 });
   expect(await page.evaluate(() => window.__procgenSurveyReplayReceipt)).toBeUndefined();
   const outputs = await page.evaluate(() => window.__surveyOutputRequests);
   expect(outputs).toEqual({ midi: 0, audio: 0 }); expect(errors).toEqual([]);
-  await testInfo.attach('saved-report-source-replay.json', { body: JSON.stringify({ sourceDigest: sourceManifest.codeDigest, receipts, outputs, errors, changedSourceRejected: true }), contentType: 'application/json' });
+  await testInfo.attach('saved-report-source-replay.json', { body: JSON.stringify({ sourceDigest: sourceManifest.codeDigest, receipts, outputs, errors, activeCodeUnverified: true, changedAssetRejected: true }), contentType: 'application/json' });
 });
 
 
@@ -347,7 +361,7 @@ test('scenario and policy-seed review preserves candidate identity and exposes d
   await expect(page.locator('#surveyOutcomeSummary')).toContainText('Incomplete episode');
   await page.locator('#surveyFilter').selectOption('incomplete');
   await expect(page.locator('.survey-tile:visible')).toHaveCount(2);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Next scenario', exact: true }).click();
   await expect(page.locator('#surveyNextScene')).toBeDisabled();

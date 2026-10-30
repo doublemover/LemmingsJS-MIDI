@@ -55,7 +55,11 @@ describe('build-mcpb-bundle helpers', function () {
       fs.writeFileSync(path.join(rootDir, 'mcpb', 'server.editor.json'), '{"server":"editor"}');
       fs.writeFileSync(path.join(rootDir, 'mcpb', '.mcpbignore'), 'node_modules');
       fs.writeFileSync(path.join(rootDir, 'keybindings.json'), '{"ok":true}');
-      fs.writeFileSync(path.join(rootDir, 'mcp', 'dep.js'), 'export const value = 42;');
+      fs.mkdirSync(path.join(rootDir, 'js', 'solver'), { recursive: true });
+      fs.writeFileSync(path.join(rootDir, 'mcp', 'dep.js'), 'export { value } from "../js/solver/entry.js";');
+      fs.writeFileSync(path.join(rootDir, 'js', 'solver', 'entry.js'), 'export { value } from "./leaf.js";');
+      fs.writeFileSync(path.join(rootDir, 'js', 'solver', 'leaf.js'), 'export const value = 42;');
+      fs.writeFileSync(path.join(rootDir, 'mcp', 'spectator.html'), '<!doctype html><title>Spectator</title>');
       fs.writeFileSync(path.join(rootDir, 'mcp', 'server.js'), 'import { value } from "./dep.js"; export const ok = value === 42;');
 
       await buildBundle({
@@ -69,6 +73,9 @@ describe('build-mcpb-bundle helpers', function () {
       expect(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8')).to.equal('{"name":"editor-package","type":"module"}');
       expect(fs.readFileSync(path.join(outDir, 'server.json'), 'utf8')).to.equal('{"server":"editor"}');
       expect(fs.existsSync(path.join(outDir, 'mcp', 'dep.js'))).to.equal(true);
+      expect(fs.existsSync(path.join(outDir, 'js', 'solver', 'leaf.js'))).to.equal(true);
+      const closure = JSON.parse(fs.readFileSync(path.join(outDir, 'runtime-closure.json'), 'utf8'));
+      expect(closure.files.some(file => file.path === 'js/solver/leaf.js' && /^[a-f0-9]{64}$/.test(file.sha256))).to.equal(true);
       const builtServer = await import(pathToFileURL(path.join(outDir, 'mcp', 'server.js')).href);
       expect(builtServer.ok).to.equal(true);
 

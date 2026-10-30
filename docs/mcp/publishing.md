@@ -8,8 +8,16 @@ bundles plus GitHub registry publication. Streamable HTTP is not wired up yet.
 The MCPB bundle uses the repo root as the runtime base:
 
 - `mcp/` (stdio server entry, tools, spectator UI, and support modules)
+- the complete relative executable closure under `js/` (including solver/game dependencies)
 - `keybindings.json` (tool input mappings)
 - `manifest.json`, `package.json`, `server.json`, `.mcpbignore`
+- `runtime-closure.json` (source/resource paths, SHA-256, sizes and dependency versions)
+
+The builder parses static imports, exports, literal dynamic imports and relative
+URL assets using the repository's TypeScript parser. Missing imports, computed
+module imports, escaping paths and undeclared package dependencies fail staging.
+Relative layout is preserved. Runtime package versions come from the repository
+manifest; the parser itself remains a build dependency outside the artifact.
 
 Use the MCPB bundle templates in `mcpb/` and build a staging bundle with:
 
@@ -51,6 +59,16 @@ npm install --omit=dev
 ```
 
 ## Build/validate the MCPB
+
+`npm run mcpb:qualify` stages every advertised surface, copies each outside the
+checkout, installs only its declared production dependencies, and performs a
+bounded stdio initialization/tools-list handshake. The all-surfaces package also
+executes a solver route request. Child processes have no `NODE_PATH` or
+`NODE_OPTIONS`, so checkout dependencies cannot hide missing packaged sources.
+This qualification needs npm registry access; it does not start a browser or
+qualify browser session workflows. Source closure inspection is a static check,
+separate from this runtime qualification. Runtime execution is deferred during
+the current backlog implementation pass.
 
 ```
 cd dist/mcpb

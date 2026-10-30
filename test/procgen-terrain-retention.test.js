@@ -10,6 +10,22 @@ describe('lossless interest-based procgen terrain retention', function() {
   this.timeout(30000);
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
+  it('keeps renderer revision peeks outside the physical retention order and epochs', () => {
+    const revisions = new ProcgenTerrainRevisions(1, 2);
+    revisions.set(0, 4); revisions.set(1, 9);
+    const before = [...revisions], epochs = [...revisions.epochs], stats = { ...revisions.stats };
+    expect(revisions.peek(0)).to.equal(4);
+    expect(revisions.peek(500)).to.equal(0);
+    expect([...revisions]).to.deep.equal(before);
+    expect([...revisions.epochs]).to.deep.equal(epochs);
+    expect(revisions.stats).to.deep.equal(stats);
+    revisions.set(2, 12);
+    expect(revisions.has(0)).to.equal(false);
+    expect(revisions.peek(0)).to.equal(-1);
+    expect(revisions.size).to.equal(2);
+    revisions.read(1);
+    expect([...revisions.keys()]).to.deep.equal([2, 1]);
+  });
   it('bounds dense storage while preserving sparse runs, fragmented raw patches and Map-compatible reads', () => {
     const retired = [], store = new ProcgenTerrainEdits(64, 2, key => retired.push(key));
     const sparse = dense(64, [[3, 1], [4, 1], [5, 1], [60, 4]]), fragmented = Uint8Array.from({ length: 64 }, (_, index) => index % 2 ? 4 : 1);

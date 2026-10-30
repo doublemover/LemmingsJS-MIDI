@@ -1,0 +1,818 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.artificial-choir",
+    "version": "0.1.0",
+    "name": "Artificial choir",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original stylized synthetic choir recipes using artificial formant landmarks; no voice recordings or anatomical model.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "choir.base",
+      "revision": 1,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "synthetic-choir",
+        "artificial-formants",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-choir",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original stylized synthetic choir recipes using artificial formant landmarks; no voice recordings or anatomical model.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.025,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.1,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.8,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.18,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.75,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.7,
+        "pan01": 0
+      },
+      "dependencies": [],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 4903,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "voice-size",
+            "parameter": "sizeRatio",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "vocal-sibling",
+                "weight": 1
+              }
+            ]
+          },
+          {
+            "id": "entry-softness",
+            "parameter": "attackSeconds",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.12,
+            "factors": [
+              {
+                "id": "vocal-sibling",
+                "weight": 0.5
+              },
+              {
+                "id": "entry",
+                "weight": 0.5
+              }
+            ]
+          }
+        ],
+        "eventTargets": [
+          {
+            "id": "entry-breath",
+            "parameter": "breath01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.02,
+            "factors": [
+              {
+                "id": "breath",
+                "weight": 1
+              }
+            ]
+          }
+        ]
+      },
+      "causalBindings": [
+        {
+          "id": "motion-breath",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "breath01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "ratio",
+          "outputMin": 0.7,
+          "outputMax": 1.3,
+          "curve": "linear",
+          "composition": "scale",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "step-vowel",
+          "sourceKind": "ContactResolved",
+          "payloadField": "stepHeightPixels",
+          "target": "vowel01",
+          "unit": "world-pixel",
+          "inputMin": -8,
+          "inputMax": 8,
+          "outputUnit": "normalized",
+          "outputMin": -0.15,
+          "outputMax": 0.15,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 32
+        }
+      ]
+    },
+    {
+      "id": "choir.hollow-ooh",
+      "revision": 1,
+      "extends": "choir.base",
+      "name": "Hollow Ooh",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "breath01": {
+              "value": 0.08,
+              "unit": "normalized"
+            },
+            "chorusCents": {
+              "value": 4,
+              "unit": "cents"
+            },
+            "vibratoCents": {
+              "value": 2,
+              "unit": "cents"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "vowel01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "sizeRatio": {
+              "value": 1.2,
+              "unit": "ratio"
+            },
+            "vowelStep": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "bandwidthScale": {
+              "value": 1,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.04,
+              "unit": "s"
+            },
+            "releaseSeconds": {
+              "value": 0.3,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "vowel",
+          "name": "VOWEL",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move among three original artificial vowel landmarks; Robot Choir selects stepped landmarks.",
+          "targets": [
+            {
+              "parameter": "vowel01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "breath",
+          "name": "BREATH",
+          "mode": "onset-only",
+          "default01": 0.1142857142857143,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend actor-seeded breath into the voiced excitation without creating another onset.",
+          "targets": [
+            {
+              "parameter": "breath01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.7,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "size",
+          "name": "SIZE",
+          "mode": "onset-only",
+          "default01": 0.6315172029168968,
+          "smoothingMs": 0,
+          "perceptualDirection": "Scale formant frequencies and bandwidths without changing the carrier pitch.",
+          "targets": [
+            {
+              "parameter": "sizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "chorus",
+          "name": "CHORUS",
+          "mode": "onset-only",
+          "default01": 0.3333333333333333,
+          "smoothingMs": 0,
+          "perceptualDirection": "Spread a phase-owned detuned sibling inside the same logical voice.",
+          "targets": [
+            {
+              "parameter": "chorusCents",
+              "minimum": {
+                "value": 0,
+                "unit": "cents"
+              },
+              "maximum": {
+                "value": 12,
+                "unit": "cents"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "choir.paper-aah",
+      "revision": 1,
+      "extends": "choir.base",
+      "name": "Paper Aah",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "breath01": {
+              "value": 0.2,
+              "unit": "normalized"
+            },
+            "chorusCents": {
+              "value": 3,
+              "unit": "cents"
+            },
+            "vibratoCents": {
+              "value": 1,
+              "unit": "cents"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "vowel01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "sizeRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "vowelStep": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "bandwidthScale": {
+              "value": 0.8,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.025,
+              "unit": "s"
+            },
+            "releaseSeconds": {
+              "value": 0.18,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "vowel",
+          "name": "VOWEL",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move among three original artificial vowel landmarks; Robot Choir selects stepped landmarks.",
+          "targets": [
+            {
+              "parameter": "vowel01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "breath",
+          "name": "BREATH",
+          "mode": "onset-only",
+          "default01": 0.28571428571428575,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend actor-seeded breath into the voiced excitation without creating another onset.",
+          "targets": [
+            {
+              "parameter": "breath01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.7,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "size",
+          "name": "SIZE",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Scale formant frequencies and bandwidths without changing the carrier pitch.",
+          "targets": [
+            {
+              "parameter": "sizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "chorus",
+          "name": "CHORUS",
+          "mode": "onset-only",
+          "default01": 0.25,
+          "smoothingMs": 0,
+          "perceptualDirection": "Spread a phase-owned detuned sibling inside the same logical voice.",
+          "targets": [
+            {
+              "parameter": "chorusCents",
+              "minimum": {
+                "value": 0,
+                "unit": "cents"
+              },
+              "maximum": {
+                "value": 12,
+                "unit": "cents"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "choir.tiny-ee",
+      "revision": 1,
+      "extends": "choir.base",
+      "name": "Tiny Ee",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "breath01": {
+              "value": 0.12,
+              "unit": "normalized"
+            },
+            "chorusCents": {
+              "value": 5,
+              "unit": "cents"
+            },
+            "vibratoCents": {
+              "value": 3,
+              "unit": "cents"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "vowel01": {
+              "value": 1,
+              "unit": "normalized"
+            },
+            "sizeRatio": {
+              "value": 0.7,
+              "unit": "ratio"
+            },
+            "vowelStep": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "bandwidthScale": {
+              "value": 1.1,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.02,
+              "unit": "s"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "vowel",
+          "name": "VOWEL",
+          "mode": "onset-only",
+          "default01": 1,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move among three original artificial vowel landmarks; Robot Choir selects stepped landmarks.",
+          "targets": [
+            {
+              "parameter": "vowel01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "breath",
+          "name": "BREATH",
+          "mode": "onset-only",
+          "default01": 0.17142857142857143,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend actor-seeded breath into the voiced excitation without creating another onset.",
+          "targets": [
+            {
+              "parameter": "breath01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.7,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "size",
+          "name": "SIZE",
+          "mode": "onset-only",
+          "default01": 0.24271341358512086,
+          "smoothingMs": 0,
+          "perceptualDirection": "Scale formant frequencies and bandwidths without changing the carrier pitch.",
+          "targets": [
+            {
+              "parameter": "sizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "chorus",
+          "name": "CHORUS",
+          "mode": "onset-only",
+          "default01": 0.4166666666666667,
+          "smoothingMs": 0,
+          "perceptualDirection": "Spread a phase-owned detuned sibling inside the same logical voice.",
+          "targets": [
+            {
+              "parameter": "chorusCents",
+              "minimum": {
+                "value": 0,
+                "unit": "cents"
+              },
+              "maximum": {
+                "value": 12,
+                "unit": "cents"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "choir.robot-choir",
+      "revision": 1,
+      "extends": "choir.base",
+      "name": "Robot Choir",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "breath01": {
+              "value": 0.05,
+              "unit": "normalized"
+            },
+            "chorusCents": {
+              "value": 2,
+              "unit": "cents"
+            },
+            "vibratoCents": {
+              "value": 0,
+              "unit": "cents"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "vowel01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "sizeRatio": {
+              "value": 0.85,
+              "unit": "ratio"
+            },
+            "vowelStep": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "bandwidthScale": {
+              "value": 0.7,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "releaseSeconds": {
+              "value": 0.08,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "vowel",
+          "name": "VOWEL",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move among three original artificial vowel landmarks; Robot Choir selects stepped landmarks.",
+          "targets": [
+            {
+              "parameter": "vowel01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "breath",
+          "name": "BREATH",
+          "mode": "onset-only",
+          "default01": 0.07142857142857144,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend actor-seeded breath into the voiced excitation without creating another onset.",
+          "targets": [
+            {
+              "parameter": "breath01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.7,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "size",
+          "name": "SIZE",
+          "mode": "onset-only",
+          "default01": 0.3827673731814885,
+          "smoothingMs": 0,
+          "perceptualDirection": "Scale formant frequencies and bandwidths without changing the carrier pitch.",
+          "targets": [
+            {
+              "parameter": "sizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "chorus",
+          "name": "CHORUS",
+          "mode": "onset-only",
+          "default01": 0.16666666666666666,
+          "smoothingMs": 0,
+          "perceptualDirection": "Spread a phase-owned detuned sibling inside the same logical voice.",
+          "targets": [
+            {
+              "parameter": "chorusCents",
+              "minimum": {
+                "value": 0,
+                "unit": "cents"
+              },
+              "maximum": {
+                "value": 12,
+                "unit": "cents"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

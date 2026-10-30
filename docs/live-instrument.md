@@ -102,11 +102,11 @@ The cloud's browser launch is blocked by socket restrictions. DOM/core tests and
 recorded source checks are not a visual playthrough or listening acceptance.
 The existing GitHub CI on 97128aff passed its smoke, coverage, and registry audit
 (0 vulnerabilities). It did not run the new workbench visual acceptance.
-`e2e/instrument-workbench.spec.js` adds focused layout/undo/mobile checks to the
+`e2e/instrument-workbench.spec.js` adds focused desktop layout/undo checks to the
 source harness without expanding CI jobs. Run a browser smoke on the final branch
 before merging:
 
-- At 1600×1000 and 1024×768, open each layout repeatedly. Confirm one live canvas,
+- At 1920×1080, 2560×1440 and 3840×2160, open each layout repeatedly. Confirm one live canvas,
   visible top-left game area, readable values, no cropped controls, and unchanged
   zoom/selection. Close/reopen retains layout and selection.
 - Play a level with Build events, turn on local listening, select Build, choose
@@ -121,8 +121,8 @@ before merging:
   screen-reader pass remains unrun.
 - Try Classic, Hydro, each additional body, and Mixed. Rewind and reload; confirm
   stable shapes and the original game's movement, collision, and skill behavior.
-- On a mobile user agent without `?midi=1`, confirm MIDI and local audio remain
-  hidden/inactive without changing saved projects.
+The supported minimum is 1920×1080 desktop. Phone/tablet emulation and
+orientation checks are outside the product scope.
 
 Remaining larger work is tracked only in `docs/roadmap.md`.
 

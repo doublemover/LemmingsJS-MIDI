@@ -10,6 +10,7 @@ import { LevelLoader } from '../level/LevelLoader.js';
 import { MaskProvider } from '../render/MaskProvider.js';
 import { PaletteImage } from '../render/PaletteImage.js';
 import { SkillPanelSprites } from '../render/SkillPanelSprites.js';
+import { ResourceLoadError } from '../data/file-provider/ResourceLoadError.js';
 
 class GameResources extends BaseLogger {
   constructor(fileProvider, config) {
@@ -19,25 +20,42 @@ class GameResources extends BaseLogger {
     /** mechanics settings for gameplay */
     this.mechanics = config.mechanics || {};
     this.mainDat = null;
+    this._mainDatVersion = 0;
+    this._mainDatContainer = null;
+    this._disposed = false;
+    this._mainDatController = new AbortController();
   }
   /** return the main.dat file container */
   getMainDat() {
+    if (this._disposed) return Promise.reject(new ResourceLoadError('cancelled', `${this.config.path}/MAIN.DAT`));
     if (this.mainDat !== null) {
       return this.mainDat;
     }
-    this.mainDat = this._loadMainDat();
+    this.mainDat = this._loadMainDat(this._mainDatVersion);
     return this.mainDat;
   }
-  async _loadMainDat() {
+  async _loadMainDat(version = this._mainDatVersion) {
+    let data;
     try {
-      const data = await this.fileProvider.loadBinary(this.config.path, 'MAIN.DAT');
+      data = await this.fileProvider.loadBinary(this.config.path, 'MAIN.DAT', { signal: this._mainDatController.signal });
+      if (this._disposed || version !== this._mainDatVersion) throw new ResourceLoadError('cancelled', `${this.config.path}/MAIN.DAT`);
       const Container = getDependency('FileContainer', FileContainer);
-      return new Container(data);
+      this._mainDatContainer = new Container(data);
+      return this._mainDatContainer;
     } catch (e) {
-      this.mainDat = null;
+      if (version === this._mainDatVersion) this.mainDat = null;
       this.log.log('Failed to load MAIN.DAT', e);
       throw e;
-    }
+    } finally { data?.release?.(); }
+  }
+  dispose() {
+    if (this._disposed) return;
+    this._disposed = true; this._mainDatVersion++;
+    this._mainDatController.abort();
+    const prepared = this._mainDatContainer;
+    prepared?.dispose?.(); this._mainDatContainer = null;
+    const pending = this.mainDat; this.mainDat = null;
+    if (!prepared) pending?.then(container => container.dispose?.(), () => {});
   }
   async getLemmingsSprite(colorPalette) {
     const base = await this._getBaseLemmingsSprite(colorPalette);
@@ -58,6 +76,7 @@ class GameResources extends BaseLogger {
     }
   }
   async _getBaseLemmingsSprite(colorPalette) {
+    if (this._disposed) throw new ResourceLoadError('cancelled', this.config.path);
     const skinPath = this.config.spriteSkin;
     if (skinPath) {
       if (typeof skinPath !== 'string') throw new Error('spriteSkin must be a manifest path');
@@ -76,35 +95,44 @@ class GameResources extends BaseLogger {
     }
     const container = await this.getMainDat();
     const Sprite = getDependency('LemmingsSprite', LemmingsSprite);
-    return new Sprite(container.getPart(0), colorPalette);
+    const part = container.getPart(0);
+    try { return new Sprite(part, colorPalette); }
+    finally { part.release?.(); }
   }
   async getSkillPanelSprite(colorPalette) {
     const container = await this.getMainDat();
     const PanelSprites = getDependency('SkillPanelSprites', SkillPanelSprites);
-    return new PanelSprites(container.getPart(2), container.getPart(6), colorPalette);
+    const a = container.getPart(2); let b;
+    try { b = container.getPart(6); return new PanelSprites(a, b, colorPalette); }
+    finally { a.release?.(); b?.release?.(); }
   }
   async getCursorSprite() {
     const container = await this.getMainDat();
     const fr = container.getPart(5);
-    const Palette = getDependency('PaletteImage', PaletteImage);
-    const pimg = new Palette(14, 14);
-    pimg.processImage(fr, 1);
-    pimg.processTransparentByColorIndex(0);
-    const PaletteCtor = getDependency('ColorPalette', ColorPalette);
-    const pal = new PaletteCtor();
-    pal.setColorRGB(1, 255, 255, 255);
-    return pimg.createFrame(pal);
+    try {
+      const Palette = getDependency('PaletteImage', PaletteImage);
+      const pimg = new Palette(14, 14);
+      pimg.processImage(fr, 1);
+      pimg.processTransparentByColorIndex(0);
+      const PaletteCtor = getDependency('ColorPalette', ColorPalette);
+      const pal = new PaletteCtor();
+      pal.setColorRGB(1, 255, 255, 255);
+      return pimg.createFrame(pal);
+    } finally { fr.release?.(); }
   }
   async getMasks() {
     const container = await this.getMainDat();
     const Provider = getDependency('MaskProvider', MaskProvider);
-    return new Provider(container.getPart(1));
+    const part = container.getPart(1);
+    try { return new Provider(part); }
+    finally { part.release?.(); }
   }
   /** return the Level Data for a given Level-Index */
-  getLevel(levelMode, levelIndex) {
+  getLevel(levelMode, levelIndex, options = {}) {
+    if (this._disposed) return Promise.reject(new ResourceLoadError('cancelled', this.config.path));
     const Loader = getDependency('LevelLoader', LevelLoader);
     const levelReader = new Loader(this.fileProvider, this.config);
-    return levelReader.getLevel(levelMode, levelIndex);
+    return levelReader.getLevel(levelMode, levelIndex, options);
   }
   /** return the level group names for this game */
   getLevelGroups() {

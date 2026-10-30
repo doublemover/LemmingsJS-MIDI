@@ -1,5 +1,6 @@
 import { createProcgenTimingDriver } from './ProcgenTimingDriver.js';
 import { clearProcgenMidiQueue, sendProcgenMidiBytes, songPositionBytes } from './ProcgenMidiBytes.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const finite = (value, fallback, min, max) => Number.isFinite(Number(value)) ? Math.max(min, Math.min(max, Number(value))) : fallback;
 
@@ -18,28 +19,40 @@ export function createProcgenTransport(options = {}) {
   const suspensionMs = finite(options.suspensionMs, 250, 100, 2000);
   const clockLossMs = finite(options.clockLossMs, 750, 100, 5000);
   let playing = false, disposed = false, anchorBeat = 0, anchorMs = now(), nextPulse = 0;
+  const retirement = createProcgenRetirementScope();
   let lastWake = anchorMs, lastClock = null, waitingSince = anchorMs, intervals = [];
   let clockOutput = options.clockOutput || null, reason = 'ready', clockStatus = 'stopped';
+  let outputAdmission = null, clockHorizon = 0, clockStopFailure = null, clockRetirement = null, lastDiscontinuity = null;
   const beatAt = timestamp => playing && clockSource === 'internal'
     ? Math.min(Number.MAX_SAFE_INTEGER / 24, anchorBeat + Math.max(0, timestamp - anchorMs) * (bpm / 60000)) : anchorBeat;
-  const getState = () => ({ version: 1, playing, timestamp: now(), beat: beatAt(now()), bpm, baseBpm, gameSpeed, speedMode, linked, clockSource,
+  const nominalSpeed = () => linked && (speedMode === 'bpm' || clockSource === 'external') ? bpm / 120 : gameSpeed;
+  const getState = () => ({ version: 1, playing, timestamp: now(), beat: beatAt(now()), bpm, baseBpm, gameSpeed, speedMode, linked, clockSource, nominalSpeed: nominalSpeed(),
     effectiveSpeed: playing && (clockSource !== 'external' || clockStatus === 'locked')
-      ? (linked && (speedMode === 'bpm' || clockSource === 'external') ? bpm / 120 : gameSpeed) : 0,
-    tempoLocked: clockSource === 'external', clockStatus, reason });
+      ? nominalSpeed() : 0,
+    tempoLocked: clockSource === 'external', clockStatus, reason, lastDiscontinuity });
   const report = () => { const state = getState(); onPosition(state); return state; };
   const speed = () => onSpeed(getState().effectiveSpeed);
-  const send = (bytes, timestamp = now()) => {
+  const send = (bytes, timestamp = now(), cleanup = false) => {
     if (clockSource === 'external' || !clockOutput) return true;
-    try { return sendProcgenMidiBytes(clockOutput, bytes, timestamp); }
-    catch { return false; }
+    const admission = outputAdmission, guard = admission ? () => admission(cleanup) === true : null;
+    try {
+      if (guard && !guard()) return false;
+      clockHorizon = Math.max(clockHorizon, timestamp);
+      const accepted = sendProcgenMidiBytes(clockOutput, bytes, timestamp, guard);
+      if (!accepted && cleanup) clockStopFailure = 'clock-stop-submission-unconfirmed'; return accepted;
+    } catch (error) { if (cleanup && !error?.midiSubmissionRejected) clockStopFailure = 'clock-stop-submission-unconfirmed'; return false; }
   };
-  const flush = why => { clearProcgenMidiQueue(clockOutput); onFlush(why); };
+  const flush = why => {
+    const admission = outputAdmission;
+    if ((!admission || clockHorizon > now()) && clearProcgenMidiQueue(clockOutput, admission ? () => admission(true) === true : null)) clockHorizon = 0;
+    onFlush(why);
+  };
   function halt(why, reset = false) {
     anchorBeat = reset ? 0 : beatAt(now()); anchorMs = now();
     if (reset) nextPulse = 0;
     const wasPlaying = playing;
     playing = false; reason = why; driver.stop(); flush(why);
-    if (wasPlaying) send([0xfc]);
+    if (wasPlaying) send([0xfc], now(), true);
     clockStatus = why === 'clock-lost' || why === 'suspended' ? why : 'stopped';
     lastClock = null; intervals = []; speed(); report(); onStop(why, getState());
     return getState();
@@ -47,7 +60,11 @@ export function createProcgenTransport(options = {}) {
   function pump(signal) {
     if (!playing || disposed) return getState();
     const timestamp = now();
-    if (signal?.suspended || timestamp - lastWake > suspensionMs) return halt('suspended');
+    if (signal?.suspended || timestamp - lastWake > suspensionMs) {
+      lastDiscontinuity = Object.freeze({ source: signal?.suspended ? 'timing-driver-suspended' : 'host-wake-gap', timeDomain: 'performance-ms', observedAtMs: timestamp, previousWakeMs: lastWake,
+        gapMs: timestamp - lastWake, limitMs: suspensionMs, driverReason: typeof signal?.reason === 'string' ? signal.reason.slice(0, 128) : null });
+      return halt('suspended');
+    }
     lastWake = timestamp;
     if (clockSource === 'external') {
       if (timestamp - (lastClock ?? waitingSince) > clockLossMs) return halt('clock-lost');
@@ -65,7 +82,7 @@ export function createProcgenTransport(options = {}) {
   }
   function play() {
     if (disposed || playing) return getState();
-    playing = true; reason = 'playing'; anchorMs = now(); lastWake = anchorMs; waitingSince = anchorMs;
+    playing = true; reason = 'playing'; lastDiscontinuity = null; anchorMs = now(); lastWake = anchorMs; waitingSince = anchorMs;
     lastClock = null; intervals = [];
     if (clockSource === 'internal') nextPulse = Math.ceil(anchorBeat * 24 - 1e-9);
     clockStatus = clockSource === 'external' ? 'waiting' : 'internal';
@@ -111,7 +128,12 @@ export function createProcgenTransport(options = {}) {
     if (data[0] === 0xfc) { halt('midi-stop'); return true; }
     if (data[0] === 0xf2 && data.length >= 3) { seek(((data[2] & 127) * 128 + (data[1] & 127)) / 4); return true; }
     if (data[0] !== 0xf8 || !playing) return false;
-    if (now() - timestamp > suspensionMs || now() - lastWake > suspensionMs) { halt('suspended'); return false; }
+    const receivedAt = now();
+    if (receivedAt - timestamp > suspensionMs || receivedAt - lastWake > suspensionMs) {
+      lastDiscontinuity = Object.freeze({ source: receivedAt - timestamp > suspensionMs ? 'external-message-delay' : 'host-wake-gap', timeDomain: 'performance-ms', observedAtMs: receivedAt,
+        previousWakeMs: lastWake, gapMs: receivedAt - lastWake, messageDelayMs: receivedAt - timestamp, limitMs: suspensionMs });
+      halt('suspended'); return false;
+    }
     if (lastClock !== null && timestamp - lastClock > clockLossMs) { halt('clock-lost'); return false; }
     if (lastClock !== null && timestamp <= lastClock) return false;
     // Accepted clock input also wakes musical scheduling, independently of the
@@ -132,11 +154,33 @@ export function createProcgenTransport(options = {}) {
   return {
     configure, update: configure, play, pause: () => halt('paused'), stop: () => halt('stopped', true),
     seek, receiveMidi, pump, getState, snapshot,
+    diagnostics: () => Object.freeze({ driver: driver.diagnostics?.() ?? null, reason, clockStatus,
+      lastWake, lastClock, waitingSince, clockOutputHorizon: clockHorizon, clockStopFailure }),
     panic: () => halt('panic'),
     suspend: () => halt('suspended'),
-    setClockOutput(port) {
+    setClockOutput(port, { preserveExternal = false } = {}) {
       if (clockOutput === port) return;
-      halt('output-replaced'); clockOutput = port || null;
+      if (clockRetirement && clockRetirement.outcome !== 'complete') return false;
+      if (!preserveExternal || clockSource !== 'external') halt('output-replaced');
+      clockOutput = port || null; clockRetirement = null; clockStopFailure = null;
+    },
+    setClockOutputAdmission(admission = null) {
+      if (admission != null && typeof admission !== 'function') throw new TypeError('Invalid clock output admission predicate.');
+      outputAdmission = admission;
+    },
+    retireClockOutput() {
+      if (clockRetirement) return clockRetirement;
+      let horizon = 0, failure = null;
+      clockRetirement = createProcgenRetirementScope().retire([
+        { name: 'clock-halt', run: () => { halt('performance-stopped'); horizon = clockHorizon; failure = clockStopFailure; clockOutput = null; } },
+        { name: 'submitted-clock-frontier', run: () => {
+          if (failure) throw new Error('MIDI clock stop was not acknowledged.');
+          if (horizon <= now()) return;
+          return new Promise(resolve => {
+            const wait = () => { const delay = Math.max(0, horizon - now()); if (delay) (options.setTimer || setTimeout)(wait, Math.min(101, Math.max(1, delay))); else resolve(); }; wait();
+          });
+        } }
+      ]); return clockRetirement;
     },
     restore(state = {}) {
       halt('restored'); configure(state);
@@ -148,6 +192,14 @@ export function createProcgenTransport(options = {}) {
       if (clockSource === 'external' && Number.isSafeInteger(state.nextPulse) && state.nextPulse >= nextPulse) nextPulse = state.nextPulse;
       return getState();
     },
-    dispose() { if (disposed) return; halt('disposed'); disposed = true; driver.dispose?.(); clockOutput = null; }
+    dispose() {
+      if (disposed) return retirement.retire();
+      disposed = true;
+      return retirement.retire([
+        { name: 'transport-halt', run: () => halt('disposed') },
+        { name: 'timing-driver', run: () => driver.dispose?.() },
+        { name: 'clock-output', run: () => { clockOutput = null; } }
+      ]);
+    }
   };
 }

@@ -81,51 +81,29 @@ const edgeFromAffordance = affordance => {
   };
 };
 
-const buildEndpointNodes = (nodes, edges, snapshot, geometry, kind, rects, surfaceKey) => {
+const buildEndpointNodes = (nodes, edges, geometry, kind, rects, bindingKey) => {
+  const bindings = new Map((geometry.routeContinuity?.[bindingKey] ?? []).map(binding => [binding.endpointIndex, binding]));
   for (const item of rects) {
-    const nodeId = `${kind}:${item.index}`;
+    const nodeId = `${kind}:${item.index}`, binding = bindings.get(item.index);
+    const surfaceId = binding?.surfaceId ?? null;
     addNode(nodes, {
       id: nodeId,
       type: kind,
-      rect: {
-        x: item.x,
-        y: item.y,
-        width: item.width,
-        height: item.height
-      },
-      point: rectCenter(item)
+      rect: { x: item.x, y: item.y, width: item.width, height: item.height },
+      point: rectCenter(item),
+      surfaceId,
+      bindingStatus: surfaceId == null ? 'unresolved' : 'snapped'
     });
-  }
-  const surfaceIds = geometry.routeContinuity?.[surfaceKey] ?? [];
-  for (const item of rects) {
-    for (const surfaceId of surfaceIds) {
-      const surfaceNode = findSurfaceNode(surfaceId);
-      if (kind === 'entrance') {
-        addEdge(edges, {
-          from: `${kind}:${item.index}`,
-          to: surfaceNode,
-          type: 'spawn',
-          requiredSkills: [],
-          requiredSkillCount: 0,
-          hazardExposure: [],
-          blocked: false,
-          uncertainty: 0,
-          distance: 0
-        });
-      } else {
-        addEdge(edges, {
-          from: surfaceNode,
-          to: `${kind}:${item.index}`,
-          type: 'exit',
-          requiredSkills: [],
-          requiredSkillCount: 0,
-          hazardExposure: [],
-          blocked: false,
-          uncertainty: 0,
-          distance: 0
-        });
-      }
-    }
+    if (surfaceId == null) continue;
+    const surfaceNode = findSurfaceNode(surfaceId);
+    if (!nodes.has(surfaceNode)) continue;
+    addEdge(edges, {
+      from: kind === 'entrance' ? nodeId : surfaceNode,
+      to: kind === 'entrance' ? surfaceNode : nodeId,
+      type: kind === 'entrance' ? 'spawn' : 'exit',
+      requiredSkills: [], requiredSkillCount: 0, hazardExposure: [],
+      blocked: false, uncertainty: 0, distance: 0
+    });
   }
 };
 
@@ -227,8 +205,8 @@ const buildReachabilityGraph = (input, options = {}) => {
     });
   }
 
-  buildEndpointNodes(nodes, edges, snapshot, geometry, 'entrance', snapshot.entrances, 'entranceSurfaceIds');
-  buildEndpointNodes(nodes, edges, snapshot, geometry, 'exit', snapshot.exits, 'exitSurfaceIds');
+  buildEndpointNodes(nodes, edges, geometry, 'entrance', snapshot.entrances, 'entranceBindings');
+  buildEndpointNodes(nodes, edges, geometry, 'exit', snapshot.exits, 'exitBindings');
   addStepEdges(edges, geometry.surfaces, options.maxStepHeight ?? 4);
   addFallEdges(edges, geometry.cliffs);
   addAffordanceEdges(edges, nodes, analysis.skillAffordances);

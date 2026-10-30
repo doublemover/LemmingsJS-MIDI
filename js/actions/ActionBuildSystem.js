@@ -3,6 +3,8 @@ import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { recordPhysicalWork } from './PhysicalWorkFacts.js';
+import { recordPhysicalMotion } from './PhysicalMotionFacts.js';
 
 class ActionBuildSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -23,11 +25,19 @@ class ActionBuildSystem extends ActionBaseSystem {
       /// lay brick
       const startX = lem.x + (lem.lookRight ? 0 : -4);
       const brickY = lem.y - 1;
+      const observing = lem.runtime?.physicalFacts?.enabled?.(lem) || false;
+      const revisionBefore = Number.isFinite(level.terrainRevision) ? level.terrainRevision : null;
+      let attemptedCells = 0, changedSolidCells = 0, changedAppearanceCells = 0;
       for (let i = 0; i < 6; i++) {
         const brickX = startX + i;
         if (!inHorizontalBounds(brickX) || !inVerticalBounds(brickY)) continue;
-        level.setGroundAt(brickX, brickY, 7);
+        attemptedCells++;
+        const wasSolid = observing ? level.hasGroundAt(brickX, brickY) : false;
+        const changed = level.setGroundAt(brickX, brickY, 7);
+        if (observing && changed) { changedAppearanceCells++; if (!wasSolid) changedSolidCells++; }
       }
+      recordPhysicalWork(level, lem, { operationKind: 'build', phase: 'brick', cycleOrdinal: lem.state,
+        attemptedCells, changedSolidCells, changedAppearanceCells, warning: lem.state >= 9 ? 'last-bricks' : null, revisionBefore, targetX: startX, targetY: brickY });
       const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.BUILDER_STEP,
@@ -44,7 +54,9 @@ class ActionBuildSystem extends ActionBaseSystem {
       return LemmingStateType.NO_STATE_TYPE;
     }
     if (lem.frameIndex === 0) {
+      const initialY = lem.y;
       lem.y--;
+      recordPhysicalMotion(level, lem, lem.x, initialY);
       for (let i = 0; i < 2; i++) {
         const nextX = lem.x + (lem.lookRight ? 1 : -1);
         if (!inHorizontalBounds(nextX)) {
@@ -56,7 +68,9 @@ class ActionBuildSystem extends ActionBaseSystem {
           lem.lookRight = !lem.lookRight;
           return LemmingStateType.NO_STATE_TYPE;
         }
+        const previousX = lem.x;
         lem.x = nextX;
+        recordPhysicalMotion(level, lem, previousX, lem.y);
         if (level.hasGroundAt(lem.x, lem.y - 1)) {
           lem.lookRight = !lem.lookRight;
           return LemmingStateType.WALKING;

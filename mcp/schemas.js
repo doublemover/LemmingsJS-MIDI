@@ -405,7 +405,7 @@ const ObjectsPlaceSchema = z.object({
   sessionId: z.string().min(1),
   objects: z.array(z.object({
     kind: EditorObjectKindSchema,
-    props: z.record(z.any()).optional(),
+    props: z.record(z.string(), z.any()).optional(),
     piece: z.number().int().optional(),
     x: z.number().optional(),
     y: z.number().optional(),
@@ -420,7 +420,7 @@ const ObjectsUpdateSchema = z.object({
   sessionId: z.string().min(1),
   updates: z.array(z.object({
     ref: EditorObjectRefSchema,
-    set: z.record(z.any()).optional(),
+    set: z.record(z.string(), z.any()).optional(),
     unset: z.array(z.string().min(1)).optional()
   }).refine((value) => (
     (value.set && Object.keys(value.set).length > 0) ||

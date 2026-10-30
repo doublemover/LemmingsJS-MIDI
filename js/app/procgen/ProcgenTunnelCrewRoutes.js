@@ -6,7 +6,7 @@ const TUNNEL_GUARD_TICKS = 1000;
 // One current local port per physical lane. A positive shared-action copy proof
 // precedes the request, and an arriving supported actor owns the real BLOCK.
 class ProcgenTunnelCrewRoutes {
-  constructor(world) { this.world = world; this.recovery = new ProcgenGuardRecovery(world); this.scenes = new Array(world.laneCount).fill(null); this.nearby = []; this.stats = { requested: 0, guards: 0, connected: 0, released: 0, failed: 0 }; }
+  constructor(world) { this.world = world; this._claim = null; this.recovery = new ProcgenGuardRecovery(world); this.scenes = new Array(world.laneCount).fill(null); this.nearby = []; this.stats = { requested: 0, guards: 0, connected: 0, released: 0, failed: 0 }; }
   request(actor, evidence, approach = null) {
     const world = this.world;
     if (!evidence || !Number.isFinite(evidence.guardY) || this.scenes[actor.laneIndex] || !world.workerLimits.bashers || !world.lanePolicy.projects.canBegin(actor)) return false;
@@ -29,7 +29,7 @@ class ProcgenTunnelCrewRoutes {
     const overlap = b => bounds.x1 < b.x2 && bounds.x2 > b.x1 && bounds.y1 < b.y2 && bounds.y2 > b.y1;
     let key = '';
     for (let lane = Math.max(0, Math.floor(bounds.y1 / world.laneHeight)); lane <= Math.min(world.laneCount - 1, Math.floor((bounds.y2 - 1) / world.laneHeight)); lane++) {
-      const bucket = world.triggerManager.byLane[lane] || []; if (bucket.length > 64) return null;
+      const bucket = world.triggerManager.getLaneTriggers(lane); if (bucket.length > 64) return null;
       for (const t of bucket) {
         const owner = t.owner;
         if (!owner || owner.removed || owner.disabled || owner.failureReason || owner.terminalReason || owner.action !== world.actions[State.BLOCKING] || owner !== scene.guard && !overlap(t)) continue;

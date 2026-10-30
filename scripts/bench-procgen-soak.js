@@ -1,7 +1,13 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import { chromium } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
+import { installProcgenSoakProbe } from './ProcgenSoakProbe.js';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import os from 'node:os';
 
-const DEFAULT_BASE_URL = 'https://localhost:8080/procgen.html?e2e=1';
+const DEFAULT_BASE_URL = 'https://localhost:8080/dist/browser/procgen.html?e2e=1&workstation=1';
 
 const toNumberOrNaN = (value) => {
   try {
@@ -104,6 +110,7 @@ const buildUrl = (raw, fallback = DEFAULT_BASE_URL) => {
     candidate = new URL(fallback);
   }
   candidate.searchParams.set('e2e', '1');
+  candidate.searchParams.set('workstation', '1');
   return candidate.toString();
 };
 
@@ -136,9 +143,12 @@ const createProcgenSoakConfig = ({
   );
   const heapLimitMb = toPositiveNumber(args.get('heapLimitMb') || env.PROCGEN_SOAK_HEAP_LIMIT_MB, 0);
   const headless = toBoolean(args.get('headless') || env.PROCGEN_SOAK_HEADLESS, true);
+  if (durationMs > 3600000 || warmupMs > 600000 || sampleMs < 10 || Math.ceil(durationMs / sampleMs) + 2 > 16384 || maxRuntimeMs < warmupMs + durationMs)
+    throw new RangeError('ProcGen soak observation duration/sample bounds exceed the finite receipt policy.');
 
   return {
     baseUrl,
+    name: args.get('name') || 'rook',
     durationMs,
     warmupMs,
     sampleMs,
@@ -164,135 +174,76 @@ const createProcgenSoakConfig = ({
  * }} [config]
  * @returns {Promise<void>}
  */
-const run = async (config = createProcgenSoakConfig()) => {
-  let browser = null;
-  let context = null;
-  let page = null;
-  const runStart = Date.now();
-  const samples = [];
-  const {
-    baseUrl,
-    durationMs,
-    warmupMs,
-    sampleMs,
-    opTimeoutMs,
-    maxRuntimeMs,
-    heapLimitMb,
-    headless
-  } = config;
-
-  const assertRuntimeBudget = (phase) => {
-    const elapsed = Date.now() - runStart;
-    if (elapsed > maxRuntimeMs) {
-      throw new Error(`Procgen soak exceeded max runtime (${maxRuntimeMs}ms) during ${phase}.`);
-    }
-  };
-
+const admitProcgenSoakMeasurement = report => {
+  if (report?.schema !== 'procgen-completed-work-probe/v1' || report.clock !== 'browser-performance-now' ||
+      !Number.isSafeInteger(report.completedTicks) || report.completedTicks <= 0 || report.failedSteps !== 0 ||
+      report.observedStepCalls !== report.completedTicks || report.worldTickDelta !== report.completedTicks ||
+      report.stepMs?.samples !== report.completedTicks || !Number.isSafeInteger(report.rafIntervalMs?.samples) || report.rafIntervalMs.samples < 1 ||
+      !Number.isFinite(report.end?.observationTime - report.baseline?.observationTime) || report.end.observationTime <= report.baseline.observationTime)
+    throw new Error('ProcGen soak did not observe a comparable completed-work window.');
+  return true;
+};
+const run = async (config = createProcgenSoakConfig(), { log = console.log } = {}) => {
+  let browser = null, context = null, page = null;
+  const { baseUrl, durationMs, warmupMs, sampleMs, opTimeoutMs, maxRuntimeMs, heapLimitMb, headless } = config;
+  if (![durationMs, warmupMs, sampleMs, opTimeoutMs, maxRuntimeMs, heapLimitMb].every(Number.isFinite) || durationMs <= 0 || warmupMs < 0 || opTimeoutMs <= 0 || heapLimitMb < 0 || typeof headless !== 'boolean' ||
+      durationMs > 3600000 || warmupMs > 600000 || sampleMs < 10 || Math.ceil(durationMs / sampleMs) + 2 > 16384 || maxRuntimeMs < warmupMs + durationMs)
+    throw new RangeError('ProcGen soak needs bounded observation timing.');
+  const runStart = performance.now(), samples = [];
+  const assertRuntimeBudget = () => { if (performance.now() - runStart > maxRuntimeMs) throw new Error('ProcGen soak exceeded its declared runtime.'); };
+  const source = { revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+    dirtyDiffSha256: createHash('sha256').update(execFileSync('git', ['diff', '--binary', 'HEAD', '--', '.', ':(exclude).repoMetrics'], { maxBuffer: 32 * 1048576 })).digest('hex'),
+    harness: ['bench-procgen-soak.js', 'ProcgenSoakProbe.js'].map(file => ({ file: 'scripts/' + file, sha256: createHash('sha256').update(readFileSync(new URL(file, import.meta.url))).digest('hex') })) };
   try {
-    browser = await withTimeout(chromium.launch({
-      headless,
-      args: ['--allow-insecure-localhost', '--ignore-certificate-errors']
-    }), opTimeoutMs, 'chromium.launch');
-
-    context = await withTimeout(
-      browser.newContext({ ignoreHTTPSErrors: true }),
-      opTimeoutMs,
-      'browser.newContext'
-    );
-    page = await withTimeout(context.newPage(), opTimeoutMs, 'context.newPage');
-    page.setDefaultTimeout(opTimeoutMs);
-
+    browser = await withTimeout(chromium.launch({ headless, args: ['--allow-insecure-localhost', '--ignore-certificate-errors'] }), opTimeoutMs, 'chromium.launch');
+    context = await withTimeout(browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT, ignoreHTTPSErrors: true }), opTimeoutMs, 'browser.newContext');
+    page = await withTimeout(context.newPage(), opTimeoutMs, 'context.newPage'); page.setDefaultTimeout(opTimeoutMs);
     await withTimeout(page.goto(buildUrl(baseUrl), { waitUntil: 'domcontentloaded' }), opTimeoutMs, 'page.goto');
-    await withTimeout(
-      page.waitForFunction(() => window.__E2E__?.getState?.().ready === true),
-      opTimeoutMs,
-      'waitForProcgenReady'
-    );
-
-    await withTimeout(page.evaluate(() => window.__E2E__.resume()), opTimeoutMs, 'e2e.resume');
-
-    const loopStart = Date.now();
-    const totalWindow = warmupMs + durationMs;
-    while (Date.now() - loopStart < totalWindow) {
-      assertRuntimeBudget('sampling');
-      const sample = await withTimeout(page.evaluate(() => {
-        const state = window.__E2E__?.getState?.() || {};
-        const timer = state?.game?.timer || {};
-        const manager = state?.game?.lemmingManager || {};
-        const history = state?.game?.history || {};
-        const perfMem = (typeof performance !== 'undefined' && performance.memory)
-          ? {
-            usedJSHeapSize: performance.memory.usedJSHeapSize,
-            totalJSHeapSize: performance.memory.totalJSHeapSize,
-            jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
-          }
-          : null;
-        return {
-          tick: Number(timer.tickIndex || 0),
-          frameMs: Number(timer.frameTime || 0),
-          speedFactor: Number(timer.speedFactor || 0),
-          activeCount: Number(manager.activeCount || 0),
-          totalCount: Number(manager.totalCount || 0),
-          spawnTotal: Number(manager.spawnTotal || 0),
-          historySpanTicks: Number(history.spanTicks || 0),
-          memory: perfMem
-        };
-      }), opTimeoutMs, 'sampleProcgenState');
-
-      samples.push({
-        elapsedMs: Date.now() - loopStart,
-        ...sample
-      });
-      await sleep(sampleMs);
+    await page.waitForFunction(() => window.__PROCGEN_LANES__?.world?.workstationEnabled && window.__PROCGEN_STUDIO__?.play, null, { timeout: opTimeoutMs });
+    const environment = await page.evaluate(async () => {
+      const { getActiveExecutionIdentity } = await import(new URL('js/runtime/ActiveExecutionIdentity.js', new URL('./', location.href)));
+      const identity = getActiveExecutionIdentity('browser-survey-core');
+      if (identity.activeExecution !== 'bound') throw new Error('Build the immutable browser runtime before measuring ProcGen.');
+      const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__, world = api.world;
+      studio.transport.pause(); api.pause();
+      return { executionIdentity: identity, seed: world.seed, lanes: world.laneCount, initialTick: world.tickIndex,
+        rendererMode: api.renderer.workstationLayout.mode, visibleRows: api.renderer.workstationLayout.count,
+        viewport: { width: window.innerWidth, height: window.innerHeight }, dpr: window.devicePixelRatio, userAgent: navigator.userAgent,
+        hardwareConcurrency: navigator.hardwareConcurrency, deviceMemoryGiB: navigator.deviceMemory ?? null,
+        output: studio.getOperationalSnapshot().output, scope: 'private headless browser; no native GPU, receiver or acoustic equivalence' };
+    });
+    await page.evaluate('void (globalThis.__PROCGEN_SOAK_PROBE__ = (' + installProcgenSoakProbe.toString() + ')())');
+    await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
+    const warmupEnd = performance.now() + warmupMs;
+    while (performance.now() < warmupEnd) { assertRuntimeBudget(); await sleep(Math.min(1000, Math.max(1, warmupEnd - performance.now()))); }
+    await page.evaluate(() => window.__PROCGEN_SOAK_PROBE__.resetWindow());
+    const endAt = performance.now() + durationMs;
+    while (performance.now() < endAt) {
+      assertRuntimeBudget();
+      samples.push(await withTimeout(page.evaluate(() => window.__PROCGEN_SOAK_PROBE__.sample()), opTimeoutMs, 'sampleProcgenCompletedWork'));
+      if (samples.length >= 16383) throw new Error('ProcGen soak reached its finite observation capacity.');
+      await sleep(Math.max(1, Math.min(sampleMs, endAt - performance.now())));
     }
-
-    await withTimeout(page.evaluate(() => window.__E2E__.pause()), opTimeoutMs, 'e2e.pause');
-
-    const measured = samples
-      .filter(sample => sample.elapsedMs >= warmupMs)
-      .map(sample => ({ ...sample, elapsedMs: sample.elapsedMs - warmupMs }));
-    const warmupSamples = samples.length - measured.length;
-
-    const first = measured[0] || null;
-    const last = measured[measured.length - 1] || null;
-    const memorySamples = measured
-      .map(sample => sample.memory?.usedJSHeapSize || 0)
-      .filter(value => Number.isFinite(value) && value > 0);
-    const maxHeapBytes = memorySamples.length ? Math.max(...memorySamples) : 0;
-    const maxHeapMb = maxHeapBytes > 0 ? (maxHeapBytes / (1024 * 1024)) : 0;
-
-    const summary = {
-      url: buildUrl(baseUrl),
-      durationMs,
-      warmupMs,
-      sampleMs,
-      sampleCount: measured.length,
-      warmupSamples,
-      growth: {
-        tickDelta: first && last ? Math.max(0, last.tick - first.tick) : 0,
-        spawnDelta: first && last ? Math.max(0, last.spawnTotal - first.spawnTotal) : 0,
-        activeDelta: first && last ? (last.activeCount - first.activeCount) : 0,
-        totalCountDelta: first && last ? (last.totalCount - first.totalCount) : 0,
-        historySpanDelta: first && last ? Math.max(0, last.historySpanTicks - first.historySpanTicks) : 0
-      },
-      frameMsStats: summarize(measured.map(sample => sample.frameMs)),
-      activeCountStats: summarize(measured.map(sample => sample.activeCount)),
-      totalCountStats: summarize(measured.map(sample => sample.totalCount)),
-      maxHeapMb,
-      heapLimitMb,
-      heapLimitExceeded: heapLimitMb > 0 && maxHeapMb > heapLimitMb,
-      samples: measured
-    };
-
-    console.log(JSON.stringify(summary, null, 2));
-
-    if (summary.heapLimitExceeded) {
-      throw new Error(`Heap usage ${maxHeapMb.toFixed(2)}MB exceeded limit ${heapLimitMb}MB`);
-    }
+    await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
+    const measurement = await page.evaluate(() => window.__PROCGEN_SOAK_PROBE__.report()); admitProcgenSoakMeasurement(measurement);
+    const last = measurement.end, first = measurement.baseline, elapsedMs = last.observationTime - first.observationTime;
+    samples.push({ ...last, completedTicks: measurement.completedTicks, failedSteps: measurement.failedSteps });
+    const heaps = samples.map(sample => sample.memory?.usedJSHeapSize).filter(value => Number.isFinite(value) && value > 0);
+    const maxHeapMb = heaps.length ? Math.max(...heaps) / 1048576 : null;
+    if (heapLimitMb > 0 && maxHeapMb === null) throw new Error('Heap observations are unavailable; the requested heap limit was not qualified.');
+    const summary = { schema: 'lemmings-procgen-soak/v2', name: config.name || 'rook', source, environment: { ...environment, browserVersion: browser.version(),
+      os: { platform: os.platform(), release: os.release(), architecture: os.arch(), cpu: os.cpus()[0]?.model || null, logicalProcessors: os.availableParallelism(), totalMemoryBytes: os.totalmem() } },
+    url: page.url(), durationMs, warmupMs, sampleMs, sampleCount: samples.length, maximumSamples: 16384, measurement,
+    observedTicksPerSecond: measurement.completedTicks * 1000 / elapsedMs,
+    growth: { tickDelta: measurement.worldTickDelta, spawnDelta: last.spawnTotal - first.spawnTotal, activeDelta: last.activeCount - first.activeCount, totalCountDelta: last.totalCount - first.totalCount },
+    maxHeapMb, heapLimitMb, heapLimitExceeded: heapLimitMb > 0 && maxHeapMb !== null && maxHeapMb > heapLimitMb, memoryScope: 'Chromium performance.memory allocator estimate; native/GPU memory and collected retained heap are not established', samples,
+    qualification: 'completed-work timing only; input/audio tails, injected persistence stalls, observer overhead A/B and stable-population lifetime-birth comparisons require separate receipts' };
+    log(JSON.stringify(summary, null, 2));
+    if (summary.heapLimitExceeded) throw new Error('ProcGen soak exceeded its declared observed heap limit.');
+    return summary;
   } finally {
-    await closeQuietly(page, 'page.close');
-    await closeQuietly(context, 'context.close');
-    await closeQuietly(browser, 'browser.close');
+    if (page) { try { await withTimeout(page.evaluate(() => { window.__PROCGEN_STUDIO__?.transport.pause(); window.__PROCGEN_SOAK_PROBE__?.dispose(); delete window.__PROCGEN_SOAK_PROBE__; }), 5000, 'retireProcgenProbe'); } catch {} }
+    await closeQuietly(page, 'page.close'); await closeQuietly(context, 'context.close'); await closeQuietly(browser, 'browser.close');
   }
 };
 
@@ -314,6 +265,7 @@ if (isDirectExecution()) {
 }
 
 export {
+  admitProcgenSoakMeasurement,
   buildUrl,
   createProcgenSoakConfig,
   parseArgs,

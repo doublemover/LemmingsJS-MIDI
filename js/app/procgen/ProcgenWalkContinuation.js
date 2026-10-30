@@ -32,13 +32,16 @@ class ProcgenWalkContinuation {
         if (owner && !owner.removed && !owner.disabled && !owner.failureReason && !owner.terminalReason && owner.action === task.action && task.footprint && overlap(bounds, task.footprint))
           return { safe: false, failure: 'construction', actionSteps: 0 };
       }
-      const bucket = world.triggerManager?.byLane[lane] || [];
+      const bucket = world.triggerManager?.getLaneTriggers(lane) || [];
       if (bucket.length > 64) return { safe: false, failure: 'blocker-observation-limit', actionSteps: 0 };
       triggers.push(...bucket);
     }
     const cells = new Map(), revision = world.terrainRevision, frontier = world.frontierRevision, generation = world.generation;
     maxWork = Math.max(0, Math.trunc(maxWork) || 0);
     const maxSteps = Math.min(WALK_CONTINUATION_STEPS, maxWork);
+    // One ledger funds unique terrain reads and actual action advances. Reserve
+    // each unit before doing work; the caller already counts terrain callbacks.
+    let remainingWork = maxWork;
     let failure = null, steps = 0, fell = false, terrainTurn = null, fullWalkColumn = false, touchedTrigger = false, invalidTurn = false;
     const tiles = new Map();
     const read = (x, y) => {
@@ -47,7 +50,8 @@ class ProcgenWalkContinuation {
       if (x >= world.generatedThrough[lane] || (world.terrainGrowth?.stateFor(lane, chunk) && !world.terrainGrowth.columnReady?.(lane, x))) { invalidTurn = true; failure ||= 'unrevealed'; return false; }
       const key = (y - top) * (WALK_CONTINUATION_DISTANCE + 9) + x - left;
       if (!cells.has(key)) {
-        if (cells.size >= maxWork) { invalidTurn = true; failure ||= 'budget'; return false; }
+        if (remainingWork <= 0) { invalidTurn = true; failure ||= 'budget'; return false; }
+        remainingWork--;
         cells.set(key, ground(x, y));
         const tile = lane * 0x800000 + chunk; if (!tiles.has(tile)) tiles.set(tile, procgenTileRevision(world, tile));
       }
@@ -70,7 +74,8 @@ class ProcgenWalkContinuation {
     for (; steps < maxSteps && !failure;) {
       const x = copy.x, y = copy.y, walking = copy.action === this.actions[State.WALKING]; fullWalkColumn = false;
       if (!safe(x, y)) { failure = 'hazard'; break; }
-      steps++;
+      if (remainingWork <= 0) { failure = 'budget'; break; }
+      remainingWork--; steps++;
       const next = copy.process(level), distance = Math.max(Math.abs(copy.x - x), Math.abs(copy.y - y), 1);
       for (let at = 0; at <= distance; at++) if (!safe(Math.round(x + (copy.x - x) * at / distance), Math.round(y + (copy.y - y) * at / distance))) failure ||= 'hazard';
       if (next !== State.NO_STATE_TYPE && !(next === State.JUMPING && copy.action === this.actions[State.JUMPING])) {
@@ -88,7 +93,7 @@ class ProcgenWalkContinuation {
     this.stats.actionSteps += steps;
     if (!failure) this.stats.accepted++;
     if (failure !== 'turn' || touchedTrigger || invalidTurn || world.terrainRevision !== revision || world.frontierRevision !== frontier || world.generation !== generation || [...tiles].some(([tile, at]) => procgenTileRevision(world, tile) !== at)) terrainTurn = null;
-    return { safe: !failure, failure, actionSteps: steps, fell, x: copy.x, y: copy.y, terrainTurn: terrainTurn && { ...terrainTurn, generation, tiles: [...tiles] } };
+    return { safe: !failure, failure, actionSteps: steps, terrainReads: cells.size, work: maxWork - remainingWork, fell, x: copy.x, y: copy.y, terrainTurn: terrainTurn && { ...terrainTurn, generation, tiles: [...tiles] } };
   }
   reset() { this.stats.proofs = 0; this.stats.accepted = 0; this.stats.actionSteps = 0; }
   dispose() { this.world = null; }

@@ -3,6 +3,11 @@ import { COUNTER_LIMIT } from '../core/constants.js';
 import { TriggerTypes } from './TriggerTypes.js';
 import { getRuntimeHistory } from '../game/GameRuntime.js';
 
+const cooldownTick = value => {
+  if (!Number.isFinite(value)) throw new RangeError('Trigger cooldown requires a finite tick.');
+  return Math.max(0, Math.min(COUNTER_LIMIT, Math.trunc(value)));
+};
+
 class Trigger {
   #disabledUntilTick;
   /**
@@ -32,18 +37,13 @@ class Trigger {
 
   get disabledUntilTick() { return this.#disabledUntilTick; }
   set disabledUntilTick(v) {
-    if (v >= COUNTER_LIMIT) {
-      console.warn('disabledUntilTick wrapped, resetting to 0');
-      this.#disabledUntilTick = 0;
-    } else {
-      this.#disabledUntilTick = v;
-    }
+    this.#disabledUntilTick = cooldownTick(v);
   }
   trigger(x, y, tick, lemming = null) {
     if (this.disabledUntilTick <= tick) {
       if ((x >= this.x1) && (y >= this.y1) && (x < this.x2) && (y < this.y2)) {
         const prev = this.disabledUntilTick;
-        const next = tick + this.disableTicksCount;
+        const next = cooldownTick(tick + this.disableTicksCount);
         if (prev !== next) {
           const history = getRuntimeHistory(this.runtime);
           history?.recordTriggerCooldown?.(this, prev, next);

@@ -119,6 +119,17 @@ const seekGame = (view, tickIndex) => {
   }
   return false;
 };
+const setHistoryRetention = (view, policy) => {
+  const game = view?.game, timer = game?.getGameTimer?.();
+  if (timer?.isRunning?.() !== false || game?.timeTravel?.isReversing ||
+      !policy || typeof policy !== 'object' || Array.isArray(policy) ||
+      Object.keys(policy).some(key => !['enableHistoryCap', 'historyCapTicks', 'historyWarnTicks'].includes(key)) ||
+      policy.enableHistoryCap !== true || !Number.isSafeInteger(policy.historyCapTicks) ||
+      policy.historyCapTicks < 1 || policy.historyCapTicks > 100000 ||
+      !Number.isSafeInteger(policy.historyWarnTicks) || policy.historyWarnTicks < 0 || policy.historyWarnTicks > policy.historyCapTicks ||
+      typeof game?.timeTravel?.setHistoryRetention !== 'function') return false;
+  return game.timeTravel.setHistoryRetention(policy);
+};
 const setEditorPlaytest = (view, editorUi, enabled) => {
   const desired = !!enabled;
   if (editorUi && editorUi._playtest !== desired && editorUi._togglePlaytest) {
@@ -236,6 +247,7 @@ export {
   resumeGame,
   stepGame,
   seekGame,
+  setHistoryRetention,
   setEditorPlaytest,
   setSpeed,
   selectLemmingById,

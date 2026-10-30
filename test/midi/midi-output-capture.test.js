@@ -62,7 +62,9 @@ describe('bounded MIDI output capture', function() {
   it('protects canonical and note lifecycle fields when real observer provenance exceeds 48 fields', function() {
     withFakeClockAndPerformance(clock => {
       const capture = capturing(clock), scheduler = new MidiScheduler(config);
-      scheduler.setCapture(capture); scheduler.setOutput(makeOutput([1], []));
+      const output = makeOutput([1], []);
+      output.channels[1].sendProgramChange = () => {};
+      scheduler.setCapture(capture); scheduler.setOutput(output);
       const metadata = Object.fromEntries(Array.from({ length: 80 }, (_, index) => ['optional' + index, 'extra metadata']));
       Object.assign(metadata, { tick: 100, beat: 12, laneIndex: 3, laneCount: 16, lemmingId: 9, seed: 42, generation: 4, themeId: 'dirt', origin: 'procgen' });
       scheduler.sendNote({ note: 60, channel: 1, durationTicks: 2, program: 38, pan: -12 }, metadata);
@@ -154,7 +156,7 @@ describe('bounded MIDI output capture', function() {
       expect(report.activeChannelChanges).to.have.length(0);
       expect(report.coalescing[0].count).to.equal(3);
       const releases = snapshot.records.filter(record => record.type === 'noteOff' && record.stage === 'api-dispatch');
-      expect(releases.map(record => record.matchedDurationMs)).to.deep.equal([120, 120]);
+      expect(releases.map(record => record.matchedDurationMs)).to.deep.equal([120, 120, 0]);
       expect(snapshot.state.observedOpenGates).to.equal(0);
       expect(report.notes[2].held).to.equal(true);
       expect(formatMidiCaptureSummary(snapshot)).to.include('3 accepted note-on API calls');

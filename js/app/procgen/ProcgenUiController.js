@@ -1,3 +1,4 @@
+import { getProcgenCommandDispatcher } from '../controls/ProcgenCommandDispatcher.js';
 import { createProcgenMidiSpanOverlay } from './ProcgenMidiSpanOverlay.js';
 import { createProcgenMusicControls } from './ProcgenMusicControls.js';
 import { procgenMusicDefaults, procgenMusicState, editProcgenMusicProject } from './ProcgenMusicProject.js';
@@ -12,16 +13,17 @@ import { DECORATION_CHOICES } from '../../decorations/ProcgenDecorationPacks.js'
 import { createCharacterUiController, mountCharacterControls } from '../characterUiController.js';
 import { createProcgenMidiOutput } from './ProcgenMidiOutput.js';
 import { createLocalGamePreview } from '../midi-ui/localGamePreview.js';
-import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject } from '../../midi/project/MidiProject.js';
+import { createMidiProjectFromMidiConfig, projectToMidiConfig, reduceMidiProject, sanitizeMidiProject, isCanonicalMidiProject, sameMidiRuntimeInputs } from '../../midi/project/MidiProject.js';
 import { PROCGEN_GAME_EVENT_MIDI_PRESETS, applyProcgenGameEventMidiPreset, getProcgenSpawnPriority, setProcgenSpawnPriority, getProcgenMusicBeatTicks } from '../../midi/project/ProcgenMidiDefaults.js';
 import { normalizeLaneCount, normalizeLaneHeight, DEFAULT_LANE_HEIGHT, normalizePopulationPolicy } from './ProcgenLaneWorld.js';
 import { normalizeWorkerLimits } from './ProcgenWorkerLimits.js';
-import { KeybindingRegistry, DEFAULT_KEYBINDINGS } from '../../input/KeybindingRegistry.js';
+import { DEFAULT_KEYBINDINGS } from '../../input/KeybindingRegistry.js';
+import { loadDeferredWebMidi } from './DeferredWebMidi.js';
 import { normalizeProcgenSpeed, changeProcgenSpeed, renderProcgenSpeedControl } from './ProcgenSpeedControl.js';
 import { normalizeSeed } from '../../core/seededRandom.js';
-import { readProcgenUrlConfig, createProcgenShareUrl } from './ProcgenUrlConfig.js';
+import { readProcgenUrlConfig, createProcgenRecipeShareDescriptor } from './ProcgenUrlConfig.js';
 
-const createProcgenUiController = ({ document, window, getRuntime, restart, initial = {} }) => {
+const createProcgenUiController = ({ document, window, getRuntime, restart, resourceBudget = null, initial = {} }) => {
   const byId = id => document.getElementById(id);
   const listeners = [];
   const projectListeners = new Set();
@@ -68,22 +70,26 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   try { const stored = JSON.parse(window.localStorage?.getItem(workerStorageKey) || 'null'); if (stored?.version === 1) settings.workerLimits = normalizeWorkerLimits(stored.value); } catch { /* Keep session defaults. */ }
   let config = projectToMidiConfig(project), disposed = false;
   let syncTargetHelp = () => {};
+  let physicalControlOwner = null, operationalMetrics = null;
+  const needsMidiDiscovery = state => state.selectedBackend === 'midi' && (state.midiPermission !== 'granted' || !state.selectedOutputId || ['destination-missing', 'permission-revoked'].includes(state.failureKind));
   const renderOutput = state => {
     syncTargetHelp();
     const button = byId('procgenListen'), midi = state.selectedBackend === 'midi';
-    if (button) { button.textContent = state.enabled || state.status === 'starting' ? 'Stop output' : midi ? 'Connect MIDI' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
+    const discover = needsMidiDiscovery(state);
+    if (button) { button.dataset.outputAction = state.enabled || ['starting', 'discovering'].includes(state.status) ? 'stop' : discover ? 'discover' : midi ? 'activate' : 'listen'; button.textContent = state.enabled || ['starting', 'discovering'].includes(state.status) ? state.status === 'discovering' ? 'Cancel discovery' : midi ? 'Deactivate MIDI output' : 'Disable browser output' : midi ? discover ? 'Discover MIDI outputs' : 'Activate MIDI output' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
+    if (button && (!midi || !discover) && (state.performanceLease || state.audio?.performanceLease)?.status === 'busy') { button.dataset.outputAction = 'takeover'; button.textContent = midi ? 'Take over MIDI output' : 'Take over browser output'; }
     if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message + (!midi && settings.soundFont ? ' Requested sample bank is unavailable; using the browser synth.' : '');
     if (byId('procgenMasterVolume')) byId('procgenMasterVolume').disabled = midi;
     if (byId('procgenMidiDevice')) byId('procgenMidiDevice').hidden = !midi;
   };
   let local;
-  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true,
+  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true, resourceBudget,
     onStateChange: () => local?.localStateChanged() });
-  local = createProcgenMidiOutput({ local: preview, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi,
-    backend: settings.output, onStateChange: renderOutput, onDevicesChange: (ports, selectedId) => {
+  local = createProcgenMidiOutput({ local: preview, resourceBudget, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi, loadWebMidi: () => loadDeferredWebMidi({ document, window }),
+    backend: settings.output, canActivate: () => physicalControlOwner?.canActivateOutput?.() ?? true, onStateChange: state => { renderOutput(state); physicalControlOwner?.outputChanged?.(); }, onDevicesChange: (ports, selectedId) => {
       const select = byId('procgenMidiDevice'); if (!select) return;
       select.replaceChildren(); const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = ports.length ? 'Choose MIDI output' : 'Connect to find MIDI outputs'; select.append(placeholder);
-      for (const port of ports) { const option = document.createElement('option'); option.value = port.id; option.textContent = port.name || port.id; select.append(option); }
+      for (const port of ports) { const option = document.createElement('option'); option.value = port.id; option.textContent = port.name ? port.name + ' · ' + port.id : port.id; select.append(option); }
       select.value = selectedId || '';
     } });
   if (byId('procgenOutput')) byId('procgenOutput').value = settings.output || 'synth';
@@ -101,7 +107,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
           tracks: project.tracks.slice(0, 16).map(track => ({ id: track.id, channel: track.channel, program: track.program })), ensemble: project.ensemble, laneMusic: project.global.laneMusic },
         limits: { capacity: outputCapture.capacity, maxDurationMs: outputCapture.maxDurationMs } };
     } });
-  const tensionControls = createMidiTensionControls({ document, prefix: 'procgenTension', getProject: () => project,
+  const tensionControls = createMidiTensionControls({ document, prefix: 'procgenTension', getOperationalMetrics: () => operationalMetrics,
+    getProject: () => project,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter, getLaneCount: () => settings.laneCount,
     update: patch => {
       commitAutomation(reduceMidiProject(project, { type: 'ensemble.tension.update', patch }));
@@ -124,24 +131,31 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenSpanRedo')) byId('procgenSpanRedo').disabled = !state.canRedo;
     if (byId('procgenSpanHistoryStatus')) byId('procgenSpanHistoryStatus').textContent = automationStatus;
   };
-  const commitAutomation = (next, record = true) => {
-    next = sanitizeMidiProject(next);
+  const commitAutomation = (next, record = true, persist = true) => {
+    next = isCanonicalMidiProject(next) ? next : sanitizeMidiProject(next);
+    const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
     if (record) automationHistory.record(project, next);
-    project = next; config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed(); musicDirection?.sync(); syncMusic(); syncPopulation();
-    automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Music edits kept for this session; browser storage is unavailable.';
+    project = next;
+    if (!runtimeUnchanged) {
+      config = projectToMidiConfig(project); local.syncConfig(); spanControls.render(); spanOverlay.changed(); musicDirection?.sync(); syncMusic(); syncPopulation();
+    }
+    if (persist) automationStatus = saveProcgenAutomation(automationStorage(), project) ? '' : 'Music edits kept for this session; browser storage is unavailable.';
     syncAutomationHistory();
     for (const listener of projectListeners) listener(project);
   };
   const dispatchAutomation = intent => commitAutomation(reduceMidiProject(project, intent));
-  const spanControls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => settings.laneCount,
+  const spanControls = createProcgenMidiSpanControls({ document, getOperationalMetrics: () => operationalMetrics,
+    getProject: () => project, getLaneCount: () => settings.laneCount,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter,
     getBackend: () => local.getState().selectedBackend === 'midi' ? 'midi' : 'synth',
     onSelect: (id, ids) => spanOverlay.select(id, ids), onIntent: dispatchAutomation });
-  const spanOverlay = createProcgenMidiSpanOverlay({ document, getRuntime, getProject: () => project,
+  const spanOverlay = createProcgenMidiSpanOverlay({ document, getRuntime, getOperationalMetrics: () => operationalMetrics,
+    getProject: () => project,
     getDomain: () => byId('procgenSpanDomain')?.value || 'beats', getTarget: () => byId('procgenSpanTarget')?.value || 'velocity',
     onUpdate: (automationId, patch) => dispatchAutomation({ type: 'automation.update', automationId, patch }),
     onBatchUpdate: updates => dispatchAutomation({ type: 'automation.batch.update', updates }),
     onStatus: message => { automationStatus = message; syncAutomationHistory(); },
+    onPresentation: () => syncSpanTool(),
     onAdd: (span, target) => spanControls.addSpan(span, target), onSelect: (id, options) => { spanControls.select(id, options); setOpen(true); } });
   const restoreAutomation = action => {
     spanOverlay.cancelDraft();
@@ -149,20 +163,28 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   };
   listen(byId('procgenSpanUndo'), 'click', () => restoreAutomation('undo'));
   listen(byId('procgenSpanRedo'), 'click', () => restoreAutomation('redo')); syncAutomationHistory();
-  musicDirection = createMidiMusicDirectionControls({ document, prefix: 'procgenMusic', getProject: () => project,
+  musicDirection = createMidiMusicDirectionControls({ document, prefix: 'procgenMusic', getOperationalMetrics: () => operationalMetrics,
+    getProject: () => project,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter,
     update: musicDirector => dispatchAutomation({ type: 'global.update', patch: { musicDirector } }) });
   musicControls = createProcgenMusicControls({ document, getState: () => procgenMusicState(project, settings),
     onChange: command => commitAutomation(editProcgenMusicProject(project, settings, command)) });
   syncTargetHelp = () => spanControls.syncTargetHelp();
+  function syncSpanTool() {
+    const control = byId('procgenSpanEdit'), visibleControl = byId('procgenSpanVisible'), status = byId('procgenSpanToolStatus');
+    const reason = spanOverlay.presentationStatus(), presentation = spanOverlay.snapshot();
+    if (control) { control.disabled = !presentation.presented; control.checked = presentation.editing; }
+    if (visibleControl) { visibleControl.disabled = !presentation.presentationSupported; visibleControl.checked = presentation.visible; }
+    if (status && status.textContent !== reason) status.textContent = reason;
+  }
   const setSpanEditing = enabled => {
-    if (enabled) setNukeArmed(false);
-    spanOverlay.setEditing(enabled);
-    if (byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = enabled;
-    if (enabled && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true;
+    const active = spanOverlay.setEditing(enabled);
+    if (active) setNukeArmed(false);
+    syncSpanTool();
+    if (active && byId('procgenSpanVisible')) byId('procgenSpanVisible').checked = true;
   };
   listen(byId('procgenSpanEdit'), 'change', event => setSpanEditing(event.target.checked));
-  listen(byId('procgenSpanVisible'), 'change', event => { spanOverlay.setVisible(event.target.checked); if (!event.target.checked && byId('procgenSpanEdit')) byId('procgenSpanEdit').checked = false; });
+  listen(byId('procgenSpanVisible'), 'change', event => { spanOverlay.setVisible(event.target.checked); syncSpanTool(); });
   const syncWorkerLimits = () => {
     getRuntime()?.world?.setWorkerLimits?.(settings.workerLimits);
     for (const [key, suffix] of [['bashers', 'Bashers'], ['diggers', 'Diggers'], ['builders', 'Builders']]) if (byId('procgenWorker' + suffix)) byId('procgenWorker' + suffix).value = String(settings.workerLimits[key]);
@@ -206,7 +228,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (open && event.detail === 0) byId('procgenPreset')?.focus();
   });
   const isEditing = event => event.target?.isContentEditable || ['TEXTAREA', 'SELECT'].includes(event.target?.tagName) || (event.target?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes(event.target.type || 'text'));
-  listen(document, 'keydown', event => { if (event.key === 'Escape' && !event.defaultPrevented && event.target?.tagName !== 'SELECT') { setOpen(false); setSpanEditing(false); setNukeArmed(false); } });
+  listen(document, 'keydown', event => {
+    if (event.key === 'Escape' && !event.defaultPrevented && event.target?.tagName !== 'SELECT' && !document.querySelector?.('dialog[open]') &&
+        !event.composedPath?.().some(node => node?.tagName === 'DIALOG' && node.open)) { setOpen(false); setSpanEditing(false); setNukeArmed(false); }
+  });
   const seedControls = byId('procgenSeedControls');
   listen(document, 'pointerdown', event => {
     if (seedControls?.open && !seedControls.contains(event.target)) seedControls.open = false;
@@ -219,7 +244,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   });
   setOpen(false);
   const showHelp = () => {
-    setOpen(true); const help = byId('procgenHelpFields');
+    updateShortcutHints(); setOpen(true); const help = byId('procgenHelpFields');
     if (help) { help.open = true; if (panel) panel.scrollTop = help.offsetTop || 0; help.querySelector?.('summary')?.focus({ preventScroll: true }); }
   };
   listen(byId('procgenHelp'), 'click', showHelp);
@@ -249,9 +274,16 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     try { window.localStorage?.setItem(musicKey, JSON.stringify({ version: 1, preset: settings.preset, mode: settings.mode })); } catch { /* Keep session palette. */ }
   };
   listen(byId('procgenPreset'), 'change', () => refreshPreset({ replaceRollingDefaults: true })); listen(byId('procgenPhrases'), 'change', () => refreshPreset()); syncMusic();
-  listen(byId('procgenListen'), 'click', () => { if (local.getState().enabled || local.getState().status === 'starting') local.stop(); else local.start(); });
+  listen(byId('procgenListen'), 'click', () => {
+    const state = local.getOperationalState();
+    if (state.enabled || ['starting', 'discovering'].includes(state.status)) return local.stop();
+    if (needsMidiDiscovery(state)) return local.discover();
+    if ((state.performanceLease || state.audio?.performanceLease)?.status === 'busy') return local.takeOverPerformance();
+    return local.start();
+  });
   let restartId = 0;
   const doRestart = async ({ applySeed = false } = {}) => {
+    if (physicalControlOwner?.canRestart && !physicalControlOwner.canRestart()) return false;
     const id = ++restartId;
     spanOverlay.cancelDraft();
     const seed = byId('procgenSeed')?.value?.trim();
@@ -328,11 +360,12 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   listen(byId('procgenCctvClear'), 'click', () => { cctv()?.setPins([]); syncCctv(cctv()?.getState()); });
   for (let index = 0; index < 8; index++) listen(byId('procgenCctvSlot' + index), 'click', event => toggleCctvPin(Number(event.currentTarget?.dataset.lane ?? byId('procgenCctvSlot' + index)?.dataset.lane)));
 
-  const setSpeed = value => {
+  const setSpeed = (value, { owned = false } = {}) => {
+    if (!owned && physicalControlOwner?.speed) return physicalControlOwner.speed(normalizeProcgenSpeed(value, settings.speed));
     settings.speed = normalizeProcgenSpeed(value, settings.speed);
     if (byId('procgenSpeed')) byId('procgenSpeed').value = settings.speed;
-    const runtime = getRuntime(); if (runtime?.view) runtime.view.gameSpeedFactor = settings.speed;
-    const timer = runtime?.game?.getGameTimer?.(); if (timer) timer.speedFactor = settings.speed;
+    const runtime = getRuntime(); if (!owned && runtime?.view) runtime.view.gameSpeedFactor = settings.speed;
+    const timer = runtime?.game?.getGameTimer?.(); if (!owned && timer) timer.speedFactor = settings.speed;
     renderProcgenSpeedControl({ document, sprites: panelSprites(), speed: settings.speed });
   };
   for (const id of ['procgenSpeed', 'procgenSpeedReadout', 'procgenSpeedDown', 'procgenSpeedUp']) listen(byId(id), 'contextmenu', event => { event.preventDefault?.(); setSpeed(1); });
@@ -340,20 +373,35 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
   for (const [id, direction] of [['procgenSpeedDown', -1], ['procgenSpeedUp', 1]]) {
     listen(byId(id), 'click', event => setSpeed(changeProcgenSpeed(settings.speed, direction, { panel: true, fast: event.shiftKey })));
   }
-  const supportedKeys = new Set(['panLeft', 'panRight', 'panUp', 'panDown', 'zoomIn', 'zoomOut', 'zoomReset', 'speedDown', 'speedDownFast', 'speedUp', 'speedUpFast', 'togglePause', 'stepForward', 'restartLevel']);
-  const keyConfig = config => ({ bindings: { ...Object.fromEntries(Object.entries(DEFAULT_KEYBINDINGS.bindings).map(([action, bindings]) =>
-    [action, supportedKeys.has(action) ? config?.bindings?.[action] ?? bindings : []])), followFrontier: config?.bindings?.followFrontier || ['KeyF'], toggleShortcutOverlay: config?.bindings?.toggleShortcutOverlay || ['F1', 'Shift+Slash'] } });
-  const keybindings = new KeybindingRegistry(keyConfig());
-  window?.fetch?.('keybindings.json').then(response => response.ok ? response.json() : null).then(config => {
-    if (config && !disposed) keybindings.setConfig(keyConfig(config));
-  }).catch(() => {});
+  const commandDispatcher = getProcgenCommandDispatcher({ document, window });
+  const shortcutLabel = action => {
+    const label = commandDispatcher.getShortcut('world.' + action);
+    return settings.workstation && ['Left', 'Right', 'Backspace', 'Delete'].includes(label) ? '' : label;
+  };
+  const updateShortcutHints = () => {
+    if (disposed) return;
+    const catalog = new Map(commandDispatcher.list().map(command => [command.id, command]));
+    for (const [id, action, label] of [['procgenZoomOut', 'zoomOut', 'Zoom out'], ['procgenZoomIn', 'zoomIn', 'Zoom in'],
+      ['procgenFollow', 'followFrontier', 'Follow the leading living lemming'], ['procgenPause', 'togglePause', 'Pause or play'],
+      ['procgenStep', 'stepForward', 'Pause and advance one tick'], ['procgenRestart', 'restartLevel', 'Regenerate the same seed'],
+      ['procgenSpeedDown', 'speedDown', 'Decrease speed'], ['procgenSpeedUp', 'speedUp', 'Increase speed'], ['procgenHelp', 'toggleShortcutOverlay', 'Shortcut reference']]) {
+      const control = byId(id), command = catalog.get('world.' + action), shortcut = command?.enabled ? shortcutLabel(action) : '';
+      if (control) control.title = shortcut ? `${label} (${shortcut})` : label;
+    }
+    const help = byId('procgenShortcutHelp');
+    if (help) help.textContent = 'Drag to pan; wheel to zoom; Shift+wheel pans. Double-click follows the leading living actor. ' +
+      (commandDispatcher.bindingState().ready ? [...catalog.values()].filter(command => command.id.startsWith('world.')).map(command =>
+        `${command.label}: ${!command.enabled ? 'unavailable here' : shortcutLabel(command.id.slice(6)) || 'unbound'}`).join('; ') + '.' :
+        'Keyboard shortcuts are loading; use the visible controls.');
+  };
   let paused = false;
   const setPaused = next => {
     paused = !!next; getRuntime()?.lanes?.[paused ? 'pause' : 'resume']?.();
-    if (byId('procgenPause')) { byId('procgenPause').textContent = paused ? 'Play' : 'Pause'; byId('procgenPause').setAttribute('aria-pressed', String(paused)); }
+    if (byId('procgenPause')) { byId('procgenPause').textContent = paused ? 'Play world' : 'Pause world'; byId('procgenPause').setAttribute('aria-pressed', String(paused)); }
+    physicalControlOwner?.operationalChanged?.();
   };
   listen(byId('procgenPause'), 'click', () => setPaused(!paused));
-  const stepOnce = () => { if (!paused) setPaused(true); getRuntime()?.lanes?.step(); };
+  const stepOnce = () => { if (physicalControlOwner?.step) return physicalControlOwner.step(); if (!paused) setPaused(true); getRuntime()?.lanes?.step(); };
   listen(byId('procgenStep'), 'click', stepOnce);
   listen(byId('procgenFollow'), 'click', () => { camera()?.followFrontier(); byId('gameCanvas')?.focus?.(); });
   for (const [id, factor] of [['procgenZoomOut', 1 / 1.1], ['procgenZoomIn', 1.1]]) listen(byId(id), 'click', () => camera()?.setZoom(camera().getState().scale * factor));
@@ -372,45 +420,71 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     const projection = renderer.workstationLayout;
     if (cssY < 0 || cssY >= (projection ? rect.height : height * renderer.scale)) return;
     const lane = projection ? projection.laneAt(cssY) : Math.floor((renderer.cameraY + cssY / renderer.scale) / world.laneHeight);
-    if (world.nukeLane(lane)) { event.preventDefault?.(); event.stopImmediatePropagation?.(); setNukeArmed(false); }
+    if (physicalControlOwner?.nuke ? physicalControlOwner.nuke(lane) : world.nukeLane(lane)) { event.preventDefault?.(); event.stopImmediatePropagation?.(); setNukeArmed(false); }
   }, { capture: true });
-  const handleKey = event => {
-    if (event.defaultPrevented || isEditing(event)) return;
-    if (settings.workstation && ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-    if (!event.ctrlKey && !event.altKey && !event.metaKey && (event.code === 'KeyT' || event.key?.toLowerCase() === 't')) {
-      if (!event.repeat) { if (event.shiftKey) { setSpanEditing(false); getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); } else setNukeArmed(!nukeArmed); }
-      event.preventDefault?.(); return;
-    }
-    if (event.key === 'Escape') { setNukeArmed(false); setSpanEditing(false); return; }
-    if (event.repeat) return;
-    if (event.target?.type === 'range' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) return;
-    const activationKey = [' ', 'Enter'].includes(event.key) || ['Space', 'Enter', 'NumpadEnter'].includes(event.code);
-    if (activationKey && (['BUTTON', 'SUMMARY'].includes(event.target?.tagName) || event.target?.tagName === 'INPUT' && ['checkbox', 'radio', 'button', 'submit'].includes(event.target.type))) return;
-    if (event.target?.type === 'radio' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key || event.code)) return;
-    let handled = false;
-    for (const action of keybindings.getActionsForEvent(event)) {
-      if (action.startsWith('pan') && action !== 'panBoost') {
-        const amount = event.shiftKey ? 48 : 24;
-        const offset = { panLeft: [-amount, 0], panRight: [amount, 0], panUp: [0, -amount], panDown: [0, amount] }[action];
-        if (offset) { camera()?.pan(...offset); handled = true; }
-      } else if (action === 'zoomIn' || action === 'zoomOut') {
-        camera()?.setZoom(camera().getState().scale * (action === 'zoomIn' ? 1.1 : 1 / 1.1)); handled = true;
-      } else if (action === 'zoomReset') { camera()?.setZoom(3); handled = true; }
-      else if (action === 'followFrontier') { camera()?.followFrontier(); handled = true; }
-      else if (action.startsWith('speed')) { setSpeed(changeProcgenSpeed(settings.speed, action.startsWith('speedUp') ? 1 : -1, { fast: action.endsWith('Fast') })); handled = true; }
-      else if (action === 'togglePause' && !event.repeat) { setPaused(!paused); handled = true; }
-      else if (action === 'stepForward') { stepOnce(); handled = true; }
-      else if (action === 'toggleShortcutOverlay') { showHelp(); handled = true; }
-      else if (action === 'restartLevel' && !event.repeat) { doRestart(); handled = true; }
-    }
-    if (handled) event.preventDefault?.();
+  const runWorldCommand = (action, event = {}) => {
+    if (action.startsWith('pan') && action !== 'panBoost') {
+      const amount = event.shiftKey ? 48 : 24, offset = { panLeft: [-amount, 0], panRight: [amount, 0], panUp: [0, -amount], panDown: [0, amount] }[action];
+      if (offset) camera()?.pan(...offset);
+    } else if (action === 'zoomIn' || action === 'zoomOut') camera()?.setZoom(camera().getState().scale * (action === 'zoomIn' ? 1.1 : 1 / 1.1));
+    else if (action === 'zoomReset') camera()?.setZoom(3);
+    else if (action === 'followFrontier') camera()?.followFrontier();
+    else if (action.startsWith('speed')) setSpeed(changeProcgenSpeed(settings.speed, action.startsWith('speedUp') ? 1 : -1, { fast: action.endsWith('Fast') }));
+    else if (action === 'togglePause') setPaused(!paused);
+    else if (action === 'stepForward') stepOnce();
+    else if (action === 'toggleShortcutOverlay') showHelp();
+    else if (action === 'restartLevel') doRestart();
+    else if (action === 'nuke') setNukeArmed(!nukeArmed);
+    else if (action === 'nukeInstant') { setSpanEditing(false); physicalControlOwner?.nuke ? physicalControlOwner.nuke(null) : getRuntime()?.world?.nukeAll?.(); setNukeArmed(false); }
   };
-  listen(window, 'keydown', handleKey);
-  const getShareUrl = () => createProcgenShareUrl({ url: window.location.href, seed: window.procgenSeed,
-    settings, camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true } });
-  listen(byId('procgenShare'), 'click', () => {
-    const input = byId('procgenShareUrl'); if (!input) return;
-    input.value = getShareUrl(); input.hidden = false; input.focus?.(); input.select?.();
+  const commandLabels = { panLeft: 'Pan world left', panRight: 'Pan world right', panUp: 'Pan world up', panDown: 'Pan world down',
+    zoomIn: 'Zoom world in', zoomOut: 'Zoom world out', zoomReset: 'Reset world zoom', followFrontier: 'Follow the leading living actor',
+    speedDown: 'Decrease world speed', speedDownFast: 'Decrease world speed quickly', speedUp: 'Increase world speed', speedUpFast: 'Increase world speed quickly',
+    togglePause: 'Play or pause the world', stepForward: 'Step the world once', restartLevel: 'Restart the world', nuke: 'Arm lane nuke', nukeInstant: 'Nuke all actors', toggleShortcutOverlay: 'Open shortcut reference' };
+  const commandRegistration = commandDispatcher.register({ priority: 0,
+    getContext: () => { const runtime = getRuntime(), owner = runtime?.world || runtime?.game || runtime, display = camera(); return { owner: owner ? new WeakRef(owner) : null, camera: display ? new WeakRef(display) : null, generation: runtime?.world?.generation }; },
+    isCurrent: context => { const runtime = getRuntime(), owner = runtime?.world || runtime?.game || runtime; return !disposed && (!context.owner || context.owner.deref() !== undefined) && context.owner?.deref() === (owner || undefined) && (!context.camera || context.camera.deref() !== undefined) && context.camera?.deref() === (camera() || undefined) && context.generation === runtime?.world?.generation; },
+    accepts: event => !settings.workstation || !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(event.key || event.code),
+    commands: [...Object.keys(commandLabels).map(action => ({ id: 'world.' + action, label: commandLabels[action],
+      contexts: [action.startsWith('pan') || action.startsWith('zoom') || action === 'followFrontier' ? 'physical-world' : 'global-transport'],
+      shortcut: () => shortcutLabel(action), bindingKey: action, bindings: DEFAULT_KEYBINDINGS.bindings[action] || (action === 'followFrontier' ? ['KeyF'] : ['F1', 'Shift+Slash']),
+      repeat: action.startsWith('pan') || action.startsWith('zoom') || action.startsWith('speed'),
+      cancelGesture: ['nuke', 'nukeInstant', 'restartLevel'].includes(action),
+      enabled: () => (physicalControlOwner?.canShortcut?.(action) ?? true) && (action === 'toggleShortcutOverlay' || (action.startsWith('pan') || action.startsWith('zoom') || action === 'followFrontier' ? !!camera() : action.startsWith('nuke') ? !!physicalControlOwner?.nuke || !!getRuntime()?.world : !!getRuntime())),
+      execute: (_context, event) => runWorldCommand(action, event) })),
+    { id: 'world.cancelTools', label: 'Cancel armed world tools', cancelGesture: true, contexts: ['physical-world'], bindings: ['Escape'], execute: () => { setNukeArmed(false); setSpanEditing(false); } }] });
+  const stopWatchingBindings = commandDispatcher.watchBindings(updateShortcutHints);
+  if (typeof window.fetch === 'function') {
+    commandDispatcher.setBindingsPending();
+    Promise.resolve().then(() => window.fetch('keybindings.json')).then(response => response.ok ? response.json() : null).then(config => {
+      if (!disposed) commandDispatcher.setBindings(config);
+    }).catch(() => { if (!disposed) commandDispatcher.setBindings(null); });
+  } else commandDispatcher.setBindings(null);
+  updateShortcutHints();
+  const getShareDescriptor = ({ includeCamera = false } = {}) => {
+    const runtime = getRuntime(), world = runtime?.world;
+    if (!world) throw new Error('Wait for the committed world before copying a recipe');
+    if (!runtime.recipeSettings && world.laneCount !== settings.laneCount) throw new Error('Wait for the world change to finish before copying a recipe');
+    const committed = runtime.recipeSettings || settings;
+    return createProcgenRecipeShareDescriptor({ url: window.location.href, seed: world.seed, sceneOrigin: project.procgen?.sceneOrigin,
+      settings: { ...committed, laneCount: world.laneCount, laneHeight: world.laneHeight,
+        speed: physicalControlOwner?.getRecipeSpeed?.() ?? (world.timer?.speedFactor > 0 ? world.timer.speedFactor : committed.speed ?? settings.speed) },
+      camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true },
+      includeCamera });
+  };
+  const getShareUrl = () => getShareDescriptor().url;
+  let sharingView = null, sharingLoad = null;
+  listen(byId('procgenShare'), 'click', async () => {
+    try {
+      sharingLoad ||= import('./ProcgenShareView.js');
+      const { createProcgenShareView } = await sharingLoad;
+      if (disposed) return;
+      sharingView ||= createProcgenShareView({ document, window, getDescriptor: getShareDescriptor,
+        getExportDescriptor: () => physicalControlOwner?.getShareExportDescriptor?.(),
+        prepareExport: (source, options) => physicalControlOwner?.prepareShareExport?.(source, options),
+        onPrepared: () => physicalControlOwner?.revealPreparedExport?.() });
+      sharingView.open();
+    } catch (error) { if (!disposed && byId('procgenShareNotice')) byId('procgenShareNotice').textContent = `Could not open sharing: ${error.message}`; }
   });
   listen(window, 'blur', () => { if (!settings.workstation) local.suspendGame(); });
   listen(window, 'focus', () => { if (!settings.workstation && !document.hidden) local.resumeGame(); });
@@ -423,13 +497,20 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     if (byId('procgenBest')) byId('procgenBest').textContent = 'Best ' + Math.max(0, Math.round(best)).toLocaleString();
   };
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
-  return { settings, local, outputCapture, captureControls, getShareUrl, syncActiveCount,
+  return { settings, local, outputCapture, captureControls, getShareUrl, getShareDescriptor, syncActiveCount,
+    refreshCanvasToolAuthority() { if (!disposed) { spanOverlay.sync(); syncSpanTool(); } },
+    getOperationalMetrics: () => operationalMetrics,
     getProject: () => project,
-    setProject: next => commitAutomation(next, false),
+    setProject: (next, { persist = true } = {}) => commitAutomation(next, false, persist),
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
+    refreshShortcutHints: updateShortcutHints,
+    setPhysicalControlOwner(owner) { physicalControlOwner = owner; updateShortcutHints(); return () => { if (physicalControlOwner === owner) { physicalControlOwner = null; updateShortcutHints(); } }; },
     setPaused, setSpeed, restart: doRestart,
     isPaused: () => paused,
     syncMetrics(state) {
+      operationalMetrics = Object.freeze({ achievedTicksPerSecond: Number.isFinite(state.achievedTicksPerSecond) ? state.achievedTicksPerSecond : null,
+        observedAt: window.performance?.now?.() ?? null, generation: state.generation, alive: state.alive });
+      physicalControlOwner?.operationalChanged?.();
       local.syncStatus?.();
       syncActiveCount(state.alive); syncProgress(state); tensionControls.syncStatus(); spanControls.syncStatus(); musicDirection.syncStatus();
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();
@@ -446,7 +527,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
     prepareCharacters: sprites => characters.sync(sprites),
     sync({ charactersReady = false } = {}) {
       if (!charactersReady) characters.sync();
-      syncProgress(); musicDirection.sync(); syncMusic(); spanControls.render(); spanOverlay.sync(); syncWorkerLimits(); syncPopulation();
+      syncProgress(); musicDirection.sync(); syncMusic(); spanControls.render(); spanOverlay.sync(); syncSpanTool(); syncWorkerLimits(); syncPopulation();
       setPaused(paused); setNukeArmed(false);
       if (byId('procgenSeed')) byId('procgenSeed').value = String(settings.seed ?? window.procgenSeed ?? '');
       camera()?.applyState(settings.camera || urlConfig.camera);
@@ -455,9 +536,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, init
       setSpeed(settings.speed);
       const runtime = getRuntime();
       if (byId('procgenAliveCount') && runtime?.world) byId('procgenAliveCount').textContent = runtime.world.actors.reduce((count, actor) => count + (actor.failureReason ? 0 : 1), 0).toLocaleString() + ' alive';
-      if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `${settings.laneCount.toLocaleString()} ${settings.laneCount === 1 ? 'lane' : 'lanes'} · ${runtime?.world ? 'Wheel or Z/X zoom; arrows or drag pan; F follows the leader.' : 'Left-to-right generation'}`;
+      if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `${settings.laneCount.toLocaleString()} ${settings.laneCount === 1 ? 'lane' : 'lanes'} · ${runtime?.world ? 'Wheel zoom; drag to pan. Configured shortcuts are listed in Help.' : 'Left-to-right generation'}`;
+      updateShortcutHints();
     },
-    dispose() { disposed = true; local.dispose(); captureControls.dispose(); musicControls.dispose(); musicDirection.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler, options] of listeners) target?.removeEventListener(event, handler, options); }
+    dispose() { disposed = true; stopWatchingBindings(); commandRegistration.dispose(); sharingView?.dispose(); local.dispose(); captureControls.dispose(); musicControls.dispose(); musicDirection.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler, options] of listeners) target?.removeEventListener(event, handler, options); }
   };
 };
 export { createProcgenUiController };

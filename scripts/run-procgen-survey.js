@@ -48,6 +48,7 @@ const main = async args => {
   }
   const directory = input.resume ? safeOutput(input.resume) : path.join(safeOutput(input.out), manifest.experimentId);
   const store = await new SurveyEvidenceStore(directory, { maxBytes: manifest.budgetPolicy.storageBytes }).initialize(manifest);
+  const reportGeneration = await store.derivativeGeneration('report.json');
   const controller = new AbortController(), stop = () => controller.abort(); process.once('SIGINT', stop); process.once('SIGTERM', stop);
   let server, cachedState = () => ({ schemaVersion: 1, manifest, results: [], status: 'starting' }), controls;
   try {
@@ -55,7 +56,7 @@ const main = async args => {
     console.log(JSON.stringify({ experimentId: manifest.experimentId, logicalCandidates: manifest.candidates.length, executionWorkers: manifest.budgetPolicy.executionWorkers, residentWorlds: manifest.budgetPolicy.residentWorlds, directory }));
     const report = await runSurveyExperiment(manifest, store, { signal: controller.signal, onState: state => { cachedState = state; }, onControlReady: value => { controls = value; if (input.paused === 'true') controls.pause(); } });
     cachedState = () => report; controls = null;
-    const reportFile = path.join(directory, 'report.json'); await store.writeDerivative('report.json', report);
+    const reportFile = path.join(directory, 'report.json'); await store.writeDerivative('report.json', report, { expectedGeneration: reportGeneration });
     console.log(JSON.stringify({ status: report.status, results: report.results.length, reasons: report.reason, storage: store.snapshot(), reportFile, rankingsTrusted: false }));
     if (report.status !== 'complete') process.exitCode = 2;
     return report;

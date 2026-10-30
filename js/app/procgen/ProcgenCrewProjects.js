@@ -1,3 +1,5 @@
+import { recordPhysicalCrewFact, finishPhysicalCrewEvidence, discardPhysicalCrewEvidence } from './PhysicalCrewEvidence.js';
+import { attachCrewOrigin } from './ProcgenBirthCohorts.js';
 import { procgenTileRevision } from './ProcgenTerrainRetention.js';
 import { SoundEventTypes, SoundEffectIds } from '../../game/SoundEvents.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
@@ -16,6 +18,7 @@ class ProcgenCrewProjects {
   _valid(project) { return project.tiles.every(([key, revision]) => procgenTileRevision(this.world, key) === revision); }
   _fail(project, reason) {
     if (project.phase === 'complete' || project.phase === 'failed' || project.phase === 'retired') return;
+    finishPhysicalCrewEvidence(this.world, project, reason);
     project.phase = 'failed'; project.failure = reason; this.lanes[project.lane].failed++;
     if (reason === 'crew-loss' && project.passageRewarded) this.credit(project.lane, project.kind, 'crew-failure');
   }
@@ -67,7 +70,9 @@ class ProcgenCrewProjects {
       kind, ownerId: actor.id, startTick: this.world.tickIndex, startX: actor.x, startY: actor.y, direction: actor.lookRight !== false ? 1 : -1,
       bounds: task.footprint ? { ...task.footprint } : { x1: actor.x - 16, x2: actor.x + 16, y1: actor.y - 12, y2: actor.y + 12 },
       exitX: actor.lookRight !== false ? Math.max(actor.x, task.footprint?.x2 ?? task.targetX ?? actor.x) : Math.min(actor.x, task.footprint?.x1 ?? task.targetX ?? actor.x), phase: 'working', members, ordinaryCrossings: 0, passageRewarded: false, tiles: [] };
-    task.crewProjectId = project.id; state.projects.push(project); return project.id;
+    task.crewProjectId = project.id; state.projects.push(project); recordPhysicalCrewFact(this.world, project, 'CrewRouteOpened');
+    for (const member of this.world.actors) if (members.has(member.id)) attachCrewOrigin(this.world, member, project.id);
+    return project.id;
   }
   connect(lane, id, x, y, tiles) {
     const project = this.lanes[lane]?.projects.find(entry => entry.id === id);
@@ -84,7 +89,7 @@ class ProcgenCrewProjects {
         if (!project.tiles.some(tile => tile[0] === key)) project.tiles.push([key, procgenTileRevision(this.world, key)]);
       }
     if (project.tiles.length > 8) { this._fail(project, 'revision-capacity'); return; }
-    project.connectionTick = this.world.tickIndex;
+    project.connectionTick = this.world.tickIndex; recordPhysicalCrewFact(this.world, project, 'CrewRouteConnected');
   }
   fail(lane, id, reason = 'worker-failure') {
     const project = this.lanes[lane]?.projects.find(entry => entry.id === id); if (project) this._fail(project, reason);
@@ -203,7 +208,7 @@ class ProcgenCrewProjects {
         if (project.members.size >= MAX_PROJECT_CREW) this._fail(project, 'containment-capacity');
         else project.members.set(actor.id, { id: actor.id, ordinary: this._ordinary(actor), crossed: false, blocker: true, lastSeenTick: this.world.tickIndex });
       }
-      if (project?.members.has(actor.id)) project.members.get(actor.id).blocker = true;
+      if (project?.members.has(actor.id)) { project.members.get(actor.id).blocker = true; attachCrewOrigin(this.world, actor, project.id); }
     }
     let observation = state.live.get(actor.id);
     if (!observation && state.live.size < MAX_PROJECT_CREW) { observation = { id: actor.id }; state.live.set(actor.id, observation); }
@@ -219,12 +224,12 @@ class ProcgenCrewProjects {
         if (project.members.size >= MAX_PROJECT_CREW) this._fail(project, 'admission-capacity');
         else project.members.set(actor.id, { id: actor.id, ordinary: true, crossed: false, blocker: false, lastSeenTick: this.world.tickIndex });
       }
-      const member = project.members.get(actor.id); if (member) member.lastSeenTick = this.world.tickIndex;
+      const member = project.members.get(actor.id); if (member) { member.lastSeenTick = this.world.tickIndex; attachCrewOrigin(this.world, actor, project.id); }
       if (member?.ordinary && !this._ordinary(actor)) { this._fail(project, 'crew-changed'); continue; }
       if (project.phase !== 'connected' || !this._valid(project)) continue;
       if (!member || member.crossed || actor.action !== this.world.actions[State.WALKING] ||
           project.direction * (actor.x - project.goalX) <= 0 || Math.abs(actor.y - project.goalY) > 32) continue;
-      member.crossed = true;
+      member.crossed = true; recordPhysicalCrewFact(this.world, project, 'CrewMemberArrived', actor.id);
       if (member.ordinary && actor.id !== project.ownerId) {
         project.ordinaryCrossings++;
         if (!project.passageRewarded) { project.passageRewarded = true; this.credit(project.lane, project.kind, 'passage'); }
@@ -239,7 +244,7 @@ class ProcgenCrewProjects {
     const member = project.members.get(project.ownerId), live = state.live.get(project.ownerId);
     if (!member?.crossed || member.blocker || !live || live.tick !== this.world.tickIndex || live.generation !== project.generation || live.lane !== project.lane ||
         !live.walking || live.blocking || live.heldProjectId != null || project.direction * (live.x - project.goalX) <= 0 || Math.abs(live.y - project.goalY) > 32) return false;
-    project.phase = 'retired'; project.retirement = 'fulfilled-owner-only'; state.retiredOwnerOnly++;
+    discardPhysicalCrewEvidence(this.world, project.id); project.phase = 'retired'; project.retirement = 'fulfilled-owner-only'; state.retiredOwnerOnly++;
     return true;
   }
   finish(lane) {
@@ -259,6 +264,7 @@ class ProcgenCrewProjects {
         if (member.blocker) blockers++;
       }
       if (!arrived) continue;
+      finishPhysicalCrewEvidence(this.world, project);
       project.phase = 'complete'; state.completed++; this.credit(project.lane, project.kind, 'crew-complete');
       this.world.soundEvents?.emit({ type: SoundEventTypes.PROCGEN_ROUTE_COMPLETE, sfxId: SoundEffectIds.PROCGEN_ROUTE_COMPLETE, lemmingId: project.ownerId, laneIndex: project.lane, laneCount: this.world.laneCount,
         generation: project.generation, tick: this.world.tickIndex, crewProjectId: project.id, routeRevisionsUnchanged: true, kind: project.kind,

@@ -1,6 +1,7 @@
 import { lintGlobals, testLintGlobals } from './scripts/lint-globals.js';
 
 export default [
+  { ignores: ['**/vendor/**', 'dist/**', 'test-results/**', 'playwright-report/**', 'coverage/**'] },
   {
     files: ['**/*.js'],
     ignores: [
@@ -29,7 +30,7 @@ export default [
     }
   },
   {
-    files: ['test/**/*.js', 'e2e/**/*.js'],
+    files: ['test/**/*.js', 'e2e/**/*.js', 'e2e-portable/**/*.js'],
     languageOptions: {
       globals: testLintGlobals
     }

@@ -1,7 +1,6 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
-import { getRuntimeMiniMap } from '../game/GameRuntime.js';
 
 class ActionFryingSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -23,9 +22,6 @@ class ActionFryingSystem extends ActionBaseSystem {
       lem.lastTriggerType = null;
     }
     lem.frameIndex++;
-    if (lem.frameIndex === 13) {
-      getRuntimeMiniMap(this.runtime)?.addDeath(lem.x, lem.y);
-    }
     if (lem.frameIndex === 14) {
       return LemmingStateType.OUT_OF_LEVEL;
     }

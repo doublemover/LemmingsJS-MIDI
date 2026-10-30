@@ -4,6 +4,7 @@ import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { capturePhysicalLanding } from './PhysicalFlightFacts.js';
 
 class ActionFallSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -40,7 +41,7 @@ class ActionFallSystem extends ActionBaseSystem {
         getRuntimeSoundEvents(this.runtime)?.emitSfx?.(
           SoundEventTypes.LEMMING_LAND,
           SoundEffectIds.LAND,
-          { lemmingId: lem.id, x: lem.x, y: lem.y }
+          { lemmingId: lem.id, x: lem.x, y: lem.y, flightArc: capturePhysicalLanding(lem, i) }
         );
       }
       return LemmingStateType.WALKING;

@@ -37,8 +37,11 @@ import {
   TEMPLATE_STORAGE_KEY,
   cleanupLegacyMidiProjectStorage,
   readStoredMidiProject,
+  readStoredMidiProjectOutcome,
+  readStoredMidiProjectTemplatesOutcome,
   readStoredMidiProjectTemplates,
   resetMidiProjectStorage,
+  resetProtectedMidiStorage,
   saveMidiProject,
   saveMidiProjectWithOutcome,
   saveMidiProjectTemplateWithOutcome
@@ -152,7 +155,7 @@ const setText = (element, value) => {
   if (element && element.textContent !== String(value)) element.textContent = value;
 };
 
-const setInputValue = (element, value) => {
+const writeInputValue = (element, value) => {
   if (!element) return;
   const next = value == null ? '' : String(value);
   if (element.value !== next) element.value = next;
@@ -284,6 +287,12 @@ const createMidiUiController = ({
   const domListeners = [];
   const outputLog = [];
   let project = null;
+  let renderedProject = null, preserveFocusedInput = false;
+  const setInputValue = (element, value) => {
+    if (preserveFocusedInput && element === document?.activeElement &&
+        (element?.tagName === 'TEXTAREA' || element?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'file', 'color'].includes(element.type))) return;
+    writeInputValue(element, value);
+  };
   let projectNeedsFactory = false;
   let bound = false;
   let activeMidiInput = null;
@@ -449,14 +458,16 @@ const createMidiUiController = ({
 
     const factory = getFactoryConfig();
     const factoryProject = factory ? captureFactoryProject(factory) : null;
-    const stored = readStoredMidiProject(storage);
-    if (stored) {
+    const stored = readStoredMidiProjectOutcome(storage);
+    if (!['ready', 'absent'].includes(stored.state)) projectPersisted = false;
+    if (stored.project) {
       projectNeedsFactory = false;
-      return stored;
+      return stored.project;
     }
     if (factoryProject) {
       projectNeedsFactory = false;
-      return saveMidiProject(storage, freshProjectPresetId ? applyGameEventMidiPreset(factoryProject, freshProjectPresetId) : factoryProject);
+      const saved = saveMidiProjectWithOutcome(storage, freshProjectPresetId ? applyGameEventMidiPreset(factoryProject, freshProjectPresetId) : factoryProject);
+      projectPersisted = saved.persisted; return saved.project;
     }
     projectNeedsFactory = true;
     const fresh = createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} });
@@ -727,7 +738,7 @@ const createMidiUiController = ({
       status: lastStatus,
       error: document?.getElementById('errorDisplay')?.textContent || '',
       scheduler: getSchedulerPressure(),
-      persistence: { persisted: projectPersisted },
+      persistence: { persisted: projectPersisted, protected: protectedStorage().map(({ key, state, diagnostic }) => ({ key, state, diagnostic })) },
       outputLog: outputLog.slice(),
       recovery: {
         resetAvailable: true,
@@ -767,9 +778,28 @@ const createMidiUiController = ({
     renderTransport();
     const message = outcome.persisted
       ? 'Saved template ' + template.name + (projectPersisted ? '' : '; project identity is session-only')
-      : 'Template was not saved; changes are session-only. Export to keep them.';
+      : outcome.reason === 'protected-storage' ? 'Saved template data is protected. Export stored data before explicitly resetting it; current changes remain in this session.'
+        : 'Template was not saved; changes are session-only. Export to keep them.';
     setStatus(message); logOutput(message);
     return template;
+  };
+
+  const protectedStorage = () => [readStoredMidiProjectOutcome(storage), readStoredMidiProjectTemplatesOutcome(storage)]
+    .filter(outcome => ['unsupported', 'corrupt', 'unavailable'].includes(outcome.state));
+  const exportStoredData = () => {
+    const records = protectedStorage().filter(outcome => typeof outcome.raw === 'string');
+    if (!records.length) { setStatus('No readable protected data is available to export.'); return false; }
+    downloadTextFile(document, JSON.stringify({ schema: 'lemmings-midi-storage-recovery', version: 1,
+      records: records.map(({ key, state, raw }) => ({ key, state, raw })) }, null, 2), 'midi-stored-data-recovery.json', 'application/json');
+    setStatus('Requested an export of the original stored data. Review it before resetting protected storage.'); return true;
+  };
+  const resetProtectedStorage = () => {
+    const records = protectedStorage().filter(outcome => typeof outcome.raw === 'string');
+    if (!records.length || !window?.confirm?.('Permanently reset the protected saved project/template records? This removes all entries in each affected record, including valid templates. Export stored data first.')) return false;
+    const results = records.map(record => resetProtectedMidiStorage(storage, { key: record.key, expectedRaw: record.raw }));
+    const complete = results.every(result => result.reset);
+    setStatus(complete ? 'Protected storage reset. Current session changes remain available; save again when ready.' : 'Storage changed or could not be reset. Original data remains protected.');
+    renderTransport(); return complete;
   };
 
   const exportProject = (options = {}) => {
@@ -2644,6 +2674,12 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiSwing'), current.transport.swing);
     setChecked(document?.getElementById('midiReversePanicToggle'), current.global.reverse.allNotesOffOnToggle);
     renderTemplateOptions();
+    const protection = protectedStorage(), blocked = protection.length > 0;
+    setText(document?.getElementById('midiStorageProtection'), blocked
+      ? 'Saved data is protected or unavailable. Current session work and project export remain available. ' + protection.map(item => item.diagnostic).filter(Boolean).join(' ') : '');
+    for (const id of ['midiStoredDataExportButton', 'midiStoredDataResetButton']) {
+      const control = document?.getElementById(id); if (control) { control.hidden = !blocked; control.disabled = !protection.some(item => typeof item.raw === 'string'); }
+    }
     document?.body?.classList?.toggle('midi-disabled', !current.enabled);
     renderConnectionControls();
     if (lastStatus === 'Project loading') setStatus('Project ready');
@@ -2664,6 +2700,7 @@ const createMidiUiController = ({
     try {
       syncRuntimeSources();
       applyProjectToRuntime();
+      preserveFocusedInput = project === renderedProject;
       renderTransport();
       renderSourceList();
       renderTrackList();
@@ -2677,6 +2714,8 @@ const createMidiUiController = ({
       localGamePreview?.syncConfig?.();
       if (getWebMidi()?.enabled) refreshDeviceLists({ preserveSelection: true });
     } finally {
+      renderedProject = project;
+      preserveFocusedInput = false;
       rendering = false;
       uiMetrics.renderCount += 1;
       uiMetrics.lastRenderAt = Date.now();
@@ -3039,6 +3078,8 @@ const createMidiUiController = ({
     bindById('midiTemplateSaveButton', 'click', () => saveProjectTemplate());
     bindById('midiTemplateSaveAsButton', 'click', () => saveProjectTemplate({ asNew: true }));
     bindById('midiProjectExportButton', 'click', () => exportProject());
+    bindById('midiStoredDataExportButton', 'click', exportStoredData);
+    bindById('midiStoredDataResetButton', 'click', resetProtectedStorage);
     bindById('midiProjectImportButton', 'click', () => document?.getElementById('midiProjectImportInput')?.click?.());
     bindById('midiProjectImportInput', 'change', async event => {
       const file = event.target?.files?.[0] || null;

@@ -14,6 +14,7 @@
     "types": []
   },
   "include": [
+    "js/midi/protocol/MidiClipFile.js",
     "js/game/HistoryStore.js",
     "js/game/history/**/*.js",
     "js/render/Stage.js",
@@ -22,6 +23,12 @@
     "js/app/midi-ui/midiUiFeatureFlags.js",
     "js/app/midi-ui/midiUiIntent.js",
     "js/app/midi-ui/midiUiRefreshSections.js",
+    "js/app/procgen/workstation/RecordedMidiExportPlan.js",
+    "js/app/procgen/workstation/OriginalUmpCapture.js",
+    "js/app/procgen/workstation/OriginalUmpRecordingSnapshot.js",
+    "js/app/procgen/workstation/RecordedUmpClipExport.js",
+    "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
+    "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
     "js/editor/editor-controller/EditorControllerPointer.js",
     "js/editor/editor-controller/EditorControllerPointerInput.js",
     "js/editor/editor-controller/EditorControllerPointerSelection.js",

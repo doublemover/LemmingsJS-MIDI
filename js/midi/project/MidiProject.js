@@ -1,3 +1,4 @@
+import { recordProcgenProjectChange } from '../../app/procgen/workstation/ProcgenProjectIndex.js';
 import { sanitizeClipVoices, sanitizeClipTransformLayers } from './MidiClipTransforms.js';
 import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
 import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
@@ -5,9 +6,12 @@ import { sanitizeMidiLaneMusic } from './MidiLaneMusic.js';
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
 import { getPlayableMidiClipSteps as activeClipSteps } from './MidiClipPlayback.js';
 import { cloneSafeObject, isPlainObject, safeObjectEntries } from '../../util/safeObject.js';
-import { sanitizeProcgenWorkstation, reduceProcgenWorkstationProject } from '../../app/procgen/workstation/ProcgenWorkstationProject.js';
+import { sanitizeProcgenWorkstation, reduceProcgenWorkstationProject, reduceCanonicalProcgenProject } from '../../app/procgen/workstation/ProcgenWorkstationProject.js';
 
 const MIDI_PROJECT_VERSION = 1;
+const canonicalMidiProjects = new WeakSet();
+const markCanonicalMidiProject = project => { canonicalMidiProjects.add(project); return project; };
+const isCanonicalMidiProject = project => !!project && canonicalMidiProjects.has(project);
 const DEFAULT_TRACK_ID = 'track-1';
 const DEFAULT_TEMPLATE_ID = 'midi-mapping';
 const MIDI_PROJECT_EXPORT_KIND = 'lemmings.midi.project';
@@ -670,7 +674,7 @@ function sanitizeMidiProject(project = {}) {
     ? source.ui.selectedClipId
     : null;
 
-  return {
+  return markCanonicalMidiProject({
     version: MIDI_PROJECT_VERSION,
     id: sanitizeId(source.id, 'midi-project'),
     name: sanitizeId(source.name, 'MIDI Project'),
@@ -698,7 +702,7 @@ function sanitizeMidiProject(project = {}) {
       selectedClipId,
       activeRegion: sanitizeId(source.ui?.activeRegion, 'setup')
     }
-  };
+  });
 }
 
 const parseMidiProjectPayload = (payload) => {
@@ -778,6 +782,7 @@ const importMidiProjectPayload = (payload) => {
   let projectPayload = null;
   let templateId = null;
   if (parsed.kind === MIDI_TEMPLATE_EXPORT_KIND) {
+    if (parsed.template?.version != null && parsed.template.version !== MIDI_PROJECT_VERSION) throw new Error('Unsupported MIDI template version.');
     projectPayload = parsed.template?.project ?? parsed.project;
     templateId = parsed.template?.id ?? parsed.templateId ?? projectPayload?.templateId ?? null;
   } else if (parsed.kind === MIDI_PROJECT_EXPORT_KIND) {
@@ -984,6 +989,11 @@ const updateAutomationLane = (automation, automationId, patch, tracks) => {
 };
 
 function reduceMidiProject(project, intent = {}) {
+  if (isCanonicalMidiProject(project) && ['procgen/sceneMacro', 'procgen/worldTheme', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+    'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch'].includes(intent.type)) {
+    const next = reduceCanonicalProcgenProject(project, intent);
+    return next === project ? project : recordProcgenProjectChange(project, markCanonicalMidiProject(touchProject(next)), intent);
+  }
   const current = sanitizeMidiProject(project);
   if (intent.type?.startsWith('procgen/')) return sanitizeMidiProject(touchProject(reduceProcgenWorkstationProject(current, intent)));
   let next = current;
@@ -1553,7 +1563,7 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
 };
 
 function projectToMidiConfig(project, factoryConfig = {}) {
-  const clean = sanitizeMidiProject(project);
+  const clean = isCanonicalMidiProject(project) ? project : sanitizeMidiProject(project);
   const base = mergeConfig(DEFAULT_CONFIG, factoryConfig || {});
   const positionMappings = automationToPositionMappings(clean.automation);
   const config = mergeConfig(base, {
@@ -1613,6 +1623,10 @@ function projectToMidiConfig(project, factoryConfig = {}) {
   return config;
 }
 
+const sameMidiRuntimeInputs = (left, right) => left.enabled === right.enabled &&
+  ['global', 'transport', 'devices', 'tracks', 'clips', 'sources', 'automation', 'ensemble']
+    .every(key => left[key] === right[key]);
+
 export {
   AUTOMATION_AXES,
   AUTOMATION_TARGETS,
@@ -1636,7 +1650,10 @@ export {
   createMidiSourceFromMapping,
   importMidiProjectPayload,
   projectToMidiConfig,
+  sameMidiRuntimeInputs,
   reduceMidiProject,
   sanitizeMidiProject,
+  isCanonicalMidiProject,
+  markCanonicalMidiProject,
   stringifyMidiProjectExport
 };

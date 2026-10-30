@@ -17,20 +17,101 @@ describe('ProcGen world checkpoints', function() {
       const saved = JSON.parse(JSON.stringify(captureProcgenCheckpoint(original)));
       restoreProcgenCheckpoint(restored, saved);
       expect(state(restored)).to.deep.equal(state(original));
+      expect(restored.simulationTimeMs).to.equal(original.simulationTimeMs);
       for (let tick = 0; tick < 120; tick++) { original.step(); restored.step(); }
       expect(state(restored)).to.deep.equal(state(original));
+      expect(restored.simulationTimeMs).to.equal(original.simulationTimeMs);
     } finally { original.dispose(); restored.dispose(); }
   });
   it('rejects incompatible assets before restoring', async () => {
     const world = await make();
-    try { const saved = captureProcgenCheckpoint(world); saved.assets[0].revision = 'different'; expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('assets'); }
+    try {
+      const saved = captureProcgenCheckpoint(world), revision = saved.assets[0].revision;
+      saved.assets[0].revision = 'different'; expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('assets');
+      saved.assets[0].revision = revision;
+      saved.seed++; expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('Incompatible world checkpoint');
+    }
     finally { world.dispose(); }
+  });
+
+  it('refuses typed integer wrapping and fractional loss before mutating the live world', async () => {
+    const world = await make();
+    try {
+      const saved = captureProcgenCheckpoint(world), originalTick = world.tickIndex;
+      const integer = saved.graph.nodes.find(node => node.type === 'Uint8Array');
+      integer.values[0] = 256;
+      expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('lose precision');
+      expect(world.tickIndex).to.equal(originalTick);
+      integer.values[0] = 1.25;
+      expect(() => restoreProcgenCheckpoint(world, saved)).to.throw('lose precision');
+    } finally { world.dispose(); }
+  });
+
+  it('restores physical event identities and completed source JSON across continued simulation', () => {
+    const original = new ProcgenLaneWorld({ masks, seed: 42, assists: false });
+    const restored = new ProcgenLaneWorld({ masks, seed: 42, assists: false });
+    const first = [], second = [];
+    original.soundEvents.onBatch.on(batch => first.push(batch));
+    restored.soundEvents.onBatch.on(batch => second.push(batch));
+    try {
+      for (let tick = 0; tick < 40; tick++) original.step(200);
+      const saved = JSON.parse(JSON.stringify(captureProcgenCheckpoint(original)));
+      for (let tick = 0; tick < 7; tick++) restored.step(1000);
+      restoreProcgenCheckpoint(restored, saved);
+      expect(restored.soundEvents.snapshotIdentity()).to.deep.equal(saved.physicalIdentity);
+      first.length = 0; second.length = 0;
+      for (let tick = 0; tick < 1000; tick++) { original.step(400); restored.step(4000); }
+      expect(JSON.stringify(second)).to.equal(JSON.stringify(first));
+      expect(restored.soundEvents.snapshotIdentity()).to.deep.equal(original.soundEvents.snapshotIdentity());
+    } finally { original.dispose(); restored.dispose(); }
+  });
+
+  it('refuses malformed event identity before mutation and labels legacy identity as unavailable', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false });
+    try {
+      const saved = captureProcgenCheckpoint(world);
+      expect(() => restoreProcgenCheckpoint(world, { ...saved, physicalIdentity: { ...saved.physicalIdentity, causalSequence: NaN } }))
+        .to.throw('physical event identity');
+      expect(world.soundEvents.identityCoverage).to.equal('complete');
+      delete saved.physicalIdentity;
+      restoreProcgenCheckpoint(world, saved);
+      expect(world.soundEvents.identityCoverage).to.equal('legacy-unavailable');
+      world._failedTick = true;
+      expect(() => captureProcgenCheckpoint(world)).to.throw('incomplete physical boundary');
+    } finally { world.dispose(); }
+  });
+  it('preserves floating sentinels through JSON and rejects ambiguous legacy numbers', async () => {
+    const original = await make(), restored = await make();
+    try {
+      original._edgeWallRevisions[0] = -0;
+      const saved = JSON.parse(JSON.stringify(captureProcgenCheckpoint(original)));
+      expect(saved.version).to.equal(2);
+      const props = saved.graph.owners.find(owner => owner.name === 'world').props;
+      const activity = saved.graph.nodes[props.terrainActivityTicks.ref], signed = saved.graph.nodes[props._edgeWallRevisions.ref];
+      expect(activity.values[0]).to.deep.equal({ special: '-Infinity' });
+      expect(signed.values[0]).to.deep.equal({ special: '-0' });
+      restoreProcgenCheckpoint(restored, saved);
+      expect(restored.terrainActivityTicks[0]).to.equal(-Infinity);
+      expect(Object.is(restored._edgeWallRevisions[0], -0)).to.equal(true);
+      for (const special of ['Infinity', 'NaN']) {
+        const invalid = structuredClone(saved);
+        invalid.graph.nodes[props.terrainActivityTicks.ref].values[0] = { special };
+        expect(() => restoreProcgenCheckpoint(restored, invalid)).to.throw('Invalid terrain activity tick');
+      }
+      const legacy = structuredClone(saved); legacy.version = 1;
+      for (const node of legacy.graph.nodes) if (node.type === 'Float32Array' || node.type === 'Float64Array') node.values = node.values.map(value => {
+        if (typeof value !== 'object') return value;
+        return { '-0': -0, Infinity, '-Infinity': -Infinity, NaN }[value.special];
+      });
+      restoreProcgenCheckpoint(restored, legacy);
+      expect(() => restoreProcgenCheckpoint(restored, JSON.parse(JSON.stringify(legacy)))).to.throw('lost numeric state');
+    } finally { original.dispose(); restored.dispose(); }
   });
   it('continues the same automatic reset seeds and terrain after a saved real cascade', async () => {
     const makeResetWorld = async seed => new ProcgenLaneWorld({ masks, terrain: await loadProcgenTerrain('lemmings', 0),
       laneCount: 2, seed, cohorts: true, workstation: true, spawnSpreadTicks: 0,
       stallPolicy: { secondsWithoutProgress: 0, baseSpawnAllowance: 0, transitSafetyFactor: 0, workGraceSeconds: -1, pendingWorkGraceSeconds: -1 } });
-    const original = await makeResetWorld(42), restored = await makeResetWorld(999);
+    const original = await makeResetWorld(42), restored = await makeResetWorld(42);
     try {
       for (let tick = 0; tick < 60 && original.stall.phase !== 'cascade'; tick++) original.step();
       expect(original.stall.phase).to.equal('cascade');

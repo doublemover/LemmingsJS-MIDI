@@ -65,7 +65,7 @@ test('Service worker controls the game page and checks for updates', async ({ pa
   }
 });
 
-test('Editor page bypasses active service workers', async ({ page }) => {
+test('Editor profile preserves an existing worker while skipping new registration', async ({ page }) => {
   await page.goto('/?sw=1');
   const gameResult = await ensureServiceWorkerControls(page);
   expect(gameResult).not.toBeNull();
@@ -74,10 +74,10 @@ test('Editor page bypasses active service workers', async ({ page }) => {
   expect(gameResult?.hasRegistrationAfterReload).toBe(true);
 
   await page.goto('/editor.html');
-  await expect.poll(async () => {
-    return await page.evaluate(async () => {
-      const registration = await navigator.serviceWorker.getRegistration();
-      return !!registration;
-    });
-  }).toBe(false);
+  const state = await page.evaluate(async () => ({
+    registered: !!await navigator.serviceWorker.getRegistration(),
+    controlled: !!navigator.serviceWorker.controller
+  }));
+  expect(state.registered).toBe(true);
+  expect(state.controlled).toBe(true);
 });

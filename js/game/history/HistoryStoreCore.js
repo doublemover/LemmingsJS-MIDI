@@ -36,6 +36,8 @@ class HistoryStore {
     this._deltaBlocks = new Map();
     this._coldBlockStore = new Map();
     this._coldBlockCount = 0;
+    this._coldBlocksCreated = 0; this._coldBlocksThawed = 0; this._coldBlocksRetired = 0;
+    this._coldBlockDecodes = 0; this._coldBlockCacheHits = 0; this._coldDecodedBytes = 0;
     this._coldBlockBytes = 0;
     this._coldCompactionCursor = null;
     this._historyWarned = false;

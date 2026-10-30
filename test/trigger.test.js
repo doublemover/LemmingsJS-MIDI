@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { useGlobalLemmings } from './helpers/lemmings.js';
 import { Trigger } from '../js/level/Trigger.js';
+import { COUNTER_LIMIT } from '../js/core/constants.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 
 
@@ -66,12 +67,18 @@ describe('Trigger', function() {
     expect(trig.trigger(12, 24, 2)).to.equal(TriggerTypes.NO_TRIGGER);
   });
 
-  it('wraps disabledUntilTick and skips arrow debug draw', function() {
+  it('clamps disabledUntilTick to the terminal horizon and skips arrow debug draw', function() {
     const trig = new Trigger(TriggerTypes.ONEWAY_LEFT, 0, 0, 1, 1);
     trig.disabledUntilTick = Number.MAX_SAFE_INTEGER;
-    expect(trig.disabledUntilTick).to.equal(0);
+    expect(trig.disabledUntilTick).to.equal(COUNTER_LIMIT);
     const mockDisplay = { calls: [], drawRect(...args) { this.calls.push(args); } };
     trig.draw(mockDisplay);
     expect(mockDisplay.calls.length).to.equal(0);
+  });
+  it('refuses invalid cooldowns before recording or changing an active trigger', function() {
+    const trig = new Trigger(TriggerTypes.TRAP, 0, 0, 10, 10, NaN); let records = 0;
+    trig.runtime = { history: { recordTriggerCooldown() { records++; } } };
+    expect(() => trig.trigger(1, 1, 0)).to.throw('finite tick');
+    expect(trig.disabledUntilTick).to.equal(0); expect(records).to.equal(0);
   });
 });

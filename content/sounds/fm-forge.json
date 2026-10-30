@@ -1,0 +1,960 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.fm-forge",
+    "version": "0.4.0",
+    "name": "FM Forge",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original declarative FM working recipes; redistribution terms have not been assigned. Numerical and listening qualification remains pending.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "forge.base",
+      "revision": 3,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "fm",
+        "physical-strike",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "native-fm",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original two/four-operator FM recipe definitions; no hardware emulation or clearance claim.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "carrierRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "modulatorRatio": {
+              "value": 2,
+              "unit": "ratio"
+            },
+            "dualPair": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "secondaryCarrierRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "secondaryModulatorRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "pitchSettleCents": {
+              "value": 0,
+              "unit": "cents"
+            },
+            "pitchSettleSeconds": {
+              "value": 0.035,
+              "unit": "s"
+            },
+            "maxBendCents": {
+              "value": 200,
+              "unit": "cents"
+            }
+          }
+        },
+        {
+          "id": "modulation",
+          "role": "modulation",
+          "parameters": {
+            "indexStart": {
+              "value": 1,
+              "unit": "dimensionless"
+            },
+            "indexEnd": {
+              "value": 0.1,
+              "unit": "dimensionless"
+            },
+            "indexSeconds": {
+              "value": 0.3,
+              "unit": "s"
+            },
+            "secondaryIndexStart": {
+              "value": 0,
+              "unit": "dimensionless"
+            },
+            "secondaryIndexEnd": {
+              "value": 0,
+              "unit": "dimensionless"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 1.4,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.06,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.4,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "secondaryMix01": {
+              "value": 0,
+              "unit": "ratio"
+            }
+          }
+        }
+      ],
+      "voicePolicy": {
+        "maxVoices": 16,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      },
+      "dependencies": [],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 731,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "alloy-sibling",
+            "parameter": "modulatorRatio",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.004,
+            "factors": [
+              {
+                "id": "sibling",
+                "weight": 1
+              }
+            ]
+          },
+          {
+            "id": "ring-sibling",
+            "parameter": "decaySeconds",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.08,
+            "factors": [
+              {
+                "id": "sibling",
+                "weight": 0.7
+              },
+              {
+                "id": "ring",
+                "weight": 0.3
+              }
+            ]
+          }
+        ],
+        "eventTargets": [
+          {
+            "id": "strike-color",
+            "parameter": "indexStart",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.05,
+            "factors": [
+              {
+                "id": "strike",
+                "weight": 1
+              }
+            ]
+          }
+        ]
+      },
+      "causalBindings": [
+        {
+          "id": "completed-work-color",
+          "sourceKind": "TerrainWorkCommitted",
+          "payloadField": "changedSolidCells",
+          "target": "indexStart",
+          "unit": "cells",
+          "curve": "linear",
+          "inputMin": 0,
+          "inputMax": 32,
+          "outputUnit": "ratio",
+          "outputMin": 0.7,
+          "outputMax": 1.3,
+          "composition": "scale",
+          "mode": "onset-only",
+          "smoothingMs": 0
+        }
+      ]
+    },
+    {
+      "id": "forge.glass-rivet",
+      "revision": 4,
+      "extends": "forge.base",
+      "name": "Glass Rivet",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "modulatorRatio": {
+              "value": 2.71,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "modulation",
+          "role": "modulation",
+          "parameters": {
+            "indexStart": {
+              "value": 3.5,
+              "unit": "dimensionless"
+            },
+            "indexEnd": {
+              "value": 0.15,
+              "unit": "dimensionless"
+            },
+            "indexSeconds": {
+              "value": 0.8,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the new strike's initial modulation depth; existing voices retain their onset hardness.",
+          "targets": [
+            {
+              "parameter": "indexStart",
+              "minimum": {
+                "value": 1.75,
+                "unit": "dimensionless"
+              },
+              "maximum": {
+                "value": 5.25,
+                "unit": "dimensionless"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ],
+          "bipolar": true
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the new strike's amplitude decay and owned one-shot hold.",
+          "targets": [
+            {
+              "parameter": "decaySeconds",
+              "minimum": {
+                "value": 0.7,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2.0999999999999996,
+                "unit": "s"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "alloy",
+          "name": "ALLOY",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Choose between two authored modulation ratios for the next strike.",
+          "targets": [
+            {
+              "parameter": "modulatorRatio",
+              "minimum": {
+                "value": 2.71,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "step",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.4356594349152103,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the real owned release tail of future strikes without changing modulation ratio, master gain or the physical trigger.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.5,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "forge.copper-tine",
+      "revision": 4,
+      "extends": "forge.base",
+      "name": "Copper Tine",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "dualPair": {
+              "value": 1,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "modulation",
+          "role": "modulation",
+          "parameters": {
+            "indexStart": {
+              "value": 1.6,
+              "unit": "dimensionless"
+            },
+            "indexEnd": {
+              "value": 0.1,
+              "unit": "dimensionless"
+            },
+            "indexSeconds": {
+              "value": 0.18,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "decaySeconds": {
+              "value": 1.8,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "secondaryMix01": {
+              "value": 0.7,
+              "unit": "ratio"
+            },
+            "gain01": {
+              "value": 0.36,
+              "unit": "amplitude-linear"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the new strike's initial modulation depth; existing voices retain their onset hardness.",
+          "targets": [
+            {
+              "parameter": "indexStart",
+              "minimum": {
+                "value": 0.8,
+                "unit": "dimensionless"
+              },
+              "maximum": {
+                "value": 2.4000000000000004,
+                "unit": "dimensionless"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ],
+          "bipolar": true
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the new strike's amplitude decay and owned one-shot hold.",
+          "targets": [
+            {
+              "parameter": "decaySeconds",
+              "minimum": {
+                "value": 0.9,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2.7,
+                "unit": "s"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "alloy",
+          "name": "ALLOY",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Choose between two authored modulation ratios for the next strike.",
+          "targets": [
+            {
+              "parameter": "modulatorRatio",
+              "minimum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2.71,
+                "unit": "ratio"
+              },
+              "curve": "step",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.4356594349152103,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the real owned release tail of future strikes without changing modulation ratio, master gain or the physical trigger.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.5,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "forge.alarm-bloom",
+      "revision": 4,
+      "extends": "forge.base",
+      "name": "Alarm Bloom",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "modulatorRatio": {
+              "value": 1.414,
+              "unit": "ratio"
+            }
+          }
+        },
+        {
+          "id": "modulation",
+          "role": "modulation",
+          "parameters": {
+            "indexStart": {
+              "value": 0.5,
+              "unit": "dimensionless"
+            },
+            "indexEnd": {
+              "value": 4,
+              "unit": "dimensionless"
+            },
+            "indexSeconds": {
+              "value": 0.7,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.01,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 1.2,
+              "unit": "s"
+            },
+            "releaseSeconds": {
+              "value": 0.08,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.22,
+              "unit": "amplitude-linear"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the new strike's initial modulation depth; existing voices retain their onset hardness.",
+          "targets": [
+            {
+              "parameter": "indexStart",
+              "minimum": {
+                "value": 0.25,
+                "unit": "dimensionless"
+              },
+              "maximum": {
+                "value": 0.75,
+                "unit": "dimensionless"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ],
+          "bipolar": true
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the new strike's amplitude decay and owned one-shot hold.",
+          "targets": [
+            {
+              "parameter": "decaySeconds",
+              "minimum": {
+                "value": 0.6,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.7999999999999998,
+                "unit": "s"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "alloy",
+          "name": "ALLOY",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Choose between two authored modulation ratios for the next strike.",
+          "targets": [
+            {
+              "parameter": "modulatorRatio",
+              "minimum": {
+                "value": 1.414,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "step",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.4860965043038218,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the real owned release tail of future strikes without changing modulation ratio, master gain or the physical trigger.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.5,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "forge.rubber-bolt",
+      "revision": 4,
+      "extends": "forge.base",
+      "name": "Rubber Bolt",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "modulatorRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "pitchSettleCents": {
+              "value": 700,
+              "unit": "cents"
+            }
+          }
+        },
+        {
+          "id": "modulation",
+          "role": "modulation",
+          "parameters": {
+            "indexStart": {
+              "value": 4,
+              "unit": "dimensionless"
+            },
+            "indexEnd": {
+              "value": 0.3,
+              "unit": "dimensionless"
+            },
+            "indexSeconds": {
+              "value": 0.08,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.001,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.26,
+              "unit": "s"
+            },
+            "releaseSeconds": {
+              "value": 0.02,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.45,
+              "unit": "amplitude-linear"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the new strike's initial modulation depth; existing voices retain their onset hardness.",
+          "targets": [
+            {
+              "parameter": "indexStart",
+              "minimum": {
+                "value": 2.0,
+                "unit": "dimensionless"
+              },
+              "maximum": {
+                "value": 6.0,
+                "unit": "dimensionless"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ],
+          "bipolar": true
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the new strike's amplitude decay and owned one-shot hold.",
+          "targets": [
+            {
+              "parameter": "decaySeconds",
+              "minimum": {
+                "value": 0.13,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.39,
+                "unit": "s"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "alloy",
+          "name": "ALLOY",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Choose between two authored modulation ratios for the next strike.",
+          "targets": [
+            {
+              "parameter": "modulatorRatio",
+              "minimum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "step",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.2430482521519109,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the real owned release tail of future strikes without changing modulation ratio, master gain or the physical trigger.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.5,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.forge.glass-rivet",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-operator-and-pitch-interface",
+        "owned-release-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "forge.glass-rivet",
+          "algorithmRevision": "native-fm-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-operator-and-pitch-interface",
+            "owned-release-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.forge.copper-tine",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-operator-and-pitch-interface",
+        "owned-release-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "forge.copper-tine",
+          "algorithmRevision": "native-fm-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-operator-and-pitch-interface",
+            "owned-release-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.forge.alarm-bloom",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-operator-and-pitch-interface",
+        "owned-release-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "forge.alarm-bloom",
+          "algorithmRevision": "native-fm-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-operator-and-pitch-interface",
+            "owned-release-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.forge.rubber-bolt",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-operator-and-pitch-interface",
+        "owned-release-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "forge.rubber-bolt",
+          "algorithmRevision": "native-fm-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-operator-and-pitch-interface",
+            "owned-release-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+    }
+  ]
+}

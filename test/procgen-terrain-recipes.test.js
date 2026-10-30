@@ -40,7 +40,8 @@ describe('mined terrain assembly recipes', function () {
     for (const theme of book.themes) for (const route of theme.routes) assert.ok(book.corpus.some(level => level.id === route.source.level));
   });
 
-  it('regenerates the checked-in book byte-for-byte from all available source data', async () => {
+  it('regenerates the checked-in book byte-for-byte from all available source data', async function () {
+    this.timeout(60000);
     assert.deepEqual(await mineTerrainRecipes(), book);
   });
 

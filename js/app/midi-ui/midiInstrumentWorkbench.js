@@ -1,3 +1,4 @@
+import { getPointerGestureArbiter } from '../controls/PointerGestureArbiter.js';
 import { createMidiSkillEventDock } from './midiSkillEventDock.js';
 import { createMidiEventPlayback } from './midiEventPlayback.js';
 import { resolveUnavailableSkillSfxIds } from './midiUiDomain.js';
@@ -25,7 +26,10 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   const text = (id, value) => { const el = byId(id); if (el && el.textContent !== String(value)) el.textContent = value; };
   const value = (id, next) => { const el = byId(id); if (el && (el.type === 'range' || el !== document?.activeElement) && el.value !== String(next)) el.value = String(next); };
   let layout = 'split', visible = false, audioActive = false, disposed = false, timerId = null, soundBus = null, skills = null, menus = null, palettes = null;
-  const activity = new Map(), references = new Map();
+  const activity = new Map(), references = new Map(), pointerArbiter = getPointerGestureArbiter(document);
+  let parameterGesture = null, applyingParameter = false;
+  const cancelParameter = reason => parameterGesture?.lease.cancel(reason);
+  const checkParameter = () => { if (parameterGesture) parameterGesture.lease.owns(null); };
   const getRows = getEventRows || (() => Array.from(byId('midiGameEventList')?.children || []));
   const skillDock = createMidiSkillEventDock({ document, window, getLemmings, getRows });
   const playback = createMidiEventPlayback({ document, window, getRows, getCellTarget: event => {
@@ -162,6 +166,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     return source ? `${source.label} → ${track?.name || 'Unassigned track'} · ch ${track?.channel || 1}${track?.mute ? ' · MUTED' : soloedOut ? ' · excluded by solo' : ''} · ${output}` : 'Choose an event';
   };
   const render = () => {
+    checkParameter();
     const source = getSource(), p = getProject(), mapping = source?.mapping || {};
     const behavior = getEventBehavior(source), direct = !!source && source.mode === 'direct';
     text('midiSoundRoute', routeSummary());
@@ -195,13 +200,42 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     return clamp(n, min, max);
   };
   const paired = (range, number, min, max, apply) => {
-    bind(range, 'pointerdown', history.beginGesture);
-    bind(range, 'keydown', event => { if (!event.repeat) history.beginGesture(); });
-    bind(range, 'input', event => { const n = finiteInput(event, min, max); if (n != null) apply(n); });
-    bind(range, 'change', event => { const n = finiteInput(event, min, max); if (n != null) apply(n); history.endGesture(); });
-    bind(range, 'keyup', history.endGesture);
-    bind(range, 'blur', history.endGesture);
-    if (number) bind(number, 'change', event => { const n = finiteInput(event, min, max); if (n != null) apply(n); });
+    let blocked = false;
+    const begin = event => {
+      if (parameterGesture) return parameterGesture.range === range && parameterGesture.lease.owns(event);
+      const source = getSource(); if (!source || disposed) return false;
+      const identity = {}, lease = pointerArbiter.acquire({ pointerId: event?.pointerId ?? null, targetKey: source.id + ':' + range, captureTarget: byId(range),
+        identity, getIdentity: () => {
+          const current = getSource();
+          if (parameterGesture?.identity === identity) return current === parameterGesture.expectedSource || applyingParameter && current?.id === source.id ? identity : null;
+          return parameterGesture == null && current === source ? identity : null;
+        },
+        onCancel: () => { blocked = true; parameterGesture = null; history.endGesture(); } });
+      if (!lease) return false;
+      blocked = false; parameterGesture = { range, identity, lease, expectedSource: source }; history.beginGesture();
+      try { if (event?.pointerId != null) byId(range)?.setPointerCapture?.(event.pointerId); } catch { lease.cancel('capture-unavailable'); return false; }
+      return true;
+    };
+    const applyOwned = event => {
+      if (blocked || (!parameterGesture && !begin(null)) || parameterGesture?.range !== range || !parameterGesture.lease.owns(null)) { render(); return; }
+      const n = finiteInput(event, min, max); if (n == null) return;
+      applyingParameter = true;
+      try { apply(n); if (parameterGesture) parameterGesture.expectedSource = getSource(); }
+      finally { applyingParameter = false; }
+    };
+    const finish = event => {
+      if (parameterGesture?.range !== range || !parameterGesture.lease.finish(event)) return;
+      const pointerId = parameterGesture.lease.pointerId; parameterGesture = null; history.endGesture();
+      try { if (pointerId != null) byId(range)?.releasePointerCapture?.(pointerId); } catch { /* Already released. */ }
+    };
+    bind(range, 'pointerdown', event => { if ((event.button ?? 0) === 0) begin(event); });
+    bind(range, 'keydown', event => { if (event.key === 'Escape') cancelParameter('escape'); else if (!event.repeat && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key)) begin(event); });
+    bind(range, 'input', applyOwned);
+    bind(range, 'change', event => { applyOwned(event); finish(null); });
+    bind(range, 'keyup', finish); bind(range, 'pointerup', finish);
+    for (const type of ['pointercancel', 'lostpointercapture']) bind(range, type, event => { if (parameterGesture?.range === range && parameterGesture.lease.owns(event)) cancelParameter(type); });
+    bind(range, 'blur', () => { if (parameterGesture?.range === range) cancelParameter('blur'); });
+    if (number) bind(number, 'change', event => { cancelParameter('numeric-entry'); blocked = false; if (begin(null)) { applyOwned(event); finish(null); } });
   };
   const initialize = () => {
     menus?.dispose(); palettes?.dispose(); musicDirection?.dispose();
@@ -266,7 +300,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   };
   return { initialize, render, setVisible, setAudioActive, setLayout, refreshClock, onPlayback: playback.onPlayback, clearPlayback: playback.clear,
     getState: () => ({ layout, visible, clock: gameClock(getLemmings()?.game?.getGameTimer?.()), lastEvent: lastEvent && { sfxId: lastEvent.sfxId, tick: lastEvent.tick } }),
-    dispose: () => { disposed = true; visible = false; refreshChrome(); if (timerId != null) window?.clearInterval?.(timerId); timerId = null; detach(); skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; musicDirection?.dispose(); references.clear(); activity.clear(); } };
+    dispose: () => { cancelParameter('disposed'); disposed = true; visible = false; refreshChrome(); if (timerId != null) window?.clearInterval?.(timerId); timerId = null; detach(); skillDock.dispose(); playback.dispose(); layoutAnimation?.cancel?.(); menus?.dispose(); menus = null; palettes?.dispose(); palettes = null; musicDirection?.dispose(); references.clear(); activity.clear(); } };
 };
 
 export { createMidiInstrumentWorkbench, gameClock, LAYOUTS };

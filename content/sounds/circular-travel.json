@@ -1,0 +1,918 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.circular-travel",
+    "version": "0.3.0",
+    "name": "Circular spectra from physical travel",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original octave circular-spectrum recipes driven by canonical signed travel. DSP direction is factual; perceived circularity awaits separate listening evaluation.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "circular.base",
+      "revision": 1,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "circular-spectrum",
+        "canonical-travel",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-spectrum",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original octave circular-spectrum recipes driven by canonical signed travel. DSP direction is factual; perceived circularity awaits separate listening evaluation.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "sourceMode": {
+              "value": 2,
+              "unit": "enum"
+            },
+            "circularPeriodRatio": {
+              "value": 2,
+              "unit": "ratio"
+            },
+            "circularReferenceHz": {
+              "value": 55,
+              "unit": "Hz"
+            },
+            "circularCenterHz": {
+              "value": 700,
+              "unit": "Hz"
+            },
+            "circularWidthOctaves": {
+              "value": 1.2,
+              "unit": "octaves"
+            },
+            "circularLowHz": {
+              "value": 80,
+              "unit": "Hz"
+            },
+            "circularHighHz": {
+              "value": 8000,
+              "unit": "Hz"
+            },
+            "circularPartialCap": {
+              "value": 10,
+              "unit": "count"
+            },
+            "circularWeight01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "circularPixelsPerCycle": {
+              "value": 512,
+              "unit": "world-pixel"
+            },
+            "circularOriginPixels": {
+              "value": 0,
+              "unit": "world-pixel"
+            },
+            "circularPhaseOrigin": {
+              "value": 0,
+              "unit": "cycles"
+            },
+            "circularScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "circularAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "circularRequireSegments": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "circularControlMode": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.01,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.08,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "climb",
+          "name": "CLIMB",
+          "mode": "onset-only",
+          "default01": 0.3333333333333333,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CLIMB for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularPixelsPerCycle",
+              "minimum": {
+                "value": 256,
+                "unit": "world-pixel"
+              },
+              "maximum": {
+                "value": 1024,
+                "unit": "world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "window",
+          "name": "WINDOW",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WINDOW for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWidthOctaves",
+              "minimum": {
+                "value": 0.6,
+                "unit": "octaves"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "octaves"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "center",
+          "name": "CENTER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CENTER for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularCenterHz",
+              "minimum": {
+                "value": 350,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 1400,
+                "unit": "Hz"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "weight",
+          "name": "WEIGHT",
+          "mode": "onset-only",
+          "default01": 1,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WEIGHT for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWeight01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "causalBindings": [],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      },
+      "dependencies": []
+    },
+    {
+      "id": "circular.endless-stair",
+      "revision": 1,
+      "extends": "circular.base",
+      "name": "Endless stair \u00b7 actor journey",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "circularScope": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "climb",
+          "name": "CLIMB",
+          "mode": "onset-only",
+          "default01": 0.3333333333333333,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CLIMB for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularPixelsPerCycle",
+              "minimum": {
+                "value": 256,
+                "unit": "world-pixel"
+              },
+              "maximum": {
+                "value": 1024,
+                "unit": "world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "window",
+          "name": "WINDOW",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WINDOW for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWidthOctaves",
+              "minimum": {
+                "value": 0.6,
+                "unit": "octaves"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "octaves"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "center",
+          "name": "CENTER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CENTER for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularCenterHz",
+              "minimum": {
+                "value": 350,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 1400,
+                "unit": "Hz"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "weight",
+          "name": "WEIGHT",
+          "mode": "onset-only",
+          "default01": 1,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WEIGHT for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWeight01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "circular.counter-walk",
+      "revision": 1,
+      "extends": "circular.base",
+      "name": "Counter-walk \u00b7 signed X",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "circularScope": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "climb",
+          "name": "CLIMB",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CLIMB for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularPixelsPerCycle",
+              "minimum": {
+                "value": 256,
+                "unit": "world-pixel"
+              },
+              "maximum": {
+                "value": 1024,
+                "unit": "world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "window",
+          "name": "WINDOW",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WINDOW for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWidthOctaves",
+              "minimum": {
+                "value": 0.6,
+                "unit": "octaves"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "octaves"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "center",
+          "name": "CENTER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CENTER for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularCenterHz",
+              "minimum": {
+                "value": 350,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 1400,
+                "unit": "Hz"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "weight",
+          "name": "WEIGHT",
+          "mode": "onset-only",
+          "default01": 1,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WEIGHT for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWeight01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "circular.action-stair",
+      "revision": 1,
+      "extends": "circular.base",
+      "name": "Circular stair \u00b7 explicit action scope",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "circularScope": {
+              "value": 2,
+              "unit": "enum"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "climb",
+          "name": "CLIMB",
+          "mode": "onset-only",
+          "default01": 0.3333333333333333,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CLIMB for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularPixelsPerCycle",
+              "minimum": {
+                "value": 256,
+                "unit": "world-pixel"
+              },
+              "maximum": {
+                "value": 1024,
+                "unit": "world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "window",
+          "name": "WINDOW",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WINDOW for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWidthOctaves",
+              "minimum": {
+                "value": 0.6,
+                "unit": "octaves"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "octaves"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "center",
+          "name": "CENTER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CENTER for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularCenterHz",
+              "minimum": {
+                "value": 350,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 1400,
+                "unit": "Hz"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "weight",
+          "name": "WEIGHT",
+          "mode": "onset-only",
+          "default01": 1,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WEIGHT for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWeight01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "circular.stepping-stones",
+      "revision": 1,
+      "name": "Stepping stones \u00b7 observed contacts",
+      "author": "LemmingsJS-MIDI contributors",
+      "extends": "circular.base",
+      "tags": [
+        "circular-spectrum",
+        "observed-contact",
+        "unqualified-content"
+      ],
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "circularControlMode": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "circularScope": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.22,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.05,
+              "unit": "s"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "circular.route-stair",
+      "revision": 1,
+      "extends": "circular.base",
+      "name": "Route staircase \u00b7 qualified arc",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "circularScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "circularControlMode": {
+              "value": 2,
+              "unit": "enum"
+            },
+            "circularAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "circularRequireSegments": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "climb",
+          "name": "CLIMB",
+          "mode": "onset-only",
+          "default01": 0.3333333333333333,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CLIMB for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularPixelsPerCycle",
+              "minimum": {
+                "value": 256,
+                "unit": "world-pixel"
+              },
+              "maximum": {
+                "value": 1024,
+                "unit": "world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "window",
+          "name": "WINDOW",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WINDOW for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWidthOctaves",
+              "minimum": {
+                "value": 0.6,
+                "unit": "octaves"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "octaves"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "center",
+          "name": "CENTER",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve CENTER for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularCenterHz",
+              "minimum": {
+                "value": 350,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 1400,
+                "unit": "Hz"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "weight",
+          "name": "WEIGHT",
+          "mode": "onset-only",
+          "default01": 1,
+          "smoothingMs": 0,
+          "perceptualDirection": "Resolve WEIGHT for the next original owned onset; current physical distance is never regenerated.",
+          "targets": [
+            {
+              "parameter": "circularWeight01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.endless-stair",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.endless-stair",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.counter-walk",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.counter-walk",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.action-stair",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.action-stair",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.stepping-stones",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.stepping-stones",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.route-stair",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.route-stair",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    }
+  ]
+}

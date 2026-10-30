@@ -1,7 +1,6 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
-import { getRuntimeMiniMap } from '../game/GameRuntime.js';
 
 class ActionOhNoSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -12,12 +11,6 @@ class ActionOhNoSystem extends ActionBaseSystem {
     return false;
   }
 
-  draw(gameDisplay, lem) {
-    super.draw(gameDisplay, lem);
-    if (lem.frameIndex === 15) {
-      getRuntimeMiniMap(this.runtime)?.addDeath(lem.x, lem.y);
-    }
-  }
 
   process(level, lem) {
     if (++lem.frameIndex === 16) {

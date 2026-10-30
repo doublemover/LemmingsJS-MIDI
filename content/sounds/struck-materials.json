@@ -1,0 +1,1587 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.struck-materials",
+    "version": "0.1.0",
+    "name": "Struck materials",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original authored modal musical designs; no measured material or geometry claim.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "material.base",
+      "revision": 1,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "modal",
+        "struck",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "native-modal",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original authored modal musical designs; no measured material or geometry claim.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "strikePosition01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "maxBendCents": {
+              "value": 200,
+              "unit": "cents"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.04,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.4,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      },
+      "dependencies": [],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 311,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "body-sibling",
+            "parameter": "bodySizeRatio",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.003,
+            "factors": [
+              {
+                "id": "body",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      },
+      "causalBindings": [
+        {
+          "id": "work-strength",
+          "sourceKind": "TerrainWorkCommitted",
+          "payloadField": "changedSolidCells",
+          "target": "gain01",
+          "unit": "cells",
+          "inputMin": 0,
+          "inputMax": 32,
+          "outputUnit": "ratio",
+          "outputMin": 0.5,
+          "outputMax": 1.3,
+          "curve": "linear",
+          "composition": "scale",
+          "mode": "onset-only",
+          "smoothingMs": 0
+        }
+      ]
+    },
+    {
+      "id": "material.timber",
+      "revision": 1,
+      "extends": "material.base",
+      "name": "Timber",
+      "components": [
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "modeCount": {
+              "value": 4,
+              "unit": "enum"
+            },
+            "bodyT60Seconds": {
+              "value": 0.32,
+              "unit": "s"
+            },
+            "bodySizeRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0Ratio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0T60Scale": {
+              "value": 1.0,
+              "unit": "ratio"
+            },
+            "mode0GainA": {
+              "value": 1,
+              "unit": "amplitude-linear"
+            },
+            "mode0GainB": {
+              "value": 0.25,
+              "unit": "amplitude-linear"
+            },
+            "mode1Ratio": {
+              "value": 2.76,
+              "unit": "ratio"
+            },
+            "mode1T60Scale": {
+              "value": 0.5625,
+              "unit": "ratio"
+            },
+            "mode1GainA": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "mode1GainB": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "mode2Ratio": {
+              "value": 5.4,
+              "unit": "ratio"
+            },
+            "mode2T60Scale": {
+              "value": 0.28125,
+              "unit": "ratio"
+            },
+            "mode2GainA": {
+              "value": 0.22,
+              "unit": "amplitude-linear"
+            },
+            "mode2GainB": {
+              "value": 0.055,
+              "unit": "amplitude-linear"
+            },
+            "mode3Ratio": {
+              "value": 8.93,
+              "unit": "ratio"
+            },
+            "mode3T60Scale": {
+              "value": 0.125,
+              "unit": "ratio"
+            },
+            "mode3GainA": {
+              "value": 0.1,
+              "unit": "amplitude-linear"
+            },
+            "mode3GainB": {
+              "value": 0.1,
+              "unit": "amplitude-linear"
+            },
+            "mode4Ratio": {
+              "value": 5,
+              "unit": "ratio"
+            },
+            "mode4T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode4GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode4GainB": {
+              "value": 0.0,
+              "unit": "amplitude-linear"
+            },
+            "mode5Ratio": {
+              "value": 6,
+              "unit": "ratio"
+            },
+            "mode5T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode5GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode5GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6Ratio": {
+              "value": 7,
+              "unit": "ratio"
+            },
+            "mode6T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode6GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6GainB": {
+              "value": 0.0,
+              "unit": "amplitude-linear"
+            },
+            "mode7Ratio": {
+              "value": 8,
+              "unit": "ratio"
+            },
+            "mode7T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode7GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode7GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.008,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "mass",
+          "name": "MASS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Increase authored body size to lower modal frequencies without changing physical geometry.",
+          "targets": [
+            {
+              "parameter": "bodySizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 0.25,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the new strike onset while preserving body T60.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "minimum": {
+                "value": 0.016,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damping",
+          "name": "DAMPING",
+          "mode": "onset-only",
+          "default01": 0.497132337199496,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten every mode T60 under the authored scale map.",
+          "targets": [
+            {
+              "parameter": "bodyT60Seconds",
+              "minimum": {
+                "value": 2.5,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.04,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hollow",
+          "name": "HOLLOW",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two authored modal gain sites; this is a musical map, not a geometric pickup.",
+          "targets": [
+            {
+              "parameter": "strikePosition01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "material.slate",
+      "revision": 1,
+      "extends": "material.base",
+      "name": "Slate",
+      "components": [
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "modeCount": {
+              "value": 5,
+              "unit": "enum"
+            },
+            "bodyT60Seconds": {
+              "value": 0.48,
+              "unit": "s"
+            },
+            "bodySizeRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0Ratio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0T60Scale": {
+              "value": 1.0,
+              "unit": "ratio"
+            },
+            "mode0GainA": {
+              "value": 1,
+              "unit": "amplitude-linear"
+            },
+            "mode0GainB": {
+              "value": 0.25,
+              "unit": "amplitude-linear"
+            },
+            "mode1Ratio": {
+              "value": 1.49,
+              "unit": "ratio"
+            },
+            "mode1T60Scale": {
+              "value": 0.4375,
+              "unit": "ratio"
+            },
+            "mode1GainA": {
+              "value": 0.58,
+              "unit": "amplitude-linear"
+            },
+            "mode1GainB": {
+              "value": 0.58,
+              "unit": "amplitude-linear"
+            },
+            "mode2Ratio": {
+              "value": 2.08,
+              "unit": "ratio"
+            },
+            "mode2T60Scale": {
+              "value": 0.6666666666666667,
+              "unit": "ratio"
+            },
+            "mode2GainA": {
+              "value": 0.35,
+              "unit": "amplitude-linear"
+            },
+            "mode2GainB": {
+              "value": 0.0875,
+              "unit": "amplitude-linear"
+            },
+            "mode3Ratio": {
+              "value": 2.92,
+              "unit": "ratio"
+            },
+            "mode3T60Scale": {
+              "value": 0.25,
+              "unit": "ratio"
+            },
+            "mode3GainA": {
+              "value": 0.2,
+              "unit": "amplitude-linear"
+            },
+            "mode3GainB": {
+              "value": 0.2,
+              "unit": "amplitude-linear"
+            },
+            "mode4Ratio": {
+              "value": 4.1,
+              "unit": "ratio"
+            },
+            "mode4T60Scale": {
+              "value": 0.125,
+              "unit": "ratio"
+            },
+            "mode4GainA": {
+              "value": 0.12,
+              "unit": "amplitude-linear"
+            },
+            "mode4GainB": {
+              "value": 0.03,
+              "unit": "amplitude-linear"
+            },
+            "mode5Ratio": {
+              "value": 6,
+              "unit": "ratio"
+            },
+            "mode5T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode5GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode5GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6Ratio": {
+              "value": 7,
+              "unit": "ratio"
+            },
+            "mode6T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode6GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6GainB": {
+              "value": 0.0,
+              "unit": "amplitude-linear"
+            },
+            "mode7Ratio": {
+              "value": 8,
+              "unit": "ratio"
+            },
+            "mode7T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode7GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode7GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.003,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "mass",
+          "name": "MASS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Increase authored body size to lower modal frequencies without changing physical geometry.",
+          "targets": [
+            {
+              "parameter": "bodySizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 0.603759374819711,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the new strike onset while preserving body T60.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "minimum": {
+                "value": 0.016,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damping",
+          "name": "DAMPING",
+          "mode": "onset-only",
+          "default01": 0.39907942867830076,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten every mode T60 under the authored scale map.",
+          "targets": [
+            {
+              "parameter": "bodyT60Seconds",
+              "minimum": {
+                "value": 2.5,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.04,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hollow",
+          "name": "HOLLOW",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two authored modal gain sites; this is a musical map, not a geometric pickup.",
+          "targets": [
+            {
+              "parameter": "strikePosition01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "material.glass",
+      "revision": 1,
+      "extends": "material.base",
+      "name": "Glass",
+      "components": [
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "modeCount": {
+              "value": 4,
+              "unit": "enum"
+            },
+            "bodyT60Seconds": {
+              "value": 1.8,
+              "unit": "s"
+            },
+            "bodySizeRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0Ratio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0T60Scale": {
+              "value": 1.0,
+              "unit": "ratio"
+            },
+            "mode0GainA": {
+              "value": 1,
+              "unit": "amplitude-linear"
+            },
+            "mode0GainB": {
+              "value": 0.25,
+              "unit": "amplitude-linear"
+            },
+            "mode1Ratio": {
+              "value": 2.32,
+              "unit": "ratio"
+            },
+            "mode1T60Scale": {
+              "value": 0.6111111111111112,
+              "unit": "ratio"
+            },
+            "mode1GainA": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "mode1GainB": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "mode2Ratio": {
+              "value": 4.25,
+              "unit": "ratio"
+            },
+            "mode2T60Scale": {
+              "value": 0.3333333333333333,
+              "unit": "ratio"
+            },
+            "mode2GainA": {
+              "value": 0.22,
+              "unit": "amplitude-linear"
+            },
+            "mode2GainB": {
+              "value": 0.055,
+              "unit": "amplitude-linear"
+            },
+            "mode3Ratio": {
+              "value": 6.63,
+              "unit": "ratio"
+            },
+            "mode3T60Scale": {
+              "value": 0.16666666666666666,
+              "unit": "ratio"
+            },
+            "mode3GainA": {
+              "value": 0.1,
+              "unit": "amplitude-linear"
+            },
+            "mode3GainB": {
+              "value": 0.1,
+              "unit": "amplitude-linear"
+            },
+            "mode4Ratio": {
+              "value": 5,
+              "unit": "ratio"
+            },
+            "mode4T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode4GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode4GainB": {
+              "value": 0.0,
+              "unit": "amplitude-linear"
+            },
+            "mode5Ratio": {
+              "value": 6,
+              "unit": "ratio"
+            },
+            "mode5T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode5GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode5GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6Ratio": {
+              "value": 7,
+              "unit": "ratio"
+            },
+            "mode6T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode6GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6GainB": {
+              "value": 0.0,
+              "unit": "amplitude-linear"
+            },
+            "mode7Ratio": {
+              "value": 8,
+              "unit": "ratio"
+            },
+            "mode7T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode7GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode7GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.001,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "mass",
+          "name": "MASS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Increase authored body size to lower modal frequencies without changing physical geometry.",
+          "targets": [
+            {
+              "parameter": "bodySizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 1.0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the new strike onset while preserving body T60.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "minimum": {
+                "value": 0.016,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damping",
+          "name": "DAMPING",
+          "mode": "onset-only",
+          "default01": 0.07944155633499522,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten every mode T60 under the authored scale map.",
+          "targets": [
+            {
+              "parameter": "bodyT60Seconds",
+              "minimum": {
+                "value": 2.5,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.04,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hollow",
+          "name": "HOLLOW",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two authored modal gain sites; this is a musical map, not a geometric pickup.",
+          "targets": [
+            {
+              "parameter": "strikePosition01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "material.sheet-metal",
+      "revision": 1,
+      "extends": "material.base",
+      "name": "Sheet metal",
+      "components": [
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "modeCount": {
+              "value": 6,
+              "unit": "enum"
+            },
+            "bodyT60Seconds": {
+              "value": 2.5,
+              "unit": "s"
+            },
+            "bodySizeRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0Ratio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0T60Scale": {
+              "value": 1.0,
+              "unit": "ratio"
+            },
+            "mode0GainA": {
+              "value": 1,
+              "unit": "amplitude-linear"
+            },
+            "mode0GainB": {
+              "value": 0.25,
+              "unit": "amplitude-linear"
+            },
+            "mode1Ratio": {
+              "value": 1.414,
+              "unit": "ratio"
+            },
+            "mode1T60Scale": {
+              "value": 0.36,
+              "unit": "ratio"
+            },
+            "mode1GainA": {
+              "value": 0.65,
+              "unit": "amplitude-linear"
+            },
+            "mode1GainB": {
+              "value": 0.65,
+              "unit": "amplitude-linear"
+            },
+            "mode2Ratio": {
+              "value": 2.71,
+              "unit": "ratio"
+            },
+            "mode2T60Scale": {
+              "value": 0.6,
+              "unit": "ratio"
+            },
+            "mode2GainA": {
+              "value": 0.45,
+              "unit": "amplitude-linear"
+            },
+            "mode2GainB": {
+              "value": 0.1125,
+              "unit": "amplitude-linear"
+            },
+            "mode3Ratio": {
+              "value": 4.17,
+              "unit": "ratio"
+            },
+            "mode3T60Scale": {
+              "value": 0.16,
+              "unit": "ratio"
+            },
+            "mode3GainA": {
+              "value": 0.3,
+              "unit": "amplitude-linear"
+            },
+            "mode3GainB": {
+              "value": 0.3,
+              "unit": "amplitude-linear"
+            },
+            "mode4Ratio": {
+              "value": 6.83,
+              "unit": "ratio"
+            },
+            "mode4T60Scale": {
+              "value": 0.064,
+              "unit": "ratio"
+            },
+            "mode4GainA": {
+              "value": 0.16,
+              "unit": "amplitude-linear"
+            },
+            "mode4GainB": {
+              "value": 0.04,
+              "unit": "amplitude-linear"
+            },
+            "mode5Ratio": {
+              "value": 10.2,
+              "unit": "ratio"
+            },
+            "mode5T60Scale": {
+              "value": 0.032,
+              "unit": "ratio"
+            },
+            "mode5GainA": {
+              "value": 0.08,
+              "unit": "amplitude-linear"
+            },
+            "mode5GainB": {
+              "value": 0.08,
+              "unit": "amplitude-linear"
+            },
+            "mode6Ratio": {
+              "value": 7,
+              "unit": "ratio"
+            },
+            "mode6T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode6GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6GainB": {
+              "value": 0.0,
+              "unit": "amplitude-linear"
+            },
+            "mode7Ratio": {
+              "value": 8,
+              "unit": "ratio"
+            },
+            "mode7T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode7GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode7GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.001,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "mass",
+          "name": "MASS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Increase authored body size to lower modal frequencies without changing physical geometry.",
+          "targets": [
+            {
+              "parameter": "bodySizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 1.0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the new strike onset while preserving body T60.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "minimum": {
+                "value": 0.016,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damping",
+          "name": "DAMPING",
+          "mode": "onset-only",
+          "default01": -0.0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten every mode T60 under the authored scale map.",
+          "targets": [
+            {
+              "parameter": "bodyT60Seconds",
+              "minimum": {
+                "value": 2.5,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.04,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hollow",
+          "name": "HOLLOW",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two authored modal gain sites; this is a musical map, not a geometric pickup.",
+          "targets": [
+            {
+              "parameter": "strikePosition01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "material.unclassified",
+      "revision": 1,
+      "extends": "material.base",
+      "name": "Unclassified",
+      "components": [
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "modeCount": {
+              "value": 4,
+              "unit": "enum"
+            },
+            "bodyT60Seconds": {
+              "value": 0.2,
+              "unit": "s"
+            },
+            "bodySizeRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0Ratio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "mode0T60Scale": {
+              "value": 1.0,
+              "unit": "ratio"
+            },
+            "mode0GainA": {
+              "value": 1,
+              "unit": "amplitude-linear"
+            },
+            "mode0GainB": {
+              "value": 0.25,
+              "unit": "amplitude-linear"
+            },
+            "mode1Ratio": {
+              "value": 2,
+              "unit": "ratio"
+            },
+            "mode1T60Scale": {
+              "value": 0.7999999999999999,
+              "unit": "ratio"
+            },
+            "mode1GainA": {
+              "value": 0.35,
+              "unit": "amplitude-linear"
+            },
+            "mode1GainB": {
+              "value": 0.35,
+              "unit": "amplitude-linear"
+            },
+            "mode2Ratio": {
+              "value": 3,
+              "unit": "ratio"
+            },
+            "mode2T60Scale": {
+              "value": 0.5,
+              "unit": "ratio"
+            },
+            "mode2GainA": {
+              "value": 0.15,
+              "unit": "amplitude-linear"
+            },
+            "mode2GainB": {
+              "value": 0.0375,
+              "unit": "amplitude-linear"
+            },
+            "mode3Ratio": {
+              "value": 4,
+              "unit": "ratio"
+            },
+            "mode3T60Scale": {
+              "value": 0.25,
+              "unit": "ratio"
+            },
+            "mode3GainA": {
+              "value": 0.06,
+              "unit": "amplitude-linear"
+            },
+            "mode3GainB": {
+              "value": 0.06,
+              "unit": "amplitude-linear"
+            },
+            "mode4Ratio": {
+              "value": 5,
+              "unit": "ratio"
+            },
+            "mode4T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode4GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode4GainB": {
+              "value": 0.0,
+              "unit": "amplitude-linear"
+            },
+            "mode5Ratio": {
+              "value": 6,
+              "unit": "ratio"
+            },
+            "mode5T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode5GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode5GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6Ratio": {
+              "value": 7,
+              "unit": "ratio"
+            },
+            "mode6T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode6GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode6GainB": {
+              "value": 0.0,
+              "unit": "amplitude-linear"
+            },
+            "mode7Ratio": {
+              "value": 8,
+              "unit": "ratio"
+            },
+            "mode7T60Scale": {
+              "value": 0.1,
+              "unit": "ratio"
+            },
+            "mode7GainA": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            },
+            "mode7GainB": {
+              "value": 0,
+              "unit": "amplitude-linear"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.004,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "mass",
+          "name": "MASS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Increase authored body size to lower modal frequencies without changing physical geometry.",
+          "targets": [
+            {
+              "parameter": "bodySizeRatio",
+              "minimum": {
+                "value": 0.5,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "ratio"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hardness",
+          "name": "HARDNESS",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the new strike onset while preserving body T60.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "minimum": {
+                "value": 0.016,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damping",
+          "name": "DAMPING",
+          "mode": "onset-only",
+          "default01": 0.6107924819110551,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten every mode T60 under the authored scale map.",
+          "targets": [
+            {
+              "parameter": "bodyT60Seconds",
+              "minimum": {
+                "value": 2.5,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.04,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "hollow",
+          "name": "HOLLOW",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two authored modal gain sites; this is a musical map, not a geometric pickup.",
+          "targets": [
+            {
+              "parameter": "strikePosition01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.timber",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.timber",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.slate",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.slate",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.glass",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.glass",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.sheet-metal",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.sheet-metal",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.unclassified",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.unclassified",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    }
+  ]
+}

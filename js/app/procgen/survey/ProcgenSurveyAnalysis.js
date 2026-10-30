@@ -124,7 +124,7 @@ function selectProcgenSurveyExemplars(results, { baselineId, capacities = { succ
   return freezeSurveyValue({ schemaVersion: 1, selected, omitted, counts, pinCount: pinned.size, requiresAdmissionStop: Object.keys(counts).some(kind => counts[kind] > (capacities[kind] ?? 0)), compactSummaryRetention: 'Retain every trial summary, including omitted exemplars and negative verification; selection never changes aggregate denominators.' });
 }
 
-function createProcgenSuccessQualification({ original, scenario, candidate, baseline, competitors = [], policySeeds = [], nearbyScenarios = [], holdoutScenarios = [], maxTrials = 32, policyRandomnessRelevant = true }) {
+function createProcgenSuccessQualification({ original, scenario, candidate, baseline, competitors = [], policySeeds = [], nearbyScenarios = [], holdoutScenarios = [], maxTrials = 32, policyRandomnessRelevant = true, holdoutUnavailableReason = 'no-independent-holdout-declared' }) {
   if (!original?.trialId || !original.replayManifest || original.candidateId !== candidate?.id || original.scenarioId !== scenario?.id || !baseline?.id || !Number.isInteger(maxTrials) || maxTrials < 2) throw new Error('Qualification requires an immutable original, matching manifests, frozen baseline and explicit budget');
   if (candidate.id === baseline.id || scenario.id === undefined) throw new Error('Qualification needs a distinct candidate and baseline');
   const policies = [candidate, baseline, ...competitors], policyIds = new Set(policies.map(policy => policy.id));
@@ -150,6 +150,10 @@ function createProcgenSuccessQualification({ original, scenario, candidate, base
   if (policyRandomnessRelevant) for (const policySeed of seeds.filter(value => value !== seed)) addBlock('policy-randomness', scenario, policySeed);
   for (const scene of nearbyScenarios) addBlock('nearby-condition', scene, seed);
   for (const scene of holdoutScenarios) addBlock('independent-holdout', scene, seed);
+  if (!holdoutScenarios.length) {
+    if (!['no-independent-holdout-declared', 'original-selected-from-holdout'].includes(holdoutUnavailableReason)) throw new Error('Invalid unavailable holdout reason');
+    deferred.push({ stage: 'independent-holdout', reason: holdoutUnavailableReason });
+  }
   return freezeSurveyValue({ schemaVersion: 1, originalTrialId: original.trialId, originalManifest: surveyCopy(original.replayManifest), candidate: surveyCopy(candidate), baseline: surveyCopy(baseline), policyRandomnessRelevant, maxTrials, jobs, deferred, completeDeclaration: deferred.length === 0, automaticExecution: false, interpretation: 'Exact replay checks reproducibility, not reliability. Preserve every requested comparison and negative rerun; condition and held-out pairs determine sensitivity and tested-scope improvement.' });
 }
 
@@ -171,10 +175,12 @@ function summarizeProcgenSuccessQualification(plan, original, verificationResult
   const heldoutComparison = analyzeProcgenSurveyPairs(heldout.map(record => record.result), { baselineId: plan.baseline.id, candidateIds: [plan.candidate.id], minimumClusters: minimumIndependentWorlds });
   const heldoutPairs = heldoutComparison.comparisons[0], competitors = exact.filter(record => ![plan.candidate.id, plan.baseline.id].includes(record.job.candidate.id));
   let interpretation = 'unresolved';
-  if (exactReproduced && !missing.length && !plan.deferred.length) {
+  // Missing independent worlds prevent an improvement claim, but do not
+  // erase fully observed negative sensitivity on the original conditions.
+  if (exactReproduced && !missing.length && !plan.deferred.some(item => item.stage !== 'independent-holdout')) {
     if (sensitivity.length >= minimumSensitiveEpisodes && sensitivityFailures.length / sensitivity.length >= sensitivityFailureFraction) interpretation = 'trajectory-sensitive-win';
     else if (baselineExact?.result.status === 'completed' && competitors.length >= 2 && competitors.every(record => record.result.status === 'completed')) interpretation = 'easy-scene-evidence';
-    else if (baselineExact && sensitivity.length >= minimumSensitiveEpisodes && !sensitivityFailures.length && stages['nearby-condition']?.eligible && heldoutPairs.promotionEligible) interpretation = 'tested-scope-improvement';
+    else if (!plan.deferred.length && baselineExact && sensitivity.length >= minimumSensitiveEpisodes && !sensitivityFailures.length && stages['nearby-condition']?.eligible && heldoutPairs.promotionEligible) interpretation = 'tested-scope-improvement';
   }
   return freezeSurveyValue({ schemaVersion: 1, originalTrialId: original.trialId, interpretation, exactReproduced, originalUnchanged: true, missing, deferred: surveyCopy(plan.deferred), stages,
     policyRandomnessRelevant: plan.policyRandomnessRelevant, sensitivityCandidateEpisodes: sensitivity.length, sensitivityFailures: sensitivityFailures.map(record => record.result.trialId), heldoutComparison,

@@ -147,3 +147,80 @@ These are archival classic-level JSON records, not editor-import project bundles
 Pack export resolves `config.json` through `fileURLToPath`, including paths with
 spaces and Windows file URLs. Missing or malformed configuration fails clearly
 instead of silently falling back to one pack.
+
+
+## Original shape foundry
+
+`npm run build:shape-foundry -- --name=rook` authors the original pocket bar,
+slotted plate and asymmetric pebble as experimental 8/16/32-mode sample packs.
+Options select `--shape=pocket-bar`, `--mode-count=8`, `--sample-rate=48000`,
+`--seconds=2` and an output folder under `dist/`. A tier with insufficient supported
+site response is explicitly unavailable; it is not silently replaced. This build
+has not yet been executed in the current development pass.
+
+The source meshes are actual closed tetrahedral solids with an explicit model-unit
+to meter scale, density in kg/m3, Young modulus in Pa, Poisson ratio and Rayleigh
+loss. They are chosen musical assumptions, not measurements of game materials.
+The original implementation uses constant-strain tetrahedra, lumped nodal mass
+and a mass-whitened symmetric Jacobi eigensolve. Its stiffness formulation follows
+the standard virtual-work integral described in [TU Wien's finite-element
+formulation](https://www.iue.tuwien.ac.at/phd/orio/node53.html). Amplitude T60 is
+`ln(1000)/(dampingRatio * angularFrequencyRadiansPerSecond)`; substituting Hz
+would introduce a factor of 2π error.
+
+Input limits are 64 vertices, 192 tetrahedra, four excitation/four pickup sites,
+80 sweeps, a 30-second solve deadline and 32 MiB admitted solver workspace.
+Cancellation, invalid geometry, unexpected zero modes or failed residuals produce
+no playable result. Signed excitation vectors and independent signed pickup
+vectors are retained with the modal displacement shapes. The selected tiers rank
+all-site-to-pickup impulse-response energy, with negligible, unsupported-frequency
+and unsupported-decay modes excluded. Their numerical retained-salience fraction
+is not a perceptual quality claim.
+
+The build emits immutable content-hash directories with ordinary `pack.json`,
+recipe, provenance data and calibration WAV assets, then atomically changes its
+small `current.json` head. A failed build keeps the last published head. The
+runtime consumes the existing owned sampler and explicit site articulations; no
+C++, Faust compilation or FEM solve is required for playback. Selected-site WAVs
+share one body gain calibration instead of independent loudness normalization.
+No generated binaries need to be committed.
+
+Algebraic residual/orthogonality qualification is distinct from geometric mesh
+convergence, acoustic material accuracy, level-matched listening and runtime cost.
+Those remain required acceptance work; the build labels its output experimental.
+A refined bar source is available for a later mesh comparison. The plate and
+pebble do not yet provide a bounded refinement family. Pocket Foundry's physical
+zone scene remains dependent work. The Sound panel now offers an in-app Shape
+foundry using the actual bound worker, ordinary verified content installation,
+selected-site prelisten and canonical lane Apply. Those browser paths are
+implemented but not yet runtime-qualified.
+
+
+### Compare nested original bar meshes
+
+`npm run qualify:shape-refinement -- --name=rook` solves the original coarse and
+refined pocket bar, then compares the fixed `low-eight-v1` profile. Optional
+`--output=dist/shape-refinement`, `--shape=pocket-bar` and
+`--profile=low-eight-v1` keep the selected source and tolerances explicit.
+The browser foundry offers the same operation for its exact currently prepared
+bar through one admitted background worker.
+
+The comparison checks matching physical sites, constraints and complete nested
+parent-volume coverage. It reassembles elastic residuals and mass orthogonality
+before correlating mode shapes. The [Ansys MAC documentation](https://ansyshelp.ansys.com/public/Views/Secured/corp/v242/en/mech_addon/ds_results_nvh_maccalc_method.html)
+describes correlation on matched/mapped nodes; this implementation explicitly
+uses coarse lumped mass at exactly matched vertices. A global one-to-one assignment
+combines shape correlation and fine-reference relative frequency error. The fixed
+profile requires all eight lowest elastic modes to meet 5% frequency error and
+MAC at least 0.9. Nearly degenerate mode groups are inconclusive pending a separate
+subspace comparison; mode order alone is not a correspondence certificate.
+
+The output contains content-addressed full input artifacts and a hashed comparison
+package. `current.json` identifies the latest **comparison result**, including an
+out-of-tolerance or inconclusive status. Those statuses return exit code one.
+A comparison exception/cancellation leaves the previous result head intact. Input
+file hashes and modal asset hashes are named separately. No pack, playback setting
+or quality tier changes. Two-mesh agreement is a limited numerical observation;
+it does not prove asymptotic convergence, physical material accuracy, listening
+quality or measured real-time capacity. No accepted comparison is claimed until
+this tool has actually run and its receipt has been reviewed.

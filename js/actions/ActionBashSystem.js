@@ -4,6 +4,7 @@ import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { MaskTypes } from '../render/MaskTypes.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { recordPhysicalWork } from './PhysicalWorkFacts.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const countClearable = (mask) => {
@@ -53,6 +54,8 @@ class ActionBashSystem extends ActionBaseSystem {
       const subMask = this.masks.get(lem.getDirection()).GetMask(state - 2);
       if (state === 3) {
         if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
+          recordPhysicalWork(level, lem, { operationKind: 'bash', phase: 'steel', cycleOrdinal: state,
+            attemptedCells: countClearable(subMask), outcome: 'protected', revisionBefore: Number.isFinite(level.terrainRevision) ? level.terrainRevision : null });
           const soundBus = getRuntimeSoundEvents(this.runtime);
           soundBus?.emitSfx?.(
             SoundEventTypes.STEEL_HIT,
@@ -62,15 +65,22 @@ class ActionBashSystem extends ActionBaseSystem {
           return LemmingStateType.SHRUG;
         }
         if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
+          recordPhysicalWork(level, lem, { operationKind: 'bash', phase: 'arrow', cycleOrdinal: state,
+            attemptedCells: countClearable(subMask), outcome: 'protected', revisionBefore: Number.isFinite(level.terrainRevision) ? level.terrainRevision : null });
           return LemmingStateType.SHRUG;
         }
       }
       this.characterParticles?.sampleMask(level, subMask, lem.x, lem.y, lem);
+      const revisionBefore = Number.isFinite(level.terrainRevision) ? level.terrainRevision : null;
       const removed = typeof level.clearGroundWithMaskCount === 'function'
         ? level.clearGroundWithMaskCount(subMask, lem.x, lem.y)
         : (level.clearGroundWithMask(subMask, lem.x, lem.y), 0);
+      const clearable = countClearable(subMask);
+      recordPhysicalWork(level, lem, { operationKind: 'bash', phase: 'mask', cycleOrdinal: state,
+        attemptedCells: clearable, changedSolidCells: removed, changedAppearanceCells: removed, revisionBefore,
+        targetX: lem.x + (subMask?.offsetX ?? 0), targetY: lem.y + (subMask?.offsetY ?? 0) });
       this.characterParticles?.emitTerrain(lem, 'bashing');
-      const intensity = scaleIntensity(removed, countClearable(subMask));
+      const intensity = scaleIntensity(removed, clearable);
       if (removed > 0) {
         const soundBus = getRuntimeSoundEvents(this.runtime);
         soundBus?.emitSfx?.(
