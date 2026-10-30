@@ -28,6 +28,23 @@ const response = (bytes, options = {}) => ({ status: options.status || 200, head
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('FileProvider admitted binary streaming', () => {
+  it('accepts native default-stream empty chunks before bytes and during the exact-capacity EOF probe', async () => {
+    for (const size of [3, 32, 64]) {
+      const expected = Uint8Array.from({ length: size }, (_, index) => index);
+      const { provider, budget } = fixture(async () => new globalThis.Response(new globalThis.ReadableStream({ start(controller) {
+        controller.enqueue(new Uint8Array(0)); controller.enqueue(expected); controller.enqueue(new Uint8Array(0)); controller.close();
+      } })), { requireByob: false, maxResponseBytes: size === 64 ? 64 : 4096 });
+      try { const reader = await provider.loadBinary('', 'empty-chunks.bin'); await provider.waitForCacheWrites(); assert.deepEqual(reader.copyBytes(), expected); reader.release(); }
+      finally { provider.dispose(); }
+      assert.equal(budget.diagnostics().accountedBytes, 0);
+    }
+  });
+  it('bounds consecutive empty reads and retires the native default reader and reservation', async () => {
+    let pulls = 0, cancels = 0;
+    const { provider, budget } = fixture(async () => new globalThis.Response(new globalThis.ReadableStream({ pull(controller) { pulls++; controller.enqueue(new Uint8Array(0)); }, cancel() { cancels++; } })), { requireByob: false });
+    await assert.rejects(provider.loadBinary('', 'no-progress.bin'), error => error.kind === 'decode' && /empty-read/.test(error.cause?.message));
+    await tick(); provider.dispose(); assert.ok(pulls <= 35); assert.equal(cancels, 1); assert.equal(budget.diagnostics().accountedBytes, 0);
+  });
   it('reads a BYOB response in bounded growth buffers and assembles exact bytes', async () => {
     const bytes = Uint8Array.from({ length: 257 }, (_value, index) => index % 256);
     let fetches = 0, pulls = 0;

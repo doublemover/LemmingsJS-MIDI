@@ -107207,5 +107207,1107 @@
       "990": "Open: optional ratio-folded/delayed modes and actual crowd matrix remain development.",
       "1182": "Close after publication; combines shared392 lap/terrain/hidden-row fixtures with marker/geometry/native take acceptance."
     }
+  },
+  "continuation394": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "sourceParent": "ef7b88b12429a40f3f3e26e98bed821606100ab2",
+    "scope": "Bounded default-stream empty-chunk handling and actual desktop asset startup.",
+    "changes": [
+      "Accept valid native default-reader empty Uint8Array chunks before data and in the admitted exact-capacity EOF probe.",
+      "Bound consecutive no-progress reads to32, retain cancellation/deadline/byte admission and exact source contents.",
+      "Add immutable-app Playwright startup using real terrain asset wrapped in explicitly injected native default-stream empty chunks."
+    ],
+    "counterexample": {
+      "command": "Native Node Response(ReadableStream): empty Uint8Array, [1,2,3], close; production FileProvider refused decode before this patch.",
+      "observedBefore": {
+        "kind": "decode",
+        "requestedUrl": "/empty-chunk.bin"
+      },
+      "notClaimed": "The archived CI trace does not disclose the response chunk framing; this independently demonstrated boundary is not asserted as its proven root cause."
+    },
+    "ci392": {
+      "head": "9518f1a2652cffa93eff8c09429972e5cb6618d7",
+      "runId": 41006196904,
+      "jobId": 123901538876,
+      "result": "failed-before-Node-coverage",
+      "workstation": {
+        "passing": 237,
+        "failed": 1,
+        "failure": [
+          {
+            "title": "original native UMP intent capture stays separate from accepted MIDI1 and cannot export empty success @boundary",
+            "status": "timedOut"
+          }
+        ]
+      },
+      "reportedPeerJobs": "Lifecycle and both native codec jobs report success; not independently source-qualified in this continuation.",
+      "failureStatus": "World preparation failed: error load file (decode)",
+      "terrainAsset": {
+        "path": "lemmings/VGAGR4.DAT",
+        "bytes": 28692,
+        "sha256": "40a99d3d9540609da9d6a74c07a832786818aed361326e37c01a909a1615921d",
+        "traceBytesMatchRepository": true
+      },
+      "mainNodeAndCoverage": "Skipped after browser failure; no full-green claim."
+    },
+    "validation": {
+      "node": {
+        "passing": 143,
+        "failures": 0,
+        "durationSeconds": 1,
+        "scope": "Streaming, budget, ownership, revalidation, runtime leases and six FileProvider suites."
+      },
+      "browser": {
+        "passing": 16,
+        "failures": 0,
+        "durationSeconds": 52.6,
+        "cases": [
+          {
+            "title": "raw byte leases cover real transport and warm IndexedDB readers through final release",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "fallback admissions in separate tabs share the Web Lock and preserve owned UTF-16 cap",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "real terrain decoding retires private compressed cursors before cache eviction",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "GameResources and LevelLoader retire owned raw cursors while surviving consumers stay readable",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "HTTP conditional 304 updates metadata without a payload rewrite and changed bytes preserve old handles",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "real HTTP seasonal absence resolves to the same terrain and steel as an explicit source",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "HTTP 401 retains its type and cannot select a substitute seasonal pack",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "HTTP 403 retains its type and cannot select a substitute seasonal pack",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "HTTP 429 retains its type and cannot select a substitute seasonal pack",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "HTTP 500 retains its type and cannot select a substitute seasonal pack",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "real IndexedDB commits consistent cross-provider totals and warm reads never rewrite payloads",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "real localStorage warm reads write no payloads, enforce the app cap and preserve unrelated keys",
+            "file": "asset-resilience.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "original native UMP intent capture stays separate from accepted MIDI1 and cannot export empty success @boundary",
+            "file": "procgen-workstation-midi-clip.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "original-ump-intent-capture",
+                "value": {
+                  "original": {
+                    "protocol": "ump",
+                    "sourceLayer": "authored-intent",
+                    "publication": "not-submitted",
+                    "recorded": 16,
+                    "dropped": 0,
+                    "unmappedTimes": 0,
+                    "complete": true,
+                    "reason": null,
+                    "pending": false,
+                    "retainedEstimateBytes": 11116,
+                    "maximumBytes": 33554432,
+                    "maximumRecords": 100000,
+                    "retainedSources": 0,
+                    "closed": false,
+                    "reservation": {
+                      "enabled": true,
+                      "owner": "original-ump-capture-2",
+                      "kind": "original-ump-recording-metadata-estimate",
+                      "category": "checkpoint",
+                      "generation": 0,
+                      "declaredBytes": 11116,
+                      "maxBytes": 33554432,
+                      "state": "reserved",
+                      "error": null
+                    }
+                  },
+                  "recorded": 16,
+                  "outcomes": [
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false
+                  ],
+                  "previousRetained": true,
+                  "first": {
+                    "outputId": "",
+                    "connectionEpoch": null,
+                    "routeRevision": null,
+                    "intentId": "original-0",
+                    "type": "umpIntent",
+                    "direction": "output",
+                    "source": "original-ump-intent",
+                    "evidence": "intent-render",
+                    "protocol": "ump",
+                    "publication": "authored-not-submitted",
+                    "sourceProtocol": "midi2",
+                    "umpWords": [
+                      1100102656,
+                      305397760
+                    ],
+                    "sourceUmp": [
+                      1100102656,
+                      305397760
+                    ],
+                    "data": [],
+                    "timestamp": 2358.699999988079,
+                    "beat": 8,
+                    "timeDomain": "recorded-score-beat",
+                    "sequence": 2
+                  },
+                  "last": {
+                    "outputId": "",
+                    "connectionEpoch": null,
+                    "routeRevision": null,
+                    "intentId": "original-15",
+                    "type": "umpIntent",
+                    "direction": "output",
+                    "source": "original-ump-intent",
+                    "evidence": "intent-render",
+                    "protocol": "ump",
+                    "publication": "authored-not-submitted",
+                    "sourceProtocol": "midi2",
+                    "umpWords": [
+                      1100102656,
+                      306380800
+                    ],
+                    "sourceUmp": [
+                      1100102656,
+                      306380800
+                    ],
+                    "data": [],
+                    "timestamp": 2362.699999988079,
+                    "beat": 8.015625,
+                    "timeDomain": "recorded-score-beat",
+                    "sequence": 17
+                  },
+                  "physics": 0,
+                  "scope": "Native authored UMP ingress before unavailable route/lowering; no API submission, hardware receiver or product Clip-export claim."
+                }
+              }
+            ]
+          },
+          {
+            "title": "native product Clip controls choose an original output, save optional attribution and validate imports as data @boundary",
+            "file": "procgen-workstation-midi-clip.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "original-clip-product-export",
+                "value": {
+                  "before": {
+                    "physics": 0,
+                    "revision": 0
+                  },
+                  "prepared": {
+                    "artifact": {
+                      "artifactId": "artifact-mvujkyrx-1",
+                      "immutableSourceRef": "recording:547acddc-5d96-4e71-ae4d-eea88aaad17b:unsaved:1:5:1:5",
+                      "formatVersion": "midi-clip-file/v1",
+                      "mediaType": "application/octet-stream",
+                      "suggestedFilename": "procgen-performance-output-2-intent.midi2",
+                      "byteLength": 100,
+                      "deliveryModes": [
+                        "anchor",
+                        "file-handle"
+                      ],
+                      "digestState": "ready",
+                      "sha256": "cdf487b8c42c02e23aa062a978f8f9400ca9f8ed77bd144b24d6dd98611fea76",
+                      "coverageLossReportRef": "optional-original-ump-sidecar",
+                      "expiresAt": 1793339338701,
+                      "retained": true,
+                      "retirementReason": null,
+                      "activeLeases": 1,
+                      "maxConsumerLeases": 32,
+                      "budgetState": "retained"
+                    },
+                    "manifest": {
+                      "artifactId": "artifact-mvujkyry-2",
+                      "immutableSourceRef": "recording:547acddc-5d96-4e71-ae4d-eea88aaad17b:unsaved:1:5:1:5",
+                      "formatVersion": "procgen-original-ump-sidecar/v1",
+                      "mediaType": "application/json",
+                      "suggestedFilename": "procgen-performance-output-2-intent.midi2.json",
+                      "byteLength": 1900,
+                      "deliveryModes": [
+                        "anchor",
+                        "file-handle"
+                      ],
+                      "digestState": "ready",
+                      "sha256": "d55b0264f54b6de3f8687d837c7f1e4cc7b18da9347702f74f9717c0ad0043bd",
+                      "coverageLossReportRef": null,
+                      "expiresAt": 1793339338701,
+                      "retained": true,
+                      "retirementReason": null,
+                      "activeLeases": 0,
+                      "maxConsumerLeases": 32,
+                      "budgetState": "retained"
+                    },
+                    "delivery": {
+                      "deliveryId": "delivery-mvujkyry-1",
+                      "artifactId": "artifact-mvujkyrx-1",
+                      "sinkKind": "anchor",
+                      "state": "delivery-requested",
+                      "bytesWritten": 0,
+                      "errorKind": null,
+                      "evidence": "anchor-click-returned"
+                    },
+                    "preparation": null,
+                    "preparationReceipt": {
+                      "protocol": 3,
+                      "jobId": "background-27",
+                      "kind": "encode-recorded-ump-clip",
+                      "ownerId": "procgen-midi-export",
+                      "ownerEpoch": 1,
+                      "sourceRevision": "547acddc-5d96-4e71-ae4d-eea88aaad17b:1:5",
+                      "state": "computed",
+                      "publication": "not-committed",
+                      "method": "dedicated-worker",
+                      "queueWaitMs": 0.09999999403953552,
+                      "elapsedMs": 227.40000000596046,
+                      "inputBytes": 1054,
+                      "nodes": 64,
+                      "retainedBytes": 69536,
+                      "inputTransport": {
+                        "schema": "owned-background-snapshot-pages/v1",
+                        "packets": 1,
+                        "operations": 176,
+                        "bytes": 15394,
+                        "maximumSliceMs": 0.4000000059604645,
+                        "maximumPostMessageMs": 0.09999999403953552,
+                        "elapsedMs": 21.900000005960464,
+                        "stagingBytes": 131072
+                      },
+                      "outputTransport": {
+                        "mode": "acknowledged-snapshot-pages",
+                        "packets": 1,
+                        "operations": 220,
+                        "bytes": 20236,
+                        "ownedTransferredBytes": 2000,
+                        "maximumSliceMs": 0.4000000059604645,
+                        "elapsedMs": 2.199999988079071,
+                        "retainedEstimateBytes": 18552
+                      },
+                      "executionIdentity": {
+                        "receiptVersion": 3,
+                        "activeExecution": "bound",
+                        "buildId": "06700c2e80b59481044404d3387d442b5ff090b84544c9a00ed615f67dceed61",
+                        "closureDigest": "fbb1d8f1410f0a0c547a3f5d0381cc8c0d2619f3713935d1768fa36e7d2dd531",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "codeDigest": "017bf60977b492df93ca31a16e3c864fde57d029611f9b84d1a891d44b9ac39e",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "instrumentArtifacts": [
+                          {
+                            "engineId": "native-fm",
+                            "engineVersion": 1,
+                            "artifactHash": "5b7a7f401bd7d3796ce09e34551a03a034b71dc93edcea1ca6a121321b0fb962"
+                          },
+                          {
+                            "engineId": "native-modal",
+                            "engineVersion": 1,
+                            "artifactHash": "dfa91395ddf9662e9d6bf24b612ed5a1874d8f3a42202b9faa700f5ab1e009ae"
+                          },
+                          {
+                            "engineId": "native-oscillator",
+                            "engineVersion": 1,
+                            "artifactHash": "5dc64433047979feba3ab80193cd856a10fe97b34afe5d7d76db7d1c92dc2995"
+                          },
+                          {
+                            "engineId": "native-sample",
+                            "engineVersion": 1,
+                            "artifactHash": "cb61a5540a7c8e7d95f86c78f381e0319b528d90810b4114fc8a4285e60b728f"
+                          },
+                          {
+                            "engineId": "worklet-choir",
+                            "engineVersion": 1,
+                            "artifactHash": "3236a059d396f563452ada156f8fde6b8d30be1c42097dbfaeffbcbf0922c6c8"
+                          },
+                          {
+                            "engineId": "worklet-friction",
+                            "engineVersion": 1,
+                            "artifactHash": "15e0167a5fcd570618a818247c2f30d2c6d45000cd00a4d574dc6f4503c97744"
+                          },
+                          {
+                            "engineId": "worklet-granular",
+                            "engineVersion": 1,
+                            "artifactHash": "bd9daba40700915b40b82303146ff9b387ecae67275aef0cb336fc9cafc13281"
+                          },
+                          {
+                            "engineId": "worklet-pluck",
+                            "engineVersion": 1,
+                            "artifactHash": "e41b93a7f4421503842d21c26bfb6a1f4fabc84b14e7babe288911c3a83f6fad"
+                          },
+                          {
+                            "engineId": "worklet-sample",
+                            "engineVersion": 1,
+                            "artifactHash": "55d5fbc07e491d4dcfd79e2247ed94da79b417cb9926236d7778df68c0a2f290"
+                          },
+                          {
+                            "engineId": "worklet-seed-layers",
+                            "engineVersion": 1,
+                            "artifactHash": "6e19d1a7a983f094044c77b88e44b034e589be0742bf8125ded5af173164e3b8"
+                          },
+                          {
+                            "engineId": "worklet-sine",
+                            "engineVersion": 1,
+                            "artifactHash": "81097416a52687ab7ead6acf42a3e11afdb80af57921c995fb52edc631918ce3"
+                          },
+                          {
+                            "engineId": "worklet-spectrum",
+                            "engineVersion": 1,
+                            "artifactHash": "1b68425d790422473471078dee72376d7585667e5bf44f85c2406041873bb1b1"
+                          },
+                          {
+                            "engineId": "worklet-texture",
+                            "engineVersion": 1,
+                            "artifactHash": "1f78032f800718b559353b449db4de2c708602ff9a15bdc580e1c5e50eb9efef"
+                          },
+                          {
+                            "engineId": "worklet-wind",
+                            "engineVersion": 1,
+                            "artifactHash": "dd39c33ebd0fc288293151aaf8dad210d9dc942e71ea0ab15d213e407c8315a4"
+                          }
+                        ],
+                        "stateSchema": 11,
+                        "realmId": "eef9c9e1-337e-431c-b1f0-214c2553e222",
+                        "capabilityProfile": "browser-background-jobs",
+                        "binding": "immutable-application-generation"
+                      }
+                    }
+                  },
+                  "imported": {
+                    "artifact": {
+                      "artifactId": "artifact-mvujkz63-3",
+                      "immutableSourceRef": "validated-clip-import:5",
+                      "formatVersion": "midi-clip-file/v1",
+                      "mediaType": "application/octet-stream",
+                      "suggestedFilename": "validated-import.midi2",
+                      "byteLength": 100,
+                      "deliveryModes": [
+                        "anchor",
+                        "file-handle"
+                      ],
+                      "digestState": "ready",
+                      "sha256": "cdf487b8c42c02e23aa062a978f8f9400ca9f8ed77bd144b24d6dd98611fea76",
+                      "coverageLossReportRef": "validated-data-only-no-hardware-or-project-import",
+                      "expiresAt": 1793339339211,
+                      "retained": true,
+                      "retirementReason": null,
+                      "activeLeases": 0,
+                      "maxConsumerLeases": 32,
+                      "budgetState": "retained"
+                    },
+                    "manifest": null,
+                    "delivery": null,
+                    "preparation": null,
+                    "preparationReceipt": {
+                      "protocol": 3,
+                      "jobId": "background-36",
+                      "kind": "inspect-midi-clip",
+                      "ownerId": "procgen-midi-export",
+                      "ownerEpoch": 1,
+                      "sourceRevision": "import:5",
+                      "state": "computed",
+                      "publication": "not-committed",
+                      "method": "dedicated-worker",
+                      "queueWaitMs": 0,
+                      "elapsedMs": 97.10000002384186,
+                      "inputBytes": 100,
+                      "nodes": 32,
+                      "retainedBytes": 65536,
+                      "inputTransport": {
+                        "schema": "owned-background-snapshot-pages/v1",
+                        "packets": 1,
+                        "operations": 6,
+                        "bytes": 588,
+                        "maximumSliceMs": 0.09999999403953552,
+                        "maximumPostMessageMs": 0,
+                        "elapsedMs": 13.099999994039536,
+                        "stagingBytes": 131072
+                      },
+                      "outputTransport": {
+                        "mode": "acknowledged-snapshot-pages",
+                        "packets": 1,
+                        "operations": 73,
+                        "bytes": 6508,
+                        "ownedTransferredBytes": 0,
+                        "maximumSliceMs": 0.19999998807907104,
+                        "elapsedMs": 1.5,
+                        "retainedEstimateBytes": 4524
+                      },
+                      "executionIdentity": {
+                        "receiptVersion": 3,
+                        "activeExecution": "bound",
+                        "buildId": "06700c2e80b59481044404d3387d442b5ff090b84544c9a00ed615f67dceed61",
+                        "closureDigest": "fbb1d8f1410f0a0c547a3f5d0381cc8c0d2619f3713935d1768fa36e7d2dd531",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "codeDigest": "017bf60977b492df93ca31a16e3c864fde57d029611f9b84d1a891d44b9ac39e",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "instrumentArtifacts": [
+                          {
+                            "engineId": "native-fm",
+                            "engineVersion": 1,
+                            "artifactHash": "5b7a7f401bd7d3796ce09e34551a03a034b71dc93edcea1ca6a121321b0fb962"
+                          },
+                          {
+                            "engineId": "native-modal",
+                            "engineVersion": 1,
+                            "artifactHash": "dfa91395ddf9662e9d6bf24b612ed5a1874d8f3a42202b9faa700f5ab1e009ae"
+                          },
+                          {
+                            "engineId": "native-oscillator",
+                            "engineVersion": 1,
+                            "artifactHash": "5dc64433047979feba3ab80193cd856a10fe97b34afe5d7d76db7d1c92dc2995"
+                          },
+                          {
+                            "engineId": "native-sample",
+                            "engineVersion": 1,
+                            "artifactHash": "cb61a5540a7c8e7d95f86c78f381e0319b528d90810b4114fc8a4285e60b728f"
+                          },
+                          {
+                            "engineId": "worklet-choir",
+                            "engineVersion": 1,
+                            "artifactHash": "3236a059d396f563452ada156f8fde6b8d30be1c42097dbfaeffbcbf0922c6c8"
+                          },
+                          {
+                            "engineId": "worklet-friction",
+                            "engineVersion": 1,
+                            "artifactHash": "15e0167a5fcd570618a818247c2f30d2c6d45000cd00a4d574dc6f4503c97744"
+                          },
+                          {
+                            "engineId": "worklet-granular",
+                            "engineVersion": 1,
+                            "artifactHash": "bd9daba40700915b40b82303146ff9b387ecae67275aef0cb336fc9cafc13281"
+                          },
+                          {
+                            "engineId": "worklet-pluck",
+                            "engineVersion": 1,
+                            "artifactHash": "e41b93a7f4421503842d21c26bfb6a1f4fabc84b14e7babe288911c3a83f6fad"
+                          },
+                          {
+                            "engineId": "worklet-sample",
+                            "engineVersion": 1,
+                            "artifactHash": "55d5fbc07e491d4dcfd79e2247ed94da79b417cb9926236d7778df68c0a2f290"
+                          },
+                          {
+                            "engineId": "worklet-seed-layers",
+                            "engineVersion": 1,
+                            "artifactHash": "6e19d1a7a983f094044c77b88e44b034e589be0742bf8125ded5af173164e3b8"
+                          },
+                          {
+                            "engineId": "worklet-sine",
+                            "engineVersion": 1,
+                            "artifactHash": "81097416a52687ab7ead6acf42a3e11afdb80af57921c995fb52edc631918ce3"
+                          },
+                          {
+                            "engineId": "worklet-spectrum",
+                            "engineVersion": 1,
+                            "artifactHash": "1b68425d790422473471078dee72376d7585667e5bf44f85c2406041873bb1b1"
+                          },
+                          {
+                            "engineId": "worklet-texture",
+                            "engineVersion": 1,
+                            "artifactHash": "1f78032f800718b559353b449db4de2c708602ff9a15bdc580e1c5e50eb9efef"
+                          },
+                          {
+                            "engineId": "worklet-wind",
+                            "engineVersion": 1,
+                            "artifactHash": "dd39c33ebd0fc288293151aaf8dad210d9dc942e71ea0ab15d213e407c8315a4"
+                          }
+                        ],
+                        "stateSchema": 11,
+                        "realmId": "87534fef-7fea-453f-a023-e5e0b69e8fe9",
+                        "capabilityProfile": "browser-background-jobs",
+                        "binding": "immutable-application-generation"
+                      }
+                    },
+                    "physics": 0,
+                    "revision": 0,
+                    "original": {
+                      "protocol": "ump",
+                      "sourceLayer": "authored-intent",
+                      "publication": "not-submitted",
+                      "recorded": 4,
+                      "dropped": 0,
+                      "unmappedTimes": 0,
+                      "complete": true,
+                      "reason": null,
+                      "pending": false,
+                      "retainedEstimateBytes": 2960,
+                      "maximumBytes": 33554432,
+                      "maximumRecords": 100000,
+                      "retainedSources": 0,
+                      "closed": false,
+                      "reservation": {
+                        "enabled": true,
+                        "owner": "original-ump-capture-2",
+                        "kind": "original-ump-recording-metadata-estimate",
+                        "category": "checkpoint",
+                        "generation": 0,
+                        "declaredBytes": 4096,
+                        "maxBytes": 33554432,
+                        "state": "reserved",
+                        "error": null
+                      }
+                    }
+                  },
+                  "cancellation": {
+                    "previousRetained": true,
+                    "sidecarRetained": true
+                  },
+                  "manifest": {
+                    "schema": "procgen-original-ump-sidecar/v1",
+                    "complete": true,
+                    "clipSha256": "cdf487b8c42c02e23aa062a978f8f9400ca9f8ed77bd144b24d6dd98611fea76",
+                    "clipBytes": 100,
+                    "sourcePrefixRows": 5,
+                    "sourceLayer": "authored-intent",
+                    "publication": "not-submitted",
+                    "noteBoundaryCoverage": "unverified-original-packets-preserved-no-derived-releases",
+                    "timeAuthority": "explicit-authored-score-beats-not-physical-take-projection",
+                    "exportPlan": {
+                      "schema": "procgen-original-ump-export-plan/v1",
+                      "sourceLayer": "authored-intent",
+                      "timeDomain": "recorded-score-beat",
+                      "placement": "rebase-recording-start",
+                      "originBeat": 8,
+                      "endpointPolicy": "single-recorded-output",
+                      "channelPolicy": "preserve-original-groups-and-channels",
+                      "protocol": "original-ump",
+                      "routeIndex": 1,
+                      "routeCount": 2,
+                      "selectedRouteOrdinal": 2,
+                      "includedMessages": 2,
+                      "excludedRouteMessages": 2,
+                      "excludedOtherLayerMessages": 0,
+                      "publication": "not-submitted",
+                      "tempoSource": "captured-transport",
+                      "ppq": 960,
+                      "initialTempo": {
+                        "source": "captured-transport",
+                        "bpm": 90,
+                        "firstCapturedBeat": 8,
+                        "unobservedPrefixBeats": 0
+                      }
+                    },
+                    "outputIdentity": {
+                      "outputId": "original-B",
+                      "connectionEpoch": null,
+                      "routeRevision": null
+                    },
+                    "initialMeter": "unobserved-unless-present-in-original-flex",
+                    "quantization": {
+                      "policy": "nearest-tick",
+                      "quantizedEvents": 0,
+                      "maximumBeatError": 0
+                    },
+                    "originalPackets": 2,
+                    "derivedTempoPackets": 1,
+                    "endPolicy": "last-retained-event-no-inferred-trailing-duration",
+                    "setupDisposition": "data-only-never-submitted",
+                    "recordingIncomplete": false,
+                    "originalCaptureIncomplete": false,
+                    "coverage": {
+                      "recordingId": "547acddc-5d96-4e71-ae4d-eea88aaad17b",
+                      "droppedRecords": 0,
+                      "originalDropped": 0,
+                      "originalUnmappedTimes": 0,
+                      "recordingRevision": 1,
+                      "incompleteReasons": []
+                    },
+                    "attribution": [
+                      {
+                        "sequenceIndex": 0,
+                        "sourceRecordIndex": 3,
+                        "sourceBeat": 10,
+                        "tick": 1920,
+                        "attribution": {
+                          "intentId": 77,
+                          "actorId": "original-B"
+                        }
+                      },
+                      {
+                        "sequenceIndex": 1,
+                        "sourceRecordIndex": 4,
+                        "sourceBeat": 11,
+                        "tick": 2880,
+                        "attribution": {
+                          "intentId": 77,
+                          "actorId": "original-B"
+                        }
+                      }
+                    ]
+                  },
+                  "clipSha256": "cdf487b8c42c02e23aa062a978f8f9400ca9f8ed77bd144b24d6dd98611fea76",
+                  "optionalManifestSha256": "d55b0264f54b6de3f8687d837c7f1e4cc7b18da9347702f74f9717c0ad0043bd",
+                  "independentReader": "jzz-midi-smf@1.9.9/jzz@1.9.6",
+                  "scope": "Original authored UMP score source, native worker and desktop controls; separate output and optional attribution, safe data-only import. No accepted UMP backend, physical-take playback import, DAW or hardware claim."
+                }
+              }
+            ]
+          },
+          {
+            "title": "native worker Clip encoding/import preserves 100000 UMP events and retires a canceled source @boundary",
+            "file": "procgen-workstation-midi-clip.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "native-midi-clip-worker",
+                "value": {
+                  "count": 100000,
+                  "fileBytes": 1200056,
+                  "fileHash": "66eaa5fc2adbea98f575862f835d26d3999013b18a6c929da7476d3cfa416e03",
+                  "sourceWordHash": "6f465a18fec1b2ca3376a252e4c3b2ed83038b8df7c37c2079fc40400651be72",
+                  "binary": "534d4632434c4950004000000030ffff00400000f02000000000000000000000000000000040000040b14a00fedc00000040000241b14a00fedc00010040000242b14a00fedc00020040000243b14a00fedc00030040000244b14a00fedc00040040000245b14a00fedc00050040000246b14a00fedc00060040000247b14a00fedc00070040000248b14a00fedc00080040000249b14a00fedc0009004000024ab14a00fedc000a004000024bb14a00fedc000b004000024cb14a00fedc000c004000024db14a00",
+                  "turns": 84,
+                  "physics": 0,
+                  "canceled": true,
+                  "retainedBeforeRelease": 10084520,
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080,
+                    "dpr": 1
+                  },
+                  "accountedAfterRelease": 0,
+                  "encodedReceipt": {
+                    "protocol": 3,
+                    "jobId": "background-1",
+                    "kind": "encode-midi-clip",
+                    "ownerId": "native-clip",
+                    "ownerEpoch": 1,
+                    "sourceRevision": "original-ump:1",
+                    "state": "computed",
+                    "publication": "not-committed",
+                    "method": "dedicated-worker",
+                    "queueWaitMs": 0,
+                    "elapsedMs": 245.80000001192093,
+                    "inputBytes": 2000008,
+                    "nodes": 32,
+                    "retainedBytes": 4002064,
+                    "inputTransport": {
+                      "schema": "owned-background-snapshot-pages/v1",
+                      "packets": 60,
+                      "operations": 83,
+                      "bytes": 2006376,
+                      "maximumSliceMs": 0.19999998807907104,
+                      "maximumPostMessageMs": 0.10000002384185791,
+                      "elapsedMs": 20.5,
+                      "stagingBytes": 131072
+                    },
+                    "outputTransport": {
+                      "mode": "acknowledged-snapshot-pages",
+                      "packets": 1,
+                      "operations": 57,
+                      "bytes": 5082,
+                      "ownedTransferredBytes": 1200056,
+                      "maximumSliceMs": 0.10000002384185791,
+                      "elapsedMs": 1.2000000178813934,
+                      "retainedEstimateBytes": 2403516
+                    },
+                    "executionIdentity": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "06700c2e80b59481044404d3387d442b5ff090b84544c9a00ed615f67dceed61",
+                      "closureDigest": "fbb1d8f1410f0a0c547a3f5d0381cc8c0d2619f3713935d1768fa36e7d2dd531",
+                      "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                      "codeDigest": "017bf60977b492df93ca31a16e3c864fde57d029611f9b84d1a891d44b9ac39e",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "instrumentArtifacts": [
+                        {
+                          "engineId": "native-fm",
+                          "engineVersion": 1,
+                          "artifactHash": "5b7a7f401bd7d3796ce09e34551a03a034b71dc93edcea1ca6a121321b0fb962"
+                        },
+                        {
+                          "engineId": "native-modal",
+                          "engineVersion": 1,
+                          "artifactHash": "dfa91395ddf9662e9d6bf24b612ed5a1874d8f3a42202b9faa700f5ab1e009ae"
+                        },
+                        {
+                          "engineId": "native-oscillator",
+                          "engineVersion": 1,
+                          "artifactHash": "5dc64433047979feba3ab80193cd856a10fe97b34afe5d7d76db7d1c92dc2995"
+                        },
+                        {
+                          "engineId": "native-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "cb61a5540a7c8e7d95f86c78f381e0319b528d90810b4114fc8a4285e60b728f"
+                        },
+                        {
+                          "engineId": "worklet-choir",
+                          "engineVersion": 1,
+                          "artifactHash": "3236a059d396f563452ada156f8fde6b8d30be1c42097dbfaeffbcbf0922c6c8"
+                        },
+                        {
+                          "engineId": "worklet-friction",
+                          "engineVersion": 1,
+                          "artifactHash": "15e0167a5fcd570618a818247c2f30d2c6d45000cd00a4d574dc6f4503c97744"
+                        },
+                        {
+                          "engineId": "worklet-granular",
+                          "engineVersion": 1,
+                          "artifactHash": "bd9daba40700915b40b82303146ff9b387ecae67275aef0cb336fc9cafc13281"
+                        },
+                        {
+                          "engineId": "worklet-pluck",
+                          "engineVersion": 1,
+                          "artifactHash": "e41b93a7f4421503842d21c26bfb6a1f4fabc84b14e7babe288911c3a83f6fad"
+                        },
+                        {
+                          "engineId": "worklet-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "55d5fbc07e491d4dcfd79e2247ed94da79b417cb9926236d7778df68c0a2f290"
+                        },
+                        {
+                          "engineId": "worklet-seed-layers",
+                          "engineVersion": 1,
+                          "artifactHash": "6e19d1a7a983f094044c77b88e44b034e589be0742bf8125ded5af173164e3b8"
+                        },
+                        {
+                          "engineId": "worklet-sine",
+                          "engineVersion": 1,
+                          "artifactHash": "81097416a52687ab7ead6acf42a3e11afdb80af57921c995fb52edc631918ce3"
+                        },
+                        {
+                          "engineId": "worklet-spectrum",
+                          "engineVersion": 1,
+                          "artifactHash": "1b68425d790422473471078dee72376d7585667e5bf44f85c2406041873bb1b1"
+                        },
+                        {
+                          "engineId": "worklet-texture",
+                          "engineVersion": 1,
+                          "artifactHash": "1f78032f800718b559353b449db4de2c708602ff9a15bdc580e1c5e50eb9efef"
+                        },
+                        {
+                          "engineId": "worklet-wind",
+                          "engineVersion": 1,
+                          "artifactHash": "dd39c33ebd0fc288293151aaf8dad210d9dc942e71ea0ab15d213e407c8315a4"
+                        }
+                      ],
+                      "stateSchema": 11,
+                      "realmId": "a4c08b87-a853-4dde-a660-a4dd0074b74c",
+                      "capabilityProfile": "browser-background-jobs",
+                      "binding": "immutable-application-generation"
+                    }
+                  },
+                  "decodedReceipt": {
+                    "protocol": 3,
+                    "jobId": "background-2",
+                    "kind": "decode-midi-clip",
+                    "ownerId": "native-clip",
+                    "ownerEpoch": 1,
+                    "sourceRevision": "original-ump:1",
+                    "state": "computed",
+                    "publication": "not-committed",
+                    "method": "dedicated-worker",
+                    "queueWaitMs": 0,
+                    "elapsedMs": 449.7000000178814,
+                    "inputBytes": 1200056,
+                    "nodes": 32,
+                    "retainedBytes": 4065552,
+                    "inputTransport": {
+                      "schema": "owned-background-snapshot-pages/v1",
+                      "packets": 36,
+                      "operations": 42,
+                      "bytes": 1203208,
+                      "maximumSliceMs": 0.10000002384185791,
+                      "maximumPostMessageMs": 0.10000002384185791,
+                      "elapsedMs": 16.5,
+                      "stagingBytes": 131072
+                    },
+                    "outputTransport": {
+                      "mode": "acknowledged-snapshot-pages",
+                      "packets": 1,
+                      "operations": 93,
+                      "bytes": 8374,
+                      "ownedTransferredBytes": 2000008,
+                      "maximumSliceMs": 0.19999998807907104,
+                      "elapsedMs": 1.2000000178813934,
+                      "retainedEstimateBytes": 4005720
+                    },
+                    "executionIdentity": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "06700c2e80b59481044404d3387d442b5ff090b84544c9a00ed615f67dceed61",
+                      "closureDigest": "fbb1d8f1410f0a0c547a3f5d0381cc8c0d2619f3713935d1768fa36e7d2dd531",
+                      "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                      "codeDigest": "017bf60977b492df93ca31a16e3c864fde57d029611f9b84d1a891d44b9ac39e",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "instrumentArtifacts": [
+                        {
+                          "engineId": "native-fm",
+                          "engineVersion": 1,
+                          "artifactHash": "5b7a7f401bd7d3796ce09e34551a03a034b71dc93edcea1ca6a121321b0fb962"
+                        },
+                        {
+                          "engineId": "native-modal",
+                          "engineVersion": 1,
+                          "artifactHash": "dfa91395ddf9662e9d6bf24b612ed5a1874d8f3a42202b9faa700f5ab1e009ae"
+                        },
+                        {
+                          "engineId": "native-oscillator",
+                          "engineVersion": 1,
+                          "artifactHash": "5dc64433047979feba3ab80193cd856a10fe97b34afe5d7d76db7d1c92dc2995"
+                        },
+                        {
+                          "engineId": "native-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "cb61a5540a7c8e7d95f86c78f381e0319b528d90810b4114fc8a4285e60b728f"
+                        },
+                        {
+                          "engineId": "worklet-choir",
+                          "engineVersion": 1,
+                          "artifactHash": "3236a059d396f563452ada156f8fde6b8d30be1c42097dbfaeffbcbf0922c6c8"
+                        },
+                        {
+                          "engineId": "worklet-friction",
+                          "engineVersion": 1,
+                          "artifactHash": "15e0167a5fcd570618a818247c2f30d2c6d45000cd00a4d574dc6f4503c97744"
+                        },
+                        {
+                          "engineId": "worklet-granular",
+                          "engineVersion": 1,
+                          "artifactHash": "bd9daba40700915b40b82303146ff9b387ecae67275aef0cb336fc9cafc13281"
+                        },
+                        {
+                          "engineId": "worklet-pluck",
+                          "engineVersion": 1,
+                          "artifactHash": "e41b93a7f4421503842d21c26bfb6a1f4fabc84b14e7babe288911c3a83f6fad"
+                        },
+                        {
+                          "engineId": "worklet-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "55d5fbc07e491d4dcfd79e2247ed94da79b417cb9926236d7778df68c0a2f290"
+                        },
+                        {
+                          "engineId": "worklet-seed-layers",
+                          "engineVersion": 1,
+                          "artifactHash": "6e19d1a7a983f094044c77b88e44b034e589be0742bf8125ded5af173164e3b8"
+                        },
+                        {
+                          "engineId": "worklet-sine",
+                          "engineVersion": 1,
+                          "artifactHash": "81097416a52687ab7ead6acf42a3e11afdb80af57921c995fb52edc631918ce3"
+                        },
+                        {
+                          "engineId": "worklet-spectrum",
+                          "engineVersion": 1,
+                          "artifactHash": "1b68425d790422473471078dee72376d7585667e5bf44f85c2406041873bb1b1"
+                        },
+                        {
+                          "engineId": "worklet-texture",
+                          "engineVersion": 1,
+                          "artifactHash": "1f78032f800718b559353b449db4de2c708602ff9a15bdc580e1c5e50eb9efef"
+                        },
+                        {
+                          "engineId": "worklet-wind",
+                          "engineVersion": 1,
+                          "artifactHash": "dd39c33ebd0fc288293151aaf8dad210d9dc942e71ea0ab15d213e407c8315a4"
+                        }
+                      ],
+                      "stateSchema": 11,
+                      "realmId": "77f5c1b0-fca5-45f7-aa3f-e0ac49c2e5f0",
+                      "capabilityProfile": "browser-background-jobs",
+                      "binding": "immutable-application-generation"
+                    }
+                  },
+                  "scope": "native-source-bound-file-codec-worker; synthetic-original-UMP-fixture; no capture UI, hardware setup, DAW or receiver claim",
+                  "independentReader": "jzz-midi-smf@1.9.9/jzz@1.9.6",
+                  "exactIndependentWordsAndTicks": 100000
+                }
+              }
+            ]
+          },
+          {
+            "title": "desktop startup accepts a real asset response with valid empty transport chunks",
+            "file": "procgen-workstation-source-stream.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-native-empty-chunk-startup",
+                "value": {
+                  "streams": [
+                    {
+                      "url": "http://127.0.0.1:61182/dist/browser/06700c2e80b59481044404d3387d442b5ff090b84544c9a00ed615f67dceed61/lemmings/VGAGR4.DAT",
+                      "bytes": 28692,
+                      "emptyChunks": 2,
+                      "complete": true
+                    }
+                  ],
+                  "worldReady": true,
+                  "actors": 0,
+                  "display": "ready",
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "scope": "Actual immutable app and network asset with an explicitly injected native default-stream boundary; no claim about CI failure chunk framing."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 144,
+            "covered": 143,
+            "skipped": 0,
+            "pct": 99.3
+          },
+          "statements": {
+            "total": 144,
+            "covered": 143,
+            "skipped": 0,
+            "pct": 99.3
+          },
+          "functions": {
+            "total": 11,
+            "covered": 11,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 120,
+            "covered": 101,
+            "skipped": 0,
+            "pct": 84.16
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\data\\file-provider\\FileProviderStream.js": {
+          "lines": {
+            "total": 144,
+            "covered": 143,
+            "skipped": 0,
+            "pct": 99.3
+          },
+          "functions": {
+            "total": 11,
+            "covered": 11,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 144,
+            "covered": 143,
+            "skipped": 0,
+            "pct": 99.3
+          },
+          "branches": {
+            "total": 120,
+            "covered": 101,
+            "skipped": 0,
+            "pct": 84.16
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/data/file-provider/FileProviderStream.js",
+          "bytes": 8059,
+          "sha256": "b58bb5386c89758a2d07c7d3d27b4cee5e3cf637494cac1ac30e56e649cc55cf"
+        },
+        {
+          "path": "test/fileprovider-stream.test.js",
+          "bytes": 12781,
+          "sha256": "0687397c8e6d6540b203321ce38e5e2c7d83c20ce8e3ace0a859fb5a58fb4eba"
+        },
+        {
+          "path": "e2e/procgen-workstation-source-stream.spec.js",
+          "bytes": 2959,
+          "sha256": "7a721cfb9fce03b58fea0dd66fd1aee2c71215844191a8237b1215da7f6e98aa"
+        }
+      ]
+    },
+    "priorAttempts": [
+      {
+        "stage": "format",
+        "result": "Fixture native globals were not declared to the Node-configured lint environment; qualified globalThis/window names before any test run."
+      }
+    ],
+    "limits": [
+      "Valid empty chunks are tolerated within an explicit32-read no-progress allowance; arbitrary infinite no-progress streams refuse.",
+      "Actual startup response fault injection qualifies the completed transport boundary; archived CI chunk framing is unknown.",
+      "No full local suite repeated. CI393 is in progress and full-green checkpoint383 remains unchanged.",
+      "Stream branch coverage remains84.16%; additional uncooperative malformed adapter/retirement combinations remain broader work."
+    ]
   }
 }

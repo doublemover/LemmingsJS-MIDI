@@ -47,7 +47,12 @@ export function requestBinaryStream(provider, url, owner, fetchRef) {
       if (response.status < 200 || response.status >= 300) throw error(resourceKindFromStatus(response.status), { status: response.status });
       const lengthHint = Number(response.headers?.get?.('Content-Length'));
       if (Number.isFinite(lengthHint) && lengthHint > provider._maxResponseBytes) throw error('too-large');
-      let byob = false;
+      let byob = false, emptyReads = 0;
+      const emptyRead = (value, done) => {
+        if (value?.byteLength || done) { emptyReads = 0; return false; }
+        if (byob || !(value instanceof Uint8Array) || ++emptyReads > 32) throw error('decode', { cause: new Error('Binary stream exceeded its empty-read allowance or returned invalid bytes.') });
+        return true;
+      };
       if (response.body) {
         try { reader = response.body.getReader({ mode: 'byob' }); byob = true; }
         catch (cause) {
@@ -78,7 +83,8 @@ export function requestBinaryStream(provider, url, owner, fetchRef) {
             const probe = await (byob ? reader.read(probeView) : reader.read());
             assertLive();
             const count = probe.value?.byteLength || 0;
-            if (byob && probe.value && (probe.value.buffer.byteLength !== 1 || count > 1) || !count && !probe.done) throw error('decode');
+            if (emptyRead(probe.value, probe.done)) continue;
+            if (byob && probe.value && (probe.value.buffer.byteLength !== 1 || count > 1)) throw error('decode');
             if (count > provider._maxResponseBytes - used) throw error('too-large');
             if (count) {
               grow(Math.min(provider._maxResponseBytes, Math.max(used + count, capacity * 2)));
@@ -98,7 +104,7 @@ export function requestBinaryStream(provider, url, owner, fetchRef) {
           else if (!buffer.byteLength && used) throw error('decode');
         }
         const count = value?.byteLength || 0;
-        if (!count && !result.done) throw error('decode');
+        if (emptyRead(value, result.done)) continue;
         if (count > provider._maxResponseBytes - used) throw error('too-large');
         if (!byob && count) {
           if (used + count > capacity) grow(Math.min(provider._maxResponseBytes, Math.max(used + count, capacity * 2)));

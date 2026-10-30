@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Accept bounded empty byte chunks in default asset streams, including the final capacity probe, while retiring streams that repeatedly make no progress.
+
 - Bind route history to physical marker definitions, reject unavailable route reinterpretation evidence, and separate nearby sprites by qualified route distance.
 
 - Align route timestamps with pickup source time, reject inconsistent saved route histories before restore, and expose bounded measured/requested period comparisons without resetting physical phase.
