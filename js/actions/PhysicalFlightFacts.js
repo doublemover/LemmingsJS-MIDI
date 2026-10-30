@@ -4,6 +4,15 @@ const emit = (actor, kind, state, extra = {}) => actor._queuePhysicalTransition(
   peakY: state.peakY, travelPixels: state.travelPixels, verticalDisplacementPixels: actor.y - state.startPosition.y,
   source: state.source, fallState: actor.action?.actionName || null, parachutePhase: actor.action?.actionName === 'floating' ? actor.frameIndex : null,
   positionAfter: { x: actor.x, y: actor.y }, ...extra });
+// LAND is emitted inside the action, before the world's post-step observer.
+// Include only this action's final travel; do not advance or end the arc here.
+export function capturePhysicalLanding(actor, finalTravelPixels = 0) {
+  const state = actor._physicalFlightState; if (!state) return null;
+  return { version: 1, arcId: state.arcId, startTick: state.startTick, startPosition: { ...state.startPosition },
+    source: state.source, peakY: Math.min(state.peakY, actor.y), travelPixels: state.travelPixels + finalTravelPixels,
+    verticalDisplacementPixels: actor.y - state.startPosition.y, fallState: actor.action?.actionName || null,
+    parachutePhase: actor.action?.actionName === 'floating' ? actor.frameIndex : null, contactAtEnd: 'terrain-landing' };
+}
 export function transitionPhysicalFlight(actor, previousAction, nextAction) {
   const previous = previousAction?.actionName, next = nextAction?.actionName;
   if (airborne(next) && !airborne(previous)) {

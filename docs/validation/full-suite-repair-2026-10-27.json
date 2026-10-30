@@ -101628,4 +101628,1022 @@
     ],
     "issueOutcome": "Close1011 after commit/push; topology, sound DSP and protocol hardware owners remain separate."
   }
+,
+  "continuation390": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issue": 1017,
+    "sourceParent": "a4a98dd3d3fad2f0e2dfdb38edc424b30e36b5ad",
+    "scope": "Actual flight/landing provenance, distinct terminal articulation and desktop pause/restore/sprite acceptance.",
+    "changes": [
+      "LAND facts retain bounded flight provenance, including the final action displacement exactly once before the post-step observer; no added arc advance/end.",
+      "Flight responses optionally name landingGesture/terminalGestures and retain actual terminal reason with shared arc identity; existing sustain/strike/source filters remain authoritative.",
+      "Shared seven-case corpus uses real ledge, fall/float, pickup and terminal processors on explicit authored source geometry, with complete world/engine checkpoint continuation.",
+      "Playwright independently prepares actual classic/rounded_triangle sources and renders the production 1920x1080 canvas; pixel hashes differ while canonical physical/intent streams match."
+    ],
+    "validation": {
+      "node": {
+        "passing": 74,
+        "failures": 0,
+        "files": [
+          "test/procgen-actual-flight-arcs.test.js",
+          "test/procgen-actual-work-cycles.test.js",
+          "test/procgen-rhythmic-responses.test.js",
+          "test/procgen-physical-batch.test.js",
+          "test/procgen-causal-music-engine.test.js",
+          "test/action-landing-events.test.js",
+          "test/beret-landing.test.js",
+          "test/procgen-checkpoint.test.js",
+          "test/glacier-choir-score.test.js"
+        ]
+      },
+      "browser": {
+        "passing": 3,
+        "failures": 0,
+        "cases": [
+          {
+            "title": "authored durable tape preserves births transfer work and every captured control over 128 ticks",
+            "file": "procgen-workstation-authored-tape.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "authored-durable-tape-128",
+                "value": {
+                  "ticks": 128,
+                  "expectedHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                  "replay": "matched-current-runtime",
+                  "liveProjectUnchanged": true,
+                  "realIndexedDbReopen": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0
+                }
+              }
+            ]
+          },
+          {
+            "title": "real flight arcs retain timing and voice identity across paused paint restore and independent sprite changes",
+            "file": "procgen-workstation-flight-arcs.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-flight-arc-desktop",
+                "value": {
+                  "summaries": [
+                    {
+                      "shape": "classic",
+                      "canonicalHash": "c72bf42e64f3347c0154936428b7f9d2d700359d24a1cb3f717fa457ae137c8b",
+                      "cases": [
+                        {
+                          "name": "short",
+                          "durationTicks": 11,
+                          "arcId": "0:flight:2",
+                          "reason": "safe-landing",
+                          "displacement": 32,
+                          "travelPixels": 32,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [
+                            {
+                              "type": "lemming-land",
+                              "sfxId": 25,
+                              "lemmingId": 0,
+                              "x": 64,
+                              "y": 48,
+                              "flightArc": {
+                                "version": 1,
+                                "arcId": "0:flight:2",
+                                "startTick": 1,
+                                "startPosition": {
+                                  "x": 64,
+                                  "y": 16
+                                },
+                                "source": "action-transition",
+                                "peakY": 16,
+                                "travelPixels": 32,
+                                "verticalDisplacementPixels": 32,
+                                "fallState": "falling",
+                                "parachutePhase": null,
+                                "contactAtEnd": "terrain-landing"
+                              },
+                              "laneIndex": 0,
+                              "causalSequence": 28,
+                              "eventId": "procgen:42:1:12:0:28",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:12:0",
+                              "simTick": 12,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "upwardOpening": [],
+                          "intents": 32
+                        },
+                        {
+                          "name": "long",
+                          "durationTicks": 19,
+                          "arcId": "0:flight:2",
+                          "reason": "safe-landing",
+                          "displacement": 56,
+                          "travelPixels": 56,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [
+                            {
+                              "type": "lemming-land",
+                              "sfxId": 25,
+                              "lemmingId": 0,
+                              "x": 64,
+                              "y": 72,
+                              "flightArc": {
+                                "version": 1,
+                                "arcId": "0:flight:2",
+                                "startTick": 1,
+                                "startPosition": {
+                                  "x": 64,
+                                  "y": 16
+                                },
+                                "source": "action-transition",
+                                "peakY": 16,
+                                "travelPixels": 56,
+                                "verticalDisplacementPixels": 56,
+                                "fallState": "falling",
+                                "parachutePhase": null,
+                                "contactAtEnd": "terrain-landing"
+                              },
+                              "laneIndex": 0,
+                              "causalSequence": 44,
+                              "eventId": "procgen:42:1:20:0:44",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:20:0",
+                              "simTick": 20,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "upwardOpening": [],
+                          "intents": 48
+                        },
+                        {
+                          "name": "parachute",
+                          "durationTicks": 37,
+                          "arcId": "0:flight:2",
+                          "reason": "safe-landing",
+                          "displacement": 74,
+                          "travelPixels": 76,
+                          "pause": {
+                            "tick": 8,
+                            "unchanged": true,
+                            "arcId": "0:flight:2"
+                          },
+                          "restoration": {
+                            "atTick": 8,
+                            "throughTick": 56,
+                            "facts": 101,
+                            "intents": 68,
+                            "equal": true
+                          },
+                          "activeVoices": 0,
+                          "land": [
+                            {
+                              "type": "lemming-land",
+                              "sfxId": 25,
+                              "lemmingId": 0,
+                              "x": 64,
+                              "y": 90,
+                              "flightArc": {
+                                "version": 1,
+                                "arcId": "0:flight:2",
+                                "startTick": 1,
+                                "startPosition": {
+                                  "x": 64,
+                                  "y": 16
+                                },
+                                "source": "action-transition",
+                                "peakY": 16,
+                                "travelPixels": 76,
+                                "verticalDisplacementPixels": 74,
+                                "fallState": "floating",
+                                "parachutePhase": 14,
+                                "contactAtEnd": "terrain-landing"
+                              },
+                              "laneIndex": 0,
+                              "causalSequence": 81,
+                              "eventId": "procgen:42:1:38:0:81",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:38:0",
+                              "simTick": 38,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "upwardOpening": [
+                            {
+                              "kind": "FlightArcUpdated",
+                              "actorId": 0,
+                              "laneId": 0,
+                              "actionInstanceId": "0:action:4",
+                              "arcId": "0:flight:2",
+                              "startTick": 1,
+                              "startPosition": {
+                                "x": 64,
+                                "y": 16
+                              },
+                              "peakY": 16,
+                              "travelPixels": 28,
+                              "verticalDisplacementPixels": 26,
+                              "source": "action-transition",
+                              "fallState": "floating",
+                              "parachutePhase": 4,
+                              "positionAfter": {
+                                "x": 64,
+                                "y": 42
+                              },
+                              "positionBefore": {
+                                "x": 64,
+                                "y": 43
+                              },
+                              "phase": 4,
+                              "gameFallDistancePixels": 0,
+                              "causalSequence": 29,
+                              "eventId": "procgen:42:1:12:0:29",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:12:0",
+                              "simTick": 12,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "intents": 84
+                        },
+                        {
+                          "name": "fatal",
+                          "durationTicks": 25,
+                          "arcId": "0:flight:2",
+                          "reason": "unsafe-fall",
+                          "displacement": 74,
+                          "travelPixels": 74,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [],
+                          "upwardOpening": [],
+                          "intents": 58
+                        },
+                        {
+                          "name": "void",
+                          "durationTicks": 30,
+                          "arcId": "0:flight:2",
+                          "reason": "out-of-world",
+                          "displacement": 87,
+                          "travelPixels": 87,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [],
+                          "upwardOpening": [],
+                          "intents": 68
+                        },
+                        {
+                          "name": "spawn",
+                          "durationTicks": 16,
+                          "arcId": "0:flight:1",
+                          "reason": "safe-landing",
+                          "displacement": 46,
+                          "travelPixels": 46,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [
+                            {
+                              "type": "lemming-land",
+                              "sfxId": 25,
+                              "lemmingId": 0,
+                              "x": 36,
+                              "y": 88,
+                              "flightArc": {
+                                "version": 1,
+                                "arcId": "0:flight:1",
+                                "startTick": 0,
+                                "startPosition": {
+                                  "x": 36,
+                                  "y": 42
+                                },
+                                "source": "spawn-fall",
+                                "peakY": 42,
+                                "travelPixels": 46,
+                                "verticalDisplacementPixels": 46,
+                                "fallState": "falling",
+                                "parachutePhase": null,
+                                "contactAtEnd": "terrain-landing"
+                              },
+                              "laneIndex": 0,
+                              "causalSequence": 35,
+                              "eventId": "procgen:42:1:16:0:35",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:16:0",
+                              "simTick": 16,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "upwardOpening": [],
+                          "intents": 38
+                        },
+                        {
+                          "name": "zero",
+                          "durationTicks": 1,
+                          "arcId": "0:flight:2",
+                          "reason": "safe-landing",
+                          "displacement": 0,
+                          "travelPixels": 0,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [],
+                          "upwardOpening": [],
+                          "intents": 8
+                        }
+                      ],
+                      "scope": "Actual ledge, fall/float tables, pickup, source-relative timing, terminal and checkpoint continuity; no gravity/energy, acoustic or device measurement."
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "canonicalHash": "c72bf42e64f3347c0154936428b7f9d2d700359d24a1cb3f717fa457ae137c8b",
+                      "cases": [
+                        {
+                          "name": "short",
+                          "durationTicks": 11,
+                          "arcId": "0:flight:2",
+                          "reason": "safe-landing",
+                          "displacement": 32,
+                          "travelPixels": 32,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [
+                            {
+                              "type": "lemming-land",
+                              "sfxId": 25,
+                              "lemmingId": 0,
+                              "x": 64,
+                              "y": 48,
+                              "flightArc": {
+                                "version": 1,
+                                "arcId": "0:flight:2",
+                                "startTick": 1,
+                                "startPosition": {
+                                  "x": 64,
+                                  "y": 16
+                                },
+                                "source": "action-transition",
+                                "peakY": 16,
+                                "travelPixels": 32,
+                                "verticalDisplacementPixels": 32,
+                                "fallState": "falling",
+                                "parachutePhase": null,
+                                "contactAtEnd": "terrain-landing"
+                              },
+                              "laneIndex": 0,
+                              "causalSequence": 28,
+                              "eventId": "procgen:42:1:12:0:28",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:12:0",
+                              "simTick": 12,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "upwardOpening": [],
+                          "intents": 32
+                        },
+                        {
+                          "name": "long",
+                          "durationTicks": 19,
+                          "arcId": "0:flight:2",
+                          "reason": "safe-landing",
+                          "displacement": 56,
+                          "travelPixels": 56,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [
+                            {
+                              "type": "lemming-land",
+                              "sfxId": 25,
+                              "lemmingId": 0,
+                              "x": 64,
+                              "y": 72,
+                              "flightArc": {
+                                "version": 1,
+                                "arcId": "0:flight:2",
+                                "startTick": 1,
+                                "startPosition": {
+                                  "x": 64,
+                                  "y": 16
+                                },
+                                "source": "action-transition",
+                                "peakY": 16,
+                                "travelPixels": 56,
+                                "verticalDisplacementPixels": 56,
+                                "fallState": "falling",
+                                "parachutePhase": null,
+                                "contactAtEnd": "terrain-landing"
+                              },
+                              "laneIndex": 0,
+                              "causalSequence": 44,
+                              "eventId": "procgen:42:1:20:0:44",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:20:0",
+                              "simTick": 20,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "upwardOpening": [],
+                          "intents": 48
+                        },
+                        {
+                          "name": "parachute",
+                          "durationTicks": 37,
+                          "arcId": "0:flight:2",
+                          "reason": "safe-landing",
+                          "displacement": 74,
+                          "travelPixels": 76,
+                          "pause": {
+                            "tick": 8,
+                            "unchanged": true,
+                            "arcId": "0:flight:2"
+                          },
+                          "restoration": {
+                            "atTick": 8,
+                            "throughTick": 56,
+                            "facts": 101,
+                            "intents": 68,
+                            "equal": true
+                          },
+                          "activeVoices": 0,
+                          "land": [
+                            {
+                              "type": "lemming-land",
+                              "sfxId": 25,
+                              "lemmingId": 0,
+                              "x": 64,
+                              "y": 90,
+                              "flightArc": {
+                                "version": 1,
+                                "arcId": "0:flight:2",
+                                "startTick": 1,
+                                "startPosition": {
+                                  "x": 64,
+                                  "y": 16
+                                },
+                                "source": "action-transition",
+                                "peakY": 16,
+                                "travelPixels": 76,
+                                "verticalDisplacementPixels": 74,
+                                "fallState": "floating",
+                                "parachutePhase": 14,
+                                "contactAtEnd": "terrain-landing"
+                              },
+                              "laneIndex": 0,
+                              "causalSequence": 81,
+                              "eventId": "procgen:42:1:38:0:81",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:38:0",
+                              "simTick": 38,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "upwardOpening": [
+                            {
+                              "kind": "FlightArcUpdated",
+                              "actorId": 0,
+                              "laneId": 0,
+                              "actionInstanceId": "0:action:4",
+                              "arcId": "0:flight:2",
+                              "startTick": 1,
+                              "startPosition": {
+                                "x": 64,
+                                "y": 16
+                              },
+                              "peakY": 16,
+                              "travelPixels": 28,
+                              "verticalDisplacementPixels": 26,
+                              "source": "action-transition",
+                              "fallState": "floating",
+                              "parachutePhase": 4,
+                              "positionAfter": {
+                                "x": 64,
+                                "y": 42
+                              },
+                              "positionBefore": {
+                                "x": 64,
+                                "y": 43
+                              },
+                              "phase": 4,
+                              "gameFallDistancePixels": 0,
+                              "causalSequence": 29,
+                              "eventId": "procgen:42:1:12:0:29",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:12:0",
+                              "simTick": 12,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "intents": 84
+                        },
+                        {
+                          "name": "fatal",
+                          "durationTicks": 25,
+                          "arcId": "0:flight:2",
+                          "reason": "unsafe-fall",
+                          "displacement": 74,
+                          "travelPixels": 74,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [],
+                          "upwardOpening": [],
+                          "intents": 58
+                        },
+                        {
+                          "name": "void",
+                          "durationTicks": 30,
+                          "arcId": "0:flight:2",
+                          "reason": "out-of-world",
+                          "displacement": 87,
+                          "travelPixels": 87,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [],
+                          "upwardOpening": [],
+                          "intents": 68
+                        },
+                        {
+                          "name": "spawn",
+                          "durationTicks": 16,
+                          "arcId": "0:flight:1",
+                          "reason": "safe-landing",
+                          "displacement": 46,
+                          "travelPixels": 46,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [
+                            {
+                              "type": "lemming-land",
+                              "sfxId": 25,
+                              "lemmingId": 0,
+                              "x": 36,
+                              "y": 88,
+                              "flightArc": {
+                                "version": 1,
+                                "arcId": "0:flight:1",
+                                "startTick": 0,
+                                "startPosition": {
+                                  "x": 36,
+                                  "y": 42
+                                },
+                                "source": "spawn-fall",
+                                "peakY": 42,
+                                "travelPixels": 46,
+                                "verticalDisplacementPixels": 46,
+                                "fallState": "falling",
+                                "parachutePhase": null,
+                                "contactAtEnd": "terrain-landing"
+                              },
+                              "laneIndex": 0,
+                              "causalSequence": 35,
+                              "eventId": "procgen:42:1:16:0:35",
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "batchId": "procgen:42:1:16:0",
+                              "simTick": 16,
+                              "subTick": 0,
+                              "precision": "tick"
+                            }
+                          ],
+                          "upwardOpening": [],
+                          "intents": 38
+                        },
+                        {
+                          "name": "zero",
+                          "durationTicks": 1,
+                          "arcId": "0:flight:2",
+                          "reason": "safe-landing",
+                          "displacement": 0,
+                          "travelPixels": 0,
+                          "pause": null,
+                          "restoration": null,
+                          "activeVoices": 0,
+                          "land": [],
+                          "upwardOpening": [],
+                          "intents": 8
+                        }
+                      ],
+                      "scope": "Actual ledge, fall/float tables, pickup, source-relative timing, terminal and checkpoint continuity; no gravity/energy, acoustic or device measurement."
+                    }
+                  ],
+                  "pixels": [
+                    {
+                      "shape": "classic",
+                      "name": "short",
+                      "paints": 56,
+                      "pixelHash": "19fd4b5a16058ad429ceaabb337db842c77acc5ea2ac3e16e2496ff45dd0ce1e"
+                    },
+                    {
+                      "shape": "classic",
+                      "name": "long",
+                      "paints": 56,
+                      "pixelHash": "519de158554324b91f8dbb9a9517c47195238aac4ccb369bb4c2ad1962c46a1b"
+                    },
+                    {
+                      "shape": "classic",
+                      "name": "parachute",
+                      "paints": 64,
+                      "pixelHash": "2bda7b5bcca05f2fd671e6e7b4c64b1cd3adbb49890682b19360b3346cc6f65c"
+                    },
+                    {
+                      "shape": "classic",
+                      "name": "fatal",
+                      "paints": 56,
+                      "pixelHash": "0bb11467c5a37cf13abb0f16d6af175a80d0badb2fdd7476efdc8789d14d7a77"
+                    },
+                    {
+                      "shape": "classic",
+                      "name": "void",
+                      "paints": 56,
+                      "pixelHash": "249b6e1e79d0de6bf097a6a5e6e8c5f140fc04693b0bf374da76e47729096f2f"
+                    },
+                    {
+                      "shape": "classic",
+                      "name": "spawn",
+                      "paints": 56,
+                      "pixelHash": "8b87dbcb7cb3b95920cd0bd26477fce78d2069b3aa2feb63124d838778eb7a0e"
+                    },
+                    {
+                      "shape": "classic",
+                      "name": "zero",
+                      "paints": 56,
+                      "pixelHash": "5144e80d2ad6febf76e54bf81e63d42661496f410cea146cef8fb7efe1c238c6"
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "name": "short",
+                      "paints": 56,
+                      "pixelHash": "217f721889badc27170941d5c07946ae76ccd618ddd771ea56d1571cde7c3dc5"
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "name": "long",
+                      "paints": 56,
+                      "pixelHash": "654e30a5d4b92496c3a5bbc534253b1b56ecc835586fead8d2f5fb56f009f343"
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "name": "parachute",
+                      "paints": 64,
+                      "pixelHash": "1fb220cbc2acb9c7da97c107189d4018f3ba770484633d4af3128f49c99aa07b"
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "name": "fatal",
+                      "paints": 56,
+                      "pixelHash": "641efdea413067d233ab48a51669635bf92869883476b648e4fdae9775476e20"
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "name": "void",
+                      "paints": 56,
+                      "pixelHash": "7585ce5de2c63b129c3e367be1ac78ff29af0929ccf651e966ca01a0f941a6a6"
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "name": "spawn",
+                      "paints": 56,
+                      "pixelHash": "c14be3f414d2b5a97e9b0aaa918cc46953dda67957322d41e1817b26eaba2949"
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "name": "zero",
+                      "paints": 56,
+                      "pixelHash": "88770a9aa344db0e8a80cb5229b1ef3928fd020d995a77ac95156e4acab85d58"
+                    }
+                  ],
+                  "pauses": [
+                    {
+                      "shape": "classic",
+                      "name": "parachute",
+                      "before": 8,
+                      "after": 8,
+                      "wallMs": 109.5,
+                      "displayFrames": 8
+                    },
+                    {
+                      "shape": "rounded_triangle",
+                      "name": "parachute",
+                      "before": 8,
+                      "after": 8,
+                      "wallMs": 113.90000000596046,
+                      "displayFrames": 8
+                    }
+                  ],
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0,
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "actual work-cycle intents survive 0 15 and 120 source-relative desktop paint cadences",
+            "file": "procgen-workstation-work-cycles.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-work-cycle-render-cadence",
+                "value": {
+                  "summaries": [
+                    {
+                      "renderFps": 0,
+                      "paints": 0,
+                      "canonicalHash": "f1fd37c8a81a97d05bf2dd79551c37d18e40f5aa1c2db118eb2e85bbbfc9b35f",
+                      "measuredCycles": {
+                        "builder": 12,
+                        "miner": 8,
+                        "ratio": "3:2"
+                      }
+                    },
+                    {
+                      "renderFps": 15,
+                      "paints": 57,
+                      "canonicalHash": "f1fd37c8a81a97d05bf2dd79551c37d18e40f5aa1c2db118eb2e85bbbfc9b35f",
+                      "measuredCycles": {
+                        "builder": 12,
+                        "miner": 8,
+                        "ratio": "3:2"
+                      }
+                    },
+                    {
+                      "renderFps": 120,
+                      "paints": 460,
+                      "canonicalHash": "f1fd37c8a81a97d05bf2dd79551c37d18e40f5aa1c2db118eb2e85bbbfc9b35f",
+                      "measuredCycles": {
+                        "builder": 12,
+                        "miner": 8,
+                        "ratio": "3:2"
+                      }
+                    }
+                  ],
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 217,
+            "covered": 216,
+            "skipped": 0,
+            "pct": 99.53
+          },
+          "statements": {
+            "total": 217,
+            "covered": 216,
+            "skipped": 0,
+            "pct": 99.53
+          },
+          "functions": {
+            "total": 20,
+            "covered": 20,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 327,
+            "covered": 260,
+            "skipped": 0,
+            "pct": 79.51
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\actions\\PhysicalFlightFacts.js": {
+          "lines": {
+            "total": 41,
+            "covered": 41,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 7,
+            "covered": 7,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 41,
+            "covered": 41,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 42,
+            "covered": 40,
+            "skipped": 0,
+            "pct": 95.23
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\RhythmicResponses.js": {
+          "lines": {
+            "total": 176,
+            "covered": 175,
+            "skipped": 0,
+            "pct": 99.43
+          },
+          "functions": {
+            "total": 13,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 176,
+            "covered": 175,
+            "skipped": 0,
+            "pct": 99.43
+          },
+          "branches": {
+            "total": 285,
+            "covered": 220,
+            "skipped": 0,
+            "pct": 77.19
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/actions/ActionFallSystem.js",
+          "bytes": 1531,
+          "sha256": "4f4dbaf37e3d3b83a9ab604b420e52aab733fe29d7970bd2e08b4bd687e209e7"
+        },
+        {
+          "path": "js/actions/ActionFloatingSystem.js",
+          "bytes": 1879,
+          "sha256": "2575621dc238dcbd64557f99c7ba9834f9880fb67bb2be8b951bf7d8a877f295"
+        },
+        {
+          "path": "js/actions/PhysicalFlightFacts.js",
+          "bytes": 3277,
+          "sha256": "afbff29cc06f6934fe51af0ba29aab2b7701de9302d03743a3839e25ef48ac72"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RhythmicResponses.js",
+          "bytes": 24337,
+          "sha256": "76887d0cd9e49087aca9985e6b4e30384aec463a6226633566a4be5b5dfc5de0"
+        },
+        {
+          "path": "test/procgen-rhythmic-responses.test.js",
+          "bytes": 11417,
+          "sha256": "b42afc7351a5e876fe3d4582f79f827485b9a86b34068a353a3258c25be1e9da"
+        },
+        {
+          "path": "test/helpers/actualScoredWorld.js",
+          "bytes": 1473,
+          "sha256": "0bd2c69366d47638ef6e033340b601077bfb2cd9fc2e9c72d242544c0f9f6980"
+        },
+        {
+          "path": "test/helpers/actualFlightArcs.js",
+          "bytes": 9786,
+          "sha256": "ff7fe7448aca6b1e845eb14382a2d048012d94da5b45a650a48d1562c31b0fb7"
+        },
+        {
+          "path": "test/procgen-actual-flight-arcs.test.js",
+          "bytes": 931,
+          "sha256": "720c71aca25c2f589e2e621b5606b200aaf9fd563a9bff91b4d9a3c0aca19c0d"
+        },
+        {
+          "path": "e2e/procgen-workstation-flight-arcs.spec.js",
+          "bytes": 7357,
+          "sha256": "810aae9e19591b75e767addbcf03efea630519de2be2f2f786d6a02c48ba9e98"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "sha256": "be86d257af71392b2868701570bae0111fc4f6e9f7855523bd4af1842077f386",
+          "files": 293
+        }
+      ]
+    },
+    "priorAttempts": [
+      {
+        "node": "73 passed/1 failed",
+        "browser": "2 passed/1 failed",
+        "cause": "Fixture attached capture before initial scene setup, so it counted the unobserved constructor flight ending alongside the actual ledge flight. Establish initial scene first, then attach observation; actual falling starts at the real subsequent walk-off decision."
+      },
+      {
+        "probe": "focused actual flight corpus initially failed restored-future selection",
+        "cause": "Fixture parsed opaque event-ID suffix as tick despite the batch ordinal. Use authoritative fact.simTick; also bound mismatch output. Final focused corpus and complete affected group pass."
+      }
+    ],
+    "evidence": [
+      {
+        "path": ".tmp/rook390-node-final.log",
+        "bytes": 7285,
+        "sha256": "2de979deffd1db7db8ba84aaecb9479fe29a715d07eeecd71e9743315a60e1ed"
+      },
+      {
+        "path": ".tmp/rook390-playwright-final.json",
+        "bytes": 337472,
+        "sha256": "361ea01a32015af2bafb8e35f2a219d401d5c08f5c98771a7578c556fb34de73"
+      },
+      {
+        "path": ".tmp/rook390-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": ".tmp/rook390-static.log",
+        "bytes": 4323,
+        "sha256": "b8edf1dca1b13c64689ee610266b71be301845dc98f23bd8468c1dc0db1c7f09"
+      },
+      {
+        "path": ".tmp/rook390-coverage-final/coverage-summary.json",
+        "bytes": 1027,
+        "sha256": "4af3d0af641169ea39dfa1575d50dd3726cdce64bf72515201ef5f5d14987c31"
+      },
+      {
+        "path": ".tmp/rook390-node-first-failure.log",
+        "bytes": 8137,
+        "sha256": "bf3643443bbbda2e30ef17d6d5abbb7ffdcaeddeb1f2f028d7231118d41a6309"
+      },
+      {
+        "path": ".tmp/rook390-playwright-first-failure.json",
+        "bytes": 327475,
+        "sha256": "5dc56c9fd990b66619a3002536f3eef45c10bfcf9d662c946b01b36466224228"
+      },
+      {
+        "path": ".tmp/rook390-playwright-first-failure-trace.zip",
+        "bytes": 14362581,
+        "sha256": "0c9f44339cd92d4146a779ee0a9e02f94e9a85281c68bcc1b43b1e1ad26e19af"
+      },
+      {
+        "path": ".tmp/rook390-flight-refinement.log",
+        "bytes": 60028,
+        "sha256": "67e950c71cdbf9d10a0b8a0284182431c268c51b8713a38966a352e5e40b9eb1"
+      },
+      {
+        "path": ".tmp/rook390-flight-refinement2.log",
+        "bytes": 205,
+        "sha256": "412d5a60ee567d95712d9dafa56fbddee417b09882237ecb5415c79ec69c2aa2"
+      }
+    ],
+    "limits": [
+      "The actual alternate shape exercised here is rounded_triangle, not every installed sprite family. Existing 13 beret cosmetic cases separately pass in the affected Node cohort.",
+      "Pause covers eight real RAF paints (109.5/113.9ms) with unchanged complete physical/semantic checkpoints and matching resumed future through tick56; no claim of OS suspension or background-page qualification.",
+      "No new free-running envelope, gravity/energy model, device or acoustic evidence. Zero AudioContext and MIDI opens; live project/world/appearance unchanged.",
+      "PhysicalFlightFacts100%lines/functions95.23%branches; RhythmicResponses99.43%lines100%functions77.19%branches. Remaining generic estimator/restore/capacity branches are not silently counted as complete.",
+      "Latest fully source-verified full CI remains383/77e057fa;388/389 main jobs are still running. No full local suite rerun."
+    ],
+    "issueOutcome": "Close1017 after commit/push; output renderer/acoustic/device ownership remains separate."
+  }
 }

@@ -39,8 +39,11 @@ export function validateRhythmicResponse(value, sourceKind) {
   }
   if (value.type === 'flightArc' && sourceKind === 'FlightArc') {
     if (!['all', 'spawn-only', 'exclude-spawn'].includes(value.spawnPolicy ?? 'all') || !['vertical-contour', 'time-of-flight', 'landing-height'].includes(value.mode ?? 'vertical-contour')) throw new Error('Invalid flight source or contour mode.');
+    const terminalGestures = {};
+    if (value.landingGesture != null && !identity(value.landingGesture) || value.terminalGestures != null && (!plain(value.terminalGestures) || Object.keys(value.terminalGestures).length > 32)) throw new Error('Invalid flight articulation map.');
+    for (const [reason, gesture] of Object.entries(value.terminalGestures || {})) { if (!identity(reason) || !identity(gesture)) throw new Error('Invalid flight terminal articulation.'); terminalGestures[reason] = gesture; }
     return freeze({ type: value.type, spawnPolicy: value.spawnPolicy ?? 'all', mode: value.mode ?? 'vertical-contour', sustain: value.sustain !== false,
-      landingStrike: value.landingStrike !== false, terminalStrike: value.terminalStrike === true,
+      landingStrike: value.landingStrike !== false, terminalStrike: value.terminalStrike === true, landingGesture: value.landingGesture ?? null, terminalGestures,
       centsPerPixel: readNumber(value.centsPerPixel, -12, -1200, 1200, 'flight pitch slope'), centsPerTick: readNumber(value.centsPerTick, -6, -1200, 1200, 'flight time slope'),
       maximumBendCents: readNumber(value.maximumBendCents, 2400, 0, 12000, 'flight bend bound'), fullAccentPixels: readNumber(value.fullAccentPixels, 64, 1, 4096, 'landing accent distance'),
       updateEveryTicks: Math.round(readNumber(value.updateEveryTicks, 1, 1, 256, 'flight expression cadence')), deadbandCents: readNumber(value.deadbandCents, 1, 0, 1200, 'flight pitch deadband') });
@@ -130,7 +133,7 @@ export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192 } =
         const elapsedTicks = fact.startTick == null ? null : batch.tick - fact.startTick, displacement = fact.verticalDisplacementPixels || 0;
         const pitch = clamp(response.mode === 'time-of-flight' ? (elapsedTicks || 0) * response.centsPerTick : displacement * response.centsPerPixel, -response.maximumBendCents, response.maximumBendCents);
         const descriptor = { type: 'flight-arc', arcId: fact.arcId, source: fact.source, elapsedTicks, verticalDisplacementPixels: displacement, travelPixels: fact.travelPixels,
-          peakY: fact.peakY, parachutePhase: fact.parachutePhase, contactAtEnd: fact.contactAtEnd ?? null, intensityMeaning: 'game-derived-distance-proxy' };
+          peakY: fact.peakY, parachutePhase: fact.parachutePhase, contactAtEnd: fact.contactAtEnd ?? null, terminationReason: fact.terminationReason ?? null, intensityMeaning: 'game-derived-distance-proxy' };
         const base = { responseScope: `flight:${fact.arcId}`, lifetimeScope: 'actorJourney', responseDescriptor: descriptor };
         if (fact.kind === 'FlightArcStarted' && response.sustain) emit(derived(fact, instrument, { ...base, lifecycle: 'begin' }));
         if (fact.kind === 'FlightArcUpdated' && state.sounding && batch.tick - state.lastUpdateTick >= response.updateEveryTicks && Math.abs(pitch - state.lastPitch) >= response.deadbandCents) {
@@ -138,7 +141,8 @@ export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192 } =
         }
         if (fact.kind === 'FlightArcEnded') {
           if (state.sounding) emit(derived(fact, instrument, { ...base, lifecycle: 'end', reason: fact.terminationReason }));
-          if (fact.terminationReason === 'safe-landing' ? response.landingStrike : response.terminalStrike) emit(derived(fact, instrument, { responseDescriptor: descriptor, observationId: `${fact.eventId}:${instrument.id}:landing`,
+          const gesture = fact.terminationReason === 'safe-landing' ? response.landingGesture : response.terminalGestures[fact.terminationReason];
+          if (fact.terminationReason === 'safe-landing' ? response.landingStrike : response.terminalStrike) emit(derived(fact, instrument, { responseDescriptor: descriptor, ...(gesture ? { sampleGesture: gesture } : {}), observationId: `${fact.eventId}:${instrument.id}:landing`,
             pitchCents: clamp(instrument.pitchCents + (response.mode === 'landing-height' ? pitch : 0), -24000, 24000), velocity01: instrument.velocity01 * clamp(Math.abs(displacement) / response.fullAccentPixels, 0, 1) }));
           states.delete(key);
         }

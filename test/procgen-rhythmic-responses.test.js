@@ -18,6 +18,11 @@ describe('physical rhythmic response interpretation', () => {
     expect(validateRhythmicResponse({ type: 'workCycle' }, 'WorkResponse').workChangePolicy).to.equal('either');
     for (const workChangePolicy of ['energy', '', 0, {}, []]) expect(() => validateRhythmicResponse({ type: 'workCycle', workChangePolicy }, 'WorkResponse')).to.throw('change policy');
   });
+  it('bounds and validates optional named flight landing and terminal gestures', () => {
+    const value = validateRhythmicResponse({ type: 'flightArc', landingGesture: 'soft-landing', terminalGestures: { 'unsafe-fall': 'fatal', 'out-of-world': 'lost' } }, 'FlightArc');
+    expect(value.landingGesture).to.equal('soft-landing'); expect(value.terminalGestures).to.deep.equal({ 'unsafe-fall': 'fatal', 'out-of-world': 'lost' });
+    for (const changes of [{ landingGesture: '' }, { terminalGestures: [] }, { terminalGestures: { 'unsafe-fall': 1 } }, { terminalGestures: Object.fromEntries(Array.from({ length: 33 }, (_, index) => ['reason' + index, 'gesture'])) }]) expect(() => validateRhythmicResponse({ type: 'flightArc', ...changes }, 'FlightArc')).to.throw('articulation');
+  });
   it('preserves exact 6:12 arrival intervals, real gaps and separately typed distance evidence', () => {
     const pickup = validatePickupGate({ id: 'arrival', geometry: { kind: 'segment', points: [{ x: 40, y: -10 }, { x: 40, y: 10 }] } });
     const graph = { version: 1, revision: 1, pickups: [pickup], instruments: [input('crowd', 'CrowdArrival', { type: 'crowdInterval', pickupId: 'arrival', intervalToGate: 0.5 })] };

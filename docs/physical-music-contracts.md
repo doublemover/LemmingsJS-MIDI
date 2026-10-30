@@ -245,3 +245,25 @@ the immutable application, real mask decoding, real source-compilation workers,
 sprites and the production 1920x1080 canvas renderer. Its 0/15/120 paint cadences
 are scheduled per simulated source second to compare canonical facts/intents;
 they are not measurements of wall-clock FPS or acoustic timing.
+
+## Flight and landing provenance
+
+`FlightArc` responses follow actual `FlightArcStarted/Updated/Ended` facts. One
+arc survives falling-to-floating action changes, including the float table's
+phase-four upward pixel. Contour and elapsed-time gestures advance only at
+physical boundaries; landing-height interpretation uses actual displacement.
+The descriptors remain game-derived distance proxies.
+
+Safe fall/float `lemming-land` facts include `flightArc` provenance when an arc
+is observed: its ID, start tick/position, source, peak, travel, displacement and
+landing phase/contact. The action includes its final displacement before the
+world's post-step observer; it does not advance or close the physical arc.
+Fatal and out-of-world outcomes release the same continuous voice without
+inventing a safe LAND fact.
+
+Optional `landingGesture` and bounded `terminalGestures` select named
+articulations for the existing landing/terminal strike. For example,
+`terminalGestures: { 'unsafe-fall': 'fatal-fall', 'out-of-world': 'lost-flight' }`
+distinguishes those physical outcomes when `terminalStrike: true`. The response
+descriptor retains the actual termination reason and shared arc ID. These names
+do not add another attack or imply a measured force, gravity or acoustic model.
