@@ -139747,5 +139747,1091 @@
       "Latest independently verified full green is399, not failed400 or the unpublished current source."
     ],
     "issueOutcome": "Keep1194/1104/1087open for the remaining explicit acceptance, continue implementation after publication.1183remains closed; its discovered reveal regression is repaired in this source."
+  },
+  "continuation402": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "sourceParent": "fc37884a8800812f8599c158ed4ccf3073d75fc3",
+    "issues": [
+      1194,
+      1183,
+      1104,
+      1087
+    ],
+    "scope": "Actual desktop native recipe rendering, retained-tail replacement, captured chamber input and durable changing-body re-performance; repair normalized restored topology identity.",
+    "changes": [
+      "Chamber controls now submit the exact ordinary intervention proposal through the workstation capture owner before queue publication. Stale world/scene, stage/read-only operations and failed take admission refuse. The view reports queued versus authoritative application separately.",
+      "Explicit bounded chamber requests materialize only their already completed source chunks before planning. Growth, unknown coverage, occupied footprints, steel and revision checks remain strict; source preparation does not change terrain revision. Actual scene fixtures evict masks before preparation.",
+      "Cavity availability requires the exact active graph and owner revision. A separately replaced graph remains unavailable without reclaiming it. Waiting preparation reuses the existing audio-session state notification when an old tail retires, with one coalesced microtask and owned subscription disposal. No polling loop or extra candidate workspace while at capacity.",
+      "Expose existing owned effect/processor health through optional requestHealth diagnostics. Native worklet per-body audio-state energy distinguishes direct excitation from actual duet coupling. These are modeled audio measurements, not physical terrain energy.",
+      "Use normalized topologyDefinitionSignature for configuration equality, revision guards, analysis admission and publication; compare bounds by coordinates. Canonical durable object key order can no longer turn a configured region into an analysis failure after a real edit.",
+      "Keep bounded first-field replay diagnostics and at most one short analysis failure per configured region outside authoritative checkpoint state; clear on successful publication, configuration replacement/reset and disposal."
+    ],
+    "validation": {
+      "node": {
+        "passing": 254,
+        "failures": 0,
+        "durationSeconds": 22,
+        "scope": "Complete affected cavity/control/physical playback, durable take/re-performance/workstation, owned graph/captured effect, actual/incremental topology, atomic authoring and retention batch."
+      },
+      "browser": {
+        "passing": 18,
+        "failures": 0,
+        "skips": 0,
+        "flaky": 0,
+        "durationSeconds": 146.149737,
+        "scope": "One combined1920x1080 batch: actual source corpus, six native recipe renders, two live tail/capture/reopen/reperformance journeys, topology/worker/canonical restore and all eight clock/transport/recovery cases.",
+        "receiptsArtifact": {
+          "path": "docs/validation/cavity-live-history-desktop-2026-10-30.json",
+          "bytes": 1562866,
+          "sha256": "bc56e9df1d9a61b5659340197f7518624e1848d6bae5e8cbc9ae151a89c53626"
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "e2e/procgen-workstation-cavity-sound.spec.js",
+          "bytes": 17733,
+          "sha256": "f5879caf74f479d772ac12215a1caa1625fc976f3688fcbc4a0ba335ba192e30"
+        },
+        {
+          "path": "js/app/procgen/ProcgenTerrainTopology.js",
+          "bytes": 13683,
+          "sha256": "4a960bbc76fecfb99e4982efe1baba504cc57c3ceb5875537e7bd58b131be43a"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalReperformance.js",
+          "bytes": 40382,
+          "sha256": "6af0d5665948daa29c639de55ca4d35f2d07a067dcb566c081237712510f7aac"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalTake.js",
+          "bytes": 38255,
+          "sha256": "38f657f88c7207dd9ec1b51934e993a22f56c0491a3b602abde7d8b175715794"
+        },
+        {
+          "path": "js/app/procgen/workstation/CavityGeometryControl.js",
+          "bytes": 3126,
+          "sha256": "14130928df329d93332c930249ec44580fbbea70194847bffeb15e68aa3c53ee"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneControlView.js",
+          "bytes": 10970,
+          "sha256": "8e6073c89e2d18f4f3ab02997f6653ac810173dfa2a150398dae4be22aa34ff3"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+          "bytes": 38348,
+          "sha256": "3354f57f73419e2d4c85e6c3353cccda3e9ca1ab13a0e0fe68f0aceceb71b430"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "bytes": 226754,
+          "sha256": "9a83625a9e77758c2a89604fe563ceb102dfca6d975b35bd535e5dc7861fd366"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+          "bytes": 150188,
+          "sha256": "66fc17e43055b1fab61d7bc4dc25d7b1f7527d29a61a19a2b4c2930866f4985b"
+        },
+        {
+          "path": "js/app/procgen/workstation/SceneCavityBody.js",
+          "bytes": 10068,
+          "sha256": "0dc45449efbc973285b3232b6c651b1aeeb3f637000b322ac89fda2d1072425b"
+        },
+        {
+          "path": "test/cavity-sound-map.test.js",
+          "bytes": 11901,
+          "sha256": "cfe88406b4dc78e45be6e80e6933d617f17c0dc795422faa9e75956f400693bf"
+        },
+        {
+          "path": "test/helpers/actualCavitySound.js",
+          "bytes": 8355,
+          "sha256": "47e889fbef3499785ed47828f55c1702de78567c8a7add37d5f804313d75936b"
+        },
+        {
+          "path": "test/helpers/actualTerrainTopology.js",
+          "bytes": 32075,
+          "sha256": "4c09ddf7aec87ec4d02be8e816c66e9b67488ef1093d54e73ce2bd96b4eb7efd"
+        },
+        {
+          "path": "test/performance-scene-controls.test.js",
+          "bytes": 9683,
+          "sha256": "0709dab6848e0c3313e900ff2577e977d423ea8be96e6a5ccc054f6d74a9c569"
+        },
+        {
+          "path": "test/procgen-causal-take.test.js",
+          "bytes": 17648,
+          "sha256": "35c13cd4e6210c31cad3266e5dfd5aba2b8af5f98fad9010345566637a2d511e"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 300,
+          "sha256": "ed2a3f4aca3c4161d27d5529303c737a5110de49e76d66dab3fa0f139daf867b"
+        }
+      ],
+      "coverage": {
+        "scope": "Eight selected changed modules; measured from the254-case batch. CLI check-coverage=false produces a scoped report and does not change repository or CI global thresholds.",
+        "modules": {
+          "total": {
+            "lines": {
+              "total": 3816,
+              "covered": 3201,
+              "skipped": 0,
+              "pct": 83.88
+            },
+            "statements": {
+              "total": 3816,
+              "covered": 3201,
+              "skipped": 0,
+              "pct": 83.88
+            },
+            "functions": {
+              "total": 605,
+              "covered": 416,
+              "skipped": 0,
+              "pct": 68.76
+            },
+            "branches": {
+              "total": 3173,
+              "covered": 2210,
+              "skipped": 0,
+              "pct": 69.65
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\ProcgenTerrainTopology.js": {
+            "lines": {
+              "total": 100,
+              "covered": 100,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 16,
+              "covered": 15,
+              "skipped": 0,
+              "pct": 93.75
+            },
+            "statements": {
+              "total": 100,
+              "covered": 100,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 157,
+              "covered": 130,
+              "skipped": 0,
+              "pct": 82.8
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalReperformance.js": {
+            "lines": {
+              "total": 418,
+              "covered": 405,
+              "skipped": 0,
+              "pct": 96.88
+            },
+            "functions": {
+              "total": 49,
+              "covered": 40,
+              "skipped": 0,
+              "pct": 81.63
+            },
+            "statements": {
+              "total": 418,
+              "covered": 405,
+              "skipped": 0,
+              "pct": 96.88
+            },
+            "branches": {
+              "total": 366,
+              "covered": 281,
+              "skipped": 0,
+              "pct": 76.77
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalTake.js": {
+            "lines": {
+              "total": 324,
+              "covered": 296,
+              "skipped": 0,
+              "pct": 91.35
+            },
+            "functions": {
+              "total": 26,
+              "covered": 26,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 324,
+              "covered": 296,
+              "skipped": 0,
+              "pct": 91.35
+            },
+            "branches": {
+              "total": 345,
+              "covered": 207,
+              "skipped": 0,
+              "pct": 60
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CavityGeometryControl.js": {
+            "lines": {
+              "total": 28,
+              "covered": 27,
+              "skipped": 0,
+              "pct": 96.42
+            },
+            "functions": {
+              "total": 1,
+              "covered": 1,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 28,
+              "covered": 27,
+              "skipped": 0,
+              "pct": 96.42
+            },
+            "branches": {
+              "total": 22,
+              "covered": 17,
+              "skipped": 0,
+              "pct": 77.27
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PerformanceSceneControlView.js": {
+            "lines": {
+              "total": 91,
+              "covered": 91,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 16,
+              "covered": 15,
+              "skipped": 0,
+              "pct": 93.75
+            },
+            "statements": {
+              "total": 91,
+              "covered": 91,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 114,
+              "covered": 87,
+              "skipped": 0,
+              "pct": 76.31
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPhysicalPlayback.js": {
+            "lines": {
+              "total": 319,
+              "covered": 248,
+              "skipped": 0,
+              "pct": 77.74
+            },
+            "functions": {
+              "total": 121,
+              "covered": 57,
+              "skipped": 0,
+              "pct": 47.1
+            },
+            "statements": {
+              "total": 319,
+              "covered": 248,
+              "skipped": 0,
+              "pct": 77.74
+            },
+            "branches": {
+              "total": 286,
+              "covered": 191,
+              "skipped": 0,
+              "pct": 66.78
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenWorkstation.js": {
+            "lines": {
+              "total": 2468,
+              "covered": 1966,
+              "skipped": 0,
+              "pct": 79.65
+            },
+            "functions": {
+              "total": 358,
+              "covered": 246,
+              "skipped": 0,
+              "pct": 68.71
+            },
+            "statements": {
+              "total": 2468,
+              "covered": 1966,
+              "skipped": 0,
+              "pct": 79.65
+            },
+            "branches": {
+              "total": 1758,
+              "covered": 1203,
+              "skipped": 0,
+              "pct": 68.43
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\SceneCavityBody.js": {
+            "lines": {
+              "total": 68,
+              "covered": 68,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 18,
+              "covered": 16,
+              "skipped": 0,
+              "pct": 88.88
+            },
+            "statements": {
+              "total": 68,
+              "covered": 68,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 125,
+              "covered": 94,
+              "skipped": 0,
+              "pct": 75.2
+            }
+          }
+        },
+        "followUp": "Broader workstation activation/refused capture admission, routing and mixed-scene/owner retirement branches remain with1194/1087/1104. Native session wake and browser-only view integration have separate passing Playwright evidence."
+      }
+    },
+    "evidence": {
+      "nativeRecipes": [
+        {
+          "scenario": {
+            "recipe": "Clay chamber",
+            "size": 8,
+            "target": 220
+          },
+          "targetFrequencyHz": 220,
+          "dominantFftBinHz": 219.7265625,
+          "peak": 0.000014543533325195312,
+          "rms": 0.0000024118593164584358,
+          "fftSize": 32768,
+          "sampleRate": 48000,
+          "modeBins": [
+            {
+              "targetHz": 220,
+              "peakDb": -184.34652709960938
+            },
+            {
+              "targetHz": 444.4,
+              "peakDb": -225.84048461914062
+            },
+            {
+              "targetHz": 677.6,
+              "peakDb": -241.21969604492188
+            },
+            {
+              "targetHz": 915.2,
+              "peakDb": -250.806640625
+            }
+          ],
+          "perBodyEnergy": {
+            "cavity-b52969781145e04e050e12dd52308edc1f944072c4fe9a05794f4db3413cbc8d": 3.148039899912014e-7
+          },
+          "accepted": 2,
+          "rejected": 0,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        },
+        {
+          "scenario": {
+            "recipe": "Clay chamber",
+            "size": 16,
+            "target": 110
+          },
+          "targetFrequencyHz": 110,
+          "dominantFftBinHz": 109.86328125,
+          "peak": 0.000014781951904296875,
+          "rms": 0.00000269424307054052,
+          "fftSize": 32768,
+          "sampleRate": 48000,
+          "modeBins": [
+            {
+              "targetHz": 110,
+              "peakDb": -179.98948669433594
+            },
+            {
+              "targetHz": 222.2,
+              "peakDb": -214.35546875
+            },
+            {
+              "targetHz": 338.8,
+              "peakDb": -226.7928924560547
+            },
+            {
+              "targetHz": 457.6,
+              "peakDb": -235.03152465820312
+            }
+          ],
+          "perBodyEnergy": {
+            "cavity-b52969781145e04e050e12dd52308edc1f944072c4fe9a05794f4db3413cbc8d": 6.536609225989097e-7
+          },
+          "accepted": 2,
+          "rejected": 0,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        },
+        {
+          "scenario": {
+            "recipe": "Throat duet",
+            "size": 8,
+            "target": 220,
+            "throat": 0
+          },
+          "targetFrequencyHz": 220,
+          "dominantFftBinHz": 219.7265625,
+          "peak": 0.000010371208190917969,
+          "rms": 0.0000019136385020816234,
+          "fftSize": 32768,
+          "sampleRate": 48000,
+          "modeBins": [
+            {
+              "targetHz": 220,
+              "peakDb": -182.5963592529297
+            },
+            {
+              "targetHz": 444.4,
+              "peakDb": -225.10372924804688
+            },
+            {
+              "targetHz": 677.6,
+              "peakDb": -238.97918701171875
+            },
+            {
+              "targetHz": 915.2,
+              "peakDb": -257.5406799316406
+            }
+          ],
+          "perBodyEnergy": {
+            "cavity-0919397b21ae1b75d6177dd26ab0c7c61a2bf4b7a9fcd2ad2c383495fe0b7dd6": 2.2659516965831255e-7,
+            "cavity-5ce96c3e8c1e8b7cdd00370ef887e4acfdc66c809b67223ba09f2d173258c45d": 0
+          },
+          "accepted": 2,
+          "rejected": 0,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        },
+        {
+          "scenario": {
+            "recipe": "Throat duet",
+            "size": 8,
+            "target": 220,
+            "throat": 1
+          },
+          "targetFrequencyHz": 220,
+          "dominantFftBinHz": 219.7265625,
+          "peak": 0.000010371208190917969,
+          "rms": 0.0000016668594414045053,
+          "fftSize": 32768,
+          "sampleRate": 48000,
+          "modeBins": [
+            {
+              "targetHz": 220,
+              "peakDb": -183.4535369873047
+            },
+            {
+              "targetHz": 444.4,
+              "peakDb": -225.83026123046875
+            },
+            {
+              "targetHz": 677.6,
+              "peakDb": -240.29827880859375
+            },
+            {
+              "targetHz": 915.2,
+              "peakDb": -259.22869873046875
+            }
+          ],
+          "perBodyEnergy": {
+            "cavity-0919397b21ae1b75d6177dd26ab0c7c61a2bf4b7a9fcd2ad2c383495fe0b7dd6": 1.3114349513098906e-7,
+            "cavity-5ce96c3e8c1e8b7cdd00370ef887e4acfdc66c809b67223ba09f2d173258c45d": 2.2993560581350124e-13
+          },
+          "accepted": 2,
+          "rejected": 0,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        },
+        {
+          "scenario": {
+            "recipe": "Crumbled chimes",
+            "size": 8,
+            "target": 220
+          },
+          "targetFrequencyHz": 220,
+          "dominantFftBinHz": 219.7265625,
+          "peak": 0.000011801719665527344,
+          "rms": 0.0000021294618624865866,
+          "fftSize": 32768,
+          "sampleRate": 48000,
+          "modeBins": [
+            {
+              "targetHz": 220,
+              "peakDb": -180.7178497314453
+            },
+            {
+              "targetHz": 444.4,
+              "peakDb": -215.37481689453125
+            },
+            {
+              "targetHz": 677.6,
+              "peakDb": -232.24862670898438
+            },
+            {
+              "targetHz": 915.2,
+              "peakDb": -245.40579223632812
+            }
+          ],
+          "perBodyEnergy": {
+            "cavity-da09c0ae20ba3a7d081e19c8ab071b033d6e3a1dcdf34f1c45967a9bbc5a1f21": 1.5083816802220467e-7
+          },
+          "accepted": 2,
+          "rejected": 0,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        },
+        {
+          "scenario": {
+            "recipe": "Crumbled chimes",
+            "size": 16,
+            "target": 110
+          },
+          "targetFrequencyHz": 110,
+          "dominantFftBinHz": 109.86328125,
+          "peak": 0.000014185905456542969,
+          "rms": 0.0000022830519315014516,
+          "fftSize": 32768,
+          "sampleRate": 48000,
+          "modeBins": [
+            {
+              "targetHz": 110,
+              "peakDb": -184.92056274414062
+            },
+            {
+              "targetHz": 222.2,
+              "peakDb": -216.95066833496094
+            },
+            {
+              "targetHz": 338.8,
+              "peakDb": -229.28907775878906
+            },
+            {
+              "targetHz": 457.6,
+              "peakDb": -238.23175048828125
+            }
+          ],
+          "perBodyEnergy": {
+            "cavity-da09c0ae20ba3a7d081e19c8ab071b033d6e3a1dcdf34f1c45967a9bbc5a1f21": 1.9180221933509048e-7
+          },
+          "accepted": 2,
+          "rejected": 0,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        }
+      ],
+      "liveHistory": [
+        {
+          "recipe": "Clay chamber",
+          "firstTick": 1,
+          "completedTick": 139,
+          "oldGraphsRetained": 1,
+          "maximumConcurrentGraphs": 2,
+          "waiting": "waiting-for-previous-body-tail",
+          "preparingWhileAtCapacity": false,
+          "returnedPrepared": true,
+          "capturedGraphs": 3,
+          "coverage": "complete",
+          "complete": true,
+          "reperformance": {
+            "actualContinuationHash": "32dcfd94ecc741c31d92496853844d3b43e69e1e03d0e8a51939659fdbb513fd",
+            "actualPhysicsHash": "c106bd00e5af6496c2e92ab0218cdf26dd937ffd0211bd686f8d2ac66d924cea",
+            "artifactIntegrity": {
+              "canonicalHash": "24be0b56c33bb737a9184ddb6d94b76056b72879d731bfa0e44eec55ec840150",
+              "finalizationHash": "fd2bcbc411a333e6c462a9660c5710c0c95222cae173300de4ee7287ef7c039d",
+              "initialCheckpointHash": "425eb3ec9539973467598dc6e18b0c992bae812a7867c9bee0aaa72ce9669a0b",
+              "status": "verified-durable-chain"
+            },
+            "assetRefs": [
+              {
+                "family": "crystal",
+                "id": "lemmings-4",
+                "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+              }
+            ],
+            "boundaryComplete": true,
+            "captureInventory": {
+              "intentKinds": [
+                "begin",
+                "end"
+              ],
+              "mappingRevisions": [
+                1
+              ],
+              "observedFactKinds": [
+                "ActionEntered",
+                "ActionExited",
+                "CommandApplied",
+                "ContactResolved",
+                "ContactSpanBegan",
+                "ContactSpanUpdated",
+                "DirectionChanged",
+                "FlightArcEnded",
+                "FlightArcUpdated",
+                "MotionCommitted",
+                "ReleaseScheduleCommitted"
+              ],
+              "sourceRange": {
+                "firstTick": 2,
+                "lastTick": 139,
+                "worldId": "procgen:27183"
+              }
+            },
+            "checkpointComparisons": [
+              {
+                "actualContinuationHash": "32dcfd94ecc741c31d92496853844d3b43e69e1e03d0e8a51939659fdbb513fd",
+                "checkpointId": "[\"take:0032a4a0-a76f-4ae3-842e-f78115b29149\",\"checkpoint\",285]",
+                "continuationMatch": true,
+                "continuationStateSchema": 1,
+                "exactQualified": false,
+                "expectedContinuationHash": "32dcfd94ecc741c31d92496853844d3b43e69e1e03d0e8a51939659fdbb513fd",
+                "firstStateDifference": null,
+                "replaySettingsMatch": true,
+                "semanticMatch": true,
+                "sequence": 285,
+                "status": "validated-by-current-runtime-reperformance",
+                "tick": 139,
+                "timelineMatch": true
+              }
+            ],
+            "comparedBatches": 138,
+            "comparedIntents": 2,
+            "compatibilityMatch": true,
+            "continuationStateSchema": 1,
+            "exactQualified": false,
+            "executionBinding": {
+              "active": {
+                "activeExecution": "bound",
+                "assetDigest": "c1effaf6600cb35cd1b637582b9c56b2d2b7f734150f9d1f8ea624df28775db4",
+                "binding": "immutable-application-generation",
+                "buildId": "ac57ae9dcc785446fcd5351e4c22afc0be0e799ad07539c935ae9e1f13b41031",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "9ceaeffd245e4c292d280f86c389e358e436572fa9458a0fadf8fde1ca1f79f8",
+                "codeDigest": "2824837e133a866d123827376e94d5d0777e63f93fef669b1b91157c8c8f062d",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "9734c35a-49ae-41f6-adc3-2273eef10cda",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "exactQualified": false,
+              "exactUnavailableReason": "causal-exact-realm-unqualified",
+              "mismatches": [],
+              "reasons": [],
+              "required": {
+                "activeExecution": "bound",
+                "assetDigest": "c1effaf6600cb35cd1b637582b9c56b2d2b7f734150f9d1f8ea624df28775db4",
+                "binding": "immutable-application-generation",
+                "buildId": "ac57ae9dcc785446fcd5351e4c22afc0be0e799ad07539c935ae9e1f13b41031",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "9ceaeffd245e4c292d280f86c389e358e436572fa9458a0fadf8fde1ca1f79f8",
+                "codeDigest": "2824837e133a866d123827376e94d5d0777e63f93fef669b1b91157c8c8f062d",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "9734c35a-49ae-41f6-adc3-2273eef10cda",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "schema": "lemmings-causal-runtime-binding",
+              "scope": "immutable-application-generation",
+              "status": "matched",
+              "version": 1
+            },
+            "executionEpoch": "take-workbench:1",
+            "executionIdentity": {
+              "activeExecution": "bound",
+              "assetDigest": "c1effaf6600cb35cd1b637582b9c56b2d2b7f734150f9d1f8ea624df28775db4",
+              "binding": "immutable-application-generation",
+              "buildId": "ac57ae9dcc785446fcd5351e4c22afc0be0e799ad07539c935ae9e1f13b41031",
+              "capabilityProfile": "browser-survey-core",
+              "closureDigest": "9ceaeffd245e4c292d280f86c389e358e436572fa9458a0fadf8fde1ca1f79f8",
+              "codeDigest": "2824837e133a866d123827376e94d5d0777e63f93fef669b1b91157c8c8f062d",
+              "harnessVersion": "browser-survey-v1",
+              "identityRecipe": "normalized-data-slot-v2-instruments",
+              "realmId": "9734c35a-49ae-41f6-adc3-2273eef10cda",
+              "receiptVersion": 3,
+              "stateSchema": 11,
+              "status": "bound"
+            },
+            "finalWorldParity": "matched-at-captured-component-checkpoint",
+            "firstDivergence": null,
+            "fromCheckpointSequence": 0,
+            "inspection": {
+              "hardware": false,
+              "paused": true,
+              "physicalLayers": false,
+              "recording": false,
+              "thru": false
+            },
+            "mode": "physical-reperformance",
+            "physicsStateSchema": 2,
+            "schema": "lemmings-causal-reperformance",
+            "sourceCanonicalHash": "24be0b56c33bb737a9184ddb6d94b76056b72879d731bfa0e44eec55ec840150",
+            "sourceVersions": {
+              "applicationExecution": {
+                "activeExecution": "bound",
+                "assetDigest": "c1effaf6600cb35cd1b637582b9c56b2d2b7f734150f9d1f8ea624df28775db4",
+                "binding": "immutable-application-generation",
+                "buildId": "ac57ae9dcc785446fcd5351e4c22afc0be0e799ad07539c935ae9e1f13b41031",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "9ceaeffd245e4c292d280f86c389e358e436572fa9458a0fadf8fde1ca1f79f8",
+                "codeDigest": "2824837e133a866d123827376e94d5d0777e63f93fef669b1b91157c8c8f062d",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "9734c35a-49ae-41f6-adc3-2273eef10cda",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "causalProbabilityPolicy": 1,
+              "causalRandom": "fnv1a32-avalanche-v1",
+              "generator": "procgen-workstation-2",
+              "instrumentPerformance": 4,
+              "mappingRevision": 1,
+              "numericCanonicalization": "finite-f64-minus-zero-v1",
+              "phraseCargo": 1,
+              "physicalBatch": 1,
+              "physicalFeedback": 1,
+              "physicalMusic": 13,
+              "physicalPlaybackAdmission": 1,
+              "populationRandom": 1,
+              "project": 2,
+              "releaseGesture": 1,
+              "stallCascade": 2,
+              "swarmReducer": 1,
+              "terrainChallenge": 3,
+              "worldCheckpoint": 2
+            },
+            "status": "matched-current-runtime",
+            "takeId": "take:0032a4a0-a76f-4ae3-842e-f78115b29149",
+            "takeRevision": 145,
+            "targetSequence": 285,
+            "throughSequence": 285,
+            "tick": 139,
+            "ticksExecuted": 138,
+            "verifiedDurableSequence": 285,
+            "version": 2
+          },
+          "liveWorldUnchanged": true,
+          "setup": "Native Play/control requests and production pump; after the second actual geometry commit, pause only the existing physics runtime API while preserving transport/audio ownership. Native Pause world intentionally stops that owner."
+        },
+        {
+          "recipe": "Throat duet",
+          "firstTick": 1,
+          "completedTick": 138,
+          "oldGraphsRetained": 1,
+          "maximumConcurrentGraphs": 2,
+          "waiting": "waiting-for-previous-body-tail",
+          "preparingWhileAtCapacity": false,
+          "returnedPrepared": true,
+          "capturedGraphs": 3,
+          "coverage": "complete",
+          "complete": true,
+          "reperformance": {
+            "actualContinuationHash": "4c58cb1eb62c9b9076e486f5884f153778fc94f8a5ca259bf4e9688dae06f5f3",
+            "actualPhysicsHash": "01cd11bcb530e5abeacf54dd82942539ee0b397399121afb22f70d0cfd109e82",
+            "artifactIntegrity": {
+              "canonicalHash": "3c6fd73fde77a8e7bb6700f7ade096f0a59e77b5ca4a80706e739829c5bd4722",
+              "finalizationHash": "ef2a627d948c3c740a29c64268186e9cf6e771b733481040830eb43454361630",
+              "initialCheckpointHash": "901ae8cb2bc87c14ac610bd61361e941d6d52c780b5f505bf58a62d6ad77ba90",
+              "status": "verified-durable-chain"
+            },
+            "assetRefs": [
+              {
+                "family": "crystal",
+                "id": "lemmings-4",
+                "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+              }
+            ],
+            "boundaryComplete": true,
+            "captureInventory": {
+              "intentKinds": [
+                "begin",
+                "end"
+              ],
+              "mappingRevisions": [
+                1
+              ],
+              "observedFactKinds": [
+                "ActionEntered",
+                "ActionExited",
+                "CommandApplied",
+                "ContactResolved",
+                "ContactSpanBegan",
+                "ContactSpanUpdated",
+                "DirectionChanged",
+                "FlightArcEnded",
+                "FlightArcUpdated",
+                "MotionCommitted",
+                "ReleaseScheduleCommitted"
+              ],
+              "sourceRange": {
+                "firstTick": 2,
+                "lastTick": 138,
+                "worldId": "procgen:27183"
+              }
+            },
+            "checkpointComparisons": [
+              {
+                "actualContinuationHash": "4c58cb1eb62c9b9076e486f5884f153778fc94f8a5ca259bf4e9688dae06f5f3",
+                "checkpointId": "[\"take:615a0730-4496-471c-9294-8ed938d5d566\",\"checkpoint\",283]",
+                "continuationMatch": true,
+                "continuationStateSchema": 1,
+                "exactQualified": false,
+                "expectedContinuationHash": "4c58cb1eb62c9b9076e486f5884f153778fc94f8a5ca259bf4e9688dae06f5f3",
+                "firstStateDifference": null,
+                "replaySettingsMatch": true,
+                "semanticMatch": true,
+                "sequence": 283,
+                "status": "validated-by-current-runtime-reperformance",
+                "tick": 138,
+                "timelineMatch": true
+              }
+            ],
+            "comparedBatches": 137,
+            "comparedIntents": 2,
+            "compatibilityMatch": true,
+            "continuationStateSchema": 1,
+            "exactQualified": false,
+            "executionBinding": {
+              "active": {
+                "activeExecution": "bound",
+                "assetDigest": "c1effaf6600cb35cd1b637582b9c56b2d2b7f734150f9d1f8ea624df28775db4",
+                "binding": "immutable-application-generation",
+                "buildId": "ac57ae9dcc785446fcd5351e4c22afc0be0e799ad07539c935ae9e1f13b41031",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "9ceaeffd245e4c292d280f86c389e358e436572fa9458a0fadf8fde1ca1f79f8",
+                "codeDigest": "2824837e133a866d123827376e94d5d0777e63f93fef669b1b91157c8c8f062d",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "5ef4b377-ddd5-4774-9255-515e8890b3af",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "exactQualified": false,
+              "exactUnavailableReason": "causal-exact-realm-unqualified",
+              "mismatches": [],
+              "reasons": [],
+              "required": {
+                "activeExecution": "bound",
+                "assetDigest": "c1effaf6600cb35cd1b637582b9c56b2d2b7f734150f9d1f8ea624df28775db4",
+                "binding": "immutable-application-generation",
+                "buildId": "ac57ae9dcc785446fcd5351e4c22afc0be0e799ad07539c935ae9e1f13b41031",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "9ceaeffd245e4c292d280f86c389e358e436572fa9458a0fadf8fde1ca1f79f8",
+                "codeDigest": "2824837e133a866d123827376e94d5d0777e63f93fef669b1b91157c8c8f062d",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "5ef4b377-ddd5-4774-9255-515e8890b3af",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "schema": "lemmings-causal-runtime-binding",
+              "scope": "immutable-application-generation",
+              "status": "matched",
+              "version": 1
+            },
+            "executionEpoch": "take-workbench:1",
+            "executionIdentity": {
+              "activeExecution": "bound",
+              "assetDigest": "c1effaf6600cb35cd1b637582b9c56b2d2b7f734150f9d1f8ea624df28775db4",
+              "binding": "immutable-application-generation",
+              "buildId": "ac57ae9dcc785446fcd5351e4c22afc0be0e799ad07539c935ae9e1f13b41031",
+              "capabilityProfile": "browser-survey-core",
+              "closureDigest": "9ceaeffd245e4c292d280f86c389e358e436572fa9458a0fadf8fde1ca1f79f8",
+              "codeDigest": "2824837e133a866d123827376e94d5d0777e63f93fef669b1b91157c8c8f062d",
+              "harnessVersion": "browser-survey-v1",
+              "identityRecipe": "normalized-data-slot-v2-instruments",
+              "realmId": "5ef4b377-ddd5-4774-9255-515e8890b3af",
+              "receiptVersion": 3,
+              "stateSchema": 11,
+              "status": "bound"
+            },
+            "finalWorldParity": "matched-at-captured-component-checkpoint",
+            "firstDivergence": null,
+            "fromCheckpointSequence": 0,
+            "inspection": {
+              "hardware": false,
+              "paused": true,
+              "physicalLayers": false,
+              "recording": false,
+              "thru": false
+            },
+            "mode": "physical-reperformance",
+            "physicsStateSchema": 2,
+            "schema": "lemmings-causal-reperformance",
+            "sourceCanonicalHash": "3c6fd73fde77a8e7bb6700f7ade096f0a59e77b5ca4a80706e739829c5bd4722",
+            "sourceVersions": {
+              "applicationExecution": {
+                "activeExecution": "bound",
+                "assetDigest": "c1effaf6600cb35cd1b637582b9c56b2d2b7f734150f9d1f8ea624df28775db4",
+                "binding": "immutable-application-generation",
+                "buildId": "ac57ae9dcc785446fcd5351e4c22afc0be0e799ad07539c935ae9e1f13b41031",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "9ceaeffd245e4c292d280f86c389e358e436572fa9458a0fadf8fde1ca1f79f8",
+                "codeDigest": "2824837e133a866d123827376e94d5d0777e63f93fef669b1b91157c8c8f062d",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "5ef4b377-ddd5-4774-9255-515e8890b3af",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "causalProbabilityPolicy": 1,
+              "causalRandom": "fnv1a32-avalanche-v1",
+              "generator": "procgen-workstation-2",
+              "instrumentPerformance": 4,
+              "mappingRevision": 1,
+              "numericCanonicalization": "finite-f64-minus-zero-v1",
+              "phraseCargo": 1,
+              "physicalBatch": 1,
+              "physicalFeedback": 1,
+              "physicalMusic": 13,
+              "physicalPlaybackAdmission": 1,
+              "populationRandom": 1,
+              "project": 2,
+              "releaseGesture": 1,
+              "stallCascade": 2,
+              "swarmReducer": 1,
+              "terrainChallenge": 3,
+              "worldCheckpoint": 2
+            },
+            "status": "matched-current-runtime",
+            "takeId": "take:615a0730-4496-471c-9294-8ed938d5d566",
+            "takeRevision": 144,
+            "targetSequence": 283,
+            "throughSequence": 283,
+            "tick": 138,
+            "ticksExecuted": 137,
+            "verifiedDurableSequence": 283,
+            "version": 2
+          },
+          "liveWorldUnchanged": true,
+          "setup": "Native Play/control requests and production pump; after the second actual geometry commit, pause only the existing physics runtime API while preserving transport/audio ownership. Native Pause world intentionally stops that owner."
+        }
+      ],
+      "incremental": {
+        "observations": 77,
+        "fullReferenceComparisons": 154,
+        "reusedRegionRevisions": 97,
+        "analyzedCells": 11730,
+        "fullReferenceCells": 33110,
+        "restoredCompleteCheckpointEqual": true,
+        "canonicalRestoredDirtyAnalysis": true,
+        "stress": {
+          "edits": 64,
+          "physicalEditsPlusBothAnalysesMs": 46,
+          "includesDSP": false
+        }
+      }
+    },
+    "priorAttempts": [
+      {
+        "nodePassing": 216,
+        "nodeFailures": 0,
+        "commandExit": 1,
+        "reason": "The first selected-module c8 invocation inherited full-repository function/branch thresholds (64.31/68.6versus72/81). Tests passed. Reused raw data for a report; final scoped batch explicitly disables only that CLI coverage gate. Repository/CI thresholds are unchanged."
+      },
+      {
+        "reason": "Interrupted an initial catalog selector attempt after its private corpus passed: options include cost/support text, so exact title matching was wrong. Corrected the locator."
+      },
+      {
+        "browserPassing": 16,
+        "browserFailures": 2,
+        "reason": "The first live fixture used native Pause/Step, which intentionally stopped the audio owner. Corrected to preserve that owner. Added explicit cold-mask preparation and the previously missing captured intervention admission."
+      },
+      {
+        "browserPassing": 16,
+        "browserFailures": 2,
+        "reason": "The next batch respected an occupied-footprint refusal in Clay; wait until the ordinary actor clears instead. Throat retained/replaced bodies and captured three graphs but replay exposed a topology failure after dirty geometry."
+      },
+      {
+        "browserPassing": 0,
+        "browserFailures": 2,
+        "scope": "Focused two-history diagnostics",
+        "reason": "First-field and bounded region failure evidence located Topology profile is not configured after canonical journal restore. Replaced JSON key-order equality with normalized definition identity."
+      },
+      {
+        "nodePassing": 253,
+        "nodeFailures": 1,
+        "reason": "An expanded fixture compared raw reference-numbered checkpoint encodings across deliberately reordered object keys. Preserve the original strict raw restore parity check, then separately restore canonical keys and force dirty analysis against the complete reference. Final254pass retains both proofs."
+      }
+    ],
+    "ci": {
+      "latestIndependentlyVerified": 399,
+      "currentPublishedSource": {
+        "head": "fc37884a8800812f8599c158ed4ccf3073d75fc3",
+        "run": 41042007575,
+        "mainJob": 124016826064,
+        "mainStatus": "in_progress-at-last-check",
+        "nativeLinuxJob": 124016825967,
+        "nativeWindowsJob": 124016825727,
+        "engineJob": 124016825987,
+        "otherRequiredJobs": "all three success",
+        "policy": "success",
+        "dependencyReview": "success"
+      },
+      "newSource": "Requires its own CI after publication; do not infer full green from affected validation."
+    },
+    "backlog": {
+      "openIssues": 191,
+      "inventory": "Union of the first100 open issues in ascending and descending creation order;9overlap. No additional closure claimed here."
+    },
+    "limits": [
+      "Six native cases are internal PCM/worklet measurements. The original authored output is quiet; matched-level and listening review remain. No hardware/acoustic acceptance.",
+      "Current-runtime re-performance matches complete continuation/semantic/timeline/replay-settings checkpoints and preserves the live world. exactQualified remainsfalse; this does not certify audible real-time replay of graph history.",
+      "General private cavity rehearsal/export, wider native changing-body/work/capture matrices and postTransaction live body routing remain separate. The saved live route explicitly supports endOfTick only.",
+      "Keep1194/1104/1087 open;1183remains closed with this additional durable-restore repair and qualification. Continue private cue support/level comparisons and the remaining191issue backlog."
+    ]
   }
 }

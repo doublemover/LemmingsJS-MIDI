@@ -1,3 +1,4 @@
+import { prepareCavityGeometryControl } from './CavityGeometryControl.js';
 import { createLazyWorkstationToolGate } from './LazyWorkstationToolGate.js';
 import { planRecordedMidiExport } from './RecordedMidiExportPlan.js';
 import { planOriginalUmpClip } from './OriginalUmpRecordingSnapshot.js';
@@ -159,7 +160,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
   let soundLibrary = null, nativeSoundSelection = null, patchVariations = null;
   let masterCapture = null, soundSeedLab = null, shapeFoundry = null;
-  let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, travelColorationView = null, spectralFreezeView = null, sympatheticMapView = null, rectangularMembraneView = null, physicalJunctionView = null, junctionRequestSerial = 0;
+  let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, travelColorationView = null, spectralFreezeView = null, sympatheticMapView = null, rectangularMembraneView = null, physicalJunctionView = null, junctionRequestSerial = 0, cavityEditSerial = 0;
   let stageSession = null;
   let sceneCatalog = null, sceneLoader = null, sceneBrowser = null, physicalLessonView = null, physicalLessonDefaultId = null, sceneToolsPending = null;
   let prelistenMonitor = null;
@@ -1743,6 +1744,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (causalTake && causalTake.recordIntervention(command, proposal.outcome, { tick: world.tickIndex, generation: world.generation }).status !== 'accepted') throw new Error('Take could not admit the release gesture.');
       return proposal.commit();
     },
+    performCavityEdit({ scene, world: sourceWorld, controlId, value }) {
+      const world = runtime()?.world;
+      if (!world || sourceWorld !== world || scene !== project.procgen.sceneOrigin?.manifest || worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop || stageSession?.active()) throw new Error('Review the current writable chamber before editing it.');
+      if (!Number.isSafeInteger(++cavityEditSerial)) throw new Error('Chamber edit identity exhausted.');
+      const command = prepareCavityGeometryControl({ scene, world, controlId, value, transactionId: 'cavity:' + world.generation + ':' + world.tickIndex + ':' + cavityEditSerial }), proposal = world.prepareIntervention(command);
+      if (causalTake && causalTake.recordIntervention(command, proposal.outcome, { tick: world.tickIndex, generation: world.generation }).status !== 'accepted') throw new Error('Take could not admit the chamber edit.');
+      const receipt = proposal.commit(); if (receipt.status !== 'queued') throw new Error(receipt.reason || 'The chamber edit was not admitted.'); return Object.freeze({ ...receipt, transactionId: command.transactionId });
+    },
     cancelReleaseGestures() { const world = runtime()?.world; if (!world || worldBusy || pendingHistory || physicalAuthoringAbort) return { cancelled: 0 }; let cancelled = 0; for (const command of [...world.interventionState.pending]) if (command.kind === 'set-release-gesture') { if (causalTake && causalTake.recordInput({ version: 1, kind: 'intervention-cancel', commandId: command.id }, { tick: world.tickIndex, generation: world.generation }).status !== 'accepted') throw new Error('Take could not admit cancellation.'); if (world.cancelIntervention(command.id, 'release-user-cancelled')) cancelled++; } return { cancelled, alreadyAdmittedCohortsUnchanged: true }; },
     openPhysicalAuthoring() {
       physicalAuthoringView ||= createPhysicalAuthoringView({ document, resourceBudget, displayScheduler: view?.displayScheduler, getWorld: () => runtime()?.world, getProject: () => project, getAnalysis: () => physicalPlayback?.engine.physicalAnalysis(),
@@ -2389,7 +2398,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       pressure: output.selectedBackend === 'midi' ? ports.getState().pressure : router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }; },
     prepareSettings, bindRuntime, beforeRestart, stopCausalTake, adoptSceneRecipe, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
     getPhysicalAnalysis: () => physicalPlayback?.engine.physicalAnalysis() || null, getPhysicalDiagnostics: () => physicalPlayback?.engine.diagnostics() || null,
-    getPhysicalOutputDiagnostics: () => physicalPlayback?.diagnostics() || null,
+    getPhysicalOutputDiagnostics: options => physicalPlayback?.diagnostics(options) || null,
     getPhysicalScoreClock: () => physicalScoreClock, getWorldInspector: () => worldInspector,
     get settings() { return legacy.settings; },
     dispose() {

@@ -2063,3 +2063,14 @@ applied or refused result. Occupied/stale edits cannot partially carve a chamber
 Scene loading and geometry inspection leave output disarmed. Native audio,
 canonical takes, private rehearsal/export and listening have separate evidence;
 the general private rehearsal profile currently refuses this dynamic cavity route.
+
+
+### Cavity route observation and edits
+
+`getPhysicalOutputDiagnostics({ requestHealth: true })` requests the existing owned processor health and returns its current graph, retained graph count and per-body modeled audio-state energy. A material cache is not an active route: replacing the exact graph makes cavity output unavailable. These observations do not establish speaker output or listening quality.
+
+A cavity control request prepares only its bounded, already completed source chunks, then uses the workstation intervention proposal. An active take must admit that exact command before it is queued. Unknown growth, protection, occupancy and source-revision checks remain authoritative. Merely preparing a cold mask does not edit terrain or increment its source revision.
+
+When the owner already retains a previous body tail, the next geometry waits without allocating another preparation workspace. Actual owner retirement notifications resume preparation of the latest geometry, including while physical pumping is paused independently. Stop/Panic still retires the owner; it is not a request to retain its tails. Geometry preparation creates no semantic onset and never resubmits an earlier strike.
+
+Topology configuration, analysis admission and result publication compare the normalized definition signature. Durable JSON key order cannot change a region identity. Dirty analysis is qualified after both ordinary checkpoint continuation and a canonical-key restore; bounded replay mismatch diagnostics identify the first differing field and any actual analysis failure without retaining the full source payload.

@@ -1,6 +1,8 @@
 import { readTerrainCell } from './TerrainAuthoringAdapter.js';
 import { topologyAnalysisJobs as pendingJobs, invalidateTerrainTopology } from './TerrainTopologyInvalidation.js';
-import { validateTopologyRegions, validateTopologyRegion, analyzeTopology, reuseTopologyResult, validateTopologyResult, topologyMaskDigest, topologyResultMatchesRegion } from './workstation/physical/TopologyInstrumentRegion.js';
+import { validateTopologyRegions, validateTopologyRegion, topologyDefinitionSignature, analyzeTopology, reuseTopologyResult, validateTopologyResult, topologyMaskDigest, topologyResultMatchesRegion } from './workstation/physical/TopologyInstrumentRegion.js';
+const analysisFailures = new WeakMap();
+const terrainTopologyDiagnostics = world => Object.freeze([...(analysisFailures.get(world)?.values() || [])]);
 const mapSize = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(Map.prototype, 'size').get);
 const assertTopologyEvidenceBoundary = world => {
   const pending = pendingJobs.get(world);
@@ -9,17 +11,17 @@ const assertTopologyEvidenceBoundary = world => {
 const createTerrainTopologyState = () => ({ version: 1, epoch: 0, profiles: [], regions: new Map(), invalidationRevision: -1, budgetTick: -1, postCells: 0, finalCells: 0, staleResults: 0 });
 const prepareTerrainTopologyConfiguration = (world, profiles) => {
   const next = validateTopologyRegions(profiles), state = world.terrainTopology;
-  if (JSON.stringify(next) === JSON.stringify(state.profiles)) { const epoch = state.epoch; return { commit() { if (world._disposed || world.terrainTopology !== state || state.epoch !== epoch) throw new Error('Topology configuration proposal is stale.'); return false; } }; }
+  if (next.length === state.profiles.length && next.every((region, index) => topologyDefinitionSignature(region) === topologyDefinitionSignature(state.profiles[index]))) { const epoch = state.epoch; return { commit() { if (world._disposed || world.terrainTopology !== state || state.epoch !== epoch) throw new Error('Topology configuration proposal is stale.'); return false; } }; }
   if (!Number.isSafeInteger(state.epoch + 1)) throw new RangeError('Topology analysis epoch exhausted.');
-  for (const region of next) { const previous = state.profiles.find(r => r.id === region.id); if (previous && JSON.stringify(previous) !== JSON.stringify(region) && region.revision <= previous.revision) throw new Error('Changed topology regions need a newer revision.'); }
-  const retained = new Map(); for (const region of next) if (state.profiles.some(r => JSON.stringify(r) === JSON.stringify(region)) && state.regions.has(region.id) && state.regions.get(region.id).status !== 'pending') retained.set(region.id, state.regions.get(region.id));
+  for (const region of next) { const previous = state.profiles.find(r => r.id === region.id); if (previous && topologyDefinitionSignature(previous) !== topologyDefinitionSignature(region) && region.revision <= previous.revision) throw new Error('Changed topology regions need a newer revision.'); }
+  const retained = new Map(); for (const region of next) if (state.profiles.some(r => topologyDefinitionSignature(r) === topologyDefinitionSignature(region)) && state.regions.has(region.id) && state.regions.get(region.id).status !== 'pending') retained.set(region.id, state.regions.get(region.id));
   const epoch = state.epoch, previousProfiles = state.profiles, previousRegions = state.regions; let committed = false;
-  return { commit() { if (committed) return true; if (world._disposed || world.terrainTopology !== state || state.epoch !== epoch || state.profiles !== previousProfiles || state.regions !== previousRegions) throw new Error('Topology configuration proposal is stale.'); pendingJobs.delete(world); state.profiles = next; state.regions = retained; state.epoch++; committed = true; return true; } };
+  return { commit() { if (committed) return true; if (world._disposed || world.terrainTopology !== state || state.epoch !== epoch || state.profiles !== previousProfiles || state.regions !== previousRegions) throw new Error('Topology configuration proposal is stale.'); analysisFailures.delete(world); pendingJobs.delete(world); state.profiles = next; state.regions = retained; state.epoch++; committed = true; return true; } };
 };
 const configureTerrainTopology = (world, profiles) => prepareTerrainTopologyConfiguration(world, profiles).commit();
 const prepareTopologyAnalysis = (world, region) => {
   region = validateTopologyRegion(region); const state = world.terrainTopology;
-  if (world._disposed || !state.profiles.some(profile => profile.id === region.id && JSON.stringify(profile) === JSON.stringify(region))) throw new Error('Topology profile is not configured.');
+  if (world._disposed || !state.profiles.some(profile => profile.id === region.id && topologyDefinitionSignature(profile) === topologyDefinitionSignature(region))) throw new Error('Topology profile is not configured.');
   const b = region.bounds, mask = [], h = region.halo;
   for (let y = b.y1 - h; y < b.y2 + h; y++) for (let x = b.x1 - h; x < b.x2 + h; x++) {
     const cell = readTerrainCell(world, x, y); mask.push(cell.status === 'complete' ? Number(!!cell.color) : -1);
@@ -38,10 +40,11 @@ const publishTopologyAnalysis = (world, input, result) => {
   if (!result || !['complete', 'unknown'].includes(result.status)) return refuse();
   const region = state.profiles.find(r => r.id === input.region.id);
   if (!registered || world._disposed || input.epoch !== state.epoch || input.worldId !== world.worldId || input.generation !== world.generation || input.sourceRevision !== world.terrainRevision ||
-      !region || JSON.stringify(region) !== JSON.stringify(input.region) || result.worldId !== input.worldId || result.generation !== input.generation || result.sourceRevision !== input.sourceRevision || result.regionId !== region.id || result.regionRevision !== region.revision || result.status === 'complete' && (result.maskDigest !== input.maskDigest || result.mappingRevision !== region.mapping.revision || result.connectivity !== region.connectivity || result.space !== region.space || JSON.stringify(result.bounds) !== JSON.stringify(region.bounds))) return refuse();
+      !region || topologyDefinitionSignature(region) !== topologyDefinitionSignature(input.region) || result.worldId !== input.worldId || result.generation !== input.generation || result.sourceRevision !== input.sourceRevision || result.regionId !== region.id || result.regionRevision !== region.revision || result.status === 'complete' && (result.maskDigest !== input.maskDigest || result.mappingRevision !== region.mapping.revision || result.connectivity !== region.connectivity || result.space !== region.space || ['x1', 'x2', 'y1', 'y2'].some(key => result.bounds?.[key] !== region.bounds[key]))) return refuse();
   try { if (result.status === 'complete' && !topologyResultMatchesRegion(result, region)) return refuse(); } catch { return refuse(); }
   const previous = state.regions.get(region.id), history = previous?.history.filter(value => value.worldId === world.worldId && value.generation === world.generation && value.regionRevision === region.revision) || [];
   if (result.status === 'complete') { const at = history.findIndex(value => value.sourceRevision === result.sourceRevision); if (at >= 0) history.splice(at, 1); history.push(result); if (history.length > 4) history.shift(); }
+  analysisFailures.get(world)?.delete(region.id);
   state.regions.set(region.id, { regionId: region.id, regionRevision: region.revision, requestedRevision: world.terrainRevision, current: result.status === 'complete' ? result : null,
     status: result.status, reason: result.reason ?? null, history, dirty: result.status !== 'complete', nextSerial: Math.max(previous?.nextSerial || 0, result.nextSerial || 0) }); return true;
 };
@@ -63,14 +66,14 @@ const captureTerrainTopology = (world, phase = 'endOfTick') => {
     if (state[budget] + area > 262144) { state.regions.set(region.id, { ...previous, regionId: region.id, regionRevision: region.revision, requestedRevision: world.terrainRevision, current: null, history: previous?.history || [], nextSerial: previous?.nextSerial || 0, status: 'unknown', reason: 'analysis-budget' }); continue; }
     state[budget] += area;
     try { const input = prepareTopologyAnalysis(world, region); publishTopologyAnalysis(world, input, analyzeTopology(input, current ?? previous?.history.at(-1))); }
-    catch (error) { pendingJobs.get(world)?.delete(region.id); state.regions.set(region.id, { ...previous, regionId: region.id, regionRevision: region.revision, requestedRevision: world.terrainRevision, current: null, history: previous?.history || [], nextSerial: previous?.nextSerial || 0, status: 'unknown', reason: 'analysis-failed' }); }
+    catch (error) { let failures = analysisFailures.get(world); if (!failures) { failures = new Map(); analysisFailures.set(world, failures); } failures.set(region.id, Object.freeze({ regionId: region.id, tick: world.tickIndex, message: String(error?.message || 'Topology analysis failed.').slice(0, 160) })); pendingJobs.get(world)?.delete(region.id); state.regions.set(region.id, { ...previous, regionId: region.id, regionRevision: region.revision, requestedRevision: world.terrainRevision, current: null, history: previous?.history || [], nextSerial: previous?.nextSerial || 0, status: 'unknown', reason: 'analysis-failed' }); }
   }
 };
-const disposeTerrainTopology = world => { pendingJobs.delete(world); world.terrainTopology.regions.clear(); world.terrainTopology.profiles = []; };
+const disposeTerrainTopology = world => { analysisFailures.delete(world); pendingJobs.delete(world); world.terrainTopology.regions.clear(); world.terrainTopology.profiles = []; };
 const retireTerrainTopologyAnalysis = world => { pendingJobs.delete(world); };
 const resetTerrainTopology = world => {
   const state = world.terrainTopology; if (!Number.isSafeInteger(state.epoch + 1)) throw new RangeError('Topology analysis epoch exhausted.');
-  pendingJobs.delete(world); state.epoch++; state.regions.clear(); state.invalidationRevision = -1; state.budgetTick = -1; state.postCells = state.finalCells = 0;
+  analysisFailures.delete(world); pendingJobs.delete(world); state.epoch++; state.regions.clear(); state.invalidationRevision = -1; state.budgetTick = -1; state.postCells = state.finalCells = 0;
 };
 const validateTerrainTopologyState = world => {
   const state = world.terrainTopology;
@@ -94,4 +97,4 @@ const terrainTopologySnapshot = world => {
     return Object.freeze({ regionId: region.id, regionRevision: region.revision, requiredRevision: world.terrainRevision, status: value?.status ?? 'pending', reason: value?.reason ?? null,
       current: value?.current ?? null, history: Object.freeze([...(value?.history || [])]) }); })) });
 };
-export { assertTopologyEvidenceBoundary, disposeTerrainTopology, retireTerrainTopologyAnalysis, resetTerrainTopology, invalidateTerrainTopology, validateTerrainTopologyState, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, prepareTopologyAnalysis, publishTopologyAnalysis, captureTerrainTopology, terrainTopologySnapshot };
+export { terrainTopologyDiagnostics, assertTopologyEvidenceBoundary, disposeTerrainTopology, retireTerrainTopologyAnalysis, resetTerrainTopology, invalidateTerrainTopology, validateTerrainTopologyState, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, prepareTopologyAnalysis, publishTopologyAnalysis, captureTerrainTopology, terrainTopologySnapshot };

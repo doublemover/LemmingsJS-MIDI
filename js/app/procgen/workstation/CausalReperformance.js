@@ -1,3 +1,4 @@
+import { terrainTopologyDiagnostics } from '../ProcgenTerrainTopology.js';
 import { applyRecordedPhysicalFeedback } from './physical/PhysicalFeedback.js';
 import { createCausalMusicEngine, validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
@@ -269,7 +270,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
                 const actual = generated.shift();
                 if (!actual) throw journalError('missing-replay-batch', 'Physical stepping produced no committed batch.', { firstSequence: record.sequence, tick: record.tick });
                 const comparison = compareCausalRecords([record], [{ ...record, payload: actual.batch }]);
-                if (!comparison.equal) { divergence = { ...comparison.firstDivergence, kind: 'physical-batch' }; break; }
+                if (!comparison.equal) { const coverage = batch => (batch.snapshot?.topology?.regions || []).slice(0, 8).map(region => ({ regionId: region.regionId, status: region.status, reason: region.reason ?? null, requiredRevision: region.requiredRevision ?? null, coverage: region.current?.coverage ?? null })); divergence = { ...comparison.firstDivergence, kind: 'physical-batch', ...(comparison.firstDivergence.firstDifference?.path.startsWith('/payload/snapshot/topology/') ? { topologyCoverage: { expected: coverage(record.payload), actual: coverage(actual.batch), analysisFailures: terrainTopologyDiagnostics(world) } } : {}) }; break; }
                 comparedBatches++; lastComparedTick = record.tick; firstSourceTick ??= record.tick; sourceWorldId = actual.batch.worldId;
                 for (const fact of actual.batch.facts) if (fact.kind) observedFacts.add(fact.kind);
                 expectedIntents.set(actual.batch.batchId, { intents: actual.intents, probability: actual.probability, bodyCommands: actual.bodyCommands });

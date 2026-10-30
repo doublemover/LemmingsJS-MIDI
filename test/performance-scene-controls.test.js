@@ -2,12 +2,15 @@ import { expect } from 'chai';
 import { JSDOM } from 'jsdom';
 import { createPerformanceSceneControlView } from '../js/app/procgen/workstation/PerformanceSceneControlView.js';
 
-const fixture = ({ macros = false } = {}) => {
+const fixture = ({ macros = false, cavity = false } = {}) => {
   const dom = new JSDOM('<body></body>'), document = dom.window.document, calls = [], schedule = { retired: 0 }, state = { actual: { configurationId: 'direct', status: 'applied' }, pending: [], receipts: [], authoringRevision: 1 };
   const scene = { title: 'A finite authored score', physicalControls: [{ id: 'spacing', label: 'SPACING', minimum: 12, maximum: 192, step: 6, initial: 54, target: 'release-gesture:nominalGapTicks;next-cohort' }, { id: 'return', label: 'RETURN', target: 'junction:return-path;explicit-request' }, { id: 'snap', label: 'SNAP · next onset', unit: 'normalized', minimum: 0, maximum: 1, step: 0.01, target: 'patch-macro:snap;next-onset-only' }] };
   const world = { generation: 1, population: { releaseGesture: { id: 'original', revision: 1, nominalGapTicks: 54, finiteBurstCount: 3, paused: false }, pendingReleaseGesture: null }, physicalJunctions: { definitions: [{ id: 'return-path', revision: 1, configurations: [{ id: 'direct' }, { id: 'stepped' }] }] }, queryJunction: () => state };
+  if (cavity) scene.physicalControls = [{ id: 'size', label: 'Chamber side', minimum: 8, maximum: 16, step: 8, initial: 8, scope: 'geometry', target: 'cavity-square:96:80:8:16' }];
+  world.interventionState = { receipts: [] };
   let currentScene = scene, currentWorld = world; const macroState = { sceneHash: 'a'.repeat(64), value01: 0.5, targets: [{ laneId: 'one' }, { laneId: 'two' }], error: null };
   const view = createPerformanceSceneControlView({ document, parent: document.body, displayScheduler: { register() { return { invalidate() {}, dispose() { schedule.retired++; } }; } }, getScene: () => currentScene, getWorld: () => currentWorld,
+    ...(cavity ? { performCavityEdit: input => { calls.push(['cavity', input]); return { status: 'queued', transactionId: 'cavity:1' }; } } : {}),
     ...(macros ? { getSceneMacroState: () => { if (macroState.error) throw new Error(macroState.error); return macroState; }, performSceneMacro: input => { calls.push(['macro', input]); macroState.value01 = input.value01; return { status: 'committed' }; } } : {}),
     performReleaseGesture: gesture => { calls.push(['spacing', gesture]); return { status: 'queued' }; }, requestJunction: (...args) => { calls.push(['junction', ...args]); state.pending = [{ desiredConfiguration: args[1], state: 'waiting-safe-boundary' }]; return { status: 'queued' }; }, openControl: (...args) => calls.push(['editor', ...args]) });
   const button = text => [...view.element.querySelectorAll('button')].find(value => value.textContent === text);
@@ -15,6 +18,12 @@ const fixture = ({ macros = false } = {}) => {
 };
 
 describe('active physical score controls (UI fixtures authored; runtime acceptance deferred)', () => {
+  it('uses the captured chamber input owner and reports a queued edit separately from authoritative application', () => {
+    const f = fixture({ cavity: true }); try { const before = JSON.stringify(f.world), input = f.view.element.querySelector('input'); input.value = '16'; const oldButton = f.button('Request chamber edit'); oldButton.click(); expect(f.calls[0]).to.deep.equal(['cavity', { scene: f.scene, world: f.world, controlId: 'size', value: 16 }]); expect(JSON.stringify(f.world)).to.equal(before); f.view.refresh(); expect(f.view.element.textContent).to.include('Waiting for physical commit'); f.world.interventionState.receipts.push({ transactionId: 'cavity:1', status: 'rejected', reason: 'occupied' }); f.view.refresh(); expect(f.view.element.textContent).to.include('rejected · occupied'); f.world.generation++; oldButton.click(); expect(f.calls).to.have.length(1); } finally { f.dispose(); }
+  });
+  it('disables chamber editing without a captured input owner instead of directly mutating the world', () => {
+    const f = fixture(); try { f.replace({ ...f.scene, physicalControls: [{ id: 'size', label: 'Chamber side', minimum: 8, maximum: 16, step: 8, initial: 8, target: 'cavity-square:96:80:8:16' }] }, f.world); f.view.refresh(); expect(f.button('Request chamber edit').disabled).to.equal(true); f.button('Request chamber edit').click(); expect(f.calls).to.have.length(0); } finally { f.dispose(); }
+  });
   it('applies the complete authored macro through its canonical transaction and projects mixed or unavailable values honestly', () => {
     const f = fixture({ macros: true }); try {
       const original = JSON.stringify(f.world), input = [...f.view.element.querySelectorAll('input')].find(input => input.getAttribute('aria-label').startsWith('SNAP')); input.value = '0.8'; f.button('Apply to later onsets').click(); f.view.refresh();

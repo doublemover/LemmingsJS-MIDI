@@ -1288,7 +1288,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   const sceneControls = createPerformanceSceneControlView({ document, parent: presentationRoot, displayScheduler,
     getScene: () => getProject().procgen.sceneOrigin?.manifest || null, getWorld: () => getRuntime()?.world || null,
-    performReleaseGesture: gesture => handlers.performReleaseGesture(gesture), requestJunction: (...args) => handlers.requestJunction(...args), onStatus: text => { status.textContent = text; },
+    performReleaseGesture: gesture => handlers.performReleaseGesture(gesture), performCavityEdit: input => handlers.performCavityEdit(input), requestJunction: (...args) => handlers.requestJunction(...args), onStatus: text => { status.textContent = text; },
     getSceneMacroState: id => readSceneMacroControl(getProject(), id), performSceneMacro: input => handlers.performSceneMacro(input),
     openControl: (control, scene) => {
       if (control.target.startsWith('effect-macro:THROW;') || control.target.startsWith('quarry-echo:')) return handlers.openQuarryEcho?.();

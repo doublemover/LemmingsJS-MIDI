@@ -150,10 +150,14 @@ describe('semantic causal take capture and reinterpretation', function() {
     const left = [{ sequence: 1, kind: 'physical-batch', tick: 10, payload: { facts: [{ eventId: 'cause:a', actorId: 1 }, { eventId: 'cause:b', actorId: 2 }] } }];
     const right = structuredClone(left); right[0].payload.facts[1].actorId = 9;
     expect(compareCausalRecords(left, right)).to.deep.equal({ equal: false, firstDivergence: {
-      sequence: 1, tick: 10, causeId: 'cause:b', expectedKind: 'physical-batch', actualKind: 'physical-batch' } });
+      sequence: 1, tick: 10, causeId: 'cause:b', expectedKind: 'physical-batch', actualKind: 'physical-batch', firstDifference: { path: '/payload/facts/1/actorId', expected: 2, actual: 9 } } });
     expect(compareCausalRecords(left, structuredClone(left))).to.deep.equal({ equal: true, comparedRecords: 1 });
   });
 
+  it('locates snapshot-only differences and bounds diagnostic values without retaining the source objects', () => {
+    const left = [{ sequence: 3, kind: 'physical-batch', tick: 2, payload: { facts: [], snapshot: { 'a/b~c': 'x'.repeat(4096) } } }], right = structuredClone(left); right[0].payload.snapshot['a/b~c'] = null;
+    const difference = compareCausalRecords(left, right).firstDivergence; expect(difference.causeId).to.equal(null); expect(difference.firstDifference).to.deep.equal({ path: '/payload/snapshot/a~1b~0c', expected: 'x'.repeat(256), actual: null }); expect(compareCausalRecords([{ a: 1, b: 2 }], [{ b: 2, a: 1 }]).equal).to.equal(true);
+  });
   it('persists an explicitly missed source boundary and cannot finalize that take as complete', async () => {
     const { journal } = setup(), recorder = await createCausalTakeRecorder({ ...metadata('take:missed-batch'), journal });
     recorder.recordCommittedBatch({ batch: physical(1), intents: [] });

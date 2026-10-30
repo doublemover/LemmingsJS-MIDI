@@ -15,6 +15,14 @@ export function prepareCavityGeometryControl({ scene, world, controlId, value, t
   } else if (parts[0] === 'cavity-throat' && numbers.length === 2 && control.minimum === 0 && control.maximum === 1 && control.step === 1) spans.push({ x1: numbers[0], x2: numbers[0] + 1, y: numbers[1], solid: value === 0 });
   else throw new TypeError('The scene has no supported chamber geometry control.');
   const terrain = { operation: 'replaceSolid', generation: world.generation, transactionId, expectedScoreRevision: world.terrainScoreState.serial, spans, occupancyPolicy: 'reject-occupied', maxCells: 512, maxChunks: 4 };
-  const plan = planTerrainCommand(terrain, world); if (plan.status !== 'prepared') throw new Error('Chamber edit unavailable: ' + plan.reason);
+  if (world.terrain && typeof world._terrainChunk === 'function') {
+    const width = world.terrain.chunkWidth, chunks = new Set();
+    for (const span of spans) for (let chunk = Math.floor(span.x1 / width); chunk <= Math.floor((span.x2 - 1) / width); chunk++) {
+      const lane = Math.floor(span.y / world.laneHeight), x = Math.max(span.x1, chunk * width), key = lane + ':' + chunk;
+      if (chunks.has(key) || span.y >= world.height || x < world.leftEdgeX || x >= world.width || world.terrainGrowth && (x >= world.generatedThrough[lane] || world.terrainGrowth.stateFor(lane, chunk))) continue;
+      chunks.add(key); world._terrainChunk(lane, x);
+    }
+  }
+  const plan = planTerrainCommand(terrain, world); if (plan.status !== 'prepared') throw new Error('Chamber edit unavailable: ' + plan.reason + (plan.rejected?.[0]?.reason ? ' · ' + plan.rejected[0].reason : ''));
   return Object.freeze({ id: transactionId, kind: 'terrain-edit', origin: 'manual', transactionId, target: { generation: world.generation }, parameters: { terrain: plan.command } });
 }

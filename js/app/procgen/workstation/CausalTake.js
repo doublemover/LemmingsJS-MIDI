@@ -288,6 +288,20 @@ const querySoundOnlyRevoice = async options => {
   const loan = await querySoundOnlyRevoiceOwned(options);
   try { return loan.value; } finally { retireCausalRead(loan); }
 };
+const firstRecordDifference = (left, right) => {
+  let nodes = 0;
+  const describe = value => value === undefined ? { missing: true } : value && typeof value === 'object' ? { type: Array.isArray(value) ? 'array' : 'object' } : typeof value === 'string' ? value.slice(0, 256) : value;
+  const visit = (a, b, path, depth) => {
+    if (a === b) return null;
+    if (++nodes > 200000 || depth > 48) return { path, reason: 'difference-inspection-bound' };
+    if (a && b && typeof a === 'object' && typeof b === 'object' && Array.isArray(a) === Array.isArray(b)) {
+      for (const key of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) { const result = visit(a[key], b[key], path + '/' + key.replace(/~/g, '~0').replace(/\//g, '~1'), depth + 1); if (result) return result; }
+      return null;
+    }
+    return { path, expected: describe(a), actual: describe(b) };
+  };
+  return visit(left, right, '', 0);
+};
 const compareCausalRecords = (expected, actual) => {
   const length = Math.max(expected.length, actual.length);
   for (let index = 0; index < length; index++) {
@@ -300,7 +314,7 @@ const compareCausalRecords = (expected, actual) => {
       return freezeJournalData({ equal: false,
         firstDivergence: { sequence: left?.sequence ?? right?.sequence ?? index + 1, tick: left?.tick ?? right?.tick ?? null,
           causeId: leftFacts[factIndex]?.eventId ?? rightFacts[factIndex]?.eventId ?? null,
-          expectedKind: left?.kind ?? null, actualKind: right?.kind ?? null } });
+          expectedKind: left?.kind ?? null, actualKind: right?.kind ?? null, firstDifference: firstRecordDifference(left ?? null, right ?? null) } });
     }
   }
   return Object.freeze({ equal: true, comparedRecords: length });
