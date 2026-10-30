@@ -159,6 +159,8 @@ export function bindTopologyFact(region, batch, fact, { anchorId = null } = {}) 
     const candidates = payload.terrainEdit.spans.map(span => topologyComponentAt(result, { x: Math.floor((span.x1 + span.x2 - 1) / 2), y: span.y }, true, anchorId)).filter(Boolean);
     if (new Set(candidates.map(value => value.id)).size === 1) component = candidates[0];
   }
+  const b = region.bounds, outside = Number.isFinite(point?.x) && Number.isFinite(point?.y) && (Math.floor(point.x) < b.x1 - 1 || Math.floor(point.x) > b.x2 || Math.floor(point.y) < b.y1 - 1 || Math.floor(point.y) > b.y2);
+  if (!component && outside && (!Array.isArray(payload?.terrainEdit?.spans) || payload.terrainEdit.spans.length <= 64 && payload.terrainEdit.spans.every(span => span.x2 <= b.x1 - 1 || span.x1 > b.x2 || span.y < b.y1 - 1 || span.y > b.y2))) return { status: 'unsupported', reason: 'source-outside-topology-region' };
   if (!component || component.musical.status !== 'complete') return { status: 'unsupported', reason: 'topology-component-unavailable' };
   return freeze({ status: 'complete', regionId: region.id, regionRevision: region.revision, componentId: component.id, sourceEditRevision: sourceRevision,
     boundTopologyRevision: result.sourceRevision, bindingPolicy: region.bindingPolicy, interpretation: region.bindingPolicy === 'endOfTick' ? 'completed-tick-musical-interpretation' : 'exact-local-revision',

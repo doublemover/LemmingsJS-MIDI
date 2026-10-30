@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preview original cavity scenes through observed private geometry, the existing modal renderer and owned Prelisten cue; preserve unadvanced candidates, explicit spatial exclusions and bounded PCM transport.
 - Preserve cavity topology analysis after canonical journal restore by comparing normalized region definitions, with bounded field-level replay diagnostics.
 - Capture chamber edits before queue publication, prepare bounded cold collision masks on explicit requests, and resume current cavity bodies after owned tails retire.
 - Add three Digging Ocarina scores with native chamber edits, explicit modal mappings, owned body replacement and bounded excitation at original audio frames.

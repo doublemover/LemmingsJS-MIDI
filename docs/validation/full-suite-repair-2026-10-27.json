@@ -140833,5 +140833,613 @@
       "General private cavity rehearsal/export, wider native changing-body/work/capture matrices and postTransaction live body routing remain separate. The saved live route explicitly supports endOfTick only.",
       "Keep1194/1104/1087 open;1183remains closed with this additional durable-restore repair and qualification. Continue private cue support/level comparisons and the remaining191issue backlog."
     ]
+  },
+  "continuation403": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "sourceParent": "0c536b0fca220c83a311e34b2460dce0fd42b90a",
+    "issues": [
+      1194,
+      1104,
+      1087
+    ],
+    "scope": "Private initial-cavity audition through real observed physics, existing owned modal rendering, bounded worker transport and selected Prelisten; native CURRENT/NEXT/cancellation proof.",
+    "changes": [
+      "Observe one complete invariant initial ROI plus at most512source revision entries across the existing bounded private source prefix. At most4096square pixels. Every onset must keep its actual work/contact mapping, selected component/map revisions, observed tick/revision, source IDs and exact mapped pitch/reference. Changing geometry, partial/unknown coverage, missing ancestry and future revisions refuse; no replacement onset is inserted.",
+      "Compile this observed geometry with the existing CavitySoundMap and owned modal network. One private graph renders the full source and declared tail. Manifest distinguishes one/two active bodies from the scene declared two/four active-plus-retained bound; exact graph/body/geometry/source identities are verified by the main owner. Existing morph, native and owned-material rehearsals remain covered in the same Node batch.",
+      "Reserve16MiB additional geometry/key/compile metadata until all real checkpoint/world/worker/material/cue producers retire. Reuse existing private-world admission, foreground audition, selected cue route, cancellation and quarantine. Preview failures reach their scene loader; unresolved retirement blocks reuse.",
+      "Repair the existing rehearsal request transport bound: maxBytes now covers the already enforced16MiB result cap as well as admitted input. Small semantic source does not cap larger generated PCM. Keep128MiB computation peak, shared resource admission and16MiB result validation; no transport gate is disabled.",
+      "Classify complete known source points outside the ROI one-cell adjacency band, including only bounded nonintersecting work spans, as outside this instrument. They emit no onset or rejected-begin count. Unknown/unavailable geometry, in-region ambiguity and unavailable selected components retain refusal. Actual private floor contacts exercise the exclusion; all matched onsets remain strict.",
+      "Repair the existing exact-build catalog fixture introduced by401: assert all five sine-only scenes, scope the two crossing definitions explicitly and retain three cavity entries. CI401 independently reports this same single stale two-scene assertion."
+    ],
+    "validation": {
+      "node": {
+        "passing": 78,
+        "failures": 0,
+        "durationSeconds": 19,
+        "scope": "All private cavity, installed/world-adapter, station/owned/native/morph rehearsal, current controls, cavity ownership/actual source and actual/incremental topology tests."
+      },
+      "browser": {
+        "passing": 22,
+        "failures": 0,
+        "skips": 0,
+        "flaky": 0,
+        "durationSeconds": 180.36781,
+        "scope": "One final combined1920x1080 batch: all six native recipe renders, two live tail/history journeys, three private initial-cavity cue/adoption journeys, native cancellation, actual topology/work/restore and all transport/recovery cases.",
+        "receiptsArtifact": {
+          "path": "docs/validation/cavity-private-preview-desktop-2026-10-30.json",
+          "bytes": 899802,
+          "sha256": "104ccd7add0afd65dc66797321208a62784356e94f61ac7519c46fdfedbbd474"
+        }
+      },
+      "focusedNative": {
+        "passing": 4,
+        "failures": 0,
+        "durationSeconds": 57.62807599999999,
+        "meaning": "Private cue/adoption/cancel cases passed first; unchanged source then passed in the full22-case affected browser batch."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "e2e/procgen-workstation-cavity-sound.spec.js",
+          "bytes": 26222,
+          "sha256": "3bea0fd47c853808d33c41e6f5c49f1bfa02a831a4b7fe493f3cd40557b69694"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+          "bytes": 85390,
+          "sha256": "01ac02d9b954a5824b5dfebe67b9231a414ecef3bf6eff7725d56f2a14da2753"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneBrowser.js",
+          "bytes": 14531,
+          "sha256": "9ead7c759eca50b333c6d64267037f3030530966d738d51b3a9b52d29b09e13d"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneLoader.js",
+          "bytes": 14142,
+          "sha256": "bce85eb6954eb5f90629e24322976cfe87b4db3aeb75e5e80144266d25b68059"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneRehearsal.js",
+          "bytes": 20087,
+          "sha256": "123ea28c1b71c9b25286ba8566a393e9f3e6434efc58e2e044b5287aa8f66bea"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
+          "bytes": 25083,
+          "sha256": "32647aec0b868b3bfa79beef455038b9a68e0828eb118566c0a2d2d6ba5b5451"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "bytes": 226820,
+          "sha256": "baa9844eb0d7757906542174d85914c7c007d100503e4c34719cdbf252e49af3"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
+          "bytes": 23792,
+          "sha256": "635971a43e8cd97c296b991dbbc4098f05890db7a80eb9ca65ceed979551ae4a"
+        },
+        {
+          "path": "test/cavity-sound-map.test.js",
+          "bytes": 12085,
+          "sha256": "a86546a59b363789a11c9f221b049ddad30b8d98dd50a58a39fdd956cdd1e9e9"
+        },
+        {
+          "path": "test/procgen-performance-scene.test.js",
+          "bytes": 25626,
+          "sha256": "4721c0c69c406f3eb85963ecd05f9f89d4dadee51463491798af87a234664e24"
+        },
+        {
+          "path": "js/app/procgen/workstation/SceneCavityRehearsal.js",
+          "bytes": 7255,
+          "sha256": "edca521a6029e26258f2f400ebd1a60047541c946bb4fc0f6cf86718546fc0fb"
+        },
+        {
+          "path": "test/helpers/actualCavityRehearsal.js",
+          "bytes": 2109,
+          "sha256": "19e829f15600fe6bd790bb8ed8286e4ee498faadf569f2e1ed651dc850c5f9fe"
+        },
+        {
+          "path": "test/scene-cavity-rehearsal.test.js",
+          "bytes": 5852,
+          "sha256": "c9fe501b2a85617d493128838b2f0971d4a4b8510c9381aff0b35b829b95da07"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 301,
+          "sha256": "c6e2b94b1d400b3c40bc6b44097bec24579b7bb674f77beca86101a9beea0267"
+        }
+      ],
+      "coverage": {
+        "scope": "Scoped reports from the78-case Node batch; additional changed engine inspected by reusing the same raw V8 data. Main rehearsal/browser/workstation integration is qualified by actual Playwright journeys and has no Node percentage in this run.",
+        "selected": {
+          "total": {
+            "lines": {
+              "total": 469,
+              "covered": 449,
+              "skipped": 0,
+              "pct": 95.73
+            },
+            "statements": {
+              "total": 469,
+              "covered": 449,
+              "skipped": 0,
+              "pct": 95.73
+            },
+            "functions": {
+              "total": 55,
+              "covered": 51,
+              "skipped": 0,
+              "pct": 92.72
+            },
+            "branches": {
+              "total": 821,
+              "covered": 706,
+              "skipped": 0,
+              "pct": 85.99
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PerformanceSceneLoader.js": {
+            "lines": {
+              "total": 110,
+              "covered": 110,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 23,
+              "covered": 20,
+              "skipped": 0,
+              "pct": 86.95
+            },
+            "statements": {
+              "total": 110,
+              "covered": 110,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 142,
+              "covered": 92,
+              "skipped": 0,
+              "pct": 64.78
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PerformanceSceneRehearsalRender.js": {
+            "lines": {
+              "total": 146,
+              "covered": 129,
+              "skipped": 0,
+              "pct": 88.35
+            },
+            "functions": {
+              "total": 6,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 83.33
+            },
+            "statements": {
+              "total": 146,
+              "covered": 129,
+              "skipped": 0,
+              "pct": 88.35
+            },
+            "branches": {
+              "total": 245,
+              "covered": 215,
+              "skipped": 0,
+              "pct": 87.75
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\SceneCavityRehearsal.js": {
+            "lines": {
+              "total": 45,
+              "covered": 45,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 9,
+              "covered": 9,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 45,
+              "covered": 45,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 75,
+              "covered": 68,
+              "skipped": 0,
+              "pct": 90.66
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\TopologyInstrumentRegion.js": {
+            "lines": {
+              "total": 168,
+              "covered": 165,
+              "skipped": 0,
+              "pct": 98.21
+            },
+            "functions": {
+              "total": 17,
+              "covered": 17,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 168,
+              "covered": 165,
+              "skipped": 0,
+              "pct": 98.21
+            },
+            "branches": {
+              "total": 359,
+              "covered": 331,
+              "skipped": 0,
+              "pct": 92.2
+            }
+          }
+        },
+        "additionalChangedLoaded": {
+          "total": {
+            "lines": {
+              "total": 640,
+              "covered": 501,
+              "skipped": 0,
+              "pct": 78.28
+            },
+            "statements": {
+              "total": 640,
+              "covered": 501,
+              "skipped": 0,
+              "pct": 78.28
+            },
+            "functions": {
+              "total": 42,
+              "covered": 34,
+              "skipped": 0,
+              "pct": 80.95
+            },
+            "branches": {
+              "total": 747,
+              "covered": 412,
+              "skipped": 0,
+              "pct": 55.15
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": "Unknown"
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalMusicEngine.js": {
+            "lines": {
+              "total": 640,
+              "covered": 501,
+              "skipped": 0,
+              "pct": 78.28
+            },
+            "functions": {
+              "total": 42,
+              "covered": 34,
+              "skipped": 0,
+              "pct": 80.95
+            },
+            "statements": {
+              "total": 640,
+              "covered": 501,
+              "skipped": 0,
+              "pct": 78.28
+            },
+            "branches": {
+              "total": 747,
+              "covered": 412,
+              "skipped": 0,
+              "pct": 55.15
+            }
+          }
+        },
+        "followUp": "Mixed graph/backend, unavailable-route, malformed-input and unknown-retirement branches remain with1194/1087/1104. New SceneCavityRehearsal has100%lines/functions and90.66%branches; no full-branch coverage claim."
+      }
+    },
+    "evidence": {
+      "privatePreviews": [
+        {
+          "recipe": "Clay chamber",
+          "sceneHash": "b8db94b488c958ac979511f515c3398b9c20204b4d3e80f9dc3e8599a41df157",
+          "sourceHash": "9c2d7aa2b6ac82a53193e6c5c5f3c9d5ec8e33bf8fbb34b3404e11265429327e",
+          "sourceTicks": 100,
+          "body": {
+            "kind": "authored-cavity",
+            "strategy": "initial-cavity-static-geometry",
+            "bodyCount": 1,
+            "retainedBodiesDeclared": 2,
+            "modeCount": 4,
+            "mapId": "original.ocarina.clay-chamber",
+            "mapRevision": 1,
+            "bodyIdentityHash": "8bcbe8bf676f2e79cb3788260d116c5a577f308ee058a7a5c8bc328eb046c604",
+            "geometryHash": "4b72e09a22a6a51a67489623b2ce5057944172ee2b0e5abda96e05b5397b326b",
+            "graphHash": "424ee5167b345b494271b959ba862e96b2c21fc09f5affdc5e2d0cf837d9b93c",
+            "sourceOnsets": 1,
+            "semanticOnsetsAdded": 0,
+            "faults": 0,
+            "modeledMaximumBodyEnergy": 4.711964016188123e-7,
+            "sourceFrames": 288960,
+            "tailFrames": 74880,
+            "recipeHash": "8f786672e519fa438aeac0d992f3f5ea05d3c7a42a556c037947499aa018d60f",
+            "tailPolicy": "declared-complete-tail-after-real-source-output",
+            "geometryPolicy": "complete-invariant-initial-geometry",
+            "targetBindings": [
+              {
+                "bodyId": "cavity-b52969781145e04e050e12dd52308edc1f944072c4fe9a05794f4db3413cbc8d",
+                "componentId": "ocarina-chambers:1:1:component:2",
+                "identity": "component:ocarina-chambers:1:1:component:2",
+                "frequencyHz": 220,
+                "t60Seconds": 0.78,
+                "areaPixels2": 64,
+                "boundaryLengthPixels": 32,
+                "excitationBrightness01": 0.35
+              }
+            ],
+            "historicalPerformanceEvidence": false,
+            "acousticReceipt": false
+          },
+          "firstObservedPcmSamplePeak": 5.960464477539062e-7,
+          "pcmWindow": "Up to six seconds, exits on the first nonzero signal; not a complete-phrase peak or cross-recipe level comparison.",
+          "currentWorldUnchanged": true,
+          "currentTickUnchanged": true,
+          "currentProjectUnchanged": true,
+          "unadvancedCandidateAfterExplicitAdoption": {
+            "tick": 0,
+            "active": 0,
+            "remaining": 1,
+            "title": "Digging Ocarina · Clay chamber"
+          },
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        },
+        {
+          "recipe": "Throat duet",
+          "sceneHash": "041c81ccd28bc06adaf05bae9eafa55f7010d815ea20776dc5d1d96e38e7749d",
+          "sourceHash": "e17d27337ad8c3eceb985305578b0aae9397d3a938889babd91e128a94960dbc",
+          "sourceTicks": 100,
+          "body": {
+            "kind": "authored-cavity",
+            "strategy": "initial-cavity-static-geometry",
+            "bodyCount": 2,
+            "retainedBodiesDeclared": 4,
+            "modeCount": 8,
+            "mapId": "original.ocarina.throat-duet",
+            "mapRevision": 1,
+            "bodyIdentityHash": "3a8f9ef6ca574dabe9f321372f88db730ff2ce0aadc0831623e35566de75d460",
+            "geometryHash": "157400fcd16812ffecd58188666d5e985d1d1ea57ac2129aa3786c4fe1f39b5a",
+            "graphHash": "1fbd1fdfdb162c780a0e00624bad50168746ea8d031fd15e2a5a44c04853c853",
+            "sourceOnsets": 1,
+            "semanticOnsetsAdded": 0,
+            "faults": 0,
+            "modeledMaximumBodyEnergy": 4.711964016188123e-7,
+            "sourceFrames": 288960,
+            "tailFrames": 74880,
+            "recipeHash": "3dcee265b6055c7e609226f499edff878455223f823d24832c7975726d3c8e4b",
+            "tailPolicy": "declared-complete-tail-after-real-source-output",
+            "geometryPolicy": "complete-invariant-initial-geometry",
+            "targetBindings": [
+              {
+                "bodyId": "cavity-0919397b21ae1b75d6177dd26ab0c7c61a2bf4b7a9fcd2ad2c383495fe0b7dd6",
+                "componentId": "ocarina-chambers:1:1:component:2",
+                "identity": "anchor:left",
+                "frequencyHz": 220,
+                "t60Seconds": 0.78,
+                "areaPixels2": 64,
+                "boundaryLengthPixels": 32,
+                "excitationBrightness01": 0.35
+              },
+              {
+                "bodyId": "cavity-5ce96c3e8c1e8b7cdd00370ef887e4acfdc66c809b67223ba09f2d173258c45d",
+                "componentId": "ocarina-chambers:1:1:component:3",
+                "identity": "anchor:right",
+                "frequencyHz": 330,
+                "t60Seconds": 0.78,
+                "areaPixels2": 64,
+                "boundaryLengthPixels": 32,
+                "excitationBrightness01": 0.35
+              }
+            ],
+            "historicalPerformanceEvidence": false,
+            "acousticReceipt": false
+          },
+          "firstObservedPcmSamplePeak": 0.0000034570693969726562,
+          "pcmWindow": "Up to six seconds, exits on the first nonzero signal; not a complete-phrase peak or cross-recipe level comparison.",
+          "currentWorldUnchanged": true,
+          "currentTickUnchanged": true,
+          "currentProjectUnchanged": true,
+          "unadvancedCandidateAfterExplicitAdoption": {
+            "tick": 0,
+            "active": 0,
+            "remaining": 1,
+            "title": "Digging Ocarina · Throat duet"
+          },
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        },
+        {
+          "recipe": "Crumbled chimes",
+          "sceneHash": "c8a4b3609bbb51fe1c0adeb805fadc9501c6880fd5c64bac3e03d57059114f68",
+          "sourceHash": "ebceeed3dfac5e801955b965ca782fd2921749f61003d912a4cf2954a9c18ff0",
+          "sourceTicks": 100,
+          "body": {
+            "kind": "authored-cavity",
+            "strategy": "initial-cavity-static-geometry",
+            "bodyCount": 1,
+            "retainedBodiesDeclared": 2,
+            "modeCount": 4,
+            "mapId": "original.ocarina.crumbled-chimes",
+            "mapRevision": 1,
+            "bodyIdentityHash": "9395336e505a46f52a6003af862316024ee632aeb695225f8d4ab01413df27b3",
+            "geometryHash": "463c3982b62b35ee683b1e8bd838932358bd6f97b453586fd37e0600a91b1f0f",
+            "graphHash": "3c853b9febc363b5db2bcdc44a31246f61cb98f74f96f79b77d585ff7dc3348e",
+            "sourceOnsets": 1,
+            "semanticOnsetsAdded": 0,
+            "faults": 0,
+            "modeledMaximumBodyEnergy": 3.802984897854187e-7,
+            "sourceFrames": 288960,
+            "tailFrames": 74880,
+            "recipeHash": "f1bd1b4086d5897b8870da0438fcf3258661f041e137839f31b4672c4ad35ad2",
+            "tailPolicy": "declared-complete-tail-after-real-source-output",
+            "geometryPolicy": "complete-invariant-initial-geometry",
+            "targetBindings": [
+              {
+                "bodyId": "cavity-da09c0ae20ba3a7d081e19c8ab071b033d6e3a1dcdf34f1c45967a9bbc5a1f21",
+                "componentId": "ocarina-chambers:1:1:component:2",
+                "identity": "component:ocarina-chambers:1:1:component:2",
+                "frequencyHz": 220,
+                "t60Seconds": 0.78,
+                "areaPixels2": 64,
+                "boundaryLengthPixels": 32,
+                "excitationBrightness01": 1
+              }
+            ],
+            "historicalPerformanceEvidence": false,
+            "acousticReceipt": false
+          },
+          "firstObservedPcmSamplePeak": 0.0000040531158447265625,
+          "pcmWindow": "Up to six seconds, exits on the first nonzero signal; not a complete-phrase peak or cross-recipe level comparison.",
+          "currentWorldUnchanged": true,
+          "currentTickUnchanged": true,
+          "currentProjectUnchanged": true,
+          "unadvancedCandidateAfterExplicitAdoption": {
+            "tick": 0,
+            "active": 0,
+            "remaining": 1,
+            "title": "Digging Ocarina · Crumbled chimes"
+          },
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        }
+      ],
+      "cancellation": {
+        "state": {
+          "schema": "lemmings-performance-scene-loader/v1",
+          "phase": "idle",
+          "disposed": false,
+          "selection": null,
+          "current": {
+            "id": "digging-ocarina.clay-chamber",
+            "version": 1,
+            "hash": "b8db94b488c958ac979511f515c3398b9c20204b4d3e80f9dc3e8599a41df157",
+            "variants": [],
+            "policy": "stopped-replacement"
+          },
+          "canApply": false,
+          "previewAvailable": true,
+          "pending": false,
+          "prepared": null,
+          "preview": null,
+          "error": null,
+          "retirementUnknown": false
+        },
+        "worldUnchanged": true,
+        "tickUnchanged": true,
+        "projectUnchanged": true,
+        "audioContexts": 1,
+        "midiRequests": 0
+      },
+      "geometry": "Actual unposed actors in independently owned compiled scene terrain. Node actual-change fixture refuses the changed throat rather than applying a final shape to the whole prefix.",
+      "transport": "Actual dedicated browser worker pages and PCM cue path, separately from direct renderer tests; large produced PCM remains inside its16MiB result allowance."
+    },
+    "priorAttempts": [
+      {
+        "nodePassing": 62,
+        "nodeFailures": 3,
+        "reason": "Initial actual fixture advanced300fixed ticks beyond the six-second source bound, also preventing its cancellation case from reaching render. Mirror the production bounded source loop. Existing catalog assertion still expected two rather than five entries; scope crossing and cavity populations explicitly."
+      },
+      {
+        "browser": "Interrupted after nine preceding native passes and the first private preview failure.",
+        "reason": "Complete known floor contacts outside the selected chamber were counted as rejected interpretation. Add an explicit bounded outside-region reason; keep in-region ambiguity and unknown coverage refusals."
+      },
+      {
+        "nodePassing": 77,
+        "nodeFailures": 1,
+        "reason": "A new spatial exclusion assertion mistakenly used0,0inside its0..24ROI. Correct the fixture to26,6; the original inside-ROI ambiguity remains a refusal."
+      },
+      {
+        "browser": "Following native private attempts refused snapshot transport.",
+        "reason": "A small semantic-input maxBytes also capped the larger PCM result. Admit the existing16MiB result allowance and retain all computation/ownership limits. Source-shape/finite-tick/PID diagnostics remain preserved separately."
+      }
+    ],
+    "ci": {
+      "latestIndependentlyVerified": 399,
+      "ci401": {
+        "head": "fc37884a8800812f8599c158ed4ccf3073d75fc3",
+        "run": 41042007575,
+        "mainJob": 124016826064,
+        "status": "failed",
+        "nodePassing": 7301,
+        "nodePending": 10,
+        "nodeFailures": 1,
+        "desktopPassed": 26,
+        "workstationPassed": 247,
+        "enginePassed": 18,
+        "coverage": {
+          "lines": 90.82,
+          "statements": 90.82,
+          "branches": 84.19,
+          "functions": 88.66
+        },
+        "failure": "test/procgen-performance-scene.test.js:101 still expected2sine-only scenes; actual catalog has5. Repaired and included in the78-case final affected batch. All three other required jobs/policy/dependency review pass."
+      },
+      "ci402": {
+        "head": "0c536b0fca220c83a311e34b2460dce0fd42b90a",
+        "run": 41046579452,
+        "mainJob": 124032021506,
+        "mainStatus": "in_progress-last-check:workstation-smoke",
+        "engineJob": 124032021733,
+        "engineStatus": "failed",
+        "enginePassing": 17,
+        "engineFailures": 1,
+        "failure": "Firefox lifecycle navigation/absent-audio case: native content process7049 exited on signal11; page.evaluate Target crashed. Do not infer a JS assertion failure or a proven browser crash cause.",
+        "nativeLinuxJob": 124032021576,
+        "nativeWindowsJob": 124032021755,
+        "nativeStatus": "both success",
+        "retry": {
+          "job": 124032021733,
+          "status": "GitHub refused the single-job retry while the parent run was still running",
+          "apiStatus": 403,
+          "reason": "The workflow run containing this job is already running"
+        }
+      },
+      "newSource": "Full CI required after publication. Preserve401catalog regression and402native Firefox crash; do not promote either as fully green."
+    },
+    "limits": [
+      "Private preview supports invariant initial geometry and is a new private phrase. Audible live graph-history replay/export and continuous worker/body-change matrices remain separate.",
+      "Recorded PCM/sample peaks establish internal browser output only. They do not establish matched level, acoustic/device behavior or listening quality; original output is quiet.",
+      "Keep1194/1104/1087 open. Continue matched-level/actual work/render history acceptance, then remaining clock/export, exact prefix reuse and performance backlog. Open inventory remains191from continuation402."
+    ]
   }
 }

@@ -468,6 +468,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         if (instrument.topologyRegionId) {
           if (fact.kind === 'TerrainWorkCommitted' && !(fact.physicalPayload?.changedSolidCells > 0)) continue;
           const region = current.topologyRegions.find(r => r.id === instrument.topologyRegionId); try { topologyBinding = bindTopologyFact(region, batch, fact, { anchorId: instrument.topologyAnchorId ?? null }); } catch { reject(instrument); continue; }
+          if (topologyBinding.reason === 'source-outside-topology-region') continue;
           if (topologyBinding.status !== 'complete' || topologyBinding.dampingMacroId && new Set([...Object.keys(getOnsetControls(fact.laneId)?.macros || {}), topologyBinding.dampingMacroId]).size > 4) { reject(instrument); continue; }
         }
         const voiceFact = topologyBinding ? { ...fact, topologyBinding } : fact;

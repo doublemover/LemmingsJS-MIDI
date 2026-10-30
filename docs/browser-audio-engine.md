@@ -2062,7 +2062,7 @@ the enclosing wall and close the throat; the next physical tick reports the
 applied or refused result. Occupied/stale edits cannot partially carve a chamber.
 Scene loading and geometry inspection leave output disarmed. Native audio,
 canonical takes, private rehearsal/export and listening have separate evidence;
-the general private rehearsal profile currently refuses this dynamic cavity route.
+the private rehearsal profile admits a complete invariant initial cavity; changing-body graph history requires its separate captured render path.
 
 
 ### Cavity route observation and edits
@@ -2074,3 +2074,14 @@ A cavity control request prepares only its bounded, already completed source chu
 When the owner already retains a previous body tail, the next geometry waits without allocating another preparation workspace. Actual owner retirement notifications resume preparation of the latest geometry, including while physical pumping is paused independently. Stop/Panic still retires the owner; it is not a request to retain its tails. Geometry preparation creates no semantic onset and never resubmits an earlier strike.
 
 Topology configuration, analysis admission and result publication compare the normalized definition signature. Durable JSON key order cannot change a region identity. Dirty analysis is qualified after both ordinary checkpoint continuation and a canonical-key restore; bounded replay mismatch diagnostics identify the first differing field and any actual analysis failure without retaining the full source payload.
+
+
+### Private initial-cavity preview
+
+The existing scene rehearsal owner observes a new private physical prefix. For a cavity it retains one complete initial topology plus a bounded ledger of observed source revisions. The profile covers at most4096square pixels,512ticks and the existing six-second source window. Every actual work/contact onset must belong to the selected adjacent component, its exact map/mapping revision, its observed source tick and its mapped pitch/reference. A geometry change, unknown coverage or missing ancestry refuses the preview. No synthetic strike is inserted.
+
+The existing admitted renderer compiles that observed shape through CavitySoundMap and the shared modal kernel, then renders the complete declared body tail. Its receipt separates the active body count from the scene's larger active/retained bound. CURRENT and NEXT remain unadvanced; explicit adoption after preview still starts the prepared finite entry at tick zero. Preview follows the selected Prelisten route and keeps its existing master-capture inclusion policy. It is a new private phrase, with level/listening review separate from the live graph-history take.
+
+Private preparation owns an additional16MiB estimate for geometry/key/compile metadata through actual producer retirement. The worker snapshot bound covers the existing16MiB result allowance as well as the admitted input; a small semantic source cannot incorrectly cap its larger PCM result. The128MiB computation estimate,16MiB result validation and shared resource admission remain in force. Cancel joins checkpoint/world/material/worker/cue ownership before releasing this storage; unresolved retirement prevents reuse.
+
+A finite source beyond the ROI's one-cell adjacency band is outside that instrument. It makes no onset or rejected-begin count when complete geometry establishes the spatial exclusion. Unknown geometry, in-region ambiguity and unavailable selected components retain their existing refusal path. Preview failures are reported on their owning scene loader.

@@ -17,7 +17,7 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
   const state = () => { let canApply = false; try { canApply = !!prepared && !pending && !disposed && !fault && selected?.serial === prepared.operation.serial && getBaseIdentity() === prepared.baseIdentity; } catch {} return freezeData({ schema: 'lemmings-performance-scene-loader/v1', phase, disposed, selection: selected ? { id: selected.scene.id, version: selected.scene.version, title: selected.scene.title, variants: selected.variants } : null,
     current, canApply, previewAvailable: preparePreview !== null, pending: !!pending, prepared: prepared ? { preflight: prepared.preflight, baseIdentity: prepared.baseIdentity, policy: 'stopped-replacement', changedScope: ['world', 'sound', 'physical-mappings', 'transport-paused'] } : null,
     preview: preview ? { state: preview.ready ? 'isolated-local' : 'preparing', sceneHash: preview.sceneHash, playing: preview.ready ? preview.owner?.state?.().playing ?? true : false,
-      authoredStations: preview.authoredStations, stations: preview.owner?.manifest?.privateStations || null, sourceHash: preview.owner?.manifest?.sourceHash || null, ticks: preview.owner?.manifest?.ticks || null, cueIncludedInMasterCapture: preview.owner?.monitorRoute?.cueIncludedInMasterCapture ?? null } : null, error: lastError, retirementUnknown: !!fault }); };
+      authoredStations: preview.authoredStations, ...(preview.owner?.manifest?.body ? { body: preview.owner.manifest.body } : {}), stations: preview.owner?.manifest?.privateStations || null, sourceHash: preview.owner?.manifest?.sourceHash || null, ticks: preview.owner?.manifest?.ticks || null, cueIncludedInMasterCapture: preview.owner?.monitorRoute?.cueIncludedInMasterCapture ?? null } : null, error: lastError, retirementUnknown: !!fault }); };
   const report = () => { try { onState(state()); } catch { /* Observers cannot own a candidate. */ } };
   const baseIdentity = () => { const value = getBaseIdentity(); if (typeof value !== 'string' || !value || value.length > 4096) throw failure('scene-base-unavailable', 'The active document and routing identity is unavailable.'); return value; };
   const check = operation => { operation.controller.signal.throwIfAborted(); if (disposed || fault || selected?.serial !== operation.serial || baseIdentity() !== operation.baseIdentity) throw failure('stale-scene-operation', 'The selected scene, live document or output routing changed. Prepare again.'); };
@@ -77,7 +77,7 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
     if (!preparePreview) throw failure('scene-preview-unavailable', 'An isolated local scene audition owner is unavailable.');
     const source = prepared; if (!source || pending || preview) throw failure('scene-not-ready', 'Prepare the exact selected scene before rehearsal.'); check(source.operation);
     if (authoredStations && !inspectSceneStationRehearsal(source.operation.scene).available) throw failure('scene-preview-policy-unavailable', 'This score has no supported one-shot work stations.');
-    const operation = { controller: new AbortController(), owner: null, promise: null, sceneHash: source.preflight.sceneHash, authoredStations, ready: false }; preview = operation; report();
+    const operation = { controller: new AbortController(), owner: null, promise: null, sceneHash: source.preflight.sceneHash, authoredStations, ready: false }; lastError = null; preview = operation; report();
     operation.promise = (async () => {
       let candidate;
       try { candidate = await preparePreview({ candidate: source.candidate, authoredStations, scene: source.operation.scene, preflight: source.preflight, signal: operation.controller.signal, isCurrent: () => preview === operation && prepared === source && !disposed && !operation.controller.signal.aborted && baseIdentity() === source.baseIdentity });
@@ -88,7 +88,7 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
         report(); return state();
       } finally { await retire(candidate); }
     })(); operation.promise.catch(() => {});
-    try { return await operation.promise; } catch (error) { if (preview === operation) preview = null; report(); throw error; }
+    try { return await operation.promise; } catch (error) { if (preview === operation) { preview = null; lastError = { code: error.code || 'scene-preview-failed', message: error.message }; if (error.retirement && error.retirement.outcome !== 'complete') fault ||= error; } report(); throw error; }
   };
   const apply = async () => {
     const source = prepared;

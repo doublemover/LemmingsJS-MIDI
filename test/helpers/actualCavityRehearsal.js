@@ -1,0 +1,10 @@
+export async function captureActualCavityRehearsal({ createWorld, score, editAtTick = null, sourceRoot = new URL('../../js/app/procgen/', import.meta.url) }) {
+  const [{ sceneCavityRehearsalProfile, createSceneCavityRehearsalObservation }, { createCausalMusicEngine }, { prepareCavityGeometryControl }] = await Promise.all([import(new URL('workstation/SceneCavityRehearsal.js', sourceRoot)), import(new URL('workstation/CausalMusicEngine.js', sourceRoot)), import(new URL('workstation/CavityGeometryControl.js', sourceRoot))]);
+  const owner = await createWorld(score.recipe.initialTerrainLayout, { recipe: score.recipe, scene: score.scene }), world = owner.world, origin = world.simulationTimeMs, engine = createCausalMusicEngine({ getGraph: () => score.scene.causalMappings }), observer = createSceneCavityRehearsalObservation(sceneCavityRehearsalProfile(score.recipe.initialCavityBody, score.scene)), intents = [], facts = []; let last, failure, ticks = 0;
+  const listener = batch => { try { observer.observe(batch); intents.push(...engine.processBatch(batch)); facts.push(...batch.facts); last = batch; } catch (error) { failure ||= error; } };
+  try {
+    world.configurePhysicalAuthoring(score.scene.causalMappings); world.soundEvents.onBatch.on(listener);
+    for (let index = 0; index < 512 && world.simulationTimeMs - origin < 6000; index++) { if (index === editAtTick) world.enqueueIntervention(prepareCavityGeometryControl({ scene: score.scene, world, controlId: 'chamber-throat', value: 1, transactionId: 'private-cavity:changed-geometry' })); world.step(); ticks++; if (failure) throw failure; }
+    return { source: { schema: 'lemmings-scene-rehearsal-source/v1', initialTick: 0, ticks, sourceTimeMs: origin, durationSeconds: (last.sourceTimeMs + last.tickDurationMs - origin) / 1000, worldId: world.worldId, generation: world.generation, seed: world.seed, intents, cavity: observer.snapshot() }, facts, health: engine.diagnostics(), actorPoseOverridden: false, processorsOverridden: false };
+  } finally { world.soundEvents.onBatch.off(listener); engine.dispose(); await owner.dispose(); }
+}

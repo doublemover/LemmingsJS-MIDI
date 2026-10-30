@@ -98,8 +98,8 @@ describe('installed crossing scores and the existing world candidate adapter', f
     const library = await createInstalledPerformanceSceneCatalog({ getCatalog }); return { library, getCatalog };
   };
   it('ships exact-build four/eight-lane physical scores with distinct per-corridor gates and inspectable unavailable source mode', async () => {
-    const f = await installed(), page = f.library.registry.page(); expect(page.rows).to.have.length(2);
-    for (const row of page.rows) {
+    const f = await installed(), page = f.library.registry.page(); expect(page.rows).to.have.length(5); const crossings = page.rows.filter(row => row.id.startsWith('crossing-corridors.')); expect(crossings).to.have.length(2); expect(page.rows.filter(row => row.id.startsWith('digging-ocarina.'))).to.have.length(3);
+    for (const row of crossings) {
       const value = f.library.registry.resolve(row), proof = await checkPerformanceSceneRequirements(value, { resolveDependency: f.library.resolveDependency }); expect(proof.status).to.equal('ready');
       expect(value.causalMappings.instruments.map(instrument => instrument.sourceLanes)).to.deep.equal(Array.from({ length: value.cost.lanes }, (_, index) => [index]));
       const origin = await f.library.origin(value); await verifyPerformanceSceneOrigin(origin, { sourceHash: h('b') });

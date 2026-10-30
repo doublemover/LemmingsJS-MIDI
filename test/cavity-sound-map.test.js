@@ -20,7 +20,7 @@ describe('authored cavity sound maps and prepared ownership', () => {
   it('uses an authored adjacent anchor to resolve a thin wall without selecting a distant component or guessing through ambiguity', () => {
     const value = fixture({ recipe: 'throat-duet' }), source = batch(value), fact = { kind: 'ContactResolved', anchor: { x: 10, y: 6 }, surfaceRevision: 1 };
     expect(bindTopologyFact(value.region, source, fact).status).to.equal('unsupported'); const left = bindTopologyFact(value.region, source, fact, { anchorId: 'left' }), right = bindTopologyFact(value.region, source, fact, { anchorId: 'right' }); expect(left.status).to.equal('complete'); expect(right.status).to.equal('complete'); expect(left.componentId).not.to.equal(right.componentId);
-    expect(bindTopologyFact(value.region, source, { ...fact, anchor: { x: 0, y: 0 } }, { anchorId: 'left' }).status).to.equal('unsupported');
+    expect(bindTopologyFact(value.region, source, { ...fact, anchor: { x: 26, y: 6 } }, { anchorId: 'left' })).to.include({ status: 'unsupported', reason: 'source-outside-topology-region' }); expect(bindTopologyFact(value.region, source, fact)).to.include({ status: 'unsupported', reason: 'topology-component-unavailable' });
     expect(() => validateCausalInstrumentGraph({ version: 1, revision: 1, topologyRegions: [value.region], instruments: [{ id: 'contact', sourceKind: 'ContactResolved', topologyRegionId: 'body', topologyAnchorId: 'missing', pitchCents: 5700, velocity01: 0.5, route: 'local', role: 'chamber' }] })).to.throw('anchor');
   });
   it('maps measured64/256square pixels to explicit220/110Hz existing modal bodies with bounded units and identity', async () => {
