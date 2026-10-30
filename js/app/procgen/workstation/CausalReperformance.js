@@ -124,7 +124,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     let initial = null, initialSource = null, initialProducer = null, initialProducerPending = false;
     const current = { graph: qualified?.graph || validateCausalInstrumentGraph(manifest.mapping), bpm: null, playing: true };
     let world = null, engine = null, clock = null, performance = null, listener = null, callbackError = null, released = false, worldOwned = false, disposeWorld = null;
-    let worldProducer = null, worldProducerPending = false;
+    let worldProducer = null, worldProducerPending = false, preparationStage = 'checkpoint-source';
     let actualDisposal = null, synchronousDisposal = false, listenerFailure = null;
     let actualSourceDisposal = Promise.resolve(), synchronousSourceDisposal = false;
     let processing = true, acknowledgeProcessing;
@@ -204,6 +204,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
         .then(source => { initialSource = source; return source; }).finally(() => { initialProducerPending = false; });
       await initialProducer; check(signal); initial = initialSource.value; lastComparedTick = worldTick(initial.world);
       current.bpm = initial.replay.bpm; current.playing = initial.replay.version === 2 ? initial.replay.playing : true;
+      preparationStage = 'physical-world-admission';
       worldProducerPending = true;
       worldProducer = Promise.resolve().then(() => { check(signal); return createWorld({ checkpoint: initial.world, sourceVersions: runtimeVersions, assetRefs: runtimeAssets, signal, executionEpoch }); }).then(candidate => {
         world = candidate?.world || candidate;
@@ -212,6 +213,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
         usedWorlds.add(world); worldOwned = true;
       }).finally(() => { worldProducerPending = false; });
       await worldProducer; check(signal);
+      preparationStage = 'physical-world-restore';
       restoreProcgenCheckpoint(world, initial.world);
       const restoredHash = await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(world));
       check(signal);
@@ -225,10 +227,11 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       clock = createProcgenPhysicalScoreClock();
       if (initial.timeline) clock.restore(initial.timeline);
       performance = initial.engine.performanceInputs ? createCausalPerformanceState(initial.engine.performanceInputs) : null;
+      preparationStage = 'semantic-owner-admission';
       engine = createCausalMusicEngine({ resourceBudget, world, getGraph: () => world.physicalAuthoring?.graph || current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0,
         getLaneState: source => performance?.getLaneState(source) || { available: true },
         getPerformanceState: () => performance?.snapshot() || null, getOnsetControls: source => performance?.getControls(source), getPhysicalControlKinds: source => performance?.getPhysicalControlKinds(source) || [] });
-      engine.restore(initial.engine);
+      preparationStage = 'semantic-restore'; engine.restore(initial.engine); preparationStage = 'replay';
       listener = batch => {
         if (released || disposed || world?._disposed) return;
         try {
@@ -386,7 +389,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
         sourceCanonicalHash: manifest.canonicalHash, mode: 'physical-reperformance', executionEpoch, exactQualified: false,
         executionIdentity: qualification.executionIdentity, executionBinding: qualification.executionBinding, status: 'unsupported-or-incomplete', compatibilityMatch: false,
         retirement: { state: cleanup.state, outcome: cleanup.outcome },
-        failure: { code: error.code || error.name || 'reperformance', message: error.message, sequence: error.firstSequence ?? lastSequence,
+        failure: { code: error.code || error.name || 'reperformance', stage: preparationStage, message: error.message, sequence: error.firstSequence ?? lastSequence,
           sourceId: error.sourceId || null, recordKind: error.recordKind || null,
           tick: error.tick ?? world?.tickIndex ?? null }, throughSequence: lastSequence, targetSequence: target,
         inspection: { paused: true, hardware: false, recording: false, thru: false, physicalLayers: false } }), session: null };

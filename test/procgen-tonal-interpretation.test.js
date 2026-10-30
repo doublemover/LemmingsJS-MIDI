@@ -38,6 +38,15 @@ describe('physical harmonic fields and formation voices', () => {
     const resumed = createCausalMusicEngine({ getGraph: () => graph }); resumed.restore(engine.snapshot());
     const next = batch(3, [actor(1, 21), actor(2, 21)], [motion(1, 11, 21)]); expect(resumed.processBatch(next)).to.deep.equal(engine.processBatch(next));
   });
+  it('owns nested restored voice data and publishes an immutable normalized snapshot', () => {
+    const graph = fieldGraph([field()]), engine = createCausalMusicEngine({ getGraph: () => graph }), restored = createCausalMusicEngine({ getGraph: () => graph });
+    try {
+      engine.processBatch(batch(1, [actor(1, 1)], [entry(1)])); const imported = JSON.parse(JSON.stringify(engine.snapshot())); restored.restore(imported); const accepted = restored.snapshot(), expected = JSON.parse(JSON.stringify(accepted));
+      expect(Object.isFrozen(imported.active[0].onsetPitch)).to.equal(false); imported.active[0].onsetPitch.cents += 700; imported.active[0].tonalState.fieldId = 'foreign'; imported.active[0].rootedSourceEventIds[0] = 'foreign-cause';
+      expect(restored.snapshot()).to.equal(accepted); expect(accepted).to.deep.equal(expected); expect(Object.isFrozen(accepted.active[0].onsetPitch)).to.equal(true); expect(() => { accepted.active[0].onsetPitch.cents = 0; }).to.throw(TypeError);
+      const next = batch(2, [actor(1, 11)], [motion(1, 1, 11)]); expect(restored.processBatch(next)).to.deep.equal(engine.processBatch(next));
+    } finally { engine.dispose(); restored.dispose(); }
+  });
   it('retains a boundary with hysteresis and never attacks for silent actors or inspector-only edits', () => {
     let graph = fieldGraph([field({ boundary: 'hysteretic', width: 2, coordinateMap: { mode: 'nearest' } })]);
     const engine = createCausalMusicEngine({ getGraph: () => graph }); expect(engine.processBatch(batch(1, [actor(1, 1)]))).to.have.length(0);

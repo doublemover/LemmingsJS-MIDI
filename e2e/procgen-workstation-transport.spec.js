@@ -26,16 +26,16 @@ for (const scenario of [
   if (scenario.blur) await page.evaluate(() => window.dispatchEvent(new Event('blur'))); else await page.keyboard.up('Equal');
   const result = await page.evaluate(async ({ before, scenario, captured }) => {
     const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.transport.pause(); api.pause(); const stopped = await studio.handlers.stopCausalTake();
-    const root = new URL('./', location.href), { createProcgenSessionStorage } = await import(new URL('js/app/procgen/workstation/ProcgenSessionStorage.js', root)), { createProcgenCausalJournal } = await import(new URL('js/app/procgen/workstation/ProcgenCausalJournal.js', root));
+    const root = new URL('./', location.href), { createProcgenSessionStorage } = await import(new URL('js/app/procgen/workstation/ProcgenSessionStorage.js', root)), { createProcgenCausalJournal } = await import(new URL('js/app/procgen/workstation/ProcgenCausalJournal.js', root)), { getProcgenResourceBudgetState } = await import(new URL('js/app/procgenBoot.js', root));
     const storage = createProcgenSessionStorage();
     try {
-      const records = (await createProcgenCausalJournal({ storage }).query({ takeId: before.takeId })).records;
+      const journal = createProcgenCausalJournal({ storage }), manifest = await journal.openTake(before.takeId), records = (await journal.query({ takeId: before.takeId })).records;
       const input = records.find(record => record.kind === 'input-observation' && record.payload.kind === 'transport-state' && record.payload.speedFactor === (scenario.paused ? captured.state.nominalSpeed : captured.state.effectiveSpeed));
       const batch = records.find(record => record.kind === 'physical-batch' && record.tick > (input?.tick ?? before.tick));
-      const liveWorld = api.world; await studio.handlers.selectCausalTake(before.takeId); const replay = await studio.handlers.compareCausalTake();
+      const liveWorld = api.world; await studio.handlers.selectCausalTake(before.takeId); const budgetBeforeReplay = getProcgenResourceBudgetState(), replay = await studio.handlers.compareCausalTake();
       return { scenario: scenario.name, nativeKeydown: true, interruption: scenario.blur ? 'controlled-window-blur' : 'native-keyup', requestedGameSpeed: captured.state.gameSpeed, nominalSpeed: captured.state.nominalSpeed, effectiveSpeed: captured.state.effectiveSpeed, timer: captured.timer, complete: stopped.complete,
         input: input && { sequence: input.sequence, tick: input.tick, payload: input.payload }, batch: batch && { sequence: batch.sequence, tick: batch.tick, tickDurationMs: batch.payload.tickDurationMs }, finalTimer: api.world.timer.speedFactor,
-        replay: replay?.receipt || null, liveWorldUnchanged: api.world === liveWorld };
+        replay: replay?.receipt || null, liveWorldUnchanged: api.world === liveWorld, budgetBeforeReplay, budgetAfterReplay: getProcgenResourceBudgetState(), checkpointReferences: [manifest.initialCheckpoint, ...manifest.checkpoints].map(({ bytes, nodes, sequence }) => ({ bytes, nodes, sequence })) };
     } finally { storage.close(); }
   }, { before, scenario, captured });
   await page.keyboard.up('Equal'); await testInfo.attach('physical-clock-input.json', { body: JSON.stringify(result), contentType: 'application/json' });

@@ -38,6 +38,21 @@ describe('shared physical observer reservation owners', () => {
     engine.processBatch(source(2)); expect(engine.snapshot()).not.to.equal(saved); expect(saved.physicalCursor.tick).to.equal(1);
     engine.restore(saved); expect(engine.snapshot()).to.deep.equal(saved); engine.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
+  it('restores and reads a small validated boundary under bounded temporary headroom without cloning full capacity', () => {
+    const sourceEngine = createCausalMusicEngine({ getGraph: () => empty, traceLimit: 0 }); sourceEngine.processBatch(source(1)); const saved = JSON.parse(JSON.stringify(sourceEngine.snapshot())); sourceEngine.dispose();
+    const profile = causalObserverResourceProfile(empty, { traceLimit: 0 }), base = Math.ceil((profile.stateBytes + profile.scratchBytes) * 1.25), budget = createResourceBudget({ limitBytes: base + 2 * 1048576 });
+    const engine = createCausalMusicEngine({ resourceBudget: budget, getGraph: () => empty, traceLimit: 0 });
+    engine.restore(saved); const accepted = engine.snapshot(), reservations = budget.diagnostics().reservations; expect(accepted).to.deep.equal(saved); expect(engine.snapshot()).to.equal(accepted); expect(budget.diagnostics().reservations).to.equal(reservations);
+    saved.physicalCursor.tick = 99; expect(engine.snapshot().physicalCursor.tick).to.equal(1); expect(budget.diagnostics().peakAccountedBytes).to.be.at.most(base + 2 * 1048576);
+    const invalid = JSON.parse(JSON.stringify(accepted)); invalid.active = [{ voiceId: 'foreign' }]; expect(() => engine.restore(invalid)).to.throw(); expect(engine.snapshot()).to.equal(accepted);
+    engine.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('rejects input staging before its operation and retains unresolved temporary ownership', () => {
+    const profile = causalObserverResourceProfile(empty, { traceLimit: 0 }), base = Math.ceil((profile.stateBytes + profile.scratchBytes) * 1.25), budget = createResourceBudget({ limitBytes: base + 4096 }), owner = createCausalObserverResources({ resourceBudget: budget, traceLimit: 0 }); let touched = false;
+    expect(() => owner.stageInput('restore-copy', { active: [] }, () => { touched = true; })).to.throw('accounted bytes'); expect(touched).to.equal(false); expect(budget.diagnostics().accountedBytes).to.equal(base); owner.dispose();
+    const actual = createResourceBudget(), uncertain = createCausalObserverResources({ resourceBudget: { reserve: actual.reserve, release: () => false }, traceLimit: 0 });
+    expect(() => uncertain.stageInput('restore-copy', { active: [] }, () => true)).to.throw('retirement'); expect(uncertain.diagnostics().retirementError).to.be.a('string'); expect(actual.diagnostics().categories.candidate.pinned).to.equal(2);
+  });
   it('fails closed when staging retirement does not acknowledge', () => {
     const actual = createResourceBudget({ limitBytes: 512 * 1048576 }), budget = { reserve: actual.reserve, release: () => false };
     const owner = createCausalObserverResources({ resourceBudget: budget });

@@ -2,7 +2,7 @@ import { canonicalDataText, freezeData, cloneData, hashDataText } from '../../..
 
 const MAX_DEPTH = 48;
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
-const estimateJournalBytes = (value, { maxBytes = 1048576, maxNodes = 200000 } = {}) => {
+const estimateJournalBytes = (value, { maxBytes = 1048576, maxNodes = 200000 } = {}, inventory = null) => {
   let nodes = 0;
   const active = new Set();
   const size = (current, depth) => {
@@ -24,8 +24,9 @@ const estimateJournalBytes = (value, { maxBytes = 1048576, maxNodes = 200000 } =
     if (bytes > maxBytes * 6) throw new Error('Causal journal estimated byte budget exceeded.');
     return bytes;
   };
-  return size(value, 0);
+  const bytes = size(value, 0); if (inventory) inventory.nodes = nodes; return bytes;
 };
+const estimateJournalFootprint = (value, options) => { const inventory = { nodes: 0 }, bytes = estimateJournalBytes(value, options, inventory); return { bytes, nodes: inventory.nodes }; };
 const canonicalJournalText = (value, options) => canonicalDataText(value, { ...options, domain: 'Causal journal' });
 const freezeJournalData = freezeData;
 const cloneJournalData = (value, options) => cloneData(value, { ...options, domain: 'Causal journal' });
@@ -36,4 +37,4 @@ const hashJournalText = async (text, crypto = globalThis.crypto) => {
 const hashJournalData = (value, options) => hashJournalText(canonicalJournalText(value, options).text);
 const journalError = (code, message, detail = {}) => Object.assign(new Error(message), { name: 'CausalJournalError', code, ...detail });
 
-export { canonicalJournalText, estimateJournalBytes, freezeJournalData, cloneJournalData, hashJournalText, hashJournalData, journalError };
+export { canonicalJournalText, estimateJournalBytes, estimateJournalFootprint, freezeJournalData, cloneJournalData, hashJournalText, hashJournalData, journalError };

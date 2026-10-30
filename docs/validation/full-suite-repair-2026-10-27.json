@@ -137526,4 +137526,354 @@
     ],
     "issueOutcome": "Keep1183 open for the first checklist incremental invalidation work;1194 remains for authored Digging Ocarina content/sound realization;1104 remains for broader capture/re-performance work. Commit this complete reference/binding span and repair CI397 next."
   }
+,
+  "continuation399": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issues": [
+      1104,
+      1087,
+      1234
+    ],
+    "sourceParent": "bf81145d0a18497c6fe4a52187097c7bd119c2bf",
+    "scope": "Bounded replay checkpoint staging and immutable normalized semantic restore; actual desktop transport/replay accounting.",
+    "changes": [
+      "Estimate validated staging input without serializing/cloning it. Restore admits bounded input-scaled temporary ownership; full retained/high-water capacity, local limits and the global 512MiB budget remain enforced.",
+      "Build normalized component/voice snapshot before publishing accepted restore owners, reuse that immutable snapshot at an unchanged paused boundary, and own nested imported voice DTOs independently of caller mutation.",
+      "Keep failed reservation retirement charged and poison the owner. Add the exact preparation stage to future replay failure receipts; original CI397 did not record this stage.",
+      "Record native Playwright checkpoint sizes and shared budget before/after replay without altering transport assertions."
+    ],
+    "validation": {
+      "node": {
+        "passing": 62,
+        "failures": 0,
+        "scope": "61 affected tests passed together; the subsequently added nested voice ownership case passed in a focused 58-test coverage batch. 62 unique passing tests, not a single 62-case run.",
+        "originalBatchSeconds": 27,
+        "focusedCoveragePassing": 58,
+        "focusedCoverageSeconds": 12
+      },
+      "browser": {
+        "passing": 9,
+        "failures": 0,
+        "skips": 0,
+        "flaky": 0,
+        "durationSeconds": 62.874328,
+        "cases": [
+          {
+            "title": "actual formation harmony follows physical spread and removal while desktop paints preserve voice ownership",
+            "status": "expected",
+            "durationMs": 6488
+          },
+          {
+            "title": "actual desktop cavities and workers preserve topology binding across sculpting stale results and native take reopening",
+            "status": "expected",
+            "durationMs": 5057
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under game-unlinked @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 2652
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under bpm-linked-clamped @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 3792
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under game-linked @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 4169
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under bpm-unlinked @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 3547
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under paused @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 2953
+          },
+          {
+            "title": "sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices",
+            "status": "expected",
+            "durationMs": 3809
+          },
+          {
+            "title": "external clock input locks transport, follows SPP, stops on loss and stays stopped after reconnect",
+            "status": "expected",
+            "durationMs": 3710
+          }
+        ],
+        "receiptsArtifact": {
+          "path": "docs/validation/replay-admission-desktop-2026-10-30.json",
+          "bytes": 430455,
+          "sha256": "7dee5e0b1cb862cdad3b9ec159cd5903c0d80b43586276b655d430c84466e94d"
+        }
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 1156,
+            "covered": 1064,
+            "skipped": 0,
+            "pct": 92.04
+          },
+          "statements": {
+            "total": 1156,
+            "covered": 1064,
+            "skipped": 0,
+            "pct": 92.04
+          },
+          "functions": {
+            "total": 112,
+            "covered": 96,
+            "skipped": 0,
+            "pct": 85.71
+          },
+          "branches": {
+            "total": 1349,
+            "covered": 910,
+            "skipped": 0,
+            "pct": 67.45
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalJournalCanonical.js": {
+          "lines": {
+            "total": 40,
+            "covered": 40,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 8,
+            "covered": 8,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 40,
+            "covered": 40,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 37,
+            "covered": 32,
+            "skipped": 0,
+            "pct": 86.48
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalMusicEngine.js": {
+          "lines": {
+            "total": 638,
+            "covered": 559,
+            "skipped": 0,
+            "pct": 87.61
+          },
+          "functions": {
+            "total": 42,
+            "covered": 35,
+            "skipped": 0,
+            "pct": 83.33
+          },
+          "statements": {
+            "total": 638,
+            "covered": 559,
+            "skipped": 0,
+            "pct": 87.61
+          },
+          "branches": {
+            "total": 866,
+            "covered": 534,
+            "skipped": 0,
+            "pct": 61.66
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalObserverResources.js": {
+          "lines": {
+            "total": 61,
+            "covered": 61,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 14,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 92.85
+          },
+          "statements": {
+            "total": 61,
+            "covered": 61,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 81,
+            "covered": 63,
+            "skipped": 0,
+            "pct": 77.77
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalReperformance.js": {
+          "lines": {
+            "total": 417,
+            "covered": 404,
+            "skipped": 0,
+            "pct": 96.88
+          },
+          "functions": {
+            "total": 48,
+            "covered": 40,
+            "skipped": 0,
+            "pct": 83.33
+          },
+          "statements": {
+            "total": 417,
+            "covered": 404,
+            "skipped": 0,
+            "pct": 96.88
+          },
+          "branches": {
+            "total": 365,
+            "covered": 281,
+            "skipped": 0,
+            "pct": 76.98
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "e2e/procgen-workstation-transport.spec.js",
+          "bytes": 11886,
+          "sha256": "3853e4924c0b090e9bfa89ec252f10b46f5787cedc05231d83582a6329d21845"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalJournalCanonical.js",
+          "bytes": 2722,
+          "sha256": "76c153dd21c488dc1c1b2661083c5192cbafdf00b8d1fa383c6c6a2987221a0a"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+          "bytes": 84898,
+          "sha256": "14b177fec917de3eee6c805d886f4a87415299083d44c8b4fc4aaf139c5d3f98"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalObserverResources.js",
+          "bytes": 5448,
+          "sha256": "af19fafa73b7734cff51ddf6c70a5af1186ed7df0ed1de2e597fd9235195bf39"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalReperformance.js",
+          "bytes": 39780,
+          "sha256": "a287bf8e96aa412181a72c24fe07652f048f6fd817863ddda08b049b317e0870"
+        },
+        {
+          "path": "test/causal-observer-resources.test.js",
+          "bytes": 7988,
+          "sha256": "11a7ffdec6d2552e64799fa558a10a073b9fb63decdec65eedde17b40fd53233"
+        },
+        {
+          "path": "test/procgen-tonal-interpretation.test.js",
+          "bytes": 9278,
+          "sha256": "9a35e674a238365f1523c19e5681b18976f0ca0b492e8639919d6baf26ed4eda"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 294,
+          "sha256": "30e018aa587c85f6c5c004c8f543d551965a9e2c8d0bc5bdf8874d5ca7d48ba1"
+        }
+      ]
+    },
+    "evidence": {
+      "pausedReplay": {
+        "compatibilityMatch": true,
+        "baselinePeakAccountedBytes": 401934133,
+        "finalPeakAccountedBytes": 348460531,
+        "reductionBytes": 53473602,
+        "baselineCheckpointReferences": [
+          {
+            "bytes": 19898,
+            "nodes": 1609,
+            "sequence": 0
+          },
+          {
+            "bytes": 19898,
+            "nodes": 1609,
+            "sequence": 0
+          },
+          {
+            "bytes": 20367,
+            "nodes": 1634,
+            "sequence": 4
+          }
+        ],
+        "finalCheckpointReferences": [
+          {
+            "bytes": 19898,
+            "nodes": 1609,
+            "sequence": 0
+          },
+          {
+            "bytes": 19898,
+            "nodes": 1609,
+            "sequence": 0
+          },
+          {
+            "bytes": 20339,
+            "nodes": 1634,
+            "sequence": 4
+          }
+        ],
+        "denials": 0,
+        "kind": "Declared shared-budget accounting estimates in two separate local runs; not physical heap or hardware measurement."
+      },
+      "tightHeadroom": "Small valid restore plus unchanged snapshot succeeds with 2MiB temporary headroom above retained admission; 4096-byte headroom refuses before the callback; false release retains pressure and blocks reuse.",
+      "nestedOwnership": "Mutating nested imported pitch, tonal field and cause after restore leaves cached state and future physical intents unchanged; cached nested pitch is frozen."
+    },
+    "ci398": {
+      "head": "bf81145d0a18497c6fe4a52187097c7bd119c2bf",
+      "runId": 41026410394,
+      "jobs": {
+        "test": 123965466386,
+        "lifecycle": 123965465931,
+        "windows": 123965466344,
+        "linux": 123965466447
+      },
+      "status": "All four jobs success; policy and dependency review success. Raw report/archive/source audit not yet performed; latest independently verified checkpoint remains396."
+    },
+    "priorFailure": {
+      "ci397": {
+        "runId": 41019738187,
+        "jobId": 123944087495,
+        "requestedBytes": 57671680,
+        "availableBytes": 14764987,
+        "stage": "Not recorded by that runtime.",
+        "localReproduction": false
+      },
+      "limits": "The local baseline and CI398 passed before this repair. This proves lower declared local staging pressure and transactional ownership; it does not prove the exact historical Linux allocation phase."
+    },
+    "limits": [
+      "No full local suite repeated. CI for this new source remains pending publication.",
+      "Broad combined-scene estimate calibration and unrelated replay/capture/storage acceptance remain open.",
+      "No physical MIDI, acoustic, subjective listening or archived-exact-runtime qualification."
+    ],
+    "issueOutcome": "Keep1104/1087/1234 open for their remaining acceptance requirements; continue incremental topology work under1183."
+  }
 }

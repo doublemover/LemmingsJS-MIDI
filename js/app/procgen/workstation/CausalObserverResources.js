@@ -1,4 +1,5 @@
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
+import { estimateJournalFootprint } from './CausalJournalCanonical.js';
 
 const MiB = 1048576;
 // Declared JS/native-independent estimates accompany local entry/work/byte caps;
@@ -41,13 +42,19 @@ export function createCausalObserverResources({ resourceBudget, ...capacity } = 
     });
   };
   const admitGraph = graph => prepareGraph(graph).commit();
-  const stage = (kind, operation) => {
+  const admitStage = (kind, operation, bytes) => {
     check(); if (activeOperation) throw new Error('Causal observer staging is already active.');
-    const lease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-observer-staging', kind, category: 'candidate', bytes: profile.stateBytes + profile.scratchBytes });
+    const lease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-observer-staging', kind, category: 'candidate', bytes });
     activeOperation = true;
     try { return operation(); } finally { activeOperation = false; try { lease.release(); } catch (error) { retirementError = error; throw error; } }
   };
-  return Object.freeze({ check, admitGraph, prepareGraph, stage,
+  const stage = (kind, operation) => admitStage(kind, operation, profile.stateBytes + profile.scratchBytes);
+  const stageInput = (kind, input, operation) => {
+    check(); const inventory = estimateJournalFootprint(input, { maxBytes: 128 * MiB, maxNodes: 2097152 });
+    const bytes = Math.min(profile.stateBytes + profile.scratchBytes, Math.max(MiB, inventory.bytes * 12 + inventory.nodes * 192 + 65536));
+    return admitStage(kind, operation, bytes);
+  };
+  return Object.freeze({ check, admitGraph, prepareGraph, stage, stageInput,
     diagnostics: () => Object.freeze({ ...profile, reservation: owner.receipt(), activeOperation, disposed, pendingGraphProposals: pending.size, retirementError: retirementError?.message || null, retentionPolicy: 'feature-high-water-until-owner-retirement' }),
     dispose() { if (retirementError) throw retirementError; if (disposed) return false; if (activeOperation) throw new Error('Causal observer operation is still active.'); owner.release(); pending.clear(); disposed = true; return true; }
   });

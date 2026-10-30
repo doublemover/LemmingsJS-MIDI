@@ -3,7 +3,7 @@ import { validatePreparedBodyStrike } from '../../../midi/content/PreparedBodySt
 import { captureCircularContactCoordinate } from '../../../midi/content/CircularSpectrum.js';
 import { registerPhysicalGraphAdmission } from '../PhysicalGraphAdmission.js';
 import { createCausalObserverResources } from './CausalObserverResources.js';
-import { estimateJournalBytes } from './CausalJournalCanonical.js';
+import { estimateJournalBytes, cloneJournalData } from './CausalJournalCanonical.js';
 import { validateSwarmReducer, createSwarmReducer } from './physical/SwarmReducer.js';
 import { validatePhraseCargoStations, createPhraseCargoObserver } from './physical/PhraseCargo.js';
 import { validatePhysicalFeedback } from './physical/PhysicalFeedbackSchema.js';
@@ -527,15 +527,25 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     ...(record.startedTick != null ? { startedTick: record.startedTick } : {}), ...(record.lastExpression ? { lastExpression: Object.freeze({ ...record.lastExpression }), lastExpressionTick: record.lastExpressionTick } : {}),
     ...(record.physicalSourceKinds.length ? { physicalSourceKinds: record.physicalSourceKinds } : {}),
     ...(record.lifetimeScope ? { lifetimeScope: record.lifetimeScope, scopeInstanceId: record.scopeInstanceId } : {}) })));
+  const captureSnapshot = (performance, state = { graph, bodyPreparations, swarm, generation, recoveryRequired, cargo, activity, motifs, encounters, tones, instrumentEpochs, travel, actionAdmission, rhythmic, physical, cursor, active, suppressed }) => Object.freeze({
+    version: 1, ...(state.graph.preparedSurfaces?.length || state.bodyPreparations.diagnostics().heldPreparations ? { preparedSurfaces: state.bodyPreparations.snapshot() } : {}),
+    swarm: state.swarm.snapshot(), generation: state.generation, graphRevision: state.graph.revision, recoveryRequired: state.recoveryRequired,
+    ...(state.graph.cargoStations?.length ? { cargo: state.cargo.snapshot() } : {}), ...(state.graph.activityWindows?.length ? { activity: state.activity.snapshot() } : {}),
+    ...(state.graph.motifs?.length ? { motifs: state.motifs.snapshot() } : {}), ...(state.graph.encounters?.length ? { encounters: state.encounters.snapshot() } : {}),
+    ...(state.tones.enabled() ? { tonalInterpretation: state.tones.snapshot() } : {}), instrumentEpochs: Object.freeze(Object.fromEntries(state.instrumentEpochs)), travel: state.travel.snapshot(),
+    ...(state.graph.instruments.some(instrument => instrument.actionVoicePolicy) ? { actionAdmission: state.actionAdmission.snapshot() } : {}),
+    ...(state.graph.instruments.some(instrument => instrument.response) ? { rhythmicResponses: state.rhythmic.snapshot() } : {}),
+    ...(state.graph.pickups?.length || state.graph.ensembles?.length || state.graph.routes?.length ? { physicalDomain: state.physical.snapshot() } : {}), physicalCursor: Object.freeze({ ...state.cursor }),
+    ...(state.graph.topologyRegions?.length ? { topologyDefinitions: freezePhysical(state.graph.topologyRegions.map(region => [region.id, topologyDefinitionSignature(region)])) } : {}),
+    ...(performance ? { performanceInputs: validateCausalPerformanceState(performance) } : {}), active: serializeVoices(state.active),
+    ...(state.suppressed.size ? { suppressed: serializeVoices(state.suppressed) } : {})
+  });
   const snapshot = () => { getCurrentGraph(); const performance = getPerformanceState(); if (snapshotCache && snapshotCache.performanceKey === JSON.stringify(performance)) return snapshotCache.value;
-    const value = resourceOwner.stage('causal-observer-snapshot-copy', () => Object.freeze({ version: 1, ...(graph.preparedSurfaces?.length || bodyPreparations.diagnostics().heldPreparations ? { preparedSurfaces: bodyPreparations.snapshot() } : {}), swarm: swarm.snapshot(), generation, graphRevision: graph.revision, recoveryRequired, ...(graph.cargoStations?.length ? { cargo: cargo.snapshot() } : {}), ...(graph.activityWindows?.length ? { activity: activity.snapshot() } : {}), ...(graph.motifs?.length ? { motifs: motifs.snapshot() } : {}), ...(graph.encounters?.length ? { encounters: encounters.snapshot() } : {}), ...(tones.enabled() ? { tonalInterpretation: tones.snapshot() } : {}), instrumentEpochs: Object.freeze(Object.fromEntries(instrumentEpochs)), travel: travel.snapshot(), ...(graph.instruments.some(instrument => instrument.actionVoicePolicy) ? { actionAdmission: actionAdmission.snapshot() } : {}), ...(graph.instruments.some(instrument => instrument.response) ? { rhythmicResponses: rhythmic.snapshot() } : {}), ...(graph.pickups?.length || graph.ensembles?.length || graph.routes?.length ? { physicalDomain: physical.snapshot() } : {}), physicalCursor: Object.freeze({ ...cursor }),
-      ...(graph.topologyRegions?.length ? { topologyDefinitions: freezePhysical(graph.topologyRegions.map(region => [region.id, topologyDefinitionSignature(region)])) } : {}),
-      ...(performance ? { performanceInputs: validateCausalPerformanceState(performance) } : {}),
-      active: serializeVoices(active), ...(suppressed.size ? { suppressed: serializeVoices(suppressed) } : {}) }));
+    const value = resourceOwner.stage('causal-observer-snapshot-copy', () => captureSnapshot(performance));
     snapshotCache = { value, performanceKey: JSON.stringify(performance) }; return value; };
   const restore = value => {
     const current = getCurrentGraph();
-    return resourceOwner.stage('causal-observer-restore-old-plus-new', () => {
+    return resourceOwner.stageInput('causal-observer-restore-old-plus-new', { checkpoint: value, graph: current }, () => {
       estimateJournalBytes(value, { maxBytes: 64 * 1048576, maxNodes: 1048576 });
       if (value?.performanceInputs && JSON.stringify(validateCausalPerformanceState(value.performanceInputs)) !== JSON.stringify(validateCausalPerformanceState(getPerformanceState())))
         throw new Error('Causal performance inputs differ from the checkpoint.');
@@ -559,7 +569,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           record.lastExpression && (!plain(record.lastExpression) || Object.entries(record.lastExpression).some(([key, value]) => !['pitchOffsetCents', 'pressure01', 'pan01'].includes(key) || !Number.isFinite(value)) || !Number.isSafeInteger(record.lastExpressionTick)) ||
           !Number.isSafeInteger(record.actorId) || !Number.isSafeInteger(record.generation) || record.generation !== value.generation ||
           record.graphRevision !== current.revision || !validControlKinds(record.physicalSourceKinds || [])) throw new Error('Invalid causal voice checkpoint.');
-          seenVoices.add(record.voiceId); next.set(record.voiceId, { ...record, instrument, definitionRevision: value.instrumentEpochs && Object.hasOwn(value.instrumentEpochs, instrument.id) ? value.instrumentEpochs[instrument.id] : null, physicalSourceKinds: Object.freeze([...(record.physicalSourceKinds || [])].sort()) });
+          seenVoices.add(record.voiceId); next.set(record.voiceId, { ...freezePhysical(cloneJournalData(record, { maxBytes: 64 * 1048576, maxNodes: 1048576 })), instrument, definitionRevision: value.instrumentEpochs && Object.hasOwn(value.instrumentEpochs, instrument.id) ? value.instrumentEpochs[instrument.id] : null, physicalSourceKinds: Object.freeze([...(record.physicalSourceKinds || [])].sort()) });
         } return next;
       };
       if (value.instrumentEpochs != null && (!plain(value.instrumentEpochs) || Object.entries(value.instrumentEpochs).some(([id, epoch]) => !current.instruments.some(instrument => instrument.id === id) || !Number.isSafeInteger(epoch) || epoch < 0 || epoch > current.revision))) throw new Error('Invalid instrument owner epochs.');
@@ -581,7 +591,12 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       if (value.rhythmicResponses) { nextRhythmic.restore(value.rhythmicResponses); if (value.rhythmicResponses.version === 2 && (value.rhythmicResponses.currentTick !== nextCursor.tick || value.rhythmicResponses.boundary !== (nextCursor.worldId == null ? null : `${nextCursor.worldId}:${nextCursor.generation}`))) throw new Error('Rhythmic response continuation differs from the physical boundary.'); }
       if (value.physicalDomain) nextPhysical.restore(value.physicalDomain);
       if (value.travel) nextTravel.restore(value.travel);
-      snapshotCache = null; bodyPreparations = nextBodyPreparations; latestBodyPreparations = null; swarm = nextSwarm; cargo = nextCargo; activity = nextActivity; motifs = nextMotifs; encounters = nextEncounters; latestPhysicalAnalysis = null; tones = nextTones; actionAdmission = nextAdmission; rhythmic = nextRhythmic; physical = nextPhysical; travel = nextTravel;
+      const nextPerformance = getPerformanceState(), nextEpochs = value.instrumentEpochs ? new Map(Object.entries(value.instrumentEpochs)) : instrumentEpochs;
+      const restoredSnapshot = captureSnapshot(nextPerformance, { graph: current, bodyPreparations: nextBodyPreparations, swarm: nextSwarm, generation: value.generation,
+        recoveryRequired: value.recoveryRequired === true, cargo: nextCargo, activity: nextActivity, motifs: nextMotifs, encounters: nextEncounters, tones: nextTones,
+        instrumentEpochs: nextEpochs, travel: nextTravel, actionAdmission: nextAdmission, rhythmic: nextRhythmic, physical: nextPhysical, cursor: nextCursor, active: next, suppressed: nextSuppressed });
+      const restoredCache = { value: restoredSnapshot, performanceKey: JSON.stringify(nextPerformance) };
+      snapshotCache = restoredCache; bodyPreparations = nextBodyPreparations; latestBodyPreparations = null; swarm = nextSwarm; cargo = nextCargo; activity = nextActivity; motifs = nextMotifs; encounters = nextEncounters; latestPhysicalAnalysis = null; tones = nextTones; actionAdmission = nextAdmission; rhythmic = nextRhythmic; physical = nextPhysical; travel = nextTravel;
       active.clear(); byActor.clear(); suppressed.clear(); for (const [id, record] of next) addVoice(id, record, true);
       for (const [id, record] of nextSuppressed) suppressed.set(id, record);
       if (value.instrumentEpochs) { instrumentEpochs.clear(); for (const [id, epoch] of Object.entries(value.instrumentEpochs)) instrumentEpochs.set(id, epoch); }

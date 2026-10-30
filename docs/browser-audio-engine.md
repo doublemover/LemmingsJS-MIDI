@@ -1567,6 +1567,15 @@ unchanged boundary snapshots reuse their immutable projection rather than copyin
 all observers for every display/save consumer. The trace also has a byte ceiling,
 with omission diagnostics, independently of its row limit.
 
+Restore staging now inventories validated input bytes/nodes without encoding a
+second copy, admits a bounded input-scaled temporary estimate, and constructs a
+normalized immutable snapshot before publishing the new owners. Nested imported
+voice data is copied independently. Reading that unchanged restored boundary
+reuses its projection without another full-capacity staging lease. Retained
+high-water capacity and hard local/global limits still apply; these are declared
+estimates, not measured browser heap. Replay failure receipts identify the
+preparation stage so allocation refusals can be attributed.
+
 The retained snapshot is borrowed until the next engine mutation/disposal; any
 longer-lived checkpoint/archive owner must account its own retained copy. Profiles
 are explicitly estimates over local bounded state, not browser heap measurements.
