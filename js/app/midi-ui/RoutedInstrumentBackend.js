@@ -176,11 +176,11 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     },
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count,
     capabilities: Object.freeze({ routedInstruments: true, independentSamePitch: true, ownedGates: true, renderAcknowledgment: false }),
-    renderDiagnostics: () => { collect(); return Object.freeze({ children: children.size, assignments: assignments.size, retainedVoices: voices.size,
+    renderDiagnostics: (options = {}) => { collect(); return Object.freeze({ children: children.size, assignments: assignments.size, retainedVoices: voices.size,
       maxLanes, maxChildren, maxVoices, metadata: metadata.receipt(), collectedVoices: collected, routeRevision, displayObservers: displayObservers.size, displayFailures: [...displayObservers].reduce((sum, observer) => sum + observer.failures, 0),
       unknownRetirement: [...children.values()].filter(child => child.retirement?.outcome === 'partial').length,
       renderers: Object.freeze([...children.values()].map(child => Object.freeze({ key: child.key, assignedLanes: child.assignedLanes, retirement: child.retirement?.outcome || null,
-        diagnostics: child.backend.renderDiagnostics() }))) }); },
+        diagnostics: child.backend.renderDiagnostics(options) }))) }); },
     dispose: () => { disposed = true; let sources; return retirement.retire([
       { name: 'owned-renderers', run: () => sources = createProcgenRetirementScope().retire([
         ...[...displayObservers].map((observer, index) => ({ name: 'display-' + index, run: observer.release })),

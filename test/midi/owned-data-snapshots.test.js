@@ -4,8 +4,19 @@ import { createOwnedDataSnapshots } from '../../js/app/resources/OwnedDataSnapsh
 import { createBackgroundJobService } from '../../js/app/resources/BackgroundJobService.js';
 import { createBackgroundWorkerAdmission } from '../../js/app/resources/BackgroundWorkerAdmission.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
+import { createCausalViewWorkspace } from '../../js/app/procgen/workstation/CausalViewWorkspace.js';
 
 describe('independent owned data snapshots', () => {
+  it('copies the published projection while retaining a larger admitted query workspace until the copy completes', async () => {
+    const budget = createResourceBudget({ limitBytes: 32 * 1048576 }), admission = createBackgroundWorkerAdmission(), fallback = createBackgroundJobService({ admission, Worker: null });
+    let request, sourceBytesDuringCopy;
+    const jobs = { async compute(value) { request = value; sourceBytesDuringCopy = budget.diagnostics().accountedBytes; return fallback.compute(value); } };
+    const workspace = createCausalViewWorkspace({ journal: {}, resourceBudget: budget, jobs, ownerId: 'small-projection', baseBytes: 20 * 1048576 });
+    const input = { intents: [{ id: 'one', seconds: 2 }], revision: 1 }, result = await workspace.publish(input, { sourceRevision: 1, maxBytes: 32 * 1048576 });
+    expect(sourceBytesDuringCopy).to.equal(20 * 1048576); expect(request.estimatedPeakBytes).to.be.lessThan(128 * 1024); expect(request.maxBytes).to.be.lessThan(1024);
+    expect(result.value).to.deep.equal(input); expect(result.value).not.to.equal(input); expect(workspace.diagnostics().reservation.state).to.equal('released');
+    expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); result.release(); expect(budget.diagnostics().accountedBytes).to.equal(0); fallback.dispose(); admission.dispose();
+  });
   it('keeps refused producer retirement visible without retrying its callback', async () => {
     let attempts = 0; const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
     try {

@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { encodeBackgroundSnapshotPages, createBackgroundSnapshotReceiver, backgroundSnapshotTransfers, BACKGROUND_SNAPSHOT_PACKET_BYTES, BACKGROUND_SNAPSHOT_PACKET_OPERATIONS } from '../js/app/resources/BackgroundSnapshotPages.js';
+import { encodeBackgroundSnapshotPages, inspectBackgroundSnapshot, createBackgroundSnapshotReceiver, backgroundSnapshotTransfers, BACKGROUND_SNAPSHOT_PACKET_BYTES, BACKGROUND_SNAPSHOT_PACKET_OPERATIONS } from '../js/app/resources/BackgroundSnapshotPages.js';
+import { canonicalDataText } from '../js/core/CanonicalData.js';
 const limits = { maxBytes: 1048576, maxNodes: 100000, estimatedPeakBytes: 16 * 1048576 };
 const roundTrip = async (value, extra = {}) => {
   const receiver = createBackgroundSnapshotReceiver({ ...limits, ...extra.receiverOptions }), packets = []; let sequence = 0;
@@ -10,6 +11,23 @@ const roundTrip = async (value, extra = {}) => {
   return { value: receiver.finish(sequence), packets };
 };
 describe('bounded owned background snapshot pages', () => {
+  it('measures a JSON projection cooperatively with a conservative canonical and retained representation bound', async () => {
+    const input = { strings: ['\ud800', '世界', '\n"', '💾'], values: Array.from({ length: 3000 }, (_, index) => ({ index, value: -0 })) };
+    let yields = 0; const measured = await inspectBackgroundSnapshot(input, { ...limits, yieldTask: async () => { yields++; } });
+    const canonical = canonicalDataText(input, limits), receiver = createBackgroundSnapshotReceiver(limits); let receipt;
+    for await (const packet of encodeBackgroundSnapshotPages(input, { ...limits, yieldTask: async () => {} })) receipt = receiver.push(packet);
+    expect(measured.canonicalMaxBytes).to.be.at.least(canonical.bytes.length); expect(measured.nodes).to.equal(canonical.nodes);
+    expect(measured.retainedEstimateBytes).to.equal(receipt.retainedEstimateBytes); expect(yields).to.be.greaterThan(1); receiver.dispose();
+  });
+  it('stops projection inspection on cancellation and refuses non-JSON values without invoking getters', async () => {
+    const controller = new AbortController(); let yields = 0, failure;
+    try { await inspectBackgroundSnapshot(Array(20000).fill(1), { ...limits, signal: controller.signal, yieldTask: async () => { yields++; controller.abort(new Error('projection retired')); } }); } catch (error) { failure = error; }
+    expect(yields).to.equal(1); expect(failure.message).to.equal('projection retired');
+    for (const input of [{ get value() { throw new Error('getter executed'); } }, { bytes: new Uint8Array(10) }, new Array(3)]) {
+      let failure; try { await inspectBackgroundSnapshot(input, limits); } catch (error) { failure = error; }
+      expect(failure?.name).to.equal('BackgroundSnapshotError');
+    }
+  });
   it('copies actual binary views in bounded transferable pages without detaching live sources', async () => {
     const source = new Float32Array(60000); source[34] = -.25; const sharedView = source.subarray(10, 50);
     const input = { source, sharedView, bytes: new DataView(new Uint8Array([1, 2, 3, 4]).buffer), text: 'x\ud800'.repeat(20000), nested: [null, undefined, -0, { yes: true }] };

@@ -7,15 +7,17 @@ export async function qualifyActualCavitySound({ createWorld, descriptor, source
     const capture = async label => { const result = world.terrainTopology.regions.get(region.id)?.current, model = await compileCavitySoundMap(map, region, result); check(model.status === 'ready', label + ' unavailable: ' + model.reason); models.push({ label, model }); return model; };
     try {
       world.hasGroundAt(92, 80); world.configurePhysicalAuthoring(score.scene.causalMappings); listener = batch => { try { intents.push(...engine.processBatch(batch)); } catch (caught) { failure = caught; } }; world.soundEvents.onBatch.on(listener); world.step(); if (failure) throw failure; const initial = await capture('initial-8');
-      for (const [controlId, value, label] of [['chamber-size', 16, 'expanded-16'], ['chamber-throat', 1, 'one-pixel-throat'], ['chamber-throat', 0, 'split-again']]) {
+      const collisionMask = () => Array.from({ length: 18 * 17 }, (_, index) => world.hasGroundAt(79 + index % 18, 63 + Math.floor(index / 18))), initialCollision = collisionMask();
+      for (const [controlId, value, label] of [['chamber-size', 16, 'expanded-16'], ['chamber-throat', 1, 'one-pixel-throat'], ['chamber-throat', 0, 'split-again'], ['chamber-size', 8, 'returned-8']]) {
         const sourceRevision = world.terrainRevision;
         if (label === 'expanded-16') { world._collisionIndices.fill(-1); world._collisionSlots.fill(null); world._laneChunkIndex.fill(-1); world._laneChunk.fill(null); }
         const command = prepareCavityGeometryControl({ scene: score.scene, world, controlId, value, transactionId: 'actual-cavity:' + label }), queued = world.enqueueIntervention(command); check(world.terrainRevision === sourceRevision, 'explicit mask preparation changed collision source'); check(queued.status === 'queued', 'real geometry queue refused'); world.step(); if (failure) throw failure; const receipt = world.interventionState.receipts.findLast(row => row.commandId === command.id); check(receipt?.status === 'accepted', label + ' actual terrain commit refused: ' + receipt?.reason); commands.push(receipt); await capture(label); if (label === 'expanded-16') saved = checkpoint.captureProcgenCheckpoint(world);
       }
       const wide = models[1].model; if (map.bodyRecipe !== 'throat-duet') { check(initial.bindings[0].frequencyHz === 220 && wide.bindings[0].frequencyHz === 110 && wide.bindings[0].areaPixels2 === 256, 'actual8/16target mapping'); }
       else { check(initial.bindings.map(row => row.frequencyHz).join() === '220,330' && models[2].model.openingWidthPixels === 1, 'actual anchored duet mapping'); check(initial.bindings.every((row, index) => row.bodyId === models[2].model.bindings[index].bodyId), 'anchor body identity moved with component array order'); }
+      check(JSON.stringify(collisionMask()) === JSON.stringify(initialCollision), 'returning to8 left a wider collision barrier in the contact approach');
       check(!intents.length, 'geometry-only changes fabricated physical attacks'); checkpoint.restoreProcgenCheckpoint(world, JSON.parse(JSON.stringify(saved))); const restored = await capture('restored-expanded'); check(restored.bodyIdentityHash === wide.bodyIdentityHash, 'restored sound body differs from exact source geometry');
-      results.push({ recipe: map.bodyRecipe, models, commands, geometryOnlyIntents: intents.length, restoredBodyEqual: true });
+      results.push({ recipe: map.bodyRecipe, models, commands, geometryOnlyIntents: intents.length, collisionRoundtripEqual: true, restoredBodyEqual: true });
     } finally { if (listener) world.soundEvents.onBatch.off(listener); engine.dispose(); await owner.dispose(); }
   }
   const work = [];

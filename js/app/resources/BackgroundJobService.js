@@ -188,6 +188,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
     } catch (error) {
       retire(error); release();
       const reported = error instanceof Error && Object.isExtensible(error) ? error : Object.assign(new Error(String(error?.message || error)), { name: String(error?.name || 'BackgroundJobError'), code: error?.code, cause: error });
+      reported.backgroundJobKind = kind;
       if (lease) { reported.backgroundRetirement = lease.getState(); reported.backgroundRetirementCompletion = retirementWork || Promise.resolve(reported.backgroundRetirement); }
       throw reported;
     }

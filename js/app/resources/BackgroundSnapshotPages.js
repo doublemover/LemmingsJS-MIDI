@@ -59,6 +59,30 @@ function* snapshotOperations(value, limits) {
     } finally { active.delete(input); }
   };
   yield* visit(value, 0);
+  return { dataBytes, nodes, retainedEstimateBytes: dataBytes * 2 + nodes * 64 };
+}
+// Inspect the transport's own traversal without retaining packets or cloning the
+// source. One operation and the depth-limited iterator stack are live at a time.
+export async function inspectBackgroundSnapshot(value, { maxBytes, maxNodes = 4000000, estimatedPeakBytes = 512 * 1048576,
+  signal, isCurrent = () => true, yieldTask = yieldBackgroundTask, now = () => performance.now() } = {}) {
+  const limits = { maxBytes, maxNodes, estimatedPeakBytes }; validLimits(limits);
+  const check = () => { signal?.throwIfAborted(); if (!isCurrent()) throw fail('Snapshot source ownership changed.'); };
+  const iterator = snapshotOperations(value, limits); let canonicalBytes = 0, units = 0, started = now(); check();
+  try {
+    for (let next = iterator.next();;) {
+      if (next.done) { check(); return Object.freeze({ ...next.value, canonicalMaxBytes: Math.max(1, Math.min(maxBytes, canonicalBytes)) }); }
+      const [kind, data] = next.value;
+      if (kind === 'value') {
+        canonicalBytes += Object.is(data, -0) ? 2 : String(data).length;
+      } else if (kind === 'string') canonicalBytes += data * 6 + 2;
+      else if (kind === 'key') canonicalBytes += data.length * 6 + 4;
+      else if (kind === 'array') canonicalBytes += Math.max(0, data - 1) + 2;
+      else if (kind === 'object') canonicalBytes += 2;
+      else if (!['text', 'string-end', 'end'].includes(kind)) throw fail('Canonical snapshots require JSON data.');
+      if (++units % 256 === 0 || now() - started >= 3) { check(); await yieldTask({ signal }); check(); started = now(); }
+      next = iterator.next();
+    }
+  } finally { iterator.return(); }
 }
 export async function* encodeBackgroundSnapshotPages(value, { maxBytes = 64 * 1048576, maxNodes = 4000000, estimatedPeakBytes,
   signal, ownedTransferBuffers = null, allowOwnedWasmModule = false, isCurrent = () => true, yieldTask = yieldBackgroundTask, now = () => performance.now(), sliceMs = 3, onSlice = () => {} } = {}) {

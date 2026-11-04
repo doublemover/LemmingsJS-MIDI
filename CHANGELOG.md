@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Restore chamber collision walls exactly after resizing, expose finite fresh-contact releases, and size source snapshots from their published projection while preserving shared query ownership.
 - Compare recorded modal body revisions on one captured phrase, with measured RMS attenuation on PRELISTEN and unchanged raw WAV gain.
 - Revoice captured changing-body controls through bounded owned graph histories, preserving original source attacks, recorded crossfades, retained tails and immutable WAV provenance.
 - Renew physical audio execution leases immediately after Listen is re-enabled on the same context, and bound configurable presentation delay independently of device latency.

@@ -8,9 +8,13 @@ export function prepareCavityGeometryControl({ scene, world, controlId, value, t
     const [right, bottom, minimum, maximum] = numbers;
     if (minimum !== 8 || maximum !== 16 || control.minimum !== minimum || control.maximum !== maximum || control.step !== 8 || right < maximum + 1 || bottom < maximum + 1) throw new TypeError('The chamber square definition changed.');
     for (let y = bottom - maximum - 1; y < bottom; y++) {
-      if (y < bottom - value) spans.push({ x1: right - maximum - 1, x2: right, y, solid: true });
-      else spans.push({ x1: right - maximum - 1, x2: right - value, y, solid: true }, { x1: right - value, x2: right, y, solid: false });
-      spans.push({ x1: right, x2: right + 1, y, solid: true });
+      const outerLeft = right - maximum - 1, left = right - value - 1, roof = bottom - value - 1;
+      if (y < roof) spans.push({ x1: outerLeft, x2: right + 1, y, solid: false });
+      else {
+        if (left > outerLeft) spans.push({ x1: outerLeft, x2: left, y, solid: false });
+        if (y === roof) spans.push({ x1: left, x2: right + 1, y, solid: true });
+        else spans.push({ x1: left, x2: left + 1, y, solid: true }, { x1: left + 1, x2: right, y, solid: false }, { x1: right, x2: right + 1, y, solid: true });
+      }
     }
   } else if (parts[0] === 'cavity-throat' && numbers.length === 2 && control.minimum === 0 && control.maximum === 1 && control.step === 1) spans.push({ x1: numbers[0], x2: numbers[0] + 1, y: numbers[1], solid: value === 0 });
   else throw new TypeError('The scene has no supported chamber geometry control.');

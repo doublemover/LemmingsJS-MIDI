@@ -44,9 +44,9 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
     throw new TypeError('Causal rendering requires owned journal sources, shared budgets and worker execution.');
   const ownerId = 'causal-audio-render-' + (++nextOwner), retirement = createProcgenRetirementScope(), unresolved = new Set(), bundles = new Set();
   const materialResources = createAudioResourceLeases({ resourceBudget, ownerPrefix: ownerId + '-material' });
-  let disposed = false, active = null, prepared = null, serial = 0, phase = 'idle', progress = null, lastError = null;
+  let disposed = false, active = null, prepared = null, serial = 0, phase = 'idle', progress = null, lastError = null, lastFailure = null;
   const state = () => Object.freeze({ schema: 'lemmings-causal-render-state/v1', phase, disposed, active: !!active, progress,
-    prepared: prepared?.metadata() || null, materialResources: materialResources.diagnostics(), unresolvedRetirement: unresolved.size, error: lastError,
+    prepared: prepared?.metadata() || null, materialResources: materialResources.diagnostics(), unresolvedRetirement: unresolved.size, error: lastError, failure: lastFailure,
     capabilities: Object.freeze({ intentSine: true, intentOwnedSources: OWNED_SOURCE_IDS, intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', ownedEffects: Object.freeze(['gain', 'feedback-delay', 'nonlinear-chain']), nativeEffects: true, nativeConvolution: true, nativeConvolutionSources: Object.freeze([...OWNED_SOURCE_IDS, ...NATIVE_OFFLINE_SOURCE_IDS]), nativeConvolutionTopology: 'one-full-native-and-owned-worklet-graph-with-offline-completion-fences', maxSharedEffectTaps: 8, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
   const report = () => { try { onState(state()); } catch { /* Rendering ownership does not depend on view callbacks. */ } };
   const discardArtifact = async artifact => {
@@ -79,7 +79,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
     let settleSource, rejectSource; operation.sourceSettled = new Promise((resolve, reject) => { settleSource = resolve; rejectSource = reject; }); operation.sourceSettled.catch(() => {});
     const cancel = () => { controller.abort(externalSignal.reason); phase = 'retiring'; report(); };
     externalSignal?.addEventListener('abort', cancel, { once: true }); if (externalSignal?.aborted) cancel();
-    active = operation; phase = 'preparing-source'; progress = null; lastError = null; report();
+    active = operation; phase = 'preparing-source'; progress = null; lastError = null; lastFailure = null; report();
     const check = () => { controller.signal.throwIfAborted(); if (disposed || !isCurrent()) throw failure('stale-render-source', 'The selected render request has changed.'); };
     operation.promise = (async () => {
       const candidates = []; let bundle = null, result = null, originalError = null, input = null, revoice = null;
@@ -210,7 +210,8 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         check(); bundle = makeBundle(candidates, manifest); result = Object.freeze({ bundle, receipt: operation.job.receipt, ...(comparison ? { comparison: comparison.comparison } : {}) });
       } catch (error) {
         if (error.backgroundRetirementCompletion) error.backgroundRetirement = await error.backgroundRetirementCompletion;
-        operation.producerState = error.backgroundRetirement || null; originalError = error; lastError = String(error?.message || 'Causal render failed.').slice(0, 512); }
+        operation.producerState = error.backgroundRetirement || null; originalError = error; lastError = String(error?.message || 'Causal render failed.').slice(0, 512);
+        lastFailure = Object.freeze({ phase, code: error.code || error.name, jobKind: error.backgroundJobKind || null, requestedBytes: error.requestedBytes ?? null, availableBytes: error.availableBytes ?? null }); }
       finally {
         input = revoice = null;
         externalSignal?.removeEventListener('abort', cancel); phase = 'retiring'; report();

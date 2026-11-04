@@ -818,86 +818,47 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "2504b778b90b388261c23caf7992cef22c2872ee",
+    "head": "3245dd9fe8562b32570900316bd5307cabb39526",
     "status": "success",
-    "run": 41055706625,
-    "job": 124062580664,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41055706625",
-    "engineJob": 124062580328,
+    "run": 41905753051,
+    "job": 126839830150,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41905753051",
+    "engineJob": 126839829767,
     "requiredJobs": {
-      "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
+      "test": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7313,
+    "nodePassed": 7364,
     "nodePending": 10,
-    "browserPassed": 307,
+    "browserPassed": 341,
     "desktopPassed": 26,
-    "workstationSmokePassed": 263,
-    "enginePassed": 18,
+    "workstationSmokePassed": 273,
+    "enginePassed": 42,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.82,
-      "statements": 90.82,
-      "branches": 84.2,
-      "functions": 88.66
+      "lines": 90.83,
+      "statements": 90.83,
+      "branches": 84.24,
+      "functions": 88.71
     },
     "benchmark": {
       "status": "success",
-      "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 33730,
-      "thresholds": {
-        "perfP95FrameMsMax": 250,
-        "perfP50TpsMin": 15,
-        "historySpanRatioMin": 0.5,
-        "antsAvgMsMax": 250,
-        "tileCompositionAvgMsMax": 250,
-        "overlayPlaneAvgMsMax": 250,
-        "scaledBlitAvgMsMax": 250
-      },
-      "durationsMs": {
-        "benchPerformance": 10402,
-        "benchHistoryStress": 17237,
-        "benchHotpaths": 6089
-      },
-      "metrics": {
-        "perfP95Frame": 100,
-        "perfP50Tps": 93.96458258042782,
-        "historyRatio": 0.5848333333333333,
-        "antsAvgMs": 18.79,
-        "tileCompositionAvgMs": 3.55,
-        "overlayPlaneAvgMs": 13.21,
-        "scaledBlitAvgMs": 24.14
-      },
-      "failures": [],
-      "diagnostics": [],
-      "measurementValid": true,
-      "scenarios": [
-        {
-          "speed": 30,
-          "ratio": 0.5848333333333333
-        },
-        {
-          "speed": 60,
-          "ratio": 1.0418333333333334
-        }
-      ]
+      "source": "main job step 23"
     },
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1278,
+      "files": 1274,
+      "harnessFiles": 27,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "ea2423307641eb49c424957af7570cd85965a77e54f3b0eeca3f3aa94f4b249b",
-      "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
-      "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
-      "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
-      "facts": 1078,
-      "ticks": 64,
+      "closureDigest": "7f770b380b46f14772ff429ebfdd817a1cf7724e81a6352b696de5655dec6ad0",
+      "nativeClockScenarios": 24,
+      "nativeClockAvailable": 24,
       "nativeAudio": {
         "status": "passed-in-required-lifecycle-journeys",
         "physicalReceiverOrAcoustics": false
@@ -905,67 +866,71 @@
     },
     "nativeCodec": {
       "status": "passed",
-      "linuxJob": 124062580346,
-      "windowsJob": 124062580429,
+      "linuxJob": 126839830371,
+      "windowsJob": 126839830031,
       "commandsPerPlatform": 8829,
-      "boundedProtocolFailuresPerPlatform": 4,
-      "sourceIdentical": true,
-      "verifiedSourceFiles": 8,
       "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
       "outputIdentical": true,
       "deviceIO": false,
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "403cb1d7c8390494f105fa3430b0e6fb9263107a",
+      "testedPrMergeHead": "14e5c35cd8db7e87647eddf3ea130933f46256e7",
       "rawDirtyFlag": true,
-      "testedMergeTree": "6efe6ce83fcd6b36ec7f512140f3022551b86eaa",
-      "publishedHeadTree": "6efe6ce83fcd6b36ec7f512140f3022551b86eaa",
+      "testedMergeTree": "f6925424f9d0008c15c5e70369a3730295cdb064",
+      "publishedHeadTree": "f6925424f9d0008c15c5e70369a3730295cdb064",
       "gitTreesIdentical": true,
-      "inventoryFiles": 1173,
-      "inventorySha256": "3534e3fd695496653dfb893ba0d418cb1d8a186940dd6bd359c1d1a19ee74528",
-      "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+      "inventoryFiles": 1182,
+      "engineInventoryFiles": 1301,
       "allWorkstationSourceFilesMatchPublishedHead": true,
-      "engineInventoryFiles": 1278,
-      "engineRuntimeFiles": 1269,
-      "engineHarnessFiles": 9,
       "allEngineSourceFilesMatchPublishedHead": true,
+      "allReportedSourcePaths": 1460,
+      "allReportedSourcePathsMatchPublishedHead": true,
+      "sbomComponents": 10,
+      "sbomFiles": 373,
+      "sbomComponentGitBytesMatched": true,
       "githubArchiveDigestsMatched": true,
       "reportDigestMatched": true,
-      "mainReportSha256": "ee7344375788d8637c60ba6c7216ed9ac2b4d0ab189a929bb679f67da5015baa",
-      "treeIdentity": "identical Git tree objects"
+      "mainReportSha256": "a5eb66562609f53f7020a17dc306f020a9ac62ab6a732fd62479b82a702e6e4e"
     },
     "artifacts": [
       {
-        "path": ".tmp/ci405-12978439764.zip",
-        "bytes": 1240138,
-        "sha256": "059a78cce3fc5f7b12c6d408679df0e82ae04f5fe9eefb88714d4c31325eb5f4",
-        "githubArtifactId": 12978439764,
+        "path": ".tmp/ci410-main-archive411.zip",
+        "githubArtifactId": 13362289482,
+        "bytes": 1753887,
+        "sha256": "0904213fda3ac6b74f4dda40e7f6d06427e19f55c2abefb07f63aa8f01d6cec6",
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci405-12977461341.zip",
-        "bytes": 163175,
-        "sha256": "d65f7c13623151fd349432a32afdc5da3ac620ab3504cadbaead87023874f667",
-        "githubArtifactId": 12977461341,
+        "path": ".tmp/ci410-archive411-0.zip",
+        "githubArtifactId": 13361985302,
+        "bytes": 1005867,
+        "sha256": "72f210552a472c0e8c81572a840aaaa69fb67dfe11e5a00899e41a9a7640ad82",
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci405-12976816272.zip",
-        "bytes": 2148,
-        "sha256": "0315ca1eb3336b0ed4e42c7d9c59a53f5e706651e0df9a5b65a06f5792b634e6",
-        "githubArtifactId": 12976816272,
+        "path": ".tmp/ci410-archive411-1.zip",
+        "githubArtifactId": 13360845219,
+        "bytes": 2147,
+        "sha256": "4bb8c54f94e0d57cc6366078e9c375f20c02099889e45e0022c4a06a8b8eabb1",
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci405-12976138981.zip",
-        "bytes": 2247,
-        "sha256": "d408c2be9d77b636b2a3e3f303da31a5e2a43b25cd734ef067979e08cf6a8b27",
-        "githubArtifactId": 12976138981,
+        "path": ".tmp/ci410-archive411-2.zip",
+        "githubArtifactId": 13360088514,
+        "bytes": 57407,
+        "sha256": "98adc63f09d79cd53ce4a8bcf3506cb31a6caf4c67a3ec3b6283147e7f1bbe8e",
+        "githubDigestMatched": true
+      },
+      {
+        "path": ".tmp/ci410-archive411-3.zip",
+        "githubArtifactId": 13360078474,
+        "bytes": 2246,
+        "sha256": "33785b0aeb26764e5f95d5086a4ac0a1e4c4ad25481a1ff9ea0efbbaa48c5c67",
         "githubDigestMatched": true
       }
     ],
-    "scope": "All four required jobs plus policy/dependency on the named source. Independently verified all1173workstation/1278engine/both8native source inputs, original ZIP digests, saved main report digest and engine semantic parity. Reported dirty synthetic merge has the exact same Git tree as the published head; generated-file dirtiness is preserved. This is the prior full-source checkpoint, not a green claim for uncommitted406development, hardware or listening."
+    "scope": "All four required jobs plus policy/dependency on the named published source. Independent main/engine qualifiers, 1,460 distinct commit-byte matches, five original ZIP digests, saved report digest, ten SBOM component hashes and regenerated 8,829-command native corpus are verified. Native clocks are available on Chromium/Firefox/Linux WebKit. This checkpoint does not qualify uncommitted continuation411, original live DSP state, listening or device/acoustic output."
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -6617,9 +6582,9 @@
           {
             "rate": 44100,
             "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-            "schedulingError": 1.4901161193847656e-08,
-            "childEnvelopeError": 4.8487908688166215e-08,
-            "chokeError": 2.9802322387695312e-08,
+            "schedulingError": 1.4901161193847656e-8,
+            "childEnvelopeError": 4.8487908688166215e-8,
+            "chokeError": 2.9802322387695312e-8,
             "forceAttackError": 0.012642532587051392,
             "forceTailError": 0.2896309196949005,
             "finalPeak": 0,
@@ -6630,9 +6595,9 @@
           {
             "rate": 48000,
             "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-            "schedulingError": 1.4901161193847656e-08,
-            "childEnvelopeError": 1.478940236387949e-07,
-            "chokeError": 2.9802322387695312e-08,
+            "schedulingError": 1.4901161193847656e-8,
+            "childEnvelopeError": 1.478940236387949e-7,
+            "chokeError": 2.9802322387695312e-8,
             "forceAttackError": 0.01267138123512268,
             "forceTailError": 0.2896309196949005,
             "finalPeak": 0,
@@ -6643,9 +6608,9 @@
           {
             "rate": 96000,
             "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-            "schedulingError": 3.725290298461914e-08,
-            "childEnvelopeError": 2.8647482464005947e-07,
-            "chokeError": 1.4897523215040565e-08,
+            "schedulingError": 3.725290298461914e-8,
+            "childEnvelopeError": 2.8647482464005947e-7,
+            "chokeError": 1.4897523215040565e-8,
             "forceAttackError": 0.012671560049057007,
             "forceTailError": 0.2896309196949005,
             "finalPeak": 0,
@@ -6716,9 +6681,9 @@
             0.05
           ],
           "relative": 0.05,
-          "prefixError": 2.9802322387695312e-08,
+          "prefixError": 2.9802322387695312e-8,
           "schedulingError": 0,
-          "tailError": 6.001011854106508e-08
+          "tailError": 6.001011854106508e-8
         },
         {
           "rate": 44100,
@@ -6731,7 +6696,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.3832062006891022e-07
+          "tailError": 1.3832062006891022e-7
         },
         {
           "rate": 44100,
@@ -6742,9 +6707,9 @@
             0.3
           ],
           "relative": 0.3,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 7.28649887649091e-07
+          "tailError": 7.28649887649091e-7
         },
         {
           "rate": 44100,
@@ -6757,7 +6722,7 @@
           "relative": 0.45,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 2.5090717131748264e-07
+          "tailError": 2.5090717131748264e-7
         },
         {
           "rate": 44100,
@@ -6770,7 +6735,7 @@
           "relative": 0.6,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.6148668838256164e-07
+          "tailError": 1.6148668838256164e-7
         },
         {
           "rate": 44100,
@@ -6781,9 +6746,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 7.635071164191487e-07
+          "tailError": 7.635071164191487e-7
         },
         {
           "rate": 44100,
@@ -6796,7 +6761,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.3832062006891022e-07
+          "tailError": 1.3832062006891022e-7
         },
         {
           "rate": 44100,
@@ -6835,9 +6800,9 @@
             0.2
           ],
           "relative": 0.05,
-          "prefixError": 2.9802322387695312e-08,
+          "prefixError": 2.9802322387695312e-8,
           "schedulingError": 0,
-          "tailError": 6.001011854106508e-08
+          "tailError": 6.001011854106508e-8
         },
         {
           "rate": 44100,
@@ -6850,9 +6815,9 @@
             0.2
           ],
           "relative": 0.05,
-          "prefixError": 2.9802322387695312e-08,
+          "prefixError": 2.9802322387695312e-8,
           "schedulingError": 0,
-          "tailError": 6.001011854106508e-08
+          "tailError": 6.001011854106508e-8
         },
         {
           "rate": 44100,
@@ -6865,7 +6830,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.4021283101239845e-07
+          "tailError": 1.4021283101239845e-7
         },
         {
           "rate": 44100,
@@ -6878,7 +6843,7 @@
           "relative": 0.1,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 9.516469473558331e-08
+          "tailError": 9.516469473558331e-8
         },
         {
           "rate": 44100,
@@ -6891,7 +6856,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.6071628822222905e-07
+          "tailError": 1.6071628822222905e-7
         },
         {
           "rate": 44100,
@@ -6902,9 +6867,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 4.0502775283668413e-07
+          "tailError": 4.0502775283668413e-7
         },
         {
           "rate": 48000,
@@ -6930,7 +6895,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.350541909694858e-07
+          "tailError": 1.350541909694858e-7
         },
         {
           "rate": 48000,
@@ -6943,7 +6908,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 3.911678989609868e-07
+          "tailError": 3.911678989609868e-7
         },
         {
           "rate": 48000,
@@ -6954,9 +6919,9 @@
             0.3
           ],
           "relative": 0.3,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 8.697186907324905e-07
+          "tailError": 8.697186907324905e-7
         },
         {
           "rate": 48000,
@@ -6969,7 +6934,7 @@
           "relative": 0.45,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.53842071692889e-07
+          "tailError": 1.53842071692889e-7
         },
         {
           "rate": 48000,
@@ -6982,7 +6947,7 @@
           "relative": 0.6,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.5430152414119824e-07
+          "tailError": 1.5430152414119824e-7
         },
         {
           "rate": 48000,
@@ -6993,9 +6958,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 8.697186907324905e-07
+          "tailError": 8.697186907324905e-7
         },
         {
           "rate": 48000,
@@ -7008,7 +6973,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 3.911678989609868e-07
+          "tailError": 3.911678989609868e-7
         },
         {
           "rate": 48000,
@@ -7049,7 +7014,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.350541909694858e-07
+          "tailError": 1.350541909694858e-7
         },
         {
           "rate": 48000,
@@ -7064,7 +7029,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.350541909694858e-07
+          "tailError": 1.350541909694858e-7
         },
         {
           "rate": 48000,
@@ -7077,7 +7042,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 3.911678989609868e-07
+          "tailError": 3.911678989609868e-7
         },
         {
           "rate": 48000,
@@ -7090,7 +7055,7 @@
           "relative": 0.1,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.9478922086424433e-07
+          "tailError": 1.9478922086424433e-7
         },
         {
           "rate": 48000,
@@ -7103,7 +7068,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.5430152414119824e-07
+          "tailError": 1.5430152414119824e-7
         },
         {
           "rate": 48000,
@@ -7114,9 +7079,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 2.3016706110490226e-07
+          "tailError": 2.3016706110490226e-7
         },
         {
           "rate": 96000,
@@ -7142,7 +7107,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.7379721006793858e-07
+          "tailError": 1.7379721006793858e-7
         },
         {
           "rate": 96000,
@@ -7155,7 +7120,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 7.92499631696586e-07
+          "tailError": 7.92499631696586e-7
         },
         {
           "rate": 96000,
@@ -7166,9 +7131,9 @@
             0.3
           ],
           "relative": 0.3,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 4.499964415538571e-07
+          "tailError": 4.499964415538571e-7
         },
         {
           "rate": 96000,
@@ -7181,7 +7146,7 @@
           "relative": 0.45,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 8.549541236080316e-08
+          "tailError": 8.549541236080316e-8
         },
         {
           "rate": 96000,
@@ -7194,7 +7159,7 @@
           "relative": 0.6,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 8.390595512830501e-08
+          "tailError": 8.390595512830501e-8
         },
         {
           "rate": 96000,
@@ -7205,9 +7170,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 4.499964415538571e-07
+          "tailError": 4.499964415538571e-7
         },
         {
           "rate": 96000,
@@ -7220,7 +7185,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 7.92499631696586e-07
+          "tailError": 7.92499631696586e-7
         },
         {
           "rate": 96000,
@@ -7261,7 +7226,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.7379721006793858e-07
+          "tailError": 1.7379721006793858e-7
         },
         {
           "rate": 96000,
@@ -7276,7 +7241,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.7379721006793858e-07
+          "tailError": 1.7379721006793858e-7
         },
         {
           "rate": 96000,
@@ -7289,7 +7254,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 7.92499631696586e-07
+          "tailError": 7.92499631696586e-7
         },
         {
           "rate": 96000,
@@ -7302,7 +7267,7 @@
           "relative": 0.1,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 3.96249815848293e-07
+          "tailError": 3.96249815848293e-7
         },
         {
           "rate": 96000,
@@ -7315,7 +7280,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 8.390595512830501e-08
+          "tailError": 8.390595512830501e-8
         },
         {
           "rate": 96000,
@@ -7326,9 +7291,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-08,
+          "prefixError": 5.960464477539063e-8,
           "schedulingError": 0,
-          "tailError": 1.29984691732421e-07
+          "tailError": 1.29984691732421e-7
         }
       ],
       "productionSources": [
@@ -7340,9 +7305,9 @@
           "startFrame": 4410,
           "cutFrame": 6615,
           "endFrame": 8379,
-          "prefixError": 3.259629011154175e-09,
+          "prefixError": 3.259629011154175e-9,
           "schedulingError": 0,
-          "tailError": 3.941960749487272e-08,
+          "tailError": 3.941960749487272e-8,
           "afterEndPeak": 0,
           "rms": 0.004243232268681608,
           "suspendedBatches": 3,
@@ -7357,9 +7322,9 @@
           "startFrame": 4410,
           "cutFrame": 11025,
           "endFrame": 12789,
-          "prefixError": 1.4901161193847656e-08,
-          "schedulingError": 1.4901161193847656e-08,
-          "tailError": 6.954760409239036e-08,
+          "prefixError": 1.4901161193847656e-8,
+          "schedulingError": 1.4901161193847656e-8,
+          "tailError": 6.954760409239036e-8,
           "afterEndPeak": 0,
           "rms": 0.04343084320579065,
           "suspendedBatches": 3,
@@ -7374,9 +7339,9 @@
           "startFrame": 4410,
           "cutFrame": 6615,
           "endFrame": 8379,
-          "prefixError": 1.4901161193847656e-08,
-          "schedulingError": 2.2351741790771484e-08,
-          "tailError": 6.326235611059383e-08,
+          "prefixError": 1.4901161193847656e-8,
+          "schedulingError": 2.2351741790771484e-8,
+          "tailError": 6.326235611059383e-8,
           "afterEndPeak": 0,
           "rms": 0.009280665443303247,
           "suspendedBatches": 3,
@@ -7393,7 +7358,7 @@
           "endFrame": 9120,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.856222235294136e-08,
+          "tailError": 1.856222235294136e-8,
           "afterEndPeak": 0,
           "rms": 0.004243236494044079,
           "suspendedBatches": 3,
@@ -7408,9 +7373,9 @@
           "startFrame": 4800,
           "cutFrame": 12000,
           "endFrame": 13920,
-          "prefixError": 1.4901161193847656e-08,
-          "schedulingError": 1.4901161193847656e-08,
-          "tailError": 5.989245489834705e-08,
+          "prefixError": 1.4901161193847656e-8,
+          "schedulingError": 1.4901161193847656e-8,
+          "tailError": 5.989245489834705e-8,
           "afterEndPeak": 0,
           "rms": 0.025793015530409726,
           "suspendedBatches": 3,
@@ -7425,9 +7390,9 @@
           "startFrame": 4800,
           "cutFrame": 7200,
           "endFrame": 9120,
-          "prefixError": 2.2351741790771484e-08,
-          "schedulingError": 2.2351741790771484e-08,
-          "tailError": 4.3469481174340796e-08,
+          "prefixError": 2.2351741790771484e-8,
+          "schedulingError": 2.2351741790771484e-8,
+          "tailError": 4.3469481174340796e-8,
           "afterEndPeak": 0,
           "rms": 0.009283087247938155,
           "suspendedBatches": 3,
@@ -7444,7 +7409,7 @@
           "endFrame": 18240,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.4522169983904876e-08,
+          "tailError": 1.4522169983904876e-8,
           "afterEndPeak": 0,
           "rms": 0.004242611789378318,
           "suspendedBatches": 3,
@@ -7459,9 +7424,9 @@
           "startFrame": 9600,
           "cutFrame": 24000,
           "endFrame": 27840,
-          "prefixError": 1.4901161193847656e-08,
+          "prefixError": 1.4901161193847656e-8,
           "schedulingError": 0,
-          "tailError": 1.6826100777966868e-07,
+          "tailError": 1.6826100777966868e-7,
           "afterEndPeak": 0,
           "rms": 0.02606171008446146,
           "suspendedBatches": 3,
@@ -7476,9 +7441,9 @@
           "startFrame": 9600,
           "cutFrame": 14400,
           "endFrame": 18240,
-          "prefixError": 2.2351741790771484e-08,
+          "prefixError": 2.2351741790771484e-8,
           "schedulingError": 0,
-          "tailError": 2.91465160756621e-08,
+          "tailError": 2.91465160756621e-8,
           "afterEndPeak": 0,
           "rms": 0.009283521410744863,
           "suspendedBatches": 3,
@@ -7490,11 +7455,11 @@
         {
           "rate": 44100,
           "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-          "schedulingError": 1.4901161193847656e-08,
-          "childEnvelopeError": 4.8487908688166215e-08,
-          "chokeError": 2.9802322387695312e-08,
-          "forceAttackError": 1.0690991958384188e-07,
-          "forceTailError": 5.960464477539063e-08,
+          "schedulingError": 1.4901161193847656e-8,
+          "childEnvelopeError": 4.8487908688166215e-8,
+          "chokeError": 2.9802322387695312e-8,
+          "forceAttackError": 1.0690991958384188e-7,
+          "forceTailError": 5.960464477539063e-8,
           "finalPeak": 0,
           "childPlateau": 0.3620387017726898,
           "suspendedBatches": 3,
@@ -7503,11 +7468,11 @@
         {
           "rate": 48000,
           "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-          "schedulingError": 1.4901161193847656e-08,
-          "childEnvelopeError": 1.478940236387949e-07,
-          "chokeError": 2.9802322387695312e-08,
-          "forceAttackError": 1.1598070448481934e-07,
-          "forceTailError": 4.5200185604804544e-08,
+          "schedulingError": 1.4901161193847656e-8,
+          "childEnvelopeError": 1.478940236387949e-7,
+          "chokeError": 2.9802322387695312e-8,
+          "forceAttackError": 1.1598070448481934e-7,
+          "forceTailError": 4.5200185604804544e-8,
           "finalPeak": 0,
           "childPlateau": 0.3620387017726898,
           "suspendedBatches": 3,
@@ -7516,11 +7481,11 @@
         {
           "rate": 96000,
           "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-          "schedulingError": 3.725290298461914e-08,
-          "childEnvelopeError": 2.8647482464005947e-07,
-          "chokeError": 1.4897523215040565e-08,
-          "forceAttackError": 2.0364920227944339e-07,
-          "forceTailError": 6.649642955713908e-08,
+          "schedulingError": 3.725290298461914e-8,
+          "childEnvelopeError": 2.8647482464005947e-7,
+          "chokeError": 1.4897523215040565e-8,
+          "forceAttackError": 2.0364920227944339e-7,
+          "forceTailError": 6.649642955713908e-8,
           "finalPeak": 0,
           "childPlateau": 0.3620387017726898,
           "suspendedBatches": 3,
@@ -13598,10 +13563,10 @@
       }
     ],
     "issueStatus": {
-      "1084": "CI collection/execution/source/fault gates implemented; green 80-workflow smoke and 6591 full Node cases; complete maintained-project receipt remains open.",
+      "993": "Joined terrain-first dock implemented; quiet global controls/materials/fast shaping remain open.",
       "1031": "Closed completed after exact-source green CI, including the combined accepted-actor/mapping/lane/Undo journey.",
-      "1086": "Actual unavailable-display startup/retry and replacement refusal qualified on Chromium; multi-engine/GPU/device matrix remains open.",
-      "993": "Joined terrain-first dock implemented; quiet global controls/materials/fast shaping remain open."
+      "1084": "CI collection/execution/source/fault gates implemented; green 80-workflow smoke and 6591 full Node cases; complete maintained-project receipt remains open.",
+      "1086": "Actual unavailable-display startup/retry and replacement refusal qualified on Chromium; multi-engine/GPU/device matrix remains open."
     },
     "limitations": [
       "Full CI is green at 3705b1a5 and excludes uncommitted continuation298.",
@@ -13862,7 +13827,7 @@
             "active": 11.758088804321464,
             "rendered": [
               {
-                "text": "Production instrument materials \u00b7 shared CSS and",
+                "text": "Production instrument materials · shared CSS and",
                 "ratio": 15.877469664125648
               },
               {
@@ -13870,7 +13835,7 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "idle \u00b7 0 dB",
+                "text": "idle · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -13906,11 +13871,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "idle \u00b7 authored control",
+                "text": "idle · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "hover \u00b7 0 dB",
+                "text": "hover · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -13946,11 +13911,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "hover \u00b7 authored control",
+                "text": "hover · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "focus \u00b7 0 dB",
+                "text": "focus · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -13986,11 +13951,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "focus \u00b7 authored control",
+                "text": "focus · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "pressed \u00b7 0 dB",
+                "text": "pressed · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -14026,11 +13991,11 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "pressed \u00b7 authored control",
+                "text": "pressed · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "selected \u00b7 0 dB",
+                "text": "selected · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -14066,11 +14031,11 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "selected \u00b7 authored control",
+                "text": "selected · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "queued \u00b7 0 dB",
+                "text": "queued · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -14106,11 +14071,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Queued \u00b7 awaiting acceptance",
+                "text": "Queued · awaiting acceptance",
                 "ratio": 11.927790123869869
               },
               {
-                "text": "stale \u00b7 0 dB",
+                "text": "stale · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -14146,11 +14111,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Stale \u00b7 last observation only",
+                "text": "Stale · last observation only",
                 "ratio": 10.361949926423142
               },
               {
-                "text": "disabled \u00b7 0 dB",
+                "text": "disabled · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -14186,11 +14151,11 @@
                 "ratio": 6.233731733164469
               },
               {
-                "text": "disabled \u00b7 authored control",
+                "text": "disabled · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "error \u00b7 0 dB",
+                "text": "error · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -14226,7 +14191,7 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Error \u00b7 value refused",
+                "text": "Error · value refused",
                 "ratio": 10.79880633045273
               },
               {
@@ -15032,7 +14997,7 @@
             "active": 11.758088804321464,
             "rendered": [
               {
-                "text": "Production instrument materials \u00b7 shared CSS and",
+                "text": "Production instrument materials · shared CSS and",
                 "ratio": 15.877469664125648
               },
               {
@@ -15040,7 +15005,7 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "idle \u00b7 0 dB",
+                "text": "idle · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15076,11 +15041,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "idle \u00b7 authored control",
+                "text": "idle · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "hover \u00b7 0 dB",
+                "text": "hover · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15116,11 +15081,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "hover \u00b7 authored control",
+                "text": "hover · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "focus \u00b7 0 dB",
+                "text": "focus · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15156,11 +15121,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "focus \u00b7 authored control",
+                "text": "focus · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "pressed \u00b7 0 dB",
+                "text": "pressed · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15196,11 +15161,11 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "pressed \u00b7 authored control",
+                "text": "pressed · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "selected \u00b7 0 dB",
+                "text": "selected · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15236,11 +15201,11 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "selected \u00b7 authored control",
+                "text": "selected · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "queued \u00b7 0 dB",
+                "text": "queued · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15276,11 +15241,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Queued \u00b7 awaiting acceptance",
+                "text": "Queued · awaiting acceptance",
                 "ratio": 11.927790123869869
               },
               {
-                "text": "stale \u00b7 0 dB",
+                "text": "stale · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15316,11 +15281,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Stale \u00b7 last observation only",
+                "text": "Stale · last observation only",
                 "ratio": 10.361949926423142
               },
               {
-                "text": "disabled \u00b7 0 dB",
+                "text": "disabled · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15356,11 +15321,11 @@
                 "ratio": 6.233731733164469
               },
               {
-                "text": "disabled \u00b7 authored control",
+                "text": "disabled · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "error \u00b7 0 dB",
+                "text": "error · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -15396,7 +15361,7 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Error \u00b7 value refused",
+                "text": "Error · value refused",
                 "ratio": 10.79880633045273
               },
               {
@@ -16202,7 +16167,7 @@
             "active": 11.758088804321464,
             "rendered": [
               {
-                "text": "Production instrument materials \u00b7 shared CSS and",
+                "text": "Production instrument materials · shared CSS and",
                 "ratio": 15.877469664125648
               },
               {
@@ -16210,7 +16175,7 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "idle \u00b7 0 dB",
+                "text": "idle · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16246,11 +16211,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "idle \u00b7 authored control",
+                "text": "idle · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "hover \u00b7 0 dB",
+                "text": "hover · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16286,11 +16251,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "hover \u00b7 authored control",
+                "text": "hover · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "focus \u00b7 0 dB",
+                "text": "focus · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16326,11 +16291,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "focus \u00b7 authored control",
+                "text": "focus · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "pressed \u00b7 0 dB",
+                "text": "pressed · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16366,11 +16331,11 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "pressed \u00b7 authored control",
+                "text": "pressed · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "selected \u00b7 0 dB",
+                "text": "selected · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16406,11 +16371,11 @@
                 "ratio": 15.877469664125648
               },
               {
-                "text": "selected \u00b7 authored control",
+                "text": "selected · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "queued \u00b7 0 dB",
+                "text": "queued · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16446,11 +16411,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Queued \u00b7 awaiting acceptance",
+                "text": "Queued · awaiting acceptance",
                 "ratio": 11.927790123869869
               },
               {
-                "text": "stale \u00b7 0 dB",
+                "text": "stale · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16486,11 +16451,11 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Stale \u00b7 last observation only",
+                "text": "Stale · last observation only",
                 "ratio": 10.361949926423142
               },
               {
-                "text": "disabled \u00b7 0 dB",
+                "text": "disabled · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16526,11 +16491,11 @@
                 "ratio": 6.233731733164469
               },
               {
-                "text": "disabled \u00b7 authored control",
+                "text": "disabled · authored control",
                 "ratio": 15.877469664125648
               },
               {
-                "text": "error \u00b7 0 dB",
+                "text": "error · 0 dB",
                 "ratio": 17.286764685656152
               },
               {
@@ -16566,7 +16531,7 @@
                 "ratio": 9.447724506786642
               },
               {
-                "text": "Error \u00b7 value refused",
+                "text": "Error · value refused",
                 "ratio": 10.79880633045273
               },
               {
@@ -19040,17 +19005,17 @@
       }
     ],
     "issueStatus": {
-      "1197": {
-        "state": "closed",
-        "reason": "completed",
-        "evidence": "Provider sources and three ownership/revalidation/runtime-lease fixtures unchanged from fully green1c818cc3. Ten named ETag/304/failure/cancellation/stale-probe regression records verified in its full CI log; current55-case lifecycle cohort also passes runtime-lease regressions."
-      },
       "1033": {
         "state": "open",
         "remaining": [
           "Real-wall-clock ten-minute1024-lane navigation/DOM/surface/history/listener/heap soak",
           "Pinned physical actor follow-through across mapped row reorder/paging"
         ]
+      },
+      "1197": {
+        "state": "closed",
+        "reason": "completed",
+        "evidence": "Provider sources and three ownership/revalidation/runtime-lease fixtures unchanged from fully green1c818cc3. Ten named ETag/304/failure/cancellation/stale-probe regression records verified in its full CI log; current55-case lifecycle cohort also passes runtime-lease regressions."
       }
     },
     "inventory": {
@@ -24442,6 +24407,10 @@
       }
     ],
     "issueStatus": {
+      "1097": {
+        "state": "open",
+        "scope": "This recipe navigation does not close the wider scene and asset corpus."
+      },
       "1230": {
         "state": "closed-completed",
         "qualification": "Closed after the61 distinct affected Node and9 browser journeys; exact-head full CI is still being checked separately."
@@ -24449,10 +24418,6 @@
       "1240": {
         "state": "already-closed",
         "scope": "Consume its canonical startup owner; no separate defaults/precedence resolver."
-      },
-      "1097": {
-        "state": "open",
-        "scope": "This recipe navigation does not close the wider scene and asset corpus."
       }
     }
   },
@@ -25931,6 +25896,10 @@
         "state": "open-implemented-partial",
         "remaining": "Full explicit intervention/transfer/tempo/external-input and semantically invalid source corpus; exact archived runtime remains separate."
       },
+      "1161": {
+        "state": "open-implemented-partial",
+        "progress": "Optional worker DSP/rendering lazy loading; wider startup graph and measured startup scope remains."
+      },
       "1162": {
         "state": "open-implemented-partial",
         "progress": "Sequential source peak admission and lifecycle, independently retained query output; actual near-limit memory and combined workload scope remains."
@@ -25938,10 +25907,6 @@
       "1234": {
         "state": "open-implemented-partial",
         "progress": "Bounded shared worker I/O/computation and precise retirement; full8/128/1024-lane mixed concurrency/fairness/latency remains."
-      },
-      "1161": {
-        "state": "open-implemented-partial",
-        "progress": "Optional worker DSP/rendering lazy loading; wider startup graph and measured startup scope remains."
       }
     }
   },
@@ -26140,13 +26105,13 @@
       }
     ],
     "issueStatus": {
-      "1161": {
-        "state": "open-implemented-partial",
-        "remaining": "Optional hardware/creative audio graph plus actual startup/network/latency and offline/package failure matrix."
-      },
       "1095": {
         "state": "open-implemented-partial",
         "scope": "Reuse configured resource/provider ownership; wider asset qualification remains separate."
+      },
+      "1161": {
+        "state": "open-implemented-partial",
+        "remaining": "Optional hardware/creative audio graph plus actual startup/network/latency and offline/package failure matrix."
       }
     }
   },
@@ -26225,7 +26190,7 @@
         "mcp": "success",
         "policy": "success",
         "dependencyReview": "success",
-        "scope": "Includes317\u2013322; excludes323 onward.",
+        "scope": "Includes317–322; excludes323 onward.",
         "log": {
           "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci322-green.log",
           "bytes": 1168169,
@@ -26436,7 +26401,7 @@
         "mcp": "success",
         "policy": "success",
         "dependencyReview": "success",
-        "scope": "Includes317\u2013322; excludes323 onward.",
+        "scope": "Includes317–322; excludes323 onward.",
         "log": {
           "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci322-green.log",
           "bytes": 1168169,
@@ -26526,10 +26491,10 @@
       }
     ],
     "issueStatus": {
-      "1236": {
+      "1207": {
         "state": "open-implemented-partial"
       },
-      "1207": {
+      "1236": {
         "state": "open-implemented-partial"
       }
     }
@@ -26792,7 +26757,7 @@
         "failed": 0,
         "skipped": 0,
         "durationMs": 71573.32400000001,
-        "scope": "Immutable build actual stored-source workers: archive\u2192project, archive A\u2192B, Cancel and Discard; six scene/clipboard/checkpoint/archive sharing workflows;99991-record worker MIDI/reference export. Native download/Blob cases were separately executed in323.",
+        "scope": "Immutable build actual stored-source workers: archive→project, archive A→B, Cancel and Discard; six scene/clipboard/checkpoint/archive sharing workflows;99991-record worker MIDI/reference export. Native download/Blob cases were separately executed in323.",
         "faultInjection": "Only the first stored-source worker input-start is held; cancellation terminates that real worker. Replacement jobs, native IndexedDB verification, artifact preparation and UI use their production paths."
       },
       "checks": [
@@ -26967,7 +26932,7 @@
         "state": "open-implemented-partial",
         "resolvedGaps": [
           "Dedicated native browser download and Blob-sink execution",
-          "Reverse archive\u2192project/archive A\u2192B ordering",
+          "Reverse archive→project/archive A→B ordering",
           "Pending discard/dispose and stale rejection after success"
         ],
         "remaining": "Trusted-gesture native OS-picker qualification on supported targets; no native filesystem durability inferred."
@@ -33925,7 +33890,7 @@
           "terminalAcknowledged": true,
           "scope": "Actual capture worklet and retained PCM prefix at abrupt owned audio stop during takeover; no Ready, acoustic or filesystem durability claim.",
           "artifact": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-native340-capture-handoff.txt",
-          "uiReceipt": "Stop music\nPanic\nRecord browser master\n\nRecords the shared browser master after protection, including live-output rehearsal. The separate cue bus is excluded. External MIDI audio, microphones and device acoustics are outside this recording.\n\nPCM is held in memory until saved or discarded. Closing the browser can lose it. Missing frames are marked in the WAV manifest and use zero placeholders.\n\n30 seconds\n60 seconds\n120 seconds\n300 seconds\npartial \u00b7 48000 Hz stereo \u00b7 18,560 source frames \u00b7 18,560 received frames\n\nPartial: panic. 0 indexed gap(s). End frame acknowledged.\n\nStart master capture\nStop capture\nSave captured WAV\nHarvest sound seed\nCancel save\nDiscard captured PCM\nClose"
+          "uiReceipt": "Stop music\nPanic\nRecord browser master\n\nRecords the shared browser master after protection, including live-output rehearsal. The separate cue bus is excluded. External MIDI audio, microphones and device acoustics are outside this recording.\n\nPCM is held in memory until saved or discarded. Closing the browser can lose it. Missing frames are marked in the WAV manifest and use zero placeholders.\n\n30 seconds\n60 seconds\n120 seconds\n300 seconds\npartial · 48000 Hz stereo · 18,560 source frames · 18,560 received frames\n\nPartial: panic. 0 indexed gap(s). End frame acknowledged.\n\nStart master capture\nStop capture\nSave captured WAV\nHarvest sound seed\nCancel save\nDiscard captured PCM\nClose"
         }
       },
       "static": [
@@ -70280,8 +70245,7 @@
       ],
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     }
-  }
-,
+  },
   "continuation369": {
     "date": "2026-10-29",
     "agent": "rook",
@@ -70928,8 +70892,7 @@
         "diagnosticArtifact": 12930264910
       }
     }
-  }
-,
+  },
   "continuation370": {
     "date": "2026-10-29",
     "agent": "rook",
@@ -72610,8 +72573,7 @@
       ],
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     }
-  }
-,
+  },
   "continuation371": {
     "date": "2026-10-29",
     "agent": "rook",
@@ -74081,8 +74043,7 @@
       ],
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     }
-  }
-,
+  },
   "continuation372": {
     "date": "2026-10-29",
     "agent": "rook",
@@ -76139,8 +76100,7 @@
       ],
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     }
-  }
-,
+  },
   "continuation373": {
     "date": "2026-10-29",
     "agent": "rook",
@@ -99479,8 +99439,7 @@
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     },
     "issue969": "Ready to close with387current/future readonly/save/reopen/registry/control-schema qualification and388explicit custom legacy rejection/loss/routing outcomes. Engine/render/listening quality and other sound family features remain separate owners."
-  }
-,
+  },
   "continuation389": {
     "date": "2026-10-29",
     "agent": "rook",
@@ -101611,8 +101570,7 @@
       "Latest fully source-verified full CI remains383/77e057fa;388 main CI is still running. No repeated full local suite."
     ],
     "issueOutcome": "Close1011 after commit/push; topology, sound DSP and protocol hardware owners remain separate."
-  }
-,
+  },
   "continuation390": {
     "date": "2026-10-30",
     "agent": "rook",
@@ -102629,8 +102587,7 @@
       "Latest fully source-verified full CI remains383/77e057fa;388/389 main jobs are still running. No full local suite rerun."
     ],
     "issueOutcome": "Close1017 after commit/push; output renderer/acoustic/device ownership remains separate."
-  }
-,
+  },
   "continuation391": {
     "date": "2026-10-30",
     "agent": "rook",
@@ -103304,8 +103261,7 @@
       "Latest fully source-verified full CI remains383. The388 receipt source comparison is complete with zero mismatches, but its main job is still in progress;389/390 are separate. No repeated full local suite."
     ],
     "issueOutcome": "Close992 after commit/push; actual receiver/acoustic and broader crowd interval/routing instruments remain separate."
-  }
-,
+  },
   "continuation392": {
     "date": "2026-10-30",
     "agent": "rook",
@@ -137508,8 +137464,7 @@
       "Full green396 is independently verified after the recorded engine rerun;397 has a separate replay candidate admission failure. No full local suite repeated."
     ],
     "issueOutcome": "Keep1183 open for the first checklist incremental invalidation work;1194 remains for authored Digging Ocarina content/sound realization;1104 remains for broader capture/re-performance work. Commit this complete reference/binding span and repair CI397 next."
-  }
-,
+  },
   "continuation399": {
     "date": "2026-10-30",
     "agent": "rook",
@@ -137858,8 +137813,7 @@
       "No physical MIDI, acoustic, subjective listening or archived-exact-runtime qualification."
     ],
     "issueOutcome": "Keep1104/1087/1234 open for their remaining acceptance requirements; continue incremental topology work under1183."
-  }
-,
+  },
   "continuation400": {
     "date": "2026-10-30",
     "agent": "rook",
@@ -138360,8 +138314,7 @@
       "No authored Digging Ocarina sound/content, acoustic/listening, hardware or archived-exact-runtime qualification."
     ],
     "issueOutcome": "Close1183 after publishing the qualified incremental source; keep1194 and remaining replay/performance acceptance open."
-  }
-,
+  },
   "continuation401": {
     "date": "2026-10-30",
     "agent": "rook",
@@ -146112,8 +146065,7 @@
       "Localnative clock precision is Chromium/Firefox; WindowsWebKitunavailable.",
       "Previous full green405 remains unchanged; all historical failures are preserved."
     ]
-  }
-,
+  },
   "continuation410": {
     "date": "2026-11-04",
     "agent": "rook",
@@ -146251,6 +146203,306 @@
       "Wider continuous live-worker/body and fresh-excitation matrices remain for1194; broader1104/1046 capture/render and native endpoint boundaries remain.",
       "Linux WebKit/complete CI on the new source remains pending; local Windows WebKit has no AudioContext.",
       "190 open issues remain in the refreshed inventory; no issue is closed by this scoped comparison alone."
+    ]
+  },
+  "continuation411": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "3245dd9fe8562b32570900316bd5307cabb39526",
+    "scope": "Fresh ordinary actors/contact ancestry across each live cavity body revision, exact geometry round trip, full captured-control WAV revoice and bounded source projection snapshot admission; 1920×1080 desktop only.",
+    "changes": [
+      "Rebuild exact one-cell chamber walls/roof and clear expanded approach during8→16→8round trips.",
+      "Expose the existing finite release gesture in all three cavity recipes; qualify fresh actual actor/contact ancestry on all three recorded live graph revisions.",
+      "Measure published projection size cooperatively before snapshot admission; retain actual source workspace until copy completion and expose bounded job-kind/failure metadata."
+    ],
+    "validation": {
+      "nodePassed": 126,
+      "nodePending": 0,
+      "nodeFailed": 0,
+      "browserPassed": 17,
+      "browserGroups": [
+        16,
+        1
+      ],
+      "sourceRuntimeUnchanged": true,
+      "coverage": {
+        "lines": {
+          "total": 306,
+          "covered": 292,
+          "skipped": 0,
+          "pct": 95.42
+        },
+        "statements": {
+          "total": 306,
+          "covered": 292,
+          "skipped": 0,
+          "pct": 95.42
+        },
+        "functions": {
+          "total": 56,
+          "covered": 53,
+          "skipped": 0,
+          "pct": 94.64
+        },
+        "branches": {
+          "total": 328,
+          "covered": 264,
+          "skipped": 0,
+          "pct": 80.48
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "coverageCommandExit": 1,
+      "coverageReportExit": 0,
+      "coverageScopeExplanation": "All126Mocha tests pass. c8 applied the repository global81%branch threshold to this deliberately scoped three-file population (80.48%). Re-reporting the same recorded data with scope-only threshold checking disabled succeeds. No repository threshold changed and no tests were rerun for report generation.",
+      "static": {
+        "format": "passed",
+        "lint": "passed",
+        "undefinedCalls": "passed",
+        "criticalTypes": "passed",
+        "provenance": "10components/373files;passed"
+      },
+      "wavs": [
+        {
+          "path": ".tmp/rook411-verified-browser-output/procgen-workstation-cavity-da541-ty-revision-Crumbled-chimes-workstation/fresh-cavity-history.wav",
+          "seconds": 28.98,
+          "frames": 1391040,
+          "pcmSha256": "719cfdf61fc4589f09fead5af2a756c61266985737f3437a1d427047a497f1f5",
+          "wavSha256": "b60e055464b8ee5d71e20ea94bfe71e6c29f66dcae86b15a1371680d4fda662d",
+          "allSamplesFinite": true,
+          "peak": 0.004854793194681406,
+          "rms": 0.00031953743849134133,
+          "overFullScaleSamples": 0,
+          "graphCount": 3,
+          "peakGraphs": 2,
+          "sourceRealizations": 1,
+          "commands": {
+            "acknowledgedFiniteBodyBegins": 0,
+            "applied": 6,
+            "bodySourcePolicy": "explicit-new-target-revoice",
+            "capturedBegins": 3,
+            "capturedEnds": 3,
+            "capturedUpdates": 0,
+            "derivedLaneTransfers": 0,
+            "derivedReleases": 0,
+            "peakVoices": 1,
+            "submitted": 6
+          }
+        },
+        {
+          "path": ".tmp/rook411-verified-browser-output/procgen-workstation-cavity-e8f2d-avity-revision-Clay-chamber-workstation/fresh-cavity-history.wav",
+          "seconds": 29.04,
+          "frames": 1393920,
+          "pcmSha256": "6796b367d1a794b58f95b437a671ddef407f8bc0fe0863eb3bd1d5cb4f390b97",
+          "wavSha256": "9dea5ac7e0b5d9f1ece62ff17e617d80abee0257dd4013cebfea889aad4f6f4f",
+          "allSamplesFinite": true,
+          "peak": 0.005065024830400944,
+          "rms": 0.00037087276139869177,
+          "overFullScaleSamples": 0,
+          "graphCount": 3,
+          "peakGraphs": 2,
+          "sourceRealizations": 1,
+          "commands": {
+            "acknowledgedFiniteBodyBegins": 0,
+            "applied": 6,
+            "bodySourcePolicy": "explicit-new-target-revoice",
+            "capturedBegins": 3,
+            "capturedEnds": 3,
+            "capturedUpdates": 0,
+            "derivedLaneTransfers": 0,
+            "derivedReleases": 0,
+            "peakVoices": 1,
+            "submitted": 6
+          }
+        },
+        {
+          "path": ".tmp/rook411-verified-browser-output/procgen-workstation-cavity-ffb91-cavity-revision-Throat-duet-workstation/fresh-cavity-history.wav",
+          "seconds": 28.8,
+          "frames": 1382400,
+          "pcmSha256": "93862351829f5b17abae242db5098bfa3172bfd11b14b29674fafd6d456dc5dc",
+          "wavSha256": "3eaa9394cc151894de3bc5b02f98524301b78ba46af0a45306229faa30095786",
+          "allSamplesFinite": true,
+          "peak": 0.003581545315682888,
+          "rms": 0.00026332017159986056,
+          "overFullScaleSamples": 0,
+          "graphCount": 3,
+          "peakGraphs": 2,
+          "sourceRealizations": 1,
+          "commands": {
+            "acknowledgedFiniteBodyBegins": 0,
+            "applied": 6,
+            "bodySourcePolicy": "explicit-new-target-revoice",
+            "capturedBegins": 3,
+            "capturedEnds": 3,
+            "capturedUpdates": 0,
+            "derivedLaneTransfers": 0,
+            "derivedReleases": 0,
+            "peakVoices": 1,
+            "submitted": 6
+          }
+        }
+      ],
+      "evidence": {
+        "path": "docs/validation/fresh-cavity-workers-desktop-2026-11-04.json",
+        "bytes": 15636312,
+        "sha256": "f0a89bb4f91cd7e65e292df9baed1d36901a4e79eb30e43ebf7035f75ec0ecec"
+      },
+      "ciEvidence": {
+        "path": "docs/validation/native-clock-ci-2026-11-04.json",
+        "bytes": 381283,
+        "sha256": "5428af5626559326169ed15b0d84bd38d8c3dd2a571898272f7b762925dc16ba"
+      },
+      "sourceAudit": {
+        "paths": 1372,
+        "byteExact": 1359,
+        "untouchedNewlineMappings": 13,
+        "workerFiles": 304,
+        "workerSha256": "b9e1d5546d1dfa07d3f98908c4ac6e2c426ae1f12bb700426dbbc77032c0dce6",
+        "browserClosureDigest": "2382e3c0c42aad4862a69ccd19a552b9e5a72ac1409789f055ce29533960a984"
+      }
+    },
+    "ci": {
+      "completed": {
+        "head": "3245dd9fe8562b32570900316bd5307cabb39526",
+        "status": "success",
+        "run": 41905753051,
+        "job": 126839830150,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41905753051",
+        "engineJob": 126839829767,
+        "requiredJobs": {
+          "lifecycle-engines": "success",
+          "native-midi-codec (windows-latest)": "success",
+          "test": "success",
+          "native-midi-codec (ubuntu-latest)": "success"
+        },
+        "nodePassed": 7364,
+        "nodePending": 10,
+        "browserPassed": 341,
+        "desktopPassed": 26,
+        "workstationSmokePassed": 273,
+        "enginePassed": 42,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.83,
+          "statements": 90.83,
+          "branches": 84.24,
+          "functions": 88.71
+        },
+        "benchmark": {
+          "status": "success",
+          "profile": "smoke",
+          "source": "main job step 23"
+        },
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "engineQualification": {
+          "status": "passed",
+          "files": 1274,
+          "harnessFiles": 27,
+          "configuredAudioBackend": "pulseaudio-null-sink",
+          "closureDigest": "7f770b380b46f14772ff429ebfdd817a1cf7724e81a6352b696de5655dec6ad0",
+          "nativeClockScenarios": 24,
+          "nativeClockAvailable": 24,
+          "nativeAudio": {
+            "status": "passed-in-required-lifecycle-journeys",
+            "physicalReceiverOrAcoustics": false
+          }
+        },
+        "nativeCodec": {
+          "status": "passed",
+          "linuxJob": 126839830371,
+          "windowsJob": 126839830031,
+          "commandsPerPlatform": 8829,
+          "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+          "outputIdentical": true,
+          "deviceIO": false,
+          "shippingTransportQualified": false
+        },
+        "sourceQualification": {
+          "testedPrMergeHead": "14e5c35cd8db7e87647eddf3ea130933f46256e7",
+          "rawDirtyFlag": true,
+          "testedMergeTree": "f6925424f9d0008c15c5e70369a3730295cdb064",
+          "publishedHeadTree": "f6925424f9d0008c15c5e70369a3730295cdb064",
+          "gitTreesIdentical": true,
+          "inventoryFiles": 1182,
+          "engineInventoryFiles": 1301,
+          "allWorkstationSourceFilesMatchPublishedHead": true,
+          "allEngineSourceFilesMatchPublishedHead": true,
+          "allReportedSourcePaths": 1460,
+          "allReportedSourcePathsMatchPublishedHead": true,
+          "sbomComponents": 10,
+          "sbomFiles": 373,
+          "sbomComponentGitBytesMatched": true,
+          "githubArchiveDigestsMatched": true,
+          "reportDigestMatched": true,
+          "mainReportSha256": "a5eb66562609f53f7020a17dc306f020a9ac62ab6a732fd62479b82a702e6e4e"
+        },
+        "artifacts": [
+          {
+            "path": ".tmp/ci410-main-archive411.zip",
+            "githubArtifactId": 13362289482,
+            "bytes": 1753887,
+            "sha256": "0904213fda3ac6b74f4dda40e7f6d06427e19f55c2abefb07f63aa8f01d6cec6",
+            "githubDigestMatched": true
+          },
+          {
+            "path": ".tmp/ci410-archive411-0.zip",
+            "githubArtifactId": 13361985302,
+            "bytes": 1005867,
+            "sha256": "72f210552a472c0e8c81572a840aaaa69fb67dfe11e5a00899e41a9a7640ad82",
+            "githubDigestMatched": true
+          },
+          {
+            "path": ".tmp/ci410-archive411-1.zip",
+            "githubArtifactId": 13360845219,
+            "bytes": 2147,
+            "sha256": "4bb8c54f94e0d57cc6366078e9c375f20c02099889e45e0022c4a06a8b8eabb1",
+            "githubDigestMatched": true
+          },
+          {
+            "path": ".tmp/ci410-archive411-2.zip",
+            "githubArtifactId": 13360088514,
+            "bytes": 57407,
+            "sha256": "98adc63f09d79cd53ce4a8bcf3506cb31a6caf4c67a3ec3b6283147e7f1bbe8e",
+            "githubDigestMatched": true
+          },
+          {
+            "path": ".tmp/ci410-archive411-3.zip",
+            "githubArtifactId": 13360078474,
+            "bytes": 2246,
+            "sha256": "33785b0aeb26764e5f95d5086a4ac0a1e4c4ad25481a1ff9ea0efbbaa48c5c67",
+            "githubDigestMatched": true
+          }
+        ],
+        "scope": "All four required jobs plus policy/dependency on the named published source. Independent main/engine qualifiers, 1,460 distinct commit-byte matches, five original ZIP digests, saved report digest, ten SBOM component hashes and regenerated 8,829-command native corpus are verified. Native clocks are available on Chromium/Firefox/Linux WebKit. This checkpoint does not qualify uncommitted continuation411, original live DSP state, listening or device/acoustic output."
+      },
+      "newSource": "pending-publication",
+      "previousCompleteCheckpoint": "2504b778b90b388261c23caf7992cef22c2872ee"
+    },
+    "issueStatus": {
+      "closed": [
+        972
+      ],
+      "openCount": 189,
+      "remainOpen": [
+        1194,
+        1104,
+        987
+      ],
+      "next": "987declared maximum project, seeded imports and live checked successors; then remaining worker-budget/audio/desktop backlog"
+    },
+    "limits": [
+      "Original live DSP memory, listening judgments, receiver/device/acoustic output and per-device latency remain unqualified.",
+      "The new export is a cleared-memory revoice of captured intents/graph publications; it preserves source-clock targets and does not claim original live PCM equivalence.",
+      "Whole-file PCM is quiet. Numerical samples and native routing do not establish sound quality.",
+      "Cavity routes bind endOfTick topology; missing postTransaction geometry remains explicitly unavailable.",
+      "CI410qualifies3245dd9f; this new continuation requires its own CI after publication."
     ]
   }
 }

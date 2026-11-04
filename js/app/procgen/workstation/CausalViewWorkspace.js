@@ -1,5 +1,6 @@
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createOwnedDataSnapshots } from '../../resources/OwnedDataSnapshot.js';
+import { inspectBackgroundSnapshot } from '../../resources/BackgroundSnapshotPages.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { borrowCausalPage, borrowCausalTake, retireCausalRead } from './CausalReadLeases.js';
 import { cloneJournalData, journalError } from './CausalJournalCanonical.js';
@@ -67,15 +68,24 @@ export function createCausalViewWorkspace({ journal, resourceBudget = null, jobs
       if (wanted > allocatedLinks) { reservation.resize(baseBytes + adoptedBytes * 2 + wanted * 256); allocatedLinks = wanted; }
     },
     async publish(value, { sourceRevision, maxBytes = 1048576 } = {}) {
-      guard(); let result = null;
+      guard(); let result = null, inspection = null;
       try {
-        result = snapshots ? await snapshots.prepare(value, { signal: controller.signal, sourceRevision, maxBytes,
-          inputFootprintBytes: reservation.receipt().declaredBytes + metadataBytes,
+        let projection = null;
+        if (snapshots) {
+          inspection = createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId + '-inspection-' + nextWorkspace,
+            kind: 'causal-view-projection-inspection', bytes: 65536 });
+          projection = await inspectBackgroundSnapshot(value, { maxBytes, signal: controller.signal,
+            isCurrent: () => { guard(); return true; } });
+          inspection.release(); inspection = null; guard();
+        }
+        result = snapshots ? await snapshots.prepare(value, { signal: controller.signal, sourceRevision, maxBytes: projection.canonicalMaxBytes,
+          inputFootprintBytes: Math.max(4096, projection.retainedEstimateBytes),
           isCurrent: () => { try { guard(); return true; } catch { return false; } } }) : legacyResult(cloneJournalData(value, { maxBytes, maxNodes: 1000000 }));
         guard(); const receipt = dispose(); await receipt.completion;
         if (receipt.outcome !== 'complete') throw journalError('view-retirement-unknown', 'Causal view source cleanup is unresolved.', { retirement: receipt });
         signal?.throwIfAborted(); check(); return result;
       } catch (error) {
+        if (inspection) inspection.release();
         if (result) { try { retireCausalRead(result); } catch (retirement) { throw journalError('view-retirement-unknown', 'Causal view result cleanup is unresolved.', { cause: error, retirement }); } }
         throw error;
       }
