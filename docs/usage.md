@@ -5,7 +5,7 @@ browser-based Lemmings port with optional MIDI control and a standalone editor.
 
 ## Quick start
 
-- Install Node.js 20.19+ (20.x) or 22.12+. Package engines: `^20.19.0 || >=22.12.0`.
+- Install Node.js 20.19+ (20.x), 22.13+ (22.x), or 24+. Package engines: `^20.19.0 || ^22.13.0 || >=24`.
 - `npm ci`
 - `npm start`
 - Open `http://127.0.0.1:8080`

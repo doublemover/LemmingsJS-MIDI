@@ -142427,5 +142427,248 @@
       "Prior full green405is independently qualified; uncommitted406changes require their own CI. No all-backlog completion claim.",
       "Continue solo after publication with remaining1194matched-level/live-worker/captured graph-history and972context/cancellation, then the remaining backlog."
     ]
+  },
+  "continuation407": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "8c9138593391aba7528b276fb8523de515bb1cee",
+    "scope": "Repair newly published audit blockers in the development dependency graph; keep ordinary source, lint rules, Mocha and c8 policies intact.",
+    "changes": [
+      "Upgrade ESLint9.39.5to10.14.0 to remove the legacy minimatch3/eslintrc dependency interface. Keep the exact flat-config rules and vendor/generated exclusions; npm run format changes no runtime JavaScript.",
+      "Pin transitive follow-redirects1.16.2,glob14.0.3,minimatch11.0.4. Retain Mocha11.8.0and c8 10.1.3 with their existing policies; verify actual consumers and discovery rather than follow audit-suggested unrelated major downgrades.",
+      "Align package engines and README/usage with ESLint10: Node20.19.x or newer20.x,22.13.x or newer22.x,24+. Node20CI remains supported; current validation uses20.20.2.",
+      "Refresh lockfile, prove a clean ignore-scripts lockfile install and regenerate/validate CycloneDX1.5SBOM. Runtime worker source/provenance remains301files with the same ordered digest."
+    ],
+    "advisories": [
+      {
+        "package": "follow-redirects",
+        "source": "https://github.com/advisories/GHSA-mrwp-f3q8-3g9p",
+        "patchedAt": "1.16.2"
+      },
+      {
+        "package": "glob",
+        "source": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+        "patchedAt": "14.0.2",
+        "installed": "14.0.3"
+      },
+      {
+        "package": "minimatch",
+        "source": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+        "patchedAt": "11.0.1",
+        "installed": "11.0.4"
+      },
+      {
+        "package": "eslint",
+        "source": "https://eslint.org/docs/latest/use/migrate-to-10.0.0",
+        "boundary": "Supported Node and flat configuration/API migration reviewed; retain existing explicit rules."
+      }
+    ],
+    "validation": {
+      "audit": {
+        "before": {
+          "info": 0,
+          "low": 0,
+          "moderate": 9,
+          "high": 1,
+          "critical": 0,
+          "total": 10
+        },
+        "after": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencyEntriesBefore": 416,
+        "dependencyEntriesAfter": 387
+      },
+      "node": {
+        "passing": 63,
+        "failures": 0,
+        "runtime": "20.20.2",
+        "scope": "Existing test-runner selection/guard, ESLint generated/vendor boundary, Playwright config, dependency review, engine results, timeline and preference writer cases through the existing c8/Mocha consumers."
+      },
+      "browser": {
+        "passing": 2,
+        "failures": 0,
+        "skips": 0,
+        "flaky": 0,
+        "durationSeconds": 12.350530000000001,
+        "runtime": "Node20.20.2",
+        "project": "chromium-semantic",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "Actual Node20server/browser harness, unavailable canvas retry and owned worker load/preference failure/candidate retry."
+      },
+      "discovery": {
+        "discovered": 852,
+        "expected": 852,
+        "match": true,
+        "missing": [],
+        "extra": []
+      },
+      "checks": [
+        "npm run format",
+        "full ESLint run under Node20.20.2",
+        "npm run check-undefined",
+        "npm run --silent provenance:sbom",
+        "npm ci --ignore-scripts --no-audit --no-fund",
+        "npm audit --json",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "package.json",
+          "bytes": 9367,
+          "sha256": "9f540586606f4d1ddc99383c951c1b4538ad7e33d3caaf2c7d6aeb7e12c1172f"
+        },
+        {
+          "path": "package-lock.json",
+          "bytes": 183217,
+          "sha256": "f5ca1ddd54bacb5e74e037c1e45be287e2361957c8e72c960170fac29e65666a"
+        },
+        {
+          "path": "eslint.config.js",
+          "bytes": 1889,
+          "sha256": "224c1dc6b061cf249240aea6c67c5d0ebb1faf85917125faf5f2184c62447383"
+        }
+      ],
+      "scopedCoverage": {
+        "total": {
+          "lines": {
+            "total": 184,
+            "covered": 182,
+            "skipped": 0,
+            "pct": 98.91
+          },
+          "statements": {
+            "total": 184,
+            "covered": 182,
+            "skipped": 0,
+            "pct": 98.91
+          },
+          "functions": {
+            "total": 31,
+            "covered": 29,
+            "skipped": 0,
+            "pct": 93.54
+          },
+          "branches": {
+            "total": 166,
+            "covered": 145,
+            "skipped": 0,
+            "pct": 87.34
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPreferenceWriter.js": {
+          "lines": {
+            "total": 88,
+            "covered": 88,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 18,
+            "covered": 16,
+            "skipped": 0,
+            "pct": 88.88
+          },
+          "statements": {
+            "total": 88,
+            "covered": 88,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 118,
+            "covered": 106,
+            "skipped": 0,
+            "pct": 89.83
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\SimScoreTimeline.js": {
+          "lines": {
+            "total": 96,
+            "covered": 94,
+            "skipped": 0,
+            "pct": 97.91
+          },
+          "functions": {
+            "total": 13,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 96,
+            "covered": 94,
+            "skipped": 0,
+            "pct": 97.91
+          },
+          "branches": {
+            "total": 48,
+            "covered": 39,
+            "skipped": 0,
+            "pct": 81.25
+          }
+        }
+      },
+      "sbom": {
+        "format": "CycloneDX",
+        "version": "1.5",
+        "components": 390,
+        "bytes": 266508,
+        "sha256": "b12e6dbc26fcff4416606bb832cb57d6f5b02e1043e5cb0fc140008f9c2a3e08"
+      },
+      "receipt": {
+        "path": "docs/validation/dependency-tooling-node20-2026-11-04.json",
+        "bytes": 13995,
+        "sha256": "2a4a89b070b8ddfe93c337a2fef3747a3df04fd7f8b361e202077efa35f11d98"
+      }
+    },
+    "ci": {
+      "latestIndependentlyVerifiedFullGreen": {
+        "continuation": 405,
+        "head": "2504b778b90b388261c23caf7992cef22c2872ee",
+        "run": 41055706625,
+        "nodePassed": 7313,
+        "nodePending": 10,
+        "browserPassed": 307
+      },
+      "parent406": {
+        "head": "8c9138593391aba7528b276fb8523de515bb1cee",
+        "run": 41857710916,
+        "mainJob": 126670695222,
+        "main": "Failed at npm audit:10findings(9moderate,1high); these are repaired in407.",
+        "engineJob": 126670695622,
+        "engine": "17passed/one Firefox content process6746signal11at page.evaluate; preserve the native crash independently of the repaired project-status failure.",
+        "nativeCodecs": "both-success",
+        "policy": "success",
+        "dependencyReview": "success"
+      },
+      "newSource": "CI starts after publication. The previous full green source remains405; no full-current407CI claim."
+    },
+    "issueStatus": {
+      "closed": [
+        986
+      ],
+      "openCount": 190,
+      "note": "986was actually closed after406publication; this count follows the refreshed191issue inventory."
+    },
+    "limits": [
+      "No full local suite rerun, changed browser/runtime DSP behavior, physical hardware or listening qualification.",
+      "Clean install used ignore-scripts; standard CI install and full-source qualification remain separate.",
+      "Continue solo with972native context/rearm/producer-cancellation boundaries and1194matched-level/live-worker/graph-history work while CI runs. Preserve repeated Linux Firefox signal11 evidence; investigate native crash diagnostics if the new run repeats it."
+    ]
   }
 }
