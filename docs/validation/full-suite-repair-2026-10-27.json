@@ -818,45 +818,45 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "3245dd9fe8562b32570900316bd5307cabb39526",
+    "head": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
     "status": "success",
-    "run": 41905753051,
-    "job": 126839830150,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41905753051",
-    "engineJob": 126839829767,
+    "run": 41925399883,
+    "job": 126908348481,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41925399883",
+    "engineJob": 126908348991,
     "requiredJobs": {
+      "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
-      "test": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7364,
+    "nodePassed": 7374,
     "nodePending": 10,
-    "browserPassed": 341,
+    "browserPassed": 346,
     "desktopPassed": 26,
-    "workstationSmokePassed": 273,
+    "workstationSmokePassed": 278,
     "enginePassed": 42,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.83,
-      "statements": 90.83,
-      "branches": 84.24,
-      "functions": 88.71
+      "lines": 90.84,
+      "statements": 90.84,
+      "branches": 84.26,
+      "functions": 88.72
     },
     "benchmark": {
       "status": "success",
       "profile": "smoke",
-      "source": "main job step 23"
+      "source": "main job completed benchmark step"
     },
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1274,
+      "files": 1275,
       "harnessFiles": 27,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "7f770b380b46f14772ff429ebfdd817a1cf7724e81a6352b696de5655dec6ad0",
+      "closureDigest": "85be38ceef45751b70d9e7770a35e3f8bd9e3a689d3e3e4b1fa18481c2c69187",
       "nativeClockScenarios": 24,
       "nativeClockAvailable": 24,
       "nativeAudio": {
@@ -866,8 +866,8 @@
     },
     "nativeCodec": {
       "status": "passed",
-      "linuxJob": 126839830371,
-      "windowsJob": 126839830031,
+      "linuxJob": 126908349039,
+      "windowsJob": 126908348856,
       "commandsPerPlatform": 8829,
       "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
       "outputIdentical": true,
@@ -875,62 +875,60 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "14e5c35cd8db7e87647eddf3ea130933f46256e7",
+      "testedPrMergeHead": "14f3d89eb56f862948c287d75fb94ab815e83421",
       "rawDirtyFlag": true,
-      "testedMergeTree": "f6925424f9d0008c15c5e70369a3730295cdb064",
-      "publishedHeadTree": "f6925424f9d0008c15c5e70369a3730295cdb064",
+      "testedMergeTree": "4cd91ec6f8af529d50ad3260bcabffc18790880a",
+      "publishedHeadTree": "4cd91ec6f8af529d50ad3260bcabffc18790880a",
       "gitTreesIdentical": true,
-      "inventoryFiles": 1182,
-      "engineInventoryFiles": 1301,
-      "allWorkstationSourceFilesMatchPublishedHead": true,
-      "allEngineSourceFilesMatchPublishedHead": true,
-      "allReportedSourcePaths": 1460,
+      "inventoryFiles": 1188,
+      "engineInventoryFiles": 1302,
+      "allReportedSourcePaths": 1466,
       "allReportedSourcePathsMatchPublishedHead": true,
       "sbomComponents": 10,
-      "sbomFiles": 373,
+      "sbomFiles": 374,
       "sbomComponentGitBytesMatched": true,
       "githubArchiveDigestsMatched": true,
       "reportDigestMatched": true,
-      "mainReportSha256": "a5eb66562609f53f7020a17dc306f020a9ac62ab6a732fd62479b82a702e6e4e"
+      "mainReportSha256": "d444f79f386cd327a7e60e953a6a3ada7e0eff0bc9fd91ab6be6f783d30ccdd6"
     },
     "artifacts": [
       {
-        "path": ".tmp/ci410-main-archive411.zip",
-        "githubArtifactId": 13362289482,
-        "bytes": 1753887,
-        "sha256": "0904213fda3ac6b74f4dda40e7f6d06427e19f55c2abefb07f63aa8f01d6cec6",
+        "githubArtifactId": 13372887070,
+        "path": ".tmp/ci413-main-archive416.zip",
+        "bytes": 2230648,
+        "sha256": "c6050235f44ee4892c154a7375bc2da706add5cb6d9bc055cdd763e9896bf19a",
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci410-archive411-0.zip",
-        "githubArtifactId": 13361985302,
-        "bytes": 1005867,
-        "sha256": "72f210552a472c0e8c81572a840aaaa69fb67dfe11e5a00899e41a9a7640ad82",
+        "githubArtifactId": 13369479502,
+        "path": ".tmp/ci413-engine-archive416.zip",
+        "bytes": 1038060,
+        "sha256": "72874329d57f2c5a6b468e14b707261327b6cd84740da95723928aab12bdd588",
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci410-archive411-1.zip",
-        "githubArtifactId": 13360845219,
-        "bytes": 2147,
-        "sha256": "4bb8c54f94e0d57cc6366078e9c375f20c02099889e45e0022c4a06a8b8eabb1",
+        "githubArtifactId": 13369885821,
+        "path": ".tmp/ci413-13369885821-416.zip",
+        "bytes": 57418,
+        "sha256": "cbcd06e4fd588eaddd21382abda6264e7cdfe557b36e39a9d06113503715f0f6",
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci410-archive411-2.zip",
-        "githubArtifactId": 13360088514,
-        "bytes": 57407,
-        "sha256": "98adc63f09d79cd53ce4a8bcf3506cb31a6caf4c67a3ec3b6283147e7f1bbe8e",
+        "githubArtifactId": 13369636839,
+        "path": ".tmp/ci413-13369636839-416.zip",
+        "bytes": 2146,
+        "sha256": "424dfd910f863c9be560d8734d305bb4309a5414267bdc1a12abfe1c09dba3d2",
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci410-archive411-3.zip",
-        "githubArtifactId": 13360078474,
-        "bytes": 2246,
-        "sha256": "33785b0aeb26764e5f95d5086a4ac0a1e4c4ad25481a1ff9ea0efbbaa48c5c67",
+        "githubArtifactId": 13368588036,
+        "path": ".tmp/ci413-13368588036-416.zip",
+        "bytes": 2248,
+        "sha256": "9f9cf9e5ce2e9c6bce82dfb0802046eaae504f598a2be2225944a782d852d6f0",
         "githubDigestMatched": true
       }
     ],
-    "scope": "All four required jobs plus policy/dependency on the named published source. Independent main/engine qualifiers, 1,460 distinct commit-byte matches, five original ZIP digests, saved report digest, ten SBOM component hashes and regenerated 8,829-command native corpus are verified. Native clocks are available on Chromium/Firefox/Linux WebKit. This checkpoint does not qualify uncommitted continuation411, original live DSP state, listening or device/acoustic output."
+    "scope": "All four required jobs plus policy/dependency on the named published source. Independent main/engine qualifiers,1466distinct exact commit-byte matches,five original ZIP digests,saved report digest,tenSBOM bundles and unchanged independently regenerated8829-command native corpus bind this completed checkpoint. Linux native import memory/refusal observations are separate from admission estimates. Later414-416software changes, acoustics, hardware, listening and the remaining backlog need their own qualification."
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -147059,6 +147057,319 @@
       "Scoped coverage concerns the workstation file. Optional creative-tool and reconnection paths remain outside this batch; global thresholds are unchanged.",
       "The extracted fixture removes one final blank line after qualification; before/after hashes are retained, with no executable text change.",
       "CI413mainNode work remains in progress; current-source fullCI is separate. Latest independently qualified complete green remains3245dd9f."
+    ]
+  },
+  "continuation417": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "9e7c412b589ccdd408dc2b21bfc7646961cd4785",
+    "scope": "Promote independently source-qualified full CI413, preserving prior complete checkpoint and observing native Linux imports/refusals.",
+    "previousCompleteCheckpoint": {
+      "head": "3245dd9fe8562b32570900316bd5307cabb39526",
+      "status": "success",
+      "run": 41905753051,
+      "job": 126839830150,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41905753051",
+      "engineJob": 126839829767,
+      "requiredJobs": {
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "test": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7364,
+      "nodePending": 10,
+      "browserPassed": 341,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 273,
+      "enginePassed": 42,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.83,
+        "statements": 90.83,
+        "branches": 84.24,
+        "functions": 88.71
+      },
+      "benchmark": {
+        "status": "success",
+        "profile": "smoke",
+        "source": "main job step 23"
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1274,
+        "harnessFiles": 27,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "7f770b380b46f14772ff429ebfdd817a1cf7724e81a6352b696de5655dec6ad0",
+        "nativeClockScenarios": 24,
+        "nativeClockAvailable": 24,
+        "nativeAudio": {
+          "status": "passed-in-required-lifecycle-journeys",
+          "physicalReceiverOrAcoustics": false
+        }
+      },
+      "nativeCodec": {
+        "status": "passed",
+        "linuxJob": 126839830371,
+        "windowsJob": 126839830031,
+        "commandsPerPlatform": 8829,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "14e5c35cd8db7e87647eddf3ea130933f46256e7",
+        "rawDirtyFlag": true,
+        "testedMergeTree": "f6925424f9d0008c15c5e70369a3730295cdb064",
+        "publishedHeadTree": "f6925424f9d0008c15c5e70369a3730295cdb064",
+        "gitTreesIdentical": true,
+        "inventoryFiles": 1182,
+        "engineInventoryFiles": 1301,
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "allEngineSourceFilesMatchPublishedHead": true,
+        "allReportedSourcePaths": 1460,
+        "allReportedSourcePathsMatchPublishedHead": true,
+        "sbomComponents": 10,
+        "sbomFiles": 373,
+        "sbomComponentGitBytesMatched": true,
+        "githubArchiveDigestsMatched": true,
+        "reportDigestMatched": true,
+        "mainReportSha256": "a5eb66562609f53f7020a17dc306f020a9ac62ab6a732fd62479b82a702e6e4e"
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci410-main-archive411.zip",
+          "githubArtifactId": 13362289482,
+          "bytes": 1753887,
+          "sha256": "0904213fda3ac6b74f4dda40e7f6d06427e19f55c2abefb07f63aa8f01d6cec6",
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci410-archive411-0.zip",
+          "githubArtifactId": 13361985302,
+          "bytes": 1005867,
+          "sha256": "72f210552a472c0e8c81572a840aaaa69fb67dfe11e5a00899e41a9a7640ad82",
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci410-archive411-1.zip",
+          "githubArtifactId": 13360845219,
+          "bytes": 2147,
+          "sha256": "4bb8c54f94e0d57cc6366078e9c375f20c02099889e45e0022c4a06a8b8eabb1",
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci410-archive411-2.zip",
+          "githubArtifactId": 13360088514,
+          "bytes": 57407,
+          "sha256": "98adc63f09d79cd53ce4a8bcf3506cb31a6caf4c67a3ec3b6283147e7f1bbe8e",
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci410-archive411-3.zip",
+          "githubArtifactId": 13360078474,
+          "bytes": 2246,
+          "sha256": "33785b0aeb26764e5f95d5086a4ac0a1e4c4ad25481a1ff9ea0efbbaa48c5c67",
+          "githubDigestMatched": true
+        }
+      ],
+      "scope": "All four required jobs plus policy/dependency on the named published source. Independent main/engine qualifiers, 1,460 distinct commit-byte matches, five original ZIP digests, saved report digest, ten SBOM component hashes and regenerated 8,829-command native corpus are verified. Native clocks are available on Chromium/Firefox/Linux WebKit. This checkpoint does not qualify uncommitted continuation411, original live DSP state, listening or device/acoustic output."
+    },
+    "completedCheckpoint": {
+      "head": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
+      "status": "success",
+      "run": 41925399883,
+      "job": 126908348481,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41925399883",
+      "engineJob": 126908348991,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7374,
+      "nodePending": 10,
+      "browserPassed": 346,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 278,
+      "enginePassed": 42,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.84,
+        "statements": 90.84,
+        "branches": 84.26,
+        "functions": 88.72
+      },
+      "benchmark": {
+        "status": "success",
+        "profile": "smoke",
+        "source": "main job completed benchmark step"
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1275,
+        "harnessFiles": 27,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "85be38ceef45751b70d9e7770a35e3f8bd9e3a689d3e3e4b1fa18481c2c69187",
+        "nativeClockScenarios": 24,
+        "nativeClockAvailable": 24,
+        "nativeAudio": {
+          "status": "passed-in-required-lifecycle-journeys",
+          "physicalReceiverOrAcoustics": false
+        }
+      },
+      "nativeCodec": {
+        "status": "passed",
+        "linuxJob": 126908349039,
+        "windowsJob": 126908348856,
+        "commandsPerPlatform": 8829,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "14f3d89eb56f862948c287d75fb94ab815e83421",
+        "rawDirtyFlag": true,
+        "testedMergeTree": "4cd91ec6f8af529d50ad3260bcabffc18790880a",
+        "publishedHeadTree": "4cd91ec6f8af529d50ad3260bcabffc18790880a",
+        "gitTreesIdentical": true,
+        "inventoryFiles": 1188,
+        "engineInventoryFiles": 1302,
+        "allReportedSourcePaths": 1466,
+        "allReportedSourcePathsMatchPublishedHead": true,
+        "sbomComponents": 10,
+        "sbomFiles": 374,
+        "sbomComponentGitBytesMatched": true,
+        "githubArchiveDigestsMatched": true,
+        "reportDigestMatched": true,
+        "mainReportSha256": "d444f79f386cd327a7e60e953a6a3ada7e0eff0bc9fd91ab6be6f783d30ccdd6"
+      },
+      "artifacts": [
+        {
+          "githubArtifactId": 13372887070,
+          "path": ".tmp/ci413-main-archive416.zip",
+          "bytes": 2230648,
+          "sha256": "c6050235f44ee4892c154a7375bc2da706add5cb6d9bc055cdd763e9896bf19a",
+          "githubDigestMatched": true
+        },
+        {
+          "githubArtifactId": 13369479502,
+          "path": ".tmp/ci413-engine-archive416.zip",
+          "bytes": 1038060,
+          "sha256": "72874329d57f2c5a6b468e14b707261327b6cd84740da95723928aab12bdd588",
+          "githubDigestMatched": true
+        },
+        {
+          "githubArtifactId": 13369885821,
+          "path": ".tmp/ci413-13369885821-416.zip",
+          "bytes": 57418,
+          "sha256": "cbcd06e4fd588eaddd21382abda6264e7cdfe557b36e39a9d06113503715f0f6",
+          "githubDigestMatched": true
+        },
+        {
+          "githubArtifactId": 13369636839,
+          "path": ".tmp/ci413-13369636839-416.zip",
+          "bytes": 2146,
+          "sha256": "424dfd910f863c9be560d8734d305bb4309a5414267bdc1a12abfe1c09dba3d2",
+          "githubDigestMatched": true
+        },
+        {
+          "githubArtifactId": 13368588036,
+          "path": ".tmp/ci413-13368588036-416.zip",
+          "bytes": 2248,
+          "sha256": "9f9cf9e5ce2e9c6bce82dfb0802046eaae504f598a2be2225944a782d852d6f0",
+          "githubDigestMatched": true
+        }
+      ],
+      "scope": "All four required jobs plus policy/dependency on the named published source. Independent main/engine qualifiers,1466distinct exact commit-byte matches,five original ZIP digests,saved report digest,tenSBOM bundles and unchanged independently regenerated8829-command native corpus bind this completed checkpoint. Linux native import memory/refusal observations are separate from admission estimates. Later414-416software changes, acoustics, hardware, listening and the remaining backlog need their own qualification."
+    },
+    "validation": {
+      "nodePassed": 7374,
+      "nodePending": 10,
+      "desktopPassed": 26,
+      "workstationPassed": 278,
+      "enginePassed": 42,
+      "nativeClockAvailable": 24,
+      "archiveDigestsMatched": 5,
+      "sourcePathsByteExact": 1466,
+      "sbomComponents": 10,
+      "sbomDistinctFiles": 374,
+      "nativeCorpusCommands": 8829,
+      "linuxMemory": [
+        {
+          "name": "import-profile-memory",
+          "platform": "linux",
+          "loaded": {
+            "durationMs": 2466.0999999998603,
+            "accountedPeak": 479220846
+          },
+          "mainPeak": 281049982,
+          "workerPeak": 29552669,
+          "combinedPeak": 281049982,
+          "privatePeak": 1245151232,
+          "rssPeak": 1716125696,
+          "privateMetric": "smaps-private-resident-bytes",
+          "heapSamples": 73,
+          "processSamples": 20,
+          "maxHeapGapMs": 470.40947000007145,
+          "maxProcessGapMs": 269.3107219999656,
+          "workerSamples": 33,
+          "errors": [],
+          "heapSkipped": 108,
+          "processSkipped": 0,
+          "truncated": false
+        },
+        {
+          "name": "structural-maximum-memory-refusal",
+          "platform": "linux",
+          "loaded": null,
+          "mainPeak": 183400979,
+          "workerPeak": 0,
+          "combinedPeak": 183400979,
+          "privatePeak": 610643968,
+          "rssPeak": 1073418240,
+          "privateMetric": "smaps-private-resident-bytes",
+          "heapSamples": 3,
+          "processSamples": 4,
+          "maxHeapGapMs": 592.4669310001191,
+          "maxProcessGapMs": 275.6271459998097,
+          "workerSamples": 0,
+          "errors": [],
+          "heapSkipped": 21,
+          "processSkipped": 0,
+          "truncated": false
+        }
+      ],
+      "evidence": {
+        "path": "docs/validation/import-memory-ci-2026-11-04.json",
+        "bytes": 541813,
+        "sha256": "47a66c6bcc634bc07806d26b8df08a1941a7e1331655e092b5e2ffd00ca4b725"
+      }
+    },
+    "issueStatus": {
+      "open": [
+        987,
+        1120,
+        1162,
+        1234,
+        1087
+      ],
+      "openCount": 188
+    },
+    "currentSourceQualification": "Published414-416runtime has separate CI; no claim from the older completed413run.",
+    "limits": [
+      "This is the completed f4cd4ee9checkpoint; later414-416source and documentation publication have separate CI runs.",
+      "The dirty marker is retained; every reported source byte and synthetic merge tree is independently checked.",
+      "Listening, native physical devices, acoustic latency, full workload tiers and remaining open issues are unqualified."
     ]
   }
 }
