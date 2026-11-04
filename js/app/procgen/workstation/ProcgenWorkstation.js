@@ -2167,11 +2167,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     import: safe(async file => {
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('import');
-      if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
-      const generation = documentGeneration, revision = editRevision, inputBytes = file.size ?? 0;
-      let computed = null;
-      const preferenceHold = preferenceWriter?.suspend();
+      let computed = null, preferenceHold = null;
       try {
+        if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
+        const generation = documentGeneration, revision = editRevision, inputBytes = file.size ?? 0;
+        preferenceHold = preferenceWriter?.suspend();
         if (preferenceHold) await preferenceHold.completion; lease.signal.throwIfAborted();
         computed = await backgroundJobs.compute({ kind: 'parse-json', ownerId: 'procgen-import', ownerEpoch: generation,
           sourceRevision: `${generation}:${revision}`, inputBytes, estimatedPeakBytes: Math.min(400 * 1048576, 64 * 1048576 + inputBytes * 24),
@@ -2396,6 +2396,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getPreferenceState: () => preferenceWriter?.state() || null,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
+    getOperationState: () => currentOperation ? Object.freeze({ kind: currentOperation.kind, generation: currentOperation.generation, aborted: currentOperation.signal.aborted }) : null,
+    getResourceDiagnostics: () => resourceBudget?.diagnostics() || null,
     getRecoveryState: () => Object.freeze({ snapshot: Object.freeze({ ...recoverySnapshotStats }), state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, retirement: recoveryRetirement, lastCommit: lastRecoveryCommit, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),

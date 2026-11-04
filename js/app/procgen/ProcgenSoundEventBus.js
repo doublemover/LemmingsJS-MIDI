@@ -1,6 +1,7 @@
 import { normalizeLaneHeight } from './ProcgenLaneGeometry.js';
 import { SoundEventBus } from '../../game/SoundEvents.js';
 import { EventHandler } from '../../util/EventHandler.js';
+import { assertProcgenIdentityCapacity } from './ProcgenIdentityCapacity.js';
 
 const TERMINAL_TYPES = new Set(['lemming-exit', 'lemming-splat', 'lemming-explode', 'lemming-drown', 'lemming-fire', 'lemming-fell-off', 'ActorTerminated', 'ActionExited', 'ContactSpanEnded', 'FlightArcEnded']);
 const validatePhysicalEventIdentity = value => {
@@ -77,11 +78,13 @@ class ProcgenSoundEventBus extends SoundEventBus {
   }
   beginTick({ worldId, generation, tick, terrainRevisionBefore, sourceTimeMs = null, tickDurationMs = null, ordinal = 0 }) {
     if (this._tick) throw new Error('A physical tick is already being collected.');
+    this.assertTickIdentityCapacity();
     this._sealed = [];
     this._tick = { worldId, generation, tick, terrainRevisionBefore, sourceTimeMs, tickDurationMs,
       facts: [], terminalFacts: [], factBytes: 0, terminalBytes: 0, dropped: 0, ordinal };
   }
   emit(event) {
+    if (!this._tick && event) assertProcgenIdentityCapacity(this._sequence, 1, 'Legacy physical event');
     if (event && event.laneIndex == null && Number.isFinite(event.y)) {
       event = { ...event, laneIndex: Math.max(0, Math.min(this.laneCount - 1, Math.floor(event.y / this.laneHeight))) };
     }
@@ -95,15 +98,18 @@ class ProcgenSoundEventBus extends SoundEventBus {
   _stage(event, legacy) {
     if (this._tick) {
       const current = this._tick;
-      if (!Number.isSafeInteger(this._causalSequence + 1)) throw new RangeError('Physical event sequence exhausted.');
-      const causalSequence = ++this._causalSequence;
       let copied;
       try { copied = copyFact(event); } catch { current.dropped++; return null; }
+      const normal = current.facts.length < this._maxFacts && current.factBytes + copied.bytes <= this._maxFactBytes;
+      const terminal = !normal && (TERMINAL_TYPES.has(copied.value?.kind) || TERMINAL_TYPES.has(copied.value?.type)) &&
+        current.terminalFacts.length < this._maxTerminalFacts && current.terminalBytes + copied.bytes <= this._maxTerminalFactBytes;
+      if (!normal && !terminal) { current.dropped++; return null; }
+      assertProcgenIdentityCapacity(this._causalSequence, 1, 'Physical event sequence');
+      const causalSequence = ++this._causalSequence;
       const fact = { ...copied.value, causalSequence, eventId: `${this.pendingBatchIdentity()}:${causalSequence}`,
           ...(this._interventionCommandId && !copied.value.commandId ? { commandId: this._interventionCommandId } : {}) }, entry = { fact, legacy };
-      if (current.facts.length < this._maxFacts && current.factBytes + copied.bytes <= this._maxFactBytes) { current.facts.push(entry); current.factBytes += copied.bytes; }
-      else if ((TERMINAL_TYPES.has(fact.kind) || TERMINAL_TYPES.has(fact.type)) && current.terminalFacts.length < this._maxTerminalFacts && current.terminalBytes + copied.bytes <= this._maxTerminalFactBytes) { current.terminalFacts.push(entry); current.terminalBytes += copied.bytes; }
-      else { current.dropped++; return null; }
+      if (normal) { current.facts.push(entry); current.factBytes += copied.bytes; }
+      else { current.terminalFacts.push(entry); current.terminalBytes += copied.bytes; }
       return Object.freeze(fact);
     }
     return null;
@@ -151,12 +157,20 @@ class ProcgenSoundEventBus extends SoundEventBus {
   sealGeneration(snapshot, terrainRevisionAfter, nextGeneration) {
     const current = this._tick;
     if (!current) return;
+    if (this._sealed.length) throw new Error('A physical tick supports at most one generation transition.');
     this._seal(snapshot, terrainRevisionAfter, nextGeneration);
     this._tick = { worldId: current.worldId, generation: nextGeneration, tick: current.tick,
       terrainRevisionBefore: terrainRevisionAfter, sourceTimeMs: current.sourceTimeMs,
       tickDurationMs: current.tickDurationMs, facts: [], terminalFacts: [], factBytes: 0, terminalBytes: 0, dropped: 0, ordinal: current.ordinal + 1 };
   }
   factBudget() { return this._lastFactBudget; }
+  assertTickIdentityCapacity() {
+    // One ordinary batch and, at most, one post-restart batch. Dropped facts do
+    // not allocate identities, so these admitted inventories are a strict bound.
+    const capacity = 2 * (this._maxFacts + this._maxTerminalFacts);
+    assertProcgenIdentityCapacity(this._causalSequence, capacity, 'Physical event sequence');
+    assertProcgenIdentityCapacity(this._sequence, capacity, 'Legacy physical event');
+  }
   pendingBatchIdentity() { const tick = this._tick; return tick ? `${tick.worldId}:${tick.generation}:${tick.tick}:${tick.ordinal}` : null; }
   commitTick(snapshot, terrainRevisionAfter) {
     this._seal(snapshot, terrainRevisionAfter);

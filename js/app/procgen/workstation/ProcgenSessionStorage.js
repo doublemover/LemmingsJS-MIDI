@@ -9,17 +9,17 @@ import { upgradeCausalJournalStores, createCausalJournalStorage } from './Procge
 
 const SESSION_VERSION = 1;
 const namedError = (name, message) => Object.assign(new Error(message), { name });
+const sessionObject = value => !!value && typeof value === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 const validateProcgenSession = value => {
-  if (!value || value.format !== 'lemmings-procgen-session' || value.version !== SESSION_VERSION || !value.project || !value.world || !value.settings) throw new Error('This is not a supported ProcGen project.');
-  if (typeof value.project !== 'object' || typeof value.world !== 'object' || typeof value.settings !== 'object' || Array.isArray(value.settings) ||
-      !value.transport || typeof value.transport !== 'object' || !value.patterns || typeof value.patterns !== 'object' ||
-      value.patterns.version !== 1 || !Number.isFinite(value.patterns.beat) || !value.patterns.lanes || typeof value.patterns.lanes !== 'object' ||
+  if (!sessionObject(value) || value.format !== 'lemmings-procgen-session' || value.version !== SESSION_VERSION || !value.project || !value.world || !value.settings) throw new Error('This is not a supported ProcGen project.');
+  if (!sessionObject(value.project) || !sessionObject(value.world) || !sessionObject(value.settings) ||
+      !sessionObject(value.transport) || !sessionObject(value.patterns) ||
+      value.patterns.version !== 1 || !Number.isFinite(value.patterns.beat) || !sessionObject(value.patterns.lanes) ||
       !Array.isArray(value.patterns.pending) || !Array.isArray(value.patterns.active)) throw new Error('Project transport or pattern state is incomplete.');
-  if (value.physicalState != null && (typeof value.physicalState !== 'object' || Array.isArray(value.physicalState) || value.physicalState.version !== 1) ||
-      value.camera != null && (typeof value.camera !== 'object' || Array.isArray(value.camera)) ||
-      value.ui != null && (typeof value.ui !== 'object' || Array.isArray(value.ui))) throw new Error('Project presentation state is invalid.');
+  if (value.physicalState != null && (!sessionObject(value.physicalState) || value.physicalState.version !== 1) ||
+      value.camera != null && !sessionObject(value.camera) || value.ui != null && !sessionObject(value.ui)) throw new Error('Project presentation state is invalid.');
   if (!Number.isInteger(value.world.laneCount) || value.world.laneCount < 1 || value.world.laneCount > 1024 || !Number.isFinite(value.world.seed)) throw new Error('Invalid world settings.');
-  if (value.executionIdentity != null && (typeof value.executionIdentity !== 'object' || Array.isArray(value.executionIdentity) || JSON.stringify(value.executionIdentity).length > 4096)) throw new Error('Invalid bounded session execution provenance.');
+  if (value.executionIdentity != null && (!sessionObject(value.executionIdentity) || JSON.stringify(value.executionIdentity).length > 4096)) throw new Error('Invalid bounded session execution provenance.');
   if (value.recoveryJournal != null) validateProcgenRecoveryJournal(value.recoveryJournal);
   return value;
 };

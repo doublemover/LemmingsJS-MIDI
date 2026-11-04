@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('production project imports reject malformed graphs without changing the live world, history, route or stored checkpoint @boundary', { tag: ['@boundary', '@workstation-import-refusal'] }, async ({ page }, testInfo) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   await page.goto('/procgen.html?e2e=1&seed=42&lanes=2');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
@@ -54,28 +54,35 @@ test('production project imports reject malformed graphs without changing the li
       ['duplicate-actor', session => { session.world.graph.nodes.push(structuredClone(actor(session))); }],
       ['exhausted-causal-sequence', session => { session.world.physicalIdentity.causalSequence = Number.MAX_SAFE_INTEGER; }]
     ];
+    const { createSeededImportCorpus, mutateImportSession, IMPORT_CORPUS_SEED } = await import('/e2e/helpers/seededImportCorpus.js');
+    const corpus = createSeededImportCorpus(), requests = [
+      ...cases.map(([name, mutate]) => ({ name, materialize: () => { const session = structuredClone(original); mutate(session); return session; } })),
+      ...corpus.map(item => ({ name: item.name, materialize: () => mutateImportSession(original, item) }))
+    ];
     const outcomes = [];
-    for (const [name, mutate] of cases) {
-      const session = structuredClone(original); mutate(session); const start = performance.now();
+    for (const { name, materialize } of requests) {
+      const session = materialize(), start = performance.now();
       const accepted = await studio.handlers.import(new File([JSON.stringify(session)], name + '.json', { type: 'application/json' }));
       const status = document.querySelector('.studio-status')?.textContent || '';
       outcomes.push({ name, accepted, durationMs: performance.now() - start, sameWorld: window.__PROCGEN_LANES__.world === world,
         sameProject: studio.getProject() === project, sameDocument: JSON.stringify(studio.getDocumentState()) === documentState,
         sameCheckpoint: JSON.stringify(studio.capture().world) === checkpoint, sameHistory: JSON.stringify(studio.handlers.historyState()) === history,
-        sameRoute: readRoute() === route, boundedError: status.length > 0 && status.length < 1000 && !status.includes('private qualification sentinel'), status });
+        sameRoute: readRoute() === route, operationRetired: studio.getOperationState() === null,
+        boundedError: status.length > 0 && status.length < 1000 && !status.includes('private qualification sentinel'), status });
     }
     let reads = 0;
     const oversized = await studio.handlers.import({ size: 64 * 1048576 + 1, text() { reads++; throw new Error('unadmitted read'); }, stream() { reads++; throw new Error('unadmitted stream'); } });
     const sameStored = JSON.stringify(await storage.loadDocument('doc:import-preserved')) === stored; storage.close();
-    return { controlAccepted, outcomes, oversized, reads, sameStored };
+    return { controlAccepted, outcomes, oversized, reads, sameStored, oversizedOperationRetired: studio.getOperationState() === null,
+      corpus: { seed: IMPORT_CORPUS_SEED, count: corpus.length, mutations: corpus } };
   });
-  expect(result.outcomes).toHaveLength(28);
+  expect(result.outcomes).toHaveLength(92); expect(result.corpus.count).toBe(64);
   for (const outcome of result.outcomes) {
     expect(outcome, outcome.name).toMatchObject({ accepted: false, sameWorld: true, sameProject: true, sameDocument: true,
-      sameCheckpoint: true, sameHistory: true, sameRoute: true, boundedError: true });
+      sameCheckpoint: true, sameHistory: true, sameRoute: true, operationRetired: true, boundedError: true });
     expect(outcome.durationMs, outcome.name).toBeLessThan(10000);
   }
-  expect(result).toMatchObject({ controlAccepted: true, oversized: false, reads: 0, sameStored: true });
+  expect(result).toMatchObject({ controlAccepted: true, oversized: false, reads: 0, sameStored: true, oversizedOperationRetired: true });
   console.log('PROJECT_IMPORT_ADMISSION_RECEIPT ' + JSON.stringify(result));
   await testInfo.attach('project-import-admission-receipt', { contentType: 'application/json', body: JSON.stringify(result, null, 2) });
 });

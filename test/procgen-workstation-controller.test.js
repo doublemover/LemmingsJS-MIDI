@@ -1469,6 +1469,9 @@ describe('ProcGen workstation orchestration', () => {
     expect(await f.studio.handlers.import({ size: 64 * 1048576 + 1, async text() { reads++; return '{}'; } })).to.equal(false);
     expect(reads).to.equal(0); expect(f.restarts).to.have.length(0);
     expect(f.runtime).to.equal(original); expect(f.studio.getProject()).to.equal(project);
+    expect(f.studio.getOperationState()).to.equal(null);
+    expect(await f.studio.handlers.import({ get size() { throw new Error('unreadable file metadata'); } })).to.equal(false);
+    expect(f.studio.getOperationState()).to.equal(null); expect(reads).to.equal(0); expect(f.runtime).to.equal(original);
     f.studio.dispose();
   });
 

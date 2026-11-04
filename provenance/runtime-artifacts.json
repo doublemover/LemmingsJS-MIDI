@@ -235,6 +235,7 @@
         "js/app/procgen/PhysicalGraphAdmission.js",
         "js/app/procgen/PhysicalJunctions.js",
         "js/app/procgen/ProcgenAuthoredAssemblies.js",
+        "js/app/procgen/ProcgenIdentityCapacity.js",
         "js/app/procgen/ProcgenLaneGeometry.js",
         "js/app/procgen/ProcgenPopulationPolicy.js",
         "js/app/procgen/ProcgenRetirement.js",
@@ -450,8 +451,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 304,
-      "sha256": "b9e1d5546d1dfa07d3f98908c4ac6e2c426ae1f12bb700426dbbc77032c0dce6"
+      "fileCount": 305,
+      "sha256": "203884ff151534a7e88c9aa34a524aac784df5a5ecb69c12571c29620044abe3"
     },
     {
       "id": "lemmings-timing-worker-source",

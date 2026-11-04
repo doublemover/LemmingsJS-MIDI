@@ -146504,5 +146504,106 @@
       "Cavity routes bind endOfTick topology; missing postTransaction geometry remains explicitly unavailable.",
       "CI410qualifies3245dd9f; this new continuation requires its own CI after publication."
     ]
+  },
+  "continuation412": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "579efd5edef28431cfe97d6e1da4eaac610c58dc",
+    "scope": "Live checked successor capacity before world mutation, bounded published event inventories, strict session containers and seeded malformed imports through actual worker/candidate transactions.",
+    "changes": [
+      "Preflight tick, cohort actor and bounded two-batch causal/legacy identity frontiers before world mutation; allocate no identities for dropped facts.",
+      "Reject array/nonplain session containers before candidate owners and retire import leases on size-admission/metadata exceptions.",
+      "Add64seeded real-file envelope/container mutations to the existing28graph cases."
+    ],
+    "validation": {
+      "nodePassed": 216,
+      "nodePending": 0,
+      "nodeFailed": 0,
+      "browserPassed": 5,
+      "negativeImports": 92,
+      "seed": 9991186,
+      "slowestRefusalMs": 1120.7000000001863,
+      "oversizeReads": 0,
+      "allOperationsRetired": true,
+      "coverage": {
+        "lines": {
+          "total": 702,
+          "covered": 662,
+          "skipped": 0,
+          "pct": 94.3
+        },
+        "statements": {
+          "total": 702,
+          "covered": 662,
+          "skipped": 0,
+          "pct": 94.3
+        },
+        "functions": {
+          "total": 116,
+          "covered": 94,
+          "skipped": 0,
+          "pct": 81.03
+        },
+        "branches": {
+          "total": 529,
+          "covered": 412,
+          "skipped": 0,
+          "pct": 77.88
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "newIdentityHelperCoverage": "100%lines/statements/branches/functions",
+      "static": {
+        "format": "passed",
+        "lint": "passed",
+        "criticalTypes": "passed",
+        "undefinedCalls": "passed",
+        "provenance": {
+          "components": 10,
+          "files": 374,
+          "workerFiles": 305,
+          "workerSha256": "203884ff151534a7e88c9aa34a524aac784df5a5ecb69c12571c29620044abe3"
+        }
+      },
+      "sourceAudit": {
+        "paths": 1363,
+        "byteExact": 1350,
+        "newlineMappings": 13,
+        "workerFiles": 305,
+        "browserClosureDigest": "b396389d71f3ffb4c994b7f7792424faeeafb50fc0966e970b30cd3ccd7d240c"
+      },
+      "evidence": {
+        "path": "docs/validation/checked-identity-import-desktop-2026-11-04.json",
+        "bytes": 862092,
+        "sha256": "6e568397f769c38705ad08e3eabab6a24435f329862c7de637bfcb9f68e6a485"
+      }
+    },
+    "ci": {
+      "run": 41918047126,
+      "head": "579efd5edef28431cfe97d6e1da4eaac610c58dc",
+      "nativeLinux": "success",
+      "nativeWindows": "success",
+      "main": "in-progress-workstation-smoke",
+      "engine": "in-progress-browser-install",
+      "latestCompleteGreen": "3245dd9fe8562b32570900316bd5307cabb39526"
+    },
+    "issueStatus": {
+      "open": [
+        987
+      ],
+      "openCount": 189,
+      "next": "987declared maximum-project and near-file-limit main/worker memory/timing qualification"
+    },
+    "limits": [
+      "The64MiB file-size ceiling does not promise every such project fits the currently available shared memory.",
+      "Declared maximum-project and near-file-limit main/worker memory and timing qualification remains the next987work item.",
+      "The generated corpus is bounded invalid envelope/container coverage, not a general parser fuzzer or proof for arbitrary hostile programs.",
+      "No full local suite, hardware, listening or new full-source CI pass is claimed."
+    ]
   }
 }

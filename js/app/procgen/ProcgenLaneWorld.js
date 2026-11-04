@@ -1,4 +1,5 @@
 import { validateActorBirthAbilities } from './ActorBirthAbilities.js';
+import { assertProcgenIdentityCapacity } from './ProcgenIdentityCapacity.js';
 import { causalRandomDecision } from './workstation/CausalRandom.js';
 import { isNotifyingProcgenBoundary, publishProcgenCommittedBoundary } from './ProcgenCommittedBoundary.js';
 import { createPhysicalFeedbackState } from './workstation/physical/PhysicalFeedback.js';
@@ -197,8 +198,8 @@ class ProcgenLaneWorld {
 
 
   _spawn(lane, emit = true) {
+    assertProcgenIdentityCapacity(this.nextActorId, 1, 'Actor');
     this.soundEvents.laneIndex = lane;
-    if (!Number.isSafeInteger(this.nextActorId) || this.nextActorId < 0 || !Number.isSafeInteger(this.nextActorId + 1)) throw new RangeError('Actor identity exhausted.');
     const actor = new Lemming(36, lane * this.laneHeight + this.laneHeight - LANE_HEIGHT + 42, this.nextActorId++, this.runtime);
     this._authoritativeActors.add(actor);
     actor.appearanceIndex = lane; actor._musicPositionId = actor.id;
@@ -980,7 +981,11 @@ class ProcgenLaneWorld {
   step(eventTimeMs = null) {
     if (this._stepping || isNotifyingProcgenBoundary(this)) throw new Error('A physical tick cannot be reentered.');
     if (this._failedTick) throw new Error('The previous physical tick was incomplete; restore a checkpoint before stepping.');
-    if (!Number.isSafeInteger(this.tickIndex + 1)) throw new RangeError('Physical tick identity exhausted.');
+    assertProcgenIdentityCapacity(this.tickIndex, 1, 'Physical tick');
+    this.soundEvents.assertTickIdentityCapacity();
+    if (this.cohorts && this.stall.phase === 'running') {
+      assertProcgenIdentityCapacity(this.nextActorId, this.laneCount, 'Actor');
+    }
     const recoverySpeed = this.timer.speedFactor;
     this._stepping = true;
     try {
