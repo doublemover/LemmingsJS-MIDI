@@ -146961,5 +146961,104 @@
       "CI413main remains running at publication; latest independently source-qualified complete green remains410/3245dd9f.",
       "No acoustic, listening, hardware or exhaustive orchestration proof claim."
     ]
+  },
+  "continuation416": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "086d30244433e02ff2aefc40735ae1ada0056e46",
+    "scope": "Explicit transport-stop ownership across Save prompt/preference/write phases, preserved original durable/current owners, and no post-disposal storage presentation.",
+    "changes": [
+      "Only refresh Save resume ownership while its original stop generation remains current.",
+      "Suppress late storage presentation after workstation disposal.",
+      "Share the production controller fixture and qualify60seeded Save-phase/interruption/write-outcome schedules."
+    ],
+    "validation": {
+      "nodePassed": 227,
+      "browserPassed": 3,
+      "generatedSchedules": 60,
+      "originalControllerReproductions": 3,
+      "coverage": {
+        "lines": {
+          "total": 2481,
+          "covered": 1972,
+          "skipped": 0,
+          "pct": 79.48
+        },
+        "statements": {
+          "total": 2481,
+          "covered": 1972,
+          "skipped": 0,
+          "pct": 79.48
+        },
+        "functions": {
+          "total": 363,
+          "covered": 248,
+          "skipped": 0,
+          "pct": 68.31
+        },
+        "branches": {
+          "total": 1769,
+          "covered": 1222,
+          "skipped": 0,
+          "pct": 69.07
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "static": {
+        "format": "passed",
+        "lint": "passed",
+        "dependencies": "passed",
+        "criticalTypes": "passed",
+        "undefinedCalls": "passed",
+        "browserCategories": "passed",
+        "workerProvenanceUnchanged": {
+          "files": 305,
+          "sha256": "147408a06b711f25ffe6f14b9729dc45b60131eb3c333340c90fc024eafc5962"
+        }
+      },
+      "sourceAudit": {
+        "paths": 1334,
+        "byteExact": 1321,
+        "untouchedNewlineMappings": 13,
+        "browserClosureDigest": "22c0dd2e27dceaeca2de506dbb9d8a0d01ac10fd5b42c0d9439569b93cdb052a"
+      },
+      "evidence": {
+        "path": "docs/validation/save-resume-phases-desktop-2026-11-04.json",
+        "bytes": 1217649,
+        "sha256": "3a29717fad7e17336d7a47318703e0c88dfe4b8de889c934f7936e62f77ee4fe"
+      }
+    },
+    "ci": {
+      "latestCompleteGreen": "3245dd9fe8562b32570900316bd5307cabb39526",
+      "run413": 41925399883,
+      "main413": "in-progress-Node-coverage",
+      "workstationPassed": 278,
+      "enginePassed": 42,
+      "nativeCodecs": "success",
+      "sourceQualifiedPaths": 1466,
+      "currentSource": "pending-publication"
+    },
+    "issueStatus": {
+      "open": [
+        1120,
+        1005,
+        987,
+        1234,
+        1162
+      ],
+      "openCount": 188
+    },
+    "limits": [
+      "Generated save schedules cover this production controller with controlled storage/clock adapters. Actual physics continuation, browser permission/GPU behavior and all1120owners are separate.",
+      "Native Playwright qualifies actual naming, accepted stops, IndexedDB named records and preserved world/project identity at1920x1080. It does not claim a listening or hardware result.",
+      "Scoped coverage concerns the workstation file. Optional creative-tool and reconnection paths remain outside this batch; global thresholds are unchanged.",
+      "The extracted fixture removes one final blank line after qualification; before/after hashes are retained, with no executable text change.",
+      "CI413mainNode work remains in progress; current-source fullCI is separate. Latest independently qualified complete green remains3245dd9f."
+    ]
   }
 }

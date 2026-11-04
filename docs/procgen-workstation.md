@@ -283,6 +283,13 @@ projects and the latest recovery checkpoint. **Export** writes a portable
 current origin, so export important projects before changing server ports or
 clearing site data.
 
+Save temporarily pauses capture and can resume only its original transport
+request. An explicit Pause or Stop while the name dialog, preference cleanup,
+or durable write is pending keeps the instrument stopped. Accepted edits before
+capture enter that snapshot; later edits remain dirty. A late save may finish
+storing its original document, but it cannot select, rename or restart a newer
+document. Closing the workstation also prevents late storage-status updates.
+
 Imports have a 64 MiB file-size ceiling and separate structure and shared-memory
 limits. The open world remains owned while its replacement is prepared, so a
 file below that ceiling can still exceed the available memory. A refusal keeps

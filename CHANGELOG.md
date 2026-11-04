@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve explicit Pause and Stop through Save's naming/preference waits, and suppress late storage presentation after workstation disposal.
 - Keep background result publication fenced through reentrant budget cancellation, release and unresolved retirement.
 - Reject incompatible checkpoint headers before migration can rewrite them, and report a failed immutable application install as soon as its installer retires.
 - Admit live tick, actor and event identity capacity before mutation; reject malformed session containers and retire failed file-admission operations.

@@ -212,6 +212,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const currentStorageError = () => lastStorageError?.generation === documentGeneration ? lastStorageError.error : null;
   const storageStatus = error => {
+    if (disposed) return;
     if (error) lastStorageError = { generation: documentGeneration, error: Object.freeze({ message: String(error.message || error).slice(0, 240) }) };
     view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error: currentStorageError(),
       recovery: { state: recoveryState, durableRevision: durableRecoveryRevision, durableTick: durableRecoveryTick,
@@ -2110,8 +2111,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (!name.trim()) { status('Enter a project name to save.'); return false; }
         preferenceHold = preferenceWriter?.suspend(); if (preferenceHold) await preferenceHold.completion;
         if (disposed || documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return false;
+        const resumeWasCurrent = transportStopGeneration === resumeStopGeneration;
         const session = capture(name, { resume: false }), revision = editRevision;
-        resumeStopGeneration = transportStopGeneration;
+        if (resumeWasCurrent) resumeStopGeneration = transportStopGeneration;
         const id = asCopy || !documentId ? createProcgenDocumentId(window.crypto) : documentId;
         const expectedRevision = asCopy || !documentId ? 0 : documentRevision;
         const receipt = storage.saveDocument ? await storage.saveDocument(id, expectedRevision, session, createProcgenDocumentId(window.crypto).replace(/^doc:/, 'commit:')) :
