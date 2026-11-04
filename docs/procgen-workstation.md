@@ -267,6 +267,14 @@ projects and the latest recovery checkpoint. **Export** writes a portable
 current origin, so export important projects before changing server ports or
 clearing site data.
 
+Imports have a 64 MiB file-size ceiling and separate structure and shared-memory
+limits. The open world remains owned while its replacement is prepared, so a
+file below that ceiling can still exceed the available memory. A refusal keeps
+the open world and project intact; it does not discard them to make the new
+project fit. The error reports the requested and available reservation. The
+default 512 MiB application budget is an accounting limit, separate from the
+browser's total process memory and its caches or uploaded-file storage.
+
 Version 1 Game/Hybrid setups are never silently interpreted as physical
 projects. A previous local setup shows a conversion button with the number of
 enabled phrase steps it would discard. Importing or loading a legacy session

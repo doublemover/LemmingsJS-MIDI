@@ -146605,5 +146605,149 @@
       "The generated corpus is bounded invalid envelope/container coverage, not a general parser fuzzer or proof for arbitrary hostile programs.",
       "No full local suite, hardware, listening or new full-source CI pass is claimed."
     ]
+  },
+  "continuation413": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "7f6bbbfb9a0a3fab308048e85fa341a72bd0a35d",
+    "scope": "Observed software import representation/decoded-state memory on Windows Chromium, strict full-checkpoint restore, bounded admission refusals, corrected seeded corpus loading and the prior CI dependency failure.",
+    "changes": [
+      "Observe native main/page-worker heaps and owned-browser OS process memory without forced GC or worker suspension.",
+      "Qualify a production-captured131072-slot/128-lane checkpoint through a6MiBupload, plus explicit1024-lane and near64MiBpre-read refusals.",
+      "Fix CI dependency resolution by generating the identical seeded import corpus in the Node Playwright runner."
+    ],
+    "validation": {
+      "browserPassed": 3,
+      "malformedImports": 92,
+      "scopedNodeSuitesRepeated": false,
+      "sourceRuntimeUnchanged": true,
+      "frozenHarnessFiles": 4,
+      "memory": [
+        {
+          "name": "import-profile-memory",
+          "loaded": {
+            "accepted": true,
+            "fileBytes": 6291456,
+            "dataSlots": 131072,
+            "sourceBytes": 870494,
+            "durationMs": 2370.899999999441,
+            "checkpointHash": "a3341a50c818dffb82e26eae2360af9adb4d3cfdd7c2bdb7d8ba16c6a4fab30e",
+            "sourceCheckpointHash": "a3341a50c818dffb82e26eae2360af9adb4d3cfdd7c2bdb7d8ba16c6a4fab30e",
+            "peakAccountedBytes": 479200278
+          },
+          "refusals": [
+            {
+              "bytes": 67108863,
+              "reads": 0,
+              "durationMs": 2.400000000372529,
+              "status": "candidate needs 524451840 accounted bytes; 327460507 are available."
+            },
+            {
+              "bytes": 67108864,
+              "reads": 0,
+              "durationMs": 4.2000000001862645,
+              "status": "candidate needs 524451840 accounted bytes; 327460507 are available."
+            },
+            {
+              "bytes": 67108865,
+              "reads": 0,
+              "durationMs": 0.30000000074505806,
+              "status": "Project file exceeds the 64 MiB import limit."
+            }
+          ],
+          "workerPeakBytes": 28406597,
+          "workerSamples": 25,
+          "workerTargets": 6,
+          "heapSamples": 61,
+          "processSamples": 10,
+          "mainPeakBytes": 292880810,
+          "combinedPeakBytes": 293319414,
+          "processPrivatePeakBytes": 1072386048,
+          "processRssPeakBytes": 1303597056,
+          "maximumHeapGapMs": 749.1298000000024,
+          "maximumProcessGapMs": 556.5426000000007,
+          "heapSkipped": 70,
+          "processSkipped": 7,
+          "errors": [],
+          "truncated": false,
+          "privateMetric": "process-private-committed-bytes"
+        },
+        {
+          "name": "structural-maximum-memory-refusal",
+          "loaded": null,
+          "refusals": [
+            {
+              "bytes": 50331648,
+              "reads": 0,
+              "durationMs": 7.5,
+              "status": "candidate needs 524451840 accounted bytes; 119343645 are available."
+            }
+          ],
+          "workerPeakBytes": 0,
+          "workerSamples": 0,
+          "workerTargets": 1,
+          "heapSamples": 4,
+          "processSamples": 3,
+          "mainPeakBytes": 183508837,
+          "combinedPeakBytes": 183508837,
+          "processPrivatePeakBytes": 622084096,
+          "processRssPeakBytes": 848670720,
+          "maximumHeapGapMs": 570.6080999999976,
+          "maximumProcessGapMs": 547.2404000000097,
+          "heapSkipped": 11,
+          "processSkipped": 0,
+          "errors": [],
+          "truncated": false,
+          "privateMetric": "process-private-committed-bytes"
+        }
+      ],
+      "static": {
+        "format": "passed",
+        "lint": "passed",
+        "depcheck": "passed",
+        "browserCategories": "passed"
+      },
+      "sourceAudit": {
+        "paths": 1356,
+        "byteExact": 1343,
+        "untouchedNewlineMappings": 13,
+        "browserClosureDigest": "b396389d71f3ffb4c994b7f7792424faeeafb50fc0966e970b30cd3ccd7d240c",
+        "workerFiles": 305
+      },
+      "evidence": {
+        "path": "docs/validation/import-memory-desktop-2026-11-04.json",
+        "bytes": 1356561,
+        "sha256": "ccae860730ad66cbbfc1af5aa953a1ea4454cb3cab244408270c11b218adce6c"
+      }
+    },
+    "ci": {
+      "run": 41920248984,
+      "head": "7f6bbbfb9a0a3fab308048e85fa341a72bd0a35d",
+      "mainJob": 126890533357,
+      "main": "failure-before-browser-and-Node-suites",
+      "primaryFailure": "Unresolved imports: /e2e/helpers/seededImportCorpus.js at e2e/procgen-import-admission.spec.js:57:13",
+      "secondaryFailure": "Required workstation artifact absent because execution stopped before collecting/running browsers.",
+      "nativeWindows": "success",
+      "nativeLinux": "success",
+      "engines": "in-progress-browser-install",
+      "newSource": "pending-publication",
+      "latestCompleteGreen": "3245dd9fe8562b32570900316bd5307cabb39526"
+    },
+    "issueStatus": {
+      "open": [
+        987,
+        1162,
+        1234,
+        1087
+      ],
+      "openCount": 189,
+      "next": "987Linux/current-source CI and remaining declared maximum-state qualification;988actual changed deployments/source/asset-byte corpus"
+    },
+    "limits": [
+      "Native Linux memory sampling and current-source full CI remain unqualified by this Windows run.",
+      "The declared admitted profile and safe1024-lane/near-file-limit refusals do not establish the largest simultaneously admitted state on every target tier.",
+      "Mixed live audio/rendering/recovery/assets/export fairness and observer overhead A/B remain1162/1234/1087work.",
+      "No hardware, acoustic, listening or exact archived-execution claim."
+    ]
   }
 }

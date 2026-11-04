@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createSeededImportCorpus, IMPORT_CORPUS_SEED } from './helpers/seededImportCorpus.js';
 
 test('production project imports reject malformed graphs without changing the live world, history, route or stored checkpoint @boundary', { tag: ['@boundary', '@workstation-import-refusal'] }, async ({ page }, testInfo) => {
   test.setTimeout(180000);
@@ -6,7 +7,7 @@ test('production project imports reject malformed graphs without changing the li
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
   await page.waitForFunction(() => window.__PROCGEN_LANES__.world.actors.length > 0);
-  const result = await page.evaluate(async () => {
+  const result = await page.evaluate(async ({ corpus, seed }) => {
     const studio = window.__PROCGEN_STUDIO__; studio.transport.pause();
     const controlAccepted = await studio.handlers.import(new File([JSON.stringify(studio.capture())], 'valid-control.json', { type: 'application/json' }));
     if (!controlAccepted) throw new Error('The unmodified control checkpoint did not import.');
@@ -54,10 +55,13 @@ test('production project imports reject malformed graphs without changing the li
       ['duplicate-actor', session => { session.world.graph.nodes.push(structuredClone(actor(session))); }],
       ['exhausted-causal-sequence', session => { session.world.physicalIdentity.causalSequence = Number.MAX_SAFE_INTEGER; }]
     ];
-    const { createSeededImportCorpus, mutateImportSession, IMPORT_CORPUS_SEED } = await import('/e2e/helpers/seededImportCorpus.js');
-    const corpus = createSeededImportCorpus(), requests = [
+    const requests = [
       ...cases.map(([name, mutate]) => ({ name, materialize: () => { const session = structuredClone(original); mutate(session); return session; } })),
-      ...corpus.map(item => ({ name: item.name, materialize: () => mutateImportSession(original, item) }))
+      ...corpus.map(item => ({ name: item.name, materialize: () => {
+        if (!item.path.length) return structuredClone(item.value);
+        const session = structuredClone(original), target = item.path.slice(0, -1).reduce((value, key) => value[key], session);
+        target[item.path.at(-1)] = structuredClone(item.value); return session;
+      } }))
     ];
     const outcomes = [];
     for (const { name, materialize } of requests) {
@@ -74,8 +78,8 @@ test('production project imports reject malformed graphs without changing the li
     const oversized = await studio.handlers.import({ size: 64 * 1048576 + 1, text() { reads++; throw new Error('unadmitted read'); }, stream() { reads++; throw new Error('unadmitted stream'); } });
     const sameStored = JSON.stringify(await storage.loadDocument('doc:import-preserved')) === stored; storage.close();
     return { controlAccepted, outcomes, oversized, reads, sameStored, oversizedOperationRetired: studio.getOperationState() === null,
-      corpus: { seed: IMPORT_CORPUS_SEED, count: corpus.length, mutations: corpus } };
-  });
+      corpus: { seed, count: corpus.length, mutations: corpus } };
+  }, { corpus: createSeededImportCorpus(), seed: IMPORT_CORPUS_SEED });
   expect(result.outcomes).toHaveLength(92); expect(result.corpus.count).toBe(64);
   for (const outcome of result.outcomes) {
     expect(outcome, outcome.name).toMatchObject({ accepted: false, sameWorld: true, sameProject: true, sameDocument: true,
