@@ -60,3 +60,39 @@ its physical pump and refuses Play/Step until that take is saved or recovered.
 This is an admission and recovery boundary, not a guarantee that a previously
 accepted asynchronous storage write can never fail. The retained durable prefix
 and coverage gaps continue to describe that failure.
+
+## Native scheduling and presentation delay
+
+The physical playback factory accepts a finite `presentationDelayMs` from 0 to
+1000 ms; the workstation keeps its 24 ms default. This is an explicit delay for committed
+source events, separate from producer lead, effect processing and reported device
+latency. It does not predict future collisions or retime expired attacks.
+
+Disabling the owned session invalidates both its audio correlation and cached
+execution lease. Re-enabling on the same context renews the native lease at the
+next committed batch, even when generation, BPM and sample rate are unchanged.
+An unrelated owner's state notification preserves an enabled physical owner's
+correlation and lease.
+
+The portable desktop clock journeys observe real native oscillator submissions
+and tap their pre-envelope source through an audio worklet. A bounded 16-byte
+shared observer records render frames and source onsets while a controlled
+20/50/100 ms task blocks the main thread. These private probe documents explicitly
+enable COOP/COEP isolation; ordinary live rearm journeys use the normal document.
+The main-thread view of `currentTime` can stay frozen during that task. Original target frames, measured
+producer lead and onset-error populations remain separate fields. Cancellation
+before a future onset and cancellation after observed source rendering retain
+different evidence. A native Stop request is not a render-kernel acknowledgment
+or proof of immediate acoustic silence.
+
+The observer enters its native render loop before source production begins.
+Each submission retains the current render quantum, the main-thread context view
+and monotonic host time separately. These prepared observer measurements do not
+qualify cold observer initialization or device startup latency.
+
+Ports without either native AudioContext constructor publish explicit unavailable
+receipts with zero opened contexts and output disabled. They contribute no onset
+measurement. The engine qualifier requires this capability to agree with the
+independent semantic journey, and requires all eight named clock scenarios per
+engine. Hardware output, the final envelope/mix and acoustic latency are outside
+the source probe's measurement boundary.

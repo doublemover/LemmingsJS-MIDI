@@ -142670,5 +142670,593 @@
       "Clean install used ignore-scripts; standard CI install and full-source qualification remain separate.",
       "Continue solo with972native context/rearm/producer-cancellation boundaries and1194matched-level/live-worker/graph-history work while CI runs. Preserve repeated Linux Firefox signal11 evidence; investigate native crash diagnostics if the new run repeats it."
     ]
+  },
+  "continuation408": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "fb89164e085bd1f3fde23982bf10ac4ac173a0f2",
+    "scope": "Renew owned physical audio after same-context Listen disable/re-enable; qualify explicit native scheduling, producer lead, cancellation and owner correlation; repair both current CI clock-gap fixtures.",
+    "changes": [
+      "Invalidate both clock correlation and cached native execution leases when the physical owner disables or its context changes. Renew at the next committed batch; leave enabled unrelated owners stable.",
+      "Expose a bounded finite0–1000ms factory presentation delay before allocations; retain the workstation24ms default and separate it from producer/DSP/device time.",
+      "Move source-review checkpoint capture outside the running transport action window. Keep native live-clock original targets and record bounded explicit Play recovery only for actual unsafe host-gap stops.",
+      "Add eight required clock scenarios per engine, real measured desktop dimensions, prewarmed bounded shared render observation and cooperative committed ordinary source. Source targets are independently recomputed and never moved to the probe window.",
+      "Bind27 harness files, including dependency locks, base desktop config, build recipes, reused helpers and the typed receipt qualifier. Require actual busy-thread render observations, native producer lead, readiness and capability agreement."
+    ],
+    "validation": {
+      "node": {
+        "passed": 47,
+        "failed": 0,
+        "node": "20.20.2",
+        "scope": "Five affected files; scoped coverage is informational and does not disable repository-wide CI thresholds."
+      },
+      "browser": {
+        "uniquePassed": 63,
+        "failed": 0,
+        "workstationPassed": 21,
+        "portableGroupedPassed": 42,
+        "composition": {
+          "singleInvocation": false,
+          "applicationSourceUnchanged": true,
+          "groups": [
+            {
+              "report": "rook408-final-engines.json",
+              "selected": 18,
+              "scope": "unchanged pre-existing portable cases"
+            },
+            {
+              "report": "rook408-completed-native.json",
+              "selected": 6,
+              "scope": "normal-document rearm cases; executed callback unchanged by subsequent private observer work"
+            },
+            {
+              "report": "rook408-final-private.json",
+              "selected": 18,
+              "scope": "complete final private scheduling/cancellation/owner matrix"
+            }
+          ]
+        },
+        "nativeClockJourneys": 16,
+        "explicitUnavailableClockJourneys": 8,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "summaries": [
+          {
+            "project": "chromium-semantic",
+            "available": true,
+            "scenarios": [
+              {
+                "scenario": "listen-rearm",
+                "available": true,
+                "rearm": {
+                  "sameGeneration": true,
+                  "sameBpm": true,
+                  "sameSampleRate": true,
+                  "contexts": 1,
+                  "mutedAttacks": 2,
+                  "admitted": 4,
+                  "missedAttacksReplayed": 0,
+                  "sourceTargetFramesChecked": 4,
+                  "terminalActiveNotes": 0
+                }
+              },
+              {
+                "scenario": "context-replacement",
+                "available": true,
+                "rearm": {
+                  "sameGeneration": true,
+                  "sameBpm": true,
+                  "sameSampleRate": true,
+                  "contexts": 2,
+                  "mutedAttacks": 2,
+                  "admitted": 4,
+                  "missedAttacksReplayed": 0,
+                  "sourceTargetFramesChecked": 4,
+                  "terminalActiveNotes": 0
+                }
+              },
+              {
+                "scenario": "stall-20",
+                "available": true,
+                "onset": {
+                  "population": 8,
+                  "p50Frames": 1,
+                  "p95Frames": 1,
+                  "p99Frames": 1,
+                  "maxFrames": 1,
+                  "sampleRate": 48000,
+                  "tap": "native-oscillator-pre-envelope",
+                  "deviceLatency": "unmeasured"
+                },
+                "observedStallMs": 20.009999990463257,
+                "onsetsWhileBlocked": 1,
+                "producerLeadFrames": [
+                  1213,
+                  2173,
+                  3133,
+                  4093,
+                  5053,
+                  5629,
+                  6589,
+                  7037
+                ]
+              },
+              {
+                "scenario": "stall-50",
+                "available": true,
+                "onset": {
+                  "population": 8,
+                  "p50Frames": 1,
+                  "p95Frames": 2,
+                  "p99Frames": 2,
+                  "maxFrames": 2,
+                  "sampleRate": 48000,
+                  "tap": "native-oscillator-pre-envelope",
+                  "deviceLatency": "unmeasured"
+                },
+                "observedStallMs": 50.00499999523163,
+                "onsetsWhileBlocked": 3,
+                "producerLeadFrames": [
+                  6718,
+                  7678,
+                  8638,
+                  9598,
+                  10174,
+                  11134,
+                  12094,
+                  12542
+                ]
+              },
+              {
+                "scenario": "stall-100",
+                "available": true,
+                "onset": {
+                  "population": 8,
+                  "p50Frames": 1,
+                  "p95Frames": 1,
+                  "p99Frames": 1,
+                  "maxFrames": 1,
+                  "sampleRate": 48000,
+                  "tap": "native-oscillator-pre-envelope",
+                  "deviceLatency": "unmeasured"
+                },
+                "observedStallMs": 100.01000000536442,
+                "onsetsWhileBlocked": 4,
+                "producerLeadFrames": [
+                  7741,
+                  8701,
+                  9661,
+                  10621,
+                  11581,
+                  12541,
+                  13117,
+                  13565
+                ]
+              },
+              {
+                "scenario": "cancel-before-render",
+                "available": true,
+                "cancellation": {
+                  "nativeSubmissionObserved": true,
+                  "rendered": false,
+                  "nodes": 8,
+                  "frontier": "native-source-render-probe",
+                  "deviceBufferedPcm": "unknown"
+                }
+              },
+              {
+                "scenario": "cancel-after-render",
+                "available": true,
+                "cancellation": {
+                  "nativeSubmissionObserved": true,
+                  "rendered": true,
+                  "nodes": 8,
+                  "frontier": "native-source-render-probe",
+                  "deviceBufferedPcm": "unknown"
+                }
+              },
+              {
+                "scenario": "independent-owner",
+                "available": true,
+                "independentOwner": {
+                  "sameContext": true,
+                  "sameAnchor": true,
+                  "unchangedRebases": true
+                }
+              }
+            ]
+          },
+          {
+            "project": "firefox-lifecycle",
+            "available": true,
+            "scenarios": [
+              {
+                "scenario": "listen-rearm",
+                "available": true,
+                "rearm": {
+                  "sameGeneration": true,
+                  "sameBpm": true,
+                  "sameSampleRate": true,
+                  "contexts": 1,
+                  "mutedAttacks": 2,
+                  "admitted": 4,
+                  "missedAttacksReplayed": 0,
+                  "sourceTargetFramesChecked": 4,
+                  "terminalActiveNotes": 0
+                }
+              },
+              {
+                "scenario": "context-replacement",
+                "available": true,
+                "rearm": {
+                  "sameGeneration": true,
+                  "sameBpm": true,
+                  "sameSampleRate": true,
+                  "contexts": 2,
+                  "mutedAttacks": 2,
+                  "admitted": 4,
+                  "missedAttacksReplayed": 0,
+                  "sourceTargetFramesChecked": 4,
+                  "terminalActiveNotes": 0
+                }
+              },
+              {
+                "scenario": "stall-20",
+                "available": true,
+                "onset": {
+                  "population": 8,
+                  "p50Frames": 1,
+                  "p95Frames": 1,
+                  "p99Frames": 1,
+                  "maxFrames": 1,
+                  "sampleRate": 48000,
+                  "tap": "native-oscillator-pre-envelope",
+                  "deviceLatency": "unmeasured"
+                },
+                "observedStallMs": 20,
+                "onsetsWhileBlocked": 1,
+                "producerLeadFrames": [
+                  2239,
+                  2815,
+                  3775,
+                  4223,
+                  4671,
+                  5119,
+                  5695,
+                  6143
+                ]
+              },
+              {
+                "scenario": "stall-50",
+                "available": true,
+                "onset": {
+                  "population": 8,
+                  "p50Frames": 1,
+                  "p95Frames": 1,
+                  "p99Frames": 1,
+                  "maxFrames": 1,
+                  "sampleRate": 48000,
+                  "tap": "native-oscillator-pre-envelope",
+                  "deviceLatency": "unmeasured"
+                },
+                "observedStallMs": 51.559999999999945,
+                "onsetsWhileBlocked": 2,
+                "producerLeadFrames": [
+                  6720,
+                  7168,
+                  8128,
+                  9088,
+                  9536,
+                  10112,
+                  10560,
+                  11520
+                ]
+              },
+              {
+                "scenario": "stall-100",
+                "available": true,
+                "onset": {
+                  "population": 8,
+                  "p50Frames": 1,
+                  "p95Frames": 1,
+                  "p99Frames": 1,
+                  "maxFrames": 1,
+                  "sampleRate": 48000,
+                  "tap": "native-oscillator-pre-envelope",
+                  "deviceLatency": "unmeasured"
+                },
+                "observedStallMs": 100.01999999999998,
+                "onsetsWhileBlocked": 5,
+                "producerLeadFrames": [
+                  8256,
+                  9216,
+                  9664,
+                  10624,
+                  11072,
+                  11648,
+                  12608,
+                  12544
+                ]
+              },
+              {
+                "scenario": "cancel-before-render",
+                "available": true,
+                "cancellation": {
+                  "nativeSubmissionObserved": true,
+                  "rendered": false,
+                  "nodes": 8,
+                  "frontier": "native-source-render-probe",
+                  "deviceBufferedPcm": "unknown"
+                }
+              },
+              {
+                "scenario": "cancel-after-render",
+                "available": true,
+                "cancellation": {
+                  "nativeSubmissionObserved": true,
+                  "rendered": true,
+                  "nodes": 8,
+                  "frontier": "native-source-render-probe",
+                  "deviceBufferedPcm": "unknown"
+                }
+              },
+              {
+                "scenario": "independent-owner",
+                "available": true,
+                "independentOwner": {
+                  "sameContext": true,
+                  "sameAnchor": true,
+                  "unchangedRebases": true
+                }
+              }
+            ]
+          },
+          {
+            "project": "webkit-lifecycle",
+            "available": false,
+            "scenarios": [
+              {
+                "scenario": "listen-rearm",
+                "available": false
+              },
+              {
+                "scenario": "context-replacement",
+                "available": false
+              },
+              {
+                "scenario": "stall-20",
+                "available": false
+              },
+              {
+                "scenario": "stall-50",
+                "available": false
+              },
+              {
+                "scenario": "stall-100",
+                "available": false
+              },
+              {
+                "scenario": "cancel-before-render",
+                "available": false
+              },
+              {
+                "scenario": "cancel-after-render",
+                "available": false
+              },
+              {
+                "scenario": "independent-owner",
+                "available": false
+              }
+            ]
+          }
+        ]
+      },
+      "coverage": {
+        "total": {
+          "lines": 86.45,
+          "functions": 53.23,
+          "branches": 75.86
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\AudioClockBridge.js": {
+          "lines": 93.4,
+          "functions": 90,
+          "branches": 79.72
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPhysicalPlayback.js": {
+          "lines": 79.32,
+          "functions": 46.66,
+          "branches": 65.84
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\scripts\\LifecycleEngineResults.js": {
+          "lines": 100,
+          "functions": 100,
+          "branches": 81.42
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\scripts\\NativeClockResults.js": {
+          "lines": 100,
+          "functions": 100,
+          "branches": 94.11
+        }
+      },
+      "checks": {
+        "format": "passed",
+        "undefinedCalls": "passed",
+        "whitespace": "passed",
+        "provenance": {
+          "components": 10,
+          "files": 370,
+          "workerFiles": 301,
+          "workerSha256": "9aac61256fd0e050fd24b21451a9fe948a9655357f83e00d8b0c88d6259f61e1"
+        }
+      },
+      "source": {
+        "closureDigest": "1a96144ceb90e654ec10dcd68f6f769ba66f5d7012c614578daa57555a6fae29",
+        "files": 1269,
+        "harnessFiles": 27,
+        "applicationBuildId": "30352770d3dc383538711f6ae5f9b6b3d948b32dec585963223d36ba26c0826e",
+        "changedInputs": [
+          {
+            "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+            "bytes": 38698,
+            "sha256": "202acb1ae2620595d14b20b5303605be9ef8f41ae7cd369aeeb77755017c3de6"
+          },
+          {
+            "path": "playwright.lifecycle.config.js",
+            "bytes": 853,
+            "sha256": "916dac73c726eb64e26b7a76db47271ed7fb9ae3bc5c7b0c5edb871264c11677"
+          },
+          {
+            "path": "scripts/LifecycleEngineResults.js",
+            "bytes": 5287,
+            "sha256": "be224ce1c35bd9e93fd3d6a39d354e5a918a6604e42f9b906bf5085478d30f27"
+          },
+          {
+            "path": "scripts/run-lifecycle-engines.js",
+            "bytes": 3719,
+            "sha256": "62cb8d6fecbbc6f31ca3bbc1edb27ff1afc3e1477cf24568a9d1331eae7ad1ea"
+          },
+          {
+            "path": "test/lifecycle-engine-results.test.js",
+            "bytes": 8675,
+            "sha256": "a9cb9c6c5debe48219b66cbb931e00a5e5d6e674bff77fac2b2ca16ac78509f1"
+          },
+          {
+            "path": "test/procgen-physical-playback.test.js",
+            "bytes": 13980,
+            "sha256": "f048bf72640af91fb5f4e5cdcd6b3182df9b664c937e7c9d7bbda8331f66c983"
+          },
+          {
+            "path": "e2e-portable/audio-clock.spec.js",
+            "bytes": 14547,
+            "sha256": "690dd7c3d97bbf9115c2f5e5c4ba9e61b1530c49d0ac3b56353cb2ce9a960bea"
+          },
+          {
+            "path": "e2e-portable/fixtures/clock-onset-probe.js",
+            "bytes": 1593,
+            "sha256": "810c14f54bf46af0351af711adebda599df479d09da722544ae803b44b87cac6"
+          },
+          {
+            "path": "e2e/helpers/observeNativeAudioClock.js",
+            "bytes": 5112,
+            "sha256": "e0846229a06a48687eaef09c3118fe62aac1cc87781e7c627ef7db1318bf87ea"
+          },
+          {
+            "path": "e2e/helpers/physicalAudioClockFixture.js",
+            "bytes": 12581,
+            "sha256": "3fab82bca11c89471f6e10b8b67e0b3dbc2297acb593310fc2947e90f98e49ba"
+          },
+          {
+            "path": "scripts/NativeClockResults.js",
+            "bytes": 7578,
+            "sha256": "315c9f725147350289efb7fc104f9a2935b63873f05c7f65b3aee61f67f4efa4"
+          },
+          {
+            "path": "test/support/native-clock-receipts.js",
+            "bytes": 3361,
+            "sha256": "d172877dda61ae778dd9bab04025020eb3b24507df5f2602e101e7ffa1a3ddf2"
+          },
+          {
+            "path": "e2e/procgen-operational-status.spec.js",
+            "bytes": 20729,
+            "sha256": "25e44a57582d7c108925e7ed0e078fbbeb716f0f27ceed7c681a6e1e050b8f19"
+          },
+          {
+            "path": "e2e/procgen-workstation-live-clock.spec.js",
+            "bytes": 12974,
+            "sha256": "a7433d0f118ffa62094fcd8cb091b67d3ce480fd2e1568d77dee89c076ad8387"
+          },
+          {
+            "path": "CHANGELOG.md",
+            "bytes": 39070,
+            "sha256": "14244d984ba44becbd2e5b1efd50f95ac78d3573d15cfa9ec765eb7e3942c853"
+          },
+          {
+            "path": "docs/procgen-physical-timing.md",
+            "bytes": 7839,
+            "sha256": "54a8936fa4dee07cd9667e29399cb2cb85c0a6c95ae0c9544bc057b296ec0bd0"
+          }
+        ],
+        "checkoutNormalization": {
+          "files": 13,
+          "mode": "working/index digests and reconstructible CRLF line numbers in raw receipt;changed,harness,worker inputs exact"
+        }
+      },
+      "rawReceipt": {
+        "path": "docs/validation/native-clock-frontiers-desktop-2026-11-04.json",
+        "bytes": 6075789,
+        "sha256": "6698ec7c6bcd4315fb93540e57db6cfff23cf46e5e2aa4fb94fceae283e9edce"
+      }
+    },
+    "ci": {
+      "previousHead": {
+        "head": "fb89164e085bd1f3fde23982bf10ac4ac173a0f2",
+        "run": 41860524657,
+        "mainJob": 126680743748,
+        "engineJob": 126680743164,
+        "nativeWindowsJob": 126680743551,
+        "nativeLinuxJob": 126680743654,
+        "main": "failure",
+        "engine": "success",
+        "nativeWindows": "success",
+        "nativeLinux": "success",
+        "workstation": {
+          "passed": 271,
+          "failed": 2,
+          "report": {
+            "bytes": 10616650,
+            "sha256": "6649caa0846b1e2403e7d9945a68f966005fab9af92d4cacebcb2f01cd94d142"
+          },
+          "archive": {
+            "id": 13341013693,
+            "bytes": 1517698,
+            "sha256": "09c15f012a1bb9b392a034bf4a84ab572d93a1ade0dc3dc6560b7e6e3a1669b7"
+          },
+          "failureArchive": {
+            "id": 13341318206,
+            "bytes": 35349544,
+            "sha256": "5a546142282636c821c34088696af91fb1b23b930f1e756f778c1ce2877a4647"
+          }
+        },
+        "failedCases": [
+          {
+            "file": "e2e/procgen-operational-status.spec.js",
+            "cause": "Cooperative checkpoint serialization occurs while transport runs; actual stop removes the no-source-events review action. Move the read-only snapshot outside the running-clock action window.",
+            "observedGapMs": 397
+          },
+          {
+            "file": "e2e/procgen-workstation-live-clock.spec.js",
+            "cause": "The actual unsafe-gap policy stops at tick52 after a402ms host wake gap. Retain original targets and report a bounded explicit native Play recovery instead of waiting indefinitely or retiming attacks.",
+            "observedGapMs": 402,
+            "stoppedTick": 52
+          }
+        ]
+      },
+      "newHead": "requires-independent-full-CI-after-publication",
+      "latestIndependentlyVerifiedFullGreen": {
+        "continuation": 405,
+        "head": "2504b778b90b388261c23caf7992cef22c2872ee",
+        "run": 41055706625,
+        "nodePassed": 7313,
+        "nodePending": 10,
+        "browserPassed": 307
+      },
+      "fullLocalSuiteRepeated": false
+    },
+    "issueStatus": {
+      "972": "Keep open pending actual Linux WebKit native output and current-head full CI. The local constructor-absent port has no onset population.",
+      "1104": "Broader capture/revoice and changing graph-history requirements remain.",
+      "1194": "Next: matched levels, broader live-worker/body matrices and audible captured graph history.",
+      "open": 190
+    },
+    "limits": [
+      "Grouped local engine cases combine18 unchanged portable,6 normal-document rearm and18 final private cases; they are not one final42-case invocation. All application source bytes remain unchanged across those passing groups.",
+      "Private native source uses a prepared observer and cooperatively committed ordinary batches at nominal speed3. Original anchors/targets remain immutable; controlled producer lead is separate from the24/128/160ms presentation delays.",
+      "Internal native oscillator pre-envelope samples and native API stop frontiers only; no built-in native backend render acknowledgment, final-mix/device/acoustic latency or listening qualification.",
+      "Nearest-rank onset populations contain eight sources per condition; cold/synchronous producer deviations remain explicit in history and do not enter the final prepared measurements.",
+      "Windows WebKit has no native AudioContext: all eight clock scenarios retain explicit unavailable receipts and no onset data. Real Linux WebKit output and current-head full CI remain required before closing972.",
+      "Thirteen untouched runtime inputs have checkout CRLF differences from their indexed LF source. Exact working/index hashes and reconstructible CRLF line numbers are retained. Changed code,27 harness inputs and all301 worker files match indexed bytes; this is not an archived-exact-runtime qualification."
+    ]
   }
 }

@@ -3,8 +3,27 @@ import { createMidiProject, sanitizeMidiProject, reduceMidiProject } from '../js
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { createProcgenPhysicalScoreClock } from '../js/app/procgen/workstation/ProcgenPhysicalScoreClock.js';
 import { createProcgenPhysicalPlayback } from '../js/app/procgen/workstation/ProcgenPhysicalPlayback.js';
+import { createInstrumentExecutionLifecycle } from '../js/app/midi-ui/InstrumentExecutionLifecycle.js';
 
 describe('ProcGen physical playback', () => {
+
+  it('rejects invalid presentation delays before acquiring an audio owner', () => {
+    let owners = 0;
+    for (const presentationDelayMs of [-1, 1001, NaN, Infinity, '24', null]) {
+      expect(() => createProcgenPhysicalPlayback({ presentationDelayMs, audio: { createSession() { owners++; } } })).to.throw(RangeError);
+    }
+    expect(owners).to.equal(0);
+  });
+
+  it('retains the bounded configured presentation delay independently of DSP and device latency', async () => {
+    for (const presentationDelayMs of [0, 24, 128, 1000]) {
+      const project = createProcgenWorkstationProject(createMidiProject());
+      const playback = createProcgenPhysicalPlayback({ presentationDelayMs, getGraph: () => project.procgen.physicalGraph, scoreTimeline: createProcgenPhysicalScoreClock(), now: () => 0 });
+      expect(playback.diagnostics().clock.presentationDelayMs).to.equal(presentationDelayMs);
+      expect(playback.diagnostics().clock.outputLatencySeconds).to.equal(null);
+      await playback.dispose().completion;
+    }
+  });
 
   it('counts deferred settlement once and keeps later driver acknowledgements out of admission totals', async () => {
     const project = createProcgenWorkstationProject(createMidiProject()), timeline = createProcgenPhysicalScoreClock(), context = { state: 'running', currentTime: 1, sampleRate: 48000 };
@@ -83,6 +102,32 @@ describe('ProcGen physical playback', () => {
 
 
 describe('physical clock rearm without transport changes', () => {
+  it('renews a cleared native lease immediately on same-context re-enable and preserves it for unrelated notifications', async () => {
+    const project = createProcgenWorkstationProject(createMidiProject()), timeline = createProcgenPhysicalScoreClock(), context = { state: 'running', currentTime: 1, sampleRate: 48000 };
+    const leases = new Set(), begins = []; let enabled = true, notify, host = 1000, incarnation = 0, renewals = 0;
+    const native = createInstrumentExecutionLifecycle({ prepare: async () => ({ status: 'ready' }),
+      begin(intent, frame, epoch) { if (!leases.has(epoch)) return { status: 'rejected', reason: 'execution-lease-required' }; begins.push(intent.intentId); return { status: 'accepted' }; },
+      end: () => ({ status: 'accepted' }), renewExecutionLease(generation, epoch) { leases.add(epoch); renewals++; return { status: 'accepted' }; },
+      cancelGenerationWithReceipt: () => ({ status: 'accepted', count: 0 }), renderDiagnostics: () => ({ activeVoices: 0 }), dispose() { leases.clear(); }
+    }, { getContext: () => context, getGeneration: () => incarnation, isSettled: () => true, isVoiceSettled: () => true, forget: epoch => leases.delete(epoch) }).api;
+    const session = { getState: () => ({ enabled }), enable: async () => enabled, createInstrumentBackend: () => native, stop() {}, dispose() {} };
+    const audio = { createSession: () => session, getAudioContext: () => context, getState: () => ({ enabled }), subscribe: listener => { notify = listener; return () => {}; } };
+    const playback = createProcgenPhysicalPlayback({ audio, getGraph: () => project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, scoreTimeline: timeline, now: () => host });
+    const step = tick => {
+      host += 60; context.currentTime += 0.06;
+      const batch = { version: 1, batchId: 'native-' + tick, worldId: 'world', generation: 1, tick, sourceTimeMs: tick * 60, tickDurationMs: 60,
+        completeness: { status: 'complete', dropped: 0 }, facts: [{ kind: 'TerrainWorkCommitted', eventId: 'native-event-' + tick, causalSequence: tick, actorId: 1, laneId: 0, operationKind: 'build' }] };
+      playback.processBatch(batch, { bpm: 120, position: timeline.observe(batch, { bpm: 120 }) });
+    };
+    try {
+      await playback.ready(); step(1); expect(begins).to.have.length(1); expect(renewals).to.equal(1);
+      enabled = false; incarnation++; leases.clear(); notify({ enabled }); step(2);
+      enabled = true; notify({ enabled }); step(3); expect(begins).to.have.length(2); expect(renewals).to.equal(2);
+      const rebases = playback.diagnostics().clock.rebases; notify({ enabled }); step(4);
+      expect(begins).to.have.length(3); expect(renewals).to.equal(2); expect(playback.diagnostics().clock.rebases).to.equal(rebases);
+      expect(playback.diagnostics().leaseFailures).to.equal(0);
+    } finally { await playback.dispose().completion; }
+  });
   it('reanchors after disable and same-rate context replacement at the next committed batch', async () => {
     const project = createProcgenWorkstationProject(createMidiProject()), timeline = createProcgenPhysicalScoreClock(), calls = [];
     let context = { state: 'running', currentTime: 1, sampleRate: 48000 }, enabled = true, notify, host = 1000;

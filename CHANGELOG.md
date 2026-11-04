@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Renew physical audio execution leases immediately after Listen is re-enabled on the same context, and bound configurable presentation delay independently of device latency.
 - Update development lint and file-matching dependencies to patched releases, including redirect-header handling, glob cancellation and minimatch amplification fixes.
 - Keep failed project loads visible in the project picker while background preference errors continue reporting independently.
 - Export closed physical-take tick crops with captured tempo and speed history, explicit note-boundary refusal and independent desktop clock/export qualification.

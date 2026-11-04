@@ -34,7 +34,8 @@ const nativeResolution = Object.freeze({
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
 export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
-  initialMorphMechanism = null, initialCavityBody = null, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, onIntentProvenance = null, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
+  initialMorphMechanism = null, initialCavityBody = null, presentationDelayMs = 24, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, onIntentProvenance = null, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
+  if (!Number.isFinite(presentationDelayMs) || presentationDelayMs < 0 || presentationDelayMs > 1000) throw new RangeError('Invalid physical audio presentation delay.');
   if (!Array.isArray(additionalOutputs) || additionalOutputs.length > 8 || additionalOutputs.some(output => !Array.isArray(output?.sinks) || typeof output.enabled !== 'function' || typeof output.observe !== 'function' || typeof output.dispose !== 'function')) throw new Error('Invalid physical output owners.');
   const externalEnabled = () => additionalOutputs.some(output => { try { return output.enabled() === true; } catch { return false; } });
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
@@ -56,7 +57,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, getCatalog: getInstrumentCatalog, onState: onInstrumentState, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider() }); }
   catch { routingUnavailable = 'audio-preparation-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Preparation cannot stop physics. */ } }
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
-    presentationDelayMs: 24, maxHorizonMs: 5000 });
+    presentationDelayMs, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, pendingAdmissions = 0, leaseFailures = 0;
   let surfaceBodies = null, sceneMorph = null;
@@ -91,8 +92,12 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   }).catch(() => false) : Promise.resolve(false);
   const unsubscribe = audio?.subscribe?.(state => {
     const context = audio?.getAudioContext?.();
+    if (!state.enabled || !session?.getState().enabled || context !== lastAudioContext) {
+      clock.invalidate(); anchoredEpoch = null; anchoredBpm = null;
+      leaseUntil = null; leaseEpoch = null; leaseContext = null;
+    }
     if (state.enabled) { arm(); if (!lastAudioEnabled || context !== lastAudioContext) laneInstruments?.retry(getLanes()).catch(() => {}); }
-    else { clock.invalidate(); anchoredEpoch = null; anchoredBpm = null; } lastAudioEnabled = !!state.enabled; lastAudioContext = context;
+    lastAudioEnabled = !!state.enabled; lastAudioContext = context;
   }) || null;
   let bodyBackend = null;
   try { bodyBackend = session?.observeBodyReceipts ? createPreparedBodyStrikeBackend({ owner: documentEpoch + ':finite-strikes', resourceBudget,

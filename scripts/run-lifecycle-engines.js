@@ -8,7 +8,11 @@ import { qualifyLifecycleEngineResults } from './LifecycleEngineResults.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url)), output = path.join(root, '.tmp');
 const harnessFiles = ['playwright.lifecycle.config.js', 'scripts/run-lifecycle-engines.js', 'scripts/LifecycleEngineResults.js', 'scripts/run-browser-boundaries.js',
-  'e2e-portable/fixtures.js', 'e2e-portable/lifecycle.spec.js', 'e2e-portable/semantic.spec.js', 'e2e-portable/capabilities.spec.js', 'e2e-portable/native-permission.spec.js'];
+  'package.json', 'package-lock.json', 'playwright.config.js', 'e2e/helpers/desktopViewports.js', 'scripts/BrowserTestCatalog.js',
+  'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js', 'scripts/InstrumentArtifactClosure.js',
+  'scripts/NativeClockResults.js', 'e2e-portable/fixtures.js', 'e2e-portable/lifecycle.spec.js', 'e2e-portable/semantic.spec.js', 'e2e-portable/capabilities.spec.js', 'e2e-portable/native-permission.spec.js',
+  'e2e-portable/audio-clock.spec.js', 'e2e-portable/fixtures/clock-onset-probe.js', 'e2e/helpers/observeNativeAudioClock.js', 'e2e/helpers/physicalAudioClockFixture.js',
+  'e2e/helpers/physicalMidiClock.js', 'e2e/helpers/workstationChrome.js', 'test/support/smf.js'];
 const harness = () => Promise.all(harnessFiles.map(async name => {
   const bytes = await fs.readFile(path.join(root, name)); return { path: name, bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') };
 }));
@@ -27,7 +31,7 @@ export async function runLifecycleEngines() {
     if (before.closureDigest !== after.closureDigest || JSON.stringify(beforeHarness) !== JSON.stringify(await harness())) throw new Error('Engine qualification source changed during execution.');
     if (code !== 0) throw new Error('Native engine journeys failed with exit code ' + code);
     receipt.qualification = qualifyLifecycleEngineResults(JSON.parse(await fs.readFile(reportPath, 'utf8')));
-    receipt.status = 'passed'; console.log('All 18 engine journeys passed with matching physics, causal and asset identities.');
+    receipt.status = 'passed'; console.log('All ' + receipt.qualification.passed + ' engine journeys passed with matching physics, causal and asset identities and qualified native clock receipts.');
   } catch (error) {
     receipt.error = String(error?.stack || error); console.error(error?.message || error);
   } finally { await fs.writeFile(summaryPath, JSON.stringify(receipt, null, 2) + '\n'); }

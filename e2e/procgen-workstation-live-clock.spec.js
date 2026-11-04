@@ -37,8 +37,19 @@ async function enableLiveOutput(page, backend) {
   await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
 }
 
-async function advanceLive(page, target) {
-  await expect.poll(() => page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex), { timeout: 15000, intervals: [20, 40, 80] }).toBeGreaterThanOrEqual(target);
+async function advanceLive(page, target, journey) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let observed;
+    await expect.poll(async () => {
+      observed = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, transport: window.__PROCGEN_STUDIO__.transport.getState() }));
+      return observed.tick >= target || !observed.transport.playing && observed.transport.reason === 'suspended' && observed.transport.lastDiscontinuity?.source === 'host-wake-gap';
+    }, { timeout: 15000, intervals: [20, 40, 80] }).toBe(true);
+    if (observed.tick >= target) return;
+    expect(attempt, JSON.stringify(observed)).toBeLessThan(2);
+    journey.incidentalHostGaps ||= []; journey.incidentalHostGaps.push(observed);
+    await page.waitForTimeout(100); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(observed.tick);
+    await startLive(page);
+  }
 }
 async function startLive(page) { await page.getByRole('button', { name: 'Play world', exact: true }).click(); }
 
@@ -90,15 +101,15 @@ for (const backend of ['audio', 'midi']) for (const scenario of ['rates-pause-st
     journey.lost = await page.evaluate(() => ({ state: window.__PROCGEN_STUDIO__.transport.getState(), tick: window.__PROCGEN_LANES__.world.tickIndex }));
     await page.waitForTimeout(100); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(journey.lost.tick);
     journey.continued = await externalPulses(page, 16, 24, { stop: true }); expect(journey.continued.state.playing).toBe(false); expect(journey.continued.tick).toBeGreaterThan(journey.lost.tick);
-    await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ clockSource: 'internal', bpm: 83 })); await startLive(page); await advanceLive(page, 110);
+    await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ clockSource: 'internal', bpm: 83 })); await startLive(page); await advanceLive(page, 110, journey);
   } else {
-    await startLive(page); await advanceLive(page, scenario === 'catch-up' ? 48 : 24);
+    await startLive(page); await advanceLive(page, scenario === 'catch-up' ? 48 : 24, journey);
     if (scenario === 'rates-pause-step') {
-      await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 175, speedMode: 'bpm', linked: true })); await advanceLive(page, 48);
+      await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 175, speedMode: 'bpm', linked: true })); await advanceLive(page, 48, journey);
       await page.getByRole('button', { name: 'Pause world', exact: true }).click(); journey.pausedTick = await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex);
       await page.waitForTimeout(100); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(journey.pausedTick);
       await page.locator('#procgenStep').click(); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(journey.pausedTick + 1);
-      await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 93, speedMode: 'game', linked: false, gameSpeed: 5 })); await startLive(page); await advanceLive(page, 110);
+      await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 93, speedMode: 'game', linked: false, gameSpeed: 5 })); await startLive(page); await advanceLive(page, 110, journey);
     } else if (scenario === 'catch-up' || scenario === 'host-gap') {
       journey.gap = await page.evaluate(milliseconds => { const started = performance.now(), before = window.__PROCGEN_LANES__.world.tickIndex; while (performance.now() - started < milliseconds) { /* Controlled host stall. */ } return { requestedMs: milliseconds, observedMs: performance.now() - started, before, afterTask: window.__PROCGEN_LANES__.world.tickIndex }; }, scenario === 'catch-up' ? 200 : 500);
       expect(journey.gap.afterTask).toBe(journey.gap.before);
@@ -106,11 +117,11 @@ for (const backend of ['audio', 'midi']) for (const scenario of ['rates-pause-st
         await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().reason)).toBe('suspended');
         expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(journey.gap.before); await startLive(page);
       }
-      await advanceLive(page, 110);
+      await advanceLive(page, 110, journey);
     } else {
       await expect.poll(() => page.evaluate(() => window.__PROCGEN_LANES__.world.generation), { timeout: 15000 }).toBeGreaterThan(armed.generation);
       journey.boundary = await page.evaluate(() => ({ generation: window.__PROCGEN_LANES__.world.generation, tick: window.__PROCGEN_LANES__.world.generationStartTick }));
-      await advanceLive(page, journey.boundary.tick + 96);
+      await advanceLive(page, journey.boundary.tick + 96, journey);
     }
   }
   const live = await page.evaluate(() => ({ diagnostics: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics(), peak: window.__liveClockPeak, nonfinite: window.__liveClockNonfinite, opens: window.__liveClockAudioOpens, midi: window.__WEBMIDI_STUB__.metrics() }));

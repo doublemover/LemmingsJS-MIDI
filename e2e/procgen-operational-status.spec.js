@@ -147,12 +147,13 @@ test('a prepared silent physical scene names its lack of source events and opens
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().prepared)).toBe(true);
   await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Scenes', exact: true }).click();
   const catalog = page.getByRole('dialog', { name: 'Playable physical scores', exact: true }); await expect(catalog).toBeVisible({ timeout: 30000 }); await page.keyboard.press('Escape'); await expect(catalog).toBeHidden();
+  const before = await projectWorldState(page), output = await metrics(page);
   await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause(); });
   await expect(strip(page)).toHaveAttribute('data-state', 'no-source-events'); await expect(strip(page)).toContainText('No eligible physical source event');
   await expect(strip(page)).toHaveAttribute('data-world-state', 'paused');
-  const before = await projectWorldState(page), output = await metrics(page);
   await strip(page).getByRole('button', { name: 'Open an isolated lesson', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Learn physical music', exact: true })).toBeVisible();
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
   const after = await projectWorldState(page);
   if (after.hash !== before.hash) await testInfo.attach('silent-lesson-checkpoint-difference', { contentType: 'application/json', body: JSON.stringify(await compareProcgenPhysicsCheckpoints(...operationalCheckpoints.get(page))) });
   expect(after.hash).toBe(before.hash); expect(after.id).toBe(before.id); expect(after.project).toBe(before.project); expect((await metrics(page)).sent).toBe(output.sent);
@@ -163,10 +164,12 @@ test('source preview offers an available mapping review instead of an unverified
   await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi');
   await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().prepared)).toBe(true);
+  const before = await projectWorldState(page), output = await metrics(page);
   await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause(); });
   await expect(strip(page)).toHaveAttribute('data-state', 'no-source-events'); await expect(strip(page).getByRole('button', { name: 'Open an isolated lesson', exact: true })).toHaveCount(0);
-  const before = await projectWorldState(page), output = await metrics(page); await strip(page).getByRole('button', { name: 'Review physical mappings', exact: true }).click();
-  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.state.tab)).toBe('Physical'); expect(await projectWorldState(page)).toEqual(before); expect((await metrics(page)).sent).toBe(output.sent);
+  await strip(page).getByRole('button', { name: 'Review physical mappings', exact: true }).click();
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.state.tab)).toBe('Physical'); await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
+  expect(await projectWorldState(page)).toEqual(before); expect((await metrics(page)).sent).toBe(output.sent);
 });
 
 test('real asset preparation keeps Panic reachable, reports initial-world failure and recovers through Start fresh', { tag: '@boundary' }, async ({ page }) => {
