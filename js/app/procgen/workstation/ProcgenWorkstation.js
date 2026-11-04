@@ -2139,7 +2139,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const page = storage.listDocumentPage ? await storage.listDocumentPage({ signal: lease.signal }) : null;
       const entries = page ? null : storage.listDocuments ? await storage.listDocuments() : await storage.list();
       if (!ownsOperation(lease)) return false;
-      const loadSelected = safe(async id => {
+      const loadSelected = async id => {
         if (!ownsOperation(lease)) return false;
         const preferenceHold = preferenceWriter?.suspend(); let record;
         try {
@@ -2151,7 +2151,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
           return loaded;
         } finally { try { record?.release?.(); } finally { preferenceHold?.release(); } }
-      });
+      };
       if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
         if (!ownsOperation(lease)) return null;
         const next = await storage.listDocumentPage({ cursor, query, signal: lease.signal });

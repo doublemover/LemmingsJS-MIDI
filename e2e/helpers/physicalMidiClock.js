@@ -26,8 +26,10 @@ export async function armActualPhysicalClock(page, { external = false, speed = 3
     window.__physicalClockBatches = [];
     api.world.soundEvents.onBatch.on(batch => {
       if (window.__physicalClockBatches.length >= 4096) throw new Error('Clock fixture exceeded its bounded batch history.');
-      window.__physicalClockBatches.push({ tick: batch.tick, generation: batch.generation, sourceTimeMs: batch.sourceTimeMs, tickDurationMs: batch.tickDurationMs,
-        hostEventTimeMs: api.world.eventTimeMs, transportBeat: studio.transport.getState().beat, terminalGenerationTransition: batch.terminalGenerationTransition ?? null });
+      const output = window.__observePhysicalLiveClock ? studio.getPhysicalOutputDiagnostics() : null;
+      window.__physicalClockBatches.push({ batchId: batch.batchId, tick: batch.tick, generation: batch.generation, sourceTimeMs: batch.sourceTimeMs, tickDurationMs: batch.tickDurationMs,
+        hostEventTimeMs: api.world.eventTimeMs, transportBeat: studio.transport.getState().beat, terminalGenerationTransition: batch.terminalGenerationTransition ?? null,
+        ...(output ? { audioAnchor: output.clock.anchor, midiAnchor: output.externalOutputs[0]?.clock ?? null } : {}) });
     });
     const armed = await studio.handlers.startCausalTake({ takeName: external ? 'Actual external clock MIDI matrix' : 'Actual physical clock MIDI matrix' });
     if (!armed) throw new Error('Clock matrix take admission failed.');
@@ -47,11 +49,12 @@ export async function finishActualPhysicalClock(page, takeId) {
       if (page.nextSequence != null) throw new Error('Clock fixture source exceeded one bounded journal page.');
       const intents = page.records.filter(record => record.kind === 'musical-intents').flatMap(record => record.payload.intents);
       const inputs = page.records.filter(record => record.kind === 'input-observation').map(record => ({ sequence: record.sequence, tick: record.tick, payload: record.payload }));
+      const outcomes = page.records.filter(record => record.kind === 'sink-outcome').flatMap(record => record.payload.outcomes || [record.payload]);
       storage.close(); storage = createProcgenSessionStorage(); const reopened = await createProcgenCausalJournal({ storage }).openTake(takeId);
       if (manifest.canonicalHash !== reopened.canonicalHash) throw new Error('Reopened clock source changed.');
       await studio.handlers.selectCausalTake(takeId); studio.transport.configure({ bpm: 17 });
       return { takeId, stopped, canonicalHash: reopened.canonicalHash, clock: reopened.stopBoundaryState.timeline, boundary: reopened.boundaryState,
-        intents, inputs, batches: window.__physicalClockBatches, tick: api.world.tickIndex, generation: api.world.generation, project: JSON.stringify(studio.getProject()) };
+        intents, inputs, outcomes, batches: window.__physicalClockBatches, tick: api.world.tickIndex, generation: api.world.generation, project: JSON.stringify(studio.getProject()) };
     } finally { storage.close(); }
   }, takeId);
 }

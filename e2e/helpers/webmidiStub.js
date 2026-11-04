@@ -1,5 +1,5 @@
-export async function installWebMidiStub(page, { withDevices = true, permission = 'granted', outputCount = 1, sameOutputName = false, trackOutput = false, reverseOutputs = false } = {}) {
-  await page.addInitScript(({ withDevices, permission, outputCount, sameOutputName, trackOutput, reverseOutputs }) => {
+export async function installWebMidiStub(page, { withDevices = true, permission = 'granted', outputCount = 1, sameOutputName = false, trackOutput = false, reverseOutputs = false, trackOutputTimestamps = false } = {}) {
+  await page.addInitScript(({ withDevices, permission, outputCount, sameOutputName, trackOutput, reverseOutputs, trackOutputTimestamps }) => {
     let requests = 0, sent = 0; const messages = [], outputCounts = Object.create(null);
     const createPort = (type, id, name) => {
       const listeners = new Map();
@@ -23,7 +23,7 @@ export async function installWebMidiStub(page, { withDevices = true, permission 
         },
         open: async () => {},
         close: async () => {},
-        send: bytes => { if (!trackOutput) return; sent++; outputCounts[id] = (outputCounts[id] || 0) + 1; if (messages.length < 4096) messages.push({ outputId: id, bytes: Array.from(bytes) }); },
+        send: (bytes, timestamp) => { if (!trackOutput) return; sent++; outputCounts[id] = (outputCounts[id] || 0) + 1; if (messages.length < 4096) messages.push({ outputId: id, bytes: Array.from(bytes), ...(trackOutputTimestamps ? { requestedTimestampMs: Number.isFinite(timestamp) ? timestamp : null, submittedAtMs: performance.now() } : {}) }); },
         clear: () => {},
         _emit(eventName, event) {
           for (const handler of listeners.get(eventName) || []) handler(event);
@@ -118,7 +118,7 @@ export async function installWebMidiStub(page, { withDevices = true, permission 
     }
 
     window.__WEBMIDI_STUB__ = {
-      metrics() { return { requests, sent, outputs: { ...outputCounts }, messages: messages.map(value => ({ outputId: value.outputId, bytes: [...value.bytes] })) }; },
+      metrics() { return { requests, sent, outputs: { ...outputCounts }, messages: messages.map(value => ({ ...value, bytes: [...value.bytes] })) }; },
       reorderOutputs(ids) { const previous = new Map(outputs); outputs.clear(); for (const id of ids) if (previous.has(id)) { outputs.set(id, previous.get(id)); previous.delete(id); } for (const [id, port] of previous) outputs.set(id, port); },
       sendInput(data, inputId = 'pw-input-1') {
         const input = inputs.get(inputId);
@@ -154,5 +154,5 @@ export async function installWebMidiStub(page, { withDevices = true, permission 
         };
       }
     };
-  }, { withDevices, permission, outputCount, sameOutputName, trackOutput, reverseOutputs });
+  }, { withDevices, permission, outputCount, sameOutputName, trackOutput, reverseOutputs, trackOutputTimestamps });
 }

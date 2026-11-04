@@ -818,36 +818,36 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "4ad585227b537f21ad0a35d85ff4dad5f234bb01",
+    "head": "2504b778b90b388261c23caf7992cef22c2872ee",
     "status": "success",
-    "run": 41030776175,
-    "job": 123979720229,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41030776175",
-    "engineJob": 123979720719,
+    "run": 41055706625,
+    "job": 124062580664,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41055706625",
+    "engineJob": 124062580328,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7284,
+    "nodePassed": 7313,
     "nodePending": 10,
-    "browserPassed": 289,
+    "browserPassed": 307,
     "desktopPassed": 26,
-    "workstationSmokePassed": 245,
+    "workstationSmokePassed": 263,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.81,
-      "statements": 90.81,
-      "branches": 84.22,
-      "functions": 88.72
+      "lines": 90.82,
+      "statements": 90.82,
+      "branches": 84.2,
+      "functions": 88.66
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 35232,
+      "totalDurationMs": 33730,
       "thresholds": {
         "perfP95FrameMsMax": 250,
         "perfP50TpsMin": 15,
@@ -858,18 +858,18 @@
         "scaledBlitAvgMsMax": 250
       },
       "durationsMs": {
-        "benchPerformance": 10366,
-        "benchHistoryStress": 17994,
-        "benchHotpaths": 6869
+        "benchPerformance": 10402,
+        "benchHistoryStress": 17237,
+        "benchHotpaths": 6089
       },
       "metrics": {
-        "perfP95Frame": 66.70000000000073,
-        "perfP50Tps": 90.65155807365439,
-        "historyRatio": 0.586,
-        "antsAvgMs": 13.67,
-        "tileCompositionAvgMs": 4.12,
-        "overlayPlaneAvgMs": 16.57,
-        "scaledBlitAvgMs": 27.77
+        "perfP95Frame": 100,
+        "perfP50Tps": 93.96458258042782,
+        "historyRatio": 0.5848333333333333,
+        "antsAvgMs": 18.79,
+        "tileCompositionAvgMs": 3.55,
+        "overlayPlaneAvgMs": 13.21,
+        "scaledBlitAvgMs": 24.14
       },
       "failures": [],
       "diagnostics": [],
@@ -877,11 +877,11 @@
       "scenarios": [
         {
           "speed": 30,
-          "ratio": 0.586
+          "ratio": 0.5848333333333333
         },
         {
           "speed": 60,
-          "ratio": 1.0178333333333334
+          "ratio": 1.0418333333333334
         }
       ]
     },
@@ -890,36 +890,23 @@
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1271,
+      "files": 1278,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "9b2e4d520c7492e817a9a976b113c73a7df9d5af665453400caaec1dad70376c",
+      "closureDigest": "ea2423307641eb49c424957af7570cd85965a77e54f3b0eeca3f3aa94f4b249b",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
       "facts": 1078,
       "ticks": 64,
-      "nativeAudio": [
-        {
-          "project": "chromium-semantic",
-          "browser": "153.0.8010.12",
-          "audioContextAvailable": true
-        },
-        {
-          "project": "firefox-lifecycle",
-          "browser": "155.0",
-          "audioContextAvailable": true
-        },
-        {
-          "project": "webkit-lifecycle",
-          "browser": "26.6",
-          "audioContextAvailable": true
-        }
-      ]
+      "nativeAudio": {
+        "status": "passed-in-required-lifecycle-journeys",
+        "physicalReceiverOrAcoustics": false
+      }
     },
     "nativeCodec": {
-      "status": "both passed",
-      "linuxJob": 123979720504,
-      "windowsJob": 123979720599,
+      "status": "passed",
+      "linuxJob": 124062580346,
+      "windowsJob": 124062580429,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -930,50 +917,55 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "62a1e1e49c6b1e0b83d12b60c718d738edfee7a7",
+      "testedPrMergeHead": "403cb1d7c8390494f105fa3430b0e6fb9263107a",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1164,
-      "inventorySha256": "fe6b2c826faa27498f4df3a5d24e34a438a626c0ac3211c60857f9eb571dbf82",
+      "testedMergeTree": "6efe6ce83fcd6b36ec7f512140f3022551b86eaa",
+      "publishedHeadTree": "6efe6ce83fcd6b36ec7f512140f3022551b86eaa",
+      "gitTreesIdentical": true,
+      "inventoryFiles": 1173,
+      "inventorySha256": "3534e3fd695496653dfb893ba0d418cb1d8a186940dd6bd359c1d1a19ee74528",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
-      "engineInventoryFiles": 1271,
-      "engineRuntimeFiles": 1262,
+      "engineInventoryFiles": 1278,
+      "engineRuntimeFiles": 1269,
       "engineHarnessFiles": 9,
       "allEngineSourceFilesMatchPublishedHead": true,
       "githubArchiveDigestsMatched": true,
-      "reportDigestMatched": true
+      "reportDigestMatched": true,
+      "mainReportSha256": "ee7344375788d8637c60ba6c7216ed9ac2b4d0ab189a929bb679f67da5015baa",
+      "treeIdentity": "identical Git tree objects"
     },
     "artifacts": [
       {
-        "path": ".tmp/ci399-0.zip",
-        "bytes": 931000,
-        "sha256": "8c40bf03a368d36e9dbfa0ea9032025aef00fd613f0faceb5c0e6a238bcd6bbd",
-        "githubArtifactId": 12968425842,
+        "path": ".tmp/ci405-12978439764.zip",
+        "bytes": 1240138,
+        "sha256": "059a78cce3fc5f7b12c6d408679df0e82ae04f5fe9eefb88714d4c31325eb5f4",
+        "githubArtifactId": 12978439764,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci399-1.zip",
-        "bytes": 163150,
-        "sha256": "7b9b59689599bbc128d6963f43c0560c514c90722a00de8e8ec1e98e812961b4",
-        "githubArtifactId": 12966051407,
+        "path": ".tmp/ci405-12977461341.zip",
+        "bytes": 163175,
+        "sha256": "d65f7c13623151fd349432a32afdc5da3ac620ab3504cadbaead87023874f667",
+        "githubArtifactId": 12977461341,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci399-2.zip",
-        "bytes": 2246,
-        "sha256": "be8ee336100fdb2addeb39fd3ffb7a855f0791072bb93fb0c805ddb257db1a83",
-        "githubArtifactId": 12965078231,
+        "path": ".tmp/ci405-12976816272.zip",
+        "bytes": 2148,
+        "sha256": "0315ca1eb3336b0ed4e42c7d9c59a53f5e706651e0df9a5b65a06f5792b634e6",
+        "githubArtifactId": 12976816272,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci399-3.zip",
-        "bytes": 2146,
-        "sha256": "fc15fd141754cf57b59774725bb95b998b4f7cb85e72f664fde6b88eda658371",
-        "githubArtifactId": 12964954376,
+        "path": ".tmp/ci405-12976138981.zip",
+        "bytes": 2247,
+        "sha256": "d408c2be9d77b636b2a3e3f303da31a5e2a43b25cd734ef067979e08cf6a8b27",
+        "githubArtifactId": 12976138981,
         "githubDigestMatched": true
       }
     ],
-    "scope": "All four required jobs plus policy and dependency review on the named source. Historical397 admission refusal and394/396 native Firefox crashes remain in prior continuations. Later source, hardware, acoustic and issue-specific acceptance remain independent."
+    "scope": "All four required jobs plus policy/dependency on the named source. Independently verified all1173workstation/1278engine/both8native source inputs, original ZIP digests, saved main report digest and engine semantic parity. Reported dirty synthetic merge has the exact same Git tree as the published head; generated-file dirtiness is preserved. This is the prior full-source checkpoint, not a green claim for uncommitted406development, hardware or listening."
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -141859,6 +141851,581 @@
     "limits": [
       "No all-backlog completion, current-head full-CI-green, exact-qualified, hardware or listening claim.",
       "Work pauses at this pushed documentation checkpoint at the user request; do not automatically continue development."
+    ]
+  },
+  "continuation406": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "2504b778b90b388261c23caf7992cef22c2872ee",
+    "issues": [
+      986,
+      972,
+      1093,
+      1104
+    ],
+    "scope": "Resume solo; preserve project load failure ownership, qualify actual live clock/late-output seams, and independently qualify the completed full CI checkpoint. No full local suite repeated.",
+    "changes": [
+      "Let the selected stored-load callback propagate its original failure to the project picker existing catch path. Add local live status semantics so background preference errors cannot replace the operation failure. Keep candidate publication, suspended preference retirement, failed-world retention and explicit retry guards.",
+      "Qualify both native local audio and declared MIDI API sinks through tempo/effective-speed changes, native paused nominal Step, actual catch-up pumping, controlled500ms host-gap halt/resume, external clock loss/Continue/Stop and ordinary cohort restart. Independently recompute original integer sample-frame/performance-microsecond targets from each actual owned correlation.",
+      "Observe actual finite internal PCM, original MIDI API timestamp arguments, representation-loss receipts and terminal ownership. Distinguish accepted/degraded output, source target and late-release policy repair; never turn a dropped attack into a new source onset.",
+      "Strengthen the existing pure-domain timing regression: forty committed ticks delivered in groups1,4or10 produce identical complete canonical intents; keep tick10/12separation and source/tempo/generation restore checks.",
+      "Refresh full CI405qualification after the pause: all original four archive digests, main report digest, source inventories, identical synthetic-merge/published Git trees, engine semantic parity and native codec corpus/output parity match. Promote only the root latest checkpoint; retain every historical continuation and failed attempt."
+    ],
+    "validation": {
+      "node": {
+        "passing": 198,
+        "failures": 0,
+        "scope": "195controller/preference/storage cases in one corrected affected batch, plus3separate strengthened SimScoreTimeline cases. Production source and all native browser harness inputs remained unchanged after their passing runs."
+      },
+      "browser": {
+        "passing": 32,
+        "failures": 0,
+        "skips": 0,
+        "flaky": 0,
+        "workstation": {
+          "passing": 26,
+          "durationSeconds": 186.827524
+        },
+        "portableCapabilities": {
+          "passing": 6,
+          "durationSeconds": 71.442861,
+          "projects": [
+            "chromium-semantic",
+            "firefox-lifecycle",
+            "webkit-lifecycle"
+          ],
+          "productionAndHarnessUnchanged": true
+        },
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "Final combined26workstation cases include10new native clock cases, physical MIDI export/closed crops/generation replay, existing transport/recovery and default physical MIDI. Six native capability cases verify original worker failure remains visible after a real competing preference failure, durable Save/world/project retention and successful explicit retry.",
+        "receiptsArtifact": {
+          "path": "docs/validation/live-clock-desktop-2026-11-04.json",
+          "bytes": 6268130,
+          "sha256": "4ae2abaf02372076757f8789773311219c1fda81cb6e6aa66fe9ddffa17a62a8"
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "e2e-portable/capabilities.spec.js",
+          "bytes": 7637,
+          "sha256": "d75c404c7b73244b2b887b02564e9b71d7ad758974b4a611c738da8f112618cc"
+        },
+        {
+          "path": "e2e/helpers/physicalMidiClock.js",
+          "bytes": 10964,
+          "sha256": "8aa0065c67ac0102eb21be48d7d0e247a4edfa2810c3fa1912962ace7d7895cb"
+        },
+        {
+          "path": "e2e/helpers/webmidiStub.js",
+          "bytes": 6649,
+          "sha256": "b4ab04b2842b2107dd7f8eff0fd10615d0b90eef5133f9b9883755b73ef2c72b"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "bytes": 227384,
+          "sha256": "45270c88626a2fcbe8848c94d253307931d15303f471ac632e5c0be4221ec4dc"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+          "bytes": 151542,
+          "sha256": "655f3a5826ec7266a501ecdbcbf597ac19f54bf2adf6f3062335ba6cf19ac878"
+        },
+        {
+          "path": "test/procgen-workstation-controller.test.js",
+          "bytes": 128681,
+          "sha256": "7b49a5c38084c79969a0f0f9a9f30c7660062ce6e8200235f713c152b4eac4a0"
+        },
+        {
+          "path": "e2e/procgen-workstation-live-clock.spec.js",
+          "bytes": 12220,
+          "sha256": "37abb518312ebe6fa2374027589197e6e873d2cd8fa943662d5f7436de160ed8"
+        },
+        {
+          "path": "test/procgen-sim-score-timeline.test.js",
+          "bytes": 4370,
+          "sha256": "ffb3ca25cbb50c6a79797c391af6881f77e035f054582b4baac119aa92b8ae13"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 301,
+          "sha256": "9aac61256fd0e050fd24b21451a9fe948a9655357f83e00d8b0c88d6259f61e1"
+        }
+      ],
+      "coverage": {
+        "scope": "Scoped controller/preference source from195Node cases; view and actual sink timing paths have native browser receipts. Extra3timeline cases strengthen existing protocol acceptance without rerunning the full suite.",
+        "selected": {
+          "total": {
+            "lines": {
+              "total": 2561,
+              "covered": 2055,
+              "skipped": 0,
+              "pct": 80.24
+            },
+            "statements": {
+              "total": 2561,
+              "covered": 2055,
+              "skipped": 0,
+              "pct": 80.24
+            },
+            "functions": {
+              "total": 378,
+              "covered": 264,
+              "skipped": 0,
+              "pct": 69.84
+            },
+            "branches": {
+              "total": 1877,
+              "covered": 1312,
+              "skipped": 0,
+              "pct": 69.89
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": "Unknown"
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPreferenceWriter.js": {
+            "lines": {
+              "total": 88,
+              "covered": 88,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 18,
+              "covered": 17,
+              "skipped": 0,
+              "pct": 94.44
+            },
+            "statements": {
+              "total": 88,
+              "covered": 88,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 119,
+              "covered": 109,
+              "skipped": 0,
+              "pct": 91.59
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenWorkstation.js": {
+            "lines": {
+              "total": 2473,
+              "covered": 1967,
+              "skipped": 0,
+              "pct": 79.53
+            },
+            "functions": {
+              "total": 360,
+              "covered": 247,
+              "skipped": 0,
+              "pct": 68.61
+            },
+            "statements": {
+              "total": 2473,
+              "covered": 1967,
+              "skipped": 0,
+              "pct": 79.53
+            },
+            "branches": {
+              "total": 1758,
+              "covered": 1203,
+              "skipped": 0,
+              "pct": 68.43
+            }
+          }
+        },
+        "followUp": "Full-workstation export/scene/branch paths remain outside this Node scope. Same-BPM output rearm, same-rate context replacement, unrelated-owner correlation, native scheduled-node lead and cancellation boundaries remain972; concrete-backend value conformance remains973."
+      }
+    },
+    "evidence": {
+      "liveSinkMatrix": [
+        {
+          "backend": "audio",
+          "scenario": "rates-pause-step",
+          "intents": 8,
+          "pcmPeak": 0.04584097862243652,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "sink": "physical-browser-audio",
+          "checked": 8,
+          "admittedBegins": 4,
+          "degradedBegins": 0,
+          "lateAttacks": 0,
+          "repairedReleases": 0,
+          "timeDomain": "audio-sample-frames",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "audio",
+          "scenario": "catch-up",
+          "intents": 8,
+          "pcmPeak": 0.050374746322631836,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "sink": "physical-browser-audio",
+          "checked": 8,
+          "admittedBegins": 2,
+          "degradedBegins": 0,
+          "lateAttacks": 2,
+          "repairedReleases": 2,
+          "timeDomain": "audio-sample-frames",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "audio",
+          "scenario": "host-gap",
+          "intents": 8,
+          "pcmPeak": 0.046462178230285645,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "sink": "physical-browser-audio",
+          "checked": 8,
+          "admittedBegins": 4,
+          "degradedBegins": 0,
+          "lateAttacks": 0,
+          "repairedReleases": 0,
+          "timeDomain": "audio-sample-frames",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "audio",
+          "scenario": "external-clock",
+          "intents": 8,
+          "pcmPeak": 0.043064892292022705,
+          "audioContexts": 1,
+          "midiRequests": 1,
+          "sink": "physical-browser-audio",
+          "checked": 8,
+          "admittedBegins": 4,
+          "degradedBegins": 0,
+          "lateAttacks": 0,
+          "repairedReleases": 0,
+          "timeDomain": "audio-sample-frames",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "audio",
+          "scenario": "generation",
+          "intents": 16,
+          "pcmPeak": 0.04539000988006592,
+          "audioContexts": 1,
+          "midiRequests": 0,
+          "sink": "physical-browser-audio",
+          "checked": 16,
+          "admittedBegins": 8,
+          "degradedBegins": 0,
+          "lateAttacks": 0,
+          "repairedReleases": 0,
+          "timeDomain": "audio-sample-frames",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "midi",
+          "scenario": "rates-pause-step",
+          "intents": 8,
+          "pcmPeak": 0,
+          "audioContexts": 0,
+          "midiRequests": 1,
+          "sink": "physical-midi:local",
+          "checked": 16,
+          "admittedBegins": 4,
+          "degradedBegins": 4,
+          "lateAttacks": 0,
+          "repairedReleases": 0,
+          "timeDomain": "performance-microseconds",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "midi",
+          "scenario": "catch-up",
+          "intents": 8,
+          "pcmPeak": 0,
+          "audioContexts": 0,
+          "midiRequests": 1,
+          "sink": "physical-midi:local",
+          "checked": 12,
+          "admittedBegins": 2,
+          "degradedBegins": 2,
+          "lateAttacks": 2,
+          "repairedReleases": 2,
+          "timeDomain": "performance-microseconds",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "midi",
+          "scenario": "host-gap",
+          "intents": 8,
+          "pcmPeak": 0,
+          "audioContexts": 0,
+          "midiRequests": 1,
+          "sink": "physical-midi:local",
+          "checked": 16,
+          "admittedBegins": 4,
+          "degradedBegins": 4,
+          "lateAttacks": 0,
+          "repairedReleases": 0,
+          "timeDomain": "performance-microseconds",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "midi",
+          "scenario": "external-clock",
+          "intents": 8,
+          "pcmPeak": 0,
+          "audioContexts": 0,
+          "midiRequests": 1,
+          "sink": "physical-midi:local",
+          "checked": 16,
+          "admittedBegins": 4,
+          "degradedBegins": 4,
+          "lateAttacks": 0,
+          "repairedReleases": 0,
+          "timeDomain": "performance-microseconds",
+          "allMidiVoicesRetired": true
+        },
+        {
+          "backend": "midi",
+          "scenario": "generation",
+          "intents": 16,
+          "pcmPeak": 0,
+          "audioContexts": 0,
+          "midiRequests": 1,
+          "sink": "physical-midi:local",
+          "checked": 32,
+          "admittedBegins": 8,
+          "degradedBegins": 8,
+          "lateAttacks": 0,
+          "repairedReleases": 0,
+          "timeDomain": "performance-microseconds",
+          "allMidiVoicesRetired": true
+        }
+      ],
+      "catchUp": "Both native sinks independently preserve original targets. Each final catch-up case rejects2expired attacks, records2late-release policy target repairs and retires all MIDI voices; the repairs are policy evidence, not an assertion that a nonexistent missed voice sounded.",
+      "sourceGrouping": {
+        "ticks": 40,
+        "groupSizes": [
+          1,
+          4,
+          10
+        ],
+        "completeCanonicalIntentsIdentical": true,
+        "tick10To12BeatDifference": 0.24
+      },
+      "picker": "All3native engines retain the exact original constructor SecurityError in the owning picker while a real blocked-worker preference write fails separately. Named Save remains usable; failed load preserves dirty/current world/project and stored revision; explicit retry succeeds."
+    },
+    "priorAttempts": [
+      {
+        "kind": "private-callback-test-contract",
+        "result": "Initial194Node passed/one fixture expectedfalse after failed preparation. The private callback now correctly rejects to the owning picker; update both removed-document and preparation-failure fixtures to verify the original error, unchanged world and successful retry. Final195pass."
+      },
+      {
+        "kind": "native-midi-representation",
+        "result": "First26browser batch passed21/failed5. Four MIDI cases had exact original target agreement but the new assertion excluded valid degraded MIDI1 semitone submissions. Preserve fractional source pitch; assert explicit requested/represented pitch loss and count distinct admitted source intents without relabeling degraded output."
+      },
+      {
+        "kind": "native-midi-input-output-setup",
+        "result": "The first external MIDI output case waited for a device option not yet populated by the legacy output UI. A workstation input connection does not establish that UI state. Explicit native Listen connection is selected by actual option presence; request count remains stable during playback. Bound future action waits to15seconds."
+      },
+      {
+        "kind": "receipt-inventory-preparation",
+        "result": "An early NodeREPL status print referenced unavailable process. Direct source verification initially rejected the dirty reported Git merge; resolve it by fetching the original synthetic merge, proving identical complete Git trees and independently matching every tested input, rather than discarding the metadata or weakening source hashes."
+      }
+    ],
+    "ci": {
+      "latestIndependentlyVerifiedFullGreen": {
+        "head": "2504b778b90b388261c23caf7992cef22c2872ee",
+        "status": "success",
+        "run": 41055706625,
+        "job": 124062580664,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41055706625",
+        "engineJob": 124062580328,
+        "requiredJobs": {
+          "test": "success",
+          "lifecycle-engines": "success",
+          "native-midi-codec (windows-latest)": "success",
+          "native-midi-codec (ubuntu-latest)": "success"
+        },
+        "nodePassed": 7313,
+        "nodePending": 10,
+        "browserPassed": 307,
+        "desktopPassed": 26,
+        "workstationSmokePassed": 263,
+        "enginePassed": 18,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.82,
+          "statements": 90.82,
+          "branches": 84.2,
+          "functions": 88.66
+        },
+        "benchmark": {
+          "status": "success",
+          "ok": true,
+          "profile": "smoke",
+          "totalDurationMs": 33730,
+          "thresholds": {
+            "perfP95FrameMsMax": 250,
+            "perfP50TpsMin": 15,
+            "historySpanRatioMin": 0.5,
+            "antsAvgMsMax": 250,
+            "tileCompositionAvgMsMax": 250,
+            "overlayPlaneAvgMsMax": 250,
+            "scaledBlitAvgMsMax": 250
+          },
+          "durationsMs": {
+            "benchPerformance": 10402,
+            "benchHistoryStress": 17237,
+            "benchHotpaths": 6089
+          },
+          "metrics": {
+            "perfP95Frame": 100,
+            "perfP50Tps": 93.96458258042782,
+            "historyRatio": 0.5848333333333333,
+            "antsAvgMs": 18.79,
+            "tileCompositionAvgMs": 3.55,
+            "overlayPlaneAvgMs": 13.21,
+            "scaledBlitAvgMs": 24.14
+          },
+          "failures": [],
+          "diagnostics": [],
+          "measurementValid": true,
+          "scenarios": [
+            {
+              "speed": 30,
+              "ratio": 0.5848333333333333
+            },
+            {
+              "speed": 60,
+              "ratio": 1.0418333333333334
+            }
+          ]
+        },
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "engineQualification": {
+          "status": "passed",
+          "files": 1278,
+          "configuredAudioBackend": "pulseaudio-null-sink",
+          "closureDigest": "ea2423307641eb49c424957af7570cd85965a77e54f3b0eeca3f3aa94f4b249b",
+          "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+          "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+          "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
+          "facts": 1078,
+          "ticks": 64,
+          "nativeAudio": {
+            "status": "passed-in-required-lifecycle-journeys",
+            "physicalReceiverOrAcoustics": false
+          }
+        },
+        "nativeCodec": {
+          "status": "passed",
+          "linuxJob": 124062580346,
+          "windowsJob": 124062580429,
+          "commandsPerPlatform": 8829,
+          "boundedProtocolFailuresPerPlatform": 4,
+          "sourceIdentical": true,
+          "verifiedSourceFiles": 8,
+          "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+          "outputIdentical": true,
+          "deviceIO": false,
+          "shippingTransportQualified": false
+        },
+        "sourceQualification": {
+          "testedPrMergeHead": "403cb1d7c8390494f105fa3430b0e6fb9263107a",
+          "rawDirtyFlag": true,
+          "testedMergeTree": "6efe6ce83fcd6b36ec7f512140f3022551b86eaa",
+          "publishedHeadTree": "6efe6ce83fcd6b36ec7f512140f3022551b86eaa",
+          "gitTreesIdentical": true,
+          "inventoryFiles": 1173,
+          "inventorySha256": "3534e3fd695496653dfb893ba0d418cb1d8a186940dd6bd359c1d1a19ee74528",
+          "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+          "allWorkstationSourceFilesMatchPublishedHead": true,
+          "engineInventoryFiles": 1278,
+          "engineRuntimeFiles": 1269,
+          "engineHarnessFiles": 9,
+          "allEngineSourceFilesMatchPublishedHead": true,
+          "githubArchiveDigestsMatched": true,
+          "reportDigestMatched": true,
+          "mainReportSha256": "ee7344375788d8637c60ba6c7216ed9ac2b4d0ab189a929bb679f67da5015baa",
+          "treeIdentity": "identical Git tree objects"
+        },
+        "artifacts": [
+          {
+            "path": ".tmp/ci405-12978439764.zip",
+            "bytes": 1240138,
+            "sha256": "059a78cce3fc5f7b12c6d408679df0e82ae04f5fe9eefb88714d4c31325eb5f4",
+            "githubArtifactId": 12978439764,
+            "githubDigestMatched": true
+          },
+          {
+            "path": ".tmp/ci405-12977461341.zip",
+            "bytes": 163175,
+            "sha256": "d65f7c13623151fd349432a32afdc5da3ac620ab3504cadbaead87023874f667",
+            "githubArtifactId": 12977461341,
+            "githubDigestMatched": true
+          },
+          {
+            "path": ".tmp/ci405-12976816272.zip",
+            "bytes": 2148,
+            "sha256": "0315ca1eb3336b0ed4e42c7d9c59a53f5e706651e0df9a5b65a06f5792b634e6",
+            "githubArtifactId": 12976816272,
+            "githubDigestMatched": true
+          },
+          {
+            "path": ".tmp/ci405-12976138981.zip",
+            "bytes": 2247,
+            "sha256": "d408c2be9d77b636b2a3e3f303da31a5e2a43b25cd734ef067979e08cf6a8b27",
+            "githubArtifactId": 12976138981,
+            "githubDigestMatched": true
+          }
+        ],
+        "scope": "All four required jobs plus policy/dependency on the named source. Independently verified all1173workstation/1278engine/both8native source inputs, original ZIP digests, saved main report digest and engine semantic parity. Reported dirty synthetic merge has the exact same Git tree as the published head; generated-file dirtiness is preserved. This is the prior full-source checkpoint, not a green claim for uncommitted406development, hardware or listening."
+      },
+      "older404": {
+        "run": 41055130421,
+        "mainJob": 124060627973,
+        "status": "main-and-both-codecs-success;engine-failed",
+        "engineJob": 124060628213,
+        "engine": "17passes/one Chromium worker-failure status assertion; expected Controlled worker construction failure but observed preference-storage failure. The original-owner reporting defect is repaired in406 and6native capability cases pass."
+      },
+      "historical403": "Keep the separate Firefox content-process signal11 failure; the newer fully green405source supersedes an obsolete retry. Historical402retry retains its separate same worker-status assertion.",
+      "newSource": "CI starts after publication; no full-current406CI-green claim."
+    },
+    "issueDisposition": {
+      "972": "Keep open: context/rearm/independent-owner/cancellation and native scheduled-node lead boundaries remain.",
+      "986": "Source clock, export, grouping and actual live audio/MIDI clock/late-output boundaries are implemented and qualified; ready to close after publication. Native endpoint hardware, arbitrary mid-note reconstruction and other target protocols retain their own issues.",
+      "1093": "Keep open: broader target/setup/lowering/import/receiver requirements remain.",
+      "1104": "Keep open: broader capture and audible graph-history/mid-note reconstruction remain."
+    },
+    "openInventory": {
+      "beforeClosure": 191,
+      "ascending": 100,
+      "descending": 100,
+      "overlap": 9,
+      "refreshed": "2026-11-04"
+    },
+    "limits": [
+      "Native audio measurements are internal PCM and integer target checks; MIDI uses a declared API stub and timestamp observations. No physical receiver, OS sleep/background, listening or acoustic qualification.",
+      "Prior full green405is independently qualified; uncommitted406changes require their own CI. No all-backlog completion claim.",
+      "Continue solo after publication with remaining1194matched-level/live-worker/captured graph-history and972context/cancellation, then the remaining backlog."
     ]
   }
 }

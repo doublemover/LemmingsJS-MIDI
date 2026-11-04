@@ -13,17 +13,20 @@ describe('simulation to score timeline', () => {
     const timeline = createSimScoreTimeline();
     const graph = { version: 1, revision: 1, instruments: [{ id: 'wall', sourceKind: 'ContactResolved',
       causeKind: 'wall', pitchCents: 6000, velocity01: 0.5, route: 'local', role: 'percussion' }] };
-    const engine = createCausalMusicEngine({ getGraph: () => graph, scoreTimeline: timeline });
     const run = sizes => {
+      const engine = createCausalMusicEngine({ getGraph: () => graph, scoreTimeline: timeline });
       const result = [];
       let tick = 0;
       for (const size of sizes) for (let i = 0; i < size; i++) {
         tick++;
-        result.push(engine.processBatch(factBatch(tick))[0].scoreTime.beat);
+        result.push(...engine.processBatch(factBatch(tick)));
       }
       return result;
     };
-    expect(run([1, 1, 1, 1])).to.deep.equal([0.12, 0.24, 0.36, 0.48]);
+    const reference = run(Array(40).fill(1));
+    expect(reference.filter(intent => intent.kind === 'begin').slice(0, 4).map(intent => intent.scoreTime.beat)).to.deep.equal([0.12, 0.24, 0.36, 0.48]);
+    expect(run(Array(10).fill(4))).to.deep.equal(reference);
+    expect(run(Array(4).fill(10))).to.deep.equal(reference);
     expect(timeline.map({ simTick: 12 }).beat - timeline.map({ simTick: 10 }).beat).to.be.closeTo(0.24, 1e-12);
   });
 

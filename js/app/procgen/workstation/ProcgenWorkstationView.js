@@ -462,6 +462,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const owner = { generation: 0, closed: false, loading: false, query: '', cursor: null, back: [] }; pickerOwner = owner;
     const current = generation => !disposed && pickerOwner === owner && !owner.closed && owner.generation === generation;
     const items = node('div', null, 'studio-project-items'), feedback = node('p', '', 'studio-project-feedback');
+    feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
     const search = node('input'); search.type = 'search'; search.placeholder = 'Search project names'; search.setAttribute('aria-label', 'Search project names');
     const more = button('More projects', async () => {
       if (!current(owner.generation) || owner.loading || !page.nextCursor || !fetchPage) return;

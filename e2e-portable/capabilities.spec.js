@@ -57,7 +57,9 @@ test('worker construction failure keeps Save usable and refuses stored load befo
   await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), { button: 'Load' }, 'click');
   const picker = page.getByRole('dialog', { name: 'Saved projects' }), choice = picker.getByRole('button', { name: /Portable worker retry/ });
   await choice.click();
-  await expect(page.locator('.studio-status')).toContainText('Controlled worker construction failure');
+  await expect(picker.locator('.studio-project-feedback')).toHaveText('Controlled worker construction failure');
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPreferenceState().lastError?.message)).toBeTruthy();
+  await expect(picker.locator('.studio-project-feedback')).toHaveText('Controlled worker construction failure');
   const failed = await page.evaluate(async id => {
     const { createProcgenSessionStorage } = await import('/js/app/procgen/workstation/ProcgenSessionStorage.js'), storage = createProcgenSessionStorage(indexedDB);
     let storedRevision; try { storedRevision = (await storage.listDocumentPage()).items.find(entry => entry.id === id)?.revision; } finally { await storage.close()?.completion; }

@@ -1292,7 +1292,8 @@ describe('ProcGen workstation orchestration', () => {
     expect(await f.studio.handlers.load()).to.equal(true);
     expect(f.view.page.items).to.have.length(1); expect(requests).to.have.length(1);
     expect(requests[0].signal).to.be.instanceOf(globalThis.AbortSignal);
-    expect(await f.view.loadChoice('doc:first')).to.equal(false);
+    let failure; try { await f.view.loadChoice('doc:first'); } catch (error) { failure = error; }
+    expect(failure?.message).to.equal('Project was removed');
     expect(f.studio.getDocumentState().id).to.equal(null);
     expect((await f.view.more(f.view.page.nextCursor, '')).items[0].id).to.equal('doc:chosen');
     expect(await f.view.loadChoice('doc:chosen')).to.equal(true);
@@ -1316,7 +1317,8 @@ describe('ProcGen workstation orchestration', () => {
       async loadDocument() { return { id: 'doc:retry', revision: 1, session }; }, close() {} };
     const f = setup({ storageOverride: storage }); f.studio.bindRuntime(); session = f.studio.capture(); const original = f.runtime;
     f.view.showProjectPage = (page, load) => { f.view.choose = load; }; await f.studio.handlers.load();
-    f.failRestart(); expect(await f.view.choose('doc:retry')).to.equal(false); expect(f.runtime).to.equal(original);
+    f.failRestart(); let failure; try { await f.view.choose('doc:retry'); } catch (error) { failure = error; }
+    expect(failure?.message).to.equal('Assets unavailable'); expect(f.runtime).to.equal(original);
     f.failRestart(false); expect(await f.view.choose('doc:retry')).to.equal(true);
     expect(f.studio.getDocumentState()).to.include({ id: 'doc:retry', revision: 1, dirty: false }); f.studio.dispose();
   });
