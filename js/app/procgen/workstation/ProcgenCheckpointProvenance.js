@@ -140,6 +140,8 @@ const compareProcgenContinuationCheckpoints = (expected, actual) => compareCheck
 
 const migrateProcgenCheckpoint = saved => {
   if (![1, 2].includes(saved?.version) || saved.generator !== 'procgen-workstation-2') throw journalError('checkpoint-incompatible', 'Unsupported checkpoint migration.');
+  try { validateCheckpointCodecs(saved); }
+  catch (cause) { throw journalError('checkpoint-incompatible', 'Checkpoint migration cannot repair incompatible source components.', { cause }); }
   const candidate = structuredClone(saved);
   if (candidate.version === 1) for (const node of candidate.graph?.nodes || []) if (node.type === 'Float32Array' || node.type === 'Float64Array') {
     node.values = node.values.map(value => {

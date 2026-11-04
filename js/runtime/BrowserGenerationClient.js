@@ -29,14 +29,20 @@ export function readBrowserGenerationStatus(worker, { signal, timeout = 1500, ve
 
 export async function waitForBrowserGeneration(registration, buildId, { signal, timeout = 210000, onStatus = () => {}, Channel } = {}) {
   const deadline = performance.now() + timeout;
+  let candidate = registration.installing || registration.waiting;
   while (performance.now() < deadline) {
     signal?.throwIfAborted();
+    candidate = registration.installing || registration.waiting || candidate;
     const workers = [...new Set([registration.installing, registration.waiting, registration.active].filter(Boolean))];
     const states = await Promise.all(workers.map(worker => readBrowserGenerationStatus(worker, { signal, Channel,
       timeout: Math.min(1500, Math.max(1, deadline - performance.now())) }).catch(error => { signal?.throwIfAborted(); return { status: error.name }; })));
     const matching = states.find(value => value?.buildId === buildId); if (matching) onStatus(matching);
     if (matching?.status === 'installed' && matching.offlineReady) return matching;
     if (matching?.status === 'failed') throw new Error('The complete browser generation could not be installed.');
+    // A failed first installation has no active worker left to answer STATUS.
+    // Keep its observed candidate until its terminal state is acknowledged.
+    if (candidate?.state === 'redundant' && !registration.installing && !registration.waiting)
+      throw new Error('The complete browser generation could not be installed.');
     await new Promise((resolve, reject) => {
       const abort = () => { clearTimeout(timer); reject(signal.reason || cancelled()); };
       const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, Math.min(250, Math.max(1, deadline - performance.now())));

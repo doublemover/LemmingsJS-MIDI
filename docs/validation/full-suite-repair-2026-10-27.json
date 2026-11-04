@@ -146749,5 +146749,102 @@
       "Mixed live audio/rendering/recovery/assets/export fairness and observer overhead A/B remain1162/1234/1087work.",
       "No hardware, acoustic, listening or exact archived-execution claim."
     ]
+  },
+  "continuation414": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
+    "scope": "Actual immutable changed source/asset deployments, honest current-runtime replay, native preserved durable originals and unsupported migration/installer frontiers.",
+    "changes": [
+      "Validate original checkpoint codec headers before migration clones or normalizes them.",
+      "Observe redundant first installer terminal state without losing successful matching or newer candidate ownership.",
+      "Execute actual immutable changed-code/terrain deployments and corrupted published bytes on a native durable source."
+    ],
+    "validation": {
+      "nodePassed": 75,
+      "browserPassed": 1,
+      "crossDeploymentTicksPerBuild": 32,
+      "nodeLongReplayTicks": 10000,
+      "sourceMutationsBytes": [
+        1,
+        1
+      ],
+      "tamperedInstallRefusals": 2,
+      "deviceOpens": 0,
+      "static": {
+        "format": "passed",
+        "lint": "passed",
+        "depcheck": "passed",
+        "criticalTypes": "passed",
+        "undefinedCalls": "passed",
+        "browserCategories": "passed",
+        "provenance": {
+          "components": 10,
+          "distinctFiles": 374
+        }
+      },
+      "sourceAudit": {
+        "paths": 1341,
+        "byteExact": 1328,
+        "untouchedNewlineMappings": 13,
+        "browserClosureDigest": "378cbb41048ded478baca02e1212c083a95de1e96286e4f4e17a490e65959c9e"
+      },
+      "coverage": {
+        "lines": {
+          "total": 235,
+          "covered": 214,
+          "skipped": 0,
+          "pct": 91.06
+        },
+        "statements": {
+          "total": 235,
+          "covered": 214,
+          "skipped": 0,
+          "pct": 91.06
+        },
+        "functions": {
+          "total": 29,
+          "covered": 23,
+          "skipped": 0,
+          "pct": 79.31
+        },
+        "branches": {
+          "total": 228,
+          "covered": 148,
+          "skipped": 0,
+          "pct": 64.91
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "evidence": {
+        "path": "docs/validation/replay-deployments-desktop-2026-11-04.json",
+        "bytes": 5349672,
+        "sha256": "4196344807071c3ce2c0ab7ff7386a2454b7f11303c84f621c832145f2d888c5"
+      }
+    },
+    "issueStatus": {
+      "target": 988,
+      "remainingExactArchivedRealm": 1213,
+      "openInventoryBeforeClosure": 189
+    },
+    "ci": {
+      "latestCompleteGreen": "3245dd9fe8562b32570900316bd5307cabb39526",
+      "previousRun": 41925399883,
+      "previousMain": "in-progress-workstation",
+      "previousEngineAndNative": "success",
+      "currentSource": "pending-publication"
+    },
+    "limits": [
+      "Exact archived causal execution remains unqualified and refuses before world allocation; isolated current-runtime comparisons are not exact archived execution.",
+      "Cross-deployment comparisons execute32ticks each. The10000tick result is a separate Node test.",
+      "No acoustic, listening, native hardware MIDI or all-backlog acceptance claim.",
+      "CI413main remains in progress; latest independently source-qualified complete green is3245dd9fe8562b32570900316bd5307cabb39526.",
+      "Coverage concerns the two selected runtime files. Entry navigation/failure also executes natively in Playwright; this is not a global threshold pass."
+    ]
   }
 }

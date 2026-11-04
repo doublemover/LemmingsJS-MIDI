@@ -194,6 +194,22 @@ Closing the workbench retires the reservation. Comparisons and branches remain
 silent and report current-runtime physical compatibility; archived execution and
 acoustic equivalence require separate qualification. Accepted pause/resume and
 tempo changes are recorded in order, including the paused physical clock value.
+
+A take keeps the identity of the application that recorded it. After an update,
+the comparison panel names changed build, source and asset identities. A successful
+comparison under the current application remains a current-runtime result;
+it does not certify execution of the archived application. Exact requests that
+lack a qualified execution realm refuse before creating a replay world. The
+original take, chunks and live project remain unchanged.
+
+Checkpoint migration checks the original schema, numeric encoding and component
+codecs before copying or rewriting headers. Known legacy data can migrate into
+a new revision with its original preserved. Future component codecs and legacy
+JSON that lost floating-point sentinels refuse with an explanation. An immutable
+application whose downloaded source or asset bytes fail verification does not
+start; a failed installer reports the failure while already-open verified
+generations continue using their own files.
+
 The marker controller API accepts an explicit `{ checkpoint: true }` option to
 store a component snapshot at the current committed source sequence. It
 reserves estimated snapshot workspace before copying; Stop waits for pending
