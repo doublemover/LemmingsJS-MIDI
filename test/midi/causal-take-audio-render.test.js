@@ -13,12 +13,14 @@ import { createMemoryCausalStore } from '../helpers/causalJournalStore.js';
 import { createQuarryEcho, createQuarryTape, createQuarryBody } from '../../js/midi/content/DubQuarryRack.js';
 import { prepareCausalEffectSelection } from '../../js/app/midi-ui/CausalEffectSelection.js';
 import { capturedEffectHistoryFixture } from '../helpers/capturedEffectHistory.js';
+import { createCapturedBodyComparisonOwner } from '../../js/app/midi-ui/CapturedBodyComparisonOwner.js';
 
 // The render adapter below exercises host ownership, not real-worker/build qualification.
 const setup = async ({ capturedEffects = false } = {}) => {
   const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), fallback = createBackgroundJobService({ admission, Worker: null });
   const descriptors = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]), descriptor = descriptors[0];
   const buildId = 'b'.repeat(64), switches = { wrongSource: false, wrongEffect: false, wrongReturn: false, wrongHistory: false, deny: false }, jobs = { async compute(request) {
+    if (request.kind === 'snapshot-canonical-data') return fallback.compute({ ...request, inputBytes: 32768, maxBytes: 32768 });
     if (request.kind !== 'render-causal-sine-take') return fallback.compute(request);
     if (switches.deny) throw new ResourceBudgetError('offline-render', request.estimatedPeakBytes, 0);
     const held = createOwnedResourceReservation({ budget, owner: 'component-render', kind: 'component-render', bytes: request.estimatedPeakBytes });
@@ -42,8 +44,8 @@ const setup = async ({ capturedEffects = false } = {}) => {
       intents: [{ version: 1, kind, worldId: 'world', batchId, generation: 1, voiceId: 'voice', onsetId: 'voice', intentId: 'intent:' + tick,
         sourceEventIds: [], laneId: 0, pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, scoreTime: { sourceTimeMs: milliseconds, simTick: tick, subTick: 0 } }] });
   }
-  if (capturedEffects === 'history') {
-    const source = await capturedEffectHistoryFixture();
+  if (['history', 'body-history', 'body-one'].includes(capturedEffects)) {
+    const source = await capturedEffectHistoryFixture({ bodies: capturedEffects !== 'history' }); if (capturedEffects === 'body-one') source.effectEvents.length = 1;
     for (const packet of source.effectEvents) recorder.recordSinkOutcome({ ...packet, clockAnchor: { ...packet.clockAnchor, intentId: 'intent:1' } }, { tick: 2, generation: 1 });
   } else if (capturedEffects) {
     const definition = createQuarryEcho({ send01: 0 }), graphDefinitionHash = await effectGraphHash(prepareEffectGraphRevision(definition)), base = {
@@ -56,7 +58,7 @@ const setup = async ({ capturedEffects = false } = {}) => {
   const manifest = await journal.openTake('take:render-host'), states = [];
   const renderer = createCausalTakeAudioRenderer({ journal, resourceBudget: budget, jobs, sourceMaxBytes: 32768,
     getCatalog: async () => ({ state: 'bound-application-engines', descriptors }), onState: state => states.push(state.phase) });
-  return { renderer, journal, manifest, budget, switches, states, admission,
+  return { renderer, journal, manifest, budget, switches, states, admission, jobs, getCatalog: async () => ({ state: 'bound-application-engines', descriptors }),
     async dispose() { const bundle = renderer.getPrepared(); if (bundle) for (const file of bundle.files) await file.artifact.digest();
       await renderer.dispose().completion; await journal.releaseQualifications().completion; fallback.dispose(); admission.dispose(); } };
 };
@@ -104,6 +106,33 @@ describe('owned causal render host and prepared file bundles', () => {
 
 
 describe('captured FX command render host', () => {
+  it('compares three recorded modal bodies on one actual rendered source with preview-only RMS attenuation', async () => {
+    const owner = await setup({ capturedEffects: 'body-history' }), comparison = createCapturedBodyComparisonOwner({ journal: owner.journal, resourceBudget: owner.budget, jobs: owner.jobs, getCatalog: owner.getCatalog });
+    try {
+      const before = owner.manifest.canonicalHash, bundle = await comparison.prepare({ takeId: owner.manifest.takeId, takeRevision: owner.manifest.revision, sampleRate: 48000, startSeconds: 0, endSeconds: 1 });
+      expect(bundle.manifest.schema).to.equal('lemmings-captured-body-comparison/v1'); expect(bundle.files).to.have.length(3); expect(bundle.manifest.sourceCanonicalHash).to.equal(before);
+      expect(bundle.files[0].manifest.pcmHash).to.equal(bundle.files[2].manifest.pcmHash); expect(bundle.files[1].manifest.pcmHash).not.to.equal(bundle.files[0].manifest.pcmHash);
+      const calibration = bundle.manifest.calibration;
+      for (let index = 0; index < bundle.files.length; index++) { const file = bundle.files[index]; expect(file.previewGain01).to.equal(calibration.levels[index]); expect(file.manifest.statistics.rms * file.previewGain01).to.be.closeTo(calibration.targetRms, 1e-12); expect(file.manifest.statistics.peak * file.previewGain01).to.be.at.most(0.80000001); expect(file.manifest.commands.capturedBegins).to.equal(1); expect(file.manifest.commands.capturedEnds).to.equal(1); }
+      expect(bundle.metadata().calibration).to.equal(calibration); expect(bundle.manifest.perceptualQuality).to.equal(null); expect((await owner.journal.openTake(owner.manifest.takeId)).canonicalHash).to.equal(before);
+      owner.switches.wrongEffect = true; await denied(comparison.prepare({ takeId: owner.manifest.takeId, takeRevision: owner.manifest.revision, sampleRate: 48000, startSeconds: 0, endSeconds: 1 }), 'render-effect-mismatch'); expect(comparison.getPrepared()).to.equal(bundle);
+    } finally { const stopped = comparison.dispose(); await stopped.completion; expect(stopped.outcome).to.equal('complete'); await owner.dispose(); }
+    expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('refuses a single publication without retaining the source or comparison workspace', async () => {
+    const owner = await setup({ capturedEffects: 'body-one' }), comparison = createCapturedBodyComparisonOwner({ journal: owner.journal, resourceBudget: owner.budget, jobs: owner.jobs, getCatalog: owner.getCatalog });
+    try { await denied(comparison.prepare({ takeId: owner.manifest.takeId, takeRevision: owner.manifest.revision, sampleRate: 48000, startSeconds: 0, endSeconds: 1 }), 'body-comparison-unavailable'); expect(comparison.getPrepared()).to.equal(null); }
+    finally { const stopped = comparison.dispose(); await stopped.completion; await owner.dispose(); }
+    expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('refuses non-modal histories and non-exact tail policies without publishing files', async () => {
+    const owner = await setup({ capturedEffects: 'history' }), comparison = createCapturedBodyComparisonOwner({ journal: owner.journal, resourceBudget: owner.budget, jobs: owner.jobs, getCatalog: owner.getCatalog }), request = { takeId: owner.manifest.takeId, takeRevision: owner.manifest.revision, sampleRate: 48000, startSeconds: 0, endSeconds: 1 };
+    try {
+      for (const tail of [{ mode: 'bounded-natural', maxSeconds: 1 }, { mode: 'exact-crop', maxSeconds: 1 }]) await denied(comparison.prepare({ ...request, tail }), 'body-comparison-unavailable');
+      const error = await denied(comparison.prepare(request), 'body-comparison-unavailable'); expect(error.message).to.include('one recorded audio-input modal network'); expect(comparison.getPrepared()).to.equal(null);
+    } finally { await comparison.dispose().completion; await owner.dispose(); }
+    expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('publishes a bound changing-graph bundle and preserves it when the worker omits its history', async () => {
     const owner = await setup({ capturedEffects: 'history' });
     try {

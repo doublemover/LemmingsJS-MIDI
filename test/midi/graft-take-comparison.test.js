@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { createGraftTakeComparisonOwner } from '../../js/app/midi-ui/GraftTakeComparisonOwner.js';
+import { createTakeReadoutComparisonOwner } from '../../js/app/midi-ui/TakeReadoutComparisonOwner.js';
 import { prepareGraftComparison } from '../../js/midi/content/GraftComparison.js';
 import { prepareExportArtifact } from '../../js/app/export/ExportArtifact.js';
 import { encodeOwnedAudioWav } from '../../js/app/midi-ui/OwnedAudioWav.js';
@@ -26,11 +27,11 @@ const fixture = async () => {
         calls.push(options); active = true; running++; peakRunning = Math.max(peakRunning, running);
         try {
           if (switches.failRole && switches.failRole === options.graftComparison) throw new Error('Synthetic failed role.');
-          const comparison = options.graftComparison ? await prepareGraftComparison(options.definition, options.graftComparison) : null, definitionHash = comparison?.comparison.definitionHash ?? await hashData(options.definition), frames = Math.round((options.endSeconds - options.startSeconds) * options.sampleRate), manifest = { schema: 'lemmings-causal-audio-render/v1', takeId: options.takeId, takeRevision: options.takeRevision, sourceCanonicalHash: h('c'), applicationBuildId: h('f'), definitionHash, sampleRate: options.sampleRate, frames, timelineZeroSourceFrame: Math.round(options.startSeconds * options.sampleRate), exactEndSourceFrame: Math.round(options.endSeconds * options.sampleRate), tail: { mode: options.tail.mode, maxSeconds: options.tail.maxSeconds ?? 4, truncated: false }, engineRequirement: options.materialReference.engineRequirement };
-          if (switches.mismatch && options.graftComparison === 'body-only') manifest[switches.mismatch] = switches.mismatch === 'frames' ? frames + 1 : h('1');
+          const comparison = options.graftComparison ? await prepareGraftComparison(options.definition, options.graftComparison) : null, definitionHash = comparison?.comparison.definitionHash ?? await hashData(options.definition), frames = Math.round((options.endSeconds - options.startSeconds) * options.sampleRate), manifest = { schema: 'lemmings-causal-audio-render/v1', operation: 'sound-only-revoice', originalRecordMutated: false, acousticReceipt: false, pcmHash: h('2'), tap: options.definition.engineId === 'worklet-sine' ? 'complete-sine-graph-pre-master' : 'complete-owned-source-graph-pre-master', laneId: null, returnNodeId: null, takeId: options.takeId, takeRevision: options.takeRevision, sourceCanonicalHash: h('c'), applicationBuildId: h('f'), definitionHash, sampleRate: options.sampleRate, frames, timelineZeroSourceFrame: Math.round(options.startSeconds * options.sampleRate), exactEndSourceFrame: Math.round(options.endSeconds * options.sampleRate), tail: { mode: options.tail.mode, maxSeconds: options.tail.maxSeconds ?? 4, truncated: false }, engineRequirement: options.materialReference.engineRequirement };
+          if (switches.mismatch && options.graftComparison === 'body-only') manifest[switches.mismatch] = switches.mismatch === 'frames' ? frames + 1 : switches.mismatch === 'pcmHash' ? 'invalid-hash' : h('1');
           const bytes = encodeOwnedAudioWav(new Uint8Array(frames * 8), frames, options.sampleRate, manifest), artifact = prepareExportArtifact({ bytes, immutableSourceRef: 'synthetic-graft-take-fixture:' + calls.length, formatVersion: manifest.schema, suggestedFilename: 'fixture.wav', budgetAdapter: budget }); await artifact.digest(); file = { id: '0', label: 'Synthetic render', artifact, manifest };
           if (switches.hold && options.graftComparison === 'exciter-only') { switches.hold.entered.resolve(); await switches.hold.release.promise; }
-          return { bundle: { manifest, files: [file] }, receipt: { method: 'dedicated-worker', executionIdentity: { activeExecution: 'bound' } }, ...(comparison ? { comparison: comparison.comparison } : {}) };
+          return { bundle: { manifest, files: [file] }, receipt: { method: 'dedicated-worker', executionIdentity: { activeExecution: 'bound', buildId: h('f') } }, ...(comparison ? { comparison: comparison.comparison } : {}) };
         } finally { active = false; running--; }
       },
       dispose() { return scope.getReceipt() || scope.retire([{ name: 'synthetic-render-artifact', run: async () => { retired.push(index); if (switches.retirementFailure === index) throw new Error('Synthetic unresolved producer.'); file?.artifact.discard(); await file?.artifact.digest(); if (file?.artifact.metadata().activeLeases) throw new Error('Synthetic unresolved reader.'); file = null; } }]); },
@@ -58,7 +59,7 @@ describe('atomic four-readout graft take comparisons (synthetic DSP fixture)', (
     const f = await fixture();
     try {
       const first = await f.owner.prepare(f.options), before = f.budget.diagnostics().accountedBytes;
-      for (const mismatch of ['sourceCanonicalHash', 'applicationBuildId', 'frames']) { f.switches.mismatch = mismatch; await refuse(f.owner.prepare(f.options)); expect(f.owner.getPrepared()).to.equal(first); expect(first.files.every(file => file.artifact.metadata().retained)).to.equal(true); expect(f.budget.diagnostics().accountedBytes).to.equal(before); }
+      for (const mismatch of ['sourceCanonicalHash', 'applicationBuildId', 'frames', 'definitionHash', 'engineRequirement', 'tap', 'pcmHash', 'operation', 'originalRecordMutated', 'acousticReceipt']) { f.switches.mismatch = mismatch; await refuse(f.owner.prepare(f.options)); expect(f.owner.getPrepared()).to.equal(first); expect(first.files.every(file => file.artifact.metadata().retained)).to.equal(true); expect(f.budget.diagnostics().accountedBytes).to.equal(before); }
       f.switches.mismatch = null; f.switches.failRole = 'body-only'; await refuse(f.owner.prepare(f.options)); expect(f.owner.getPrepared()).to.equal(first); expect(f.budget.diagnostics().accountedBytes).to.equal(before);
     } finally { await f.owner.dispose().completion; } expect(f.budget.diagnostics().accountedBytes).to.equal(0);
   });
@@ -96,5 +97,20 @@ describe('atomic four-readout graft take comparisons (synthetic DSP fixture)', (
   it('attempts every independent renderer retirement and retains the budget when one producer is unknown', async () => {
     const f = await fixture(); f.switches.retirementFailure = 0;
     await f.owner.prepare(f.options); const receipt = f.owner.dispose(); await receipt.completion; expect(receipt.outcome).not.to.equal('complete'); expect(f.retired).to.have.length(4); expect(f.budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+  });
+  it('blocks further comparisons and reports partial retirement after unknown source cleanup', async () => {
+    const budget = createResourceBudget(); let calls = 0;
+    const owner = createTakeReadoutComparisonOwner({ resourceBudget: budget, name: 'Fixture comparison', schema: 'fixture/v1',
+      buildPlan: async () => { calls++; throw Object.assign(new Error('Unacknowledged source view cleanup.'), { code: 'view-retirement-unknown' }); }, describeComparison: () => ({}) });
+    const request = { takeId: 'take:fixture', takeRevision: 1, endSeconds: 1 };
+    await refuse(owner.prepare(request)); expect(owner.state().phase).to.equal('ownership-unknown'); expect(owner.state().unknownRetirement).to.equal(1);
+    await refuse(owner.prepare(request)); expect(calls).to.equal(1); const retired = owner.dispose(); await retired.completion; expect(retired.outcome).to.equal('partial');
+  });
+  it('blocks another preparation after direct discard cannot retire a borrowed file', async () => {
+    const f = await fixture(), bundle = await f.owner.prepare(f.options), loan = bundle.files[0].artifact.borrow(), count = f.calls.length;
+    try {
+      const retired = bundle.discard(); await retired.completion; expect(retired.outcome).to.equal('partial'); expect(f.owner.state().unknownRetirement).to.equal(1);
+      await refuse(f.owner.prepare(f.options)); expect(f.calls).to.have.length(count); expect(f.owner.getPrepared()).to.equal(null);
+    } finally { loan.release(); const stopped = f.owner.dispose(); await stopped.completion; expect(stopped.outcome).to.equal('partial'); }
   });
 });

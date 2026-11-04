@@ -89,7 +89,7 @@ for (const [delay, stall] of [[128, 20], [128, 50], [160, 100]]) test('native sc
 });
 
 for (const afterRender of [false, true]) test('native scheduled cancellation qualifies ' + (afterRender ? 'already rendered source frames' : 'submission before source onset'), async ({ page, nativeBrowser }, info) => {
-  if (!await privateSource(page, 160)) { await unavailable(page, info, nativeBrowser, afterRender ? 'cancel-after-render' : 'cancel-before-render'); return; }
+  if (!await privateSource(page, 512)) { await unavailable(page, info, nativeBrowser, afterRender ? 'cancel-after-render' : 'cancel-before-render'); return; }
   const { produced, actual } = await page.evaluate(async afterRender => { const produced = await window.__privateClock.produce(); return { produced, actual: await window.__privateClock.cancel({ afterRender }) }; }, afterRender), targets = verifyTargets(actual.snapshot);
   const nodes = actual.snapshot.nodes;
   if (afterRender) {
@@ -106,7 +106,7 @@ for (const afterRender of [false, true]) test('native scheduled cancellation qua
 });
 
 test('an independent audio owner leaves physical correlation and scheduled sources intact', async ({ page, nativeBrowser }, info) => {
-  if (!await privateSource(page, 128)) { await unavailable(page, info, nativeBrowser, 'independent-owner'); return; }
+  if (!await privateSource(page, 512)) { await unavailable(page, info, nativeBrowser, 'independent-owner'); return; }
   const { produced, actual } = await page.evaluate(async () => { const produced = await window.__privateClock.produce(); return { produced, actual: await window.__privateClock.unrelatedOwner() }; }), targets = verifyTargets(actual.snapshot);
   expect(actual.sameContext).toBe(true); expect(actual.after.anchor).toEqual(actual.before.anchor); expect(actual.after.rebases).toBe(actual.before.rebases);
   expect(actual.snapshot.nodes.every(row => Number.isSafeInteger(row.first))).toBe(true);

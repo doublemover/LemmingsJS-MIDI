@@ -423,3 +423,17 @@ original nonnegative analysis origin. Opening a render releases an inactive
 comparison checkpoint cache while preserving its receipt and any active branch.
 Shared workspace limits still apply: a longer phrase or more simultaneous WAV
 taps may require a shorter range or take.
+
+Recorded body comparisons use two to four published audio-input modal networks
+from the same saved take. Each readout uses the same owned sine source, immutable
+intents and exact source-frame crop. Published body defaults replace captured
+control gestures. Whole-file PCM peak/RMS measurements define one attenuation
+reference for PRELISTEN, with no amplification and a declared 0.8 source-PCM peak
+ceiling. Cue routing, resampling and device levels remain separate measurements.
+Downloaded WAVs retain their authored gain; comparison metadata retains the
+per-file preview attenuation and original body/source hashes. Listening judgments
+are not inferred from the numerical match. Graft readouts retain their separate
+fixed-gain policy under the same comparison lifetime owner.
+If retained exports leave insufficient shared workspace, the old files remain
+available. Download them, explicitly discard the prepared WAVs, then request
+the comparison again.

@@ -38,7 +38,7 @@ describe('prepared rendered-wave prelisten (synthetic lifetime fixtures; listeni
     try {
       for (const level01 of [NaN, -1, 1.01]) expect((await refused(f.owner.play({ file: f.file, source: f.source, level01 }))).message).to.include('attenuation');
       expect(f.foreground.state().active).to.equal(false); expect(f.artifact.metadata().activeLeases).to.equal(0);
-      const result = await f.owner.play({ file: f.file, source: f.source, level01: 0.3 }); expect(f.switches.playedLevel).to.equal(0.3); expect(result.attenuation01).to.equal(0.3);
+      const result = await f.owner.play({ file: f.file, source: f.source, level01: 0.3 }); expect(f.switches.playedLevel).to.equal(0.3); expect(result.attenuation01).to.equal(0.3); expect(f.owner.state().attenuation01).to.equal(0.3);
     } finally { await f.dispose(); }
     expect(f.budget.diagnostics().accountedBytes).to.equal(0);
   });

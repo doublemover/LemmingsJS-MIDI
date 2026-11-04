@@ -1,4 +1,5 @@
 import { createGraftTakeComparisonOwner } from './GraftTakeComparisonOwner.js';
+import { createCapturedBodyComparisonOwner } from './CapturedBodyComparisonOwner.js';
 import { createPreparedWavePrelisten } from './PreparedWavePrelisten.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { validateSoundContentReference } from '../../midi/content/SoundContentReference.js';
@@ -14,7 +15,7 @@ import { prepareCausalEffectSelection } from './CausalEffectSelection.js';
 
 export function createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs, audio = null, onPrelisten = null, getMaterialProvider = null, getSavedRack = () => null, displayScheduler = null, onStatus = () => {}, onHarvest = null } = {}) {
   if (typeof getSavedRack !== 'function') throw new TypeError('Saved effect defaults need a project reader.');
-  let instrumentWorkspace = null, effectWorkspace = null, originalWorkspace = null, originalComparisonReference = null, comparisonOwner = null, displayComparison = false;
+  let instrumentWorkspace = null, effectWorkspace = null, originalWorkspace = null, originalComparisonReference = null, comparisonOwner = null, bodyComparisonOwner = null, displayComparison = null;
   const retirement = createProcgenRetirementScope(), listeners = [], reads = new Set(), readFaults = new Set();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
   let instrumentReference = null, instrumentSupported = false, instrumentError = null;
@@ -67,17 +68,17 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const say = text => { if (!disposed) { deliveryStatus.textContent = text; try { onStatus(text); } catch { /* Status does not own a prepared render. */ } } };
   const run = action => async () => { try { await action(); } catch (error) { say(error.message); } paint(); };
   const button = (text, callback) => { const element = node('button', text); element.type = 'button'; listen(element, 'click', callback); actions.append(element); return element; };
-  const preparedBundle = () => displayComparison ? comparisonOwner?.getPrepared() : owner?.getPrepared();
-  const rendering = () => preparing || owner?.state().active || comparisonOwner?.state().active;
+  const preparedBundle = () => displayComparison === 'body' ? bodyComparisonOwner?.getPrepared() : displayComparison ? comparisonOwner?.getPrepared() : owner?.getPrepared();
+  const rendering = () => preparing || owner?.state().active || comparisonOwner?.state().active || bodyComparisonOwner?.state().active;
   const chosenEntry = () => { const bundle = preparedBundle(); return bundle && bundle === displayedBundle ? bundle.files.find(entry => entry.id === file.value) || null : null; };
   const chosen = () => chosenEntry()?.artifact || null;
   const prelisten = createPreparedWavePrelisten({ audio, resourceBudget, onState: () => surface.invalidate() });
   const listenPrepared = button('Prelisten selected WAV from start', run(async () => {
     const selected = chosenEntry(), bundle = preparedBundle(); if (!selected || rendering() || loading || picker || delivery) return;
     const previous = prelisten.stop(); await previous.completion; if (previous.outcome !== 'complete') throw new Error('The preceding WAV preview retains unresolved ownership.');
-    const serial = loadSerial, receipt = await prelisten.play({ file: selected, source: { name: selected.label.slice(0, 256), kind: displayComparison ? 'graft-take-readout' : 'rendered-take-readout', revision: selected.manifest.pcmHash, sourceRef: selected.manifest.pcmHash },
+    const serial = loadSerial, receipt = await prelisten.play({ file: selected, level01: selected.previewGain01 ?? 1, source: { name: selected.label.slice(0, 256), kind: displayComparison === 'body' ? 'body-take-readout' : displayComparison ? 'graft-take-readout' : 'rendered-take-readout', revision: selected.manifest.pcmHash, sourceRef: selected.manifest.pcmHash },
       isCurrent: () => !disposed && serial === loadSerial && bundle === preparedBundle() && selected === chosenEntry(), onReveal: () => { if (!disposed && !dialog.open) dialog.showModal(); } });
-    say('Playing the selected aligned readout through PRELISTEN from frame zero. Fixed authored gain; cue level and 8 ms edge fades only. Audibility and listening acceptance remain unverified.'); return receipt;
+    say(displayComparison === 'body' ? 'Playing the same captured phrase through this body with measured RMS attenuation on PRELISTEN. Raw WAV gain is unchanged. Listening acceptance remains unverified.' : 'Playing the selected aligned readout through PRELISTEN from frame zero. Fixed authored gain; cue level and 8 ms edge fades only. Audibility and listening acceptance remain unverified.'); return receipt;
   }));
   const stopPrelisten = button('Stop WAV prelisten', run(async () => { const receipt = prelisten.stop(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('WAV preview retirement remains unresolved.'); }));
   const showPrelisten = button('Show PRELISTEN route', () => onPrelisten?.());
@@ -91,7 +92,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
       const effects = prepareCausalEffectSelection({ preset: effect.value, send01: Number(effectSend.value), includeReturn: effectReturn.checked, rack: effect.value === 'saved-owner' ? getSavedRack() : null, sampleRate: Number(rate.value) });
       await owner.prepare({ definition: saved ? instrumentReference.definition : model.definition, materialReference: saved ? instrumentReference : null, takeId: source.takeId, takeRevision: source.revision, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value),
         tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, includeAllLaneStems: stems.checked, restorationMode: restore.value, ...effects });
-      displayComparison = false; say('Rendered WAV files are prepared. Choose a file and a delivery action; the original take is unchanged.');
+      displayComparison = null; say('Rendered WAV files are prepared. Choose a file and a delivery action; the original take is unchanged.');
     } finally { preparing = false; paint(); }
   }));
   const harvest = button('Harvest selected file as seed', run(async () => {
@@ -112,10 +113,21 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     const serial = loadSerial, selected = source; preparing = true; paint();
     try {
       await comparisonOwner.prepare({ takeId: selected.takeId, takeRevision: selected.revision, originalReference: originalComparisonReference, graftReference: instrumentReference, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value), tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, isCurrent: () => !disposed && serial === loadSerial && source === selected });
-      displayComparison = true; say('Four aligned take readouts prepared at fixed authored gain: original, exciter only, body after excitation and full graft. Select a WAV for PRELISTEN, delivery or seed inspection. PRELISTEN permits sixteen seconds including tails. Listening qualification remains pending.');
+      displayComparison = 'graft'; say('Four aligned take readouts prepared at fixed authored gain: original, exciter only, body after excitation and full graft. Select a WAV for PRELISTEN, delivery or seed inspection. PRELISTEN permits sixteen seconds including tails. Listening qualification remains pending.');
     } finally { preparing = false; paint(); }
   }));
-  const cancelRender = button('Cancel render', () => { owner.cancel(); comparisonOwner.cancel(); });
+  const compareBodies = button('Compare recorded body revisions · same sine', run(async () => {
+    if (!source || source.unavailable || loading || picker || delivery || rendering()) return;
+    const serial = loadSerial, selected = source; preparing = true; paint();
+    try {
+      const previous = prelisten.stop(); await previous.completion; if (previous.outcome !== 'complete') throw new Error('The preceding preview retains its source.');
+      if (disposed || serial !== loadSerial || source !== selected) throw new Error('Body comparison canceled.');
+      await bodyComparisonOwner.prepare({ takeId: selected.takeId, takeRevision: selected.revision, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value), tail: { mode: tail.value }, isCurrent: () => !disposed && serial === loadSerial && source === selected });
+      displayComparison = 'body'; say('Body revisions prepared from the same captured phrase and sine source. PRELISTEN matches whole-file RMS by attenuation; raw WAV files keep their original gain. This is a new static body comparison, not the original live performance.');
+    } finally { preparing = false; paint(); }
+  }));
+  compareBodies.title = 'Use an exact window of at most sixteen seconds, including the body decay. The take must contain two to four recorded modal body revisions.';
+  const cancelRender = button('Cancel render', () => { loadSerial++; owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); });
   const download = button('Download selected WAV', run(() => {
     const artifact = chosen(); if (!artifact || rendering() || loading || picker || delivery) return;
     const result = deliverArtifactToAnchor(artifact, { document, windowRef: window }); lastDelivery = result;
@@ -137,11 +149,11 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const cancelSave = button('Cancel file save', () => delivery?.abort());
   const discard = button('Discard prepared WAVs', run(() => { if (rendering() || loading || picker || delivery) return; const receipt = preparedBundle()?.discard();
     say(receipt?.outcome === 'partial' ? 'Prepared file retirement is unresolved.' : 'Prepared WAVs discarded; the original take is unchanged.'); }));
-  const close = () => { loadSerial++; readController?.abort(); owner.cancel(); comparisonOwner.cancel(); prelisten.stop(); delivery?.abort(); dialog.close(); };
+  const close = () => { loadSerial++; readController?.abort(); owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); delivery?.abort(); dialog.close(); };
   button('Close', close); listen(dialog, 'cancel', event => { event.preventDefault(); close(); });
   function paint() {
-    if (disposed || !owner || !comparisonOwner) return;
-    const rendered = owner.state(), comparison = comparisonOwner.state(), preview = prelisten.state(), current = comparison.active ? comparison : rendered.active ? rendered : displayComparison ? comparison : rendered, busy = preparing || rendered.active || comparison.active || preview.active, bundle = preparedBundle();
+    if (disposed || !owner || !comparisonOwner || !bodyComparisonOwner) return;
+    const rendered = owner.state(), graft = comparisonOwner.state(), body = bodyComparisonOwner.state(), comparison = body.active ? body : graft.active ? graft : displayComparison === 'body' ? body : graft, preview = prelisten.state(), current = comparison.active ? comparison : rendered.active ? rendered : displayComparison ? comparison : rendered, busy = preparing || rendered.active || graft.active || body.active || preview.active, bundle = preparedBundle();
     sourceText.textContent = source ? `${source.takeName} · revision ${source.revision} · ${source.hash.slice(0, 16)} · ${source.seconds == null ? 'capture clock unavailable' : source.seconds.toFixed(3) + ' captured seconds'}` : loading ? 'Reading saved take boundaries…' : 'No selected saved take.';
     if (bundle !== displayedBundle) { displayedBundle = bundle; file.replaceChildren(); for (const entry of bundle?.files || []) { const option = node('option', entry.label); option.value = entry.id; file.append(option); } }
     const artifact = chosen()?.metadata();
@@ -149,11 +161,12 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     listenPrepared.disabled = !audio || busy || loading || picker || !!delivery || !artifact?.retained || !!preview.unresolvedRetirement || chosenEntry()?.manifest.frames > chosenEntry()?.manifest.sampleRate * 16;
     stopPrelisten.disabled = !preview.active; showPrelisten.disabled = !onPrelisten;
     instrumentInfo.textContent = instrumentError || (instrumentReference ? 'Saved instrument ' + instrumentReference.patchId + ' @' + instrumentReference.revision + ' · ' + instrumentReference.assetHashes.length + ' local source references. ' + (!instrumentSupported ? 'Its offline renderer is unavailable in this browser or source profile.' : sourceModel.value === 'saved-instrument' ? 'The next render uses its saved defaults and available recorded physical controls.' : 'Select Saved instrument to use this revision; the current source choice uses its own default controls.') : 'Open this dialog with a saved lane instrument to use its exact revision.');
-    details.textContent = current.error || source?.unavailable || (bundle?.manifest.schema === 'lemmings-graft-take-comparison/v1' ? `Four readouts of ${bundle.manifest.takeId} @${bundle.manifest.takeRevision} · ${bundle.manifest.frames.toLocaleString()} common stereo frames at ${bundle.manifest.sampleRate} Hz. Fixed authored gain; no loudness normalization. Original: ${originalComparisonReference?.patchId || 'explicit pinned reference'}. Listening qualification pending.` : bundle ? `Prepared ${bundle.manifest.engineRequirement.engineId} from ${bundle.manifest.takeId} · ${bundle.manifest.frames.toLocaleString()} stereo frames at ${bundle.manifest.sampleRate} Hz · ${bundle.manifest.tail.mode} · ${bundle.files.length} file(s). Master protection is excluded.` :
+    details.textContent = current.error || source?.unavailable || (bundle?.manifest.schema === 'lemmings-captured-body-comparison/v1' ? `${bundle.files.length} recorded body revisions · same captured phrase and sine source · RMS-matched PRELISTEN. Raw WAV files retain original gain. Published defaults replace captured gestures; listening acceptance is unverified.` : bundle?.manifest.schema === 'lemmings-graft-take-comparison/v1' ? `Four readouts of ${bundle.manifest.takeId} @${bundle.manifest.takeRevision} · ${bundle.manifest.frames.toLocaleString()} common stereo frames at ${bundle.manifest.sampleRate} Hz. Fixed authored gain; no loudness normalization. Original: ${originalComparisonReference?.patchId || 'explicit pinned reference'}. Listening qualification pending.` : bundle ? `Prepared ${bundle.manifest.engineRequirement.engineId} from ${bundle.manifest.takeId} · ${bundle.manifest.frames.toLocaleString()} stereo frames at ${bundle.manifest.sampleRate} Hz · ${bundle.manifest.tail.mode} · ${bundle.files.length} file(s). Master protection is excluded.` :
       'Choose a range and prepare. Rendering does not enable live audio or audition the result.');
     renderButton.disabled = loading || busy || !source || !!source.unavailable || !!(rendered.unresolvedRetirement || comparison.unknownRetirement) || sourceModel.value === 'saved-instrument' && !instrumentSupported || picker || !!delivery;
     keepOriginal.disabled = busy || loading || picker || !!delivery || !instrumentReference || !instrumentSupported;
     compareGraft.disabled = busy || loading || picker || !!delivery || !source || !!source.unavailable || !originalComparisonReference || !instrumentSupported || !(instrumentReference?.definition.parameters?.graftModeCount > 0) || !!comparison.unknownRetirement || effect.value !== 'none';
+    compareBodies.disabled = busy || loading || picker || !!delivery || !source || !!source.unavailable || !!body.unknownRetirement || !!graft.unknownRetirement || tail.value !== 'exact-crop';
     cancelRender.disabled = !preparing && !rendered.active && !comparison.active; first.disabled = last.disabled = sourceModel.disabled = rate.disabled = tail.disabled = stems.disabled = busy || loading;
     const selectedEngine = sourceModel.value === 'saved-instrument' ? instrumentReference?.engineRequirement.engineId : sourceModel.value;
     const nativeRestore = NATIVE_OFFLINE_SOURCE_IDS.includes(selectedEngine) || effect.value === 'captured-controls';
@@ -172,13 +185,14 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const surface = scheduler.register({ id: 'causal-render-dialog', element: dialog, intervalMs: 50, write: paint, onError: say });
   owner = createCausalTakeAudioRenderer({ journal, resourceBudget, jobs, getMaterialProvider, onState: () => surface.invalidate() });
   comparisonOwner = createGraftTakeComparisonOwner({ journal, resourceBudget, jobs, getMaterialProvider, onState: () => surface.invalidate() });
+  bodyComparisonOwner = createCapturedBodyComparisonOwner({ journal, resourceBudget, jobs, onState: () => surface.invalidate() });
   listen(sourceModel, 'change', paint); listen(effect, 'change', paint);
   listen(file, 'change', () => { prelisten.stop(); paint(); }); listen(tail, 'change', paint);
   dialog.append(title, description, sourceText, limits, fields, instrumentInfo, status, details, file, deliveryStatus, actions);
   (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
   return Object.freeze({ async open({ takeId, instrumentRef = null } = {}) {
     if (disposed) return; if (readFaults.size) throw new Error('Take metadata reader retirement remains unresolved.');
-    owner.cancel(); comparisonOwner.cancel(); prelisten.stop(); captureInstrument(instrumentRef);
+    owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); captureInstrument(instrumentRef);
     const serial = ++loadSerial; readController?.abort(); const controller = readController = new AbortController();
     loading = true; source = null; if (!dialog.open) dialog.showModal(); paint();
     let work; work = (async () => {
@@ -196,13 +210,13 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     })(); reads.add(work);
     try { await work; } catch (error) { if (!disposed && serial === loadSerial && !controller.signal.aborted) say(error.message); }
     finally { reads.delete(work); if (serial === loadSerial) { loading = false; paint(); } }
-  }, state: () => Object.freeze({ render: owner.state(), preparing, comparison: comparisonOwner.state(), prelisten: prelisten.state(), comparisonVisible: displayComparison, originalComparison: originalComparisonReference ? { patchId: originalComparisonReference.patchId, revision: originalComparisonReference.revision, definitionHash: originalComparisonReference.definitionHash } : null, selectedTake: source, sourceModel: sourceModel.value, effectPreset: effect.value, delivery: lastDelivery, pickingFile: picker, writing: !!delivery, unresolvedMetadata: readFaults.size, instrument: instrumentReference ? { patchId: instrumentReference.patchId, revision: instrumentReference.revision, engineId: instrumentReference.engineRequirement.engineId, supported: instrumentSupported } : null }),
-  suspend() { readController?.abort(); owner.cancel(); comparisonOwner.cancel(); prelisten.stop(); delivery?.abort(); },
+  }, state: () => Object.freeze({ render: owner.state(), preparing, comparison: comparisonOwner.state(), prelisten: prelisten.state(), comparisonVisible: !!displayComparison, comparisonKind: displayComparison, bodyComparison: bodyComparisonOwner.state(), originalComparison: originalComparisonReference ? { patchId: originalComparisonReference.patchId, revision: originalComparisonReference.revision, definitionHash: originalComparisonReference.definitionHash } : null, selectedTake: source, sourceModel: sourceModel.value, effectPreset: effect.value, delivery: lastDelivery, pickingFile: picker, writing: !!delivery, unresolvedMetadata: readFaults.size, instrument: instrumentReference ? { patchId: instrumentReference.patchId, revision: instrumentReference.revision, engineId: instrumentReference.engineRequirement.engineId, supported: instrumentSupported } : null }),
+  suspend() { readController?.abort(); owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); delivery?.abort(); },
   dispose() {
     if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; loadSerial++; readController?.abort(); delivery?.abort();
     const pendingDelivery = deliveryTask, cueRetirement = prelisten.dispose();
     const retireRender = async renderer => { await cueRetirement.completion; if (cueRetirement.outcome !== 'complete') throw new Error('Rendered sources remain pinned behind unresolved PRELISTEN retirement.'); return renderer.dispose(); };
-    return retirement.retire([{ name: 'render-owner', run: () => retireRender(owner) }, { name: 'graft-comparison-owner', run: () => retireRender(comparisonOwner) }, { name: 'accepted-metadata', run: () => Promise.allSettled([...reads]) },
+    return retirement.retire([{ name: 'render-owner', run: () => retireRender(owner) }, { name: 'graft-comparison-owner', run: () => retireRender(comparisonOwner) }, { name: 'body-comparison-owner', run: () => retireRender(bodyComparisonOwner) }, { name: 'accepted-metadata', run: () => Promise.allSettled([...reads]) },
       { name: 'metadata-reader-faults', run: async () => { await Promise.allSettled([...reads]); if (readFaults.size) throw new Error('Take metadata reader retirement remains unresolved.'); } },
       { name: 'render-wav-prelisten', run: () => prelisten.dispose() },
       { name: 'accepted-delivery', run: () => pendingDelivery?.catch(() => {}) }, { name: 'render-surface', run: () => surface.dispose() },

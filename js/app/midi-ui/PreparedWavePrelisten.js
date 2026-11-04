@@ -9,7 +9,7 @@ const fail = message => Object.assign(new Error(message), { name: 'PreparedWaveP
 export function createPreparedWavePrelisten({ audio, resourceBudget, onState = () => {} } = {}) {
   const ownerId = 'prepared-wave-prelisten-' + (++ordinal), retirement = createProcgenRetirementScope(), unknown = new Set();
   let disposed = false, current = null, phase = 'idle', error = null;
-  const state = () => Object.freeze({ active: !!current, playing: !!current?.playing, phase, error, unresolvedRetirement: unknown.size, source: current?.source ?? null });
+  const state = () => Object.freeze({ active: !!current, playing: !!current?.playing, phase, error, unresolvedRetirement: unknown.size, source: current?.source ?? null, attenuation01: current?.level01 ?? null });
   const report = () => { if (!disposed) try { onState(state()); } catch {} };
   const close = record => {
     if (!record) return createProcgenRetirementScope().retire();
@@ -44,7 +44,7 @@ export function createPreparedWavePrelisten({ audio, resourceBudget, onState = (
       const rawManifest = file.manifest;
       if (!Number.isSafeInteger(rawManifest.frames) || ![44100, 48000, 96000].includes(rawManifest.sampleRate) || rawManifest.frames < 1 || rawManifest.frames > rawManifest.sampleRate * 16) throw fail('Choose a render of at most sixteen seconds including its tail for PRELISTEN.');
       if (!source || Object.keys(source).some(key => !['name', 'kind', 'revision', 'sourceRef'].includes(key)) || !['name', 'kind', 'revision', 'sourceRef'].every(key => typeof source[key] === 'string' && source[key].length > 0 && source[key].length <= 256)) throw fail('The prepared WAV needs its exact named source revision.');
-      const record = { source: Object.freeze({ ...source }), controller: new AbortController(), scope: createProcgenRetirementScope(), workspace: createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId, kind: 'prepared-wave-read-hash-and-transfer-overlap', category: 'audio', bytes: metadata.byteLength * 2 + 4 * 1048576 }), cue: null, session: null, audition: null, loan: null, bytes: null, unwatch: null, fence: null, playing: false, stopping: false, preparation: null, prepared: null };
+      const record = { source: Object.freeze({ ...source }), level01, controller: new AbortController(), scope: createProcgenRetirementScope(), workspace: createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId, kind: 'prepared-wave-read-hash-and-transfer-overlap', category: 'audio', bytes: metadata.byteLength * 2 + 4 * 1048576 }), cue: null, session: null, audition: null, loan: null, bytes: null, unwatch: null, fence: null, playing: false, stopping: false, preparation: null, prepared: null };
       record.preparation = new Promise(resolve => { record.prepared = resolve; }); current = record; phase = 'preparing'; error = null; report();
       const check = () => {
         record.controller.signal.throwIfAborted();

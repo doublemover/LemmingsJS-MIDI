@@ -1,9 +1,20 @@
 import { expect } from 'chai';
-import { planPatchComparisonLevels } from '../../js/midi/content/PatchComparisonLevels.js';
+import { planPatchComparisonLevels, planPatchComparisonGroupLevels } from '../../js/midi/content/PatchComparisonLevels.js';
 
 const manifest = statistics => ({ takeId: 'actual-take', takeRevision: 3, sourceCanonicalHash: 'a'.repeat(64), laneId: 'lane',
   frames: 48000, sampleRate: 48000, timelineZeroSourceFrame: 0, exactEndSourceFrame: 48000, statistics });
 describe('same-take comparison attenuation', () => {
+  it('uses one attenuation reference for three complete readouts with different peaks', () => {
+    const inputs = [{ rms: 0.2, peak: 0.5 }, { rms: 0.4, peak: 0.6 }, { rms: 0.5, peak: 5 }].map(manifest), original = JSON.stringify(inputs);
+    const result = planPatchComparisonGroupLevels(inputs); expect(result.levels).to.have.length(3); expect(result.schema).to.equal('lemmings-patch-comparison-group-levels/v1');
+    for (let index = 0; index < 3; index++) { expect(result.levels[index]).to.be.within(0, 1); expect(result.levels[index] * inputs[index].statistics.rms).to.be.closeTo(result.targetRms, 1e-15); expect(result.levels[index] * inputs[index].statistics.peak).to.be.at.most(0.8000000001); }
+    expect(result.perceptualQuality).to.equal(null); expect(JSON.stringify(inputs)).to.equal(original);
+  });
+  it('refuses unbounded groups and a mismatched or silent third readout', () => {
+    const source = manifest({ rms: 0.2, peak: 0.5 });
+    for (const group of [null, [], [source], Array(9).fill(source), [source, source, { ...source, exactEndSourceFrame: 1 }]]) expect(() => planPatchComparisonGroupLevels(group)).to.throw('same immutable');
+    expect(() => planPatchComparisonGroupLevels([source, source, manifest({ rms: 0, peak: 0 })])).to.throw('silent or');
+  });
   it('matches measured crop RMS by attenuation while bounding both resulting peaks', () => {
     const parent = manifest({ rms: 0.2, peak: 0.5 }), candidate = manifest({ rms: 0.4, peak: 0.6 }), before = JSON.stringify([parent, candidate]);
     const result = planPatchComparisonLevels(parent, candidate);

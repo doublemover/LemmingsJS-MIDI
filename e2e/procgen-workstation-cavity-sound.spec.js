@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { inspectLane } from './helpers/workstationDock.js';
 
@@ -94,7 +95,7 @@ for (const recipe of ['Clay chamber', 'Throat duet']) test('native changing cavi
   }, take.takeId);
   await testInfo.attach('native-changing-cavity-history', { body: JSON.stringify({ recipe, first, replacement, waiting, returned, history }), contentType: 'application/json' }); expect(history.stopped.complete).toBe(true); expect(history.manifest.coverage.status).toBe('complete'); expect(history.reopened.coverage.status).toBe('complete'); expect(history.effects.filter(effect => effect.operation === 'graph')).toHaveLength(3); expect(history.effects.every(effect => effect.clockAnchor && effect.graphDefinitionHash)).toBe(true); expect(history.replay?.compatibilityMatch, JSON.stringify(history.replay)).toBe(true); expect(history.liveWorldUnchanged).toBe(true);
   expect(history.effects.filter(effect => effect.operation === 'graph').every(effect => effect.routeTransition)).toBe(true);
-  await page.locator('#procgenListen').click();
+  const cueDock = await inspectLane(page, 'Variations'); await cueDock.getByRole('button', { name: 'PRELISTEN route…', exact: true }).click(); await page.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click();
   const beforeRender = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), audioContexts: window.__cavityAudioOpens }));
   await inspectLane(page, 'Physical');
   const renderButton = page.getByRole('button', { name: 'Render sine WAV…', exact: true }); await renderButton.click({ timeout: 15000 }); const render = page.getByRole('dialog', { name: 'Render causal take owned-source revoice', exact: true });
@@ -108,6 +109,40 @@ for (const recipe of ['Clay chamber', 'Throat duet']) test('native changing cavi
   expect(manifest.effectGraph.commandReplay.history.graphs).toHaveLength(3); expect(manifest.effectGraph.realization.peakGraphs).toBe(2); expect(manifest.effectGraph.realization.sourceRealizations).toBe(1); expect(manifest.statistics.peak).toBeGreaterThan(0); expect(manifest.statistics.rms).toBeGreaterThan(0); expect(manifest.sourceCanonicalHash).toBe(history.manifest.canonicalHash); expect(manifest.acousticReceipt).toBe(false);
   const afterRender = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), audioContexts: window.__cavityAudioOpens })); expect(afterRender).toEqual(beforeRender);
   await testInfo.attach('native-changing-cavity-render', { body: JSON.stringify({ recipe, continuation, beforeRender, afterRender, endSeconds, bytes: bytes.length, manifest }), contentType: 'application/json' });
+  await render.getByLabel('End seconds from capture', { exact: true }).fill('8');
+  const prepareComparison = async () => {
+    await render.getByRole('button', { name: 'Compare recorded body revisions · same sine', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => { const state = window.__PROCGEN_STUDIO__.getCausalAudioRenderState(); return state.preparing || state.bodyComparison.active ? 'active' : state.bodyComparison.phase; }), { timeout: 90000 }).toMatch(/prepared|failed|previous-comparison-retained|ownership-unknown/);
+    return page.evaluate(() => window.__PROCGEN_STUDIO__.getCausalAudioRenderState());
+  };
+  let compared = await prepareComparison(), memoryRecovery = null;
+  if (compared.bodyComparison.phase === 'failed') {
+    expect(compared.bodyComparison.error).toMatch(/needs \d+ accounted bytes; \d+ are available\./); expect(compared.render.prepared.sourceCanonicalHash).toBe(history.manifest.canonicalHash); expect(compared.render.prepared.files.every(file => file.artifact.retained)).toBe(true); expect(compared.comparisonKind).toBeNull();
+    memoryRecovery = { refusal: compared.bodyComparison, previousFilesRetained: compared.render.prepared, recovery: 'explicit-user-discard-of-previous-export-files;single-new-request' };
+    await render.getByRole('button', { name: 'Discard prepared WAVs', exact: true }).click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getCausalAudioRenderState().render.prepared)).toBeNull(); compared = await prepareComparison();
+  }
+  expect(compared.bodyComparison.phase, JSON.stringify(compared.bodyComparison)).toBe('prepared'); expect(compared.comparisonKind).toBe('body'); const metadata = compared.bodyComparison.prepared;
+  expect(metadata.readouts).toHaveLength(3); expect(metadata.sourceCanonicalHash).toBe(history.manifest.canonicalHash); expect(metadata.calibration.levels).toHaveLength(3); expect(metadata.calibration.perceptualQuality).toBeNull();
+  const comparisons = [];
+  for (const [index, id] of metadata.readouts.entries()) {
+    await render.getByLabel('Prepared rendered file', { exact: true }).selectOption(id);
+    const downloading = page.waitForEvent('download'); await render.getByRole('button', { name: 'Download selected WAV', exact: true }).click(); const downloaded = await downloading, name = testInfo.outputPath('body-comparison-' + index + '.wav'); await downloaded.saveAs(name);
+    const wave = await readFile(name), view = new DataView(wave.buffer, wave.byteOffset, wave.byteLength); let definition, samples;
+    for (let at = 12; at < wave.length;) { const tag = wave.subarray(at, at + 4).toString(), size = view.getUint32(at + 4, true); if (tag === 'lmjs') definition = JSON.parse(wave.subarray(at + 8, at + 8 + size).toString()); else if (tag === 'data') samples = wave.subarray(at + 8, at + 8 + size); at += 8 + size + size % 2; }
+    expect(definition.sourceCanonicalHash).toBe(metadata.sourceCanonicalHash); expect(definition.intentHash).toBe(metadata.sourceIntentHash); expect(definition.definitionHash).toBe(metadata.sourceDefinitionHash); expect(definition.effectGraph.hash).toBe(metadata.bodyRevisions[index].renderedGraphHash); expect(definition.frames).toBe(8 * 48000);
+    const data = new DataView(samples.buffer, samples.byteOffset, samples.byteLength); let peak = 0, squares = 0, firstNonzeroFrame = null;
+    for (let at = 0; at < samples.length; at += 4) { const value = data.getFloat32(at, true); if (!Number.isFinite(value)) throw new Error('Nonfinite compared body PCM.'); peak = Math.max(peak, Math.abs(value)); squares += value * value; if (firstNonzeroFrame === null && Math.abs(value) > 1e-7) firstNonzeroFrame = Math.floor(at / 8); }
+    const rms = Math.sqrt(squares / (samples.length / 4)), gain = metadata.calibration.levels[index]; expect(rms).toBeCloseTo(definition.statistics.rms, 12); expect(peak).toBe(definition.statistics.peak); expect(rms * gain).toBeCloseTo(metadata.calibration.targetRms, 12); expect(peak * gain).toBeLessThanOrEqual(0.800000001); expect(gain).toBeGreaterThan(0); expect(gain).toBeLessThanOrEqual(1);
+    expect(createHash('sha256').update(samples).digest('hex')).toBe(definition.pcmHash);
+    await render.getByRole('button', { name: 'Prelisten selected WAV from start', exact: true }).click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getCausalAudioRenderState().prelisten.playing)).toBe(true);
+    const cue = await page.evaluate(() => window.__PROCGEN_STUDIO__.getCausalAudioRenderState().prelisten); expect(cue.attenuation01).toBe(gain); expect(cue.source.kind).toBe('body-take-readout');
+    let nativePeak = null;
+    if (index === 0) { expect(firstNonzeroFrame).not.toBeNull(); await page.waitForTimeout(firstNonzeroFrame / 48 + 100); nativePeak = await page.evaluate(() => { let peak = 0; for (const analyser of window.__cavityAnalysers) { const samples = new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(samples); for (const sample of samples) { if (!Number.isFinite(sample)) throw new Error('Nonfinite native comparison cue.'); peak = Math.max(peak, Math.abs(sample)); } } return peak; }); expect(nativePeak).toBeGreaterThan(1e-8); }
+    await render.getByRole('button', { name: 'Stop WAV prelisten', exact: true }).click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getCausalAudioRenderState().prelisten.active)).toBe(false);
+    comparisons.push({ id, definition, gain, peak, rms, firstNonzeroFrame, nativePeak, cue, bytes: wave.length, wavSha256: createHash('sha256').update(wave).digest('hex') });
+  }
+  const comparisonAfter = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), audioContexts: window.__cavityAudioOpens })); expect(comparisonAfter).toEqual(beforeRender);
+  await testInfo.attach('native-cavity-matched-body-comparison', { body: JSON.stringify({ recipe, metadata, comparisons, memoryRecovery, beforeRender, comparisonAfter, scope: 'Same saved contact on each recorded static body; whole-file numerical RMS matching and native declared cue attenuation. No listening or acoustic qualification.' }), contentType: 'application/json' });
 });
 
 for (const recipe of ['Clay chamber', 'Throat duet', 'Crumbled chimes']) test('native private cavity preview keeps CURRENT and NEXT unadvanced: ' + recipe, { tag: ['@boundary', '@workstation-physical-music'] }, async ({ page }, testInfo) => {

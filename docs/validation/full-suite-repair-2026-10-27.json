@@ -146113,4 +146113,144 @@
       "Previous full green405 remains unchanged; all historical failures are preserved."
     ]
   }
+,
+  "continuation410": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "d84c5b432c7aa186db0776bb41a179aba6e0d024",
+    "scope": "Same-contact recorded body comparisons, shared comparison ownership and affected clock qualification.",
+    "changes": [
+      "Two-to-four exact captured static modal bodies on one owned sine source and immutable source intents. Whole-file RMS defines attenuation-only PRELISTEN levels; raw WAV unchanged.",
+      "Shared sequential comparison/file ownership preserves original graft derivations/fixed gain; source/build/tap/frame checks, cancellation, late readers and direct-discard unknown retirement are bounded.",
+      "UI publishes preparing ownership before awaiting preview retirement and invalidates pending comparison preparation on Cancel.",
+      "Private cancellation and independent-owner clock fixtures declare512ms presentation delay. Source targets and production24ms default remain unchanged."
+    ],
+    "validation": {
+      "node": {
+        "passed": 60,
+        "pending": 0,
+        "fullLocalSuiteRepeated": false,
+        "coverage": {
+          "lines": {
+            "total": 263,
+            "covered": 263,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 263,
+            "covered": 263,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 56,
+            "covered": 53,
+            "skipped": 0,
+            "pct": 94.64
+          },
+          "branches": {
+            "total": 364,
+            "covered": 331,
+            "skipped": 0,
+            "pct": 90.93
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 100
+          }
+        }
+      },
+      "browser": {
+        "uniquePassed": 23,
+        "workstation": 14,
+        "portable": 9,
+        "grouping": "Eleven passed cases from the second 14-case run plus all three cases from the final targeted run on the same runtime; no single green 14-case invocation is claimed.",
+        "nativeClockMeasurements": 6,
+        "windowsWebKitUnavailablePaths": 3,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        }
+      },
+      "nativeBodyFiles": {
+        "readouts": 6,
+        "historyExports": 2,
+        "framesPerComparison": 384000,
+        "sampleRate": 48000,
+        "sameSourceAndIntent": true,
+        "changedBodyPcmDiffers": true,
+        "returnedBodyPcmExactlyMatches": true,
+        "wholeFilePcmAndWavHashesVerified": true,
+        "previewGain": "whole-file-rms;attenuation-only",
+        "actualNativeCuePcmSampled": "first readout per recipe only",
+        "cueRms": null,
+        "perceptualQuality": null
+      },
+      "checks": [
+        "format",
+        "lint",
+        "check-undefined",
+        "typecheck:critical",
+        "runtime-provenance"
+      ],
+      "source": {
+        "runtimeDigest": "31ba806dfbeb82905c060901673d8acb21df655555f0f0b909ec02c4889d11ae",
+        "runtimeFiles": 1274,
+        "workerFiles": 304,
+        "workerDigest": "b0121907a2f7301088567cfa373afa5dcf5c6644f1d3812c281353e0cfc1dae6",
+        "harnessInputs": 27
+      },
+      "raw": {
+        "path": "docs/validation/matched-body-comparison-desktop-2026-11-04.json",
+        "bytes": 4614014,
+        "sha256": "a9fe5fe5b5cdb0f850c2b3203adbb3adc3eda70a19ec027e384e63779a1c4476"
+      },
+      "counterexamples": "Both non-green workstation groups and initial component fixture failures remain in the sidecar. Memory refusal preserves previous files; visible Discard plus one new request succeeds. Unchanged private Chimes retry passes; dynamic-module fetch root cause remains unproven."
+    },
+    "ci": {
+      "run": 41896671994,
+      "head": "d84c5b432c7aa186db0776bb41a179aba6e0d024",
+      "main": {
+        "passed": 7357,
+        "pending": 10,
+        "browser": 299,
+        "status": "success"
+      },
+      "nativeWindows": "success",
+      "nativeLinux": "success",
+      "engine": {
+        "passed": 40,
+        "failed": 2,
+        "status": "failure",
+        "remaining": "Linux WebKit qualification windows"
+      },
+      "policy": "success",
+      "dependencyReview": "success",
+      "reportedPathsMatched": 1452,
+      "downloadedVerifiedArchives": 3,
+      "latestCompleteGreenUnchanged": "continuation405/2504b778b90b388261c23caf7992cef22c2872ee",
+      "newSourceCi": "pending-publication"
+    },
+    "issueStatus": {
+      "openInventory": 190,
+      "closed": [],
+      "keepOpen": [
+        972,
+        1194,
+        1104,
+        1046
+      ],
+      "next": "Broader continuous live-worker/body and fresh-excitation matrices, then remaining backlog; listening/hardware boundaries remain separate."
+    },
+    "limits": [
+      "RMS is a whole-file numerical match, not perceptual loudness qualification. All native samples are quiet; no amplification or acoustic inference.",
+      "Body variants use static publication defaults, not captured gestures or continuous live DSP memory.",
+      "Wider continuous live-worker/body and fresh-excitation matrices remain for1194; broader1104/1046 capture/render and native endpoint boundaries remain.",
+      "Linux WebKit/complete CI on the new source remains pending; local Windows WebKit has no AudioContext.",
+      "190 open issues remain in the refreshed inventory; no issue is closed by this scoped comparison alone."
+    ]
+  }
 }
