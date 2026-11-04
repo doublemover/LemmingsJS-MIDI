@@ -12,10 +12,13 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
   const queue = [], active = new Set(), retained = new Set(); let sequence = 0, queuedBytes = 0, retired = false, admitted = 0, denied = 0, peakWorkers = 0, queueWaitMs = 0, peakQueueWaitMs = 0;
   const releaseBudget = record => {
     const errors = [];
-    for (const budget of record.reservedBudgets) {
-      try { requireSynchronousResourceAcknowledgement(budget.release({ token: record.token, owner: record.owner }), 'Background resource release'); }
-      catch (error) { errors.push(error); }
-    }
+    record.budgetBusy = true;
+    try {
+      for (const budget of record.reservedBudgets) {
+        try { requireSynchronousResourceAcknowledgement(budget.release({ token: record.token, owner: record.owner }), 'Background resource release'); }
+        catch (error) { errors.push(error); }
+      }
+    } finally { record.budgetBusy = false; }
     if (errors.length) throw new AggregateError(errors, 'Background resource retirement is incomplete.');
   };
   const removeQueued = record => {
@@ -48,7 +51,8 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
       denied++; return Promise.reject(invalid('Background job queue or retained input capacity is occupied.'));
     }
     const record = { kind, owner: 'background:' + ownerId, ownerEpoch, sourceRevision, priority, signal, inputBytes,
-      externalBudget: budgetAdapter, reservedBudgets: [], token: {}, estimatedPeakBytes, queuedAt: now(), sequence: ++sequence, phase: 'queued', timer: null };
+      externalBudget: budgetAdapter, reservedBudgets: [], token: {}, estimatedPeakBytes, queuedAt: now(), sequence: ++sequence, phase: 'queued', timer: null,
+      budgetBusy: false, settlingTransitions: false, deferredTransitions: new Map() };
     try {
       const request = { token: record.token, owner: record.owner, generation: ownerEpoch, category: 'candidate', bytes: estimatedPeakBytes, pinned: true, reloadable: false };
       resourceBudget.reserve(request);
@@ -60,24 +64,48 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
     }
     if (retired) { try { releaseBudget(record); } catch { record.phase = 'failed-or-unknown'; active.add(record); } return Promise.reject(invalid('Background owner retired during admission.')); }
     const promise = new Promise((resolve, reject) => { record.resolve = resolve; record.reject = reject; });
+    const defer = (kind, transition) => {
+      if (!record.budgetBusy) return false;
+      if (!record.deferredTransitions.has(kind)) record.deferredTransitions.set(kind, transition);
+      return true;
+    };
+    const settleDeferred = () => {
+      if (record.settlingTransitions) return;
+      record.settlingTransitions = true;
+      try {
+        while (record.deferredTransitions.size && !record.budgetBusy) {
+          const [kind, transition] = record.deferredTransitions.entries().next().value;
+          record.deferredTransitions.delete(kind); transition();
+        }
+      } finally { record.settlingTransitions = false; }
+    };
     const finish = (status = 'released') => {
+      if (defer('finish', () => finish(status))) return false;
       if (['released', 'canceled', 'retiring'].includes(record.phase)) return false;
       if (record.phase === 'failed-or-unknown') return false;
       removeQueued(record); clearTimeout(record.timer); signal?.removeEventListener('abort', abort);
       record.phase = 'retiring';
-      try { releaseBudget(record); } catch (error) { unknown(error); return false; }
-      active.delete(record); retained.delete(record); record.phase = status; drain(); return true;
+      try { releaseBudget(record); } catch (error) { unknown(error); settleDeferred(); return false; }
+      const uncertain = record.deferredTransitions.get('unknown');
+      if (uncertain) { record.deferredTransitions.delete('unknown'); uncertain(); settleDeferred(); return false; }
+      active.delete(record); retained.delete(record); record.phase = status; settleDeferred(); drain(); return true;
     };
     const unknown = reason => {
+      if (defer('unknown', () => unknown(reason))) return;
       if (['released', 'canceled', 'failed-or-unknown'].includes(record.phase)) return;
       removeQueued(record); retained.delete(record); active.add(record); record.phase = 'failed-or-unknown'; record.reason = String(reason?.message || reason).slice(0, 512);
       clearTimeout(record.timer); signal?.removeEventListener('abort', abort);
       const request = { token: record.token, owner: record.owner, generation: ownerEpoch, category: 'candidate', bytes: estimatedPeakBytes, pinned: true, reloadable: false, unreleased: true };
-      for (const budget of new Set([resourceBudget, budgetAdapter].filter(Boolean))) {
-        try { budget.reserve(request); } catch { /* Failed bookkeeping remains charged and cannot authorize another worker. */ }
-      }
+      record.budgetBusy = true;
+      try {
+        for (const budget of new Set([resourceBudget, budgetAdapter].filter(Boolean))) {
+          try { budget.reserve(request); } catch { /* Failed bookkeeping remains charged and cannot authorize another worker. */ }
+        }
+      } finally { record.budgetBusy = false; }
+      settleDeferred();
     };
     record.cancel = reason => {
+      if (defer('cancel', () => record.cancel(reason))) return;
       if (record.phase === 'queued') { finish('canceled'); record.reject(reason); return; }
       if (!['running', 'computed'].includes(record.phase)) return;
       record.phase = 'canceling';
@@ -88,15 +116,19 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
     const abort = () => record.cancel(signal.reason || invalid('Background job canceled.'));
     record.lease = Object.freeze({ jobId: `background-${record.sequence}`, kind, ownerId, ownerEpoch, sourceRevision,
       release: () => finish(), retainUnknown: unknown,
-      confirmRetirement() { if (record.phase === 'failed-or-unknown') record.phase = 'canceling'; return finish(); },
+      confirmRetirement() { if (defer('confirm', () => record.lease.confirmRetirement())) return false; if (record.phase === 'failed-or-unknown') record.phase = 'canceling'; return finish(); },
       computationFinished({ retainedBytes = estimatedPeakBytes } = {}) {
-        if (record.phase !== 'running') return false;
+        if (record.phase !== 'running' || record.budgetBusy) return false;
         if (!Number.isSafeInteger(retainedBytes) || retainedBytes < 0 || retainedBytes > estimatedPeakBytes) throw invalid('Invalid retained background result estimate.');
         if (!retainedBytes) return finish();
         try {
-          for (const budget of record.reservedBudgets) budget.reserve({ token: record.token, owner: record.owner, generation: ownerEpoch,
-            category: 'candidate', bytes: retainedBytes, pinned: true, reloadable: false });
-        } catch (error) { unknown(error); return false; }
+          record.budgetBusy = true;
+          try {
+            for (const budget of record.reservedBudgets) budget.reserve({ token: record.token, owner: record.owner, generation: ownerEpoch,
+              category: 'candidate', bytes: retainedBytes, pinned: true, reloadable: false });
+          } finally { record.budgetBusy = false; }
+        } catch (error) { unknown(error); settleDeferred(); return false; }
+        settleDeferred(); if (record.phase !== 'running') return false;
         record.retainedBytes = retainedBytes;
         clearTimeout(record.timer); record.timer = null;
         record.phase = 'computed'; active.delete(record); retained.add(record); drain(); return true;

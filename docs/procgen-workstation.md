@@ -415,6 +415,20 @@ load still owns. Source revocation reaches the candidate world's cancellation
 signal. Compute deadlines end at the computed boundary; source publication has
 its own explicit lifetime.
 
+Budget adapters may synchronously cancel or retire a job while its result
+reservation is being resized. Admission finishes the shared and document budget
+updates before applying that retirement; a retired computation cannot publish a
+computed result or lose its charge while retirement remains unknown.
+
+The bounded admission model can be exercised independently with
+`node scripts/run-background-admission-model.js --seeds=128 --steps=512 --name=local`.
+It compares every transition with a serial reference, including priority aging,
+queued input, cancellation, retained results and unresolved retirement. Failures
+print a seed and a reduced replay trace. The campaign stops at120seconds or its
+default256MiBobserved heap limit, checked every32transitions. These checks concern
+job ownership; the wider document, asset, output and recovery lifecycle matrix
+and native memory/latency qualification remain separate.
+
 The World inspector controls trap spacing and display row height. Playable terrain
 assembles near approaching actors; camera movement does not build distant terrain.
 Farther scenery is visual only and uses staggered, world-anchored dithering.

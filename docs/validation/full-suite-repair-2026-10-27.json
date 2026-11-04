@@ -146846,5 +146846,120 @@
       "CI413main remains in progress; latest independently source-qualified complete green is3245dd9fe8562b32570900316bd5307cabb39526.",
       "Coverage concerns the two selected runtime files. Entry navigation/failure also executes natively in Playwright; this is not a global threshold pass."
     ]
+  },
+  "continuation415": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "6ad52db030462786c3ab1e9bd525aba25204daab",
+    "scope": "Generated serial-reference job ownership with actual reentrant budget retirement; real native worker publication/cancellation, strict retained reservations and preserved CURRENT.",
+    "changes": [
+      "Fence shared/external budget effects through reentrant retirement before computed publication.",
+      "Generate serial-reference priority/queue/retained/unknown ownership schedules and shrink first-pass source failures to actual owner commands.",
+      "Qualify real native-worker cancellation/disposal/result transport and unchanged CURRENT."
+    ],
+    "validation": {
+      "nodePassed": 162,
+      "browserPassed": 4,
+      "nativeFrontiers": 4,
+      "malformedImports": 92,
+      "generatedTransitions": 65664,
+      "modelSeed": 9991186,
+      "campaign": {
+        "schema": "background-admission-campaign/v1",
+        "name": "rook",
+        "seed": 9991186,
+        "seeds": 128,
+        "steps": 512,
+        "transitions": 65664,
+        "elapsedMs": 6040.5533,
+        "budget": {
+          "maxMs": 120000,
+          "maxHeapBytes": 268435456,
+          "observationEveryTransitions": 32
+        },
+        "maximumObservedHeapBytes": 51724136
+      },
+      "originalFailureSeed": 17,
+      "originalCommands": 129,
+      "minimizedCommands": 2,
+      "sourceAudit": {
+        "paths": 1347,
+        "byteExact": 1334,
+        "untouchedNewlineMappings": 13,
+        "browserClosureDigest": "785b1d660d28323df8fc6f9a273960cfef3d2011eb4abdc5e7f145e81cfd2291",
+        "workerFiles": 305
+      },
+      "coverage": {
+        "lines": {
+          "total": 153,
+          "covered": 149,
+          "skipped": 0,
+          "pct": 97.38
+        },
+        "statements": {
+          "total": 153,
+          "covered": 149,
+          "skipped": 0,
+          "pct": 97.38
+        },
+        "functions": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 114,
+          "covered": 92,
+          "skipped": 0,
+          "pct": 80.7
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "static": {
+        "format": "passed",
+        "lint": "passed",
+        "depcheck": "passed",
+        "criticalTypes": "passed",
+        "undefinedCalls": "passed",
+        "browserCategories": "passed",
+        "provenance": "10components/374distinct files passed"
+      },
+      "evidence": {
+        "path": "docs/validation/background-admission-model-2026-11-04.json",
+        "bytes": 975219,
+        "sha256": "04b5c6bf6822c817df6b4089339e17a450a9018cb0b92d02d69a4d312f669b2b"
+      }
+    },
+    "ci": {
+      "latestCompleteGreen": "3245dd9fe8562b32570900316bd5307cabb39526",
+      "run413": 41925399883,
+      "main413": "in-progress-workstation",
+      "nativeAndEngine413": "success",
+      "run414": 41930876678,
+      "currentSource": "pending-publication"
+    },
+    "issueStatus": {
+      "closed": 988,
+      "open": [
+        1120,
+        1234,
+        1162
+      ],
+      "openCount": 188
+    },
+    "limits": [
+      "The generated model covers shared admission ownership, not every document/save/input/asset/delivery controller in1120.",
+      "The native journey establishes four worker terminal publication frontiers and a valid control, not the full8/128/1024mixed live workload or physical memory/latency tiers in1234/1162/1087.",
+      "The campaign heap ceiling is observed every32transitions;51,724,136bytes is the maximum observed Node heap, not an instantaneous physical process peak.",
+      "Scoped coverage is not a global threshold pass. Useful remaining isolated coverage includes early admission rollback and rejected asynchronous cancellation callbacks.",
+      "CI413main remains running at publication; latest independently source-qualified complete green remains410/3245dd9f.",
+      "No acoustic, listening, hardware or exhaustive orchestration proof claim."
+    ]
   }
 }
