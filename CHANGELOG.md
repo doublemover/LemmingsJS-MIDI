@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve immutable preference metadata and retain fallback encoder input until publication so suspended writes can retry safely.
 - Preserve explicit Pause and Stop through Save's naming/preference waits, and suppress late storage presentation after workstation disposal.
 - Keep background result publication fenced through reentrant budget cancellation, release and unresolved retirement.
 - Reject incompatible checkpoint headers before migration can rewrite them, and report a failed immutable application install as soon as its installer retires.

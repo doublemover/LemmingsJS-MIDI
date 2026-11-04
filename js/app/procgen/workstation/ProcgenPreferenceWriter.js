@@ -37,7 +37,7 @@ export function createProcgenPreferenceWriter({ jobs, resourceBudget, storage, a
         } else computed = await jobs.compute({ kind: 'encode-json', ownerId: 'procgen-preferences', ownerEpoch: request.generation,
           sourceRevision: `preferences:${request.sequence}`, inputBytes: 0,
           estimatedPeakBytes: Math.min(512 * 1048576, 8 * 1048576 + request.value.project.procgen.lanes.length * 262144),
-          priority: 'recovery', budgetAdapter: resourceBudget, signal: controller.signal,
+          priority: 'recovery', budgetAdapter: resourceBudget, signal: controller.signal, retainInput: true,
           isCurrent: () => !disposed && !controller.signal.aborted && request.generation === getGeneration(), prepareInput: () => request.value,
           releasePreparedInput: () => { request.value = null; } });
         if (controller.signal.aborted || request.generation !== getGeneration() || disposed) return;
@@ -63,7 +63,7 @@ export function createProcgenPreferenceWriter({ jobs, resourceBudget, storage, a
     request(value, revision) {
       if (disposed || closing || retirementFailure) return false;
       if (!Number.isSafeInteger(revision) || revision < 0 || sequence === Number.MAX_SAFE_INTEGER) throw new Error('Preference revision exhausted.');
-      pending = { value: authoredStorage ? copyMidiProjectSnapshot(value) : value, revision, generation: getGeneration(), sequence: ++sequence }; requested = { revision, generation: pending.generation }; lastError = null; void drain(); return true;
+      pending = { value: copyMidiProjectSnapshot(value), revision, generation: getGeneration(), sequence: ++sequence }; requested = { revision, generation: pending.generation }; lastError = null; void drain(); return true;
     },
     suspend() {
       const token = {}; if (!disposed) holds.add(token);

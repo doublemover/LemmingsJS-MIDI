@@ -147371,5 +147371,112 @@
       "The dirty marker is retained; every reported source byte and synthetic merge tree is independently checked.",
       "Listening, native physical devices, acoustic latency, full workload tiers and remaining open issues are unqualified."
     ]
+  },
+  "continuation418": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "077794ae96d74cb9f948f73538cfe8e943da14c2",
+    "scope": "Immutable preference request metadata and retained compatibility encoder input across producer/result suspension, coalesced retry and document replacement.",
+    "changes": [
+      "Retain fallback encoder input through publication/retirement so result-phase suspension has a valid retry source.",
+      "Copy all preference metadata and reuse only verified immutable authored branches.",
+      "Qualify native result suspension/retry and keep original LinuxFirefox startup crash independent from isolated Windows success."
+    ],
+    "validation": {
+      "nodePassed": 281,
+      "browserChromiumPassed": 4,
+      "isolatedWindowsFirefoxPassed": 1,
+      "coverage": {
+        "lines": {
+          "total": 88,
+          "covered": 88,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 88,
+          "covered": 88,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 18,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 94.44
+        },
+        "branches": {
+          "total": 118,
+          "covered": 108,
+          "skipped": 0,
+          "pct": 91.52
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "static": {
+        "format": "passed",
+        "lint": "passed",
+        "criticalTypes": "passed",
+        "dependencies": "passed",
+        "undefinedCalls": "passed",
+        "browserCategories": "passed",
+        "provenance": {
+          "workerFiles": 305,
+          "workerSha256": "147408a06b711f25ffe6f14b9729dc45b60131eb3c333340c90fc024eafc5962",
+          "unchanged": true
+        }
+      },
+      "sourceAudit": {
+        "paths": 1342,
+        "byteExact": 1329,
+        "untouchedNewlineMappings": 13,
+        "browserClosureDigest": "05dd797d60bef12a708d4fe011f11449ee23f66456eb471961d0afabd3bcff97"
+      },
+      "evidence": {
+        "path": "docs/validation/preference-retry-desktop-2026-11-04.json",
+        "bytes": 820621,
+        "sha256": "9abb38eb14f0cfea021551ac8e13bbe32c7484e6f7888dfb3ab0b6905f79e36a"
+      }
+    },
+    "ci": {
+      "latestCompleteGreen": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
+      "run413": 41925399883,
+      "run414": 41930876678,
+      "engine414": "41pass/one native LinuxFirefox startup crash",
+      "retry414": "GitHub403until main finishes",
+      "currentSource": "pending-publication"
+    },
+    "issueStatus": {
+      "open": [
+        1120,
+        1086,
+        987,
+        1162,
+        1234
+      ],
+      "inventory": {
+        "open": 188,
+        "overlap": 12,
+        "added": [],
+        "closed": [
+          {
+            "n": 988,
+            "title": "[ProcGen replay] Version checkpoint components and pin source, assets, and deterministic inputs"
+          }
+        ]
+      }
+    },
+    "limits": [
+      "This qualifies compatibility JSON preference retries, metadata isolation and the named current-owner native paths; it does not establish the maximum paged-storage profile or every1120/1086lifecycle owner.",
+      "Windows isolated Firefox canvas success does not repair or erase the original CI414LinuxFirefox process crash.",
+      "Latest independently source-qualified complete green isf4cd4ee9/run41925399883; later source has independent CI.",
+      "Scoped coverage is100%lines/statements,91.52%branches,94.44%functions. Global thresholds are unchanged; useful follow-up is a throwing result-release observer while another current-generation request is pending.",
+      "No native hardware, acoustic, listening or exhaustive platform acceptance claim."
+    ]
   }
 }

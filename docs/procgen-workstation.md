@@ -422,6 +422,13 @@ load still owns. Source revocation reaches the candidate world's cancellation
 signal. Compute deadlines end at the computed boundary; source publication has
 its own explicit lifetime.
 
+Preference requests capture their metadata when requested and share only
+verified immutable authored branches. Suspending the compatibility JSON writer
+keeps the source retryable until its result retires; releasing the foreground
+hold retries the latest pending revision. A replacement document discards the
+old request, and cancellation releases the old worker and reservations before
+the foreground operation proceeds.
+
 Budget adapters may synchronously cancel or retire a job while its result
 reservation is being resized. Admission finishes the shared and document budget
 updates before applying that retirement; a retired computation cannot publish a

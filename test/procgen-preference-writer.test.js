@@ -3,6 +3,42 @@ import { createProcgenPreferenceWriter } from '../js/app/procgen/workstation/Pro
 import { sealMidiProjectSnapshot } from '../js/midi/project/MidiProjectSnapshot.js';
 
 describe('coalesced preference encoding ownership', () => {
+  for (const newer of [false, true]) for (const replace of [false, true]) it(`retains fallback retry input through suspension newer=${newer} replace=${replace}`, async () => {
+    let writer, hold, first = true, generation = 1; const writes = [], inputs = [], retained = [];
+    writer = createProcgenPreferenceWriter({ key: 'preferences', getGeneration: () => generation, storage: { setItem(_key, text) { writes.push(JSON.parse(text)); } }, jobs: {
+      async compute(request) {
+        const value = await request.prepareInput(); inputs.push(value); retained.push(request.retainInput === true);
+        const text = JSON.stringify(value);
+        if (!request.retainInput) request.releasePreparedInput();
+        if (first) { first = false; hold = writer.suspend(); }
+        return { value: text, release() { request.releasePreparedInput(); }, retirementState: () => ({ phase: 'released' }) };
+      }
+    } });
+    const source = { project: { procgen: { lanes: [{ note: 60 }] } }, ui: { page: 'original' } };
+    writer.request(source, 1); source.ui.page = 'mutated'; source.project.procgen.lanes[0].note = 99;
+    await new Promise(resolve => setImmediate(resolve)); await hold.completion;
+    expect(writer.state()).to.include({ active: false, suspended: true, durableRevision: -1 }); expect(writes).to.deep.equal([]);
+    expect(inputs[0].ui.page).to.equal('original'); expect(inputs[0].project.procgen.lanes[0].note).to.equal(60);
+    if (replace) generation++;
+    if (newer) writer.request({ project: { procgen: { lanes: [{ note: 72 }] } }, ui: { page: 'newer' } }, 2);
+    hold.release(); await writer.dispose();
+    expect(retained.every(Boolean)).to.equal(true);
+    expect(writes).to.have.length(Number(!replace || newer));
+    if (writes.length) expect(writes[0].project.procgen.lanes[0].note).to.equal(newer ? 72 : 60);
+    expect(writer.state().lastError).to.equal(null);
+  });
+  it('keeps shared authored branches and detached fallback metadata immutable until publication', async () => {
+    const project = sealMidiProjectSnapshot({ procgen: { lanes: [{ note: 60 }] } }), writes = []; let complete, input, retire;
+    const writer = createProcgenPreferenceWriter({ key: 'preferences', getGeneration: () => 1, storage: { setItem(_key, text) { writes.push(JSON.parse(text)); } }, jobs: {
+      async compute(request) {
+        input = await request.prepareInput(); retire = request.releasePreparedInput; await new Promise(resolve => { complete = resolve; });
+        return { value: JSON.stringify(input), release() { retire(); }, retirementState: () => ({ phase: 'released' }) };
+      }
+    } });
+    const source = { project, ui: { page: 'Lane' } }; writer.request(source, 3); source.ui.page = 'other'; await Promise.resolve();
+    expect(input.project).to.equal(project); expect(Object.isFrozen(input)).to.equal(true); expect(input.ui.page).to.equal('Lane');
+    complete(); await writer.dispose(); expect(writes[0].ui.page).to.equal('Lane'); expect(writer.state().durableRevision).to.equal(3);
+  });
   it('cancels background work and waits for producer retirement while nested foreground holds coalesce the latest revision', async () => {
     let retire, first = true; const writes = [], states = [];
     const producer = new Promise(resolve => { retire = resolve; });
