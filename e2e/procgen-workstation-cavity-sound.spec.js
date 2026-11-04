@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
+import { inspectLane } from './helpers/workstationDock.js';
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 test('all three cavity recipes preserve actual geometry work and restored body identity without output activation', { tag: ['@boundary', '@workstation-physical-music'] }, async ({ page }, testInfo) => {
@@ -46,8 +48,9 @@ async function enableCavity(page) {
   expect(await page.evaluate(() => ({ opens: window.__cavityAudioOpens, midi: window.__cavityMidiRequests }))).toEqual({ opens: 0, midi: 0 }); await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
 }
-async function runNativeCavity(page, ticks = 120, { keepRunning = false } = {}) {
-  const before = await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex); await page.getByRole('button', { name: 'Play world', exact: true }).click();
+async function runNativeCavity(page, ticks = 120, { keepRunning = false, resumePhysicalOnly = false } = {}) {
+  const before = await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex);
+  if (resumePhysicalOnly) await page.evaluate(() => window.__PROCGEN_LANES__.resume()); else await page.getByRole('button', { name: 'Play world', exact: true }).click();
   const actual = await page.evaluate(async ({ before, ticks }) => {
     const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world, facts = [], listener = batch => facts.push(...batch.facts); world.soundEvents.onBatch.on(listener); const started = performance.now(), energies = {}; let best = { peak: 0, rms: 0, dominantHz: null, modeBins: [] }, failure, body;
     try { while (world.tickIndex - before < ticks && performance.now() - started < 10000) { await new Promise(resolve => requestAnimationFrame(resolve));
@@ -84,11 +87,27 @@ for (const recipe of ['Clay chamber', 'Throat duet']) test('native changing cavi
   await cavityEdit(page, label, original, { step: false }); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().cavityBody.error)).toBe('waiting-for-previous-body-tail'); await page.evaluate(() => window.__PROCGEN_LANES__.pause()); const waiting = await page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics()); expect(waiting.cavityBody.prepared).toBe(false); expect(waiting.cavityBody.preparing).toBe(false); expect(waiting.cavityBody.error).toBe('waiting-for-previous-body-tail'); expect(waiting.effects.retiringGraphs).toBe(1);
   const waitingTick = await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().cavityBody.prepared), { timeout: 15000 }).toBe(true);
   const returned = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, output: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics() })); expect(returned.tick).toBe(waitingTick); if (recipe === 'Clay chamber') expect(returned.output.cavityBody.bodyIdentityHash).toBe(first.body.cavityBody.bodyIdentityHash); else expect(returned.output.cavityBody.bindings.map(binding => binding.bodyId)).toEqual(first.body.cavityBody.bindings.map(binding => binding.bodyId)); expect(returned.output.dispatch.receipts.filter(receipt => receipt.intentId.endsWith(':begin'))).toHaveLength(beforeBegins);
+  const continuation = await runNativeCavity(page, 120, { keepRunning: true, resumePhysicalOnly: true }); expect(continuation.failure).toBeFalsy(); await page.evaluate(() => window.__PROCGEN_LANES__.pause());
   const history = await page.evaluate(async takeId => {
     const studio = window.__PROCGEN_STUDIO__, stopped = await studio.handlers.stopCausalTake(), live = window.__PROCGEN_LANES__.world, root = new URL('./', location.href), { createProcgenSessionStorage } = await import(new URL('js/app/procgen/workstation/ProcgenSessionStorage.js', root)), { createProcgenCausalJournal } = await import(new URL('js/app/procgen/workstation/ProcgenCausalJournal.js', root)); let storage = createProcgenSessionStorage();
     try { const journal = createProcgenCausalJournal({ storage }), manifest = await journal.openTake(takeId), records = (await journal.query({ takeId, limit: 4096 })).records, effects = records.filter(record => record.kind === 'sink-outcome').flatMap(record => record.payload.outcomes || [record.payload]).filter(outcome => outcome.schema === 'lemmings-effect-performance/v1'); storage.close(); storage = createProcgenSessionStorage(); const reopened = await createProcgenCausalJournal({ storage }).openTake(takeId); await studio.handlers.selectCausalTake(takeId); const replay = await studio.handlers.compareCausalTake(); return { stopped, manifest, reopened, effects, replay: replay?.receipt || null, liveWorldUnchanged: window.__PROCGEN_LANES__.world === live }; } finally { storage.close(); }
   }, take.takeId);
   await testInfo.attach('native-changing-cavity-history', { body: JSON.stringify({ recipe, first, replacement, waiting, returned, history }), contentType: 'application/json' }); expect(history.stopped.complete).toBe(true); expect(history.manifest.coverage.status).toBe('complete'); expect(history.reopened.coverage.status).toBe('complete'); expect(history.effects.filter(effect => effect.operation === 'graph')).toHaveLength(3); expect(history.effects.every(effect => effect.clockAnchor && effect.graphDefinitionHash)).toBe(true); expect(history.replay?.compatibilityMatch, JSON.stringify(history.replay)).toBe(true); expect(history.liveWorldUnchanged).toBe(true);
+  expect(history.effects.filter(effect => effect.operation === 'graph').every(effect => effect.routeTransition)).toBe(true);
+  await page.locator('#procgenListen').click();
+  const beforeRender = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), audioContexts: window.__cavityAudioOpens }));
+  await inspectLane(page, 'Physical');
+  const renderButton = page.getByRole('button', { name: 'Render sine WAV…', exact: true }); await renderButton.click({ timeout: 15000 }); const render = page.getByRole('dialog', { name: 'Render causal take owned-source revoice', exact: true });
+  await render.getByLabel('New render effect', { exact: true }).selectOption('captured-controls'); await render.getByLabel('Include all captured dry lane stems', { exact: true }).check();
+  const endSeconds = Number(await render.getByLabel('End seconds from capture', { exact: true }).getAttribute('max')); await render.getByLabel('End seconds from capture', { exact: true }).fill(String(endSeconds));
+  await render.getByRole('button', { name: 'Prepare revoice WAV', exact: true }).click();
+  const renderStatus = render.getByRole('status', { name: '', exact: true }); await expect(renderStatus).toHaveText(/prepared|failed/, { timeout: 90000 }); expect(await renderStatus.textContent(), await render.innerText()).toContain('prepared');
+  const downloading = page.waitForEvent('download'); await render.getByRole('button', { name: 'Download selected WAV', exact: true }).click(); const download = await downloading, filename = testInfo.outputPath('changing-cavity-history.wav'); await download.saveAs(filename);
+  const bytes = await readFile(filename), view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength); let manifest;
+  for (let at = 12; at < bytes.length;) { const id = bytes.subarray(at, at + 4).toString(), size = view.getUint32(at + 4, true); if (id === 'lmjs') manifest = JSON.parse(bytes.subarray(at + 8, at + 8 + size).toString()); at += 8 + size + size % 2; }
+  expect(manifest.effectGraph.commandReplay.history.graphs).toHaveLength(3); expect(manifest.effectGraph.realization.peakGraphs).toBe(2); expect(manifest.effectGraph.realization.sourceRealizations).toBe(1); expect(manifest.statistics.peak).toBeGreaterThan(0); expect(manifest.statistics.rms).toBeGreaterThan(0); expect(manifest.sourceCanonicalHash).toBe(history.manifest.canonicalHash); expect(manifest.acousticReceipt).toBe(false);
+  const afterRender = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), audioContexts: window.__cavityAudioOpens })); expect(afterRender).toEqual(beforeRender);
+  await testInfo.attach('native-changing-cavity-render', { body: JSON.stringify({ recipe, continuation, beforeRender, afterRender, endSeconds, bytes: bytes.length, manifest }), contentType: 'application/json' });
 });
 
 for (const recipe of ['Clay chamber', 'Throat duet', 'Crumbled chimes']) test('native private cavity preview keeps CURRENT and NEXT unadvanced: ' + recipe, { tag: ['@boundary', '@workstation-physical-music'] }, async ({ page }, testInfo) => {

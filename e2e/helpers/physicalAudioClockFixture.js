@@ -95,17 +95,21 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
         submittedSeconds: audio.getAudioContext().currentTime, producerHostDurationMs: performance.now() - started, onsets: probes.length, currentTick: world.tickIndex };
     },
     async stall(milliseconds) {
-      const targets = [...new Set(probes.map(probe => probe.start.expectedFrame))].sort((a, b) => a - b), target = targets[3], context = audio.getAudioContext();
+      const targets = [...new Set(probes.map(probe => probe.start.expectedFrame))].sort((a, b) => a - b), context = audio.getAudioContext();
+      let target = targets.find(frame => frame > window.Atomics.load(observation, 0) + 512);
+      if (target === undefined) throw new Error('No original scheduled source retains two render quanta of stall-observer lead.');
       const waiting = performance.now();
       while (window.Atomics.load(observation, 0) < target - 512 && performance.now() - waiting < 2000) await new Promise(resolve => setTimeout(resolve, 1));
+      if (target < window.Atomics.load(observation, 0) + 256) target = targets.find(frame => frame > window.Atomics.load(observation, 0) + 512);
+      if (target === undefined) throw new Error('The original scheduled-source observation window elapsed before the UI stall.');
       const before = window.Atomics.load(observation, 0), mainBefore = context.currentTime;
       window.Atomics.store(observation, 2, 0); window.Atomics.store(observation, 1, 1); const started = performance.now();
-      try { while (performance.now() - started < milliseconds) { /* The render thread records source onsets against the shared busy flag. */ } }
+      try { while (performance.now() - started < milliseconds || window.Atomics.load(observation, 2) === 0 && performance.now() - started < milliseconds + 32) { /* Bounded observed render onset; original targets stay unchanged. */ } }
       finally { window.Atomics.store(observation, 1, 0); }
       const mainAfter = context.currentTime, observedMs = performance.now() - started, after = window.Atomics.load(observation, 0);
       await waitContext(Math.max(...probes.map(probe => probe.start.targetSeconds)) + 0.18);
       const onsetsWhileBlocked = window.Atomics.load(observation, 2);
-      return { requestedMs: milliseconds, observedMs, stallTargetFrame: target, renderStartFrame: before, renderEndFrame: after, onsetsWhileBlocked, renderWindowClock: 'native-audio-worklet-shared-observer',
+      return { requestedMs: milliseconds, observedMs, maximumObservationOverrunMs: 32, stallTargetFrame: target, renderStartFrame: before, renderEndFrame: after, onsetsWhileBlocked, renderWindowClock: 'native-audio-worklet-shared-observer',
         mainThreadContextSeconds: { before: mainBefore, after: mainAfter }, snapshot: await snapshot() };
     },
     async cancel({ afterRender = false } = {}) {

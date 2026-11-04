@@ -1,6 +1,7 @@
 import { createCausalRenderLaneResolver } from '../procgen/workstation/CausalLaneRouting.js';
 import { prepareGraftComparison } from '../../midi/content/GraftComparison.js';
 import { prepareCapturedEffectReplay } from './CapturedEffectReplay.js';
+import { capturedEffectHistoryReceipt } from './CapturedEffectHistory.js';
 import { prepareCausalOwnedConvolutionInput } from './CausalOwnedConvolutionRender.js';
 import { prepareCausalNativeRenderInput } from './CausalNativeRender.js';
 import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
@@ -106,11 +107,12 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
             limit: 8192, maxIntents: 32768, maxBytes: sourceMaxBytes, signal: controller.signal }); check(); revoice = operation.source.value;
           operation.workspace.resize(4 * 1048576 + operation.source.receipt.retainedBytes * 4);
           effectReplay = await prepareCapturedEffectReplay(revoice, sampleRate, Math.round(endSeconds * sampleRate)); check(); graph = effectReplay.definition;
-          if (includeCapturedReturn && !graph.nodes.some(node => node.id === 'return')) throw failure('effect-return-unavailable', 'This captured graph has no named return. Disable the shared return WAV to render its complete output.');
+          if (includeCapturedReturn && !(effectReplay.graphs || [{ definition: graph }]).every(member => member.definition.nodes.some(node => node.id === 'return'))) throw failure('effect-return-unavailable', 'Every captured graph needs the named return. Disable the shared return WAV to render its complete output.');
           returns = Object.freeze(includeCapturedReturn ? ['return'] : []);
         }
         const effectPlan = graph ? prepareEffectRenderPlan(graph, sampleRate, returns, { nativeConvolution: true, nativeOwnedProcessors: true }) : null, effectHash = effectPlan ? await effectGraphHash(effectPlan) : null;
         const effectDefinitionHash = effectPlan ? await hashData(effectPlan.definition) : null; check();
+        if (effectReplay?.graphs) for (const member of effectReplay.graphs) prepareEffectRenderPlan(member.definition, sampleRate, returns);
         const ownedConvolution = !native && !!effectPlan?.impulseCount;
         if (effectPlan?.impulseCount && (!getMaterialProvider || typeof globalThis.OfflineAudioContext !== 'function')) throw failure('native-body-unavailable', 'Native body rendering requires the shared material provider and OfflineAudioContext.');
         if (effectPlan?.impulseCount && lanes.length + returns.length > 15) throw failure('native-convolution-tap-capacity', 'Choose at most fifteen combined dry lanes and shared body returns.');
@@ -138,7 +140,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         const fileCount = lanes.length + returns.length + 1, pcmBytes = frames * 8 * fileCount, sourceFootprint = operation.source.receipt.retainedBytes;
         operation.workspace.resize(2 * 1048576 + sourceFootprint + (effectReplay ? 4 * 1048576 + effectReplay.events.length * 2048 : 0) + (native ? revoice.intents.length * Math.max(profile.requiresPCMSet ? 4096 : 1024, Object.keys(profile.fields).length * 256) : 0));
         const binding = { takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash };
-        let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(profile.requiresPCMSet ? 4096 : 1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6 + (restorationMode === 'owned-state-cut' ? 2 * profile.sourceBytes({ sampleRate, pcm: operation.material?.descriptor, voices: patch.voicePolicy.maxVoices }) + 4 * 1048576 : 0) + (effectPlan ? effectPlan.stateBytes + 4 * 1048576 : 0);
+        let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(profile.requiresPCMSet ? 4096 : 1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6 + (restorationMode === 'owned-state-cut' ? 2 * profile.sourceBytes({ sampleRate, pcm: operation.material?.descriptor, voices: patch.voicePolicy.maxVoices }) + 4 * 1048576 : 0) + (effectPlan ? effectReplay?.graphs ? effectReplay.peakStateBytes + 8 * 1048576 : effectPlan.stateBytes + 4 * 1048576 : 0);
         if (!Number.isSafeInteger(pcmBytes) || pcmBytes + 262208 * fileCount > 64 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes > 512 * 1048576)
           throw failure('render-memory-capacity', 'Choose a shorter output range or fewer stems to fit source, PCM, encoding and transfer overlap.');
         input = { ...(effectReplay ? { capturedEffects: true, effectReplayHash: effectReplay.hash } : {}), revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, restorationMode,
@@ -188,8 +190,8 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
             !Array.isArray(value.files) || value.files.length !== fileCount || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => manifest.engineRequirement?.[key] === engineRequirement[key]))
           throw failure('render-result-mismatch', 'The worker result differs from the selected immutable source, range or renderer.');
         if (effectPlan ? manifest.effectGraph?.hash !== effectHash || !manifest.effectGraph.definition || !manifest.effectGraph.processingRevisions || !Array.isArray(manifest.stems?.sharedReturns) || await hashData(manifest.effectGraph.definition) !== effectDefinitionHash ||
-            canonicalDataText(manifest.effectGraph.processingRevisions).text !== canonicalDataText(effectPlan.processingRevisions).text || manifest.effectGraph.latencyFrames !== effectPlan.latencyFrames || manifest.effectGraph.maximumTailFrames !== effectPlan.maximumTailFrames ||
-            manifest.effectGraph.controls !== (effectReplay ? 'captured-native-API-commands-new-owned-realization' : 'explicit-authored-defaults-not-replayed-live-gestures') || effectReplay && manifest.effectGraph.commandReplay?.hash !== effectReplay.hash || canonicalDataText(manifest.stems.sharedReturns).text !== canonicalDataText(returns).text : manifest.effectGraph != null)
+            canonicalDataText(manifest.effectGraph.processingRevisions).text !== canonicalDataText(effectPlan.processingRevisions).text || manifest.effectGraph.latencyFrames !== (effectReplay?.latencyFrames ?? effectPlan.latencyFrames) || manifest.effectGraph.maximumTailFrames !== (effectReplay?.maximumTailFrames ?? effectPlan.maximumTailFrames) ||
+            manifest.effectGraph.controls !== (effectReplay ? 'captured-native-API-commands-new-owned-realization' : 'explicit-authored-defaults-not-replayed-live-gestures') || effectReplay && (manifest.effectGraph.commandReplay?.hash !== effectReplay.hash || await hashData(manifest.effectGraph.commandReplay.history ?? null) !== await hashData(capturedEffectHistoryReceipt(effectReplay))) || canonicalDataText(manifest.stems.sharedReturns).text !== canonicalDataText(returns).text : manifest.effectGraph != null)
           throw failure('render-effect-mismatch', 'The worker result differs from the selected exact effect graph or simultaneous shared taps.');
         let totalBytes = 0;
         for (let index = 0; index < value.files.length; index++) {

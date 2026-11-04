@@ -394,3 +394,32 @@ preserving the durable original. Missing history and incompatible marker history
 refuse transactionally. These are original controlled terrain fixtures using
 production actors, masks and compilation; they do not qualify an installed-asset
 matrix, acoustic output or hardware receivers.
+
+## Captured changing-body command revoice
+
+New effect publications retain their native API input-ramp frame and width,
+predecessor route/hash, last finite-drive frame and bounded retirement deadline.
+The captured-controls WAV option can revoice up to 32 continuous owned graph
+revisions with at most two simultaneous realizations. It renders each original
+source intent once, crossfades graph inputs, retains old tails until their
+recorded deadlines and crops only after forward reconstruction. Dry lane stems
+retain the original source; the master and shared return include the combined
+graph history. The embedded manifest binds every revision, replay hash and tail
+frontier to the immutable take and application build.
+
+This is a new sound realization with cleared initial memory. API submission
+frames do not establish processor application, original live PCM, perceptual
+equivalence or acoustic output. Older multi-graph captures without transition
+receipts refuse rather than inventing a tail policy. The changing-graph profile
+also refuses external donors, native convolution, spectral analysis grids,
+finite-body strikes and in-range bypass/body-only lifecycle commands. The
+existing single-graph profiles retain their separate capabilities. Rendering a
+failed or unsupported history preserves the prior prepared bundle and take.
+
+Signed native-context/source offsets remain in command provenance. A body with
+no analysis grid starts its new realization at source frame zero without
+shifting publication or control frames; spectral histories still require their
+original nonnegative analysis origin. Opening a render releases an inactive
+comparison checkpoint cache while preserving its receipt and any active branch.
+Shared workspace limits still apply: a longer phrase or more simultaneous WAV
+taps may require a shorter range or take.

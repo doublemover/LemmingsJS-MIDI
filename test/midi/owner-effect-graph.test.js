@@ -90,6 +90,18 @@ describe('sidechain staging publication', () => {
 
 
 describe('published effect lifetime', () => {
+  it('captures immutable API publication/ramp and predecessor deadlines from one clock sample', async () => {
+    const resources = createAudioResourceLeases(), context = { sampleRate: 48000, currentTime: 0.10001, state: 'running', createGain: node };
+    const host = createOwnerEffectGraphHost({ context, input: node(), dry: node(), destination: node(), resources, owner: 'transition-receipt', prepareGraph: async definition => ({
+      hash: definition.id, plan: { definition, inputs: ['in'], outputs: ['out'], maximumTailFrames: 4800 }, getInput: node, getOutput: node, diagnostics: () => ({}), confirmReady: async () => {},
+      lastBodyDriveFrame: () => 15000, gateSidechains() {}, panic() {}, dispose: () => createProcgenRetirementScope().retire() }) });
+    await host.prepare({ id: 'a'.repeat(64) }); const first = host.performanceSnapshot();
+    expect(first.routeTransition).to.deep.equal({ schema: 'lemmings-effect-route-transition/v1', startFrame: 4801, transitionFrames: 960, previous: null });
+    context.currentTime = 0.20001; await host.prepare({ id: 'b'.repeat(64) }); const second = host.performanceSnapshot(); context.currentTime = 0.21;
+    expect(second.routeTransition.previous).to.deep.equal({ ownerRouteRevision: 1, graphDefinitionHash: 'a'.repeat(64), retireAtFrame: 19800, lastBodyDriveFrame: 15000 });
+    expect(host.performanceSnapshot().routeTransition).to.equal(second.routeTransition); expect(first.routeTransition.previous).to.equal(null);
+    await host.dispose().completion; expect(resources.diagnostics().reservations).to.equal(0); await resources.dispose().completion;
+  });
   it('survives completion of its preparation UI token and a later graph request', async () => {
     const resources = createAudioResourceLeases(), context = { sampleRate: 48000, currentTime: 0, state: 'running', createGain: node }, predicates = new Map(); let selected = 'first';
     const host = createOwnerEffectGraphHost({ context, input: node(), dry: node(), destination: node(), resources, owner: 'publication-lifetime', prepareGraph: async (definition, options) => {

@@ -70,6 +70,19 @@ describe('native lifecycle engine qualification', () => {
     const receipt = nativeClockReceipt('chromium-semantic', 'stall-50'); receipt.targets.producerLeadFrames[0]++;
     expect(() => qualifyNativeClockReceipt(receipt, 'chromium-semantic')).to.throw('Incomplete native clock');
   });
+  it('starts the muted window at confirmed disable even when permitted attacks occurred during the UI click', () => {
+    const receipt = nativeClockReceipt('chromium-semantic', 'listen-rearm'); receipt.disabled.starts = receipt.muted.starts = 4;
+    expect(qualifyNativeClockReceipt(receipt, 'chromium-semantic').rearm.admitted).to.equal(4);
+  });
+  for (const [name, mutate] of [
+    ['unconfirmed disable', row => { row.disabled.enabled = true; }],
+    ['an admitted muted attack', row => { row.actual.outcomes[2].status = 'accepted'; row.rearm.admitted++; }],
+    ['retimed native source', row => { row.actual.outcomes[4].targetFrame++; }],
+    ['claimed admissions without a fresh source', row => { row.actual.batches[4].tick = row.actual.batches[5].tick = 100; }]
+  ]) it('rejects ' + name + ' from the raw rearm source joins', () => {
+    const receipt = nativeClockReceipt('chromium-semantic', 'listen-rearm'); mutate(receipt);
+    expect(() => qualifyNativeClockReceipt(receipt, 'chromium-semantic')).to.throw('Incomplete native clock');
+  });
   for (const [scenario, mutate] of [
     ['stall-20', row => { row.actual.snapshot.nodes[0].first += 130; }],
     ['stall-50', row => { row.onset.p95Frames = 0; }],

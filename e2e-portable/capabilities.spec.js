@@ -49,7 +49,7 @@ test('worker construction failure keeps Save usable and refuses stored load befo
   });
   await page.waitForFunction(() => { const studio = window.__PROCGEN_STUDIO__, preference = studio.getPreferenceState(); return !preference.active && preference.durableRevision === studio.getDocumentState().editRevision; });
   await page.evaluate(() => { window.blockPortableWorker = true; }); await save(page);
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__.getDocumentState().revision === 2);
+  await expect.poll(() => page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; return { document: studio.getDocumentState(), preferences: studio.getPreferenceState(), recovery: { state: studio.getRecoveryState().state, error: studio.getRecoveryState().error?.message } }; }), { timeout: 15000 }).toMatchObject({ document: { revision: 2 } });
   const before = await page.evaluate(() => {
     const studio = window.__PROCGEN_STUDIO__; studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Unsaved worker-retained source' } });
     window.portableWorkerWorld = window.__PROCGEN_LANES__.world; window.portableWorkerProject = studio.getProject(); return studio.getDocumentState();

@@ -12,12 +12,13 @@ import { createCausalTakeRecorder } from '../../js/app/procgen/workstation/Causa
 import { createMemoryCausalStore } from '../helpers/causalJournalStore.js';
 import { createQuarryEcho, createQuarryTape, createQuarryBody } from '../../js/midi/content/DubQuarryRack.js';
 import { prepareCausalEffectSelection } from '../../js/app/midi-ui/CausalEffectSelection.js';
+import { capturedEffectHistoryFixture } from '../helpers/capturedEffectHistory.js';
 
 // The render adapter below exercises host ownership, not real-worker/build qualification.
 const setup = async ({ capturedEffects = false } = {}) => {
   const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), fallback = createBackgroundJobService({ admission, Worker: null });
   const descriptors = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]), descriptor = descriptors[0];
-  const buildId = 'b'.repeat(64), switches = { wrongSource: false, wrongEffect: false, wrongReturn: false, deny: false }, jobs = { async compute(request) {
+  const buildId = 'b'.repeat(64), switches = { wrongSource: false, wrongEffect: false, wrongReturn: false, wrongHistory: false, deny: false }, jobs = { async compute(request) {
     if (request.kind !== 'render-causal-sine-take') return fallback.compute(request);
     if (switches.deny) throw new ResourceBudgetError('offline-render', request.estimatedPeakBytes, 0);
     const held = createOwnedResourceReservation({ budget, owner: 'component-render', kind: 'component-render', bytes: request.estimatedPeakBytes });
@@ -26,6 +27,7 @@ const setup = async ({ capturedEffects = false } = {}) => {
       if (switches.wrongSource) value.manifest = { ...value.manifest, sourceCanonicalHash: 'c'.repeat(64) };
       if (switches.wrongEffect) value.manifest = { ...value.manifest, effectGraph: { ...value.manifest.effectGraph, hash: 'c'.repeat(64) } };
       if (switches.wrongReturn) value.files.at(-1).manifest = { ...value.files.at(-1).manifest, returnNodeId: 'wrong-return' };
+      if (switches.wrongHistory) value.manifest = { ...value.manifest, effectGraph: { ...value.manifest.effectGraph, commandReplay: { ...value.manifest.effectGraph.commandReplay, history: null } } };
     } catch (error) { held.release(); throw error; } finally { request.releasePreparedInput(); }
     return Object.freeze({ get value() { if (!value) throw new Error('retired'); return value; },
       receipt: Object.freeze({ kind: request.kind, method: 'dedicated-worker', executionIdentity: { activeExecution: 'bound', buildId } }),
@@ -40,7 +42,10 @@ const setup = async ({ capturedEffects = false } = {}) => {
       intents: [{ version: 1, kind, worldId: 'world', batchId, generation: 1, voiceId: 'voice', onsetId: 'voice', intentId: 'intent:' + tick,
         sourceEventIds: [], laneId: 0, pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, scoreTime: { sourceTimeMs: milliseconds, simTick: tick, subTick: 0 } }] });
   }
-  if (capturedEffects) {
+  if (capturedEffects === 'history') {
+    const source = await capturedEffectHistoryFixture();
+    for (const packet of source.effectEvents) recorder.recordSinkOutcome({ ...packet, clockAnchor: { ...packet.clockAnchor, intentId: 'intent:1' } }, { tick: 2, generation: 1 });
+  } else if (capturedEffects) {
     const definition = createQuarryEcho({ send01: 0 }), graphDefinitionHash = await effectGraphHash(prepareEffectGraphRevision(definition)), base = {
       schema: 'lemmings-effect-performance/v1', status: 'accepted', stage: 'effect-performance-captured', streamId: 'captured-effect-fixture', ownerRouteRevision: 1,
       graphDefinitionHash, sampleRate: 48000, executionEpoch: 'live-capture', clockAnchor: { intentId: 'intent:1', sourceTargetFrame: 4800, executionEpoch: 'live-capture' }, sourceEventIds: [], acousticReceipt: false };
@@ -99,6 +104,16 @@ describe('owned causal render host and prepared file bundles', () => {
 
 
 describe('captured FX command render host', () => {
+  it('publishes a bound changing-graph bundle and preserves it when the worker omits its history', async () => {
+    const owner = await setup({ capturedEffects: 'history' });
+    try {
+      const result = await owner.renderer.prepare({ takeId: owner.manifest.takeId, endSeconds: 1, capturedEffects: true, includeCapturedReturn: true });
+      expect(result.bundle.manifest.effectGraph.commandReplay.history.graphs).to.have.length(3); expect(result.bundle.files).to.have.length(2);
+      const prepared = owner.renderer.getPrepared(); owner.switches.wrongHistory = true;
+      await denied(owner.renderer.prepare({ takeId: owner.manifest.takeId, endSeconds: 1, capturedEffects: true, includeCapturedReturn: true }), 'render-effect-mismatch');
+      expect(owner.renderer.getPrepared()).to.equal(prepared); expect((await owner.journal.openTake(owner.manifest.takeId)).canonicalHash).to.equal(owner.manifest.canonicalHash);
+    } finally { await owner.dispose(); } expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('reads existing journal outcomes and binds the requested replay without changing the original take', async () => {
     const owner = await setup({ capturedEffects: true });
     try {

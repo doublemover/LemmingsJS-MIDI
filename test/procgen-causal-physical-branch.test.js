@@ -60,6 +60,7 @@ describe('replay-qualified physical branch orchestration', function() {
     expect((await workbench.open({ takeId: parent.takeId, throughSequence: fork })).receipt.compatibilityMatch).to.equal(true);
     const branch = await workbench.open({ takeId: parent.takeId, throughSequence: fork, branchTakeId: 'take:workbench', takeName: 'Workbench branch' });
     expect(branch).to.include({ phase: 'branch-paused', audio: false, hardware: false }); expect(branch.active.tick).to.equal(6);
+    expect(await workbench.releaseComparisonCache()).to.equal(false); expect(workbench.state().active.tick).to.equal(6);
     expect((await workbench.advance({ ticks: 3 })).tick).to.equal(9);
     const finished = await workbench.finish(); expect(finished.takeId).to.equal('take:workbench'); expect(workbench.state().active).to.equal(null);
     expect(JSON.stringify(await journal.openTake(parent.takeId))).to.equal(original);
@@ -75,6 +76,10 @@ describe('replay-qualified physical branch orchestration', function() {
       const first = await workbench.open({ takeId: parent.takeId }); expect(first.receipt.ticksExecuted).to.equal(20); expect(first.checkpointCache.entries).to.be.greaterThan(0);
       const again = await workbench.open({ takeId: parent.takeId }); expect(again.receipt.ticksExecuted).to.equal(0); expect(again.receipt.actualPhysicsHash).to.equal(first.receipt.actualPhysicsHash);
       expect(again.receipt.continuationStateSchema).to.equal(1); expect(again.receipt.actualContinuationHash).to.equal(first.receipt.actualContinuationHash);
+      const retainedBytes = budget.diagnostics().accountedBytes, receipt = workbench.state().receipt;
+      expect(await workbench.releaseComparisonCache()).to.equal(true); expect(workbench.state().checkpointCache).to.equal(null); expect(workbench.state().receipt).to.equal(receipt);
+      expect(budget.diagnostics().accountedBytes).to.be.lessThan(retainedBytes); expect(await workbench.releaseComparisonCache()).to.equal(false);
+      expect((await workbench.open({ takeId: parent.takeId })).receipt.ticksExecuted).to.equal(20);
       liveWorld = {}; expect((await workbench.open({ takeId: parent.takeId })).receipt.ticksExecuted).to.equal(20);
       sourceVersions = { ...versions, physicalMusic: 99 }; expect((await workbench.open({ takeId: parent.takeId })).phase).to.equal('unsupported'); expect(workbench.state().checkpointCache.entries).to.equal(0);
       expect(JSON.stringify(await journal.openTake(parent.takeId))).to.equal(original);

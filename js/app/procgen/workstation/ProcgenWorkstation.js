@@ -1719,6 +1719,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     openCausalAudioRender: safe(async () => {
       const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
       if (disposed || !resourceBudget || !takeId || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish and select a saved causal take before rendering its intent.');
+      const generation = documentGeneration;
+      await causalWorkbench?.releaseComparisonCache();
+      if (disposed || generation !== documentGeneration || takeId !== (selectedCausalTakeId || lastCausalTake?.takeId)) throw new Error('The selected take changed while releasing comparison resources.');
       const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
       causalAudioRender ||= createCausalTakeAudioRenderView({ document, window, journal, resourceBudget, jobs: backgroundJobs,
         audio: legacy.local.audio, onPrelisten: () => handlers.openPrelistenMonitor(),

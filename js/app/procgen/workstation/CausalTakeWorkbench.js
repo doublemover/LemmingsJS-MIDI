@@ -83,7 +83,11 @@ export function createCausalTakeWorkbench({ journal, createWorld, getRuntimeIden
   const finish = options => run('saving-branch', () => finishOwned(options));
   const armFeedback = () => { if (!active || pending || closing) throw new Error('Prepare a writable physical branch before regeneration.'); const result = active.branch.armFeedback(); report(); return result; };
   const disarmFeedback = () => { if (!active || pending || closing) throw new Error('No writable physical branch.'); const result = active.branch.disarmFeedback(); report(); return result; };
-  return Object.freeze({ state, open, armFeedback, disarmFeedback, advance, enqueueIntervention, setPlayback, finish,
+  const releaseComparisonCache = () => {
+    if (active || !retainedRuntime) return Promise.resolve(false);
+    return run('releasing-comparison-cache', async () => { await retireRuntime(retainedRuntime.runtime); phase = last?.compatibilityMatch ? 'compared' : last ? 'unsupported' : 'idle'; return true; });
+  };
+  return Object.freeze({ state, open, armFeedback, disarmFeedback, advance, enqueueIntervention, setPlayback, finish, releaseComparisonCache,
     cancel() { if (!pending) return false; phase = 'canceling'; pending.controller.abort(new Error('Take workbench canceled.')); report(); return true; },
     async dispose() {
       if (disposed) return; closing = true; phase = 'closing'; pending?.controller.abort(new Error('Take workbench retired.')); report();

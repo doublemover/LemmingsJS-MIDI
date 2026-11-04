@@ -128,7 +128,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   };
   const prepareEffectGraph = async (definition, options) => { if (!session?.prepareEffectGraph) throw new Error('Physical owner effects are unavailable.');
     const result = await session.prepareEffectGraph(definition, options), state = session.getEffectPerformanceState?.();
-    captureEffect('graph', state, { definition: state?.definition, ...(unsubscribeEffectReceipts && state?.definition?.nodes.some(node => node.kind === 'spectral-freeze') ? { spectralCapturePolicy: SPECTRAL_CAPTURE_POLICY } : {}) }); return result;
+    captureEffect('graph', state?.routeTransition ? { ...state, targetFrame: state.routeTransition.startFrame } : state, { definition: state?.definition, ...(state?.routeTransition ? { routeTransition: state.routeTransition } : {}), ...(unsubscribeEffectReceipts && state?.definition?.nodes.some(node => node.kind === 'spectral-freeze') ? { spectralCapturePolicy: SPECTRAL_CAPTURE_POLICY } : {}) }); return result;
   };
   const updateEffectGraph = (nodeId, values, frame, expected, cause = null) => {
     if (!session?.updateEffectGraph) throw new Error('Physical effect controls are unavailable.');

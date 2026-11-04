@@ -6,6 +6,8 @@ import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { verifyOwnedPcmSetPayload } from '../resources/OwnedPcmSetVerification.js';
 import { createCausalRenderLaneResolver } from '../procgen/workstation/CausalLaneRouting.js';
 import { prepareCapturedEffectReplay, createCapturedEffectReplayDriver } from './CapturedEffectReplay.js';
+import { capturedEffectHistoryReceipt } from './CapturedEffectHistory.js';
+import { createCapturedEffectHistoryDriver } from './CapturedEffectHistoryDriver.js';
 import { prepareEffectSourceBindings, createEffectSourceSampler, effectVoiceStemMask } from './EffectSourceBindings.js';
 import { prepareNativeSamplePlan, sampleRegionRate, nativeSampleReleaseFrames } from './NativeSamplePlan.js';
 import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
@@ -106,6 +108,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   const firstFrame = Math.round(startSeconds * sampleRate), endFrame = Math.round(endSeconds * sampleRate), releaseFrames = Math.max(1, Math.round(parameters.releaseSeconds * sampleRate));
   const effectReplay = capturedEffects ? await prepareCapturedEffectReplay(revoice, sampleRate, endFrame) : null;
   if (effectReplay && (effectReplay.hash !== effectReplayHash || effectReplay.graphHash !== await effectGraphHash(effectPlan))) throw failure('effect-replay-preflight-identity', 'The captured effect command plan differs from the requested source and graph.');
+  if (effectReplay?.graphs) for (const graph of effectReplay.graphs) prepareEffectRenderPlan(graph.definition, sampleRate, effectReturnNodeIds);
   if (endFrame <= firstFrame) throw failure('empty-range', 'The selected range contains no output frames.');
   const resolveSourceLane = createCausalRenderLaneResolver(revoice);
   const sourceIds = new Set(), voices = new Map(), events = [], lanes = new Set(), bodyVoices = new Map(), bodySourceIds = new Set(effectReplay?.bodySourceIntentIds || []); let lastSourceMs = -Infinity, ordinal = 0, capturedBegins = 0, capturedUpdates = 0, capturedEnds = 0, derivedLaneTransfers = 0;
@@ -273,7 +276,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     }
   }
   if (tail.mode !== 'exact-crop') for (const voice of voices.values()) naturalEnd = Math.max(naturalEnd, voice.end);
-  if (effectPlan && tail.mode !== 'exact-crop') naturalEnd = Math.max(naturalEnd, effectReplay?.lastBodyDriveFrame || 0) + effectPlan.maximumTailFrames;
+  if (effectPlan && tail.mode !== 'exact-crop') naturalEnd = Math.max(Math.max(naturalEnd, effectReplay?.lastBodyDriveFrame || 0) + (effectReplay?.maximumTailFrames ?? effectPlan.maximumTailFrames), effectReplay?.retirementEndFrame || 0);
   const outputEnd = tail.mode === 'exact-crop' ? endFrame : Math.min(Math.ceil(naturalEnd), endFrame + Math.round((tail.maxSeconds ?? 4) * sampleRate));
   const outputFrames = outputEnd - firstFrame, fileCount = stemLaneIds.length + effectReturnNodeIds.length + 1, pcmBytes = outputFrames * 8 * fileCount;
   if (!natural(pcmBytes) || pcmBytes + 262208 * fileCount > MAX_OUTPUT_BYTES) throw failure('render-capacity', 'This render/stem/return set exceeds 64 MiB; choose a shorter range or fewer taps.');
@@ -320,15 +323,16 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   const stateCut = input.restorationMode === 'owned-state-cut';
   if (input.restorationMode != null && !['forward-preroll', 'owned-state-cut'].includes(input.restorationMode)) throw failure('restore-mode-unavailable', 'Choose a supported owned-source restoration mode.');
   const cutWorkspace = stateCut ? 2 * plan.owned.sourceBytes({ sampleRate: plan.sampleRate, pcm: plan.pcmDescriptor, voices: plan.patch.voicePolicy.maxVoices, ...(plan.owned.id === 'worklet-sample' ? { sampleZones: plan.patch.sampleMap.zones.length } : {}) }) + 4 * 1048576 : 0;
-  const effectWorkspace = plan.effectPlan && !sourcePhase ? plan.effectPlan.stateBytes + 4 * 1048576 : 0;
+  const history = plan.effectReplay?.schema === 'lemmings-captured-effect-history/v1';
+  const effectWorkspace = plan.effectPlan && !sourcePhase ? history ? plan.effectReplay.peakStateBytes + 8 * 1048576 : plan.effectPlan.stateBytes + 4 * 1048576 : 0;
   const requiredBytes = (sourcePhase ? sourcePcmBytes : plan.pcmBytes) * 4 + plan.planningBytes + 24 * 1048576 + cutWorkspace + effectWorkspace;
   if (!natural(maxWorkingBytes) || requiredBytes > maxWorkingBytes) throw failure('render-memory-capacity', 'PCM, encoding, command and transfer overlap exceed the admitted render workspace.');
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, events, stemLaneIds, captureLaneIds } = plan;
   const renderedLaneIds = sourcePhase ? captureLaneIds : stemLaneIds;
   const WIDTH = plan.owned.width;
   let kernel = await createOwnedControlKernel(plan.owned, sampleRate, plan.renderVoices, { signal, yieldControl, pcm: plan.sourcePCM, patch: plan.patch });
-  const effects = plan.effectPlan && !sourcePhase ? await createOwnedEffectGraphKernel({ definition: plan.effectPlan.definition, sampleRate, returnNodeIds: plan.effectReturnNodeIds, frameOrigin: plan.effectReplay?.frameOrigin || 0 }) : null;
-  const effectReplayDriver = effects && plan.effectReplay ? createCapturedEffectReplayDriver(plan.effectReplay, effects) : null;
+  const effects = plan.effectPlan && !sourcePhase ? history ? createCapturedEffectHistoryDriver(plan.effectReplay, plan.effectReturnNodeIds) : await createOwnedEffectGraphKernel({ definition: plan.effectPlan.definition, sampleRate, returnNodeIds: plan.effectReturnNodeIds, frameOrigin: plan.effectReplay?.frameOrigin || 0 }) : null;
+  const effectReplayDriver = effects && plan.effectReplay ? history ? effects : createCapturedEffectReplayDriver(plan.effectReplay, effects) : null;
   signal?.throwIfAborted(); if (effects && effects.hash !== plan.effectHash) throw failure('effect-render-identity', 'Effect preparation differs from its admitted graph.');
   let transfer = stateCut ? new Uint8Array(kernel.stateByteLength()) : null, stateReceipt = null;
   if (transfer && transfer.byteLength * 2 > cutWorkspace) throw failure('restore-memory-capacity', 'The exact source cut exceeds its admitted transfer and clone workspace.');
@@ -376,6 +380,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     const taps = stemChannels.length ? { routeMode: 'mask', routes, laneTokens, channels: count === 128 ? stemChannels : stemChannels.map(channels => channels.map(channel => channel.subarray(0, count))) } : null;
     kernel.render(a, b, frame, taps); checkReceipts();
     if (effects) for (let index = 0; index < count; index++) {
+      if (history && frame + index === effects.nextBoundary) { await effects.advance(frame + index); signal?.throwIfAborted(); }
       const sidechains = sourceSampler?.fill(a[index], b[index], index) ?? null;
       if (effectReplayDriver) { effectReplayDriver.sample(a[index], b[index], frame + index, sidechains, sourceSampler?.present ?? null); a[index] = effectReplayDriver.leftSample; b[index] = effectReplayDriver.rightSample; }
       else { effects.sample(a[index], b[index], sidechains, sourceSampler?.present ?? null); a[index] = effects.leftSample; b[index] = effects.rightSample; }
@@ -399,9 +404,9 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     timing: plan.timing,
     sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', frames: outputFrames, timelineZeroSourceFrame: firstFrame, exactEndSourceFrame: endFrame, renderedEndSourceFrame: outputEnd,
     restoration: { mode: stateCut ? 'forward-preroll-and-owned-state-cut' : 'deterministic-preroll', stateCut: stateReceipt, fromSourceFrame: 0, prerollFrames: firstFrame, initialVoices: 0, maxHistorySeconds: MAX_SECONDS },
-    tail: { mode: plan.tail.mode, maxSeconds: plan.tail.maxSeconds ?? 4, derivedBoundaryReleases: plan.derivedReleases, truncated: kernel.active.some(Boolean) || plan.effectTailTruncated, effectTailBoundFrames: plan.effectPlan?.maximumTailFrames ?? 0 },
-    effectGraph: plan.effectPlan ? { definition: plan.effectPlan.definition, hash: plan.effectHash, processingRevisions: plan.effectPlan.processingRevisions, latencyFrames: plan.effectPlan.latencyFrames,
-      maximumTailFrames: plan.effectPlan.maximumTailFrames, sourceBindings: plan.effectSourceBindings, controls: plan.effectReplay ? 'captured-native-API-commands-new-owned-realization' : 'explicit-authored-defaults-not-replayed-live-gestures', ...(plan.effectReplay ? { commandReplay: { hash: plan.effectReplay.hash, events: plan.effectReplay.events.length, graphStartFrame: plan.effectReplay.graphStartFrame, frameOrigin: plan.effectReplay.frameOrigin, initialMemory: plan.effectReplay.initialMemory, evidence: plan.effectReplay.evidence, spectralCapture: plan.effectReplay.spectralCapture, timing: plan.effectReplay.timing, dryStems: 'original-source-dry;owner-gates-and-creative-dry-scaling-are-in-complete-master' } } : {}), scope: 'one-full-shared-owner-sum', ...(effects ? { realization: effects.diagnostics() } : {}) } : null,
+    tail: { mode: plan.tail.mode, maxSeconds: plan.tail.maxSeconds ?? 4, derivedBoundaryReleases: plan.derivedReleases, truncated: kernel.active.some(Boolean) || plan.effectTailTruncated, effectTailBoundFrames: plan.effectReplay?.maximumTailFrames ?? plan.effectPlan?.maximumTailFrames ?? 0 },
+    effectGraph: plan.effectPlan ? { definition: plan.effectPlan.definition, hash: plan.effectHash, processingRevisions: plan.effectPlan.processingRevisions, latencyFrames: plan.effectReplay?.latencyFrames ?? plan.effectPlan.latencyFrames,
+      maximumTailFrames: plan.effectReplay?.maximumTailFrames ?? plan.effectPlan.maximumTailFrames, ...(history ? { definitionScope: 'first-publication;complete-revisions-bound-by-command-history' } : {}), sourceBindings: plan.effectSourceBindings, controls: plan.effectReplay ? 'captured-native-API-commands-new-owned-realization' : 'explicit-authored-defaults-not-replayed-live-gestures', ...(plan.effectReplay ? { commandReplay: { hash: plan.effectReplay.hash, history: capturedEffectHistoryReceipt(plan.effectReplay), events: plan.effectReplay.events.length, graphStartFrame: plan.effectReplay.graphStartFrame, frameOrigin: plan.effectReplay.frameOrigin, capturedFrameOrigin: plan.effectReplay.capturedFrameOrigin, initialMemory: plan.effectReplay.initialMemory, evidence: plan.effectReplay.evidence, spectralCapture: plan.effectReplay.spectralCapture, timing: plan.effectReplay.timing, dryStems: 'original-source-dry;owner-gates-and-creative-dry-scaling-are-in-complete-master' } } : {}), scope: 'one-full-shared-owner-sum', ...(effects ? { realization: effects.diagnostics() } : {}) } : null,
     definitionHash: plan.definitionHash, patchId: plan.patch.id, patchRevision: plan.patch.revision, engineRequirement: { engineId: plan.descriptor.engineId,
       engineVersion: plan.descriptor.engineVersion, artifactHash: plan.descriptor.artifactHash, parameterSchemaHash: plan.descriptor.parameterSchemaHash }, applicationBuildId: plan.applicationBuildId,
     panic: panicApplied ? { frame: panicFrame, source: 'shared-owned-kernel-panic-opcode', futureFixtureEvents: 'explicitly-suppressed-after-panic', releaseSlewMaximumFrames: 128 } : null,

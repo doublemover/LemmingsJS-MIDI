@@ -17,13 +17,24 @@ export function qualifyNativeClockReceipt(receipt, project) {
   }
   if (availability?.available !== true) fail();
   if (scenario === 'listen-rearm' || scenario === 'context-replacement') {
-    const { before, muted, after, rearm } = receipt;
-    if (!before || !muted || !after || !rearm || before.generation !== after.generation || before.bpm !== after.bpm || after.clock?.rebases <= before.clock?.rebases ||
-        !integer(before.tick) || muted.tick <= before.tick || after.tick <= muted.tick || muted.starts !== before.starts || before.starts < 1 ||
+    const { before, disabled, muted, after, rearm } = receipt;
+    if (!before || !disabled || !muted || !after || !rearm || before.generation !== after.generation || before.bpm !== after.bpm || after.clock?.rebases <= before.clock?.rebases ||
+        !integer(before.tick) || !integer(disabled.tick) || disabled.tick < before.tick || disabled.enabled !== false || !integer(disabled.starts) || disabled.starts < before.starts || muted.tick <= disabled.tick || after.tick <= muted.tick || muted.starts !== disabled.starts || before.starts < 1 ||
         after.contexts?.length !== (scenario === 'context-replacement' ? 2 : 1) || after.contexts.at(-1).sampleRate !== before.sampleRate ||
         scenario === 'context-replacement' && after.contexts[0].state !== 'closed' || !rearm.sameGeneration || !rearm.sameBpm || !rearm.sameSampleRate ||
         !integer(rearm.mutedAttacks) || rearm.mutedAttacks < 1 || !integer(rearm.admitted) || rearm.admitted < 1 || rearm.missedAttacksReplayed !== 0 ||
         rearm.sourceTargetFramesChecked < rearm.admitted || rearm.terminalActiveNotes !== 0 || !Array.isArray(actual?.intents) || !actual.intents.length || !Array.isArray(actual.outcomes) || !actual.outcomes.length) fail();
+    if (!Array.isArray(actual.batches) || actual.batches.length > 4096 || actual.intents.length > 32768 || actual.outcomes.length > 32768) fail();
+    const intents = new Map(actual.intents.map(intent => [intent.intentId, intent])), batches = new Map(actual.batches.map(batch => [batch.batchId, batch]));
+    const starts = actual.outcomes.filter(row => row.sinkId === 'physical-browser-audio' && intents.get(row.intentId)?.kind === 'begin'), admitted = starts.filter(row => row.status === 'accepted');
+    const mutedIds = new Set(starts.filter(row => { const tick = batches.get(row.batchId)?.tick; return tick > disabled.tick && tick <= muted.tick; }).map(row => row.intentId));
+    if (mutedIds.size !== rearm.mutedAttacks || admitted.length !== rearm.admitted || admitted.some(row => mutedIds.has(row.intentId)) || !admitted.some(row => batches.get(row.batchId)?.tick > muted.tick)) fail();
+    for (const row of admitted) {
+      const anchor = batches.get(row.batchId)?.audioAnchor, intent = intents.get(row.intentId);
+      if (!anchor || !Number.isFinite(intent.scoreTime?.beat) || !Number.isFinite(anchor.beat) || !Number.isFinite(anchor.bpm) || anchor.bpm <= 0 || !Number.isFinite(anchor.hostMs) || !Number.isFinite(anchor.contextSeconds) || !Number.isFinite(anchor.correlationHostMs) || !Number.isFinite(anchor.presentationDelayMs) || anchor.sampleRate !== before.sampleRate) fail();
+      const host = anchor.hostMs + (intent.scoreTime.beat - anchor.beat) * 60000 / anchor.bpm, expected = Math.round((anchor.contextSeconds + (host + anchor.presentationDelayMs - anchor.correlationHostMs) / 1000) * anchor.sampleRate);
+      if (!integer(expected) || row.sourceTargetFrame !== expected || row.targetFrame !== expected || row.repair !== null) fail();
+    }
     return { scenario, availability, rearm, sampleRate: before.sampleRate, acousticReceipt: false };
   }
   const { snapshot } = actual || {}, nodes = snapshot?.nodes;

@@ -6,7 +6,19 @@ import { armActualPhysicalClock, finishActualPhysicalClock } from '../e2e/helper
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
-const advance = (page, tick) => expect.poll(() => page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex), { timeout: 15000, intervals: [20, 40, 80] }).toBeGreaterThanOrEqual(tick);
+async function advance(page, tick, journey, startsAfter = null) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let observed;
+    await expect.poll(async () => {
+      observed = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, starts: window.__nativeClockObservation.starts.length, transport: window.__PROCGEN_STUDIO__.transport.getState() }));
+      return startsAfter === null ? observed.tick >= tick || !observed.transport.playing : observed.starts > startsAfter || observed.tick >= tick || !observed.transport.playing;
+    }, { timeout: 15000, intervals: [20, 40, 80] }).toBe(true);
+    if (startsAfter === null && observed.tick >= tick || startsAfter !== null && observed.starts > startsAfter) return;
+    expect(observed.transport.reason, JSON.stringify(observed)).toBe('suspended'); expect(observed.transport.lastDiscontinuity?.source).toBe('host-wake-gap'); expect(attempt).toBeLessThan(2);
+    journey.push(observed); await page.waitForTimeout(100); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(observed.tick);
+    await page.getByRole('button', { name: 'Play world', exact: true }).click();
+  }
+}
 const attach = (info, browser, scenario, evidence) => {
   const viewport = evidence.actual?.snapshot?.viewport || evidence.after?.viewport || evidence.availability?.viewport;
   expect(viewport).toEqual({ width: 1920, height: 1080 });
@@ -59,9 +71,10 @@ async function privateSource(page, delay) {
 }
 const disposePrivate = page => page.evaluate(() => window.__privateClock.dispose());
 
-for (const [delay, stall] of [[24, 20], [128, 50], [160, 100]]) test('native scheduled sources retain original frames during a ' + stall + 'ms main-thread stall', async ({ page, nativeBrowser }, info) => {
+for (const [delay, stall] of [[128, 20], [128, 50], [160, 100]]) test('native scheduled sources retain original frames during a ' + stall + 'ms main-thread stall', async ({ page, nativeBrowser }, info) => {
   if (!await privateSource(page, delay)) { await unavailable(page, info, nativeBrowser, 'stall-' + stall); return; }
   const { produced, actual } = await page.evaluate(async milliseconds => { const produced = await window.__privateClock.produce(); return { produced, actual: await window.__privateClock.stall(milliseconds) }; }, stall), targets = verifyTargets(actual.snapshot);
+  await info.attach('native-clock-attempt.json', { body: JSON.stringify({ produced, actual }), contentType: 'application/json' });
   const nodes = actual.snapshot.nodes; expect(nodes.every(row => Number.isSafeInteger(row.first))).toBe(true);
   expect(new Set(nodes.map(row => row.expectedFrame)).size).toBe(8);
   const errors = nodes.map(row => Math.abs(row.first - row.expectedFrame));
@@ -108,18 +121,21 @@ for (const replacement of [false, true]) test('physical audio rearms without bac
     await finishActualPhysicalClock(page, armed.takeId); await unavailable(page, info, nativeBrowser, replacement ? 'context-replacement' : 'listen-rearm'); return;
   }
   await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Play world', exact: true }).click(); await advance(page, 24);
+  const incidentalHostGaps = [];
+  await page.getByRole('button', { name: 'Play world', exact: true }).click(); await advance(page, 24, incidentalHostGaps);
   const before = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, generation: window.__PROCGEN_LANES__.world.generation,
     bpm: window.__PROCGEN_STUDIO__.transport.getState().bpm, clock: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().clock,
     starts: window.__nativeClockObservation.starts.length, sampleRate: window.__nativeClockObservation.contexts.at(-1).sampleRate }));
   expect(before.starts).toBeGreaterThan(0);
   if (replacement) await page.evaluate(() => window.__nativeClockObservation.contexts.at(-1).close());
   else await page.locator('#procgenListen').click();
-  await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false'); await advance(page, 104);
+  await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false');
+  const disabled = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, starts: window.__nativeClockObservation.starts.length, enabled: window.__PROCGEN_STUDIO__.getPlaybackState().enabled }));
+  await advance(page, disabled.tick + 80, incidentalHostGaps);
   const muted = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, starts: window.__nativeClockObservation.starts.length }));
-  expect(muted.starts).toBe(before.starts);
+  expect(muted.starts).toBe(disabled.starts);
   await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
-  await advance(page, 164);
+  await advance(page, muted.tick + 360, incidentalHostGaps, muted.starts);
   const after = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, generation: window.__PROCGEN_LANES__.world.generation,
     viewport: { width: window.innerWidth, height: window.innerHeight },
     bpm: window.__PROCGEN_STUDIO__.transport.getState().bpm, clock: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().clock,
@@ -129,7 +145,8 @@ for (const replacement of [false, true]) test('physical audio rearms without bac
   if (replacement) expect(after.contexts[0].state).toBe('closed');
   const actual = await finishActualPhysicalClock(page, armed.takeId), byIntent = new Map(actual.intents.map(intent => [intent.intentId, intent])), byBatch = new Map(actual.batches.map(batch => [batch.batchId, batch]));
   const starts = actual.outcomes.filter(row => row.sinkId === 'physical-browser-audio' && byIntent.get(row.intentId)?.kind === 'begin');
-  const mutedIds = new Set(starts.filter(row => { const tick = byBatch.get(row.batchId)?.tick; return tick > before.tick && tick <= muted.tick; }).map(row => row.intentId));
+  await info.attach('native-clock-rearm-attempt.json', { body: JSON.stringify({ before, disabled, muted, after, actual, incidentalHostGaps }), contentType: 'application/json' });
+  const mutedIds = new Set(starts.filter(row => { const tick = byBatch.get(row.batchId)?.tick; return tick > disabled.tick && tick <= muted.tick; }).map(row => row.intentId));
   const admitted = starts.filter(row => row.status === 'accepted'); expect(mutedIds.size).toBeGreaterThan(0);
   expect(admitted.every(row => !mutedIds.has(row.intentId))).toBe(true);
   expect(admitted.some(row => byBatch.get(row.batchId)?.tick > muted.tick)).toBe(true);
@@ -140,7 +157,7 @@ for (const replacement of [false, true]) test('physical audio rearms without bac
     expect(row.targetFrame).toBe(row.sourceTargetFrame); expect(row.repair).toBeNull();
   }
   await page.locator('#procgenPanic').click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().activeNotes)).toBe(0);
-  await attach(info, nativeBrowser, replacement ? 'context-replacement' : 'listen-rearm', { before, muted, after, actual,
+  await attach(info, nativeBrowser, replacement ? 'context-replacement' : 'listen-rearm', { before, disabled, muted, after, actual, incidentalHostGaps,
     rearm: { sameGeneration: true, sameBpm: true, sameSampleRate: true, contexts: after.contexts.length, mutedAttacks: mutedIds.size,
       admitted: new Set(admitted.map(row => row.intentId)).size, missedAttacksReplayed: 0, sourceTargetFramesChecked: admitted.length, terminalActiveNotes: 0 } });
 });

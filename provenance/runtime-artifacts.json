@@ -146,6 +146,8 @@
       ],
       "files": [
         "js/app/midi-ui/AudioAssetRef.js",
+        "js/app/midi-ui/CapturedEffectHistory.js",
+        "js/app/midi-ui/CapturedEffectHistoryDriver.js",
         "js/app/midi-ui/CapturedEffectLifecycle.js",
         "js/app/midi-ui/CapturedEffectReplay.js",
         "js/app/midi-ui/CapturedSpectralReplay.js",
@@ -369,6 +371,7 @@
         "js/midi/content/EffectGraphRevision.js",
         "js/midi/content/EffectPerformance.js",
         "js/midi/content/EffectPorts.js",
+        "js/midi/content/EffectRouteTransition.js",
         "js/midi/content/EffectRuntimeRevisions.js",
         "js/midi/content/EffectVoiceSelection.js",
         "js/midi/content/EnvelopeDetectorProfile.js",
@@ -447,8 +450,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 301,
-      "sha256": "9aac61256fd0e050fd24b21451a9fe948a9655357f83e00d8b0c88d6259f61e1"
+      "fileCount": 304,
+      "sha256": "b0121907a2f7301088567cfa373afa5dcf5c6644f1d3812c281353e0cfc1dae6"
     },
     {
       "id": "lemmings-timing-worker-source",

@@ -23,10 +23,14 @@ export function nativeClockReceipt(project, scenario) {
     receipt.independentOwner = { sameContext: true, sameAnchor: true, unchangedRebases: true };
   } else {
     receipt.before = { tick: 24, generation: 1, bpm: 120, clock: { rebases: 1 }, starts: 2, sampleRate: 48000 };
+    receipt.disabled = { tick: 24, starts: 2, enabled: false };
     receipt.muted = { tick: 104, starts: 2 };
     receipt.after = { tick: 164, generation: 1, bpm: 120, viewport: { width: 1920, height: 1080 }, clock: { rebases: 2 }, contexts: scenario === 'context-replacement' ? [{ sampleRate: 48000, state: 'closed' }, { sampleRate: 48000, state: 'running' }] : [{ sampleRate: 48000, state: 'running' }] };
     receipt.rearm = { sameGeneration: true, sameBpm: true, sameSampleRate: true, mutedAttacks: 2, admitted: 4, missedAttacksReplayed: 0, sourceTargetFramesChecked: 4, terminalActiveNotes: 0 };
-    receipt.actual = { intents: [{ kind: 'begin' }], outcomes: [{ status: 'accepted' }] };
+    const ticks = [16, 18, 70, 72, 129, 131], audioAnchor = { beat: 0, bpm: 120, hostMs: 0, contextSeconds: 1, correlationHostMs: 0, presentationDelayMs: 24, sampleRate: 48000 };
+    receipt.actual = { intents: ticks.map((tick, index) => ({ intentId: 'unit:' + index, kind: 'begin', scoreTime: { beat: index * 0.04 } })),
+      batches: ticks.map((tick, index) => ({ batchId: 'unit:batch:' + index, tick, audioAnchor })),
+      outcomes: ticks.map((tick, index) => { const frame = Math.round((1 + (index * 20 + 24) / 1000) * 48000); return { intentId: 'unit:' + index, batchId: 'unit:batch:' + index, sinkId: 'physical-browser-audio', status: index === 2 || index === 3 ? 'rejected' : 'accepted', sourceTargetFrame: frame, targetFrame: frame, repair: null }; }) };
   }
   return receipt;
 }

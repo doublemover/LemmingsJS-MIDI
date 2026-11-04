@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Revoice captured changing-body controls through bounded owned graph histories, preserving original source attacks, recorded crossfades, retained tails and immutable WAV provenance.
 - Renew physical audio execution leases immediately after Listen is re-enabled on the same context, and bound configurable presentation delay independently of device latency.
 - Update development lint and file-matching dependencies to patched releases, including redirect-header handling, glob cancellation and minimatch amplification fixes.
 - Keep failed project loads visible in the project picker while background preference errors continue reporting independently.

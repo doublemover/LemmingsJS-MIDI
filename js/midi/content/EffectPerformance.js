@@ -1,16 +1,18 @@
 import { SPECTRAL_CAPTURE_POLICY, validateSpectralCaptureReceipt } from './SpectralCaptureReceipt.js';
 import { cloneData } from '../../core/CanonicalData.js';
 import { validateCapturedBodyStrike } from './PreparedBodyStrike.js';
+import { validateEffectRouteTransition } from './EffectRouteTransition.js';
 
 export const EFFECT_PERFORMANCE_SCHEMA = 'lemmings-effect-performance/v1';
 export function validateEffectPerformance(raw) {
-  const p = cloneData(raw, { maxBytes: 98304, maxNodes: 12288 }), keys = ['schema', 'status', 'stage', 'operation', 'sequence', 'streamId', 'ownerRouteRevision', 'graphDefinitionHash', 'sampleRate', 'targetFrame', 'executionEpoch', 'clockAnchor', 'definition', 'nodeId', 'values', 'mode', 'sourceEventIds', 'acousticReceipt', 'strike', 'spectralCapture', 'spectralCapturePolicy'];
+  const p = cloneData(raw, { maxBytes: 98304, maxNodes: 12288 }), keys = ['schema', 'status', 'stage', 'operation', 'sequence', 'streamId', 'ownerRouteRevision', 'graphDefinitionHash', 'sampleRate', 'targetFrame', 'executionEpoch', 'clockAnchor', 'definition', 'nodeId', 'values', 'mode', 'sourceEventIds', 'acousticReceipt', 'strike', 'spectralCapture', 'spectralCapturePolicy', 'routeTransition'];
   const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
   if (!p || Object.keys(p).some(key => !keys.includes(key)) || p.schema !== EFFECT_PERFORMANCE_SCHEMA || p.status !== 'accepted' || p.stage !== 'effect-performance-captured' ||
       !['graph', 'control', 'bypass', 'body-panic', 'body-strike', 'spectral-capture'].includes(p.operation) || !Number.isSafeInteger(p.sequence) || p.sequence < 1 || !text(p.streamId) || !Number.isSafeInteger(p.ownerRouteRevision) || p.ownerRouteRevision < 1 || !/^[a-f0-9]{64}$/.test(p.graphDefinitionHash) ||
       ![44100, 48000, 96000].includes(p.sampleRate) || !Number.isSafeInteger(p.targetFrame) || p.targetFrame < 0 || p.executionEpoch !== null && !text(p.executionEpoch) || p.acousticReceipt !== false || !Array.isArray(p.sourceEventIds) || p.sourceEventIds.length > 128 || p.sourceEventIds.some(id => !text(id))) throw new TypeError('Invalid captured effect performance.');
   if (p.clockAnchor !== null && (!p.clockAnchor || Object.keys(p.clockAnchor).some(key => !['intentId', 'sourceTargetFrame', 'executionEpoch'].includes(key)) || !text(p.clockAnchor.intentId) || !Number.isSafeInteger(p.clockAnchor.sourceTargetFrame) || p.clockAnchor.sourceTargetFrame < 0 || p.clockAnchor.executionEpoch !== p.executionEpoch)) throw new TypeError('Effect timing needs its exact source-intent audio-clock anchor.');
   if (p.operation === 'graph' ? !p.definition || p.nodeId != null || p.values != null || p.mode != null : p.definition != null) throw new TypeError('Effect publication requires its immutable graph definition.');
+  if (p.routeTransition != null) { if (p.operation !== 'graph') throw new TypeError('Only a graph publication carries a route transition.'); validateEffectRouteTransition(p.routeTransition, p); }
   if (['body-panic', 'body-strike', 'spectral-capture'].includes(p.operation) ? !text(p.nodeId) || p.values != null || p.mode != null : p.operation === 'control' ? !text(p.nodeId) || !p.values || Object.getPrototypeOf(p.values) !== Object.prototype || !Object.keys(p.values).length || Object.keys(p.values).length > 4 || Object.values(p.values).some(value => !Number.isFinite(value)) || p.mode != null : p.nodeId != null || p.values != null) throw new TypeError('Effect controls require bounded finite parameter targets.');
   if (p.operation === 'spectral-capture') { const capture = validateSpectralCaptureReceipt(p.spectralCapture); if (capture.sampleRate !== p.sampleRate || capture.endFrame !== p.targetFrame) throw new TypeError('The captured effect frontier must equal its actual spectral window end.'); }
   else if (p.spectralCapture != null) throw new TypeError('Only processor spectral acknowledgments carry capture-window evidence.');

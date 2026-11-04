@@ -40,8 +40,8 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     for (const arm of arms) if (arm !== current && !arm.retirement && (context.state === 'closed' || arm.retireAt <= context.currentTime)) retireArm(arm);
     if (!disposed && [...arms].some(arm => arm !== current && !arm.retirement)) timer = setTimeout(poll, context.state === 'running' ? 50 : 250);
   };
-  const tail = arm => { if (!arm) return; if (arm.graph.gateSidechains) arm.graph.gateSidechains(0, context.currentTime, transitionSeconds); else arm.graph.deactivateSidechains?.(); arm.inAutomation.insert(0, context.currentTime, context.currentTime);
-    arm.retireAt = Math.max(context.currentTime + transitionSeconds, (arm.graph.lastBodyDriveFrame?.() || 0) / context.sampleRate) + arm.graph.plan.maximumTailFrames / context.sampleRate; };
+  const tail = (arm, time = context.currentTime) => { if (!arm) return; if (arm.graph.gateSidechains) arm.graph.gateSidechains(0, time, transitionSeconds); else arm.graph.deactivateSidechains?.(); arm.inAutomation.insert(0, time, time);
+    arm.retireAt = Math.max(time + transitionSeconds, (arm.graph.lastBodyDriveFrame?.() || 0) / context.sampleRate) + arm.graph.plan.maximumTailFrames / context.sampleRate; };
   const prepare = async (definition, { signal, isCurrent: requestCurrent = () => true } = {}) => {
     guard(); signal?.throwIfAborted();
     if (pending.size || arms.size >= 2) throw failure('effect-transition-capacity', 'Two effect revisions already own their transition or tails. Clear tails or wait before preparing another.');
@@ -72,10 +72,13 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
         arm.inAutomation = createSmoothedAudioParameter({ param: arm.input.gain, initialValue: 0, startTime: context.currentTime, smoothingSeconds: transitionSeconds, maxEvents: 32 });
         input.connect(arm.input); arm.connectedSource = true; arm.input.connect(graph.getInput(graph.plan.inputs[0])); graph.getOutput(graph.plan.outputs[0]).connect(arm.output); arm.output.connect(destination); check();
         await graph.activateSidechains?.({ silent: true }); check(); graph.checkPublication?.();
-        const previous = current;
-        arm.graph.gateSidechains?.(1, context.currentTime, transitionSeconds); arm.inAutomation.insert(1, context.currentTime, context.currentTime); arm.output.gain.setValueAtTime(1, context.currentTime); dryAutomation.insert(0, context.currentTime, context.currentTime);
-        tail(previous); current = arm; published = operation.published = true; pending.delete(operation);
-        mode = 'active'; error = null; revision++; current.routeRevision = revision; graph = null; arm = null; lease = null; poll(); report(); return state();
+        const previous = current, publicationTime = context.currentTime, publicationFrame = Math.ceil(publicationTime * context.sampleRate), transitionFrames = Math.ceil(transitionSeconds * context.sampleRate);
+        arm.graph.gateSidechains?.(1, publicationTime, transitionSeconds); arm.inAutomation.insert(1, publicationTime, publicationTime); arm.output.gain.setValueAtTime(1, publicationTime); dryAutomation.insert(0, publicationTime, publicationTime);
+        tail(previous, publicationTime); current = arm; published = operation.published = true; pending.delete(operation);
+        mode = 'active'; error = null; revision++; current.routeRevision = revision;
+        current.publication = Object.freeze({ schema: 'lemmings-effect-route-transition/v1', startFrame: publicationFrame, transitionFrames,
+          previous: previous ? Object.freeze({ ownerRouteRevision: previous.routeRevision, graphDefinitionHash: previous.graph.hash, retireAtFrame: Math.ceil(previous.retireAt * context.sampleRate), lastBodyDriveFrame: previous.graph.lastBodyDriveFrame?.() || 0 }) : null });
+        graph = null; arm = null; lease = null; poll(); report(); return state();
       } catch (caught) {
         if (arm) { if (current === arm) current = null; const receipt = retireArm(arm); await receipt.completion; if (receipt.outcome !== 'complete') caught.retirement = receipt; }
         else if (graph) { const receipt = graph.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { unknown.add({ graph, receipt }); caught.retirement = receipt; } lease?.release(); }
@@ -123,7 +126,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     captureSnapshot: () => Object.freeze({ revision, mode, graphDefinitionHash: current?.graph.hash ?? null,
       transitionFrames: Math.ceil(transitionSeconds * context.sampleRate), appliedFrame: null }),
     performanceSnapshot: () => !disposed && current ? Object.freeze({ definition: current.graph.plan.definition, graphDefinitionHash: current.graph.hash, ownerRouteRevision: revision,
-      mode, sampleRate: context.sampleRate, targetFrame: Math.ceil(context.currentTime * context.sampleRate) }) : null,
+      mode, sampleRate: context.sampleRate, targetFrame: Math.ceil(context.currentTime * context.sampleRate), routeTransition: current.publication }) : null,
     requestInspection: () => current?.graph.requestInspection?.() || false,
     update(nodeId, values, targetFrame, expected = null) { guard(); if (expected && (expected.ownerRouteRevision !== revision || expected.graphDefinitionHash !== current?.graph.hash)) throw failure('stale-effect-control', 'The effect control belongs to an earlier owner route.'); if (!current || !['active', 'mute'].includes(mode)) throw failure('effect-not-active', 'Prepare an active owner rack before performing its controls.'); return Object.freeze({ ...current.graph.update(nodeId, values, targetFrame), ownerRouteRevision: revision }); }, panic: () => bypass('panic'), state,
     dispose() {
