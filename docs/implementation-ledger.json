@@ -6774,5 +6774,62 @@
       "current449": "Not submitted at evidence creation; preceding448 main CI still in progress, engine/native jobs green."
     },
     "remaining": "Full controller/document/Thru/UMP/failed-retirement and wider cache capacity matrices remain open under1120. Current-source CI remains separate from raw complete-green446 and independently inventoried437."
+  },
+  "continuation450": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Typed main-context profile/rate/output transitions, explicit fresh admission and actual built desktop controls. Current product changes precede the final affected Node/native checks.",
+    "evidence": {
+      "path": "docs/validation/main-audio-runtime-transitions-desktop-2026-11-05.json",
+      "bytes": 255413,
+      "sha256": "e8292ea2288ef49b1393558edfe55ecdcdd9a0c4b850c3286f39c2004c2d3210"
+    },
+    "validation": {
+      "nodeCases": 543,
+      "currentNativePasses": 5,
+      "supplementalNativePreparationFailures": 1,
+      "desktopBoundarySelection": 30,
+      "scopeCoverage": {
+        "lines": 94.54,
+        "branches": 85.21,
+        "functions": 89.31
+      },
+      "transitionCoverage": {
+        "lines": 97.61,
+        "branches": 82.29,
+        "functions": 100
+      },
+      "actualBuiltRateAfterChange": 44100
+    },
+    "source": {
+      "browserPaths": 1291,
+      "browserDigest": "708e9da60e8555b739182ad622141306105ffde538755bba4edd2255e90283fd",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1593,
+      "byteExact": 1581,
+      "untouchedCheckoutNewlines": 12,
+      "inventory": "Exact449base plus25hashed upserts"
+    },
+    "ci": {
+      "precedingCompleteGreen": {
+        "head": "581a28760702431ad4b63b2ec55a183d52d994be",
+        "checkpoint": 448,
+        "runId": 42106806396,
+        "allFourRequiredJobs": "success",
+        "policyAndDependencies": "success",
+        "nodePasses": 7848,
+        "pending": 10,
+        "coverage": {
+          "lines": 90.93,
+          "branches": 84.38,
+          "functions": 88.8
+        },
+        "archiveAudit": "not performed"
+      },
+      "latestIndependentlyInventoriedCompleteGreen": 437,
+      "current450": "Not submitted at evidence creation; latest449CI remains separate."
+    },
+    "remaining": "1044persistence, wider default-device/engine matrices and measured profile tradeoffs; repeated full-build preparation timing investigation. Current-source CI remains separate."
   }
 }

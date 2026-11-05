@@ -65,3 +65,32 @@ export interface AudioRuntimeObserver {
   resetLatency(): boolean;
   dispose(): void;
 }
+export type AudioRuntimeTransitionPhase = 'idle' | 'selecting' | 'stopping' | 'switching' | 'closing';
+export interface AudioRuntimeTransitionResult {
+  readonly status: 'configured' | 'rebuild-ready' | 'unchanged' | 'unsupported' | 'busy' | 'retired' | 'canceled' | 'failed';
+  readonly errorCode: string | null;
+  readonly requiresEnable: boolean;
+  readonly acousticReceipt: false;
+}
+export interface AudioRuntimeTransitionContext extends AudioRuntimeContext {
+  readonly sinkId?: unknown;
+  setSinkId?(sinkId: string): Promise<void>;
+}
+export interface AudioRuntimeTransitionPorts {
+  getConfig(): AudioRuntimeConfig;
+  getContext(): AudioRuntimeTransitionContext | null;
+  isRetired(): boolean;
+  quiesce(): Promise<boolean>;
+  retireContext(context: AudioRuntimeTransitionContext): Promise<boolean>;
+  commit(config: AudioRuntimeConfig): void;
+  chooseOutput?(): Promise<string>;
+  onChange?(): void;
+}
+export interface AudioRuntimeTransition {
+  request(config: AudioRuntimeConfigInput): Promise<AudioRuntimeTransitionResult>;
+  choose(): Promise<AudioRuntimeTransitionResult>;
+  isPending(): boolean;
+  state(): Readonly<{ phase: AudioRuntimeTransitionPhase; pending: boolean; last: AudioRuntimeTransitionResult | null }>;
+  invalidate(): void;
+  dispose(): Promise<void>;
+}

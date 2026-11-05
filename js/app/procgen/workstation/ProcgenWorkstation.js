@@ -1897,6 +1897,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       }).filter(Boolean);
     },
     operationalState: getOperationalSnapshot,
+    audioRuntimeState: () => legacy.local.audio?.getAudioRuntimeSettingsState?.() || null,
+    configureAudioRuntime: safe(/** @param {import('../../midi-ui/AudioRuntimeContracts.js').AudioRuntimeConfigInput} input */ async input => {
+      const audio = legacy.local.audio;
+      if (!audio?.configureAudioRuntime || !audio.getAudioRuntimeConfig) return false;
+      const result = await audio.configureAudioRuntime({ ...audio.getAudioRuntimeConfig(), ...input }); view?.refreshOperational?.(); return result;
+    }),
+    chooseAudioOutput: safe(async () => { const result = await legacy.local.audio?.chooseAudioOutput?.(); view?.refreshOperational?.(); return result; }),
+    resetAudioLatency: () => legacy.local.audio?.resetAudioLatencyStatistics?.() || false,
     cancelOperation(id) {
       const lease = currentOperation;
       if (!lease || lease.id !== id || lease.signal.aborted || lease.phase === 'committing') return false;
@@ -2570,10 +2578,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (expressionOutput !== observedExpressionOutput) { observedExpressionOutput = expressionOutput; view?.renderInspector?.(); }
   });
   if (typeof unsubscribeOutputState === 'function') listeners.push(unsubscribeOutputState);
-  const unregisterPerformanceStop = legacy.local.audio?.registerPerformanceStop?.(async () => {
+  const unregisterPerformanceStop = legacy.local.audio?.registerPerformanceStop?.(async reason => {
     handlers.stopOutput(); state.recording = false; state.thru = false; ports.configure({ recording: false, thru: false });
     view?.recording?.(false, recordingViewState(ports.getState()));
-    await stopCausalTake({ reason: 'cross-tab-performance-stop' });
+    await stopCausalTake({ reason: reason === 'audio-runtime-change' ? 'audio-runtime-change' : 'cross-tab-performance-stop' });
     if (ports.getState().lastCleanup?.uncertain) throw new Error('Owned MIDI release is unconfirmed; performance takeover remains blocked.');
   });
   if (typeof unregisterPerformanceStop === 'function') listeners.push(unregisterPerformanceStop);

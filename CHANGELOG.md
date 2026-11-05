@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Apply main audio profile/rate and output changes through owned stop/retirement transitions, with explicit re-enable and truthful desktop rate/latency controls.
+
 - Fence MIDI ingress and fresh output/recording admission during retirement, share reentrant cleanup receipts, and preserve accepted input bytes across callbacks.
 
 - Preserve a raw asset handle’s requesting provider epoch across cache clearing and late response or hash completion.

@@ -1,5 +1,6 @@
 import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions } from '../../js/app/midi-ui/AudioRuntimeConfig.js';
 import { createAudioRuntimeObservation } from '../../js/app/midi-ui/AudioRuntimeObservation.js';
+import { createAudioRuntimeTransition } from '../../js/app/midi-ui/AudioRuntimeTransition.js';
 import type { AudioRuntimeSnapshot } from '../../js/app/midi-ui/AudioRuntimeContracts.js';
 const config = normalizeAudioRuntimeConfig({ latencyProfile: 'balanced', preferredSampleRate: 44100 });
 const request: AudioContextOptions = audioRuntimeContextOptions(config);
@@ -45,3 +46,12 @@ if (snapshot) {
   void invalidAvailability; void wrongUnits; void invalidSchema;
 }
 observer.dispose();
+const transitions = createAudioRuntimeTransition({ getConfig: () => config, getContext: () => context, isRetired: () => false,
+  quiesce: async () => true, retireContext: async () => true, commit: () => {} });
+const transitionPending: boolean = transitions.isPending(); void transitionPending;
+// @ts-expect-error A native transition must acknowledge output retirement asynchronously.
+createAudioRuntimeTransition({ getConfig: () => config, getContext: () => context, isRetired: () => false, quiesce: () => true, retireContext: async () => true, commit: () => {} });
+// @ts-expect-error Closure acknowledgment is required before replacing a context.
+createAudioRuntimeTransition({ getConfig: () => config, getContext: () => context, isRetired: () => false, quiesce: async () => true, commit: () => {} });
+// @ts-expect-error Runtime transition profiles use the same canonical configuration contract.
+transitions.request({ latencyProfile: 'fastest' });

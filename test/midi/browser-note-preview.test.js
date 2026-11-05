@@ -183,6 +183,7 @@ class FakeContext {
     this.limiters = [];
     this.compressors = [];
     this.listeners = new Set();
+    this.listenerTypes = new Map();
     this.resumeCalls = 0;
     this.closeCalls = 0;
     this.resumeResult = null;
@@ -214,8 +215,8 @@ class FakeContext {
     this.oscillators.push(node);
     return node;
   }
-  addEventListener(name, callback) { this.listeners.add(callback); }
-  removeEventListener(name, callback) { this.listeners.delete(callback); }
+  addEventListener(name, callback) { this.listeners.add(callback); this.listenerTypes.set(callback, name); }
+  removeEventListener(name, callback) { this.listeners.delete(callback); this.listenerTypes.delete(callback); }
   resume() {
     this.resumeCalls += 1;
     if (this.resumeResult) return this.resumeResult;
@@ -223,7 +224,8 @@ class FakeContext {
     return Promise.resolve();
   }
   close() { this.closeCalls += 1; this.state = 'closed'; return Promise.resolve(); }
-  suspend() { this.state = 'suspended'; for (const callback of this.listeners) callback(); }
+  emit(name) { for (const callback of this.listeners) if (this.listenerTypes.get(callback) === name) callback(); }
+  suspend() { this.state = 'suspended'; this.emit('statechange'); }
 }
 
 const setup = (options = {}, context = new FakeContext()) => {
@@ -284,6 +286,79 @@ describe('browser audio cross-context performance boundaries', () => {
     await first.preview.enable(); const tap = first.preview.acquireMasterCaptureTap({ context: first.context, contextEpoch: first.preview.getState().contextEpoch, node: first.context.createGain(), onRetire: async () => {} });
     expect(await second.preview.takeOverPerformance()).to.equal(false); expect(a.lease.state().status).to.equal('blocked'); expect(second.preview.getState().enabled).to.equal(false);
     tap.release(); await first.preview.dispose(); await second.preview.dispose(); await a.lease.dispose(); await b.lease.dispose();
+  });
+});
+
+describe('main audio runtime replacement and route ownership', () => {
+  const turn = async () => { for (let i = 0; i < 32; i++) await Promise.resolve(); };
+  const runtimeContext = () => { const context = new FakeContext(); context.sinkId = ''; context.setSinkId = async id => { context.sinkId = id; context.emit('sinkchange'); }; return context; };
+  it('retires the old graph before a profile/rate commit and rebuilds only on explicit enable', async () => {
+    const contexts = [], requests = []; let close;
+    const preview = new BrowserNotePreview({ performanceCoordinator: null, createAudioContext: options => { const context = runtimeContext(); contexts.push(context); requests.push(options); return context; } });
+    await preview.enable(); const original = contexts[0], oldEpoch = preview.getState().contextEpoch;
+    preview.output.channels[1].sendNoteOn(60, { rawAttack: 90, time: 10000 });
+    original.close = () => { original.closeCalls++; return new Promise(resolve => { close = () => { original.state = 'closed'; resolve(); }; }); };
+    const pending = preview.configureAudioRuntime({ latencyProfile: 'robust', preferredSampleRate: 96000 }); await turn();
+    expect(preview.getState().audioRuntimeTransition.phase).to.equal('closing'); expect(contexts).to.have.length(1); expect(await preview.enable()).to.equal(false);
+    expect(preview.output.channels[1].sendNoteOn(64, { rawAttack: 90 })).to.equal(false); expect(preview.getAudioRuntimeConfig().latencyProfile).to.equal('performance');
+    close(); expect(await pending).to.include({ status: 'rebuild-ready', requiresEnable: true });
+    expect(preview.getAudioContext()).to.equal(null); expect(preview.getState().activeVoices).to.equal(0); expect(original.closeCalls).to.equal(1); expect(original.listeners.size).to.equal(0);
+    expect(await preview.enable()).to.equal(true); expect(contexts).to.have.length(2); expect(requests[1]).to.deep.equal({ latencyHint: 'playback', sampleRate: 96000 });
+    const state = preview.getState(); expect(state.contextEpoch).to.be.greaterThan(oldEpoch); expect(state.audioRuntime.actualSampleRate).to.equal(48000); expect(state.audioRuntime.config.preferredSampleRate).to.equal(96000);
+    expect(state.activeVoices).to.equal(0); await preview.dispose();
+  });
+  it('commits an acknowledged sink on the existing context and requires fresh admission', async () => {
+    const context = runtimeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    const epoch = preview.getState().contextEpoch; expect(await preview.configureAudioRuntime({ sinkPreference: 'selected-private-id' })).to.include({ status: 'configured' });
+    expect(preview.getAudioContext()).to.equal(context); expect(context.closeCalls).to.equal(0); expect(preview.getState().enabled).to.equal(false);
+    expect(preview.getState().contextEpoch).to.be.greaterThan(epoch); expect(preview.getState().audioRuntime.outputSelection.preferenceObserved).to.equal(true);
+    expect(JSON.stringify(preview.getAudioRuntimeSettingsState())).not.to.include('selected-private-id'); expect(await preview.enable()).to.equal(true); await preview.dispose();
+  });
+  it('keeps denied switches muted on the prior preference without constructing another context', async () => {
+    const context = runtimeContext(); context.setSinkId = async () => { throw Object.assign(new Error('device'), { name: 'NotAllowedError' }); };
+    const preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    expect(await preview.configureAudioRuntime({ sinkPreference: 'denied' })).to.include({ status: 'failed', errorCode: 'NotAllowedError' });
+    expect(preview.getState().enabled).to.equal(false); expect(preview.getAudioRuntimeConfig().sinkPreference).to.equal(''); expect(context.closeCalls).to.equal(0);
+    expect(await preview.enable()).to.equal(true); await preview.dispose();
+  });
+  it('retains failed native closure and denies new graph admission until an explicit successful retry', async () => {
+    const context = runtimeContext(); context.close = async () => { context.closeCalls++; throw new Error('native close refused'); };
+    const preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    expect(await preview.configureAudioRuntime({ latencyProfile: 'balanced' })).to.include({ status: 'failed', errorCode: 'ContextRetirementUnconfirmed' });
+    expect(preview.getAudioContext()).to.equal(context); expect(await preview.enable()).to.equal(false); expect(preview.getAudioRuntimeConfig().latencyProfile).to.equal('performance');
+    context.close = async () => { context.closeCalls++; context.state = 'closed'; };
+    expect((await preview.configureAudioRuntime({ latencyProfile: 'balanced' })).status).to.equal('rebuild-ready'); expect(context.closeCalls).to.equal(2); await preview.dispose();
+  });
+  for (const name of ['sinkchange', 'error']) it('stops owned queues and invalidates calibration after a native ' + name, async () => {
+    const context = runtimeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    const epoch = preview.getState().contextEpoch; preview.output.channels[1].sendNoteOn(60, { rawAttack: 90, time: 10000 });
+    context.emit(name); expect(preview.getState().enabled).to.equal(false); expect(preview.getState().contextEpoch).to.be.greaterThan(epoch); expect(preview.getState().activeVoices).to.equal(0);
+    expect(preview.getState().status).to.equal('interrupted'); await preview.dispose(); expect(context.listeners.size).to.equal(0);
+  });
+  it('keeps native sink ownership through disposal and suppresses late configuration publication', async () => {
+    let complete; const context = runtimeContext(); context.setSinkId = id => new Promise(resolve => { complete = () => { context.sinkId = id; resolve(); }; });
+    const preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    const pending = preview.configureAudioRuntime({ sinkPreference: 'late' }); await turn(); let disposed = false;
+    const retirement = preview.dispose().then(() => { disposed = true; }); await turn(); expect(disposed).to.equal(false); expect(context.closeCalls).to.equal(1);
+    complete(); expect((await pending).status).to.equal('canceled'); await retirement; expect(disposed).to.equal(true); expect(preview.getAudioRuntimeConfig().sinkPreference).to.equal('');
+  });
+  it('allows its synchronous controller cleanup to stop again without canceling its own configuration', async () => {
+    const context = runtimeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    let stops = 0; preview.registerPerformanceStop(() => { stops++; preview.stop(); });
+    expect((await preview.configureAudioRuntime({ latencyProfile: 'balanced' })).status).to.equal('rebuild-ready'); expect(stops).to.equal(1); await preview.dispose();
+  });
+  it('keeps existing audio enabled while an output chooser is pending and preserves it on denial', async () => {
+    let deny; const context = runtimeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null,
+      mediaDevices: { selectAudioOutput: () => new Promise((_yes, no) => { deny = no; }) } }); await preview.enable();
+    const epoch = preview.getState().contextEpoch, pending = preview.chooseAudioOutput(); expect(preview.getState().enabled).to.equal(true);
+    deny(Object.assign(new Error('selection denied'), { name: 'NotAllowedError' })); expect((await pending).status).to.equal('failed');
+    expect(preview.getState().enabled).to.equal(true); expect(preview.getState().contextEpoch).to.equal(epoch); await preview.dispose();
+  });
+  it('lets an external Stop cancel configuration publication while native closure remains owned', async () => {
+    let close; const context = runtimeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    context.close = () => new Promise(resolve => { close = () => { context.state = 'closed'; resolve(); }; });
+    const pending = preview.configureAudioRuntime({ latencyProfile: 'balanced' }); await turn(); preview.stop(); close();
+    expect((await pending).status).to.equal('canceled'); expect(preview.getAudioRuntimeConfig().latencyProfile).to.equal('performance'); await preview.dispose();
   });
 });
 

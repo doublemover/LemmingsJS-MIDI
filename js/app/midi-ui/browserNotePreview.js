@@ -1,5 +1,6 @@
 import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions } from './AudioRuntimeConfig.js';
 import { createAudioRuntimeObservation } from './AudioRuntimeObservation.js';
+import { createAudioRuntimeTransition } from './AudioRuntimeTransition.js';
 import { createLiveLaneSourceBuses } from './LiveLaneSourceBuses.js';
 import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
@@ -156,6 +157,36 @@ class BrowserNotePreview {
     this._performanceSource = this._performanceCoordinator?.register({ scope: this._captureScope, role: 'live',
       stop: (reason, receipt) => this._stopForPerformanceLease(reason, receipt) }) || null;
     this._performanceUnsubscribe = this._performanceCoordinator?.subscribe(() => { if (!this._disposed) this._setStatus(this._status, this._status === 'performance-busy' ? this._performanceMessage() : this._message); }) || null;
+    this._runtimeBlocked = false; this._runtimeClosing = null; this._runtimeCleanupDepth = 0;
+    this._runtimeTransition = createAudioRuntimeTransition({ getConfig: () => this._runtimeConfig, getContext: () => this._context,
+      isRetired: () => this._disposed,
+      quiesce: async () => {
+        // Any native change attempt invalidates old clock calibration, even if rejected.
+        this._contextEpoch++;
+        const receipt = this._stopForPerformanceLease('audio-runtime-change'); await receipt.completion;
+        if (receipt.outcome !== 'complete') return false;
+        if (this._performanceSource) {
+          this._performanceReleaseCompletion = this._performanceSource.release({ receipt });
+          if (!await this._performanceReleaseCompletion) return false;
+        }
+        return true;
+      }, retireContext: context => this._retireRuntimeContext(context),
+      commit: config => { this._runtimeConfig = config; this._runtimeBlocked = false; this._contextEpoch++;
+        this._setStatus('idle', 'Audio settings applied. Enable browser audio to continue.'); },
+      chooseOutput: typeof mediaDevices?.selectAudioOutput === 'function' ? async () => {
+        const selected = await mediaDevices.selectAudioOutput(); return selected.deviceId;
+      } : undefined,
+      onChange: () => { if (!this._disposed) this._setStatus(this._status, this._message); }
+    });
+    this._onRuntimeRouteChange = () => {
+      if (this._disposed || this._runtimeTransition.state().pending) return;
+      this._contextEpoch++; this.stop(); this._setStatus('interrupted', 'Audio output changed. Review the output and enable browser audio again.');
+    };
+    this._onRuntimeRouteError = () => {
+      if (this._disposed) return;
+      this._runtimeTransition.invalidate(); this._contextEpoch++; this.stop();
+      this._setStatus('interrupted', 'Audio output is unavailable. Choose an available output and enable browser audio again.');
+    };
   }
 
   _createOutput(owner = null) {
@@ -435,6 +466,7 @@ class BrowserNotePreview {
       enabled: this._ready(), performanceLease: this._performanceCoordinator?.state() || null,
       contextEpoch: this._contextEpoch, contextState: this._context?.state || 'not-created',
       audioRuntime: this.getAudioRuntimeObservation(),
+      audioRuntimeTransition: this._runtimeTransition?.state() || null,
       resourceAccounting: this._audioResources.diagnostics(),
       retirement: retirementState(this._retirement.getReceipt()), retiredVoices: this._retiredVoices.size, unclosedContext: !!this._retiringContext,
       activeVoices: this._voices.size, sharedMix: this._sessions.size > 0, sessionCount: this._sessions.size,
@@ -455,6 +487,37 @@ class BrowserNotePreview {
 
   getAudioRuntimeObservation() { return this._runtimeObservation.read(this._context, this._contextEpoch, this._runtimeConfig); }
   resetAudioLatencyStatistics() { return this._runtimeObservation.resetLatency(); }
+  getAudioRuntimeConfig() { return this._runtimeConfig; }
+  configureAudioRuntime(config) { return this._runtimeTransition.request(config); }
+  chooseAudioOutput() { return this._runtimeTransition.choose(); }
+  getAudioRuntimeSettingsState() {
+    return Object.freeze({ observation: this.getAudioRuntimeObservation(), transition: this._runtimeTransition.state(),
+      chooserAvailable: typeof this._mediaDevices?.selectAudioOutput === 'function' });
+  }
+
+  _closeAudioContext(context) {
+    if (!context || context.state === 'closed') return Promise.resolve();
+    if (this._runtimeClosing?.context === context) return this._runtimeClosing.promise;
+    const promise = Promise.resolve().then(() => context.close()).then(() => {
+      if (context.state !== 'closed') throw new Error('Audio context closure is unconfirmed.');
+    });
+    this._runtimeClosing = { context, promise };
+    // Failed closure stays owned and can only be retried by another explicit request.
+    const clear = () => { if (this._runtimeClosing?.promise === promise) this._runtimeClosing = null; };
+    promise.then(clear, clear);
+    return promise;
+  }
+
+  async _retireRuntimeContext(context) {
+    let closing;
+    try {
+      closing = this._performanceContextClosing = this._closeAudioContext(context);
+      await closing;
+      if (this._disposed || context !== this._context) return false;
+      const receipt = this._replaceClosedContext({ runtimeChange: true }); await receipt.completion;
+      this._runtimeBlocked = receipt.outcome !== 'complete'; return !this._runtimeBlocked;
+    } catch { if (this._performanceContextClosing === closing) this._performanceContextClosing = null; this._runtimeBlocked = true; return false; }
+  }
 
   getCaptureProvenance() {
     const context = this._context;
@@ -573,7 +636,7 @@ class BrowserNotePreview {
   }
 
   async enable(owner = null, { takeOver = false } = {}) {
-    if (this._stopping) return false;
+    if (this._stopping || this._runtimeBlocked || this._runtimeTransition.isPending()) return false;
     if (this._performanceStopReceipt?.state === 'retired' && this._performanceStopReceipt.outcome !== 'complete') return false;
     if (this._retirementFaults.has(owner)) return false;
     if (this._disposed) return false;
@@ -611,6 +674,8 @@ class BrowserNotePreview {
             compressorOutput.connect(limiter);
           }
           context.addEventListener?.('statechange', this._onContextState);
+          context.addEventListener?.('sinkchange', this._onRuntimeRouteChange);
+          context.addEventListener?.('error', this._onRuntimeRouteError);
           this._context = context;
           this._contextEpoch++;
           this._master = master;
@@ -683,15 +748,16 @@ class BrowserNotePreview {
     }
   }
 
-  _replaceClosedContext() {
+  _replaceClosedContext({ runtimeChange = false } = {}) {
     if (this._context?.state !== 'closed') return;
     const context = this._context;
     let acknowledgment = null;
     this._lastClosedContextRetirement = createProcgenRetirementScope().retire([
-      { name: 'stop', run: () => this.stop() },
+      { name: 'stop', run: () => this.stop({ runtimeChange }) },
       { name: 'cue-routing', run: () => this._cueRouting?.dispose() },
       ...[...this._laneSourceBuses.keys()].map(owner => ({ name: 'lane-sources-' + owner, run: () => this._retireLaneSources(owner) })),
       { name: 'context-listener', run: () => context.removeEventListener?.('statechange', this._onContextState) },
+      { name: 'context-route-listeners', run: () => { context.removeEventListener?.('sinkchange', this._onRuntimeRouteChange); context.removeEventListener?.('error', this._onRuntimeRouteError); } },
       ...[...this._channels].map(([key, channel]) => ({ name: 'channel-' + key, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => this[field]?.disconnect() })),
       { name: 'graph-reservation', run: () => this._graphResourceLease?.release() },
@@ -743,16 +809,21 @@ class BrowserNotePreview {
 
   _stopForPerformanceLease(_reason, priorStop = null) {
     if (this._performanceStopScope) return this._performanceStopScope.getReceipt();
-    const stopsPerformance = ['cooperative-takeover', 'page-suspended', 'page-frozen', 'bfcache-revalidation', 'performance-owner-disposed'].includes(_reason);
+    const stopsPerformance = ['cooperative-takeover', 'page-suspended', 'page-frozen', 'bfcache-revalidation', 'performance-owner-disposed', 'audio-runtime-change'].includes(_reason);
     const prior = this._performanceStopReceipt && (this._performanceStopReceipt.state !== 'retired' || this._performanceStopReceipt.outcome !== 'complete') ? this._performanceStopReceipt : null;
     if (prior && !stopsPerformance) return prior;
     const context = this._context || this._retiringContext;
-    const prerequisite = prior || priorStop || (this._disposed ? this._performanceDisposalStopReceipt ||= this.stop({ performanceStop: true }) : this.stop({ performanceStop: true }));
+    const prerequisite = prior || priorStop || (this._disposed ? this._performanceDisposalStopReceipt ||= this.stop({ performanceStop: true }) : this.stop({ performanceStop: true, runtimeChange: _reason === 'audio-runtime-change' }));
     const scope = createProcgenRetirementScope(); this._performanceStopScope = scope;
     try { return this._performanceStopReceipt = scope.retire([
       { name: 'owned-audio-stop', run: () => prerequisite },
       ...(stopsPerformance
-        ? [...this._performanceStops].map((stop, index) => ({ name: 'performance-stop-' + index, run: () => stop(_reason) })) : []),
+        ? [...this._performanceStops].map((stop, index) => ({ name: 'performance-stop-' + index, run: () => {
+          // Nested synchronous controller stops belong to this cleanup. User events
+          // after an await still revoke the pending native configuration normally.
+          if (_reason === 'audio-runtime-change') this._runtimeCleanupDepth++;
+          try { return stop(_reason); } finally { if (_reason === 'audio-runtime-change') this._runtimeCleanupDepth--; }
+        } })) : []),
       { name: 'context-stop-frontier', run: () => afterProcgenRetirement([prerequisite], async () => {
         if (this._pcmCaptureTaps.size) throw new Error('Master capture retirement is unconfirmed.');
         if (this._performanceContextClosing) await this._performanceContextClosing;
@@ -778,8 +849,9 @@ class BrowserNotePreview {
     this._performanceStops.add(stop); return () => this._performanceStops.delete(stop);
   }
 
-  stop({ performanceStop = false } = {}) {
+  stop({ performanceStop = false, runtimeChange = false } = {}) {
     if (this._stopping) return this._stopScope.getReceipt();
+    if (!runtimeChange && !this._runtimeCleanupDepth) this._runtimeTransition?.invalidate();
     this._stopping = true; this._stopScope = createProcgenRetirementScope();
     this._generation += 1;
     this._enabled = false; this._defaultEnabled = false;
@@ -822,10 +894,12 @@ class BrowserNotePreview {
       { name: 'buffers', run: () => { this._noiseBuffer = null; this._captureSamples = null; this._intervalAdmission = null; } },
       { name: 'resource-reservations', run: () => this._audioResources.dispose() },
       { name: 'runtime-observation', run: () => this._runtimeObservation.dispose() },
+      { name: 'runtime-transition', run: () => this._runtimeTransition.dispose() },
+      { name: 'context-route-listeners', run: () => { context?.removeEventListener?.('sinkchange', this._onRuntimeRouteChange); context?.removeEventListener?.('error', this._onRuntimeRouteError); } },
       { name: 'observers', run: () => this._observers.clear() },
       { name: 'context', run: () => {
         this._context = null; this._retiringContext = context;
-        return this._performanceContextClosing = Promise.resolve(context?.close?.()).then(() => {
+        return this._performanceContextClosing = this._closeAudioContext(context).then(() => {
           this._retiringContext = null;
           if (context?.state === 'closed') return this._reconcileClosedContext(context);
         });
@@ -1027,7 +1101,7 @@ class BrowserNotePreview {
     return current + Math.max(0, ahead);
   }
 
-  _ready() { return !this._disposed && this._enabled && this._context?.state === 'running' &&
+  _ready() { return !this._disposed && !this._runtimeBlocked && this._enabled && this._context?.state === 'running' &&
     (!this._performanceSource || this._performanceSource.isCurrent(this._performanceToken)); }
 
   _channel(number, owner = null) {

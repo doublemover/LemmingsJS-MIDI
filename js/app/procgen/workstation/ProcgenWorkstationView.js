@@ -1,5 +1,6 @@
 import { createProcgenNoticeView } from './ProcgenNoticeView.js';
 import { createProcgenOperationalView } from './ProcgenOperationalView.js';
+import { createAudioRuntimeSettingsView } from '../../midi-ui/AudioRuntimeSettingsView.js';
 import { createLaneDisplaySnapshot, LANE_DISPLAY_PAGES } from './LaneDisplaySnapshot.js';
 import { createLaneDisplayView } from './LaneDisplayView.js';
 import { createCausalVisualView } from './CausalVisualView.js';
@@ -183,8 +184,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const operationalView = createProcgenOperationalView({ document, readSnapshot: () => handlers.operationalState?.() || null,
     performAction: (...args) => handlers.recoverOperational?.(...args), cancelOperation: id => handlers.cancelOperation?.(id), onStatus: text => { setStatus(text); } });
   topbar.append(operationalView.element);
+  const audioSettings = createAudioRuntimeSettingsView({ document, readSnapshot: () => handlers.audioRuntimeState?.() || null,
+    configure: value => handlers.configureAudioRuntime?.(value), chooseOutput: () => handlers.chooseAudioOutput?.(),
+    useDefault: () => handlers.configureAudioRuntime?.({ sinkPreference: '' }), resetLatency: () => handlers.resetAudioLatency?.() || false });
+  topbar.append(audioSettings.element);
   const operationalSurface = displayScheduler.register({ id: 'workstation-operational', element: operationalView.element, intervalMs: 100,
-    write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); refreshProjectStatus(); } }); operationalSurface.invalidate();
+    write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); audioSettings.render(); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); refreshProjectStatus(); } }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
   let motionControl = null, motionStatus = null, motionPolicy = null, motionUnsubscribe = null;
@@ -1343,7 +1348,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const motionField = node('label', null, 'studio-menu-field'); motionField.append(node('span', 'Motion'), motionControl, motionStatus); paintMotion();
   const worldControls = topbar.querySelector('.procgen-world-controls');
   const chrome = createWorkstationChrome({ document, window, topbar, footer, health: operationalView.element, viewMenu: fullscreenMenu,
-    setupFields: [worldControls, byId('procgenAudioControls'), setupMusic, topbar.querySelector('.procgen-status-strip')],
+    setupFields: [worldControls, byId('procgenAudioControls'), audioSettings.element, setupMusic, topbar.querySelector('.procgen-status-strip')],
     viewFields: [layoutMode.parentElement, workspaceField, motionField, byId('procgenFollow')?.parentElement, byId('procgenHelp')], stageRestricted: [worldControls, setupMusic] });
   fullscreenSummary.textContent = 'View'; fullscreenSummary.setAttribute('aria-label', 'View actions');
 
@@ -1477,7 +1482,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     },
     midi(text) { state.lastMidi = text; midiSurface.invalidate(); },
     dispose() {
-      midiRouteView?.dispose(); midiRouteView = null;
+      audioSettings.dispose(); midiRouteView?.dispose(); midiRouteView = null;
       variationsView?.dispose(); variationsView = null;
       if (stageActive) setStageMode(false);
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; retireMotion();
