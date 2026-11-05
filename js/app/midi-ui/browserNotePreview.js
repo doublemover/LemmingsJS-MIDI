@@ -1,4 +1,4 @@
-import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions } from './AudioRuntimeConfig.js';
+import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions, audioRuntimeSinkMatches } from './AudioRuntimeConfig.js';
 import { createAudioRuntimeObservation } from './AudioRuntimeObservation.js';
 import { createAudioRuntimeTransition } from './AudioRuntimeTransition.js';
 import { createLiveLaneSourceBuses } from './LiveLaneSourceBuses.js';
@@ -184,7 +184,9 @@ class BrowserNotePreview {
     };
     this._onRuntimeRouteError = () => {
       if (this._disposed) return;
-      this._runtimeTransition.invalidate(); this._contextEpoch++; this.stop();
+      const phase = this._runtimeTransition.state().phase, ownedChange = phase === 'switching' || phase === 'closing';
+      if (!ownedChange) this._runtimeTransition.invalidate();
+      this._contextEpoch++; this.stop({ runtimeChange: ownedChange });
       this._setStatus('interrupted', 'Audio output is unavailable. Choose an available output and enable browser audio again.');
     };
   }
@@ -488,6 +490,12 @@ class BrowserNotePreview {
   getAudioRuntimeObservation() { return this._runtimeObservation.read(this._context, this._contextEpoch, this._runtimeConfig); }
   resetAudioLatencyStatistics() { return this._runtimeObservation.resetLatency(); }
   getAudioRuntimeConfig() { return this._runtimeConfig; }
+  _hasConfiguredAudioOutput() {
+    let sink; try { sink = this._context?.sinkId; } catch { /* Older/denied APIs keep an unknown observation. */ }
+    const match = audioRuntimeSinkMatches(sink, this._runtimeConfig.sinkPreference);
+    if (match !== false && (!this._runtimeConfig.sinkPreference || match === true)) return true;
+    this.stop(); this._setStatus('interrupted', 'Confirm an available main audio output before enabling browser audio.'); return false;
+  }
   configureAudioRuntime(config) { return this._runtimeTransition.request(config); }
   chooseAudioOutput() { return this._runtimeTransition.choose(); }
   getAudioRuntimeSettingsState() {
@@ -695,6 +703,7 @@ class BrowserNotePreview {
         }
       }
       const context = this._context;
+      if (!this._hasConfiguredAudioOutput()) return false;
       if (context.state !== 'running') {
         this._setStatus('unlocking', 'Starting browser audio…');
         if (!this._resumePromise) {
@@ -729,6 +738,7 @@ class BrowserNotePreview {
       if (context.state === 'suspended' && this._performanceSource) await context.resume();
       if (this._disposed || generation !== this._generation) return false;
       if (context.state !== 'running') throw new Error('Audio context is not running.');
+      if (!this._hasConfiguredAudioOutput()) return false;
       if (!this._enabled) this._setMixEnabled(true);
       this._enabled = true;
       if (owner == null) this._defaultEnabled = true;

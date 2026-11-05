@@ -1,4 +1,5 @@
 // @ts-check
+import { audioRuntimeSinkMatches } from './AudioRuntimeConfig.js';
 /** @typedef {import('./AudioRuntimeContracts.js').AudioPlaybackMetrics} AudioPlaybackMetrics */
 /** @typedef {import('./AudioRuntimeContracts.js').AudioRuntimeSnapshot} AudioRuntimeSnapshot */
 /** @type {ReadonlyArray<keyof AudioPlaybackMetrics>} */
@@ -81,7 +82,7 @@ export function createAudioRuntimeObservation({ nowMs = () => globalThis.perform
         actualSampleRate: number(property(context, 'sampleRate')), contextState: state, visibility,
         baseLatencySeconds: baseLatency, outputLatencySeconds: outputLatency, estimatesAreAdditive: false, acousticMeasurement: false,
         outputSelection: Object.freeze({ setSinkIdAvailable: typeof property(context, 'setSinkId') === 'function', actualSink: typeof sink === 'string' ? sink ? 'explicit-device' : 'default' : property(sink, 'type') === 'none' ? 'silent' : 'unknown',
-          preferenceObserved: typeof sink === 'string' ? sink === config.sinkPreference : null }),
+          preferenceObserved: audioRuntimeSinkMatches(sink, config.sinkPreference) }),
         playbackStats: Object.freeze({ availability, freshness, sampledAtHostMs: sampledAt, lastChangedAtHostMs: changedAt, minimumCollectionIntervalMs: 1000, latencyRevision, metricsLatencyRevision: sampledLatencyRevision, latencyIntervalPending: sampledLatencyRevision !== latencyRevision,
           cumulativeScope: 'context-lifetime-not-route-or-latency-reset', units: 'seconds-except-underrun-event-count', metrics, hasReportedPlaybackDuration: metrics ? metrics.totalDuration > 0 : null, browserTimestampAvailable: false,
           interpretation: 'digital-playback-path-not-application-only-glitches-or-acoustic-latency' }) });

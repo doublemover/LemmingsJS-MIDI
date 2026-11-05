@@ -79,4 +79,31 @@ describe('owned main audio configuration transitions', () => {
     expect((await f.owner.request({ latencyProfile: 'balanced', preferredSampleRate: 44100 })).status).to.equal('configured'); expect(f.counts().closes).to.equal(0);
     expect(Object.isFrozen(f.owner.state().last)).to.equal(true); await f.owner.dispose();
   });
+  for (const name of ['NotFoundError', 'InvalidAccessError', 'NotSupportedError']) it('recovers an explicit default request through acknowledged closure after native ' + name, async () => {
+    const f = fixture(); f.context.sinkId = { type: 'none' }; f.context.setSinkId = async () => { throw Object.assign(new Error('default unavailable'), { name }); };
+    expect(await f.owner.request({})).to.include({ status: 'rebuild-ready', requiresEnable: true });
+    expect(f.counts()).to.deep.equal({ stops: 1, closes: 1, commits: 1 }); expect(f.config().sinkPreference).to.equal('');
+  });
+  it('does not rebuild an explicitly denied default output or claim a failed closure succeeded', async () => {
+    const denied = fixture(); denied.context.sinkId = { type: 'none' }; denied.context.setSinkId = async () => { throw Object.assign(new Error('denied'), { name: 'NotAllowedError' }); };
+    expect(await denied.owner.request({})).to.include({ status: 'failed', errorCode: 'NotAllowedError' }); expect(denied.counts().closes).to.equal(0);
+    const unconfirmed = fixture({ retireContext: async () => false }); unconfirmed.context.sinkId = { type: 'none' }; unconfirmed.context.setSinkId = async () => { throw Object.assign(new Error('missing'), { name: 'NotFoundError' }); };
+    expect(await unconfirmed.owner.request({})).to.include({ status: 'failed', errorCode: 'ContextRetirementUnconfirmed' }); expect(unconfirmed.counts().commits).to.equal(0);
+  });
+  it('can return to default through closure when a context has no native sink setter', async () => {
+    const f = fixture({ getConfig: () => normalizeAudioRuntimeConfig({ sinkPreference: 'old-device' }) }); delete f.context.setSinkId;
+    expect((await f.owner.request({})).status).to.equal('rebuild-ready'); expect(f.counts().closes).to.equal(1);
+  });
+  it('leaves an unknown unchanged default alone but rebuilds an unconfirmed explicit default request', async () => {
+    const unknown = fixture(); delete unknown.context.sinkId; delete unknown.context.setSinkId;
+    expect((await unknown.owner.request({})).status).to.equal('unchanged'); expect(unknown.counts().stops).to.equal(0);
+    const unconfirmed = fixture(); unconfirmed.context.sinkId = { type: 'none' }; unconfirmed.context.setSinkId = async () => {};
+    expect((await unconfirmed.owner.request({})).status).to.equal('rebuild-ready'); expect(unconfirmed.counts().closes).to.equal(1);
+  });
+  for (const kind of ['profile', 'default-refusal']) it('keeps disposal cancellation distinct from unconfirmed ' + kind + ' closure', async () => {
+    const native = deferred(), f = fixture({ retireContext: async () => { await native.promise; return false; } });
+    if (kind === 'default-refusal') { f.context.sinkId = { type: 'none' }; f.context.setSinkId = async () => { throw Object.assign(new Error('missing'), { name: 'NotFoundError' }); }; }
+    const pending = f.owner.request(kind === 'profile' ? { latencyProfile: 'balanced' } : {}); await turn();
+    const disposed = f.owner.dispose(); native.resolve(); expect((await pending).status).to.equal('canceled'); await disposed; expect(f.counts().commits).to.equal(0);
+  });
 });

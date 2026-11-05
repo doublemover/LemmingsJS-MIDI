@@ -360,6 +360,30 @@ describe('main audio runtime replacement and route ownership', () => {
     const pending = preview.configureAudioRuntime({ latencyProfile: 'balanced' }); await turn(); preview.stop(); close();
     expect((await pending).status).to.equal('canceled'); expect(preview.getAudioRuntimeConfig().latencyProfile).to.equal('performance'); await preview.dispose();
   });
+  it('rebuilds a refused native default route without creating another context before explicit enable', async () => {
+    const contexts = [], preview = new BrowserNotePreview({ performanceCoordinator: null, createAudioContext: () => { const context = runtimeContext(); contexts.push(context); return context; } }); await preview.enable();
+    const old = contexts[0]; old.sinkId = { type: 'none' }; old.emit('sinkchange'); old.setSinkId = async () => { old.emit('error'); throw Object.assign(new Error('missing default'), { name: 'NotFoundError' }); };
+    expect((await preview.configureAudioRuntime({})).status).to.equal('rebuild-ready'); expect(old.closeCalls).to.equal(1); expect(contexts).to.have.length(1); expect(preview.getAudioContext()).to.equal(null);
+    expect(await preview.enable()).to.equal(true); expect(contexts).to.have.length(2); expect(preview.getState().audioRuntime.outputSelection.preferenceObserved).to.equal(true); await preview.dispose();
+  });
+  it('rejects fresh admission on a known silent or mismatched route while keeping default-only contexts usable', async () => {
+    const context = runtimeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    for (const sink of [{ type: 'none' }, 'foreign-device']) { context.sinkId = sink; context.emit('sinkchange'); expect(await preview.enable()).to.equal(false); expect(preview.getState().enabled).to.equal(false); }
+    context.sinkId = ''; expect(await preview.enable()).to.equal(true); await preview.dispose();
+    const legacy = new BrowserNotePreview({ createAudioContext: () => new FakeContext(), performanceCoordinator: null }); expect(await legacy.enable()).to.equal(true); await legacy.dispose();
+  });
+  it('retains the old preference after a partial native refusal and blocks an unintended output', async () => {
+    const context = runtimeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    context.setSinkId = async () => { context.sinkId = 'unexpected'; throw Object.assign(new Error('denied'), { name: 'NotAllowedError' }); };
+    expect((await preview.configureAudioRuntime({ sinkPreference: 'requested' })).status).to.equal('failed'); expect(preview.getAudioRuntimeConfig().sinkPreference).to.equal(''); expect(await preview.enable()).to.equal(false);
+    expect(preview.getState().message).to.include('Confirm an available'); await preview.dispose();
+  });
+  it('returns cancellation during profile closure on disposal and shares the native close', async () => {
+    let close; const context = runtimeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, performanceCoordinator: null }); await preview.enable();
+    context.close = () => { context.closeCalls++; return new Promise(resolve => { close = () => { context.state = 'closed'; resolve(); }; }); };
+    const pending = preview.configureAudioRuntime({ latencyProfile: 'balanced' }); await turn(); const disposed = preview.dispose(); close();
+    expect((await pending).status).to.equal('canceled'); await disposed; expect(context.closeCalls).to.equal(1); expect(preview.getAudioRuntimeConfig().latencyProfile).to.equal('performance');
+  });
 });
 
 describe('BrowserNotePreview', function() {

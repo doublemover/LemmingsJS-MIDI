@@ -28,6 +28,11 @@ describe('main audio runtime configuration and observation', () => {
     expect(value.config.preferredSampleRate).to.equal(44100); expect(value.outputSelection.preferenceObserved).to.equal(false);
     expect(value.playbackStats.metrics).to.include({ underrunEvents: 2, totalDuration: 10 }); f.owner.dispose();
   });
+  it('distinguishes a known silent route from an unavailable route observation', () => {
+    const f = fixture(); f.context.sinkId = { type: 'none' }; const silent = f.read();
+    expect(silent.outputSelection).to.include({ actualSink: 'silent', preferenceObserved: false });
+    delete f.context.sinkId; f.context.emit('sinkchange'); expect(f.read().outputSelection).to.include({ actualSink: 'unknown', preferenceObserved: null }); f.owner.dispose();
+  });
   it('reuses bounded immutable observations and reads at most once per second', () => {
     const f = fixture(), first = f.read();
     for (let time = 1; time < 1000; time++) { f.host(time); expect(f.read()).to.equal(first); }

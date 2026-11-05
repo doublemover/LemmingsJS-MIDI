@@ -15,3 +15,11 @@ export function audioRuntimeContextOptions(config) {
   return { latencyHint: profiles[config.latencyProfile], ...(config.preferredSampleRate === null ? {} : { sampleRate: config.preferredSampleRate }),
     ...(config.sinkPreference ? { sinkId: config.sinkPreference } : {}) };
 }
+/** Compare a native sink observation without exposing its identifier.
+ * @param {unknown} sink @param {string} preference @returns {boolean | null}
+ */
+export function audioRuntimeSinkMatches(sink, preference) {
+  if (typeof sink === 'string') return sink === preference;
+  try { if (sink && typeof sink === 'object' && Reflect.get(sink, 'type') === 'none') return false; } catch { /* An unavailable observation remains unknown. */ }
+  return null;
+}

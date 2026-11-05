@@ -1,9 +1,15 @@
 const milliseconds = seconds => Number.isFinite(seconds) ? (seconds * 1000).toFixed(1) + ' ms' : 'unknown';
 const outcomeText = result => {
   if (result?.requiresEnable) return 'Audio settings applied. Enable browser audio to continue; held notes and old queues were stopped.';
+  const failure = { NotAllowedError: 'The browser did not allow output selection. Review speaker permissions and retry.',
+    NotFoundError: 'That audio output is unavailable. Choose another output or use the default.',
+    InvalidAccessError: 'The browser could not open that output. Choose another output or use the default.',
+    OutputRetirementUnconfirmed: 'The previous output has not confirmed it stopped. Stop audio and retry.',
+    ContextRetirementUnconfirmed: 'The previous audio context has not confirmed it closed. Stop audio and retry.',
+    OutputSelectionUnconfirmed: 'The browser did not confirm this output. Review the output and retry.' }[result?.errorCode];
   return { unchanged: 'Audio settings are unchanged.', unsupported: 'This browser cannot select that output. The current output is kept.', busy: 'Finish the current audio change first.',
     retired: 'The audio owner is closed.', canceled: 'Audio change canceled. Review the current output before enabling audio.',
-    failed: 'Audio change failed' + (result?.errorCode ? ' (' + result.errorCode + ')' : '') + '. Review the output before enabling audio.' }[result?.status] || 'Audio settings are unavailable.';
+    failed: failure || 'Audio change failed. Review the output before enabling audio.' }[result?.status] || 'Audio settings are unavailable.';
 };
 
 /** Compact controls for the main AudioContext, separate from the private cue route. */
@@ -29,7 +35,7 @@ export function createAudioRuntimeSettingsView({ document, readSnapshot, configu
     const pending = busy || snapshot.transition.pending;
     for (const control of controls) control.disabled = pending;
     choose.disabled ||= !snapshot.chooserAvailable || observation?.outputSelection.setSinkIdAvailable !== true;
-    defaults.disabled ||= observation?.outputSelection.setSinkIdAvailable !== true && observation?.contextState !== 'not-created';
+    defaults.disabled ||= observation?.outputSelection.setSinkIdAvailable !== true && observation?.contextState !== 'not-created' && config?.sinkPreference !== 'explicit-device' && observation?.outputSelection.actualSink !== 'silent';
     reset.disabled ||= observation?.playbackStats.availability !== 'available';
     write(readout, 'Actual rate: ' + (observation?.actualSampleRate == null ? 'not created' : (observation.actualSampleRate / 1000).toFixed(1) + ' kHz') +
       '; context: ' + (observation?.contextState || 'unknown') + '; output: ' + (observation?.outputSelection.actualSink || 'unknown') +

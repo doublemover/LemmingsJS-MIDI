@@ -1,5 +1,5 @@
 // @ts-check
-import { normalizeAudioRuntimeConfig } from './AudioRuntimeConfig.js';
+import { normalizeAudioRuntimeConfig, audioRuntimeSinkMatches } from './AudioRuntimeConfig.js';
 /** @typedef {import('./AudioRuntimeContracts.js').AudioRuntimeTransitionResult} TransitionResult */
 /** @param {unknown} error */
 const errorCode = error => {
@@ -27,21 +27,34 @@ export function createAudioRuntimeTransition(ports) {
     // Validate before permission, stopping output or touching a native adapter.
     const config = normalizeAudioRuntimeConfig(input), context = ports.getContext(), previous = ports.getConfig(), chooser = ports.chooseOutput;
     if (disposed || ports.isRetired()) return Promise.resolve(result('retired'));
-    const routeMatches = sink => !context || !('sinkId' in context) || context.sinkId === sink;
-    const rebuild = config.latencyProfile !== previous.latencyProfile || config.preferredSampleRate !== previous.preferredSampleRate;
+    const readSink = () => { try { return context?.sinkId; } catch { return undefined; } };
+    const routeMatches = sink => audioRuntimeSinkMatches(readSink(), sink) !== false;
     const changeSink = config.sinkPreference !== previous.sinkPreference || !routeMatches(config.sinkPreference);
+    const rebuild = config.latencyProfile !== previous.latencyProfile || config.preferredSampleRate !== previous.preferredSampleRate ||
+      !!context && !choose && changeSink && config.sinkPreference === '' && typeof context.setSinkId !== 'function';
     if (choose && (!ports.chooseOutput || context && typeof context.setSinkId !== 'function') || !choose && context && !rebuild && changeSink && typeof context.setSinkId !== 'function') return Promise.resolve(result('unsupported'));
     if (!choose && !rebuild && !changeSink) return Promise.resolve(result('unchanged'));
     /** @type {(value: TransitionResult) => void} */
     let resolve;
     const promise = new Promise(done => { resolve = done; });
     const operation = { canceled: false, promise }; pending = operation;
-    const current = () => !disposed && !operation.canceled && !ports.isRetired() && ports.getContext() === context;
+    const canceled = () => disposed || operation.canceled || ports.isRetired();
+    const current = () => !canceled() && ports.getContext() === context;
     /** @param {import('./AudioRuntimeContracts.js').AudioRuntimeTransitionPhase} value */
     const stage = value => { phase = value; notify(); };
     // Run directly so the browser's output chooser retains the calling gesture.
     const run = async () => {
-      let next = config;
+      let next = config, rebuilt = false;
+      /** @param {import('./AudioRuntimeContracts.js').AudioRuntimeTransitionContext} oldContext @returns {Promise<TransitionResult | null>} */
+      const retire = async oldContext => {
+        stage('closing'); if (!current()) return result('canceled');
+        const confirmed = await ports.retireContext(oldContext);
+        if (canceled()) return result('canceled');
+        if (!confirmed) return result('failed', 'ContextRetirementUnconfirmed');
+        // Retirement deliberately removes the old context; never replace a peer.
+        if (ports.getContext() !== null) return result('canceled');
+        rebuilt = true; return null;
+      };
       if (choose) {
         stage('selecting'); if (!current()) return result('canceled');
         if (!chooser) return result('unsupported');
@@ -52,25 +65,33 @@ export function createAudioRuntimeTransition(ports) {
         if (context && !rebuild && typeof context.setSinkId !== 'function') return result('unsupported');
       }
       stage('stopping'); if (!current()) return result('canceled');
-      if (!await ports.quiesce()) return result('failed', 'OutputRetirementUnconfirmed');
+      if (!await ports.quiesce()) return canceled() ? result('canceled') : result('failed', 'OutputRetirementUnconfirmed');
       if (!current()) return result('canceled');
       if (context && rebuild) {
-        stage('closing'); if (!current()) return result('canceled');
-        if (!await ports.retireContext(context)) return result('failed', 'ContextRetirementUnconfirmed');
-        // Retirement deliberately removes the old context; no other replacement is allowed.
-        if (disposed || operation.canceled || ports.isRetired() || ports.getContext() !== null) return result('canceled');
+        const failure = await retire(context); if (failure) return failure;
       } else if (context) {
         stage('switching'); if (!current()) return result('canceled');
         const select = context.setSinkId;
         if (!current()) return result('canceled');
         if (typeof select !== 'function') return result('unsupported');
-        await Reflect.apply(select, context, [next.sinkPreference]);
-        if (!current()) return result('canceled');
-        if (context.sinkId !== next.sinkPreference) return result('failed', 'OutputSelectionUnconfirmed');
+        try { await Reflect.apply(select, context, [next.sinkPreference]); }
+        catch (error) {
+          // A native default-route refusal can leave this context on its silent
+          // sink. Retire it; the next explicit enable creates a default context.
+          if (next.sinkPreference !== '' || !['NotFoundError', 'InvalidAccessError', 'NotSupportedError'].includes(errorCode(error))) throw error;
+          const failure = await retire(context); if (failure) return failure;
+        }
+        if (!rebuilt) {
+          if (!current()) return result('canceled');
+          if (audioRuntimeSinkMatches(readSink(), next.sinkPreference) !== true) {
+            if (next.sinkPreference !== '') return result('failed', 'OutputSelectionUnconfirmed');
+            const failure = await retire(context); if (failure) return failure;
+          }
+        }
       }
       if (disposed || operation.canceled || ports.isRetired()) return result('canceled');
       ports.commit(next);
-      return result(rebuild && context ? 'rebuild-ready' : 'configured');
+      return result(rebuilt ? 'rebuild-ready' : 'configured');
     };
     const settle = value => { last = value; if (pending === operation) { pending = null; phase = 'idle'; } resolve(value); notify(); };
     run().then(settle, error => settle(result(disposed || operation.canceled || ports.isRetired() ? 'canceled' : 'failed', errorCode(error))));

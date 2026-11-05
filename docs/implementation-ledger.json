@@ -6876,5 +6876,52 @@
       "builtGeneration": "77a3b1a27de8d83fd5470b77823b8fe3414801f09b5db01ab0f8e5bfee00fdbc"
     },
     "remaining": "Independent current whole-branch CI and remaining backlog.450supplemental setup timeout is locally resolved by the final six-case batch;1044runtime/persistence/device/per-profile scope and1120remaining matrices stay separate."
+  },
+  "continuation452": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Acknowledge default-route recovery through old-context retirement and explicit fresh enable; refuse known silent/mismatched output admission and preserve required CI receipts only after their producing step runs.",
+    "evidence": {
+      "path": "docs/validation/native-default-output-recovery-2026-11-05.json",
+      "bytes": 656708,
+      "sha256": "37ce917e101bc8ef96fa01c7c6d588df9271e69a3f781cf81fa69e3a4f596420"
+    },
+    "validation": {
+      "nodeCases": 620,
+      "nativeCases": 7,
+      "nativeUnexpected": 0,
+      "nativeFlaky": 0,
+      "scopeCoverage": {
+        "lines": 95.11,
+        "branches": 85.09,
+        "functions": 90.31
+      },
+      "desktopBoundarySelection": 31,
+      "originalKnownSilentAdmissionReproduced": true,
+      "originalDefaultRefusalReproduced": true
+    },
+    "source": {
+      "browserPaths": 1291,
+      "browserDigest": "2d1dc4b37c7e23206b8dd823fc25f84e4b411d7a1d5cee77846bc3b1a11ee7d4",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1600,
+      "byteExact": 1588,
+      "untouchedCheckoutNewlines": 12,
+      "inventory": "Exact451recursive base plus11hashed upserts"
+    },
+    "ci": {
+      "original451": "29 desktop passes/1 native default-refusal failure; other jobs separate",
+      "precedingCompleteGreen": 449,
+      "precedingNodePasses": 7880,
+      "latestIndependentlyInventoriedCompleteGreen": 437,
+      "current452": "not submitted"
+    },
+    "remaining": [
+      "No full local suite repeated. Scope coverage is separate from whole-branch CI.",
+      "No physical loopback, hot-unplug/default-device matrix or all-engine runtime transition qualification.",
+      "Known CI451 failure is retained; local seven-case success does not relabel that CI run.",
+      "1044 complete component/freshness readouts and measured profile/engine tradeoffs remain; 1120 coupled model families remain."
+    ]
   }
 }

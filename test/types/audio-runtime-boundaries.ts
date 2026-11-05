@@ -1,4 +1,4 @@
-import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions } from '../../js/app/midi-ui/AudioRuntimeConfig.js';
+import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions, audioRuntimeSinkMatches } from '../../js/app/midi-ui/AudioRuntimeConfig.js';
 import { createAudioRuntimeObservation } from '../../js/app/midi-ui/AudioRuntimeObservation.js';
 import { createAudioRuntimeTransition } from '../../js/app/midi-ui/AudioRuntimeTransition.js';
 import type { AudioRuntimeSnapshot } from '../../js/app/midi-ui/AudioRuntimeContracts.js';
@@ -55,3 +55,6 @@ createAudioRuntimeTransition({ getConfig: () => config, getContext: () => contex
 createAudioRuntimeTransition({ getConfig: () => config, getContext: () => context, isRetired: () => false, quiesce: async () => true, commit: () => {} });
 // @ts-expect-error Runtime transition profiles use the same canonical configuration contract.
 transitions.request({ latencyProfile: 'fastest' });
+const outputMatch: boolean | null = audioRuntimeSinkMatches({ type: 'none' }, ''); void outputMatch;
+// @ts-expect-error Output preferences remain identifiers, not booleans.
+audioRuntimeSinkMatches('', false);
