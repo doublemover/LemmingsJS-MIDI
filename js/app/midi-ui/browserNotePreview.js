@@ -424,6 +424,7 @@ class BrowserNotePreview {
       setEffectBypass: (mode, expected) => this._channels.get(id + ':0')?.effects?.bypass(mode, expected) || null,
       isSourceVoiceAvailable: member => this._laneSourceBuses.get(id)?.buses.hasVoice(member) || false,
       getEffectPerformanceState: () => this._channels.get(id + ':0')?.effects?.performanceSnapshot() || null,
+      getEffectLatencyState: () => this._channels.get(id + ':0')?.effects?.latencyState() || Object.freeze({ latencyFrames: session.disposed ? null : 0, routes: 0, unresolved: session.disposed }),
       inspectEffectGraph: ({ requestHealth = false } = {}) => { const effects = this._channels.get(id + ':0')?.effects; if (requestHealth) effects?.requestInspection(); return effects?.state() || null; },
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
       setMasterVolume: value => this.setMasterVolume(value),
@@ -500,7 +501,7 @@ class BrowserNotePreview {
   chooseAudioOutput() { return this._runtimeTransition.choose(); }
   getAudioRuntimeSettingsState() {
     return Object.freeze({ observation: this.getAudioRuntimeObservation(), transition: this._runtimeTransition.state(),
-      chooserAvailable: typeof this._mediaDevices?.selectAudioOutput === 'function' });
+      chooserAvailable: typeof this._mediaDevices?.selectAudioOutput === 'function', masterLookaheadMs: this._context ? this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0 : null });
   }
 
   _closeAudioContext(context) {

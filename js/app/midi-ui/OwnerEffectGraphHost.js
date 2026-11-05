@@ -127,6 +127,17 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
       transitionFrames: Math.ceil(transitionSeconds * context.sampleRate), appliedFrame: null }),
     performanceSnapshot: () => !disposed && current ? Object.freeze({ definition: current.graph.plan.definition, graphDefinitionHash: current.graph.hash, ownerRouteRevision: revision,
       mode, sampleRate: context.sampleRate, targetFrame: Math.ceil(context.currentTime * context.sampleRate), routeTransition: current.publication }) : null,
+    latencyState: () => {
+      let frames = 0, routes = 0, unresolved = disposed || unknown.size > 0;
+      for (const arm of arms) {
+        if (!arm.publication) continue;
+        routes++;
+        const value = arm.graph.plan.latencyFrames;
+        if (!Number.isSafeInteger(value) || value < 0) unresolved = true;
+        else frames = Math.max(frames, value);
+      }
+      return Object.freeze({ latencyFrames: unresolved ? null : frames, routes, unresolved });
+    },
     requestInspection: () => current?.graph.requestInspection?.() || false,
     update(nodeId, values, targetFrame, expected = null) { guard(); if (expected && (expected.ownerRouteRevision !== revision || expected.graphDefinitionHash !== current?.graph.hash)) throw failure('stale-effect-control', 'The effect control belongs to an earlier owner route.'); if (!current || !['active', 'mute'].includes(mode)) throw failure('effect-not-active', 'Prepare an active owner rack before performing its controls.'); return Object.freeze({ ...current.graph.update(nodeId, values, targetFrame), ownerRouteRevision: revision }); }, panic: () => bypass('panic'), state,
     dispose() {

@@ -66,6 +66,33 @@ export interface AudioRuntimeObserver {
   dispose(): void;
 }
 export type AudioRuntimeTransitionPhase = 'idle' | 'selecting' | 'stopping' | 'switching' | 'closing';
+export interface AudioPhysicalLatencySnapshot {
+  readonly contextEpoch: number | null;
+  readonly sampleRate: number | null;
+  readonly presentationDelayMs: number;
+  readonly effects: Readonly<{ latencyFrames: number | null; routes: number; unresolved: boolean }> | null;
+  readonly correlation: Readonly<{ presentationMs: number; uncertaintyMs: number; method: 'output-timestamp' | 'context-correlation-with-reported-latency' }> | null;
+}
+export interface AudioLatencyBreakdownInput {
+  readonly observation: AudioRuntimeSnapshot | null;
+  readonly observedAtHostMs: number;
+  readonly tickDurationMs?: number | null;
+  readonly speed?: number | null;
+  readonly paused: boolean;
+  readonly physical: AudioPhysicalLatencySnapshot | null;
+  readonly masterLookaheadMs: number | null;
+}
+export interface AudioLatencyBreakdown {
+  readonly schema: 'lemmings-audio-latency-breakdown/v1';
+  readonly observedAtHostMs: number | null;
+  readonly contextEpoch: number | null;
+  readonly estimatesAreAdditive: false;
+  readonly acousticMeasurement: false;
+  readonly simulation: Readonly<{ quantizationMs: number | null; state: 'paused' | 'unavailable' | 'advancing'; scope: 'configured-tick-upper-bound-not-observed-scheduling-delay' }>;
+  readonly queue: Readonly<{ configuredLeadMs: number | null; scope: 'physical-browser-audio-presentation-hold-not-midi-clock-lookahead' }>;
+  readonly dsp: Readonly<{ masterLookaheadMs: number | null; effectLatencyMs: number | null; effectState: 'unknown' | 'no-effect-route' | 'declared'; retainedEffectRoutes: number | null; scope: 'declared-parallel-effect-path-maximum-not-measured-dsp-or-total' }>;
+  readonly correlation: Readonly<{ freshness: 'context-not-running' | 'hidden-or-unknown' | 'context-changed-or-unavailable' | 'unavailable' | 'available' | 'stale-or-invalid'; method: 'output-timestamp' | 'context-correlation-with-reported-latency' | null; ageMs: number | null; uncertaintyMs: number | null }>;
+}
 export interface AudioRuntimeTransitionResult {
   readonly status: 'configured' | 'rebuild-ready' | 'unchanged' | 'unsupported' | 'busy' | 'retired' | 'canceled' | 'failed';
   readonly errorCode: string | null;

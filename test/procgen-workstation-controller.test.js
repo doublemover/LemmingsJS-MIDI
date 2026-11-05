@@ -15,6 +15,19 @@ import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/R
 import { createTestBackgroundJobs } from './helpers/background-worker.js';
 
 describe('ProcGen workstation orchestration', () => {
+  it('reads current simulation, physical presentation and shared-mix components without constructing another audio owner', async () => {
+    let ownerCreations = 0;
+    const audio = { createSession() { ownerCreations++; return { getState: () => ({ enabled: false }), stop() {}, dispose() {}, getEffectLatencyState: () => ({ latencyFrames: 0, routes: 0, unresolved: false }) }; },
+      getAudioRuntimeSettingsState: () => ({ observation: { contextEpoch: 7, contextState: 'running', visibility: 'visible' }, transition: { pending: false }, masterLookaheadMs: 6 }) };
+    const f = setup({ audio, physicalOnly: true });
+    try {
+      f.runtime.world.timer.TIME_PER_FRAME_MS = 60; f.studio.bindRuntime(); f.studio.play(); f.runtime.world.timer.speedFactor = 3;
+      const count = ownerCreations, value = f.studio.handlers.audioRuntimeState();
+      expect(value.breakdown.simulation.quantizationMs).to.equal(20); expect(value.breakdown.queue.configuredLeadMs).to.equal(24); expect(value.breakdown.dsp.masterLookaheadMs).to.equal(6);
+      for (let i = 0; i < 20; i++) f.studio.handlers.audioRuntimeState(); expect(ownerCreations).to.equal(count);
+      f.studio.transport.pause(); expect(f.studio.handlers.audioRuntimeState().breakdown.simulation.state).to.equal('paused');
+    } finally { await f.studio.dispose().completion; }
+  });
   it('records a paused nominal-rate step before its real physical boundary and restores the stopped clock', async () => {
     const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
     const f = setup({ storageOverride: storage, physicalOnly: true, worldFactory: () => new ProcgenLaneWorld({ masks, seed: 7, assists: false }) });

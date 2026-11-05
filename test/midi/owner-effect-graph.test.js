@@ -6,6 +6,28 @@ import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetire
 const node = () => ({ gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} }, connect() {}, disconnect() {} });
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 describe('owner effect transitions and producer lifetime (API doubles)', () => {
+  it('reads the declared parallel-path maximum without processor inspection or unpublished candidate evidence', async () => {
+    const resources = createAudioResourceLeases(), context = { sampleRate: 48000, currentTime: 0, state: 'running', createGain: node };
+    let release, inspections = 0; const staged = new Promise(resolve => { release = resolve; });
+    const host = createOwnerEffectGraphHost({ context, input: node(), dry: node(), destination: node(), resources, owner: 'latency-owner', prepareGraph: async definition => ({
+      hash: definition.id, plan: { inputs: ['in'], outputs: ['out'], maximumTailFrames: 48000, latencyFrames: definition.frames }, getInput: node, getOutput: node,
+      diagnostics: () => { inspections++; return {}; }, confirmReady: async () => {}, checkPublication() {}, activateSidechains: () => definition.id === 'candidate' ? staged : undefined,
+      panic() {}, dispose: () => createProcgenRetirementScope().retire() }) });
+    try {
+      expect(host.latencyState()).to.deep.equal({ latencyFrames: 0, routes: 0, unresolved: false });
+      await host.prepare({ id: 'first', frames: 240 }); const candidate = host.prepare({ id: 'candidate', frames: 480 }); await turn();
+      const before = inspections; expect(host.latencyState()).to.deep.equal({ latencyFrames: 240, routes: 1, unresolved: false }); expect(inspections).to.equal(before);
+      release(); await candidate; expect(host.latencyState()).to.deep.equal({ latencyFrames: 480, routes: 2, unresolved: false });
+    } finally { release(); await host.dispose().completion; await resources.dispose().completion; }
+    expect(host.latencyState().latencyFrames).to.equal(null);
+  });
+  it('keeps unknown native effect latency distinct from a zero-delay route', async () => {
+    const resources = createAudioResourceLeases(), context = { sampleRate: 48000, currentTime: 0, state: 'running', createGain: node };
+    const host = createOwnerEffectGraphHost({ context, input: node(), dry: node(), destination: node(), resources, owner: 'unknown-latency', prepareGraph: async () => ({
+      plan: { inputs: ['in'], outputs: ['out'], maximumTailFrames: 0, latencyFrames: null }, getInput: node, getOutput: node, diagnostics: () => ({}), confirmReady: async () => {}, panic() {}, dispose: () => createProcgenRetirementScope().retire() }) });
+    try { await host.prepare({}); expect(host.latencyState()).to.deep.equal({ latencyFrames: null, routes: 1, unresolved: true }); }
+    finally { await host.dispose().completion; await resources.dispose().completion; }
+  });
   it('caps active/tailing graphs and holds route/storage reservations until every producer acknowledges retirement', async () => {
     const resources = createAudioResourceLeases(), context = { sampleRate: 48000, currentTime: 0, state: 'running', createGain: node }, producers = [];
     const prepareGraph = async definition => {

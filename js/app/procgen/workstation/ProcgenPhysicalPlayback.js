@@ -305,6 +305,14 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
       { name: 'clock', run: () => { clock.invalidate(); anchoredEpoch = null; anchoredBpm = null; } }
     ]);
   };
+  /** @param {{correlate?: boolean, contextEpoch?: number | null}} [options] @returns {import('../../midi-ui/AudioRuntimeContracts.js').AudioPhysicalLatencySnapshot} */
+  const latencyState = ({ correlate = true, contextEpoch = null } = {}) => {
+    const context = audio?.getAudioContext?.();
+    const correlation = !disposed && correlate && executionEpoch !== null && contextEpoch !== null && permitted()
+      ? clock.correlateDisplay({ executionEpoch, contextEpoch }) : null;
+    return Object.freeze({ contextEpoch, sampleRate: context?.sampleRate ?? null, presentationDelayMs,
+      effects: disposed ? null : session?.getEffectLatencyState?.() || null, correlation });
+  };
   const dispose = () => {
     if (retirement.getReceipt()) return retirement.getReceipt();
     disposed = true;
@@ -327,6 +335,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     pendingInstrumentCount: () => laneInstruments?.pendingCount() || 0,
     operationalState: () => Object.freeze({ prepared, routingUnavailable, accepted, degraded, rejected, pendingAdmissions, leaseFailures }),
+    latencyState,
     diagnostics: ({ requestHealth = false, requestSourceDiagnostics = false, includeSourceTraces = false } = {}) => Object.freeze({ prepared, routingUnavailable, enabled: externalEnabled() || !!session?.getState().enabled, audioEnabled: !!session?.getState().enabled, externalOutputs: Object.freeze(additionalOutputs.map(output => output.diagnostics?.() || null)), accepted, degraded, rejected, pendingAdmissions,
       sourceRender: requestSourceDiagnostics ? (backend || nativeBackend)?.renderDiagnostics?.({ includeTraces: includeSourceTraces }) || null : null,
       effects: session?.inspectEffectGraph?.({ requestHealth }) || null, preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, scoreMorph: sceneMorph?.state() || null, cavityBody: cavityBody?.state() || null, cavitySourceAdmission: cavityBackend?.cavityDiagnostics() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),

@@ -113,6 +113,9 @@ test('built desktop audio settings preserve the authored project and reprepare t
   await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
   const prior = await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), audio: window.__PROCGEN_STUDIO__.handlers.audioRuntimeState() }));
   const summary = page.locator('.studio-audio-runtime > summary'); await revealWorkstationControl(page, summary); await summary.click();
+  await page.locator('.studio-audio-latency-breakdown > summary').click();
+  await expect(page.locator('.studio-audio-latency-breakdown')).toContainText('Physical audio presentation hold: 24.0 ms');
+  await expect(page.locator('.studio-audio-latency-breakdown')).toContainText('Shared mix lookahead: 6.0 ms');
   await page.getByRole('combobox', { name: 'Audio latency profile' }).selectOption('robust'); await page.getByRole('combobox', { name: 'Preferred audio sample rate' }).selectOption('44100');
   const geometry = await page.locator('.studio-audio-runtime').evaluate(element => { const box = element.getBoundingClientRect(); return { x: box.x, y: box.y, right: box.right, bottom: box.bottom, width: box.width, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight }; });
   const imagePath = testInfo.outputPath('main-audio-settings.png'); await page.screenshot({ path: imagePath });
@@ -123,11 +126,14 @@ test('built desktop audio settings preserve the authored project and reprepare t
   await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false');
   const stopped = await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), audio: window.__PROCGEN_STUDIO__.handlers.audioRuntimeState(), tick: window.__PROCGEN_LANES__.world.tickIndex }));
   expect(stopped.project).toBe(prior.project); expect(stopped.audio.observation.actualSampleRate).toBeNull(); expect(stopped.audio.observation.config).toMatchObject({ latencyProfile: 'robust', preferredSampleRate: 44100 });
+  expect(stopped.audio.breakdown.correlation.freshness).toBe('context-not-running'); expect(stopped.audio.breakdown.dsp.masterLookaheadMs).toBeNull();
   await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Play world', exact: true }).click();
   await expect.poll(() => page.evaluate(() => { const state = window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics(); return state.accepted + state.degraded; }), { timeout: 15000 }).toBeGreaterThan(0);
   const resumed = await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), audio: window.__PROCGEN_STUDIO__.handlers.audioRuntimeState(), output: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics() }));
   expect(resumed.project).toBe(prior.project); expect(resumed.audio.observation.actualSampleRate).toBeGreaterThan(0); expect(resumed.audio.observation.contextEpoch).toBeGreaterThan(prior.audio.observation.contextEpoch);
+  expect(resumed.audio.breakdown.simulation.quantizationMs).toBeGreaterThan(0); expect(resumed.audio.breakdown.queue.configuredLeadMs).toBe(24); expect(resumed.audio.breakdown.dsp.masterLookaheadMs).toBe(6);
+  expect(resumed.audio.breakdown.estimatesAreAdditive).toBe(false); expect(resumed.audio.breakdown.acousticMeasurement).toBe(false);
   await page.locator('#procgenPanic').click();
   await testInfo.attach('built-main-audio-runtime-transition', { body: JSON.stringify({ viewport: page.viewportSize(), geometry, prior, stopped, resumed, scope: 'Actual built1920x1080workstation, native context replacement and physical backend admission; no acoustic receipt.' }, null, 2), contentType: 'application/json' });
 });

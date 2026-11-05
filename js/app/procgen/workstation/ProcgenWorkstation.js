@@ -1,4 +1,5 @@
 import { prepareCavityGeometryControl } from './CavityGeometryControl.js';
+import { createAudioLatencyBreakdown } from '../../midi-ui/AudioLatencyBreakdown.js';
 import { createLazyWorkstationToolGate } from './LazyWorkstationToolGate.js';
 import { planRecordedMidiExport } from './RecordedMidiExportPlan.js';
 import { planOriginalUmpClip } from './OriginalUmpRecordingSnapshot.js';
@@ -1897,7 +1898,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       }).filter(Boolean);
     },
     operationalState: getOperationalSnapshot,
-    audioRuntimeState: () => legacy.local.audio?.getAudioRuntimeSettingsState?.() || null,
+    audioRuntimeState: () => {
+      const snapshot = legacy.local.audio?.getAudioRuntimeSettingsState?.(); if (!snapshot) return null;
+      const world = runtime()?.world, physical = physicalPlayback?.latencyState({ contextEpoch: snapshot.observation?.contextEpoch ?? null, correlate: document.visibilityState === 'visible' }) || null;
+      return Object.freeze({ ...snapshot, breakdown: createAudioLatencyBreakdown({ observation: snapshot.observation, observedAtHostMs: now(),
+        tickDurationMs: world?.timer?.TIME_PER_FRAME_MS, speed: world?.timer?.speedFactor, paused: !transport.getState().playing,
+        physical, masterLookaheadMs: snapshot.masterLookaheadMs }) });
+    },
     configureAudioRuntime: safe(/** @param {import('../../midi-ui/AudioRuntimeContracts.js').AudioRuntimeConfigInput} input */ async input => {
       const audio = legacy.local.audio;
       if (!audio?.configureAudioRuntime || !audio.getAudioRuntimeConfig) return false;

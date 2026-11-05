@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Show separate simulation, presentation-hold, mix/effect and browser latency components, with context-bound correlation freshness and actionable desktop diagnostics.
+
 - Recover refused default audio routes through explicit context replacement, reject re-enable on a known wrong route, and preserve native failure/retirement evidence.
 
 - Reuse byte-verified immutable browser generations and analyze shared renderer code once per build, with bounded staging and safe concurrent publication.

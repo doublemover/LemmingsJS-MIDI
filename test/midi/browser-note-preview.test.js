@@ -27,6 +27,13 @@ const deferred = () => {
 };
 
 describe('separate cue workload and graph admission', () => {
+  it('exposes only existing shared-mix and owner-effect latency without creating a context to inspect it', async () => {
+    let created = 0; const preview = new BrowserNotePreview({ createAudioContext: () => { created++; return new FakeContext(); } }), session = preview.createSession('latency-readout');
+    expect(preview.getAudioRuntimeSettingsState().masterLookaheadMs).to.equal(null); expect(created).to.equal(0);
+    expect(session.getEffectLatencyState()).to.deep.equal({ latencyFrames: 0, routes: 0, unresolved: false });
+    await session.enable(); expect(preview.getAudioRuntimeSettingsState().masterLookaheadMs).to.equal(6); expect(created).to.equal(1);
+    await session.dispose(); expect(session.getEffectLatencyState()).to.include({ latencyFrames: null, unresolved: true }); await preview.dispose();
+  });
   it('reconciles retired lane source declarations only after the previous producer acknowledges retirement', async () => {
     const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context });
     const live = preview.createSession('source-restart'), neighbor = preview.createSession('source-neighbor');

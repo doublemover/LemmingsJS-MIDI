@@ -305,3 +305,10 @@ Renderer profiles are derived independently from a single bounded literal-import
 
 
 A runtime request for the default output can return `rebuild-ready` when native default selection is missing, refused or unconfirmed. The owner first acknowledges closure of the old context; no new context is created by that configuration request. The next explicit Enable creates a default context and reports its actual rate/output. Permission-denied or non-default requests do not silently choose a different output. A known silent or mismatched native sink blocks fresh admission, while an unobservable default-only API remains explicitly unknown and usable. Native error events during an owned switch/close feed that operation; outside errors and user Stop/disposal still cancel stale publication.
+
+
+## Desktop latency breakdown
+
+The Setup audio panel has an optional detailed breakdown of the configured simulation tick interval at the current speed, physical audio presentation hold, shared mix lookahead and the declared maximum latency across parallel active/tailing owner effect routes. Unknown native effect latency remains unknown; a rack with no retained routes is distinguishable from an unmeasured rack. Staged, unpublished graphs cannot become evidence. A small bounded getter reads the existing plans without requesting processor health, traversing source histories or constructing another audio context.
+
+The clock correlation is bound to the current context epoch and hidden/suspended/replaced contexts cannot report it as current. The panel distinguishes browser output timestamps from context correlation with browser estimates, and shows observation age and sampling uncertainty. Browser playback interval mean/min/max and cumulative underruns retain the adapter's independent availability and freshness. The configured hold is not MIDI clock lookahead; effect paths are parallel, and none of these overlapping values is added into an acoustic total. Robust-profile and wired-output suggestions are diagnostic actions, not guaranteed latency improvements.

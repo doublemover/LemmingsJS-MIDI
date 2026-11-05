@@ -1,6 +1,7 @@
 import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions, audioRuntimeSinkMatches } from '../../js/app/midi-ui/AudioRuntimeConfig.js';
 import { createAudioRuntimeObservation } from '../../js/app/midi-ui/AudioRuntimeObservation.js';
 import { createAudioRuntimeTransition } from '../../js/app/midi-ui/AudioRuntimeTransition.js';
+import { createAudioLatencyBreakdown } from '../../js/app/midi-ui/AudioLatencyBreakdown.js';
 import type { AudioRuntimeSnapshot } from '../../js/app/midi-ui/AudioRuntimeContracts.js';
 const config = normalizeAudioRuntimeConfig({ latencyProfile: 'balanced', preferredSampleRate: 44100 });
 const request: AudioContextOptions = audioRuntimeContextOptions(config);
@@ -58,3 +59,11 @@ transitions.request({ latencyProfile: 'fastest' });
 const outputMatch: boolean | null = audioRuntimeSinkMatches({ type: 'none' }, ''); void outputMatch;
 // @ts-expect-error Output preferences remain identifiers, not booleans.
 audioRuntimeSinkMatches('', false);
+const latency = createAudioLatencyBreakdown({ observation: snapshot, observedAtHostMs: performance.now(), paused: false, physical: null, masterLookaheadMs: 6 });
+// @ts-expect-error Latency observations retain numeric units.
+createAudioLatencyBreakdown({ observation: snapshot, observedAtHostMs: 'now', paused: false, physical: null, masterLookaheadMs: 6 });
+// @ts-expect-error Nested latency observations are immutable.
+latency.dsp.effectLatencyMs = 0;
+// @ts-expect-error Digital estimates do not establish an acoustic measurement.
+const acoustic: true = latency.acousticMeasurement;
+void acoustic;

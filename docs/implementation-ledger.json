@@ -6923,5 +6923,48 @@
       "Known CI451 failure is retained; local seven-case success does not relabel that CI run.",
       "1044 complete component/freshness readouts and measured profile/engine tradeoffs remain; 1120 coupled model families remain."
     ]
+  },
+  "continuation453": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Separate current simulation quantization, physical presentation hold, shared-mix lookahead, declared parallel effect latency, browser estimates and context-bound display correlation without inferring an acoustic total.",
+    "evidence": {
+      "path": "docs/validation/desktop-latency-components-2026-11-05.json",
+      "bytes": 584122,
+      "sha256": "c64126866091967e8b2b7391b546ef097167b4614dc6e94f6df107f890647238"
+    },
+    "validation": {
+      "nodeCases": 576,
+      "nativeCases": 7,
+      "nativeSkipped": 0,
+      "nativeUnexpected": 0,
+      "nativeFlaky": 0,
+      "scopeCoverage": {
+        "lines": 94.76,
+        "branches": 82.31,
+        "functions": 80.78
+      },
+      "componentHelperCoverage": {
+        "lines": 100,
+        "branches": 98.46,
+        "functions": 100
+      }
+    },
+    "source": {
+      "browserPaths": 1292,
+      "browserDigest": "7f34a1a5b9d66a99bcfee4e927ed41f78fcb300f8b2ec567680f254edca19e0a",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1603,
+      "byteExact": 1591,
+      "untouchedCheckoutNewlines": 12,
+      "inventory": "Exact452recursive base plus16hashed upserts"
+    },
+    "remaining": [
+      "No whole local suite repeated or deadline/threshold relaxed.",
+      "Local Windows Chromium actual runtime result is separate from other engines/hardware and complete CI.",
+      "Declared effect latency is separate from measured processing cost, tail duration, authored echo delays and acoustic latency.",
+      "1044 still needs default-device/unplug/permission-revocation engine cases and measured profile/CPU distributions; the new component readout does not close those."
+    ]
   }
 }

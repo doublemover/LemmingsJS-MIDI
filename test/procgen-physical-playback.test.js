@@ -21,6 +21,7 @@ describe('ProcGen physical playback', () => {
       const playback = createProcgenPhysicalPlayback({ presentationDelayMs, getGraph: () => project.procgen.physicalGraph, scoreTimeline: createProcgenPhysicalScoreClock(), now: () => 0 });
       expect(playback.diagnostics().clock.presentationDelayMs).to.equal(presentationDelayMs);
       expect(playback.diagnostics().clock.outputLatencySeconds).to.equal(null);
+      expect(playback.latencyState({ contextEpoch: 7, correlate: false })).to.deep.equal({ contextEpoch: 7, presentationDelayMs, sampleRate: null, effects: null, correlation: null });
       await playback.dispose().completion;
     }
   });
