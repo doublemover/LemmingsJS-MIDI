@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Retire background persistence copies before take replay, preserve unknown cleanup across retries and wait for recovery retirement during disposal.
+
 - Check workstation, recovery/storage and replacement-operation boundaries with explicit contracts and strict invalid-consumer fixtures.
 
 - Review unfinished work before prepared scene and lesson replacement, preserve one modal through naming and quota retry, and retain exact accepted document boundaries.

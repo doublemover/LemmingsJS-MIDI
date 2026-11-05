@@ -5695,5 +5695,99 @@
       "remaining": "Retained424 replay-memory ResourceBudgetError remainsactive;512MiBlimitunchanged.",
       "currentSource": "pending-publication"
     }
+  },
+  "continuation428": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Quiesce background persistence before causal replay, wait for all retirement outcomes, retain unknown recovery ownership and include recovery completion in disposal.",
+    "evidence": {
+      "path": "docs/validation/replay-persistence-retirement-desktop-2026-11-05.json",
+      "bytes": 832162,
+      "sha256": "8217f6b3f4171804e5c8234af62db532509006a674fb296cdc8f2a7b39f5718b"
+    },
+    "validation": {
+      "node": {
+        "suites": 44,
+        "tests": 692,
+        "passes": 692,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-05T05:43:05.207Z",
+        "end": "2026-11-05T05:43:55.170Z",
+        "duration": 49963
+      },
+      "desktopCases": 17,
+      "deterministicPersistenceSchedules": 9,
+      "scopedCoverage": {
+        "lines": {
+          "total": 3244,
+          "covered": 2725,
+          "skipped": 0,
+          "pct": 84
+        },
+        "statements": {
+          "total": 3244,
+          "covered": 2725,
+          "skipped": 0,
+          "pct": 84
+        },
+        "functions": {
+          "total": 461,
+          "covered": 331,
+          "skipped": 0,
+          "pct": 71.8
+        },
+        "branches": {
+          "total": 2674,
+          "covered": 1924,
+          "skipped": 0,
+          "pct": 71.95
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "criticalTypes": "passed",
+      "undefinedCalls": "passed",
+      "format": "passed"
+    },
+    "source": {
+      "browserDigest": "0c001afd8e37ca53356073bf18c4e618057da918be6fc4ad01a01425266fe6b5",
+      "paths": 1424,
+      "byteExact": 1411,
+      "unchangedCheckoutNewlines": 13,
+      "workerDigest": "147408a06b711f25ffe6f14b9729dc45b60131eb3c333340c90fc024eafc5962"
+    },
+    "issues": {
+      "openCount": 186,
+      "newSince424": [],
+      "closedSince424": [
+        1073,
+        1074
+      ],
+      "remaining": [
+        1089,
+        1120,
+        1162
+      ]
+    },
+    "ci": {
+      "latestCompleteGreen": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+      "parent427": {
+        "run": 41974215487,
+        "enginePassed": 40,
+        "engineFailed": 2,
+        "independentlyQualifiedActualNativeClockReceipts": 23,
+        "cancellationReceipts": 6,
+        "failures": [
+          "Firefox project startup target crash",
+          "WebKit50mscase timed out awaiting workstation boot before probe/source setup"
+        ]
+      },
+      "currentSource": "pending-publication"
+    }
   }
 }

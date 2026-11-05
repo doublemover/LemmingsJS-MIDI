@@ -14,7 +14,7 @@ export function target() {
 }
 export function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null,
   laneCount = 1, windowTimers = {}, navigationType = 'navigate', backgroundJobs, worldFactory = null, physicalOnly = false, audio, getInstrumentCatalog, outputSubscribe, resourceBudget = null,
-  workstationFactory = createProcgenWorkstation } = {}) {
+  workstationFactory = createProcgenWorkstation, prepareInspectionWorld = null } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
@@ -50,7 +50,7 @@ export function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = '
     restart: async request => { restarts.push(request); if (!request.session) studio.prepareSettings(); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
     captureCheckpoint: world => { captures.push(world); return world instanceof ProcgenLaneWorld ? captureProcgenCheckpoint(world) : { version: 2, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
-    getInstrumentCatalog, resourceBudget, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, backgroundJobs: jobs
+    getInstrumentCatalog, resourceBudget, prepareInspectionWorld, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, backgroundJobs: jobs
   });
   const dispose = studio.dispose; studio.dispose = () => { const retirement = dispose(); retirement.completion.then(() => midiJobs.dispose()); return retirement; };
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get physicalOwner() { return physicalOwner; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },

@@ -8,6 +8,7 @@ import { createProcgenProjectSummary } from './ProcgenProjectSummary.js';
 import { createProcgenReplacementReview } from './ProcgenReplacementPolicy.js';
 import { createProcgenOperationView, createProcgenOperationReceipt } from './ProcgenOperationView.js';
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
+import { awaitBackgroundFailureRetirement, resourceRetirementSummary } from '../../resources/ResourceRetirement.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { normalizeWorkstationDockPreferences } from './WorkstationDockState.js';
 import { createMidiParameterEvidence } from './MidiParameterEvidence.js';
@@ -146,6 +147,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let lastCausalTransport = null, causalClockBlocked = false;
   let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null, recoveryAbort = null;
+  /** @type {Promise<Error | null>} */
+  let recoveryCompletion = Promise.resolve(null);
+  let recoveryOwnershipFailure = null;
+  const persistenceReadHolds = new Set();
   const recoverySnapshotStats = { calls: 0, totalMs: 0, maximumMs: 0, lastMs: null };
   let recoveryState = 'unsaved', recoveryError = null, durableRecoveryRevision = -1, durableRecoveryTick = null, durableRecoveryGeneration = null, recoveryRetirement = null, lastRecoveryCommit = null;
   let lastRecoveryError = -Infinity;
@@ -411,7 +416,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (disposed || suppressPersistence || !boundRuntime || !window.setTimeout) return;
     if (recoveryTimer != null) window.clearTimeout?.(recoveryTimer);
     recoveryState = 'pending'; storageStatus();
+    if (persistenceReadHolds.size) return;
     recoveryTimer = window.setTimeout(() => { recoveryTimer = null; void recover(); }, delay);
+  };
+  const holdBackgroundPersistence = () => {
+    const token = {}; persistenceReadHolds.add(token);
+    if (recoveryTimer != null) { window.clearTimeout?.(recoveryTimer); recoveryTimer = null; }
+    recoveryAbort?.abort();
+    const preferences = preferenceWriter?.suspend();
+    return Object.freeze({ completion: Promise.allSettled([recoveryCompletion, preferences?.completion]).then(results => {
+      const failures = results.flatMap(result => result.status === 'rejected' ? [result.reason] : result.value ? [result.value] : []);
+      if (failures.length) throw failures.length === 1 ? failures[0] : new AggregateError(failures, 'Background persistence retirement is unresolved.');
+    }), release() {
+      if (!persistenceReadHolds.delete(token)) return;
+      preferences?.release();
+      if (!disposed && !persistenceReadHolds.size && recoveryState === 'pending') scheduleRecovery();
+    } });
   };
   const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false, restoringWorld = false } = {}) => {
     if (physicalAuthoringAbort && !restoringWorld) throw new Error('Physical authoring owns this paused project boundary.');
@@ -818,12 +838,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const openCausalWorkbench = async ({ throughSequence = null, branch = false, takeName = null } = {}) => {
     if (causalTake || causalTakeStart || causalTakeStop || worldBusy) throw new Error('Finish the current take and world operation before comparing a stored take.');
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId; if (!takeId) throw new Error('Select a stored take first.');
-    beforeRestart(); const sourceSerial = causalWorkbenchSourceSerial, owner = await getCausalWorkbench();
-    if (disposed || sourceSerial !== causalWorkbenchSourceSerial) throw new Error('The selected take changed before comparison began.');
-    const result = await owner.open({ takeId, throughSequence, takeName, branchTakeId: branch ? createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:') : null });
-    status(result.active ? 'Physical branch prepared paused. Step explicitly; the current project remains unchanged.' :
-      describeCausalReperformance(result.receipt));
-    return result;
+    beforeRestart(); const sourceSerial = causalWorkbenchSourceSerial, persistenceHold = holdBackgroundPersistence();
+    try {
+      await persistenceHold.completion;
+      if (disposed || sourceSerial !== causalWorkbenchSourceSerial) throw new Error('The selected take changed before comparison began.');
+      const owner = await getCausalWorkbench();
+      if (disposed || sourceSerial !== causalWorkbenchSourceSerial) throw new Error('The selected take changed before comparison began.');
+      const result = await owner.open({ takeId, throughSequence, takeName, branchTakeId: branch ? createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:') : null });
+      if (!disposed && sourceSerial === causalWorkbenchSourceSerial) status(result.active ? 'Physical branch prepared paused. Step explicitly; the current project remains unchanged.' :
+        describeCausalReperformance(result.receipt));
+      return result;
+    } finally { persistenceHold.release(); }
   };
   const finishCausalBranch = async ({ discard = false } = {}) => {
     if (!causalWorkbench?.state().active) throw new Error('No physical branch is open.');
@@ -1248,10 +1273,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
   };
   const recover = async () => {
-    if (disposed || worldBusy || recoveryPending || !runtime()?.world) return false;
+    if (disposed || worldBusy || recoveryPending || persistenceReadHolds.size || !runtime()?.world) return false;
     if (recoveryTimer != null) { window.clearTimeout?.(recoveryTimer); recoveryTimer = null; }
     recoveryPending = true; lastRecovery = now(); recoveryState = 'saving'; recoveryError = null; storageStatus();
     const controller = new AbortController(); recoveryAbort = controller;
+    /** @type {(failure: Error | null) => void} */
+    let settleRecovery = () => {};
+    let recoveryCleanupFailure = recoveryOwnershipFailure; recoveryCompletion = new Promise(resolve => { settleRecovery = resolve; });
     const sourceDocumentGeneration = documentGeneration;
     let capturedRevision = editRevision, capturedTick = runtime().world.tickIndex ?? null, capturedDocumentId = documentId, capturedStoredRevision = documentRevision;
     try {
@@ -1271,19 +1299,25 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const source = storage.supportsRecoveryFactory ? captureRecovery : captureRecovery();
       const receipt = storage.saveRecovery ? await storage.saveRecovery(source, { signal: controller.signal, documentRevision: capturedRevision, tick: capturedTick,
         laneCount: runtime().world.laneCount, incremental: !!getProcgenRecoveryJournal(runtime().world), snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick, sourceDocumentId: capturedDocumentId, sourceStoredRevision: capturedStoredRevision }) }) : await storage.save('__recovery__', source);
+      if (receipt?.retirement?.status === 'unknown') recoveryCleanupFailure = Object.assign(new Error('Recovery is durably saved but resource retirement is unresolved.'), { name: 'ResourceOwnershipError' });
       if (receipt?.durable) lastRecoveryCommit = Object.freeze({ documentGeneration: sourceDocumentGeneration, documentRevision: capturedRevision, tick: capturedTick, generation: receipt.generation, canceledAfterCommit: receipt.canceledAfterCommit || controller.signal.aborted, retirement: receipt.retirement || null });
       if (disposed) return false;
       if (documentGeneration !== sourceDocumentGeneration || controller.signal.aborted && !receipt?.durable) { recoveryState = 'pending'; storageStatus(); return false; }
-      recoveryRetirement = receipt?.retirement || null;
-      if (recoveryRetirement?.status === 'unknown') status('Recovery is durably saved; resource cleanup is unresolved. New large operations may remain blocked.');
+      recoveryRetirement = recoveryCleanupFailure ? resourceRetirementSummary([recoveryCleanupFailure]) : receipt?.retirement || null;
+      if (recoveryRetirement?.status === 'unknown') {
+        status('Recovery is durably saved; resource cleanup is unresolved. New large operations may remain blocked.');
+      }
       durableRecoveryRevision = capturedRevision; durableRecoveryTick = capturedTick;
       durableRecoveryGeneration = receipt?.generation ?? durableRecoveryGeneration;
       recoveryState = editRevision === capturedRevision ? 'saved' : 'pending'; storageStatus();
       return true;
     }
     catch (error) {
+      try { await awaitBackgroundFailureRetirement(error); } catch (failure) { recoveryCleanupFailure = failure; error = failure; }
+      recoveryCleanupFailure ||= error.retirementError || (error.name === 'ResourceOwnershipError' ? error : null);
+      if (recoveryCleanupFailure) recoveryRetirement = resourceRetirementSummary([recoveryCleanupFailure]);
       if (disposed) return false;
-      if (controller.signal.aborted) { recoveryState = 'pending'; storageStatus(); return false; }
+      if (controller.signal.aborted && !recoveryCleanupFailure) { recoveryState = 'pending'; storageStatus(); return false; }
       recoveryState = 'unavailable'; recoveryError = error; storageStatus();
       if (now() - lastRecoveryError >= 60000) {
         lastRecoveryError = now(); status('Recovery checkpoint was not saved. Export this project if storage remains unavailable. ' + (error?.message || ''));
@@ -1292,7 +1326,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     finally {
       if (recoveryAbort === controller) recoveryAbort = null;
-      recoveryPending = false;
+      recoveryOwnershipFailure ||= recoveryCleanupFailure;
+      recoveryPending = false; settleRecovery(recoveryOwnershipFailure);
       if (!disposed && recoveryState === 'pending' && !transport.getState().playing) scheduleRecovery();
     }
   };
@@ -2628,7 +2663,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return retirement.retire([
         { name: 'preference-writer', run: () => preferenceWriter?.dispose({ flush: true }) },
         { name: 'operation', run: () => operation?.controller.abort() },
-        { name: 'recovery-write', run: () => recoveryAbort?.abort() },
+        { name: 'recovery-write', run: async () => { recoveryAbort?.abort(); const failure = await recoveryCompletion; if (failure) throw failure; } },
         { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
         { name: 'persist-timer', run: () => { if (pendingPersist != null) window.clearTimeout?.(pendingPersist); } },
         { name: 'physical-control-owner', run: () => releasePhysicalControls?.() },

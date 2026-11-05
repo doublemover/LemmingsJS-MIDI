@@ -265,7 +265,9 @@ const installProcgenBootListeners = () => {
 const setActiveProcgenRuntimeForTest = (runtime) => {
   activeProcgenRuntime = runtime || null;
 };
-const getProcgenResourceBudgetState = () => procgenResourceBudget.diagnostics();
+const getProcgenResourceBudgetState = ({ owners = false } = {}) => owners
+  ? Object.freeze({ ...procgenResourceBudget.diagnostics(), ownerInspection: procgenResourceBudget.inspectOwners() })
+  : procgenResourceBudget.diagnostics();
 
 const getProcgenGroundSets = (config) => {
   const key = config?.path || null;

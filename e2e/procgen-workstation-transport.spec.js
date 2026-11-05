@@ -32,10 +32,10 @@ for (const scenario of [
       const journal = createProcgenCausalJournal({ storage }), manifest = await journal.openTake(before.takeId), records = (await journal.query({ takeId: before.takeId })).records;
       const input = records.find(record => record.kind === 'input-observation' && record.payload.kind === 'transport-state' && record.payload.speedFactor === (scenario.paused ? captured.state.nominalSpeed : captured.state.effectiveSpeed));
       const batch = records.find(record => record.kind === 'physical-batch' && record.tick > (input?.tick ?? before.tick));
-      const liveWorld = api.world; await studio.handlers.selectCausalTake(before.takeId); const budgetBeforeReplay = getProcgenResourceBudgetState(), replay = await studio.handlers.compareCausalTake();
+      const liveWorld = api.world; await studio.handlers.selectCausalTake(before.takeId); const budgetBeforeReplay = getProcgenResourceBudgetState({ owners: true }), replay = await studio.handlers.compareCausalTake();
       return { scenario: scenario.name, nativeKeydown: true, interruption: scenario.blur ? 'controlled-window-blur' : 'native-keyup', requestedGameSpeed: captured.state.gameSpeed, nominalSpeed: captured.state.nominalSpeed, effectiveSpeed: captured.state.effectiveSpeed, timer: captured.timer, complete: stopped.complete,
         input: input && { sequence: input.sequence, tick: input.tick, payload: input.payload }, batch: batch && { sequence: batch.sequence, tick: batch.tick, tickDurationMs: batch.payload.tickDurationMs }, finalTimer: api.world.timer.speedFactor,
-        replay: replay?.receipt || null, liveWorldUnchanged: api.world === liveWorld, budgetBeforeReplay, budgetAfterReplay: getProcgenResourceBudgetState(), checkpointReferences: [manifest.initialCheckpoint, ...manifest.checkpoints].map(({ bytes, nodes, sequence }) => ({ bytes, nodes, sequence })) };
+        replay: replay?.receipt || null, liveWorldUnchanged: api.world === liveWorld, budgetBeforeReplay, budgetAfterReplay: getProcgenResourceBudgetState({ owners: true }), checkpointReferences: [manifest.initialCheckpoint, ...manifest.checkpoints].map(({ bytes, nodes, sequence }) => ({ bytes, nodes, sequence })) };
     } finally { storage.close(); }
   }, { before, scenario, captured });
   await page.keyboard.up('Equal'); await testInfo.attach('physical-clock-input.json', { body: JSON.stringify(result), contentType: 'application/json' });
