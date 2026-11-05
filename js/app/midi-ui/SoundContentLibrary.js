@@ -22,6 +22,7 @@ const FACTORY_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'nati
 const FM_FORGE_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'fm-forge').source;
 const MATERIAL_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'struck-materials').source;
 const PLUCK_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'plucked-garden').source;
+const ENSEMBLE_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'ensemble-identities').source;
 const CHOIR_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'artificial-choir').source;
 const BIOME_SOURCE = new URL('../../../content/sounds/granular-biomes.json', import.meta.url);
 const WIND_SOURCE = new URL('../../../content/sounds/wind-bodies.json', import.meta.url);
@@ -115,6 +116,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const fmFactory = button('Prepare FM Forge', () => prepareFactory(FM_FORGE_SOURCE, 'FM Forge'));
   const materialFactory = button('Prepare struck materials', () => prepareFactory(MATERIAL_SOURCE, 'Struck materials'));
   const pluckFactory = button('Prepare plucked garden', () => prepareFactory(PLUCK_SOURCE, 'Plucked garden'));
+  const ensembleFactory = button('Prepare ensemble identities', () => prepareFactory(ENSEMBLE_SOURCE, 'Ensemble identities'));
   const biomeFactory = button('Prepare synthetic granular biomes', () => prepareFactory(BIOME_SOURCE, 'Synthetic granular biomes'));
   const windFactory = button('Prepare breath / wind bodies', () => prepareFactory(WIND_SOURCE, 'Breath and modal wind bodies'));
   const frictionFactory = button('Prepare bowed / friction bodies', () => prepareFactory(FRICTION_SOURCE, 'Bowed and friction bodies'));
@@ -319,7 +321,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       const realization = lease.prepared.pack.compilation?.realizationGroups?.find(group => group.profiles.some(profile => profile.patchIdentity === selection)), profile = realization?.profiles.find(profile => profile.patchIdentity === selection);
       if (realization && profile) modelInfo.textContent += ' Authored realization ' + profile.id + ' · ' + realization.profiles.length + ' explicit profile(s). ' + (realization.singleProfileLimit || profile.changedAudibleProperties.join(' ')) + ' Preserved invariant claims: ' + profile.preservedInvariants.join(', ') + '. Device cost, listening and numerical equivalence are unqualified; automatic quality substitution is unavailable.';
     } finally { lease.release(); } }
-    for (const element of [circuitFactory, circuitVariant, factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, tactileFactory, textureFactory, frictionFactory, windFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
+    for (const element of [circuitFactory, circuitVariant, factory, fmFactory, materialFactory, pluckFactory, ensembleFactory, choirFactory, spectrumFactory, biomeFactory, tactileFactory, textureFactory, frictionFactory, windFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     if (gestureSource !== sampleMapSource) {
       gestureSource = sampleMapSource; gesture.replaceChildren();
       for (const entry of sampleMap?.articulations || []) { const option = node('option', entry.name); option.value = entry.id; gesture.append(option); }

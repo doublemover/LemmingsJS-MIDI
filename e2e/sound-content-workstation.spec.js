@@ -51,22 +51,41 @@ test('Artificial Choir stages four recipes and only applies a real auditioned wo
   for (const name of ['VOWEL', 'BREATH', 'SIZE', 'CHORUS']) await expect(page.getByLabel(name + ' · next onset', { exact: true })).toBeVisible();
 });
 
-test('Plucked Garden requires real worklet application before Install and Apply', async ({ page }) => {
+for (const fixture of [
+  { title: 'Plucked Garden requires real worklet application before Install and Apply', prepare: 'Prepare plucked garden', revision: 'pluck.wire-ladder@1', count: 4 },
+  { title: 'Ensemble identities prepare a separate real source and preserve the physical world through Apply and Undo', prepare: 'Prepare ensemble identities', revision: 'ensemble.timber-pickers@1', count: 1, tags: ['@boundary', '@workstation-typed-controls'] }
+]) test(fixture.title, { tag: fixture.tags || [] }, async ({ page }, testInfo) => {
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
+  const worldState = () => page.evaluate(async () => {
+    const root = new URL('./', location.href), world = window.__PROCGEN_LANES__.world;
+    const { captureProcgenCheckpoint } = await import(new URL('js/app/procgen/workstation/ProcgenCheckpoint.js', root));
+    const { hashProcgenPhysicsCheckpoint } = await import(new URL('js/app/procgen/workstation/ProcgenCheckpointProvenance.js', root));
+    window.__ensembleSourceWorld ||= world;
+    return { physics: await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world)), sameWorld: world === window.__ensembleSourceWorld, tick: world.tickIndex,
+      project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()) };
+  });
+  const before = await worldState();
   await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
-  await dialog.getByRole('button', { name: 'Prepare plucked garden', exact: true }).click();
-  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
-  await revisions.selectOption('pluck.wire-ladder@1'); await expect(dialog.getByLabel('Instrument source model')).toContainText('seeded fractional-delay string');
+  await dialog.getByRole('button', { name: fixture.prepare, exact: true }).click();
+  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(fixture.count, { timeout: 30000 });
+  await revisions.selectOption(fixture.revision); await expect(dialog.getByLabel('Instrument source model')).toContainText('seeded fractional-delay string');
   await expect(dialog.getByRole('button', { name: 'Install auditioned pack', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click(); await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
   await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
   await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed', { timeout: 15000 });
   await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
+  expect(await worldState()).toEqual(before);
   await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
   expect(await page.evaluate(() => JSON.stringify(window.__PROCGEN_STUDIO__.getProject()))).toContain('worklet-pluck');
+  const applied = await worldState(); expect(applied.physics).toBe(before.physics); expect(applied.tick).toBe(before.tick); expect(applied.sameWorld).toBe(true);
+  if (fixture.tags) {
+    expect(applied.project).toContain('ensemble.timber-pickers');
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click(); await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.undo());
+    await expect.poll(worldState).toEqual(before); await testInfo.attach('ensemble-source-world-isolation', { contentType: 'application/json', body: JSON.stringify({ before, applied, restored: await worldState() }) });
+  }
 });
 
 test('struck materials audition real native mode children and expose saved onset controls after Apply', async ({ page }) => {
