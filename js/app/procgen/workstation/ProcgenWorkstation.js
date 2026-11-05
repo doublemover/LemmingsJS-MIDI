@@ -1095,140 +1095,143 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; laneDisplayWorldEpoch++; boundRuntime = next; boundSession = sessionIdentity;
     const boundProject = session?.project || project; let bindingSession = !!session;
     const playbackProject = () => bindingSession ? boundProject : project;
-    next.world?.configurePhysicalAuthoring?.(boundProject.procgen.physicalGraph, boundProject.procgen.fragmentInstances || []);
-    if (next.world?.prepareInterventions) prepareProjectJunctions(next.world, boundProject.procgen.junctions || []).commit();
-    laneObserver = createProcgenLaneObserver(next.world);
-    const bus = next.world?.soundEvents?.onEvent;
-    const physicalBus = next.world?.soundEvents?.onBatch;
-    physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
-    if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-    let physicalDocumentEpoch = documentGeneration;
-    const onPhysicalReceipt = receipt => {
-      if (physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
-      physicalLessonView?.observeReceipt(receipt, physicalDocumentEpoch);
-      if (causalTake && physicalReceiptBoundary && receipt.stage === 'effect-performance-capture') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' });
-      if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
-      else if (causalTake && physicalReceiptBoundary) { const recorded = causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary); if (receipt.schema === 'lemmings-effect-performance/v1' && recorded.status !== 'accepted') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' }); }
-      if (!physicalReceiptBuffer) { try { if (laneDisplayEvidence.receipt(laneDisplaySource(next.world), receipt)) view?.refreshLaneDisplays?.(); } catch {} }
-    };
-    const physicalMidi = createCausalMidiSink({ ports, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes),
-      isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
-    let nextPlayback;
-    physicalPlayback = nextPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, initialCavityBody: boundProject.procgen.sceneOrigin?.recipe.initialCavityBody || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
-      additionalOutputs: [physicalMidi],
-      onIntentProvenance: value => {
-        if (!physicalProvenanceBuffer || physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
-        if (value.kind === 'omitted') { physicalProvenanceDropped += value.count; return; }
-        if (physicalProvenanceBuffer.length < 512) physicalProvenanceBuffer.push(value); else physicalProvenanceDropped++;
-      },
-      getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
-      onInstrumentState: event => { if (!disposed && nextPlayback && physicalPlayback === nextPlayback && runtime() === next && (event.state === 'unavailable' || event.state === 'retirement-unknown')) status('Lane ' + event.laneId + ' instrument: ' + event.code); },
-      onReceipt: onPhysicalReceipt });
-    void nextPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => { if (!disposed && physicalPlayback === nextPlayback && runtime() === next) status('Saved lane instruments: ' + error.message); });
-    if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
-    if (typeof next.world.step === 'function') physicalFeedback = createPhysicalFeedbackController({ world: next.world, resourceBudget, getGraph: () => project.procgen.physicalGraph, recordInput: (input, boundary) => causalTake ? causalTake.recordInput(input, boundary) : { status: 'accepted' }, onStatus: status, onFailure: () => { transport.pause(); physicalPlayback?.stop(); } });
-    const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
-    const markPhysicalGap = (batch, reason) => {
-      if (!causalTake) return;
-      const tick = Number.isSafeInteger(batch?.tick) && batch.tick >= 0 ? batch.tick : 0;
-      const generation = Number.isSafeInteger(batch?.generation) && batch.generation >= 0 ? batch.generation : 0;
-      try { causalTake.markGap({ kind: 'physical-facts', firstTick: tick, lastTick: tick, generation, reason }); }
-      catch (error) { status('Causal take coverage gap could not be written: ' + error.message); }
-    };
-    const onPhysicalBatch = batch => {
-      const applied = Array.isArray(batch?.facts) ? batch.facts.findLast(fact => fact.kind === 'CommandApplied' && fact.terrain?.authoring) : null;
-      if (applied) {
-        const authored = next.world.physicalAuthoring;
-        if (authored.lastApplied?.transactionId === applied.transactionId) {
-          const previous = project;
-          if (pendingPhysicalAuthoring?.commandId === applied.commandId) { pendingPhysicalAuthoring.capsule.promote(previous); pendingPhysicalAuthoring.promoted = true; }
-          project = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, physicalGraph: authored.graph, fragmentInstances: authored.instances, junctions: next.world.physicalJunctions.definitions } }));
-          undo.push(previous); redo.length = 0; lastHistoryGroup = null; trimHistory(); projectRevision++; editRevision++; storageStatus(); view?.render(); persist();
-        }
-      }
-      physicalJunctionView?.refresh(); physicalAuthoringView?.refresh();
-      let position;
-      try {
-        position = physicalScoreClock.observe(batch, transport.getState());
-      } catch (error) {
-        markPhysicalGap(batch, 'clock-observation-failed');
-        if (!physicalClockError) status('Physical score clock: ' + error.message);
-        physicalClockError = true; return;
-      }
-      try {
-        physicalReceiptBoundary = { tick: batch.tick, generation: batch.generation }; sampleMacroPerformance(physicalReceiptBoundary);
-        physicalReceiptBuffer = []; physicalProvenanceBuffer = []; physicalProvenanceDropped = 0;
-        const intents = physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
-          playing: transport.getState().playing, position });
-        try { laneDisplayEvidence.observe({ sourceKey: laneDisplaySource(next.world, batch.generation), batch, intents: intents || [], receipts: physicalReceiptBuffer, provenances: physicalProvenanceBuffer, provenanceDropped: physicalProvenanceDropped, lanes: playbackProject().procgen.lanes }); view?.refreshLaneDisplays?.(); } catch {}
-        if (causalTake) {
-          const receipt = causalTake.recordCommittedBatch({ batch, intents: intents || [], deliveryOutcomes: physicalReceiptBuffer, bodyCommands: physicalPlayback?.engine.bodyPreparations()?.batchId === batch.batchId ? physicalPlayback.engine.bodyPreparations().commands : [], probability: physicalPlayback?.engine.probabilityAnalysis()?.batchId === batch.batchId ? physicalPlayback.engine.probabilityAnalysis() : null });
-          if (receipt.status === 'rejected') { physicalFeedback?.disarm(); markPhysicalGap(batch, 'capture-admission-rejected'); }
-          if (receipt.status === 'rejected' && !causalTakeErrorReported) {
-            status(`Causal take became partial: ${receipt.reason}. Stop and inspect it.`); causalTakeErrorReported = true;
+    try {
+      next.world?.configurePhysicalAuthoring?.(boundProject.procgen.physicalGraph, boundProject.procgen.fragmentInstances || []);
+      if (next.world?.prepareInterventions) prepareProjectJunctions(next.world, boundProject.procgen.junctions || []).commit();
+      laneObserver = createProcgenLaneObserver(next.world);
+      const bus = next.world?.soundEvents?.onEvent;
+      const physicalBus = next.world?.soundEvents?.onBatch;
+      physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
+      if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
+      let physicalDocumentEpoch = documentGeneration;
+      const onPhysicalReceipt = receipt => {
+        if (physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
+        physicalLessonView?.observeReceipt(receipt, physicalDocumentEpoch);
+        if (causalTake && physicalReceiptBoundary && receipt.stage === 'effect-performance-capture') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' });
+        if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
+        else if (causalTake && physicalReceiptBoundary) { const recorded = causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary); if (receipt.schema === 'lemmings-effect-performance/v1' && recorded.status !== 'accepted') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' }); }
+        if (!physicalReceiptBuffer) { try { if (laneDisplayEvidence.receipt(laneDisplaySource(next.world), receipt)) view?.refreshLaneDisplays?.(); } catch {} }
+      };
+      const physicalMidi = createCausalMidiSink({ ports, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes),
+        isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
+      let nextPlayback;
+      physicalPlayback = nextPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, initialCavityBody: boundProject.procgen.sceneOrigin?.recipe.initialCavityBody || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+        additionalOutputs: [physicalMidi],
+        onIntentProvenance: value => {
+          if (!physicalProvenanceBuffer || physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
+          if (value.kind === 'omitted') { physicalProvenanceDropped += value.count; return; }
+          if (physicalProvenanceBuffer.length < 512) physicalProvenanceBuffer.push(value); else physicalProvenanceDropped++;
+        },
+        getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+        onInstrumentState: event => { if (!disposed && nextPlayback && physicalPlayback === nextPlayback && runtime() === next && (event.state === 'unavailable' || event.state === 'retirement-unknown')) status('Lane ' + event.laneId + ' instrument: ' + event.code); },
+        onReceipt: onPhysicalReceipt });
+      void nextPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => { if (!disposed && physicalPlayback === nextPlayback && runtime() === next) status('Saved lane instruments: ' + error.message); });
+      if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
+      if (typeof next.world.step === 'function') physicalFeedback = createPhysicalFeedbackController({ world: next.world, resourceBudget, getGraph: () => project.procgen.physicalGraph, recordInput: (input, boundary) => causalTake ? causalTake.recordInput(input, boundary) : { status: 'accepted' }, onStatus: status, onFailure: () => { transport.pause(); physicalPlayback?.stop(); } });
+      const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
+      const markPhysicalGap = (batch, reason) => {
+        if (!causalTake) return;
+        const tick = Number.isSafeInteger(batch?.tick) && batch.tick >= 0 ? batch.tick : 0;
+        const generation = Number.isSafeInteger(batch?.generation) && batch.generation >= 0 ? batch.generation : 0;
+        try { causalTake.markGap({ kind: 'physical-facts', firstTick: tick, lastTick: tick, generation, reason }); }
+        catch (error) { status('Causal take coverage gap could not be written: ' + error.message); }
+      };
+      const onPhysicalBatch = batch => {
+        const applied = Array.isArray(batch?.facts) ? batch.facts.findLast(fact => fact.kind === 'CommandApplied' && fact.terrain?.authoring) : null;
+        if (applied) {
+          const authored = next.world.physicalAuthoring;
+          if (authored.lastApplied?.transactionId === applied.transactionId) {
+            const previous = project;
+            if (pendingPhysicalAuthoring?.commandId === applied.commandId) { pendingPhysicalAuthoring.capsule.promote(previous); pendingPhysicalAuthoring.promoted = true; }
+            project = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, physicalGraph: authored.graph, fragmentInstances: authored.instances, junctions: next.world.physicalJunctions.definitions } }));
+            undo.push(previous); redo.length = 0; lastHistoryGroup = null; trimHistory(); projectRevision++; editRevision++; storageStatus(); view?.render(); persist();
           }
         }
-        if (physicalLessonView?.isObserving()) physicalLessonView.observe({ batch, intents: intents || [], receipts: physicalReceiptBuffer || [], context: { assists: next.world.assists, junctionDefinitions: next.world.physicalJunctions.definitions, junctionStates: next.world.physicalJunctions.definitions.map(value => next.world.queryJunction(value.id, { includeDefinition: false }).actual).filter(Boolean), documentEpoch: physicalDocumentEpoch, activeActors: next.world.activeCount, graph: next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, releaseGesture: next.world.population?.releaseGesture, soundIdentity: effectiveSoundLanes(playbackProject().procgen.lanes).map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|') } });
-        physicalFeedback?.observe(batch, physicalPlayback?.engine.physicalAnalysis());
+        physicalJunctionView?.refresh(); physicalAuthoringView?.refresh();
+        let position;
+        try {
+          position = physicalScoreClock.observe(batch, transport.getState());
+        } catch (error) {
+          markPhysicalGap(batch, 'clock-observation-failed');
+          if (!physicalClockError) status('Physical score clock: ' + error.message);
+          physicalClockError = true; return;
+        }
+        try {
+          physicalReceiptBoundary = { tick: batch.tick, generation: batch.generation }; sampleMacroPerformance(physicalReceiptBoundary);
+          physicalReceiptBuffer = []; physicalProvenanceBuffer = []; physicalProvenanceDropped = 0;
+          const intents = physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
+            playing: transport.getState().playing, position });
+          try { laneDisplayEvidence.observe({ sourceKey: laneDisplaySource(next.world, batch.generation), batch, intents: intents || [], receipts: physicalReceiptBuffer, provenances: physicalProvenanceBuffer, provenanceDropped: physicalProvenanceDropped, lanes: playbackProject().procgen.lanes }); view?.refreshLaneDisplays?.(); } catch {}
+          if (causalTake) {
+            const receipt = causalTake.recordCommittedBatch({ batch, intents: intents || [], deliveryOutcomes: physicalReceiptBuffer, bodyCommands: physicalPlayback?.engine.bodyPreparations()?.batchId === batch.batchId ? physicalPlayback.engine.bodyPreparations().commands : [], probability: physicalPlayback?.engine.probabilityAnalysis()?.batchId === batch.batchId ? physicalPlayback.engine.probabilityAnalysis() : null });
+            if (receipt.status === 'rejected') { physicalFeedback?.disarm(); markPhysicalGap(batch, 'capture-admission-rejected'); }
+            if (receipt.status === 'rejected' && !causalTakeErrorReported) {
+              status(`Causal take became partial: ${receipt.reason}. Stop and inspect it.`); causalTakeErrorReported = true;
+            }
+          }
+          if (physicalLessonView?.isObserving()) physicalLessonView.observe({ batch, intents: intents || [], receipts: physicalReceiptBuffer || [], context: { assists: next.world.assists, junctionDefinitions: next.world.physicalJunctions.definitions, junctionStates: next.world.physicalJunctions.definitions.map(value => next.world.queryJunction(value.id, { includeDefinition: false }).actual).filter(Boolean), documentEpoch: physicalDocumentEpoch, activeActors: next.world.activeCount, graph: next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, releaseGesture: next.world.population?.releaseGesture, soundIdentity: effectiveSoundLanes(playbackProject().procgen.lanes).map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|') } });
+          physicalFeedback?.observe(batch, physicalPlayback?.engine.physicalAnalysis());
+        }
+        catch (error) {
+          markPhysicalGap(batch, 'capture-exception');
+          if (!causalTakeErrorReported) status('Physical performance capture: ' + error.message);
+          causalTakeErrorReported = true;
+        }
+        finally { physicalReceiptBuffer = null; physicalProvenanceBuffer = null; }
+      };
+      const display = next.lanes?.renderer;
+      let unsubscribeDisplay = null;
+      unhookWorld = () => {
+        unsubscribeDisplay?.();
+        bus?.off?.(onGameEvent); physicalBus?.off?.(onPhysicalBatch);
+        physicalFeedback?.dispose(); physicalFeedback = null;
+        worldInspector?.dispose(); worldInspector = null;
+        physicalPlayback?.dispose(); physicalPlayback = null;
+      };
+      bus?.on?.(onGameEvent); physicalBus?.on?.(onPhysicalBatch);
+      unsubscribeDisplay = display?.subscribeDisplayState?.(receipt => { if (!disposed && boundRuntime === next) view?.displayState?.(receipt); });
+      next.lanes?.setClockDriven?.(true);
+      const unsubscribeRouter = next.view?.subscribeMidiPreviewRouter?.(value => {
+        if (disposed || boundRuntime !== next) return;
+        attachRouter(value); syncPorts();
+      });
+      unhookRouter = () => { unsubscribeRouter?.(); previewRouterBinding?.release(); previewRouterBinding = null; attachedPreviewRouter = null; };
+      attachRouter(next.view?.midiPreviewRouter);
+      if (session) {
+        ports.configure({ recording: false, thru: false });
+        documentGeneration++;
+        physicalDocumentEpoch = documentGeneration;
+        if (legacy.local.getState().selectedBackend === 'midi') legacy.local.stop?.();
+        cancelInputEdits('project loaded');
+        if (!historyRestore) { documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; }
+        suppressPersistence = true;
+        try {
+          syncProject(session.project, { history: false, render: false, restoringWorld: true }); Object.assign(legacy.settings, session.settings, { workstation: true });
+          acceptWorldSettings(legacy.settings);
+          lastLegacySpeed = legacy.settings.speed;
+          Object.assign(state, session.ui || {}, { hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
+          transport.restore(session.project?.procgen?.sceneOrigin ? { ...session.transport, playing: false } : session.transport); engine.restore(session.patterns); pendingResume = true;
+          if (!historyRestore) { undo.length = 0; redo.length = 0; physicalHistory.clear(); }
+          if (session.camera) renderer()?.camera?.applyState?.(session.camera);
+        } finally { suppressPersistence = false; }
+        storageStatus(); view?.recording?.(false, recordingViewState(ports.getState())); status(historyRestore ? 'Physical history restored at its checkpoint, paused.' : 'Project loaded paused. Press Play to resume.');
       }
-      catch (error) {
-        markPhysicalGap(batch, 'capture-exception');
-        if (!causalTakeErrorReported) status('Physical performance capture: ' + error.message);
-        causalTakeErrorReported = true;
+      bindingSession = false; prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
+      const timer = next.world?.timer; if (timer) timer.speedFactor = transport.getState().effectiveSpeed;
+      syncPorts(); if (display) view?.displayState?.(display.getDisplayState?.()); view?.render(); view?.transport(transport.getState());
+      worldInspector = createProcgenWorldInspector({ renderer: display, document, window,
+        parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
+        onRevealLane: lane => view?.revealLane?.(project.procgen.lanes[lane]?.id) });
+      if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
+      if (!session && !pendingResume && !project.procgen.sceneOrigin && (startupCommitted || !coldHistoryReturn)) play();
+      if (!startupCommitted && coldHistoryReturn) status('Page restored paused. Press Play to resume.');
+      if (!startupCommitted && startupPlan.mode === 'document') {
+        documentId = startupPlan.sourceIdentity.id; documentRevision = startupPlan.sourceIdentity.revision;
+        savedRevision = editRevision; lastSavedAt = session?.savedAt || null;
       }
-      finally { physicalReceiptBuffer = null; physicalProvenanceBuffer = null; }
-    };
-    bus?.on?.(onGameEvent); physicalBus?.on?.(onPhysicalBatch);
-    const display = next.lanes?.renderer;
-    const unsubscribeDisplay = display?.subscribeDisplayState?.(receipt => { if (!disposed && boundRuntime === next) view?.displayState?.(receipt); });
-    if (display) view?.displayState?.(display.getDisplayState?.());
-    unhookWorld = () => {
-      unsubscribeDisplay?.();
-      bus?.off?.(onGameEvent); physicalBus?.off?.(onPhysicalBatch);
-      physicalFeedback?.dispose(); physicalFeedback = null;
-      worldInspector?.dispose(); worldInspector = null;
-      physicalPlayback?.dispose(); physicalPlayback = null;
-    };
-    next.lanes?.setClockDriven?.(true);
-    const unsubscribeRouter = next.view?.subscribeMidiPreviewRouter?.(value => {
-      if (disposed || boundRuntime !== next) return;
-      attachRouter(value); syncPorts();
-    });
-    unhookRouter = () => { unsubscribeRouter?.(); previewRouterBinding?.release(); previewRouterBinding = null; attachedPreviewRouter = null; };
-    attachRouter(next.view?.midiPreviewRouter);
-    if (session) {
-      ports.configure({ recording: false, thru: false });
-      documentGeneration++;
-      physicalDocumentEpoch = documentGeneration;
-      if (legacy.local.getState().selectedBackend === 'midi') legacy.local.stop?.();
-      cancelInputEdits('project loaded');
-      if (!historyRestore) { documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; } storageStatus();
-      suppressPersistence = true;
-      try {
-        syncProject(session.project, { history: false, render: false, restoringWorld: true }); Object.assign(legacy.settings, session.settings, { workstation: true });
-        acceptWorldSettings(legacy.settings);
-        lastLegacySpeed = legacy.settings.speed;
-        Object.assign(state, session.ui || {}, { hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
-        transport.restore(session.project?.procgen?.sceneOrigin ? { ...session.transport, playing: false } : session.transport); engine.restore(session.patterns); pendingResume = true;
-        if (session.camera) renderer()?.camera?.applyState?.(session.camera);
-      } finally { suppressPersistence = false; }
-      view?.recording?.(false, recordingViewState(ports.getState())); if (!historyRestore) { undo.length = 0; redo.length = 0; physicalHistory.clear(); } status(historyRestore ? 'Physical history restored at its checkpoint, paused.' : 'Project loaded paused. Press Play to resume.');
-    }
-    bindingSession = false; prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
-    const timer = next.world?.timer; if (timer) timer.speedFactor = transport.getState().effectiveSpeed;
-    syncPorts(); view?.render(); view?.transport(transport.getState());
-    worldInspector = createProcgenWorldInspector({ renderer: display, document, window,
-      parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
-      onRevealLane: lane => view?.revealLane?.(project.procgen.lanes[lane]?.id) });
-    if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
-    if (!session && !pendingResume && !project.procgen.sceneOrigin && (startupCommitted || !coldHistoryReturn)) play();
-    if (!startupCommitted && coldHistoryReturn) status('Page restored paused. Press Play to resume.');
-    if (!startupCommitted && startupPlan.mode === 'document') {
-      documentId = startupPlan.sourceIdentity.id; documentRevision = startupPlan.sourceIdentity.revision;
-      savedRevision = editRevision; lastSavedAt = session?.savedAt || null;
-    }
-    startupCommitted = true; startupFailure = null;
-    persist(); return next;
+      startupCommitted = true; startupFailure = null;
+      persist(); return next;
+    } finally { bindingSession = false; }
   };
   const snapshotSession = (name, { recovery = false } = {}) => {
     if (worldBusy) throw new Error('Wait for the world change to finish before saving.');

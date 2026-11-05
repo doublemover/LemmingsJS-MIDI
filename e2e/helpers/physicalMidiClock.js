@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import { pauseWorkstationWhenReady } from './workstationReady.js';
 import { readFile } from 'node:fs/promises';
 import JZZ from 'jzz';
 import installSmf from 'jzz-midi-smf';
@@ -8,7 +9,7 @@ installSmf(JZZ);
 
 export async function armActualPhysicalClock(page, { external = false, speed = 3, action = false, generationFixture = false } = {}) {
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=1');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 90000 });
+  await pauseWorkstationWhenReady(page, { timeout: 90000 });
   return page.evaluate(async ({ external, speed, action, generationFixture }) => {
     const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.transport.pause(); api.pause();
     if (external) { await studio.handlers.connect(); studio.handlers.input('pw-input-1'); }

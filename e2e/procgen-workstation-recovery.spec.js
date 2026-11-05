@@ -44,3 +44,31 @@ test('failed candidate display preserves the complete live session and a later e
   });
   expect(retry).toEqual({ accepted: true, replaced: true, seed: 42, playing: false });
 });
+
+test('committed native camera refusal keeps later physical lane edits and a coherent recovery copy', { tag: ['@boundary', '@workstation-world-rollback'] }, async ({ page }, info) => {
+  test.setTimeout(90000);
+  await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  const result = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__, initial = window.__PROCGEN_LANES__; studio.transport.pause(); initial.pause();
+    studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { gain: 0.75 } });
+    const session = studio.capture(), oldWorld = initial.world, sourceGeneration = studio.getDocumentState().editRevision;
+    session.camera = { ...session.camera };
+    Object.defineProperty(session.camera, 'scale', { enumerable: true, get() { throw new Error('Controlled native camera-state read failure'); } });
+    let failure; try { await studio.loadSession(session); } catch (error) { failure = error.message; }
+    const current = window.__PROCGEN_LANES__, world = current.world, historyAfterFailure = studio.handlers.historyState();
+    studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { gain: 0.25 } });
+    const captured = studio.capture(), beforeTick = world.tickIndex; current.step(2);
+    return { failure, committed: world !== oldWorld, sameWorldAfterEdit: world === window.__PROCGEN_LANES__.world,
+      gain: studio.getProject().procgen.lanes[0].gain, physicalGain: studio.laneMixView('lane-1').baseGain,
+      capturedGain: captured.project.procgen.lanes[0].gain, coherentLaneCount: captured.world.laneCount === captured.project.procgen.lanes.length,
+      stepped: world.tickIndex - beforeTick, playing: studio.transport.getState().playing, output: studio.getPlaybackState().enabled,
+      historyAfterFailure, operation: studio.getOperationState(), sourceGeneration, editRevision: studio.getDocumentState().editRevision };
+  });
+  expect(result).toMatchObject({ failure: 'Controlled native camera-state read failure', committed: true, sameWorldAfterEdit: true,
+    gain: 0.25, physicalGain: 0.25, capturedGain: 0.25, coherentLaneCount: true, stepped: 2, playing: false, output: false, operation: null });
+  expect(result.editRevision).toBeGreaterThan(result.sourceGeneration);
+  expect(result.historyAfterFailure).toMatchObject({ undo: 0, redo: 0 });
+  await info.attach('native-committed-camera-handback.json', { body: JSON.stringify({ ...result, viewport: page.viewportSize(),
+    scope: 'Actual prepared native world/camera binding and committed physical steps with a controlled camera-state getter failure; no native graphics failure or acoustic claim.' }), contentType: 'application/json' });
+});
