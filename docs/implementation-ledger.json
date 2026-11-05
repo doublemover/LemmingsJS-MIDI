@@ -6716,5 +6716,63 @@
       "archiveAuditPending": true
     },
     "remaining": "Generated recording/input and wider controller/reentrancy/retirement matrices under1120, independent current CI and remaining backlog. Small-entry totals do not complete eviction-capacity qualification; latest inventoried complete-green437 remains distinct."
+  },
+  "continuation449": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Actual MIDI ingress callback ownership, immutable accepted bytes and coordinated/standalone clock selection. Independent generated recording/source reference and native1920x1080 browser boundaries.",
+    "evidence": {
+      "path": "docs/validation/midi-input-ownership-desktop-2026-11-05.json",
+      "bytes": 433801,
+      "sha256": "1d52cfae9b56603b23a71444671db45ea341628dc2e100571dfd518c21646cff"
+    },
+    "validation": {
+      "nodeCases": 398,
+      "nativeCases": 5,
+      "requiredDesktopSelection": 28,
+      "campaignSeeds": 4096,
+      "transitions": 504974,
+      "wallMs": 16082.3792,
+      "peakObservedHeapBytes": 128159464,
+      "originalIngressMinima": [
+        1,
+        1
+      ],
+      "originalStandaloneClockSchedules": 4,
+      "scopeCoverage": {
+        "lines": 97.51,
+        "branches": 88.31,
+        "functions": 95.37
+      }
+    },
+    "source": {
+      "browserPaths": 1289,
+      "browserDigest": "d720250b6d42dbff9236f19959c6d87ca2569f7261f2d8cd5d49ad92c996a9f1",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1576,
+      "byteExact": 1564,
+      "unchangedCheckoutNewlines": 12
+    },
+    "ci": {
+      "githubCompleteGreen": {
+        "checkpoint": 446,
+        "head": "4ac75aadc81293ca26458791045f392170ac16aa",
+        "runId": 42100133115,
+        "allFourRequiredJobs": "success",
+        "policyAndDependencies": "success",
+        "nodePasses": 7815,
+        "pending": 10,
+        "coverage": {
+          "lines": 90.92,
+          "branches": 84.36,
+          "functions": 88.78
+        },
+        "archiveSourceInventoryAudit": "not performed for446"
+      },
+      "latestIndependentlyInventoriedCompleteGreen": 437,
+      "current449": "Not submitted at evidence creation; preceding448 main CI still in progress, engine/native jobs green."
+    },
+    "remaining": "Full controller/document/Thru/UMP/failed-retirement and wider cache capacity matrices remain open under1120. Current-source CI remains separate from raw complete-green446 and independently inventoried437."
   }
 }

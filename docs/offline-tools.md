@@ -277,3 +277,14 @@ This model uses the real persistent FileProvider methods through two isolated da
 Half the deterministic seeds begin with an acknowledged stored entry; half begin empty. The adaptive scheduler chooses only available test-adapter events and current owner commands, then records concrete `native-step` traces for replay and shrinking. This is not an independent assertion of the production request sequence. A replay may use `drain` to expand an owned pending transaction into bounded individual events; the saved result contains the concrete events. At most24explicit operations,128generated steps and2048events per drain are admitted; write values are at most256UTF-8 bytes. The shared wall/observed-heap/source caps apply.
 
 The committed stale-total fixture injects an error after an actual write acknowledgment and demonstrates shrinking; it is not a historical production bug. This small-entry corpus does not qualify eviction capacity, concurrent read-only browser scheduling, actual native IndexedDB behavior, clock injection or process RSS. Real desktop IndexedDB/Web Lock qualification remains in the asset-resilience Playwright suite.
+
+
+## Generate MIDI input and recording schedules
+
+```powershell
+npm run model:midi-input -- --seed=1979 --runs=4096 --steps=128 --max-ms=120000 --max-heap-mib=256 --out-dir=temp/my-input-model --name=rook
+```
+
+The independent automaton checks the actual MIDI ports/recording owner after every command: accepted source/connection epoch, immutable captured prefix, recording/Learn state, downstream packet bytes, callback counts, incomplete-note evidence and final reservations. It covers selected and null input sources, repeated source IDs with distinct epochs, stale ingress, Record off followed by release, clear/rearm, callback exceptions and synchronous stop/clear/replace/dispose or caller-buffer mutation from monitor, transport, record and Learn boundaries. Every generated schedule also attempts retired admission and verifies idempotent cleanup.
+
+The clock is injected. The finite alphabet is MIDI1 Note On/Off and ordinary CC, with explicit malformed packets. The profile admits at most256generated steps,512replay commands and512retained events; source/heap/wall caps and durable shrinking/replay use the shared runner. Checked fixtures preserve both original committed-source failures and their one-command minima. A controlled coordinator also reproduces an acknowledged retired owner accepting a late clock selection. Full document replacement, Thru/output failure, UMP, active-sensing timing and hardware remain separate qualifications. The native Playwright boundary additionally checks the default browser performance coordinator and its complete resource receipts.

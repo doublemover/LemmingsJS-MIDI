@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fence MIDI ingress and fresh output/recording admission during retirement, share reentrant cleanup receipts, and preserve accepted input bytes across callbacks.
+
 - Preserve a raw asset handle’s requesting provider epoch across cache clearing and late response or hash completion.
 
 - Reduce MIDI capture metadata allocations while preserving bounded provenance, and avoid empty per-actor terrain-score commits.
