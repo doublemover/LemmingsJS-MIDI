@@ -32,7 +32,7 @@ describe('immutable browser generation staging', () => {
     if (path.dirname(root) !== os.tmpdir() || !path.basename(root).startsWith('lemmings-browser-build-')) throw new Error('Unexpected build fixture cleanup target.');
     await fs.rm(root, { recursive: true, force: true });
   });
-  const build = () => buildBrowserRuntime({ rootDir: root, inventory: ['classic/MAIN.DAT'] });
+  const build = options => buildBrowserRuntime({ rootDir: root, inventory: ['classic/MAIN.DAT'], ...options });
   it('refuses a foreign prepared core before staging or replacing a browser generation', async () => {
     const target = path.join(root, OWNED_STRETCH_CORE.cachePath); await fs.mkdir(path.dirname(target), { recursive: true }); await fs.writeFile(target, new Uint8Array(OWNED_STRETCH_CORE.wasmBytes));
     let error; try { await build(); } catch (caught) { error = caught; } expect(error?.message).to.include('pinned byte identity'); expect((await fs.readFile(target)).byteLength).to.equal(OWNED_STRETCH_CORE.wasmBytes);
@@ -59,6 +59,65 @@ describe('immutable browser generation staging', () => {
     let error; try { await build(); } catch (failure) { error = failure; }
     expect(error.message).to.include('immutable browser generation has changed bytes');
     expect(await fs.readFile(path.join(first.path, 'js/entry.js'), 'utf8')).to.equal('changed');
+  });
+  it('reuses a fully verified generation without staging or rewriting its immutable files', async () => {
+    const first = await build(), writes = [];
+    const repeat = await build({ fsImpl: { ...fs,
+      mkdtemp: async prefix => { if (path.basename(prefix).startsWith('.staging-')) throw new Error('Unexpected restaging'); return fs.mkdtemp(prefix); },
+      writeFile: async (target, ...args) => { writes.push(target); if (target.startsWith(first.path + path.sep)) throw new Error('Immutable rewrite'); return fs.writeFile(target, ...args); }
+    } });
+    expect(first.reusedGeneration).to.equal(false); expect(repeat.reusedGeneration).to.equal(true);
+    expect(repeat.manifest).to.deep.equal(first.manifest); expect(repeat.buildId).to.equal(first.buildId);
+    expect(writes).to.have.length(first.manifest.routes.length + 1); expect(writes.every(target => path.basename(target).startsWith('.publish-'))).to.equal(true);
+  });
+  for (const populated of [false, true]) it('rejects input drift after closure collection on ' + (populated ? 'reuse' : 'cold staging'), async () => {
+    const first = populated ? await build() : null, target = path.join(root, 'classic/MAIN.DAT'); let reads = 0;
+    let error; try { await build({ fsImpl: { ...fs, readFile: async (filename, ...args) => {
+      if (filename === target && ++reads === 2) await fs.writeFile(target, 'changed after closure collection');
+      return fs.readFile(filename, ...args);
+    } } }); } catch (failure) { error = failure; }
+    expect(error?.message).to.include('input changed during staging'); expect(reads).to.be.at.least(2);
+    if (first) expect(await fs.readFile(path.join(first.path, 'classic/MAIN.DAT'), 'utf8')).to.equal('fixture');
+    expect((await fs.readdir(path.join(root, 'dist/browser'))).some(name => name.startsWith('.staging-'))).to.equal(false);
+  });
+  for (const target of ['runtime-build.json', 'js/runtime/ActiveExecutionIdentity.source.js']) it('refuses conflicting cached ' + target + ' without creating another stage', async () => {
+    const first = await build(), relative = target === 'runtime-build.json' ? target : first.manifest.sourceNormalization.templatePath;
+    await fs.writeFile(path.join(first.path, relative), 'changed'); let staged = false, error;
+    try { await build({ fsImpl: { ...fs, mkdtemp: async prefix => { staged = true; return fs.mkdtemp(prefix); } } }); } catch (failure) { error = failure; }
+    expect(error).to.be.instanceOf(Error); expect(staged).to.equal(false); expect(await fs.readFile(path.join(first.path, relative), 'utf8')).to.equal('changed');
+  });
+  it('refuses a cached generation with a missing file instead of treating it as a new generation', async () => {
+    const first = await build(); await fs.unlink(path.join(first.path, 'js/entry.js')); let staged = false, error;
+    try { await build({ fsImpl: { ...fs, mkdtemp: async prefix => { staged = true; return fs.mkdtemp(prefix); } } }); } catch (failure) { error = failure; }
+    expect(error?.code).to.equal('ENOENT'); expect(staged).to.equal(false);
+  });
+  it('rejects a redirected immutable generation before reading or publishing its files', async () => {
+    const first = await build(), moved = first.path + '-moved'; await fs.rename(first.path, moved); await fs.symlink(moved, first.path, 'junction');
+    let error; try { await build(); } catch (failure) { error = failure; }
+    expect(error?.message).to.include('redirected directory'); expect(await fs.readFile(path.join(moved, 'classic/MAIN.DAT'), 'utf8')).to.equal('fixture');
+  });
+  it('joins in-flight bounded writes before cleaning a stage after another write fails', async () => {
+    let release, started, refused; const held = new Promise(resolve => { release = resolve; }), began = new Promise(resolve => { started = resolve; }), rejected = new Promise(resolve => { refused = resolve; });
+    let active = 0, maximum = 0, cleanedWhileActive = false, settled = false;
+    const fsImpl = { ...fs, writeFile: async (target, ...args) => {
+      if (!target.includes(path.sep + '.staging-')) return fs.writeFile(target, ...args);
+      active++; maximum = Math.max(maximum, active);
+      try {
+        if (target.endsWith(path.join('classic', 'MAIN.DAT'))) { started(); await held; }
+        if (target.endsWith(path.sep + 'config.json')) { refused(); throw new Error('native-write-refused'); }
+        return await fs.writeFile(target, ...args);
+      } finally { active--; }
+    }, rm: async (target, ...args) => { if (path.basename(target).startsWith('.staging-') && active) cleanedWhileActive = true; return fs.rm(target, ...args); } };
+    const pending = build({ fsImpl }).then(() => { settled = true; return null; }, error => { settled = true; return error; });
+    await Promise.all([began, rejected]); expect(settled).to.equal(false); release();
+    expect((await pending)?.message).to.equal('native-write-refused'); expect(cleanedWhileActive).to.equal(false); expect(active).to.equal(0); expect(maximum).to.be.at.most(8);
+    expect(await fs.readdir(path.join(root, 'dist/browser'))).to.deep.equal([]);
+  });
+  it('publishes identical installer entries safely when two builders race for one namespace', async () => {
+    const [first, second] = await Promise.all([build(), build()]); expect(second.buildId).to.equal(first.buildId); expect(second.manifest).to.deep.equal(first.manifest);
+    const entries = await fs.readdir(path.join(root, 'dist/browser')); expect(entries.some(name => name.startsWith('.publish-') || name.startsWith('.staging-'))).to.equal(false);
+    for (const route of first.manifest.routes) expect(await fs.readFile(path.join(root, 'dist/browser', route), 'utf8')).to.include(first.buildId);
+    expect(await fs.readFile(path.join(first.path, 'classic/MAIN.DAT'), 'utf8')).to.equal('fixture');
   });
   it('rejects inventory tampering and a generated carrier hidden behind an unchanged normalized slot', async () => {
     const first = await build(), template = await fs.readFile(path.join(first.path, first.manifest.sourceNormalization.templatePath), 'utf8');

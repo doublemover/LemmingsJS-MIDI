@@ -6831,5 +6831,50 @@
       "current450": "Not submitted at evidence creation; latest449CI remains separate."
     },
     "remaining": "1044persistence, wider default-device/engine matrices and measured profile tradeoffs; repeated full-build preparation timing investigation. Current-source CI remains separate."
+  },
+  "continuation451": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Avoid redundant immutable generation staging and repeated renderer parsing while retaining full source/artifact verification, bounded I/O and independent renderer ownership. Close the retained450native preparation timeout with unchanged deadlines.",
+    "evidence": {
+      "path": "docs/validation/verified-browser-build-reuse-2026-11-05.json",
+      "bytes": 629193,
+      "sha256": "c7c6f006f3e0b9cf9b07ee726e74dd05c0926bdc9e5712276711607977c8424b"
+    },
+    "validation": {
+      "nodeCases": 607,
+      "nativeCases": 6,
+      "nativeUnexpected": 0,
+      "nativeFlaky": 0,
+      "scopeCoverage": {
+        "lines": 95.29,
+        "branches": 84.88,
+        "functions": 90.15
+      },
+      "pipelineCases": 64,
+      "builderLinesAndFunctions": 100,
+      "rendererCollectorLinesAndFunctions": 100,
+      "firstBuildMs": 9569.9327,
+      "repeatBuildMs": 9221.5618,
+      "reusedImmutableWrites": 0,
+      "installerWrites": 5,
+      "maximumObservedAdapterCalls": 8,
+      "originalRendererReads": 3185,
+      "currentRendererReads": 311,
+      "rendererProfiles": 14,
+      "exactHistoricalCollectorAndParserParity": true
+    },
+    "source": {
+      "browserPaths": 1291,
+      "browserDigest": "708e9da60e8555b739182ad622141306105ffde538755bba4edd2255e90283fd",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1599,
+      "byteExact": 1587,
+      "unchangedCheckoutNewlines": 12,
+      "inventory": "Exact450recursive base plus9hashed upserts",
+      "builtGeneration": "77a3b1a27de8d83fd5470b77823b8fe3414801f09b5db01ab0f8e5bfee00fdbc"
+    },
+    "remaining": "Independent current whole-branch CI and remaining backlog.450supplemental setup timeout is locally resolved by the final six-case batch;1044runtime/persistence/device/per-profile scope and1120remaining matrices stay separate."
   }
 }

@@ -43,14 +43,17 @@ test('main audio profile controls retire native contexts and preserve truthful r
     const afterRejection = q.preview.getState(); let silent, restored;
     if (typeof context.setSinkId === 'function') {
       // Exercise the actual native route API, then recover the configured default.
-      try { await context.setSinkId({ type: 'none' }); silent = q.preview.getState().audioRuntime.outputSelection.actualSink; }
+      try {
+        await context.setSinkId({ type: 'none' }); const sink = context.sinkId;
+        silent = { nativeKind: sink?.type === 'none' ? 'silent' : sink === '' ? 'default' : typeof sink === 'string' ? 'explicit-device' : 'unknown', cachedKind: q.preview.getState().audioRuntime.outputSelection.actualSink };
+      }
       catch (error) { silent = { unavailable: error.name }; }
       restored = await q.preview.configureAudioRuntime({ ...q.preview.getAudioRuntimeConfig(), sinkPreference: '' });
     }
     return { rejected, afterRejection, silent, restored, afterDefault: q.preview.getState(), contextCountUnchanged: q.contexts.length === count };
   });
   expect(['failed', 'canceled', 'unsupported']).toContain(routes.rejected.status); expect(routes.afterRejection.audioRuntime.config.sinkPreference).toBe('default'); expect(routes.contextCountUnchanged).toBe(true);
-  if (routes.silent === 'silent') { expect(routes.restored.status).toBe('configured'); expect(routes.afterDefault.audioRuntime.outputSelection).toMatchObject({ actualSink: 'default', preferenceObserved: true }); }
+  if (routes.silent?.nativeKind === 'silent') { expect(routes.restored.status).toBe('configured'); expect(routes.afterDefault.audioRuntime.outputSelection).toMatchObject({ actualSink: 'default', preferenceObserved: true }); }
   const final = await page.evaluate(async () => {
     const q = globalThis.runtimeQualification, state = q.preview.getState();
     await q.preview.dispose(); q.view.dispose(); return { state, requests: q.requests, contexts: q.contexts.map(c => c.state), retirement: q.preview.getState().retirement, stops: q.getStops() };
