@@ -6457,5 +6457,38 @@
       "unchangedCheckoutNewlines": 13
     },
     "remaining": "Keep1044 open for runtime transactional profile/device switching, rejected/unplugged outputs, compact player controls and measured tradeoff distributions. Latest independently complete-green checkpoint437; parent440 engine/native jobs pass while main runs."
+  },
+  "continuation442": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Checked main-context configuration/observation APIs, immutable nested contracts, strict invalid-consumer fixtures and native statistics method binding.",
+    "evidence": {
+      "path": "docs/validation/checked-audio-runtime-desktop-2026-11-05.json",
+      "bytes": 140854,
+      "sha256": "9ad361a3d78098a74a674a9c191e8cdd54e285a73986fcc10a6ddb24a56d124c"
+    },
+    "validation": {
+      "nodePassed": 184,
+      "portableDesktopCases": 3,
+      "actualNativeContexts": 8,
+      "actualNativeResetCalls": 4,
+      "explicitUnavailableEngines": 1,
+      "checkedModules": 2,
+      "strictNegativeConsumers": 14,
+      "criticalTypes": "passed",
+      "format": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserPaths": 1289,
+      "browserDigest": "8705b81f63f8682ca778b1fd77563edc2308a74a9ba2131e4224c756dc18d298",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1548,
+      "byteExact": 1535,
+      "unchangedCheckoutNewlines": 13
+    },
+    "remaining": "Keep1089 open for deeper authored/runtime schemas and full boundary audit. Keep1044 open for runtime device/profile changes, player controls and cost/lead qualification. Full CI pending on current442; latest complete-green437."
   }
 }

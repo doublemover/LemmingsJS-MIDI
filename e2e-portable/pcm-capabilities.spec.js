@@ -70,14 +70,21 @@ test('main audio runtime reports actual requested profiles and rates and retires
       await page.getByRole('button', { name: 'Enable runtime profile', exact: true }).click();
       const result = await page.evaluate(async () => {
         const enabled = await window.__runtimeEnabled, preview = window.__runtimePreview, context = preview.getAudioContext();
-        const observation = preview.getAudioRuntimeObservation(); await preview.dispose();
+        const observation = preview.getAudioRuntimeObservation();
+        let resetAvailable = false; try { resetAvailable = typeof context?.playbackStats?.resetLatency === 'function'; } catch {}
+        const resetAccepted = preview.resetAudioLatencyStatistics(), afterReset = preview.getAudioRuntimeObservation();
+        await preview.dispose();
         const retired = preview.getState(); window.__runtimePreview = null;
-        return { enabled, requested: window.__runtimeOptions, observation, retired: retired.retirement, closed: context?.state === 'closed' };
+        return { enabled, requested: window.__runtimeOptions, observation, resetAvailable, resetAccepted, afterReset, retired: retired.retirement, closed: context?.state === 'closed' };
       });
       observations.push(result); expect(result.enabled).toBe(true); expect(result.closed).toBe(true);
       expect(result.retired).toMatchObject({ state: 'retired', outcome: 'complete' });
       expect(result.observation).toMatchObject({ schema: 'lemmings-audio-runtime-observation/v1', acousticMeasurement: false, estimatesAreAdditive: false });
       expect(result.observation.actualSampleRate).toBeGreaterThan(0);
+      if (result.resetAvailable && result.observation.playbackStats.availability === 'available') {
+        expect(result.resetAccepted).toBe(true); expect(result.afterReset.playbackStats.latencyRevision).toBe(1);
+        expect(result.afterReset.playbackStats.cumulativeScope).toBe('context-lifetime-not-route-or-latency-reset');
+      } else expect(result.resetAccepted).toBe(false);
       expect(result.observation.config.preferredSampleRate).toBe(runtimeConfig.preferredSampleRate ?? null);
       expect(result.requested.latencyHint).toBe({ performance: 'interactive', balanced: 'balanced', robust: 'playback' }[runtimeConfig.latencyProfile]);
       if (runtimeConfig.preferredSampleRate) expect(result.requested.sampleRate).toBe(runtimeConfig.preferredSampleRate);

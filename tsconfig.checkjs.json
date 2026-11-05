@@ -63,6 +63,9 @@
     "js/app/procgen/workstation/PhysicalPlaybackContracts.d.ts",
     "js/app/procgen/workstation/ProcgenPhysicalScoreClock.js",
     "js/midi/content/InstrumentActorLocks.js",
-    "js/app/midi-ui/OwnedSourceSeed.js"
+    "js/app/midi-ui/OwnedSourceSeed.js",
+    "js/app/midi-ui/AudioRuntimeConfig.js",
+    "js/app/midi-ui/AudioRuntimeObservation.js",
+    "js/app/midi-ui/AudioRuntimeContracts.d.ts"
   ]
 }
