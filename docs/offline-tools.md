@@ -224,3 +224,19 @@ or quality tier changes. Two-mesh agreement is a limited numerical observation;
 it does not prove asymptotic convergence, physical material accuracy, listening
 quality or measured real-time capacity. No accepted comparison is claimed until
 this tool has actually run and its receipt has been reviewed.
+
+## Compare sound renders visually
+
+Run the same A/B comparison directly from a generated blind listening package:
+
+```powershell
+npm run compare:sounds -- --package=temp/my-listening-set/listening.json --trial=1 --out-dir=temp/my-spectral-comparison --name=rook
+```
+
+Alternatively provide `--a=temp/clip-a.wav --b=temp/clip-b.wav`. Inputs must be aligned stereo float32 WAV files at the same 44.1/48/96k rate, with the same frame count; no automatic time warp, pitch correction or level normalization is applied. A listening-package input verifies both files against their exact published hashes without opening its private key. Inputs and new output directories stay under repository `temp/`. Work is bounded to 60 seconds and 64 MiB combined encoded/decoded PCM.
+
+The command writes `comparison.html`, `comparison.json` and, by default, a Playwright-rendered `comparison.png`. Use `--png=false` for data/HTML only. `--browser=chromium|firefox|webkit`, optional Chromium `--channel=` or `--executable=` select the report renderer. PNG capture uses a 1920×1080 desktop viewport, checks the full/active timeline toggle and aligned spectral hover, and captures the complete figure.
+
+The report contains shared-scale A/B spectrograms, an active-band A−B heatmap, 10 ms RMS envelopes and their mean-relative 0.5–20 Hz modulation spectra. It opens on the shared active region; the full PCM, including silence, remains in the analysis and can be shown. Hover for exact window time, display-band frequency and A/B power. FFT spacing, Hann window, power normalization, display floor and nearest-bin policy are recorded. A modulation peak may reflect the existing note pattern, gaps or decay; it does not prove a hidden LFO. Spectral and waveform differences do not establish musical quality or audible relatedness.
+
+Source files and WAV bytes are hash-bound. The stable analysis hash excludes agent labels, profiling and rasterization metadata. Wall-time/RSS are developer-tool observations, not realtime audio capacity. Generated PCM, plots and dense matrices remain private artifacts; commit the analysis code and concise qualification records.

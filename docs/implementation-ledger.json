@@ -6490,5 +6490,43 @@
       "unchangedCheckoutNewlines": 13
     },
     "remaining": "Keep1089 open for deeper authored/runtime schemas and full boundary audit. Keep1044 open for runtime device/profile changes, player controls and cost/lead qualification. Full CI pending on current442; latest complete-green437."
+  },
+  "continuation443": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Repeatable spectrogram, spectral difference, envelope and modulation analysis of exact blind A/B WAV files, with independently inspectable HTML/PNG and numerical JSON.",
+    "evidence": {
+      "path": "docs/validation/spectral-comparison-desktop-2026-11-05.json",
+      "bytes": 111687,
+      "sha256": "92ce029b6705ed0851a37057db0ad6df7ff857bd673b152084fa73685318857f"
+    },
+    "validation": {
+      "nodePassed": 54,
+      "legacyMeasurementGoldenCases": 24,
+      "actualDesktopReportRenders": 1,
+      "timelineToggleAndHover": "passed",
+      "deterministicDifferentAgentRepeat": "passed",
+      "format": "passed",
+      "criticalTypes": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserPaths": 1289,
+      "browserDigest": "8705b81f63f8682ca778b1fd77563edc2308a74a9ba2131e4224c756dc18d298",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1554,
+      "byteExact": 1541,
+      "unchangedCheckoutNewlines": 13
+    },
+    "listening": {
+      "originalPair": "numerical-near-duplicate;requester-difference-not-heard",
+      "newPair": "casual-subtle-rhythmic-difference-heard-in-A;full-relatedness-pending",
+      "newAnalysisHash": "21c81f6f137db9c13332581230a2aaaec4bdd70d32fd7cff2aae66d913f55f1f",
+      "dominantEnvelopePeakBothHz": 8.349609375,
+      "relativeEnvelopeVariationIncreasePercent": 1.391973419533099
+    },
+    "remaining": "Use repeatable spectral comparisons before further listening requests. Keep1001/1002 open for remaining relatedness/source-quality requirements; resume broader acquisition/cache/delivery lifecycle models under1120. Whole currentCI pending; complete-green437 remains independently scoped."
   }
 }
