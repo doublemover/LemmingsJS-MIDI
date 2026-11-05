@@ -1,3 +1,4 @@
+import { actorTimbreControls, EMPTY_ACTOR_TIMBRE_LOCKS } from '../../../midi/content/InstrumentActorLocks.js';
 import { createSceneMorphMechanism } from './SceneMorphMechanism.js';
 import { createSceneCavityBody } from './SceneCavityBody.js';
 import { createCavitySourceAdmission } from './CavitySourceAdmission.js';
@@ -34,7 +35,7 @@ const nativeResolution = Object.freeze({
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
 /** @param {Partial<import('./PhysicalPlaybackContracts.js').PhysicalPlaybackOptions>} options */
-function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
+function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], getActorTimbreLocks = () => EMPTY_ACTOR_TIMBRE_LOCKS, isPlaybackEnabled = () => !!audio?.getState?.().enabled,
   initialMorphMechanism = null, initialCavityBody = null, presentationDelayMs = 24, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, onIntentProvenance = null, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
   if (!Number.isFinite(presentationDelayMs) || presentationDelayMs < 0 || presentationDelayMs > 1000) throw new RangeError('Invalid physical audio presentation delay.');
   /** @param {readonly import('./PhysicalPlaybackContracts.js').PhysicalOutputOwner[]} outputs @returns {boolean} */
@@ -196,8 +197,8 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
   };
   try { unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, onIntentProvenance, getActivityOutputState: activityOutput,
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
-    getPerformanceState: () => captureCausalPerformanceState(getLanes()),
-    getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
+    getPerformanceState: () => captureCausalPerformanceState(getLanes(), getActorTimbreLocks()),
+    getOnsetControls: (laneId, identity) => actorTimbreControls((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity),
     getPhysicalControlKinds: laneId => [...new Set((getSupportedInstrumentDefinition((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef)?.causalBindings || [])
       .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],
     deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(), audioAdmissions = new Map();

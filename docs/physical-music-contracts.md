@@ -504,3 +504,9 @@ PhysicalPlaybackContracts.d.ts describes the precise graph/lane/display/output p
 ### Committed binding presentation failure
 
 Temporary imported-project reads belong only to the binding attempt and release in finally, including camera/view failures. Later lane edits therefore reach the current canonical project. Event observer cleanup is registered before any display callback can throw. A normal successful document adoption clears the prior document history before optional camera presentation; physical-history restoration retains its history. Post-commit presentation failure stays paused and recoverable and never claims the retired prior world was rolled back.
+
+### Saved actor identity locks
+
+Actor timbre locks belong to one canonical project table, keyed by world, generation, actor birth ID and exact sound ID/revision. At most256locks and16sound revisions per actor are admitted. Frozen tables and actor-filtered arrays use weakly owned indexes; no per-frame RNG or pool/lane identity is involved. A lock captures the actor latent seed/amount for future onsets; strike factors stay event-owned, macros remain editable, and explicit Amount zero still yields the base patch. No existing voice is rewritten.
+
+The inspector resolves the current accepted actor selection and sends Lock/Unlock/Clear commands. Each is an ordinary reversible project edit. The existing causal performance state carries the project table and explicit lock-only changes; exact onset controls contain only the matching actor records. Undo/Redo records these changes in the same durable journal, and re-performance supplies the same birth identity. Instrument performance protocol5 identifies this capture contract; the existing variation hash algorithm remains unchanged. Dormant locks do not apply to another sound revision or generation. Relatedness listening and exact per-source noise-state qualification remain independent.

@@ -1,4 +1,5 @@
 import { applyInstrumentVariation, validateInstrumentVariation } from './InstrumentIdentityVariation.js';
+import { validateActorTimbreLocks, MAX_ACTOR_PATCH_LOCKS } from './InstrumentActorLocks.js';
 const object = value => value && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'prototype', 'constructor'].includes(value);
 const finite = (value, minimum, maximum) => Number.isFinite(value) && value >= minimum && value <= maximum;
@@ -36,14 +37,15 @@ export function validateInstrumentMacros(input, parameters) {
 }
 
 export function validateInstrumentControls(input = {}) {
-  if (!object(input) || Object.keys(input).some(key => !['macros', 'variationAmount01', 'variationSeed'].includes(key)) || !object(input.macros || {}) || Object.keys(input.macros || {}).length > 4 ||
+  if (!object(input) || Object.keys(input).some(key => !['macros', 'variationAmount01', 'variationSeed', 'actorTimbreLocks'].includes(key)) || !object(input.macros || {}) || Object.keys(input.macros || {}).length > 4 ||
       input.variationAmount01 != null && !finite(input.variationAmount01, 0, 1) || input.variationSeed != null && (!Number.isSafeInteger(input.variationSeed) || !finite(input.variationSeed, -2147483648, 2147483647))) fail('invalid performer controls');
   const macros = Object.create(null);
   for (const [key, value] of Object.entries(input.macros || {}).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
     if (!id(key) || !finite(value, 0, 1)) fail('macro overrides require normalized finite values'); macros[key] = value;
   }
   return Object.freeze({ macros: Object.freeze({ ...macros }), ...(input.variationAmount01 != null ? { variationAmount01: input.variationAmount01 } : {}),
-    ...(input.variationSeed != null ? { variationSeed: input.variationSeed } : {}) });
+    ...(input.variationSeed != null ? { variationSeed: input.variationSeed } : {}),
+    ...(Object.hasOwn(input, 'actorTimbreLocks') ? { actorTimbreLocks: validateActorTimbreLocks(input.actorTimbreLocks, MAX_ACTOR_PATCH_LOCKS) } : {}) });
 }
 
 const physicalInputs = Object.freeze({ TerrainWorkCommitted: Object.freeze({ attemptedCells: 'cells', changedSolidCells: 'cells', changedAppearanceCells: 'cells' }),

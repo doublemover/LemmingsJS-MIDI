@@ -5,7 +5,7 @@ const PAGE_SIZE = 32;
 const actionName = actor => actor?.actionName || actor?.action?.actionName || actor?.action?.getActionName?.() || 'Moving';
 
 // Owns presentation selection only. Musical and terrain edits remain engine commands.
-export function createProcgenWorldInspector({ renderer, document, window, parent, getLaneInfo = () => null, onRevealLane = () => {} }) {
+export function createProcgenWorldInspector({ renderer, document, window, parent, getLaneInfo = () => null, onRevealLane = () => {}, onSelection = () => {} }) {
   const host = renderer?.presentation, canvas = renderer?.canvas;
   if (!host || !parent || !document?.createElement || !canvas?.addEventListener) return null;
   const listeners = [], node = (tag, text, className) => {
@@ -23,7 +23,7 @@ export function createProcgenWorldInspector({ renderer, document, window, parent
   const paging = node('div', null, 'studio-world-paging'), previous = button('Previous entities', () => changePage(-1)), next = button('Next entities', () => changePage(1)), count = node('span', '');
   paging.append(previous, count, next); section.append(title, summary, role, capability, actions, listTitle, list, paging); parent.append(section);
   let disposed = false, selection = null, snapshot = null, draft = null, page = 0, listKey = '', nearestId = null, cycleState = null;
-  const buttons = new Map();
+  const buttons = new Map(); let selectionNotification = '';
   const effectInspector = createProcgenActorEffectInspector({ renderer, document, parent: section });
   const cancel = () => { draft?.lease.release(); draft = null; };
   const setText = (element, value) => { if (element.textContent !== value) element.textContent = value; };
@@ -94,6 +94,8 @@ export function createProcgenWorldInspector({ renderer, document, window, parent
     if (!current) { revealButton.disabled = true; setText(capability, `${reason || 'World inspection is waiting for a presented frame.'} Inspection only; editing is unavailable.`); }
     else setText(capability, 'Inspection only. Terrain, field and gate editing is unavailable here.');
     renderList(); effectInspector?.refresh(selection);
+    const notification = selection ? JSON.stringify([selection.worldId, selection.generation, selection.entityId, selection.finalReason]) : 'none';
+    if (notification !== selectionNotification) { selectionNotification = notification; try { onSelection(selection); } catch { /* Selection ownership survives presentation failure. */ } }
   };
   const cycle = (clientX, clientY, lease = null) => {
     const hits = host.pick(clientX, clientY, lease), signature = hits.map(entity => entity.id).join('|');

@@ -667,6 +667,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           variationAmount01 => changeLane({ instrumentControls: { ...lane.instrumentControls, variationAmount01 } }), { type: 'range', min: 0, max: 1, step: 0.01 }), nextFields);
         nextFields.append(button('Reroll timbre', () => changeLane({ instrumentControls: { ...lane.instrumentControls,
           variationSeed: ((lane.instrumentControls?.variationSeed ?? variation.seed) + 1) | 0 } }), 'Change only the saved musical seed for future onsets'));
+        const actorLock = handlers.actorTimbreLockState?.(lane.id);
+        const lockControl = input(!!actorLock?.locked, locked => handlers.lockActorTimbre?.(lane.id, locked), { type: 'checkbox' });
+        lockControl.disabled = !actorLock?.available;
+        labeled('Lock selected actor identity', lockControl, nextFields);
+        nextFields.append(node('p', actorLock?.reason || 'Select a visible actor to lock its identity for this sound.', 'studio-hint'));
+        nextFields.append(button('Clear actor locks for this sound', () => handlers.clearActorTimbreLocks?.(lane.id), 'One reversible edit; does not change world state or existing voices'));
       }
       nextFields.append(button('Sound library…', () => handlers.openSoundLibrary?.(), 'Import, audition, install and explicitly apply a saved instrument'));
       nextFields.append(button('Shape foundry…', () => handlers.openShapeFoundry?.(), 'Prepare an original solid body, prelisten a selected strike site and apply its ordinary saved instrument'));

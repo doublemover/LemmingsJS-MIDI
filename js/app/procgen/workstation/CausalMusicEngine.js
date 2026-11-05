@@ -149,6 +149,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const pitch = tonal?.pitch || { cents: baseCents, referenceHz: 440 };
     if (kind === 'begin' && tonal) onsetPlans.set(voiceId, { baseCents, pitch, tonalState: tonal.state, sourceEventIds: fact?.sourceEventIds || (fact?.eventId ? [fact.eventId] : []) });
     const tonalOffset = !fact?.tonalExpression ? active.get(voiceId)?.tonalOffset || 0 : 0;
+    const onsetControls = kind === 'begin' ? getOnsetControls(fact?.laneId, { worldId: batch.worldId, generation: voiceGeneration, actorId: fact?.actorId ?? null }) : null;
     const intent = Object.freeze({
       version: 1, intentId: `${batch.batchId}:${instrument.id}:${voiceId}:${fact?.eventId || 'boundary'}:${kind}`,
       worldId: batch.worldId, batchId: batch.batchId, generation: voiceGeneration,
@@ -170,7 +171,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),
       ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
       ...(kind === 'begin' && onsetDecisions.has(`${instrument.id}:${fact?.observationId || fact?.eventId}`) ? { probabilityDecision: onsetDecisions.get(`${instrument.id}:${fact?.observationId || fact?.eventId}`) } : {}),
-      ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(fact?.topologyBinding?.dampingMacroId ? { ...getOnsetControls(fact?.laneId), macros: { ...getOnsetControls(fact?.laneId)?.macros, [fact.topologyBinding.dampingMacroId]: fact.topologyBinding.damping01 } } : getOnsetControls(fact?.laneId)), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
+      ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(fact?.topologyBinding?.dampingMacroId ? { ...onsetControls, macros: { ...onsetControls?.macros, [fact.topologyBinding.dampingMacroId]: fact.topologyBinding.damping01 } } : onsetControls), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
     });
     if (onIntentProvenance && provenanceCount < 512) {
       provenanceCount++;

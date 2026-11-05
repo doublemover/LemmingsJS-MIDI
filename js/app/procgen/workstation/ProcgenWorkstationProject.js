@@ -9,6 +9,7 @@ import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolv
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
 import { validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
+import { validateActorTimbreLocks } from '../../../midi/content/InstrumentActorLocks.js';
 
 const number = (value, fallback, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(value)) ? Number(value) : fallback));
 const integer = (value, fallback, min, max) => Math.round(number(value, fallback, min, max));
@@ -63,6 +64,7 @@ const sanitizePattern = (value, family, role, slot) => {
 const legacyInstrumentError = (index, lane, fields) => Object.assign(new Error(`Lane ${index + 1} has unsupported legacy instrument fields: ${fields.join(', ')}. Keep the original project and choose a supported sound alias or pinned instrument reference explicitly.`),
   { code: 'legacy-instrument-review-required', laneId: lane.id ?? null, fields: Object.freeze([...fields]) });
 const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
+  if (overrides.instrumentControls?.actorTimbreLocks != null) throw new Error('Actor timbre locks belong to the project, not lane controls.');
   if (overrides.patchDefinition != null) throw legacyInstrumentError(index, overrides, ['patchDefinition']);
   if (overrides.mode != null && !MODES.includes(overrides.mode)) throw new Error('Legacy Game/hybrid semantics require explicit physical conversion.');
   const mode = overrides.mode ?? 'physical';
@@ -110,8 +112,9 @@ const sanitizeProcgenWorkstation = (value = {}) => {
   const seed = integer(value?.seed, 777, 0, 0xffffffff);
   const physicalGraph = value.physicalGraph == null ? createDefaultPhysicalGraph(seed) : validateCausalInstrumentGraph(value.physicalGraph);
   if (value.version === PROCGEN_PROJECT_VERSION && value.physicalGraph == null) throw new Error('A physical project requires its instrument graph.');
+  const actorTimbreLocks = validateActorTimbreLocks(value.actorTimbreLocks);
   const junctions = validateProjectJunctions(value.junctions), fragments = validateFragmentLibrary(value.fragments), fragmentInstances = validateFragmentInstances(value.fragmentInstances);
-  return { version: PROCGEN_PROJECT_VERSION, ...(value.releaseGesture ? { releaseGesture: validateReleaseGesture(value.releaseGesture, lanes.length) } : {}), ...(junctions.length ? { junctions } : {}), ...(fragments.length ? { fragments } : {}), ...(fragmentInstances.length ? { fragmentInstances } : {}), ...(value.sceneOrigin == null ? {} : { sceneOrigin: validatePerformanceSceneOrigin(value.sceneOrigin) }), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
+  return { version: PROCGEN_PROJECT_VERSION, ...(actorTimbreLocks.length ? { actorTimbreLocks } : {}), ...(value.releaseGesture ? { releaseGesture: validateReleaseGesture(value.releaseGesture, lanes.length) } : {}), ...(junctions.length ? { junctions } : {}), ...(fragments.length ? { fragments } : {}), ...(fragmentInstances.length ? { fragmentInstances } : {}), ...(value.sceneOrigin == null ? {} : { sceneOrigin: validatePerformanceSceneOrigin(value.sceneOrigin) }), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
     const clean = createProcgenLane(index, lane || {});
     while (ids.has(clean.id)) clean.id += '-copy';
     ids.add(clean.id); return clean;
@@ -162,6 +165,12 @@ const sameValue = (left, right) => {
 };
 const reduceCanonicalProcgenProjectValue = (project, action) => {
   const procgen = project.procgen, lanes = procgen.lanes;
+  if (action.type === 'procgen/actorTimbreLocks') {
+    const actorTimbreLocks = validateActorTimbreLocks(action.locks);
+    if (sameValue(actorTimbreLocks, procgen.actorTimbreLocks || [])) return project;
+    const next = { ...procgen }; if (actorTimbreLocks.length) next.actorTimbreLocks = actorTimbreLocks; else delete next.actorTimbreLocks;
+    return { ...project, procgen: next };
+  }
   if (action.type === 'procgen/sceneMacro') return applySceneMacroAction(project, action);
   if (action.type === 'procgen/releaseGesture') { const releaseGesture = validateReleaseGesture(action.gesture, procgen.lanes.length); if (sameValue(releaseGesture, procgen.releaseGesture)) return project; if (procgen.releaseGesture?.id === releaseGesture.id && releaseGesture.revision <= procgen.releaseGesture.revision) throw new Error('A saved release gesture change requires a newer revision.'); return { ...project, procgen: { ...procgen, releaseGesture } }; }
   if (action.type === 'procgen/fragments') {
@@ -271,7 +280,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (['procgen/sceneMacro', 'procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/actorTimbreLocks', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, ...(Object.hasOwn(action.patch || {}, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id } : lane);

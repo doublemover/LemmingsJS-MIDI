@@ -6045,5 +6045,155 @@
     },
     "counterexamples": "Exact parent camera/display failure retains stale physical gain; camera retains previous-document Undo, display leaves one game and one physical listener after disposal. Fixed cases hand back current canonical state and retire observers.",
     "remaining": "1048fullcutover/output/persistence/retirement matrix,1120generated/shrinking ownership schedules and1089deep schemas remain open. CI430startupabortedrequestdoesnotestablishcause; latest independently complete green422unchanged."
+  },
+  "continuation434": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Saved per-birth/per-sound actor identity locks, bounded immutable indexing, live onset capture, canonical causal performance change/replay, current-actor inspector controls, Undo and worker-backed project restoration.",
+    "evidence": {
+      "path": "docs/validation/actor-identity-locks-desktop-2026-11-05.json",
+      "bytes": 457801,
+      "sha256": "d04a1aaf6a8e3f1aed6b6b7baf7d524d6dc8a7136354b577dcd70c7fb616fd03"
+    },
+    "validation": {
+      "qualifiedNodeCases": 1177,
+      "composition": {
+        "initial": {
+          "suites": 125,
+          "tests": 1176,
+          "passes": 1174,
+          "pending": 0,
+          "failures": 2,
+          "start": "2026-11-05T08:22:48.923Z",
+          "end": "2026-11-05T08:26:57.417Z",
+          "duration": 248494
+        },
+        "unchangedFiles": 95,
+        "unchangedFilePasses": 1168,
+        "correctedActorFile": {
+          "suites": 1,
+          "tests": 9,
+          "passes": 9,
+          "pending": 0,
+          "failures": 0,
+          "start": "2026-11-05T08:37:01.801Z",
+          "end": "2026-11-05T08:37:01.950Z",
+          "duration": 149
+        },
+        "explanation": "The final nine-case actor-lock file replaces its six-pass/two assertion-syntax failures in the initial group. Other95files passed1168cases. Only the new test assertions and one additional real-journal case changed; product source subsequently lost one trailing ASCII space, with exact normalization equality checked. No repeated1176case group or fictional single1177pass invocation."
+      },
+      "distinctDesktopCases": 9,
+      "finalExactByteActorCase": 1,
+      "criticalTypes": "passed",
+      "format": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserPaths": 1285,
+      "browserDigest": "f70009345e0fb4a1f7689098c7f7d0a7bb7f76eb2edbce17a67441473055cf7a",
+      "workerFiles": 306,
+      "workerDigest": "9dffcd84b97a9dbef8ec40fdb970f2a78c9c2eb884f1c724606d41568ac20073",
+      "paths": 1553,
+      "byteExact": 1539,
+      "unchangedCheckoutNewlines": 14
+    },
+    "issue1001": {
+      "completed": "Saved actor identity lock/unlock/clear, bounded weak indexes,64actor variation/restore/migration/pool reuse, same causal state/change/onset capture, actual durable journal Undo/Redo and native pointer/reroll/Undo/project import.",
+      "remaining": "Per-source noise seed/state contract matrix and matched-level listening/relatedness qualification remain separate."
+    },
+    "ci": {
+      "latestCompleteGreen": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+      "ci432": "All42engine cases and both native codec platforms pass; main last observed in workstation smoke.",
+      "ci433": {
+        "run": 41990030307,
+        "engineJob": 127119792421,
+        "passed": 41,
+        "failed": 1,
+        "frontier": "WebKit50ms case passed source production but a native start saw its original target9frames behind main AudioContext time. Actual decoded onset error10frames and render-counter lead119frames; the existing ahead-of-main-clock assertion failed and is retained, not weakened.",
+        "produced": {
+          "firstTargetSeconds": 0.2864791666666667,
+          "lastTargetSeconds": 0.4264791666666667,
+          "submittedSeconds": 0.3466666666666667,
+          "producerHostDurationMs": 209.1199999999999,
+          "onsets": 8,
+          "currentTick": 23
+        },
+        "nodes": [
+          {
+            "ordinal": 0,
+            "expectedFrame": 13751,
+            "submittedFrame": 11776,
+            "renderFrameAtSubmission": 11648,
+            "first": 13752
+          },
+          {
+            "ordinal": 1,
+            "expectedFrame": 14711,
+            "submittedFrame": 14720,
+            "renderFrameAtSubmission": 14592,
+            "first": 14721
+          },
+          {
+            "ordinal": 2,
+            "expectedFrame": 15671,
+            "submittedFrame": 15360,
+            "renderFrameAtSubmission": 15232,
+            "first": 15672
+          },
+          {
+            "ordinal": 3,
+            "expectedFrame": 16631,
+            "submittedFrame": 15744,
+            "renderFrameAtSubmission": 15616,
+            "first": 16632
+          },
+          {
+            "ordinal": 4,
+            "expectedFrame": 17591,
+            "submittedFrame": 15872,
+            "renderFrameAtSubmission": 15744,
+            "first": 17592
+          },
+          {
+            "ordinal": 5,
+            "expectedFrame": 18551,
+            "submittedFrame": 16256,
+            "renderFrameAtSubmission": 16128,
+            "first": 18552
+          },
+          {
+            "ordinal": 6,
+            "expectedFrame": 19511,
+            "submittedFrame": 16384,
+            "renderFrameAtSubmission": 16256,
+            "first": 19512
+          },
+          {
+            "ordinal": 7,
+            "expectedFrame": 20471,
+            "submittedFrame": 16512,
+            "renderFrameAtSubmission": 16384,
+            "first": 20472
+          }
+        ],
+        "artifact": {
+          "id": 13398442606,
+          "bytes": 1150969,
+          "sha256": "14f41a504cff4c79b96521cfadca458d45975a1c840da44fdc10c694666ece44"
+        },
+        "diagnostics": {
+          "id": 13397793670,
+          "bytes": 1754840,
+          "sha256": "9c2ed9ca646340e2e3f4254dcbe290323d4f0b03158d9c47e05ec5724dac556c"
+        },
+        "decodedTraceDigest": {
+          "path": ".tmp/rook435-ci433-clock-attempt-encoded.json",
+          "bytes": 132728,
+          "sha256": "dc8d8177b5cef9adb8b32b3e92abbad2c0476275d63d3c93e3b5158438627259"
+        }
+      },
+      "currentHead": "pending-publication"
+    }
   }
 }

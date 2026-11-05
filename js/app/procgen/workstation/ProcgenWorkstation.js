@@ -52,6 +52,8 @@ import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
 import { createCausalMidiSink } from './CausalMidiSink.js';
 import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
 import { createCausalTakeRecorder, querySoundOnlyRevoiceOwned } from './CausalTake.js';
+import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
+import { actorTimbreLocksFor, validateActorTimbreLock, actorTimbrePatchKey, EMPTY_ACTOR_TIMBRE_LOCKS } from '../../../midi/content/InstrumentActorLocks.js';
 import { captureCausalPerformanceState, diffCausalPerformanceState, diffCausalLanePerformance } from './CausalPerformanceState.js';
 import { prepareCausalTakeArchive } from './CausalTakeArchive.js';
 import { createPhysicalScoreProjection } from './PhysicalScoreProjection.js';
@@ -343,7 +345,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const effectiveSoundLanes = lanes => macroGestures.lanes(soundTransactions.lanes(lanes));
   const sampleMacroPerformance = boundary => {
     const revision = macroGestures.revision(); if (revision === sampledMacroRevision) return;
-    const next = captureCausalPerformanceState(effectiveSoundLanes(project.procgen.lanes)), previous = sampledMacroPerformance || captureCausalPerformanceState(project.procgen.lanes);
+    const next = captureCausalPerformanceState(effectiveSoundLanes(project.procgen.lanes), project.procgen.actorTimbreLocks), previous = sampledMacroPerformance || captureCausalPerformanceState(project.procgen.lanes, project.procgen.actorTimbreLocks);
     const change = diffCausalPerformanceState(previous, next);
     if (causalTake && change) { const receipt = causalTake.recordPerformance(change, boundary); if (receipt.status !== 'accepted') throw new Error('Causal take cannot admit this macro sample: ' + receipt.reason); }
     sampledMacroRevision = revision; sampledMacroPerformance = next;
@@ -449,9 +451,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalTake) { const world = runtime()?.world; sampleMacroPerformance({ tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 }); }
     const capturingPerformance = causalTake || causalTakeStart || causalTakeStop;
     const beforePerformanceLanes = capturingPerformance ? macroGestures.lanes(project.procgen.lanes) : null, afterPerformanceLanes = capturingPerformance ? macroGestures.lanes(next.procgen.lanes) : null;
-    const performanceChange = causalTake || causalTakeStart || causalTakeStop ? change && !change.structural
+    const actorLocksChanged = project.procgen.actorTimbreLocks !== next.procgen.actorTimbreLocks && !equal(project.procgen.actorTimbreLocks || [], next.procgen.actorTimbreLocks || []);
+    const performanceChange = causalTake || causalTakeStart || causalTakeStop ? change && !change.structural && !actorLocksChanged
       ? diffCausalLanePerformance(beforePerformanceLanes, afterPerformanceLanes, change.fields.some(key => ['instrumentControls', 'instrumentRef', 'gain', 'pan', 'mute', 'solo'].includes(key)) ? change.laneIds : [])
-      : diffCausalPerformanceState(captureCausalPerformanceState(beforePerformanceLanes), captureCausalPerformanceState(afterPerformanceLanes)) : null;
+      : diffCausalPerformanceState(captureCausalPerformanceState(beforePerformanceLanes, project.procgen.actorTimbreLocks), captureCausalPerformanceState(afterPerformanceLanes, next.procgen.actorTimbreLocks)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
     const junctionsChanged = !equal(project.procgen.junctions || [], next.procgen.junctions || []);
     if (junctionsChanged && (causalTake || causalTakeStart || causalTakeStop)) throw new Error('Finish the causal take before editing junction definitions. Existing junction requests remain available while recording.');
@@ -486,7 +489,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         const receipt = performanceChange ? causalTake.recordPerformance(performanceChange, boundary, mappingChanged ? next.procgen.physicalGraph : null)
           : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
         if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
-        if (performanceChange) sampledMacroPerformance = captureCausalPerformanceState(afterPerformanceLanes);
+        if (performanceChange) sampledMacroPerformance = captureCausalPerformanceState(afterPerformanceLanes, next.procgen.actorTimbreLocks);
       }
       authoringProposal?.commit(); junctionProposal?.commit();
     } catch (error) { try { authoringProposal?.cancel(); } catch (retirementError) { error.retirementError = retirementError; } throw error; }
@@ -1007,7 +1010,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         await recorder.stop({ boundaryState: causalBoundary(), reason: 'source-replaced-during-arm' });
         throw new Error(causalTakeArmCanceled ? 'Causal take arming was canceled.' : 'The world changed while the causal take was arming.');
       }
-      causalTake = recorder; causalClockBlocked = false; sampledMacroPerformance = captureCausalPerformanceState(project.procgen.lanes); sampledMacroRevision = macroGestures.revision();
+      causalTake = recorder; causalClockBlocked = false; sampledMacroPerformance = captureCausalPerformanceState(project.procgen.lanes, project.procgen.actorTimbreLocks); sampledMacroRevision = macroGestures.revision();
       lastCausalTransport = { playing: wasPlaying, bpm: transport.getState().bpm, speedFactor: sourceRuntime.world.timer.speedFactor };
       lastCausalInspection = null;
       causalTakeErrorReported = false;
@@ -1122,7 +1125,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           if (value.kind === 'omitted') { physicalProvenanceDropped += value.count; return; }
           if (physicalProvenanceBuffer.length < 512) physicalProvenanceBuffer.push(value); else physicalProvenanceDropped++;
         },
-        getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+        getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), getActorTimbreLocks: () => playbackProject().procgen.actorTimbreLocks || EMPTY_ACTOR_TIMBRE_LOCKS, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
         onInstrumentState: event => { if (!disposed && nextPlayback && physicalPlayback === nextPlayback && runtime() === next && (event.state === 'unavailable' || event.state === 'retirement-unknown')) status('Lane ' + event.laneId + ' instrument: ' + event.code); },
         onReceipt: onPhysicalReceipt });
       void nextPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => { if (!disposed && physicalPlayback === nextPlayback && runtime() === next) status('Saved lane instruments: ' + error.message); });
@@ -1221,7 +1224,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       syncPorts(); if (display) view?.displayState?.(display.getDisplayState?.()); view?.render(); view?.transport(transport.getState());
       worldInspector = createProcgenWorldInspector({ renderer: display, document, window,
         parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
-        onRevealLane: lane => view?.revealLane?.(project.procgen.lanes[lane]?.id) });
+        onRevealLane: lane => view?.revealLane?.(project.procgen.lanes[lane]?.id), onSelection: () => view?.renderInspector?.() });
       if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
       if (!session && !pendingResume && !project.procgen.sceneOrigin && (startupCommitted || !coldHistoryReturn)) play();
       if (!startupCommitted && coldHistoryReturn) status('Page restored paused. Press Play to resume.');
@@ -1838,7 +1841,51 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return Object.freeze({ key, parameter: event.type, outputId, channel, endpointEpoch: route?.connectionEpoch ?? null,
       endpointName: route?.name || output.selectedOutputName || outputId || 'No MIDI destination', available: route?.active === true });
   };
+  /** @param {string} laneId */
+  const actorTimbreSource = laneId => {
+    const lane = procgenLane(project.procgen.lanes, laneId), definition = getSupportedInstrumentDefinition(lane?.instrumentRef);
+    const selection = worldInspector?.getState().selection, world = runtime()?.world;
+    if (disposed || worldBusy || pendingHistory || !definition?.variation || !selection || !world ||
+        selection.worldId !== world.worldId || selection.generation !== world.generation || selection.actorId == null) return null;
+    const identity = { worldId: world.worldId, generation: world.generation, actorId: selection.actorId };
+    const lock = actorTimbreLocksFor(project.procgen.actorTimbreLocks, identity)?.find(value => value.patchId === definition.id && value.patchRevision === definition.revision) || null;
+    if (!lock && (selection.finalReason || !renderer()?.actorVisibility?.actorById(selection.actorId))) return null;
+    return { lane, definition, identity, lock };
+  };
+  /** @param {string} laneId */
+  const actorTimbreLockState = laneId => {
+    const source = actorTimbreSource(laneId);
+    return Object.freeze({ available: !!source, locked: !!source?.lock, actorId: source?.identity.actorId ?? null,
+      reason: source ? 'Identity offsets for this actor and sound stay fixed through future timbre rerolls. Strike variation stays event-owned.' : 'Select a current visible actor to lock its identity for this sound.',
+      count: project.procgen.actorTimbreLocks?.length || 0 });
+  };
+  /** @param {string} laneId @param {boolean} locked */
+  const lockActorTimbre = (laneId, locked) => {
+    if (typeof locked !== 'boolean') throw new Error('Choose an explicit actor identity lock state.');
+    if (stageSession?.active()) return stageSession.reject();
+    const source = actorTimbreSource(laneId);
+    if (!source || causalTakeStart || causalTakeStop || physicalAuthoringAbort || soundTransactions.diagnostics().active || macroGestures.diagnostics().active) throw new Error('Finish the current gesture and select a current actor before changing its timbre lock.');
+    if (!!source.lock === locked) return false;
+    const previous = project.procgen.actorTimbreLocks || [];
+    const locks = locked ? [...previous, validateActorTimbreLock({ version: 1, ...source.identity, patchId: source.definition.id, patchRevision: source.definition.revision,
+      seed: source.lane.instrumentControls?.variationSeed ?? source.definition.variation.seed,
+      amount01: source.lane.instrumentControls?.variationAmount01 ?? source.definition.variation.amount01 })] : previous.filter(value => value !== source.lock);
+    const result = dispatch({ type: 'procgen/actorTimbreLocks', locks });
+    if (!result || result === false) throw new Error('The actor timbre lock was not admitted.');
+    status(locked ? 'Actor identity locked for this sound at future onsets.' : 'Actor identity unlocked for future onsets.'); return true;
+  };
+  /** @param {string} laneId */
+  const clearActorTimbreLocks = laneId => {
+    if (stageSession?.active()) return stageSession.reject();
+    const definition = getSupportedInstrumentDefinition(procgenLane(project.procgen.lanes, laneId)?.instrumentRef);
+    if (disposed || worldBusy || pendingHistory || !definition || causalTakeStart || causalTakeStop || physicalAuthoringAbort || soundTransactions.diagnostics().active || macroGestures.diagnostics().active) throw new Error('Finish the current operation before clearing sound identity locks.');
+    const previous = project.procgen.actorTimbreLocks || [], key = actorTimbrePatchKey({ patchId: definition.id, patchRevision: definition.revision });
+    const locks = previous.filter(value => actorTimbrePatchKey(value) !== key);
+    if (locks.length === previous.length) return false;
+    return dispatch({ type: 'procgen/actorTimbreLocks', locks }) !== false;
+  };
   const handlers = {
+    actorTimbreLockState, lockActorTimbre, clearActorTimbreLocks,
     laneDisplayState(laneIds) {
       laneDisplayEvidence.setLanes(laneIds);
       const operational = getOperationalSnapshot(), sourceKey = laneDisplaySource(), output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState();

@@ -1,3 +1,4 @@
+import { actorTimbreIdentityKey } from './InstrumentActorLocks.js';
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'prototype', 'constructor'].includes(value);
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
@@ -42,7 +43,9 @@ export function instrumentVariationValue(fields) {
 }
 
 export function applyInstrumentVariation(profile, patch, values, controls, identity, deltas, applyFrame) {
-  if (!profile) { if (controls.variationAmount01 != null || controls.variationSeed != null) fail('controls require an authored variation profile'); return null; }
+  const lock = controls.actorTimbreLocks?.find(entry => entry.patchId === patch.id && entry.patchRevision === patch.revision);
+  if (lock && (!identity || actorTimbreIdentityKey(lock) !== actorTimbreIdentityKey(identity))) fail('actor timbre lock belongs to another birth identity');
+  if (!profile) { if (controls.variationAmount01 != null || controls.variationSeed != null || lock) fail('controls require an authored variation profile'); return null; }
   const amount = controls.variationAmount01 ?? profile.amount01, seed = controls.variationSeed ?? profile.seed;
   const event = typeof identity?.onsetId === 'string' && identity.onsetId.length > 0 && identity.onsetId.length <= 512 ? identity.onsetId : null;
   const actor = (Number.isSafeInteger(identity?.actorId) && identity.actorId >= 0 || typeof identity?.actorId === 'string' && identity.actorId.length > 0 && identity.actorId.length <= 160) &&
@@ -50,15 +53,16 @@ export function applyInstrumentVariation(profile, patch, values, controls, ident
     [identity.worldId, identity.generation, identity.actorId] : null;
   if (amount && !actor && !event) fail('captured actor or event identity is required');
   const receipt = Object.freeze({ algorithmVersion: profile.algorithmVersion, seed, amount01: amount, identityScope: actor ? 'execution-birth' : 'event-only-fallback',
-    physicalRandomStateConsumed: false, cacheEntries: 0 });
+    physicalRandomStateConsumed: false, cacheEntries: 0, ...(lock ? { actorLock: Object.freeze({ version: lock.version, seed: lock.seed, amount01: lock.amount01, patchId: lock.patchId, patchRevision: lock.patchRevision }) } : {}) });
   if (!amount) return receipt;
   for (const [scope, entries] of [['actor', profile.targets], ['event', profile.eventTargets]]) {
+    const scopeSeed = scope === 'actor' && lock ? lock.seed : seed, scopeAmount = scope === 'actor' && lock ? lock.amount01 : amount;
     if (amount && scope === 'event' && entries.length && !event) fail('event variation requires a stable onset identity');
     for (const target of entries) {
       let latent = 0;
-      if (amount) for (const factor of target.factors) latent += factor.weight * instrumentVariationValue([INSTRUMENT_VARIATION_ALGORITHM, patch.id, patch.revision, seed,
+      if (amount) for (const factor of target.factors) latent += factor.weight * instrumentVariationValue([INSTRUMENT_VARIATION_ALGORITHM, patch.id, patch.revision, scopeSeed,
         scope, scope === 'actor' ? actor || ['event-only', event] : event, factor.id]);
-      const offset = Math.max(-1, Math.min(1, latent)) * target.amount * amount, previous = values[target.parameter];
+      const offset = Math.max(-1, Math.min(1, latent)) * target.amount * scopeAmount, previous = values[target.parameter];
       const requested = target.composition === 'add' ? previous + offset : previous * (1 + offset);
       values[target.parameter] = requested; deltas.push({ parameterId: target.parameter, unit: target.unit, requestedValue: requested,
         origin: scope === 'actor' ? 'identity' : 'event-variation', variationId: target.id, composition: target.composition, applyFrame, interpolation: 'onset-only', smoothingMs: 0 });

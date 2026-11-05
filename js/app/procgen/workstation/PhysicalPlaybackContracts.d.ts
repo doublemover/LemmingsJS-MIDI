@@ -66,6 +66,7 @@ export interface PhysicalPlaybackOptions {
   resourceBudget?: ReturnType<typeof createResourceBudget> | null;
   world?: unknown;
   getLanes?: () => readonly PlaybackLaneSource[];
+  getActorTimbreLocks?: () => readonly import('../../../midi/content/InstrumentActorLocks.js').ActorTimbreLock[];
   isPlaybackEnabled?: () => boolean;
   initialMorphMechanism?: unknown;
   initialCavityBody?: unknown;

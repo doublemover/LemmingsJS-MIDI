@@ -381,6 +381,7 @@
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
         "js/midi/content/ImpulseResponseDescriptor.js",
+        "js/midi/content/InstrumentActorLocks.js",
         "js/midi/content/InstrumentIdentityVariation.js",
         "js/midi/content/InstrumentPatchV2.js",
         "js/midi/content/InstrumentPerformance.js",
@@ -451,8 +452,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 305,
-      "sha256": "f79568d09bd620c7e5bfca267ef092dfe1fbb4579f11667ed5fa4809114c768f"
+      "fileCount": 306,
+      "sha256": "9dffcd84b97a9dbef8ec40fdb970f2a78c9c2eb884f1c724606d41568ac20073"
     },
     {
       "id": "lemmings-timing-worker-source",

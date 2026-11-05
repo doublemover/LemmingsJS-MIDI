@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Save per-actor sound identity locks through timbre rerolls, Undo, causal recording and replay, with bounded inspector controls and stable physical state.
+
 - Hand physical playback back to the canonical project after binding errors, retire display/game observers reliably, and clear prior document history before optional camera restoration.
 
 - Check physical playback and score-clock boundaries with distinct time and epoch types, preserve owner return contracts, and refuse invalid native clock frames.

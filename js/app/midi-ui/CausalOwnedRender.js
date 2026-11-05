@@ -96,7 +96,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       if (entry.attack.mode === 'positionDriven' && !entry.attack.traversal) throw failure('sample-position-render-unavailable', 'Position-driven causal rendering requires a complete recorded travel binding, not inferred cursor motion.');
       return { ...selected, minimumRateRatio: selected.rateRatio, sourceSampleRate: entry.attack.sourceSampleRate, childSourceRate: entry.release?.sourceSampleRate ?? null }; };
   }
-  if (!owned.extended && (Object.keys(admittedTargetControls.macros).length || admittedTargetControls.variationAmount01 != null || admittedTargetControls.variationSeed != null)) throw failure('unsupported-performance-controls', 'Unsupported performer controls for this source.');
+  if (!owned.extended && (Object.keys(admittedTargetControls.macros).length || admittedTargetControls.variationAmount01 != null || admittedTargetControls.variationSeed != null || admittedTargetControls.actorTimbreLocks?.length)) throw failure('unsupported-performance-controls', 'Unsupported performer controls for this source.');
   const parameters = Object.fromEntries(Object.entries(owned.fields).map(([key, spec]) => [key, patch.parameters[key] ?? spec[2]]));
   if (parameters.sourceMode === 2 && parameters.circularControlMode === 2 && (!Number.isSafeInteger(revoice.sourceVersions?.physicalMusic) || revoice.sourceVersions.physicalMusic < 11)) throw failure('circular-route-capture-unavailable', 'This take predates canonical directed-route coordinate capture.');
   const performancePlan = owned.extended ? compileInstrumentPerformance(patch, owned.parameters) : null;
