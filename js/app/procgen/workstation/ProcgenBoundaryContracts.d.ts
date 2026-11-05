@@ -86,3 +86,5 @@ export interface RecoverySourceMetadata { documentRevision?: number | null; tick
 export interface RecoveryWriteOptions extends StorageReadOptions, RecoverySourceMetadata { laneCount?: number; snapshotMetadata?: (() => RecoverySourceMetadata) | null; incremental?: boolean }
 export interface StoredProjectRecord { id: string; kind: 'document'; revision: number; name: string; savedAt: string; session: SessionBindingSource & { world: { laneCount: number } } }
 export interface RecoveryCommitReceipt { generation: number; checksum: string; documentRevision: number | null; tick: number | null; durable: boolean; canceledAfterCommit: boolean; retirement?: { readonly outcome?: string; readonly failures?: readonly unknown[] } }
+
+export interface ProjectImportFile { readonly size?: number; text(): string | Promise<string>; stream?: () => ReadableStream<Uint8Array> }

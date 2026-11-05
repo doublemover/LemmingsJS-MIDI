@@ -6,7 +6,7 @@
     "noResolve": false
   },
   "include": [
-    "test/types/workstation-boundaries.ts",
+    "test/types/*.ts",
     "js/app/procgen/workstation/ProcgenBoundaryContracts.d.ts"
   ]
 }

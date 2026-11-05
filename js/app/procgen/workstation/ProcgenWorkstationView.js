@@ -38,8 +38,13 @@ const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B�
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
 const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e', '#58aec6', '#99ac37'];
 const laneColor = id => { let hash = 2166136261; for (const character of String(id)) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619); return COLORS[(hash >>> 0) % COLORS.length]; };
+/** @param {Element | null | undefined} element */
+const elementData = element => /** @type {HTMLElement | SVGElement} */ (element)?.dataset;
+/** @param {Element | null | undefined} element */
+const controlValue = element => element && 'value' in element && typeof element.value === 'string' ? element.value : undefined;
 const rendererLeases = new WeakMap(), mountedViews = new WeakMap(), motionOwners = new WeakMap();
 
+/** @param {import('./ProcgenWorkstationViewContracts.js').WorkstationViewOptions} options */
 function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, getDocumentIdentity = () => null, getDocumentStatus = () => null, getArmedLaneIds = () => [], dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
   mountedViews.get(document.getElementById('gameCanvas'))?.dispose();
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
@@ -249,9 +254,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     getContext: () => {
       const lane = selected(), renderer = getRuntime()?.lanes?.renderer, snapshot = renderer?.presentation?.getSnapshot?.(), selectedIndex = procgenLaneIndex(getProject().procgen.lanes).get(lane.id);
       const entity = renderer?.selectedWorldEntityId && snapshot?.entities?.find(value => value.id === renderer.selectedWorldEntityId && (state.tab === 'Selection' || value.lane === selectedIndex));
-      const mappingId = document.activeElement?.closest?.('.studio-physical-instrument')?.dataset.mappingId;
+      const mappingId = elementData(document.activeElement?.closest?.('.studio-physical-instrument'))?.mappingId;
       const mappingTarget = state.tab === 'Physical' && getProject().procgen.physicalGraph?.instruments.some(value => value.id === mappingId) ? mappingId : null;
-      return { laneId: lane.id, laneName: lane.name, editorKind: state.tab, targetScope: state.tab === 'Physical' ? 'physical-graph' : ['World', 'Selection'].includes(state.tab) ? 'world' : 'lane', targetId: document.activeElement?.closest?.('.studio-curve-editor')?.dataset.curveId || (state.tab === 'Physical' ? mappingTarget || 'procgen.physicalGraph' : state.tab === 'Selection' ? entity?.id || snapshot?.worldId || null : state.tab === 'World' ? snapshot?.worldId || null : null),
+      return { laneId: lane.id, laneName: lane.name, editorKind: state.tab, targetScope: state.tab === 'Physical' ? 'physical-graph' : ['World', 'Selection'].includes(state.tab) ? 'world' : 'lane', targetId: elementData(document.activeElement?.closest?.('.studio-curve-editor'))?.curveId || (state.tab === 'Physical' ? mappingTarget || 'procgen.physicalGraph' : state.tab === 'Selection' ? entity?.id || snapshot?.worldId || null : state.tab === 'World' ? snapshot?.worldId || null : null),
         selectedEntity: entity ? { id: entity.id, kind: entity.kind, worldId: snapshot.worldId, generation: snapshot.generation } : null,
         dirtyBuffer: [...curveEditors.values()].filter(value => value.laneId === lane.id).map(value => ({ curveId: value.curveId, ...value.control.inspect() })) };
     }, isSuspended: () => stageActive,
@@ -356,7 +361,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     onJump: id => { if (!revealLane(id, { selectLane: true })) return; chrome.close();
       [...lanes.children].find(element => element.dataset.laneId === id)?.querySelector('.studio-lane-title')?.focus({ preventScroll: true }); } });
   const laneGroups = createLaneNavigatorGroupsView({ document, metadata: navigationMetadata, getSelection: () => state.laneId,
-    onChange: ({ revealLaneId } = {}) => { if (disposed) return; beginGeometry(); syncLaneNavigation(); if (revealLaneId) navigator.jump(revealLaneId); reflowGeometry(); handlers.preferences?.(); } });
+    onChange: ({ revealLaneId = null } = {}) => { if (disposed) return; beginGeometry(); syncLaneNavigation(); if (revealLaneId) navigator.jump(revealLaneId); reflowGeometry(); handlers.preferences?.(); } });
   laneNavigator.element.append(laneGroups.element);
   footer.append(inMenu('View', laneNavigator.element), laneNavigator.breadcrumb);
   footer.append(inMenu('Edit', button('+ Lane', () => handlers.addLane?.())), inMenu('Edit', button('− Lane', () => handlers.removeLane?.())), inMenu('Edit', button('Duplicate', () => handlers.duplicate?.())), inMenu('Edit', button('Clear', () => handlers.clear?.())), inMenu('Edit', tool),
@@ -532,7 +537,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       owner.preview.render();
     };
     const append = (entries, restorePageFocus = false) => {
-      const focused = document.activeElement, focusedId = focused?.dataset?.projectId;
+      const focused = document.activeElement, focusedId = elementData(focused)?.projectId;
       const restoreFocus = items.contains(focused) || focused === more || focused === previous || restorePageFocus && (focused === document.body || focused === projectList);
       if (owner.selection?.kind === 'checkpoint' && !entries.some(entry => entry.id === owner.selection.id && entry.revision === owner.selection.revision)) { owner.selection = null; owner.comparison = undefined; }
       items.replaceChildren(); previous.hidden = !owner.back.length;
@@ -563,7 +568,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       try {
         const [named, recovery] = await Promise.allSettled([Promise.resolve().then(() => fetchPage ? fetchPage(null, owner.query) : page), Promise.resolve().then(() => options.refreshRecovery ? options.refreshRecovery() : options.recovery)]);
         if (!current(generation)) return;
-        if (named.status === 'fulfilled' && named.value) { page = named.value; append(page.items); } else feedback.textContent = named.reason?.message || 'Named project metadata is unavailable.';
+        if (named.status === 'fulfilled' && named.value) { page = named.value; append(page.items); } else feedback.textContent = named.status === 'rejected' && named.reason?.message || 'Named project metadata is unavailable.';
         if (recovery.status === 'fulfilled') renderRecovery(recovery.value); else renderRecovery({ state: 'unavailable', message: recovery.reason?.message || 'Recovery metadata is unavailable.' });
       } finally { if (current(generation)) { owner.loading = false; refreshControls(); } }
     });
@@ -1227,14 +1232,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     onError: message => { displayStatus.classList.remove('visually-hidden'); displayStatus.textContent = message; } });
   const playheadSurface = displayScheduler.register({ id: 'workstation-playheads', element: grid, intervalMs: 32, write: paintPlayheads });
   function focusedDisplayControl(laneId) {
-    const active = document.activeElement, knob = active?.closest?.('[data-parameter-id]');
-    if (knob && (knob.closest('[data-lane-id]')?.dataset.laneId || state.laneId) === laneId) {
+    const active = document.activeElement, knob = /** @type {HTMLElement | null} */ (active?.closest?.('[data-parameter-id]'));
+    if (knob && (elementData(knob.closest('[data-lane-id]'))?.laneId || state.laneId) === laneId) {
       const name = knob.dataset.parameterName || knob.querySelector('.parameter-knob-label')?.textContent || 'Parameter';
-      return { name, value: active.matches('input') ? active.value : knob.querySelector('.parameter-knob-value')?.textContent || knob.querySelector('.parameter-knob-number')?.value,
+      return { name, value: active.matches('input') ? controlValue(active) : knob.querySelector('.parameter-knob-value')?.textContent || controlValue(knob.querySelector('.parameter-knob-number')),
         error: active.getAttribute('aria-invalid') === 'true' ? knob.querySelector('.parameter-knob-error')?.textContent || 'Invalid parameter draft' : null };
     }
     const field = active?.closest?.('.studio-field'), name = field?.querySelector('span')?.textContent;
-    return laneId === state.laneId && active?.matches?.('input') && ['Sustain', 'Pitch bend', 'Pressure'].includes(name) ? { name, value: active.value } : null;
+    return laneId === state.laneId && active?.matches?.('input') && ['Sustain', 'Pitch bend', 'Pressure'].includes(name) ? { name, value: controlValue(active) } : null;
   }
   function readLaneDisplayValues() {
     const ids = [...laneDisplays.keys()]; if (!ids.includes(state.laneId)) ids.push(state.laneId);
@@ -1291,12 +1296,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const patternReady = () => !stageActive && selected().mode === 'pattern' && !!selected().patterns[state.slot]?.steps[state.step];
   const bindingDefaults = { undo: ['Ctrl+KeyZ', 'Meta+KeyZ'], redo: ['Ctrl+Shift+KeyZ', 'Meta+Shift+KeyZ', 'Ctrl+KeyY', 'Meta+KeyY'],
     copy: ['Ctrl+KeyC', 'Meta+KeyC'], paste: ['Ctrl+KeyV', 'Meta+KeyV'] };
+  /** @type {import('./ProcgenWorkstationViewContracts.js').WorkstationViewCommand[]} */
   const commands = ['undo', 'redo', 'copy', 'paste'].map(action => ({ id: 'workstation.' + action, label: ({ undo: 'Undo the last edit', redo: 'Redo the last edit', copy: 'Copy the selected pattern', paste: 'Paste into the selected pattern' })[action],
     contexts: [action === 'undo' || action === 'redo' ? 'project-history' : 'optional-pattern'], bindings: bindingDefaults[action],
     enabled: () => canCommand(action) && (['undo', 'redo'].includes(action) || patternReady()), execute: () => handlers[action]?.() }));
   commands.push({ id: 'pattern.clearStep', label: 'Clear the selected step', contexts: ['optional-pattern'], bindings: ['Delete', 'Backspace'],
     enabled: () => patternReady() && state.tab === 'Step', execute: () => changeStep({ enabled: false }) });
-  for (const [key, direction] of [['ArrowLeft', -1], ['ArrowRight', 1]]) commands.push({ id: 'pattern.' + (direction < 0 ? 'previousStep' : 'nextStep'),
+  const stepNavigation = /** @type {Array<[string, number]>} */ ([['ArrowLeft', -1], ['ArrowRight', 1]]);
+  for (const [key, direction] of stepNavigation) commands.push({ id: 'pattern.' + (direction < 0 ? 'previousStep' : 'nextStep'),
     label: direction < 0 ? 'Select the previous step' : 'Select the next step', contexts: ['optional-pattern'], bindings: [key], repeat: true, enabled: patternReady,
     execute: () => { const length = selected().patterns[state.slot].length; state.step = (state.step + length + direction) % length; state.tab = 'Step'; render(); } });
   for (const [action, label] of [['openSoundLibrary', 'Open the sound library'], ['openShapeFoundry', 'Open Shape Foundry'],

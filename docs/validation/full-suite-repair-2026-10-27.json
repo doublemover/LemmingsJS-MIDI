@@ -148409,5 +148409,81 @@
       "parent427": "Preserved 40pass/twofail; screenshot proves a terminal WebKit installation failure, while exact cause and Firefox process crash remain unproven.",
       "currentSource": "pending-publication"
     }
+  },
+  "continuation430": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Replace workstation preview method wrapping/router field mutation with bounded host subscriptions and exclusive adapter leases; expose immutable O(1)scheduler note activity; subscribe to renderer display state; check entire view and canonical UI state and preserve command types through guarded async forwarding.",
+    "evidence": {
+      "path": "docs/validation/workstation-owned-adapters-types-desktop-2026-11-05.json",
+      "bytes": 666937,
+      "sha256": "a2665e3d551a186513184c0c78b0593f6eba8d11752d11b84e3cc940c046aa5e"
+    },
+    "validation": {
+      "qualifiedNodeCases": 1083,
+      "composition": {
+        "firstGroup": {
+          "suites": 74,
+          "tests": 1083,
+          "passes": 1082,
+          "pending": 0,
+          "failures": 1,
+          "start": "2026-11-05T06:30:42.603Z",
+          "end": "2026-11-05T06:31:37.767Z",
+          "duration": 55164
+        },
+        "unchangedFiles": 57,
+        "unchangedFilePassingCases": 953,
+        "correctedController": {
+          "suites": 1,
+          "tests": 130,
+          "passes": 130,
+          "pending": 0,
+          "failures": 0,
+          "start": "2026-11-05T06:34:37.494Z",
+          "end": "2026-11-05T06:34:39.946Z",
+          "duration": 2452
+        },
+        "explanation": "Only the old replacement-router test fixture changed. Its130casefile replaces the129pass/onefail portion of the first group; other57files passed953cases. Browser runtime digest stayed7283ddd2154a91f8ac138e9d8ac637762ab92c3cd8b075b0ed399c6c51c483a8 throughout. No invented single all-green1083case invocation."
+      },
+      "desktopCases": 23,
+      "criticalTypes": "passed including complete view and canonical UI state",
+      "strictMismatchConsumers": "passed",
+      "format": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserPaths": 1284,
+      "browserDigest": "7283ddd2154a91f8ac138e9d8ac637762ab92c3cd8b075b0ed399c6c51c483a8",
+      "paths": 1462,
+      "byteExact": 1449,
+      "unchangedCheckoutNewlines": 13,
+      "workerFiles": 305,
+      "workerDigest": "147408a06b711f25ffe6f14b9729dc45b60131eb3c333340c90fc024eafc5962"
+    },
+    "issue1089": {
+      "completed": "Owned preview subscriptions, exclusive router adapter leases, public note activity, display-state subscriptions, checked complete view/canonical UI state and typed guarded async commands.",
+      "remaining": "Deep authored/runtime schemas, distinct nominal time/identity domains, wider imported services and dependency/schema audit."
+    },
+    "ci": {
+      "latestCompleteGreen": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+      "parent429": {
+        "head": "25840bdce57414ffdf8e431476a77b9f41c2dd50",
+        "run": 41978203269,
+        "engineJob": 127081925716,
+        "passed": 41,
+        "failed": 1,
+        "project": "webkit-lifecycle",
+        "failure": "Native source onsets were not all admitted at their original times.",
+        "frontier": "Startup completed; private probe produce() threw before its decoded attempt attachment. Original source targets/tolerances unchanged; investigate fixture arm versus observer readiness next.",
+        "artifact": {
+          "id": 13393008426,
+          "bytes": 1142293,
+          "sha256": "b4d0cadd7c10eb85d994271fcef5a49b0b06923990928efcf557dfea6b5a72f6"
+        }
+      },
+      "currentSource": "pending-publication"
+    }
   }
 }

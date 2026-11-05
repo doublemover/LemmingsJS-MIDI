@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Own preview-router and display subscriptions explicitly, prevent workstation handler theft, and expose immutable scheduler activity without private map reads.
+- Check the full workstation view and canonical UI state, preserving command input and outcome types through guarded async handlers.
+
 - Keep browser-generation status reads from starting premature restore work, fence obsolete restoration progress and retain bounded installation failure details.
 
 - Retire background persistence copies before take replay, preserve unknown cleanup across retries and wait for recovery retirement during disposal.

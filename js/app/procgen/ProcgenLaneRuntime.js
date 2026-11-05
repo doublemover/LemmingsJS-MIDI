@@ -1,3 +1,4 @@
+import { subscribeMidiPreviewRouter, notifyMidiPreviewRouter } from '../../midi/MidiPreviewSubscriptions.js';
 import { ParticleTable } from '../../render/ParticleTable.js';
 import { ProcgenLaneWorld, DEFAULT_LANE_HEIGHT } from './ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from './ProcgenLaneRenderer.js';
@@ -39,10 +40,12 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
     const view = {
       game: world, gameResources: resources, midiEnabled: false, midiAvailable: true,
       midiPreviewRouter: null,
+      subscribeMidiPreviewRouter(listener) { return subscribeMidiPreviewRouter(this, listener); },
       setMidiPreviewRouter(router) {
         previewRouter?.detach?.(); previewRouter?.scheduler?.allNotesOff?.();
         previewRouter = router; this.midiPreviewRouter = router;
         router?.attach(world.soundEvents, { game: world });
+        notifyMidiPreviewRouter(this);
       }
     };
     world.gameResources = resources;

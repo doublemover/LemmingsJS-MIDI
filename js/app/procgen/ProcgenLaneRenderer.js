@@ -18,6 +18,7 @@ class ProcgenLaneRenderer {
     this.actorVisibility = new ProcgenActorVisibility(world, { budgetAdapter: renderBudget?.budgetAdapter });
     registerProcgenActorVisibility(world, this.actorVisibility);
     this.canvas = canvas; this.world = world; this.assets = assets; this.window = windowRef;
+    this._displayStateSubscribers = new Set(); this._displayStateRevision = 0;
     this.surfaceWidth = canvas.width; this.surfaceHeight = canvas.height;
     this.resources = new ProcgenRenderResources(canvas.ownerDocument, renderBudget);
     try {
@@ -82,11 +83,24 @@ class ProcgenLaneRenderer {
       this.actorEffects?.setVisible(!this.window.document?.hidden); this._displayState('ready'); return true;
     } catch (error) { this._failDisplay(error); return false; }
   }
+  subscribeDisplayState(listener) {
+    if (typeof listener !== 'function' || this.lifecycleState === 'disposed') throw new Error('A display subscription requires a live renderer and listener.');
+    if (this._displayStateSubscribers.size >= 32) throw new Error('Display subscription capacity exceeded.');
+    const entry = { listener }; this._displayStateSubscribers.add(entry);
+    return () => this._displayStateSubscribers.delete(entry);
+  }
   _displayState(state, error = null) {
     const reason = error ? String(error.message || error) : null, changed = state !== this.lifecycleState || reason !== this.displayError;
     this.lifecycleState = state; this.displayError = reason;
     if (this.presentationActive && this.canvas.dataset) this.canvas.dataset.displayState = state;
-    try { if (changed) this.onDisplayState?.({ state, reason: this.displayError, attempts: this.recoveryAttempts }); } catch { /* Status listeners cannot break the display host. */ }
+    if (!changed) return;
+    const receipt = Object.freeze({ state, reason: this.displayError, attempts: this.recoveryAttempts }), revision = ++this._displayStateRevision;
+    try { this.onDisplayState?.(receipt); } catch { /* Status listeners cannot break the display host. */ }
+    for (const entry of [...this._displayStateSubscribers]) {
+      if (this._displayStateRevision !== revision) break;
+      if (!this._displayStateSubscribers.has(entry)) continue;
+      try { entry.listener(receipt); } catch { /* One display observer cannot suppress another owner. */ }
+    }
   }
   _releasePresentation() {
     this.presentation?.invalidate('The world display is preparing a new projection.');
@@ -533,7 +547,7 @@ class ProcgenLaneRenderer {
     return true;
   }
   dispose() { if (this.lifecycleState === 'disposed') return;
-    this._displayState('disposed');
+    this._displayState('disposed'); this._displayStateSubscribers.clear();
     for (const [event, listener] of this.contextListeners) this.canvas.removeEventListener?.(event, listener);
     this.contextListeners.length = 0; this.pendingContextListeners.length = 0;
     this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.projectedRows.dispose(); this.actorEffects.dispose(); this.actorEffectPass.dispose(); this.releaseMotion?.(); this.motionPolicy.dispose(); this.presentation.dispose(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();

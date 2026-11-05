@@ -1,3 +1,5 @@
+import { subscribeMidiPreviewRouter, notifyMidiPreviewRouter } from '../../js/midi/MidiPreviewSubscriptions.js';
+import { createMidiWorkstationAdapterOwner } from '../../js/midi/router/MidiWorkstationAdapter.js';
 import { ProcgenLaneWorld } from '../../js/app/procgen/ProcgenLaneWorld.js';
 import { captureProcgenCheckpoint } from '../../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { createProcgenWorkstation } from '../../js/app/procgen/workstation/ProcgenWorkstation.js';
@@ -24,9 +26,14 @@ export function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = '
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
   let throwCamera = false;
-  const makeRuntime = () => ({ world: worldFactory ? worldFactory() : { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler(), onBatch: new EventHandler() } },
-    lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { if (throwCamera) throw new Error('Camera unavailable'); this.restored = value; } } } },
-    view: { midiPreviewRouter: { scheduler, resetClock() {} }, setMidiPreviewRouter(value) { this.midiPreviewRouter = value; } } });
+  const makeRuntime = () => {
+    const adapter = createMidiWorkstationAdapterOwner();
+    return { world: worldFactory ? worldFactory() : { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler(), onBatch: new EventHandler() } },
+      lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { if (throwCamera) throw new Error('Camera unavailable'); this.restored = value; } } } },
+      view: { midiPreviewRouter: { scheduler, resetClock() {}, bindWorkstationAdapter: adapter.bind, getAutomationSpanState(id, lane) { return adapter.automationProvider()?.(id, lane) || null; } },
+        subscribeMidiPreviewRouter(listener) { return subscribeMidiPreviewRouter(this, listener); },
+        setMidiPreviewRouter(value) { this.midiPreviewRouter = value; notifyMidiPreviewRouter(this); } } };
+  };
   let runtime = makeRuntime();
   let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: Array.from({ length: laneCount }, (_, index) => index || physicalOnly ? {} :
     { mode: 'pattern', patternPurpose: 'Complementary transport test fixture',

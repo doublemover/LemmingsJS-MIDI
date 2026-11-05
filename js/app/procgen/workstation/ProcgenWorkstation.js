@@ -129,6 +129,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   startupSource = null;
   Object.assign(legacy.settings, startupPlan.worldOptions);
   let project = sealMidiProjectSnapshot(markCanonicalMidiProject(startupPlan.project));
+  /** @type {import('./ProcgenWorkstationViewContracts.js').WorkstationUiState} */
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
     inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}), ...normalizeWorkstationDockPreferences(savedDock) };
@@ -175,7 +176,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
-  const routerRestores = new Map();
+  let attachedPreviewRouter = null, previewRouterBinding = null;
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
   const retirement = createProcgenRetirementScope();
   const midiParameterEvidence = createMidiParameterEvidence({ resourceBudget });
@@ -1074,11 +1075,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     state.hazardSpacing = acceptedWorldSettings.hazardSpacing;
   };
   const attachRouter = next => {
-    if (!next) return;
-    if (!routerRestores.has(next)) routerRestores.set(next, { event: next.workstationEventHandler, automation: next.getAutomationSpanState });
-    next.workstationEventHandler = () => true;
-    next.getAutomationSpanState = (id, lane) => engine.getAutomationSpanState?.(id, lane);
-    next.resetClock?.({ preserveGamePhrases: true });
+    if (next === attachedPreviewRouter) return;
+    const binding = next ? next.bindWorkstationAdapter({ onEvent: () => true, getAutomationSpanState: (id, lane) => engine.getAutomationSpanState?.(id, lane) }) : null;
+    previewRouterBinding?.release(); attachedPreviewRouter = next; previewRouterBinding = binding;
+    next?.resetClock?.({ preserveGamePhrases: true });
   };
   /** @param {{session?: import('./ProcgenBoundaryContracts.js').SessionBindingSource, historyRestore?: boolean}} options */
   const bindRuntime = ({ session, historyRestore = false } = {}) => {
@@ -1179,28 +1179,21 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     };
     bus?.on?.(onGameEvent); physicalBus?.on?.(onPhysicalBatch);
     const display = next.lanes?.renderer;
-    const previousDisplayStatus = display?.onDisplayState;
-    const onDisplayStatus = receipt => {
-      try { previousDisplayStatus?.call(display, receipt); } finally { view?.displayState?.(receipt); }
-    };
-    if (display) { display.onDisplayState = onDisplayStatus; view?.displayState?.(display.getDisplayState?.()); }
+    const unsubscribeDisplay = display?.subscribeDisplayState?.(receipt => { if (!disposed && boundRuntime === next) view?.displayState?.(receipt); });
+    if (display) view?.displayState?.(display.getDisplayState?.());
     unhookWorld = () => {
+      unsubscribeDisplay?.();
       bus?.off?.(onGameEvent); physicalBus?.off?.(onPhysicalBatch);
       physicalFeedback?.dispose(); physicalFeedback = null;
       worldInspector?.dispose(); worldInspector = null;
       physicalPlayback?.dispose(); physicalPlayback = null;
-      if (display?.onDisplayState === onDisplayStatus) display.onDisplayState = previousDisplayStatus;
     };
     next.lanes?.setClockDriven?.(true);
-    if (next.view?.setMidiPreviewRouter) {
-      const owner = next.view, original = owner.setMidiPreviewRouter;
-      owner.setMidiPreviewRouter = function(value, ...args) { const result = original.call(this, value, ...args); attachRouter(value); syncPorts(); return result; };
-      unhookRouter = () => {
-        owner.setMidiPreviewRouter = original;
-        for (const [attached, previous] of routerRestores) { attached.workstationEventHandler = previous.event; attached.getAutomationSpanState = previous.automation; }
-        routerRestores.clear();
-      };
-    }
+    const unsubscribeRouter = next.view?.subscribeMidiPreviewRouter?.(value => {
+      if (disposed || boundRuntime !== next) return;
+      attachRouter(value); syncPorts();
+    });
+    unhookRouter = () => { unsubscribeRouter?.(); previewRouterBinding?.release(); previewRouterBinding = null; attachedPreviewRouter = null; };
     attachRouter(next.view?.midiPreviewRouter);
     if (session) {
       ports.configure({ recording: false, thru: false });
@@ -1578,7 +1571,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (!current.available || reviewed?.kind !== current.kind || reviewed?.sourceToken !== current.sourceToken) throw new Error('The reviewed performance source changed. Open sharing again to select the current source.');
     return current.kind === 'causal-take' ? prepareCausalArchive({ signal }) : prepareProjectExport({ deliver: false, signal });
   };
-  const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error), { severity: currentStorageError()?.message === error?.message ? 'info' : 'error', code: typeof error?.code === 'string' ? error.code : '', detail: String(error?.stack || error).slice(0, 512) }); return false; } };
+  /** @template {unknown[]} Args @template Result @param {(...args: Args) => Result} fn @returns {(...args: Args) => Promise<Awaited<Result> | false>} */
+  const safe = fn => /** @type {(...args: Args) => Promise<Awaited<Result> | false>} */ (async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error), { severity: currentStorageError()?.message === error?.message ? 'info' : 'error', code: typeof error?.code === 'string' ? error.code : '', detail: String(error?.stack || error).slice(0, 512) }); return false; } });
   const adoptSceneRecipe = recipe => {
     if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || state.recording || masterCapture?.state?.().capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(masterCapture?.state?.().capture?.state)) throw new Error('Finish active document, history and recording operations before applying a scene.');
     transport.stop(); cancelInputEdits('scene applied'); soundTransactions.cancel('A prepared scene is replacing this document.');
@@ -2131,7 +2125,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     status, preferences: persist, presentationGeneration: () => documentGeneration,
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     devices, midiRouteState: () => ports.getState(), outputState: () => legacy.local.getState(),
-    midiRoutePolicy: safe(policy => {
+    midiRoutePolicy: safe(/** @param {string} policy */ policy => {
       if (policy === 'local') {
         const selector = document.getElementById('procgenOutput');
         if (!selector) throw new Error('Browser preview selection is unavailable.');
@@ -2155,7 +2149,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
     prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
     readPhysicalScore: safe(readPhysicalScore), inspectPhysicalScoreCause: safe(inspectPhysicalScoreCause),
-    compareCausalTake: safe(options => openCausalWorkbench(options)), prepareCausalBranch: safe(options => openCausalWorkbench({ ...options, branch: true })),
+    compareCausalTake: safe(openCausalWorkbench), prepareCausalBranch: safe(/** @param {Parameters<typeof openCausalWorkbench>[0]} options */ (options = {}) => openCausalWorkbench({ ...options, branch: true })),
     armCausalBranchFeedback: safe(() => { if (!causalWorkbench) throw new Error('Prepare an explicit physical branch first.'); return causalWorkbench.armFeedback(); }),
     disarmCausalBranchFeedback: safe(() => causalWorkbench?.disarmFeedback()),
     advanceCausalBranch: safe(options => { if (!causalWorkbench) throw new Error('Prepare a physical branch first.'); return causalWorkbench.advance(options); }),
@@ -2385,7 +2379,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       finally { if (!ownsOperation(lease)) finishOperation(lease); }
     }),
     reclaimRecovery: safe(async () => { await storage.removeRecovery?.(); status('Old recovery checkpoint removed. Named projects were kept.'); }),
-    import: safe(async (file, { review = false } = {}) => {
+    import: safe(/** @param {import('./ProcgenBoundaryContracts.js').ProjectImportFile} file @param {{review?: boolean}} options */ async (file, { review = false } = {}) => {
       if (review && !reviewAvailable()) return false;
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('import');
@@ -2639,8 +2633,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     getOperationalSnapshot, getReplacementReview, getDocumentStatus, reportStartupFailure,
-    getPlaybackState: () => { const output = legacy.local.getState(); return { ...output,
-      ...(output.selectedBackend === 'midi' ? ports.getOutputActivity() : { activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0 }),
+    getPlaybackState: () => { const output = legacy.local.getState(), activity = output.selectedBackend === 'midi' ? ports.getOutputActivity() : router()?.scheduler?.getOutputActivity?.(); return { ...output,
+      activeNotes: activity?.activeNotes || 0, pendingNotes: activity?.pendingNotes || 0, noteActivityAvailable: !!activity,
       pressure: output.selectedBackend === 'midi' ? ports.getState().pressure : router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }; },
     prepareSettings, bindRuntime, beforeRestart, stopCausalTake, adoptSceneRecipe, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
     getPhysicalAnalysis: () => physicalPlayback?.engine.physicalAnalysis() || null, getPhysicalDiagnostics: () => physicalPlayback?.engine.diagnostics() || null,

@@ -484,3 +484,11 @@ MIDI export explicitly narrows original UMP versus the selected MIDI1 source lay
 ### Replay admission and background persistence
 
 Foreground causal replay suspends preference production and recovery scheduling before admission. It observes every existing producer retirement before creating an isolated world; a failure from one owner does not skip the other owner’s acknowledgment. Releasing the scoped hold resumes pending work through the canonical persistence owners. Unknown cleanup remains charged and prevents another replay even if a later recovery write succeeds. Recovery completion participates in the workstation retirement aggregate; a durable acknowledgment arriving after disposal can therefore report saved data and unresolved cleanup separately. Bounded resource-owner inspection reports names, generations and byte estimates without exposing lease tokens.
+
+### Owned workstation preview and display ports
+
+Runtime views publish preview changes through bounded subscriptions with idempotent cleanup. The workstation acquires one exclusive router adapter; another owner is refused instead of replacing callbacks. The lease supplies synchronous event interception and an automation provider without replacing router methods. Changing the router retires its previous lease; disposing either owner cannot revive it. Reentrant publication suppresses obsolete notifications. Renderer display observers follow the same owner lifetime without replacing its legacy callback.
+
+`MidiScheduler.getOutputActivity()` is an immutable O(1) projection: activeNotes preserves the existing accepted-owned-voices-including-pending meaning and pendingNotes reports its pending subset. Neither number is rendered or acoustic delivery evidence. No scheduler maps or voice objects cross the boundary.
+
+`ProcgenWorkstationViewContracts.d.ts` defines canonical UI state and derives the controller command surface. The full view is checked, and guarded async forwarding preserves command argument types plus the explicit false refusal outcome. Import files, branch options and MIDI export choices therefore remain checked through UI invocation. Strict mismatch fixtures are in `test/types/workstation-view-boundaries.ts`. Deep runtime/authored schemas and nominal time/identity domains remain separate #1089 work.

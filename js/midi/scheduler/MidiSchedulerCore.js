@@ -52,6 +52,11 @@ class MidiScheduler {
     this._lastRateErrorMs = 0;
     this.setConfig(config);
   }
+
+  getOutputActivity() {
+    return Object.freeze({ schema: 'midi-scheduler-activity/v1', activeNotes: this._activeNotes.size, pendingNotes: this._pendingNoteOns.size,
+      disposed: this._disposed, scope: 'accepted-owned-voices-including-pending' });
+  }
 }
 
 Object.assign(

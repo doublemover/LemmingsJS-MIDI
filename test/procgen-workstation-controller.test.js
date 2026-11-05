@@ -1,4 +1,5 @@
 import { setup, target } from './helpers/workstation-fixture.js';
+import { createMidiWorkstationAdapterOwner } from '../js/midi/router/MidiWorkstationAdapter.js';
 import { expect } from 'chai';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
@@ -929,15 +930,15 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.positions).to.include(125); f.studio.dispose(); expect(f.view.disposed).to.equal(true);
   });
 
-  it('hooks replacement routers while keeping game events out of the complementary pattern lane', () => {
+  it('hooks replacement routers while keeping game events out of the complementary pattern lane', async () => {
     const f = setup(); f.studio.bindRuntime(); f.enable();
-    const fresh = { scheduler: f.runtime.view.midiPreviewRouter.scheduler, resetClock() {} };
+    const adapter = createMidiWorkstationAdapterOwner(), fresh = { scheduler: f.runtime.view.midiPreviewRouter.scheduler, resetClock() {}, bindWorkstationAdapter: adapter.bind };
     f.runtime.view.setMidiPreviewRouter(fresh);
-    expect(fresh.workstationEventHandler).to.be.a('function');
-    expect(fresh.workstationEventHandler({ laneIndex: 0, action: 'building' })).to.equal(true);
+    expect('workstationEventHandler' in fresh).to.equal(false);
+    expect(adapter.handleEvent({ laneIndex: 0, action: 'building' })).to.equal(true);
     expect(f.calls).to.have.length(0);
     f.runtime.world.soundEvents.onEvent.trigger({ laneIndex: 0, action: 'building' });
-    expect(f.calls.some(call => call.meta.source === 'game')).to.equal(false); f.studio.dispose();
+    expect(f.calls.some(call => call.meta.source === 'game')).to.equal(false); await f.studio.dispose().completion;
   });
 
   it('observes game conditions before listening without double-counting router events', () => {

@@ -33,6 +33,28 @@ describe('read-only runtime throughput observation', () => {
   });
 });
 describe('bounded shared-lane renderer', () => {
+  it('owns independent display observers, retires them once and suppresses obsolete nested transitions', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 1 });
+    const renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(), world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } });
+    const first = [], second = []; let immutable = true;
+    const original = () => { throw new Error('Legacy observer failed'); }; renderer.onDisplayState = original;
+    const release = renderer.subscribeDisplayState(receipt => {
+      first.push(receipt.state); immutable &&= Object.isFrozen(receipt);
+      if (receipt.state === 'lost') renderer._displayState('recovering');
+    });
+    renderer.subscribeDisplayState(receipt => second.push(receipt.state));
+    try {
+      renderer._displayState('lost', new Error('Observed context loss'));
+      expect(first).to.deep.equal(['lost', 'recovering']); expect(second).to.deep.equal(['recovering']);
+      expect(immutable).to.equal(true); expect(renderer.onDisplayState).to.equal(original);
+      expect(release()).to.equal(true); expect(release()).to.equal(false);
+      renderer._displayState('ready'); expect(first).to.have.length(2); expect(second.at(-1)).to.equal('ready');
+      renderer.dispose(); expect(second.at(-1)).to.equal('disposed');
+      expect(() => renderer.subscribeDisplayState(() => {})).to.throw('live renderer');
+      expect(renderer._displayStateSubscribers.size).to.equal(0);
+    } finally { renderer.dispose(); world.dispose(); }
+  });
+
   it('rasterizes arbitrary physical rows with bounded pooled surfaces and retires them on contiguous return', async () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 8 }), renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(), world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } });
     const before = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
