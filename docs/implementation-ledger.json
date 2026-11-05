@@ -6299,5 +6299,53 @@
       "unchangedCheckoutNewlines": 13
     },
     "remaining": "Matched-level human relatedness review and actual live AudioWorklet handoff qualification remain separate. Kernel/profile metadata does not establish host transfer availability, acoustic playback or waveform distribution quality. Current complete-green checkpoint stays422."
+  },
+  "continuation438": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Reproducible64actor identity comparisons, bounded transient-aware spectral sampling, independent browser startup and explicit caveated listening scope.",
+    "evidence": {
+      "path": "docs/validation/identity-listening-tooling-desktop-2026-11-05.json",
+      "bytes": 4769459,
+      "sha256": "5a4fbae5c0994313c80e227da17db826d0bce36e40bee7ceacbc9c69ff08e378"
+    },
+    "validation": {
+      "nodeCases": 11,
+      "applicationJourneys": 1,
+      "desktopReviewPageFlows": 1,
+      "offlineChromiumCases": 55,
+      "numericalFailures": 0,
+      "unqualifiedPhysicalBindingFindings": 53,
+      "expectedRefusals": 2,
+      "distinctRealActors": 64,
+      "criticalTypes": "passed",
+      "format": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserPaths": 1286,
+      "browserDigest": "db07fc490f45268872c9e21b4353d5e202dd893fec9ecae4569fd3ad7137f57c",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1537,
+      "byteExact": 1524,
+      "unchangedCheckoutNewlines": 13
+    },
+    "ci": {
+      "source": "0c406889ac4323ee9117ddb9436b70aac9061634",
+      "linuxEngineCases": 42,
+      "nativeClockReceipts": 24,
+      "gitByteExactSourceFiles": 1286,
+      "latestWholeGreen": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091"
+    },
+    "listening": {
+      "packageHash": "d996fdc96cfb8925ced684cb28d4cbb372d4bf285eb8466525101ac2917867aa",
+      "userObservation": "They sound the same",
+      "classification": "difference-not-heard",
+      "conditions": "not-reported",
+      "formalReviewComplete": false
+    },
+    "remaining": "Keep1001open. Preserve saved original recipes and add a separate clearer ensemble variant. LiveDSP/effect handoff, physical-binding coverage, formal listening and latest whole-source CI remain separate."
   }
 }

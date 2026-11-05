@@ -2,7 +2,7 @@ import { validateInstrumentPatchV2 } from '../content/InstrumentPatchV2.js';
 import { validateInstrumentControls } from '../content/InstrumentPerformance.js';
 import { canonicalDataText, hashData, freezeData } from '../../core/CanonicalData.js';
 const fail = message => { throw new TypeError('Sound qualification: ' + message); };
-export const SOUND_QUALIFICATION_PROFILE = freezeData({ schema: 'lemmings-sound-qualification-profile/v1', revision: 1,
+export const SOUND_QUALIFICATION_PROFILE = freezeData({ schema: 'lemmings-sound-qualification-profile/v1', revision: 2,
   sampleRates: [44100, 48000, 96000], notes: [36, 60, 84], velocities: [24, 64, 110], gatesSeconds: [0.04, 1.2], macroPoints: [0, 0.5, 1], pairedGrid: [0, 0.25, 0.5, 0.75, 1],
   maximumCases: 1536, maximumRenderSeconds: 7200, maximumOutputBytes: 4096 * 1048576, maximumRetainedReportBytes: 16 * 1048576,
   tolerance: { 'native-oscillator': { repeatMaximumAbsoluteError: 2e-6, maximumDC: 0.02 }, 'native-fm': { repeatMaximumAbsoluteError: 2e-6, maximumDC: 0.02 },
@@ -54,6 +54,10 @@ export async function createSoundQualificationPlan({ definition, descriptor, tra
   const overBudget = await createAuthoredNoteQualificationFixture({ note: 60, velocity: 64, gateSeconds: 1.2, voices: Math.min(257, patch.voicePolicy.maxVoices + 1) }); fixtures.push(overBudget);
   for (const sampleRate of sampleRates) {
     for (const fixture of fixtures) if (fixture !== overBudget) add(fixture, { sampleRate });
+    if (patch.variation) for (const fixture of recorded) {
+      add(fixture, { sampleRate, role: 'identity-zero', controls: { variationAmount01: 0 } });
+      add(fixture, { sampleRate, role: 'identity-reroll', controls: { variationSeed: patch.variation.seed === 2147483647 ? -2147483648 : patch.variation.seed + 1 } });
+    }
     add(control, { sampleRate, role: 'repeat' }); add(control, { sampleRate, role: 'panic' }); add(overBudget, { sampleRate, role: 'negative-voice-budget', expected: 'admission-rejection' });
     add(control, { sampleRate, role: 'negative-unsupported-control', expected: 'admission-rejection', controls: { macros: { 'qualification-unsupported-target': 0.5 } } });
     if (patch.sampleRefs.length) add(control, { sampleRate, role: 'negative-missing-asset', expected: 'admission-rejection', variant: 'omit-assets' });
@@ -68,6 +72,7 @@ export async function createSoundQualificationPlan({ definition, descriptor, tra
     profile: SOUND_QUALIFICATION_PROFILE, tolerance, fixtures, cases, macroIntents: patch.macros.map(macro => ({ id: macro.id, mode: macro.mode, default01: macro.default01, intent: macro.perceptualDirection, targets: macro.targets })),
     coverage: { requiredPhysicalDensities: ['sparse', 'medium', 'dense'], providedPhysicalDensities: recorded.map(value => value.density), missingPhysicalDensities: ['sparse', 'medium', 'dense'].filter(id => !recorded.some(value => value.density === id)),
       pairedGrid: includeMacroGrid ? 'finite-5x5-points-only-no-continuum-proof' : 'not-requested', qualityTier: descriptor.engineId + '@' + descriptor.engineVersion,
+      identityVariation: patch.variation ? recorded.length ? 'same-recorded-trace-zero-and-reroll' : 'requires-recorded-fixtures' : 'not-authored',
       panic: 'separate-backend-conformance-required', listening: 'not-run' } };
   canonicalDataText(value, { maxBytes: 16 * 1048576, maxNodes: 1048576 }); return freezeData({ ...value, planHash: await hashData(value) });
 }

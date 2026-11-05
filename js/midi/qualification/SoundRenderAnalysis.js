@@ -41,9 +41,14 @@ export function measureSoundRender(planes, sampleRate, { fundamentalHz = null, s
   const shape = Array.from({ length: 64 }, (_, i) => { const a = Math.floor(i * envelope.length / 64), b = Math.max(a + 1, Math.floor((i + 1) * envelope.length / 64)); let sum = 0;
     for (let j = a; j < Math.min(b, envelope.length); j++) sum += envelope[j]; return rms > 0 ? sum / (b - a) / rms : 0; });
   const spectralBands = new Float64Array(32), slices = [], size = 2048, sliceCount = Math.min(32, Math.max(1, Math.ceil(frames / size)));
+  const starts = Array.from({ length: sliceCount }, (_, slice) => Math.round(slice * Math.max(0, frames - size) / Math.max(1, sliceCount - 1)));
+  const peakAnchor = Math.max(0, Math.min(Math.max(0, frames - size), Math.round((peakWindow + 0.5) * windowFrames - size / 2)));
+  let replacedSlice = 0;
+  for (let index = 1; index < starts.length; index++) if (Math.abs(starts[index] - peakAnchor) < Math.abs(starts[replacedSlice] - peakAnchor)) replacedSlice = index;
+  starts[replacedSlice] = peakAnchor;
   let spectralWeight = 0, frequencyWeight = 0;
   for (let slice = 0; slice < sliceCount; slice++) {
-    const first = Math.round(slice * Math.max(0, frames - size) / Math.max(1, sliceCount - 1)), power = new Float64Array(size / 2);
+    const first = starts[slice], power = new Float64Array(size / 2);
     for (const plane of planes) { const channel = spectrum(plane, first, size); for (let i = 0; i < power.length; i++) power[i] += channel[i] / planes.length; }
     let total = 0, centroid = 0;
     for (let bin = 1; bin < power.length; bin++) { const hz = bin * sampleRate / size, value = power[bin]; total += value; centroid += hz * value;
@@ -55,6 +60,7 @@ export function measureSoundRender(planes, sampleRate, { fundamentalHz = null, s
     clippedSamples: clipped, silenceFraction: silent / samples, silenceAmplitude, maximumDelta, attackSlopeAmplitudePerSecond: attackSlope,
     peakWindowSeconds: peakWindow * windowFrames / sampleRate, decay60Seconds: envelope[peakWindow] > silenceAmplitude ? (decayLast - peakWindow) * windowFrames / sampleRate : null,
     decayCensored: decayLast === envelope.length - 1, spectralCentroidHz: spectralWeight ? frequencyWeight / spectralWeight : null, spectralSlices: slices,
+    spectralSampling: Object.freeze({ policy: 'uniform-with-10ms-energy-peak-anchor-v1', maximumSlices: 32, windowFrames: size, peakAnchorFirstFrame: peakAnchor, replacedUniformSlice: replacedSlice }),
     audibleAttackEstimate, attackEstimator: '10ms-energy-rise-6dB-30ms-refractory-not-logical-onset-count',
     normalizedFeatures: { pitchReferenceHz: fundamentalHz, pitchNormalization: fundamentalHz ? 'declared-fundamental-relative-bands' : 'unsupported-no-pitch-reference',
       levelNormalization: 'unit-rms-envelope-unit-power-spectrum', envelope: shape, spectrum: [...spectralBands].map(value => spectralWeight ? value / spectralWeight : 0) },

@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { hashData } from '../../js/core/CanonicalData.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
@@ -8,7 +10,8 @@ import { createSoundQualificationPlan, createAuthoredNoteQualificationFixture } 
 import { measureSoundRender, compareSoundFeatures, matchSoundLevels } from '../../js/midi/qualification/SoundRenderAnalysis.js';
 import { runSoundQualification } from '../../js/midi/qualification/SoundQualificationRunner.js';
 import { decodeQualificationFloatWav } from '../../js/midi/qualification/SharedSoundQualificationRenderer.js';
-import { findNearDuplicateSounds, recordSoundListeningReview } from '../../js/midi/qualification/SoundListeningReview.js';
+import { createBlindSoundListeningSet, findNearDuplicateSounds, recordSoundListeningReview } from '../../js/midi/qualification/SoundListeningReview.js';
+import { encodeOwnedAudioWav } from '../../js/app/midi-ui/OwnedAudioWav.js';
 const sine = (gain = 0.1, phase = 0) => Float32Array.from({ length: 4800 }, (_, i) => gain * Math.sin(2 * Math.PI * 440 * i / 48000 + phase));
 const fixture = async () => {
   const source = JSON.parse(await readFile(new URL('../../content/sounds/plucked-garden.json', import.meta.url), 'utf8'));
@@ -23,7 +26,7 @@ const reportWith = async (metrics, source = 'first') => {
     state: 'listening-pending', artifact: { path: 'case-0.wav', sha256: 'd'.repeat(64), bytes: 100 }, digitalReceipt: { state: 'technically-valid', metrics } }] };
   return { ...value, reportHash: await hashData(value) };
 };
-describe('source-bound sound qualification tooling (runtime qualification deferred)', () => {
+describe('source-bound sound qualification tooling', () => {
   it('measures finite PCM and flags identical/gain-only sounds without interpreting similarity as quality', async () => {
     const a = measureSoundRender([sine(), sine()], 48000, { fundamentalHz: 440 }), b = measureSoundRender([sine(0.4), sine(0.4)], 48000, { fundamentalHz: 440 });
     expect(a.nonfiniteSamples).to.equal(0); expect(a.rms).to.be.closeTo(0.1 / Math.sqrt(2), 1e-6); expect(a.spectralCentroidHz).to.be.closeTo(440, 30);
@@ -37,9 +40,20 @@ describe('source-bound sound qualification tooling (runtime qualification deferr
     const silence = measureSoundRender([new Float32Array(4800), new Float32Array(4800)], 48000); expect(compareSoundFeatures(silence, measured).status).to.equal('unsupported');
     wave[5] = NaN; anti[7] = Infinity; const failed = measureSoundRender([wave, anti], 48000); expect(failed.nonfiniteSamples).to.equal(2); expect(Number.isFinite(failed.peak)).to.equal(true);
   });
+  it('measures a short off-grid transient without increasing the spectral window budget', () => {
+    const burst = hz => { const samples = new Float32Array(201120); for (let index = 0; index < 512; index++) samples[2400 + index] = 0.1 * Math.sin(2 * Math.PI * hz * index / 48000); return samples; };
+    const low = measureSoundRender([burst(1500)], 48000), high = measureSoundRender([burst(6000)], 48000);
+    expect(low.spectralCentroidHz).to.be.closeTo(1500, 60); expect(high.spectralCentroidHz).to.be.closeTo(6000, 60);
+    expect(low.spectralSlices).to.have.length(32); expect(low.spectralSlices.some(slice => slice.firstFrame <= 2400 && slice.firstFrame + 2048 >= 2912 && slice.power > 0)).to.equal(true);
+    expect(low.spectralSampling.policy).to.equal('uniform-with-10ms-energy-peak-anchor-v1');
+    expect(measureSoundRender([new Float32Array(20)], 48000).spectralCentroidHz).to.equal(null);
+    expect(measureSoundRender([burst(1500)], 48000).normalizedFeatures.spectrum).to.deep.equal(low.normalizedFeatures.spectrum);
+  });
   it('enumerates all note/velocity/release combinations, actual macro endpoints, finite paired grids and negative/Panic/repeat cases', async () => {
     const plan = await fixture(), baseline = plan.cases.filter(value => value.role === 'baseline'); expect(baseline).to.have.length(18);
     expect(plan.coverage.missingPhysicalDensities).to.deep.equal(['sparse', 'medium', 'dense']);
+    expect(plan.profile.revision).to.equal(2); expect(plan.coverage.identityVariation).to.equal('requires-recorded-fixtures');
+    expect(plan.cases.some(value => value.role.startsWith('identity-'))).to.equal(false);
     expect(plan.cases.filter(value => value.role === 'macro-endpoint')).to.have.length(plan.definition.macros.length * 3);
     expect(plan.cases.filter(value => value.role === 'paired-macro-grid')).to.have.length(plan.definition.macros.length * (plan.definition.macros.length - 1) / 2 * 25);
     expect(plan.cases.some(value => value.role === 'negative-voice-budget')).to.equal(true); expect(plan.cases.some(value => value.role === 'negative-unsupported-control')).to.equal(true); expect(plan.cases.some(value => value.role === 'panic')).to.equal(true);
@@ -76,5 +90,29 @@ describe('source-bound sound qualification tooling (runtime qualification deferr
     input.verdicts = value.trials[0].conditions.flatMap(condition => value.trials[0].contexts.map(context => ({ trialId: 'trial', condition, context, verdict: 'heard', notes: '' })));
     const second = await recordSoundListeningReview({ packageManifest, previous: first, input }); expect(second.state).to.equal('listening-accepted'); expect(second.previousReviewHash).to.equal(first.reviewHash); expect(second.technicalQualificationIsSeparate).to.equal(true);
     let failure; try { await recordSoundListeningReview({ packageManifest, previous: { ...first, reviewer: 'tampered' }, input }); } catch (error) { failure = error; } expect(failure.message).to.include('not intact');
+  });
+  it('requires explicit scoped review for physical defaults while preserving every other technical refusal', async () => {
+    const plane = sine(), interleaved = Float32Array.from({ length: plane.length * 2 }, (_, index) => plane[index >>> 1]);
+    const pcm = new Uint8Array(interleaved.length * 4), view = new DataView(pcm.buffer);
+    interleaved.forEach((value, index) => view.setFloat32(index * 4, value, true));
+    const bytes = encodeOwnedAudioWav(pcm, plane.length, 48000, { scope: 'controlled-review-policy-fixture' });
+    const value = await reportWith(measureSoundRender([plane, plane], 48000)); delete value.reportHash;
+    const row = value.results[0]; row.state = 'technical-review-required'; row.digitalReceipt.state = 'requires-review'; row.digitalReceipt.findings = ['missing-qualified-physical-control-source'];
+    row.admissionReceipt = { physicalSourceCoverage: { missingOnsetBindings: 1 } };
+    row.artifact = { path: 'case-0.wav', sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length };
+    const report = { ...value, reportHash: await hashData(value) }, request = right => ({ pairs: [{ reportA: report, reportB: right, caseA: 'case:0', caseB: 'case:0', intendedDifference: 'Controlled policy fixture.' }], seed: 4,
+      readArtifact: async () => bytes, writeArtifact: async ({ name, bytes, sha256 }) => ({ path: name, sha256, bytes: bytes.length }) });
+    await assert.rejects(() => createBlindSoundListeningSet(request(report)), /technically valid/);
+    const prepared = await createBlindSoundListeningSet({ ...request(report), allowUnqualifiedPhysicalDefaults: true });
+    expect(prepared.publicManifest.trials[0]).to.include({ listeningScope: 'actor-identity-with-authored-physical-defaults', bindingAcceptance: 'not-qualified-by-this-listening-package', automaticAcceptance: false });
+    expect(prepared.publicManifest.trials[0].technicalCaveats).to.deep.equal(['missing-qualified-physical-control-source']);
+    for (const findings of [['missing-qualified-physical-control-source', 'full-scale-or-clipped-output'], ['repeat-tolerance-exceeded']]) {
+      const changed = structuredClone(value); changed.results[0].digitalReceipt.findings = findings;
+      const changedReport = { ...changed, reportHash: await hashData(changed) };
+      await assert.rejects(() => createBlindSoundListeningSet({ ...request(changedReport), allowUnqualifiedPhysicalDefaults: true }), /technically valid/);
+    }
+    const changed = structuredClone(value); changed.results[0].admissionReceipt.physicalSourceCoverage.missingOnsetBindings = 0;
+    const changedReport = { ...changed, reportHash: await hashData(changed) };
+    await assert.rejects(() => createBlindSoundListeningSet({ ...request(changedReport), allowUnqualifiedPhysicalDefaults: true }), /technically valid/);
   });
 });

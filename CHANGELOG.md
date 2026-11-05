@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Prepare source-bound64actor variation comparisons with explicit scoped listening caveats, preserve short transient spectra within the existing analysis budget, and restore bounded audio evidence tooling startup.
+
 - Record versioned owned-source seed, algorithm, source revision and restoration contracts in live and rendered receipts while preserving saved timbre sequences.
 
 - Preserve verified survey source manifests by excluding documentation type references from executable imports and checking literal dependency edges before publication.

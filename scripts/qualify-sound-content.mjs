@@ -7,9 +7,10 @@ import { collectRuntimeSourceClosure } from './RuntimeSourceClosure.js';
 import { collectInstrumentArtifactProfiles } from './InstrumentArtifactClosure.js';
 import { computeInstrumentArtifacts } from '../js/runtime/InstrumentArtifactManifest.js';
 import { canonicalDataText } from '../js/core/CanonicalData.js';
-import { launchAudioEvidenceBrowser } from './audio-evidence-runtime.js';
+import { launchAudioEvidenceBrowser } from './audio-evidence-browser.js';
 const root = fileURLToPath(new URL('../', import.meta.url)), args = process.argv.slice(2), options = {};
-for (const arg of args) { const match = /^--(input|patch|traces|out-dir|sample-rates|maximum-cases|maximum-render-seconds|maximum-output-bytes|browser|channel|executable)=(.+)$/.exec(arg); if (!match || options[match[1]]) throw new Error('Unknown or repeated sound qualification option.'); options[match[1]] = match[2]; }
+for (const arg of args) { const match = /^--(input|patch|traces|out-dir|sample-rates|include-macro-grid|maximum-cases|maximum-render-seconds|maximum-output-bytes|browser|channel|executable)=(.+)$/.exec(arg); if (!match || options[match[1]]) throw new Error('Unknown or repeated sound qualification option.'); options[match[1]] = match[2]; }
+if (options['include-macro-grid'] != null && !['true', 'false'].includes(options['include-macro-grid'])) throw new Error('Macro grid must be explicit true or false.');
 if (!options.input || !options.patch || !options['out-dir']) throw new Error('Explicit --input= recipe, --patch= identity and new --out-dir= under temp/ are required. This command performs deferred runtime qualification.');
 const inside = (parent, child) => { const relative = path.relative(parent, child); return relative && !relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative); };
 const input = await fs.realpath(path.resolve(root, options.input)); if (!inside(path.join(root, 'content', 'sounds'), input)) throw new Error('Recipe must be inside content/sounds.');
@@ -55,6 +56,7 @@ try {
     const descriptors = await describeNativeInstrumentEngines(artifacts), compiled = await compileSoundContent(source, { targets: descriptors.map(descriptor => ({ descriptor })) });
     const patch = compiled.prepared.patches.find(value => value.definition.id === options.patch); if (!patch) throw new Error('Selected patch is not a compiled concrete recipe.');
     const descriptor = descriptors.find(value => value.engineId === patch.definition.engineId), plan = await createSoundQualificationPlan({ definition: patch.archivedDefinition, descriptor, applicationBuildId, traces,
+      ...(options['include-macro-grid'] ? { includeMacroGrid: options['include-macro-grid'] === 'true' } : {}),
       ...(options['sample-rates'] ? { sampleRates: options['sample-rates'].split(',').map(Number) } : {}), source: { packId: compiled.prepared.pack.id, packVersion: compiled.prepared.pack.version,
         contentHash: compiled.prepared.contentHash, patchIdentity: patch.definition.id + '@' + patch.definition.revision, definitionHash: patch.definitionHash, attribution: compiled.prepared.pack.attribution } });
     const digest = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join('');

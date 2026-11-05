@@ -5,6 +5,9 @@ const fail = message => { throw new Error('Listening review: ' + message); };
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const digest = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join('');
 const reviewable = row => row?.state === 'listening-pending' && row.artifact && row.digitalReceipt?.state === 'technically-valid';
+const sourceDefaultsOnly = row => row?.state === 'technical-review-required' && row.artifact && row.digitalReceipt?.state === 'requires-review' &&
+  Number.isSafeInteger(row.admissionReceipt?.physicalSourceCoverage?.missingOnsetBindings) && row.admissionReceipt.physicalSourceCoverage.missingOnsetBindings > 0 &&
+  Array.isArray(row.digitalReceipt.findings) && row.digitalReceipt.findings.length > 0 && row.digitalReceipt.findings.every(value => value === 'missing-qualified-physical-control-source');
 async function verifiedReport(report) { const { reportHash, ...value } = report; if (!hash(reportHash) || await hashData(value) !== reportHash) fail('report changed after measurement.'); return report; }
 export async function findNearDuplicateSounds(reports, { maximumComparisons = 8192 } = {}) {
   if (!Array.isArray(reports) || reports.length < 2 || reports.length > 128 || !Number.isSafeInteger(maximumComparisons) || maximumComparisons < 1 || maximumComparisons > 8192) fail('comparison inventory exceeds its bound.');
@@ -29,13 +32,15 @@ function blindWav(planes, sampleRate, gain) {
   for (let frame = 0; frame < frames; frame++) for (let channel = 0; channel < 2; channel++) { const value = planes[channel][frame] * gain; if (!Number.isFinite(value) || Math.abs(value) > 0.800001) fail('matched-level PCM exceeds its safe comparison bound.'); view.setFloat32(44 + (frame * 2 + channel) * 4, value, true); }
   return bytes;
 }
-export async function createBlindSoundListeningSet({ pairs, seed, readArtifact, writeArtifact } = {}) {
-  if (!Array.isArray(pairs) || !pairs.length || pairs.length > 64 || !Number.isSafeInteger(seed) || seed < 0 || seed > 0xffffffff || typeof readArtifact !== 'function' || typeof writeArtifact !== 'function') fail('invalid bounded blind comparison request.');
+export async function createBlindSoundListeningSet({ pairs, seed, readArtifact, writeArtifact, allowUnqualifiedPhysicalDefaults = false } = {}) {
+  if (!Array.isArray(pairs) || !pairs.length || pairs.length > 64 || !Number.isSafeInteger(seed) || seed < 0 || seed > 0xffffffff || typeof readArtifact !== 'function' || typeof writeArtifact !== 'function' || typeof allowUnqualifiedPhysicalDefaults !== 'boolean') fail('invalid bounded blind comparison request.');
   const publicTrials = [], privateTrials = []; let outputBytes = 0;
   for (const [index, pair] of pairs.entries()) {
     await verifiedReport(pair.reportA); await verifiedReport(pair.reportB);
     const left = pair.reportA.results.find(row => row.case.id === pair.caseA), right = pair.reportB.results.find(row => row.case.id === pair.caseB);
-    if (!reviewable(left) || !reviewable(right) || left.case.fixtureHash !== right.case.fixtureHash || left.case.sampleRate !== right.case.sampleRate || typeof pair.intendedDifference !== 'string' || !pair.intendedDifference || pair.intendedDifference.length > 512) fail('pair requires technically valid same-take/same-rate exact source versions and explicit intended differences.');
+    const admitted = row => reviewable(row) || allowUnqualifiedPhysicalDefaults && sourceDefaultsOnly(row);
+    if (!admitted(left) || !admitted(right) || left.case.fixtureHash !== right.case.fixtureHash || left.case.sampleRate !== right.case.sampleRate || typeof pair.intendedDifference !== 'string' || !pair.intendedDifference || pair.intendedDifference.length > 512) fail('pair requires technically valid same-take/same-rate exact source versions and explicit intended differences.');
+    const caveats = [left, right].some(sourceDefaultsOnly) ? { listeningScope: 'actor-identity-with-authored-physical-defaults', technicalCaveats: ['missing-qualified-physical-control-source'], bindingAcceptance: 'not-qualified-by-this-listening-package' } : {};
     const matching = matchSoundLevels(left.digitalReceipt.metrics, right.digitalReceipt.metrics), key = await hashData({ seed, index, a: pair.reportA.reportHash, b: pair.reportB.reportHash, caseA: pair.caseA, caseB: pair.caseB });
     const reversed = parseInt(key.slice(0, 2), 16) % 2 === 1, entries = reversed ? [[right, matching.gainB], [left, matching.gainA]] : [[left, matching.gainA], [right, matching.gainB]], files = [];
     for (const [side, [row, gain]] of entries.entries()) {
@@ -45,7 +50,7 @@ export async function createBlindSoundListeningSet({ pairs, seed, readArtifact, 
       const name = 'trial-' + key.slice(0, 20) + '-' + (side ? 'B' : 'A') + '.wav', saved = await writeArtifact({ name, bytes, sha256 });
       if (saved?.sha256 !== sha256 || saved?.bytes !== bytes.length || saved.path !== name) fail('blind sink must acknowledge the identity-free relative file name and exact bytes.'); files.push(saved);
     }
-    publicTrials.push({ id: key, files, conditions: ['headphones', 'small-speakers'], contexts: ['quiet', 'dense-ensemble'], verdicts: ['heard', 'not-heard', 'objection', 'skipped'], automaticAcceptance: false });
+    publicTrials.push({ id: key, files, ...caveats, conditions: ['headphones', 'small-speakers'], contexts: ['quiet', 'dense-ensemble'], verdicts: ['heard', 'not-heard', 'objection', 'skipped'], automaticAcceptance: false });
     privateTrials.push({ id: key, reversed, reportA: pair.reportA.reportHash, reportB: pair.reportB.reportHash, caseA: left.case.id, caseB: right.case.id, intendedDifference: pair.intendedDifference,
       sourceA: pair.reportA.source, sourceB: pair.reportB.source, matching, rawArtifactA: left.artifact, rawArtifactB: right.artifact });
   }
