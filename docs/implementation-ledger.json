@@ -6231,5 +6231,39 @@
       "Preparation does not prove the historical delay cause, cold-first-use scheduling, or clean Linux CI. The original failed late-submission observation remains retained.",
       "Scoped Node coverage of the in-page snapshot function is zero because the transport stub does not execute that callback; actual callback is exercised by the native browser cases. No coverage addition is claimed for that function."
     ]
+  },
+  "continuation436": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Repair verified survey literal source closure and observe silent-lesson recovery in one DOM observation.",
+    "evidence": {
+      "path": "docs/validation/survey-source-imports-desktop-2026-11-05.json",
+      "bytes": 114486,
+      "sha256": "13fae1008da07e1151629b2610a69578cc5675341c7c974dff44d6169cf606e3"
+    },
+    "validation": {
+      "finalCorrectedNodeCases": 22,
+      "earlierUnmodifiedGroupPasses": 179,
+      "finalDesktopJourneys": 3,
+      "criticalTypes": "passed",
+      "format": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserPaths": 1286,
+      "browserDigest": "cfdacf7df7dd78231e90790f78f3333b6d60f22958f586c1a691111070963090",
+      "workerFiles": 306,
+      "workerDigest": "9dffcd84b97a9dbef8ec40fdb970f2a78c9c2eb884f1c724606d41568ac20073",
+      "paths": 1480,
+      "byteExact": 1467,
+      "unchangedCheckoutNewlines": 13
+    },
+    "counterexample": {
+      "code": "ENOENT",
+      "message": "ENOENT: no such file or directory, open 'C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalPlaybackContracts.js'",
+      "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalPlaybackContracts.js"
+    },
+    "remaining": "Current whole-source CI, full native prepared-clock Linux confirmation and broader186issue acceptance backlog remain independent."
   }
 }

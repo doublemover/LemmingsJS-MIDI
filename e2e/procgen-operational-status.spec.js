@@ -148,10 +148,23 @@ test('a prepared silent physical scene names its lack of source events and opens
   await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Scenes', exact: true }).click();
   const catalog = page.getByRole('dialog', { name: 'Playable physical scores', exact: true }); await expect(catalog).toBeVisible({ timeout: 30000 }); await page.keyboard.press('Escape'); await expect(catalog).toBeHidden();
   const before = await projectWorldState(page), output = await metrics(page);
-  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause(); });
-  await expect(strip(page)).toHaveAttribute('data-state', 'no-source-events'); await expect(strip(page)).toContainText('No eligible physical source event');
-  await expect(strip(page)).toHaveAttribute('data-world-state', 'paused');
-  await strip(page).getByRole('button', { name: 'Open an isolated lesson', exact: true }).click();
+  const lessonStatus = await page.evaluate(() => new Promise(resolve => {
+    const studio = window.__PROCGEN_STUDIO__, surface = document.querySelector('.studio-operational');
+    const observer = new MutationObserver(() => {
+      if (surface.dataset.state !== 'no-source-events') return;
+      const action = surface.querySelector('[data-operational-action="lesson"]');
+      if (!action || action.hidden || action.disabled) return;
+      observer.disconnect();
+      const snapshot = { state: surface.dataset.state, world: surface.dataset.worldState, text: surface.textContent, label: action.textContent,
+        transport: studio.transport.getState(), operational: studio.getOperationalSnapshot(), activation: 'same-observation DOM button click before a later host-gap stop' };
+      action.click(); resolve(snapshot);
+    });
+    observer.observe(surface, { attributes: true, childList: true, subtree: true, characterData: true });
+    studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause();
+  }));
+  expect(lessonStatus.state).toBe('no-source-events'); expect(lessonStatus.world).toBe('paused'); expect(lessonStatus.text).toContain('No eligible physical source event');
+  expect(lessonStatus.label).toBe('Open an isolated lesson'); expect(lessonStatus.transport.playing).toBe(true); expect(lessonStatus.operational.recoveryAction.id).toBe('lesson');
+  await testInfo.attach('silent-lesson-observation', { contentType: 'application/json', body: JSON.stringify(lessonStatus) });
   await expect(page.getByRole('region', { name: 'Learn physical music', exact: true })).toBeVisible();
   await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
   const after = await projectWorldState(page);

@@ -24,6 +24,8 @@ describe('verified selected browser survey asset contracts', function() {
     expect(sourceManifest.canonicalStateVersion).to.equal(SURVEY_STATE_SCHEMA);
     expect(sourceManifest.canonicalEncodingVersion).to.equal(SURVEY_CANONICAL_SCHEMA);
     expect(sourceManifest.executionIdentity.status).to.equal('unbound');
+    expect(sourceManifest.codeHashes).to.have.property('js/app/procgen/survey/SurveySourceImports.js');
+    expect(Object.keys(sourceManifest.codeHashes).some(name => name.endsWith('.d.ts') || name.endsWith('/PhysicalPlaybackContracts.js'))).to.equal(false);
     [controlled, generated] = scenes.map(scene => normalizeSurveyScenario({ ...scene, engineCommit: sourceManifest.engineCommit, assetHashes: sourceManifest.assetHashes }));
   });
   it('decodes real masks and preserves headless controlled physical and logical hashes', async () => {

@@ -15,6 +15,7 @@ import { readBrowserBuildResponse, awaitBrowserBuildOperation } from '../../../r
 import { loadActiveBrowserSurveyBuild, requireIsolatedBrowserSurveyExecution, requireSurveySourceBuild } from './ProcgenSurveyExecution.js';
 import { cloneJournalData } from '../workstation/CausalJournalCanonical.js';
 import { createResourceBudget } from '../../resources/ResourceBudget.js';
+import { surveySourceImports } from './SurveySourceImports.js';
 
 const repoUrl = new URL('../../../../', import.meta.url);
 const MAX_SOURCE_FILES = 1024, MAX_FILE_BYTES = 16 * 1048576, MAX_SOURCE_BYTES = 64 * 1048576;
@@ -80,8 +81,8 @@ const verifiedBrowserFiles = async (rawManifest, fetchRef, externalSignal, { res
     const failed = reads.find(value => value.status === 'rejected'); if (failed) throw failed.reason;
     for (const [name] of verifyCode && manifest.schemaVersion === 1 ? code : []) {
       const text = new TextDecoder().decode(bytes.get(name));
-      for (const match of text.matchAll(/(?:from\s*|import\s*\(|import\s*)['"](\.[^'"]+)['"]/g)) {
-        const dependency = new URL(match[1], sourcePath(name, true)), relative = dependency.pathname.slice(repoUrl.pathname.length);
+      for (const specifier of surveySourceImports(text)) {
+        const dependency = new URL(specifier, sourcePath(name, true)), relative = dependency.pathname.slice(repoUrl.pathname.length);
         if (dependency.origin !== repoUrl.origin || !Object.hasOwn(manifest.codeHashes, relative)) throw new Error(`Replay dependency is missing from provenance: ${relative}`);
       }
     }
