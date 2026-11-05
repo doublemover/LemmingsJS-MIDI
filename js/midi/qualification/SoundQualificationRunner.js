@@ -1,6 +1,7 @@
 import { createOwnedResourceReservation } from '../../app/resources/OwnedResourceReservation.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 import { measureSoundRender, compareSoundFeatures } from './SoundRenderAnalysis.js';
+import { comparePcmChannels } from '../../app/midi-ui/PcmEvidence.js';
 const fail = message => { throw new Error('Sound qualification: ' + message); };
 const bytesHash = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join('');
 const expectedRejection = (selected, error) => selected.role === 'negative-voice-budget' ? error.code === 'intent-voice-capacity' :
@@ -26,6 +27,7 @@ export async function runSoundQualification(plan, { renderer, writeArtifact, wri
       let output = null, stage = 'backend-admission';
       try {
         output = await renderer.render(plan, selected, { signal }); renderedSeconds += fixture.durationSeconds;
+        canonicalDataText({ semantic: output.semanticReceipt, admission: output.admissionReceipt }, { maxBytes: 262144, maxNodes: 32768 });
         row.semanticReceipt = output.semanticReceipt; row.admissionReceipt = output.admissionReceipt;
         if (selected.expected === 'admission-rejection') throw Object.assign(new Error('Negative fixture was incorrectly admitted.'), { code: 'negative-fixture-admitted' });
         stage = 'digital-measurement'; const metrics = measureSoundRender(output.planes, selected.sampleRate, { fundamentalHz: selected.fundamentalHz });
@@ -36,19 +38,29 @@ export async function runSoundQualification(plan, { renderer, writeArtifact, wri
         if (!metrics.rms || metrics.silenceFraction === 1) findings.push('silent-compatibility-observation');
         let panic = null;
         if (selected.role === 'panic') {
-          const admitted = output.admissionReceipt.panic, first = (admitted?.frame ?? 0) + 256; let tailPeak = 0;
-          for (const plane of output.planes) for (let i = first; i < plane.length; i++) tailPeak = Math.max(tailPeak, Math.abs(plane[i]));
-          panic = { admission: admitted, measuredFirstFrame: first, postPanicPeak: tailPeak, tolerance: 1e-7, scope: 'shared-offline-kernel-or-native-backend-not-live-port-delivery' };
-          if (!admitted || first >= output.frames || tailPeak > 1e-7) findings.push('panic-silence-not-established');
+          const admitted = output.admissionReceipt.panic, frame = admitted?.frame;
+          const first = Number.isSafeInteger(frame) && frame >= 0 && frame <= Number.MAX_SAFE_INTEGER - 256 ? frame + 256 : null;
+          let tailPeak = 0, nonfiniteSamples = 0;
+          if (first !== null && first < metrics.frames) for (const plane of output.planes) for (let i = first; i < plane.length; i++) {
+            if (Number.isFinite(plane[i])) tailPeak = Math.max(tailPeak, Math.abs(plane[i])); else nonfiniteSamples++;
+          }
+          panic = { admission: Number.isSafeInteger(frame) && frame >= 0 ? admitted : null, measuredFirstFrame: first,
+            postPanicPeak: first !== null && first < metrics.frames ? tailPeak : null, nonfiniteSamples, tolerance: 1e-7, scope: 'shared-offline-kernel-or-native-backend-not-live-port-delivery' };
+          if (first === null || first >= metrics.frames || nonfiniteSamples || tailPeak > 1e-7) findings.push('panic-silence-not-established');
         }
         const key = selected.fixtureHash + ':' + selected.sampleRate;
         let repeat = null;
         if (selected.role === 'repeat') {
           const reference = references.get(key); if (!reference) findings.push('repeat-reference-unavailable');
-          else { let maximumAbsoluteError = output.planes[0].length === reference[0].length ? 0 : Infinity;
-            if (Number.isFinite(maximumAbsoluteError)) for (let channel = 0; channel < 2; channel++) for (let i = 0; i < reference[channel].length; i++) maximumAbsoluteError = Math.max(maximumAbsoluteError, Math.abs(reference[channel][i] - output.planes[channel][i]));
-            repeat = { maximumAbsoluteError: Number.isFinite(maximumAbsoluteError) ? maximumAbsoluteError : null, limit: tolerance.repeatMaximumAbsoluteError, sameBuildAndEngineOnly: true };
-            if (maximumAbsoluteError > tolerance.repeatMaximumAbsoluteError) findings.push('repeat-tolerance-exceeded'); references.delete(key);
+          else {
+            repeat = { maximumAbsoluteError: null, limit: tolerance.repeatMaximumAbsoluteError, sameBuildAndEngineOnly: true };
+            try {
+              repeat.maximumAbsoluteError = comparePcmChannels(reference, output.planes);
+              if (repeat.maximumAbsoluteError > tolerance.repeatMaximumAbsoluteError) findings.push('repeat-tolerance-exceeded');
+            } catch (error) {
+              repeat.state = 'invalid-pcm-comparison'; repeat.reason = String(error.message).slice(0, 512); findings.push('repeat-pcm-not-comparable');
+            }
+            references.delete(key);
           }
         }
         if (selected.role === 'baseline') {

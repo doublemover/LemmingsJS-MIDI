@@ -1,7 +1,7 @@
 import { collectBrowserCases } from './BrowserTestCatalog.js';
 import { NATIVE_CLOCK_SCENARIOS, qualifyNativeClockReceipt } from './NativeClockResults.js';
 
-export const LIFECYCLE_ENGINE_CASES = Object.freeze({ 'chromium-semantic': 12, 'firefox-lifecycle': 15, 'webkit-lifecycle': 15 });
+export const LIFECYCLE_ENGINE_CASES = Object.freeze({ 'chromium-semantic': 13, 'firefox-lifecycle': 16, 'webkit-lifecycle': 16 });
 const sha256 = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const semanticReceipt = (report, project) => {
   const receipts = [];

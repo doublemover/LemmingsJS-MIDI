@@ -21,7 +21,7 @@ const clockReport = () => {
 const change = (value, apply) => { const attachment = value.suites[1].specs[0].tests[0].results[0].attachments[0], receipt = JSON.parse(Buffer.from(attachment.body, 'base64')); apply(receipt.source); attachment.body = Buffer.from(JSON.stringify(receipt)).toString('base64'); };
 
 describe('native lifecycle engine qualification', () => {
-  it('requires all forty-two journeys and native clock receipts matching their actual capabilities', () => { const result = qualifyLifecycleEngineResults(clockReport()); expect(result.passed).to.equal(42); expect(result.engines[2].source.audioContextAvailable).to.equal(true); });
+  it('requires all forty-five journeys and native clock receipts matching their actual capabilities', () => { const result = qualifyLifecycleEngineResults(clockReport()); expect(result.passed).to.equal(45); expect(result.engines[2].source.audioContextAvailable).to.equal(true); });
   for (const key of ['physicsHash', 'causalHash']) it('rejects a one-engine ' + key + ' divergence despite every case passing', () => {
     const value = clockReport(); change(value, source => { source[key] = 'd'.repeat(64); }); expect(() => qualifyLifecycleEngineResults(value)).to.throw('Cross-engine semantic mismatch');
   });

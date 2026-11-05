@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Reject malformed sound similarity and level-matching evidence, compare every PCM channel, and retain explicit nonfinite repeat and Panic failures.
+
 - Add a separate Ensemble identities pluck source with wider stable actor timbre variation, fixed pitch and reversible sound-library application.
 
 - Prepare source-bound64actor variation comparisons with explicit scoped listening caveats, preserve short transient spectra within the existing analysis budget, and restore bounded audio evidence tooling startup.

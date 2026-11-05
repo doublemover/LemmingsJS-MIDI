@@ -66,16 +66,33 @@ export function measureSoundRender(planes, sampleRate, { fundamentalHz = null, s
       levelNormalization: 'unit-rms-envelope-unit-power-spectrum', envelope: shape, spectrum: [...spectralBands].map(value => spectralWeight ? value / spectralWeight : 0) },
     interpretation: 'digital-measurement-not-speaker-output-or-listening-assessment' });
 }
+const admitFeatures = value => {
+  const positive = number => Number.isFinite(number) && number >= 0;
+  if (value?.schema !== 'lemmings-sound-measurement/v1' || ![44100, 48000, 96000].includes(value.sampleRate) ||
+      ![1, 2].includes(value.channels) || !Number.isSafeInteger(value.frames) || value.frames < 1 || value.samples !== value.frames * value.channels || value.samples > limit / 4 ||
+      !Number.isSafeInteger(value.nonfiniteSamples) || value.nonfiniteSamples < 0 || value.nonfiniteSamples > value.samples ||
+      !positive(value.peak) || value.peak > 3.4028234663852886e38 || !positive(value.rms) || value.rms > value.peak * (1 + 1e-12) ||
+      !Number.isFinite(value.dc) || Math.abs(value.dc) > value.peak * (1 + 1e-12) ||
+      value.spectralCentroidHz !== null && (!positive(value.spectralCentroidHz) || value.spectralCentroidHz >= value.sampleRate / 2)) fail('invalid measured feature layout or metrics.');
+  for (const [name, length, maximum] of [['spectrum', 32, 1 + 1e-9], ['envelope', 64, Math.sqrt(value.samples) * (1 + 1e-9)]]) {
+    const vector = value.normalizedFeatures?.[name];
+    if (!Array.isArray(vector) || vector.length !== length) fail('invalid measured feature vector.');
+    for (let index = 0; index < length; index++) if (!positive(vector[index]) || vector[index] > maximum) fail('invalid measured feature vector.');
+  }
+};
 const cosine = (a, b) => { let aa = 0, bb = 0, ab = 0; for (let i = 0; i < a.length; i++) { aa += a[i] ** 2; bb += b[i] ** 2; ab += a[i] * b[i]; } return aa && bb ? Math.max(0, Math.min(2, 1 - ab / Math.sqrt(aa * bb))) : null; };
 export function compareSoundFeatures(a, b, { spectralDistance = 0.015, envelopeDistance = 0.015 } = {}) {
-  if (a?.schema !== 'lemmings-sound-measurement/v1' || b?.schema !== a.schema || [spectralDistance, envelopeDistance].some(value => !Number.isFinite(value) || value < 0 || value > 1)) fail('incompatible feature comparison.');
+  admitFeatures(a); admitFeatures(b);
+  if ([spectralDistance, envelopeDistance].some(value => !Number.isFinite(value) || value < 0 || value > 1)) fail('incompatible feature comparison.');
   if (a.nonfiniteSamples || b.nonfiniteSamples || !a.rms || !b.rms || a.spectralCentroidHz == null || b.spectralCentroidHz == null) return { status: 'unsupported', reason: 'nonfinite-or-silent-render', nearDuplicate: false };
   const spectrumDistance = cosine(a.normalizedFeatures.spectrum, b.normalizedFeatures.spectrum), temporalDistance = cosine(a.normalizedFeatures.envelope, b.normalizedFeatures.envelope);
+  if (spectrumDistance === null || temporalDistance === null) return { status: 'unsupported', reason: 'degenerate-feature-vector', nearDuplicate: false };
   return { status: 'review-required', nearDuplicate: spectrumDistance <= spectralDistance && temporalDistance <= envelopeDistance,
-    spectrumDistance, temporalDistance, levelDifferenceDb: 20 * Math.log10(a.rms / b.rms), tolerance: { spectralDistance, envelopeDistance },
+    spectrumDistance, temporalDistance, levelDifferenceDb: 20 * (Math.log10(a.rms) - Math.log10(b.rms)), tolerance: { spectralDistance, envelopeDistance },
     interpretation: 'candidate-for-human-review-not-proof-of-equivalence-or-musical-quality' };
 }
 export function matchSoundLevels(a, b, { peakCeiling = 0.8 } = {}) {
+  admitFeatures(a); admitFeatures(b);
   if (!Number.isFinite(peakCeiling) || peakCeiling <= 0 || peakCeiling >= 1 || [a, b].some(value => !value?.rms || !value?.peak || value.nonfiniteSamples)) fail('level matching needs finite non-silent measured PCM.');
   const targetRms = Math.min(a.rms, b.rms, peakCeiling * a.rms / a.peak, peakCeiling * b.rms / b.peak);
   return Object.freeze({ targetRms, gainA: targetRms / a.rms, gainB: targetRms / b.rms, peakCeiling, method: 'pair-relative-rms-match-no-master-loudness-target', rawMeasurementsRetained: true });
