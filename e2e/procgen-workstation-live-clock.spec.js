@@ -93,7 +93,7 @@ function assertLiveFrames(actual, backend) {
 
 for (const backend of ['audio', 'midi']) for (const scenario of ['rates-pause-step', 'catch-up', 'host-gap', 'external-clock', 'generation']) test('native ' + backend + ' preserves original physical clocks through ' + scenario + ' @boundary', { tag: ['@boundary', '@workstation-physical-music'] }, async ({ page }, testInfo) => {
   test.setTimeout(90000); page.setDefaultTimeout(15000); await installLiveObservation(page);
-  const armed = await armActualPhysicalClock(page, { external: scenario === 'external-clock', speed: scenario === 'catch-up' ? 10 : 3, generationFixture: scenario === 'generation' });
+  const armed = await armActualPhysicalClock(page, { external: scenario === 'external-clock', speed: 3, generationFixture: scenario === 'generation' });
   await enableLiveOutput(page, backend); const setupRequests = await page.evaluate(() => window.__WEBMIDI_STUB__.metrics().requests), journey = { scenario, backend, setupRequests };
   if (scenario === 'external-clock') {
     journey.locked = await externalPulses(page, 16, 20); expect(journey.locked.state.clockStatus).toBe('locked');
@@ -103,7 +103,20 @@ for (const backend of ['audio', 'midi']) for (const scenario of ['rates-pause-st
     journey.continued = await externalPulses(page, 16, 24, { stop: true }); expect(journey.continued.state.playing).toBe(false); expect(journey.continued.tick).toBeGreaterThan(journey.lost.tick);
     await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ clockSource: 'internal', bpm: 83 })); await startLive(page); await advanceLive(page, 110, journey);
   } else {
-    await startLive(page); await advanceLive(page, scenario === 'catch-up' ? 48 : 24, journey);
+    await startLive(page); await advanceLive(page, 24, journey);
+    if (scenario === 'catch-up') {
+      journey.positiveControl = await page.evaluate(() => {
+        const source = window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics(), world = window.__PROCGEN_LANES__.world;
+        return { speed: 3, observedTickDurationMs: window.__physicalClockBatches.at(-1)?.tickDurationMs, tick: world.tickIndex, generation: world.generation, accepted: source.accepted, degraded: source.degraded, rejected: source.rejected,
+          observedPcmPeak: window.__liveClockPeak, scope: 'ordinary-source-playback-before-accelerated-catch-up;not-ten-times-realtime-capacity' };
+      });
+      expect(journey.positiveControl.observedTickDurationMs).toBe(20);
+      expect(journey.positiveControl.accepted + journey.positiveControl.degraded).toBeGreaterThan(0);
+      await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ speedMode: 'game', linked: false, gameSpeed: 10 }));
+      journey.catchUpStartTick = await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex);
+      await advanceLive(page, journey.catchUpStartTick + 48, journey);
+      journey.catchUpTickDurationMs = await page.evaluate(() => window.__physicalClockBatches.at(-1)?.tickDurationMs); expect(journey.catchUpTickDurationMs).toBe(6);
+    }
     if (scenario === 'rates-pause-step') {
       await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 175, speedMode: 'bpm', linked: true })); await advanceLive(page, 48, journey);
       await page.getByRole('button', { name: 'Pause world', exact: true }).click(); journey.pausedTick = await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex);
@@ -135,6 +148,14 @@ for (const backend of ['audio', 'midi']) for (const scenario of ['rates-pause-st
   expect(stopped.externalOutputs.every(output => output.ownedVoices === 0)).toBe(true);
   if (backend === 'audio') { expect(live.opens).toBe(1); expect(live.nonfinite).toBe(false); expect(live.peak).toBeGreaterThan(1e-8); expect(live.midi.requests).toBe(scenario === 'external-clock' ? 1 : 0); }
   else { expect(live.opens).toBe(0); expect(live.midi.requests).toBe(setupRequests); expect(setupRequests).toBeGreaterThan(0); expect(setupRequests).toBeLessThanOrEqual(scenario === 'external-clock' ? 2 : 1); const notes = live.midi.messages.filter(message => (message.bytes[0] & 0xf0) === 0x90 && message.bytes[2]); expect(notes.length).toBeGreaterThan(0); expect(notes.every(message => Number.isFinite(message.requestedTimestampMs))).toBe(true); }
-  if (scenario === 'catch-up') { const groups = new Map(); for (const batch of actual.batches) groups.set(batch.hostEventTimeMs, (groups.get(batch.hostEventTimeMs) || 0) + 1); expect(Math.max(...groups.values())).toBeGreaterThan(1); }
-  await testInfo.attach('native-live-clock-' + backend + '-' + scenario, { body: JSON.stringify({ journey, frames, stopped, viewport: page.viewportSize(), scope: 'Actual desktop runtime/owned local audio or declared WebMIDI output stub; independently recomputed original sink targets, strict lateness and terminal ownership. Internal PCM and API submissions only; no receiver, OS suspension or acoustic qualification.' }), contentType: 'application/json' });
+  if (scenario === 'catch-up') {
+    const groups = new Map(), batches = actual.batches.filter(batch => batch.tick > journey.catchUpStartTick), ids = new Set(batches.map(batch => batch.batchId));
+    for (const batch of batches) groups.set(batch.hostEventTimeMs, (groups.get(batch.hostEventTimeMs) || 0) + 1);
+    expect(Math.max(...groups.values())).toBeGreaterThan(1);
+    const outcomes = actual.outcomes.filter(outcome => ids.has(outcome.batchId) && outcome.sinkId === frames.sink && Number.isSafeInteger(outcome.sourceTargetFrame));
+    expect(outcomes.length).toBeGreaterThan(0);
+    journey.acceleratedOutcomes = { timed: outcomes.length, admitted: outcomes.filter(outcome => ['accepted', 'degraded'].includes(outcome.status)).length,
+      lateAttacks: outcomes.filter(outcome => outcome.reason === 'late-attack').length, profile: 'original-targets-even-when-all-accelerated-attacks-are-late' };
+  }
+  await testInfo.attach('native-live-clock-' + backend + '-' + scenario, { body: JSON.stringify({ journey, frames, stopped, viewport: page.viewportSize(), scope: 'Actual desktop runtime/owned local audio or declared WebMIDI output stub; independently recomputed original sink targets, strict lateness and terminal ownership. Catch-up includes a declared3x ordinary playback positive control before the10x phase; accelerated original targets and late rejections remain measured, with no10x realtime-capacity claim. Internal PCM and API submissions only; no receiver, OS suspension or acoustic qualification.' }), contentType: 'application/json' });
 });
