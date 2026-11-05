@@ -240,3 +240,16 @@ The command writes `comparison.html`, `comparison.json` and, by default, a Playw
 The report contains shared-scale A/B spectrograms, an active-band A−B heatmap, 10 ms RMS envelopes and their mean-relative 0.5–20 Hz modulation spectra. It opens on the shared active region; the full PCM, including silence, remains in the analysis and can be shown. Hover for exact window time, display-band frequency and A/B power. FFT spacing, Hann window, power normalization, display floor and nearest-bin policy are recorded. A modulation peak may reflect the existing note pattern, gaps or decay; it does not prove a hidden LFO. Spectral and waveform differences do not establish musical quality or audible relatedness.
 
 Source files and WAV bytes are hash-bound. The stable analysis hash excludes agent labels, profiling and rasterization metadata. Wall-time/RSS are developer-tool observations, not realtime audio capacity. Generated PCM, plots and dense matrices remain private artifacts; commit the analysis code and concise qualification records.
+
+
+## Generate export-delivery schedules
+
+Run a bounded campaign against the actual prepared-artifact and native-delivery owners:
+
+```powershell
+npm run model:deliveries -- --seed=1979 --runs=4096 --steps=64 --max-ms=60000 --max-heap-mib=256 --out-dir=temp/my-delivery-model --name=rook
+```
+
+Each generated command has a reference-model precondition. After every transition the driver compares immutable source bytes and identity, retention, consumer leases, reserved bytes, request outcome and native-owner retirement. It explores independent consumers, retry, expiry, cancellation before open, late writes, rejection and reversed close/abort acknowledgments. A failure report retains the seed, original trace, observations and a bounded deletion-shrunk trace with the same failure. A shrinking error or exhausted budget preserves the original failure. The committed deliberate adapter-fault fixture demonstrates shrinking; it is not a historical product defect.
+
+Replay a report’s `minimalTrace` by saving it as `{"trace":[...]}` under `temp/`, then add `--replay=temp/my-trace.json` with a new output directory. No existing output directory is overwritten. The report hashes the complete owned export source closure, the model, runner and fixture, and refuses a source change during execution. Wall time and observed Node heap are checked at every transition and shrink attempt; the heap observation is not a process RSS bound. At most4096schedules,128generated steps plus bounded cleanup,160commands per replay and128shrink attempts are admitted. Controlled adapter promises establish ownership behavior, not real browser filesystem support or disk durability.

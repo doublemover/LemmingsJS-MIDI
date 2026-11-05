@@ -6558,5 +6558,42 @@
       "unchangedCheckoutNewlines": 13
     },
     "remaining": "Await current CI independently. Complete-green439 is reported by GitHub with7766Node/381browser passes, while the independently inventoried checkpoint remains437. Resume broader acquisition/cache/delivery lifecycle models; no new10x capacity claim."
+  },
+  "continuation445": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Controlled native file-promise scheduling over the actual export artifact and native owner, with an independent serial reference. No product runtime change.",
+    "evidence": {
+      "path": "docs/validation/generated-export-delivery-model-2026-11-05.json",
+      "bytes": 323701,
+      "sha256": "3dbfe7eacb2499555a920e8067fb3fad375d736f516db5420b3b4cb76d6bd068"
+    },
+    "validation": {
+      "nodeCases": 42,
+      "campaignSeeds": 4096,
+      "transitions": 25070,
+      "retryCases": 410,
+      "expiryCases": 2022,
+      "wallMs": 1608.0776,
+      "peakObservedHeapBytes": 74755592,
+      "shrunkFaultCommands": 3,
+      "shrinkingAttempts": 14,
+      "replay": "passed",
+      "scopeCoverage": {
+        "lines": 96.55,
+        "branches": 74.38,
+        "functions": 93.75
+      }
+    },
+    "source": {
+      "browserPaths": 1289,
+      "browserDigest": "8705b81f63f8682ca778b1fd77563edc2308a74a9ba2131e4224c756dc18d298",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1558,
+      "byteExact": 1545,
+      "unchangedCheckoutNewlines": 13
+    },
+    "remaining": "Generated acquisition/cache and recording/input matrices under1120, plus older CI MIDI capture and isolated actor timing failures. Latest independently inventoried complete-green checkpoint remains437."
   }
 }
