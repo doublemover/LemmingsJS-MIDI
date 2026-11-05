@@ -147555,5 +147555,83 @@
       "Current pagination, cleanup and post-commit failures remain visible; no rollback of an admitted world is inferred.",
       "No full local suite repeated; repository coverage thresholds unchanged; latest source-qualified complete green is413/f4cd4ee9."
     ]
+  },
+  "continuation420": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "2ecfa639d1b4824867241e2b71a54ada3340cc23",
+    "scope": "1920x1080 native AudioContext, production master capture and MIDI scheduler with virtual output; explicit matched512ms cold controls and unchanged24ms refusal/suspension controls.",
+    "changes": [
+      "Match positive/canceled native and MIDI presentation profiles.",
+      "Continuously capture both master controls and independently validate everyPCM sample and source-frame coverage.",
+      "Keep originalCI failure and first silent-positive counterexample explicit."
+    ],
+    "validation": {
+      "browserPassed": 4,
+      "readBrowserPassedSeparately": 9,
+      "nodeReused": 271,
+      "sourceAudit": {
+        "paths": 1324,
+        "byteExact": 1311,
+        "untouchedNewlineMappings": 13
+      },
+      "profiles": [
+        {
+          "mode": "both",
+          "delayMs": 512,
+          "peak": 0.0010073184967041016,
+          "capturedPeak": 0.0010073184967041016,
+          "frames": 43008,
+          "cancelBoundary": null,
+          "captureBytesAfterRetirement": 0
+        },
+        {
+          "mode": "midi-refused",
+          "delayMs": 24,
+          "peak": 0.0010052919387817383,
+          "cancelBoundary": null,
+          "captureBytesAfterRetirement": 0
+        },
+        {
+          "mode": "audio-suspended",
+          "delayMs": 24,
+          "peak": 0,
+          "cancelBoundary": null,
+          "captureBytesAfterRetirement": 0
+        },
+        {
+          "mode": "cancel-before-submit",
+          "delayMs": 512,
+          "peak": 0,
+          "capturedPeak": 0,
+          "frames": 43776,
+          "cancelBoundary": {
+            "requestedFrame": 4352,
+            "targetFrame": 28027,
+            "requestedHostUs": 2684699.999999255,
+            "targetHostUs": 3177400,
+            "sampleRate": 48000
+          },
+          "captureBytesAfterRetirement": 0
+        }
+      ],
+      "evidence": {
+        "path": "docs/validation/combined-cancellation-desktop-2026-11-04.json",
+        "bytes": 507801,
+        "sha256": "baf9efae0a81b12f94f0396d46a0b0db268439931122a95fab490f15617057de"
+      }
+    },
+    "ci": {
+      "latestCompleteGreen": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
+      "run413": 41925399883,
+      "run414": 41930876678,
+      "engineRetry414": "in-progress; no promotion of failed main",
+      "newSource": "pending-publication"
+    },
+    "limits": [
+      "The explicit512ms fixture profile does not change production24msdefaults or establish all short-horizon/cold-load behavior.",
+      "Native browser PCM is captured at the post-protection master, not a microphone or acoustic receiver; MIDI output is virtual.",
+      "First silent positive and originalCI negative failures are retained; no full local suite repeated. Latest complete-green source remains413/f4cd4ee9."
+    ]
   }
 }
