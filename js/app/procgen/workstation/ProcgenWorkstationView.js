@@ -13,6 +13,7 @@ import { createWorkstationChrome } from './WorkstationChrome.js';
 import { getProcgenCommandDispatcher } from '../../controls/ProcgenCommandDispatcher.js';
 import { createProcgenCommandPalette } from '../../controls/ProcgenCommandPalette.js';
 import { procgenLane, procgenLaneIndex } from './ProcgenProjectIndex.js';
+import { createProjectReplacementDialog } from '../../controls/ProjectReplacementDialog.js';
 import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
 import { createParameterKnob } from '../../controls/ParameterKnob.js';
 import { getPointerGestureArbiter } from '../../controls/PointerGestureArbiter.js';
@@ -43,6 +44,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const listeners = [], parameterControls = [], laneMixControls = new Map(), lanePanControls = new Map(), parameterCache = new Map(), curveEditors = new Map();
   const laneDisplays = new Map(), laneDisplayPages = new Map();
   const retainedLaneDrafts = new Map();
+  let recentDraftKnob = null, recentDraftCurve = null, draftRevision = 0;
+  const ownedKnobs = () => [...new Set([...parameterControls, ...laneMixControls.values(), ...lanePanControls.values()])].filter(control => control.element.isConnected);
+  const createOwnedParameter = options => { let control, revision = 0; control = createParameterKnob({ ...options, onEntryActivity: event => { const current = control?.inspect(); if (current && revision !== current.textRevision) { revision = current.textRevision; draftRevision++; } if (current?.textDirty && typeof WeakRef === 'function') recentDraftKnob = new WeakRef(control); options.onEntryActivity?.(event); } }); return control; };
+  const pendingDraftState = () => { const native = controlTree.draftState(), knobs = ownedKnobs().map(control => ({ control, state: control.inspect() })); return Object.freeze({ textDrafts: native.count + knobs.filter(value => value.state.textDirty).length + retainedLaneDrafts.size, curveDrafts: [...curveEditors.values()].filter(value => { const state = value.control.inspect(); return state.dirty || state.conflict; }).length, revision: draftRevision, fieldRevision: native.revision, gestures: Math.max(pointerArbiter.inspect() ? 1 : 0, knobs.filter(value => value.state.gestureId != null).length), labels: Object.freeze([...native.labels, ...knobs.filter(value => value.state.textDirty).map(value => String(value.control.descriptor.name || 'Parameter').slice(0, 96))].slice(0, 8)) }); };
+  const restoreReplacementFocus = identity => { if (disposed || String(getDocumentIdentity()) !== identity) return false; const knobs = ownedKnobs(), recent = recentDraftKnob?.deref(); if (knobs.includes(recent) && recent.focusDraft()) return true; if (controlTree.focusDraft() || knobs.some(control => control.focusDraft())) return true;
+    const recentCurve = recentDraftCurve?.deref(), entry = [...curveEditors.values()].find(value => value.control === recentCurve && (value.control.inspect().dirty || value.control.inspect().conflict));
+    if (!entry) return false; state.laneId = entry.laneId; state.tab = 'Automation'; dock.open(); render(); return entry.control.focusDraft(); };
   let parameterScope = null, parameterSeen = null, viewRevision = 0, curveDocumentIdentity = getDocumentIdentity();
   let midiRouteView = null, midiRouteState = null, mixDocumentIdentity = null, variationsView = null;
   const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
@@ -84,7 +92,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (!entry) {
       entry = { identity, changed, options, token: {}, control: null };
       const invoke = name => (...args) => entry.options[name]?.(...args);
-      entry.control = createParameterKnob({ document, window, value, descriptor, ...options,
+      entry.control = createOwnedParameter({ document, window, value, descriptor, ...options,
         getIdentity: () => !disposed && !superseded && parameterScope === scope ? entry.token : null,
         commit: (...args) => entry.changed(...args), preview: invoke('preview'), onFinish: invoke('onFinish'), onCancel: reason => {
           if (reason === 'external-edit' || reason === 'unavailable') setStatus('The parameter changed or became unavailable. The gesture was canceled; its draft was not committed.');
@@ -114,7 +122,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (curveEditors.size >= 32) return node('p', 'Curve draft storage is full. Apply or discard an existing lane curve draft before opening another editor.', 'studio-hint');
       entry = { laneId: lane.id, curveId: curve.id, token: {}, control: null };
       const current = () => !disposed && !superseded && getDocumentIdentity() === documentIdentity && state.laneId === lane.id && state.tab === 'Automation' && dock.visible() && procgenLane(getProject().procgen.lanes, lane.id)?.ccAutomation.some(value => value.id === curve.id);
-      try { entry.control = createAutomationCurveEditor({ document, window, curve, resourceBudget, getIdentity: () => current() ? entry.token : null, onStatus: text => { setStatus(text); },
+      try { entry.control = createAutomationCurveEditor({ document, window, curve, resourceBudget, onDraftActivity: () => { draftRevision++; if (entry.control && typeof WeakRef === 'function') recentDraftCurve = new WeakRef(entry.control); }, getIdentity: () => current() ? entry.token : null, onStatus: text => { setStatus(text); },
         commit: points => { if (!current()) return false; const target = procgenLane(getProject().procgen.lanes, lane.id); dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { ccAutomation: target.ccAutomation.map(value => value.id === curve.id ? { ...value, points } : value) } }); return true; } }); }
       catch (failure) { return node('p', 'Curve editor unavailable: ' + failure.message, 'studio-hint'); }
       curveEditors.set(key, entry);
@@ -153,6 +161,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
   footer.append(legacyNotice);
+  const replacementDialog = createProjectReplacementDialog({ document, restoreDraftFocus: identity => restoreReplacementFocus(identity) });
   const controlTree = createKeyedControlTree({ document, conflictHost, onStatus: text => { setStatus(text); }, focusFallback: () => tabs.querySelector('[role="tab"][aria-selected="true"]') || dock.toggle });
   const cueStrip = node('div', null, 'studio-scene-cue'); cueStrip.setAttribute('aria-label', 'Prepared physical scene transition'); cueStrip.hidden = true;
   const currentCue = node('span', 'CURRENT · Physical world'), nextCue = node('span', 'NEXT · No candidate'), cueState = node('output'); cueState.setAttribute('aria-live', 'polite');
@@ -165,7 +174,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     performAction: (...args) => handlers.recoverOperational?.(...args), cancelOperation: id => handlers.cancelOperation?.(id), onStatus: text => { setStatus(text); } });
   topbar.append(operationalView.element);
   const operationalSurface = displayScheduler.register({ id: 'workstation-operational', element: operationalView.element, intervalMs: 100,
-    write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); noticeView.refresh(snapshot); refreshCommandControls(); } }); operationalSurface.invalidate();
+    write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); } }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
   let motionControl = null, motionStatus = null, motionPolicy = null, motionUnsubscribe = null;
@@ -429,7 +438,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   exportRouteField.append(exportRouteLegend, exportRouteHelp, exportRouteFilter, exportRouteList, exportRoutePage, exportRoutePrevious, exportRouteNext, exportRouteCancel);
   exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, saveClipManifest, cancelDelivery, discardPrepared, exportRouteField);
   footer.append(inMenu('Edit', records), inMenu('Edit', clearRecords), noticeView.element, storageStatus, recoveryStatus, commandButton('Save', 'save'), inMenu('Project', commandButton('Save As', 'saveAs')),
-    button('Scenes', () => handlers.scenes?.(), 'Inspect and explicitly prepare a paused physical score'), inMenu('Project', button('Rename', () => handlers.rename?.())), inMenu('Project', commandButton('Load', 'load')), inMenu('Project', commandButton('New', 'new')),
+    button('Scenes', () => handlers.scenes?.(), 'Inspect and explicitly prepare a paused physical score'), inMenu('Project', button('Rename', () => handlers.rename?.())), inMenu('Project', commandButton('Load', 'load', () => handlers.load?.({ review: true }))), inMenu('Project', commandButton('New', 'new', () => handlers.new?.({ review: true }))),
     inMenu('Project', commandButton('Export', 'export')), inMenu('Project', midiExportChoices), inMenu('Project', button('MIDI', () => handlers.exportMidi?.({ sourceLayer: midiExportSource.value, placement: midiExportPlacement.value }), 'Prepare a compatible MIDI1 file from the selected source and timing')),
     inMenu('Project', clipExportChoices), inMenu('Project', button('MIDI2 Clip', () => handlers.exportMidi?.({ format: 'ump', sourceLayer: 'authored-intent', placement: midiExportPlacement.value, tempoSource: clipExportTempo.value }), 'Export original authored UMP intent for one recorded output connection')),
     inMenu('Project', button('Inspect Clip', () => inspectClipInput.click(), 'Validate an imported Clip as data; setup and notes are never sent')),
@@ -444,13 +453,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     inMenu('Sound tools', button('Record audio…', () => handlers.openMasterCapture?.(), 'Capture the running shared browser master as a bounded stereo WAV')),
     inMenu('Sound tools', button('Prelisten', () => handlers.openPrelistenMonitor?.(), 'Choose cue routing and stop the foreground preview')), exportDesk);
   const importInput = input('', () => {}, { type: 'file' }); importInput.accept = '.json,.procgen'; importInput.hidden = true; footer.append(importInput);
-  on(importInput, 'change', () => { if (importInput.files?.[0]) handlers.import?.(importInput.files[0]); importInput.value = ''; });
+  on(importInput, 'change', () => { if (importInput.files?.[0]) handlers.import?.(importInput.files[0], { review: true }); importInput.value = ''; });
   footer.append(inMenu('Project', commandButton('Import', 'import', () => importInput.click())));
   const projectList = node('dialog', null, 'studio-dialog'); projectList.setAttribute('aria-label', 'Saved projects'); presentationRoot.append(projectList);
-  let pickerOwner = null, pendingPickerCloses = 0;
+  let pickerOwner = null, pendingPickerCloses = 0, parkedPickerOwner = null;
   const retirePicker = (owner, { cancel = false, close = false } = {}) => {
     if (!owner || owner.closed || pickerOwner !== owner) return;
-    owner.closed = true; owner.generation++; pickerOwner = null;
+    owner.closed = true; owner.generation++; pickerOwner = null; if (parkedPickerOwner === owner) parkedPickerOwner = null;
     if (cancel) handlers.cancelProjectPicker?.();
     if (close && projectList.open) { pendingPickerCloses++; projectList.close(); }
   };
@@ -506,7 +515,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
             if (loaded) retirePicker(owner, { close: true });
             else feedback.textContent = 'Project could not be opened. It may have changed or been removed; choose another or retry.';
           } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project could not be opened.'; }
-          finally { if (current(generation)) { owner.loading = false; search.disabled = false; more.disabled = !page.nextCursor; } }
+          finally { if (current(generation)) { owner.loading = false; search.disabled = false; more.disabled = !page.nextCursor; if (parkedPickerOwner === owner && !projectList.open) { parkedPickerOwner = null; projectList.showModal(); choice.focus(); } } }
         });
         choice.dataset.projectId = entry.id; items.append(choice);
       }
@@ -929,7 +938,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   const createLaneFader = (laneId, value, documentIdentity) => {
     const key = 'level:' + laneId, retained = retainedLaneDrafts.get(key), token = retained?.snapshot.identity || {}; retainedLaneDrafts.delete(key);
-    const control = createParameterKnob({ document, window, presentation: 'fader', value, compact: true, contextName: laneId + ' · Level', compactLabel: 'Level / dB',
+    const control = createOwnedParameter({ document, window, presentation: 'fader', value, compact: true, contextName: laneId + ' · Level', compactLabel: 'Level / dB',
       compactFormat: gain => gain === 0 ? '−∞' : (20 * Math.log10(gain)).toFixed(1),
       focusFallback: () => lanes.querySelector('.selected .studio-lane-title') || dock.toggle, onEntryActivity: () => { if (!disposed) laneMixSurface.invalidate(); },
       descriptor: retained?.snapshot.descriptor || createLaneLevelDescriptor(laneId),
@@ -939,7 +948,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   const createLanePan = (laneId, value, documentIdentity) => {
     const key = 'pan:' + laneId, retained = retainedLaneDrafts.get(key), token = retained?.snapshot.identity || {}; retainedLaneDrafts.delete(key);
-    const control = createParameterKnob({ document, window, value, compact: true, contextName: laneId + ' · Pan',
+    const control = createOwnedParameter({ document, window, value, compact: true, contextName: laneId + ' · Pan',
       descriptor: retained?.snapshot.descriptor || createLanePanDescriptor(laneId),
       getIdentity: () => !disposed && !superseded && getDocumentIdentity() === documentIdentity && procgenLane(getProject().procgen.lanes, laneId) ? token : null,
       focusFallback: () => lanes.querySelector('.selected .studio-lane-title') || dock.toggle, onEntryActivity: () => { if (!disposed) laneMixSurface.invalidate(); },
@@ -1251,7 +1260,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   for (const [action, label] of [['openSoundLibrary', 'Open the sound library'], ['openShapeFoundry', 'Open Shape Foundry'],
     ['openPhysicalAuthoring', 'Open physical authoring'], ['openPhysicalJunctions', 'Inspect physical junctions'], ['openPhysicalScene', 'Open physical scene and cargo authoring'],
     ['openMasterCapture', 'Record the browser master'], ['openPrelistenMonitor', 'Open Prelisten routing'], ['save', 'Save the current project'], ['load', 'Open a saved project'], ['export', 'Prepare a performance file']]) {
-    commands.push({ id: 'workstation.' + action, label, contexts: ['selected-lane'], enabled: () => canCommand(action), execute: () => handlers[action]?.() });
+    commands.push({ id: 'workstation.' + action, label, contexts: ['selected-lane'], enabled: () => canCommand(action), execute: () => action === 'load' ? handlers.load?.({ review: true }) : handlers[action]?.() });
   }
   commands.push({ id: 'workstation.import', label: 'Import a performance file', contexts: ['project'], enabled: () => canCommand('import'), execute: () => importInput.click() });
   commands.push({ id: 'workstation.inspectLane', label: 'Inspect the selected lane in the instrument dock', contexts: ['selected-lane'], enabled: () => !stageActive, execute: () => dock.open() },
@@ -1319,7 +1328,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       }
       return handlers.openPhysicalScene?.();
     } });
-  const api = { render, patchStep, patchProject, layout, dock, revealLane, laneNavigator: () => navigator.summary(state.laneId, getArmedLaneIds()), refreshLaneNavigation: () => { if (!disposed) laneNavigator.update(getDocumentIdentity()); }, openInspector: () => { if (dock.visible()) render(); else dock.open(); }, revealGlobalControl: element => chrome.reveal(element), viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: setStatus, noticeState: noticeView.snapshot, operationReceipt: noticeView.operation,
+  const api = { render, patchStep, patchProject, layout, dock, revealLane, laneNavigator: () => navigator.summary(state.laneId, getArmedLaneIds()), refreshLaneNavigation: () => { if (!disposed) laneNavigator.update(getDocumentIdentity()); }, openInspector: () => { if (dock.visible()) render(); else dock.open(); }, revealGlobalControl: element => chrome.reveal(element), viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, pendingDraftState, restoreReplacementFocus, canReviewReplacement: () => ![...document.querySelectorAll('dialog[open]')].some(dialog => dialog !== projectList && !replacementDialog.owns(dialog)), requestReplacementReview: options => replacementDialog.request({ ...options, hostDialog: projectList.open ? projectList : null, parkHost() { if (pickerOwner && projectList.open) { parkedPickerOwner = pickerOwner; pendingPickerCloses++; projectList.close(); } } }), retireProjectPicker: (cancel = false) => retirePicker(pickerOwner, { cancel, close: true }), showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: setStatus, noticeState: noticeView.snapshot, operationReceipt: noticeView.operation,
     navigationDiagnostics() { const organization = navigationMetadata.getState(); return { ...navigator.summary(state.laneId, getArmedLaneIds()), mountedHeads: laneMixControls.size, mountedPans: lanePanControls.size, mountedDisplays: laneDisplays.size,
       retainedDrafts: retainedLaneDrafts.size, navigation: navigator.diagnostics(), organization: { groups: organization.groups.length, pinned: organization.pinned.length, undo: organization.undoCount, redo: organization.redoCount, retainedBytes: organization.retainedBytes, dropped: organization.dropped, projection: navigationMetadata.diagnostics() } }; },
     offerLegacyConversion(report, convert) {
@@ -1421,7 +1430,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
-        { name: 'modal-output-safety', run: () => modalSafety.dispose() }, { name: 'operational-view', run: () => operationalView.dispose() }, { name: 'notice-view', run: () => noticeView.dispose() }, { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); commandControls.clear(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'modal-output-safety', run: () => modalSafety.dispose() }, { name: 'operational-view', run: () => operationalView.dispose() }, { name: 'notice-view', run: () => noticeView.dispose() }, { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); commandControls.clear(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'replacement-dialog', run: () => replacementDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
         { name: 'workstation-chrome', run: () => chrome.dispose() }, { name: 'instrument-dock', run: () => dock.dispose() }, { name: 'curve-editors', run: () => { for (const entry of curveEditors.values()) entry.control.dispose(); curveEditors.clear(); } },
         { name: 'lane-navigator', run: () => laneNavigator.dispose() },
         { name: 'lane-organization', run: () => { laneGroups.dispose(); navigationMetadata.dispose(); } },

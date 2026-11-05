@@ -3,15 +3,18 @@ import { getPointerGestureArbiter } from './PointerGestureArbiter.js';
 import { parseAutomationCurvePoints, formatAutomationCurvePoints, moveAutomationCurvePoint } from './AutomationCurveDraft.js';
 
 let nextOwner = 0;
-export function createAutomationCurveEditor({ document, window, curve, getIdentity, commit, resourceBudget = null, onStatus = () => {} }) {
+export function createAutomationCurveEditor({ document, window, curve, getIdentity, commit, resourceBudget = null, onStatus = () => {}, onDraftActivity = () => {} }) {
   const reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'curve-editor-' + (++nextOwner), kind: 'automation-curve-draft', category: 'checkpoint', bytes: 262144, maxBytes: 262144 });
   const root = document.createElement('section'); root.className = 'studio-curve-editor'; root.__ownedControl = true; root.dataset.curveId = curve.id; root.setAttribute('aria-label', 'Controller curve ' + curve.id);
   const listeners = [], circles = [], arbiter = getPointerGestureArbiter(document), identity = getIdentity();
   let accepted = curve, acceptedText = formatAutomationCurvePoints(curve.points), draftText = acceptedText, draft = curve.points, selected = 0, dirty = false, conflict = false, disposed = false, gesture = null, composing = false, pointDirty = false, pointError = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
+  let recentField = null;
   const on = (target, type, handler, options) => { target.addEventListener(type, handler, options); listeners.push(() => target.removeEventListener(type, handler, options)); };
   const button = (text, handler) => { const value = node('button', text); value.type = 'button'; on(value, 'click', handler); return value; };
   const label = (text, control) => { const value = node('label', text); value.append(control); return value; };
+  on(root, 'focusin', event => { if (['INPUT', 'TEXTAREA'].includes(event.target.tagName) && typeof WeakRef === 'function') recentField = new WeakRef(event.target); });
+  for (const type of ['input', 'compositionstart', 'compositionend']) on(root, type, onDraftActivity);
   const exact = node('input'); exact.type = 'text'; exact.maxLength = 16384; exact.setAttribute('aria-label', 'Points');
   const pointSelect = node('select'); pointSelect.setAttribute('aria-label', 'Selected curve point');
   const position = node('input'), value = node('input'); position.type = value.type = 'text'; position.inputMode = 'decimal'; value.inputMode = 'numeric'; position.setAttribute('aria-label', 'Point position'); value.setAttribute('aria-label', 'Point value');
@@ -49,7 +52,7 @@ export function createAutomationCurveEditor({ document, window, curve, getIdenti
   }
   const acceptText = () => { if (!active()) return; pointDirty = false; pointError = null; draftText = exact.value; dirty = draftText !== acceptedText; if (composing) { root.dataset.dirty = 'true'; apply.disabled = true; discard.disabled = false; return; } paint(); };
   const canEditPoints = () => active() && !pointDirty && parseAutomationCurvePoints(draftText, accepted.length).valid;
-  const replaceDraft = points => { if (!points) { message.textContent = 'Keep positions in order and inside the loop.'; return; } const text = formatAutomationCurvePoints(points); if (text === draftText) return; draft = points; draftText = text; dirty = draftText !== acceptedText; paint(); };
+  const replaceDraft = points => { if (!points) { message.textContent = 'Keep positions in order and inside the loop.'; return; } const text = formatAutomationCurvePoints(points); if (text === draftText) return; draft = points; draftText = text; dirty = draftText !== acceptedText; onDraftActivity(); paint(); };
   const editPoint = () => {
     if (!active()) return;
     const parsed = parseAutomationCurvePoints(draft.map((point, index) => index === selected ? `${position.value}:${value.value}` : `${point.beat}:${point.value}`).join(', '), accepted.length);
@@ -85,10 +88,14 @@ export function createAutomationCurveEditor({ document, window, curve, getIdenti
   on(window, 'resize', () => gesture?.lease.cancel('resize')); on(window, 'blur', () => gesture?.lease.cancel('blur'));
   on(root, 'keydown', event => { if (event.key === 'Escape' && (dirty || pointDirty || conflict || gesture)) { event.preventDefault(); event.stopPropagation(); reset(); } });
   paint();
-  return Object.freeze({ element: root, inspect: () => Object.freeze({ dirty: dirty || pointDirty || composing, conflict, draftText, selected, gestureId: gesture?.lease.id ?? null }),
-    update(next) {
-      if (disposed) return; arbiter.revalidate(); if (composing && !root.contains(document.activeElement)) { composing = false; draftText = exact.value; dirty = draftText !== acceptedText; } const nextText = formatAutomationCurvePoints(next.points), changed = nextText !== acceptedText || next.length !== accepted.length || next.mode !== accepted.mode || next.axis !== accepted.axis;
-      if (changed) { gesture?.lease.cancel('external-edit'); accepted = next; acceptedText = nextText; if (dirty || pointDirty || composing) conflict = true; else { draftText = acceptedText; draft = next.points; } }
-      if (!composing) paint();
-    }, cancel: reason => gesture?.lease.cancel(reason), dispose() { if (disposed) return reservation.release(); gesture?.lease.cancel('disposed'); disposed = true; for (const release of listeners) release(); root.remove(); return reservation.release(); } });
+  return Object.freeze({ element: root, focusDraft() {
+    if (disposed || !active() || !root.isConnected || !(dirty || pointDirty || composing || conflict)) return false;
+    const previous = recentField?.deref(), target = previous && root.contains(previous) ? previous : exact; if (target.disabled || target.readOnly) return false;
+    const start = target.selectionStart, end = target.selectionEnd, direction = target.selectionDirection; target.focus({ preventScroll: true }); if (start != null && end != null) target.setSelectionRange(start, end, direction); return true;
+  }, inspect: () => Object.freeze({ dirty: dirty || pointDirty || composing, conflict, draftText, selected, gestureId: gesture?.lease.id ?? null }),
+  update(next) {
+    if (disposed) return; arbiter.revalidate(); if (composing && !root.contains(document.activeElement)) { composing = false; draftText = exact.value; dirty = draftText !== acceptedText; } const nextText = formatAutomationCurvePoints(next.points), changed = nextText !== acceptedText || next.length !== accepted.length || next.mode !== accepted.mode || next.axis !== accepted.axis;
+    if (changed) { gesture?.lease.cancel('external-edit'); accepted = next; acceptedText = nextText; if (dirty || pointDirty || composing) conflict = true; else { draftText = acceptedText; draft = next.points; } }
+    if (!composing) paint();
+  }, cancel: reason => gesture?.lease.cancel(reason), dispose() { if (disposed) return reservation.release(); gesture?.lease.cancel('disposed'); disposed = true; for (const release of listeners) release(); root.remove(); return reservation.release(); } });
 }

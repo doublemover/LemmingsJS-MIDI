@@ -25,6 +25,8 @@ const saveNamed = async (page, name) => {
 const loadNamed = async (page, name) => {
   await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), { button: 'Load' }, 'click');
   await page.getByRole('dialog', { name: 'Saved projects' }).getByRole('button', { name: new RegExp(name) }).click();
+  const review = page.getByRole('region', { name: 'Review project replacement' });
+  if ((await page.evaluate(() => window.__PROCGEN_STUDIO__.getReplacementReview())).required) await review.getByRole('button', { name: /^(?:Discard changes and replace|Replace project|Finalize take, discard changes and replace)$/ }).click();
   await expect(page.locator('.studio-status')).toContainText('Project loaded paused');
 };
 

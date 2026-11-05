@@ -517,3 +517,9 @@ body.procgen-workstation {
 .studio-variations-editor > legend,.studio-variations-editor > p { grid-column:1/-1; }
 .studio-variations-editor input[type=text] { width:100%; max-width:300px; }
 .studio-variations-editor .studio-variations-edit-knobs { grid-column:2; grid-row:auto; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); }
+
+.studio-replacement-review { max-width: 620px; padding: 8px; line-height: 1.5; }
+.studio-replacement-review h2 { margin: 0 0 12px; }
+.studio-replacement-review ul { max-height: 42vh; overflow: auto; padding-left: 24px; }
+.studio-replacement-review output { display: block; min-height: 1.5em; }
+.studio-replacement-review button { min-height: 36px; }

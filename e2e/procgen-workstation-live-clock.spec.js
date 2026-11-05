@@ -124,9 +124,10 @@ for (const backend of ['audio', 'midi']) for (const scenario of ['rates-pause-st
       await advanceLive(page, journey.boundary.tick + 96, journey);
     }
   }
-  const live = await page.evaluate(() => ({ diagnostics: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics(), peak: window.__liveClockPeak, nonfinite: window.__liveClockNonfinite, opens: window.__liveClockAudioOpens, midi: window.__WEBMIDI_STUB__.metrics() }));
+  const beforeFinalization = await page.evaluate(() => ({ diagnostics: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics(), peak: window.__liveClockPeak, nonfinite: window.__liveClockNonfinite, opens: window.__liveClockAudioOpens, midi: window.__WEBMIDI_STUB__.metrics() }));
   const actual = await finishActualPhysicalClock(page, armed.takeId);
-  await testInfo.attach('native-live-clock-observation-' + backend + '-' + scenario, { body: JSON.stringify({ journey, actual, live }), contentType: 'application/json' });
+  const live = await page.evaluate(() => ({ diagnostics: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics(), peak: window.__liveClockPeak, nonfinite: window.__liveClockNonfinite, opens: window.__liveClockAudioOpens, midi: window.__WEBMIDI_STUB__.metrics() }));
+  await testInfo.attach('native-live-clock-observation-' + backend + '-' + scenario, { body: JSON.stringify({ journey, actual, beforeFinalization, live }), contentType: 'application/json' });
   await page.locator('#procgenPanic').click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().activeNotes)).toBe(0);
   const stopped = await page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics());
   const frames = assertLiveFrames(actual, backend);

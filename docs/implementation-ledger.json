@@ -269,7 +269,7 @@
       "title": "[ProcGen editing] Make Undo and Redo transactional across asynchronous world rebuilds",
       "requirementUpdatedAt": "2026-10-23T10:57:00Z",
       "requirementSha256": "2cfbe8cd3197a5d37e2f21bd9d4567e835cb11f607de27e51a9befaec278d555",
-      "initialGap": "World-changing history snapshots/queues preserve concurrent edits. Non-world Undo still passes an old physicalGraph revision directly to syncProject; active causalTake.recordMapping requires a strictly newer revision, so the latest reported edit\u2192Undo while recording conflict remains implemented incorrectly.",
+      "initialGap": "World-changing history snapshots/queues preserve concurrent edits. Non-world Undo still passes an old physicalGraph revision directly to syncProject; active causalTake.recordMapping requires a strictly newer revision, so the latest reported edit→Undo while recording conflict remains implemented incorrectly.",
       "state": "in-progress",
       "source": [
         "js/app/procgen/workstation/ProcgenWorkstation.js",
@@ -567,7 +567,7 @@
       "title": "[ProcGen UI] Visualize the exact lemming action-to-note causal chain without decorative fake playheads",
       "requirementUpdatedAt": "2026-10-22T12:01:31Z",
       "requirementSha256": "9f5fe4b570c5f974acde928322ff89ebc99811f81730c71f31188302d1570730",
-      "initialGap": "Recorded PhysicalScore and actual actor-effect inspection exist, but no live fact\u2192mapping\u2192admission multi-sink CausalVisualEvent adapter with dense counted marks/drilldown and complete silence/unknown evidence chain is wired into lane rendering.",
+      "initialGap": "Recorded PhysicalScore and actual actor-effect inspection exist, but no live fact→mapping→admission multi-sink CausalVisualEvent adapter with dense counted marks/drilldown and complete silence/unknown evidence chain is wired into lane rendering.",
       "state": "pending-implementation",
       "source": [],
       "regressions": [],
@@ -1031,7 +1031,7 @@
       "title": "[Physical music] Let excavation and construction rewrite the physical score through terrain memory",
       "requirementUpdatedAt": "2026-10-22T11:34:32Z",
       "requirementSha256": "c1d4c52e23c2957a81092401960bb6f23391dfdb14fe14ecd75e298937f8a294",
-      "initialGap": "Terrain work spans/revisions exist, but no TerrainScoreLayer retained semantic material/tag provenance index or later-contact\u2192specific-edit ancestry query is implemented in the causal graph/engine.",
+      "initialGap": "Terrain work spans/revisions exist, but no TerrainScoreLayer retained semantic material/tag provenance index or later-contact→specific-edit ancestry query is implemented in the causal graph/engine.",
       "state": "in-progress",
       "source": [
         "js/app/procgen/TerrainScoreLayer.js",
@@ -1274,7 +1274,7 @@
       "title": "[Sound family] Build an FM Forge of struck glass, electric tines and unstable metallic bells",
       "requirementUpdatedAt": "2026-10-22T09:09:58Z",
       "requirementSha256": "619cf7334d3f15425c730754b33eaad62a5011a34aba9e97ff0de658b98923bc",
-      "initialGap": "Four authored FM recipes, explicit index\u2192Hz lowering, two/four operator bounded native realization and work-strength/identity variation are implemented. Requested SPACE/send macro and feedback-capable Alarm Bloom topology are absent; native plan explicitly reports feedback unsupported and recipes expose only HARDNESS/RING/ALLOY.",
+      "initialGap": "Four authored FM recipes, explicit index→Hz lowering, two/four operator bounded native realization and work-strength/identity variation are implemented. Requested SPACE/send macro and feedback-capable Alarm Bloom topology are absent; native plan explicitly reports feedback unsupported and recipes expose only HARDNESS/RING/ALLOY.",
       "state": "pending-implementation",
       "source": [],
       "regressions": [],
@@ -1298,7 +1298,7 @@
       "title": "[Sound family] Make terrain materials ring with struck modal wood, stone, glass and metal",
       "requirementUpdatedAt": "2026-10-22T09:10:03Z",
       "requirementSha256": "3005e2134bda3ba8cfa9a5bfba4f36a86390967685b073ca344a394e15b19802",
-      "initialGap": "Four original modal materials plus unclassified, typed T60/modes/macros/identity and native modal realization exist. No verified contact-material-tag\u2192patch resolver or hard/soft/muted material articulation map is wired; base binding only scales gain from changedSolidCells.",
+      "initialGap": "Four original modal materials plus unclassified, typed T60/modes/macros/identity and native modal realization exist. No verified contact-material-tag→patch resolver or hard/soft/muted material articulation map is wired; base binding only scales gain from changedSolidCells.",
       "state": "pending-implementation",
       "source": [],
       "regressions": [],
@@ -4958,5 +4958,326 @@
       "definiteDevelopmentRemaining": 209
     },
     "sourceCompleteAccounting": "37 completed during this branch plus preexisting #1256, whose closure remains blocked. #1038 remains scope/provenance-uncertain."
+  },
+  "latestVerifiedCiCheckpoint": {
+    "head": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+    "status": "success",
+    "run": 41948075545,
+    "job": 126985139964,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41948075545",
+    "engineJob": 126985139522,
+    "requiredJobs": {
+      "test": "success",
+      "lifecycle-engines": "success",
+      "native-midi-codec (windows-latest)": "success",
+      "native-midi-codec (ubuntu-latest)": "success"
+    },
+    "nodePassed": 7554,
+    "nodePending": 10,
+    "browserPassed": 355,
+    "desktopPassed": 26,
+    "workstationSmokePassed": 287,
+    "enginePassed": 42,
+    "workstationCapabilities": 14,
+    "coverage": {
+      "lines": 90.87,
+      "statements": 90.87,
+      "branches": 84.26,
+      "functions": 88.72
+    },
+    "benchmark": {
+      "status": "success",
+      "profile": "smoke",
+      "source": "completed main job"
+    },
+    "mcp": "success",
+    "policy": "success",
+    "dependencyReview": "success",
+    "engineQualification": {
+      "status": "passed",
+      "files": 1278,
+      "harnessFiles": 27,
+      "configuredAudioBackend": "pulseaudio-null-sink",
+      "closureDigest": "d18962205c24b2e696c0c567ad845ef10e671150b4b368c097fc241e00bb3522",
+      "nativeClockScenarios": 24,
+      "nativeClockAvailable": 24,
+      "physicalReceiverOrAcoustics": false
+    },
+    "nativeCodec": {
+      "status": "passed",
+      "linuxJob": 126985139689,
+      "windowsJob": 126985139963,
+      "commandsPerPlatform": 8829,
+      "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+      "outputIdentical": true,
+      "deviceIO": false,
+      "shippingTransportQualified": false
+    },
+    "sourceQualification": {
+      "testedPrMergeHead": "9e1f9827be90ee5172713791253f4807401897f0",
+      "rawDirtyFlag": true,
+      "testedMergeTree": "f0edb2764f336a025126d4fc6f9437f26ca46299",
+      "publishedHeadTree": "f0edb2764f336a025126d4fc6f9437f26ca46299",
+      "gitTreesIdentical": true,
+      "allReportedSourcePaths": 1480,
+      "allReportedSourcePathsMatchPublishedHead": true,
+      "sbomComponents": 10,
+      "sbomFiles": 374,
+      "sbomComponentGitBytesMatched": true,
+      "githubArchiveDigestsMatched": true,
+      "reportDigestMatched": true,
+      "mainReportSha256": "6f695b7c5b77e81a37ed012ae04b2db2a0573ca58e41c42ebbafc1ce0850ce74"
+    },
+    "artifacts": [
+      {
+        "githubArtifactId": 13382550224,
+        "name": "workstation-browser-receipts",
+        "path": ".tmp/ci422-13382550224-423.zip",
+        "bytes": 2775053,
+        "sha256": "1036f69249a5bc406e8b87fe6d02ecadf51cb9e349245f8e3d2707e767acecde",
+        "githubDigestMatched": true
+      },
+      {
+        "githubArtifactId": 13379816219,
+        "name": "native-midi-codec-ubuntu-latest",
+        "path": ".tmp/ci422-13379816219-423.zip",
+        "bytes": 2247,
+        "sha256": "1092ea82d3a6a22fd3f229963df856f6ce336c697a42192291a6cc4d20ee6164",
+        "githubDigestMatched": true
+      },
+      {
+        "githubArtifactId": 13379697314,
+        "name": "native-midi-codec-windows-latest",
+        "path": ".tmp/ci422-13379697314-423.zip",
+        "bytes": 2147,
+        "sha256": "4d5debbe7c47e25effaf95b6104ec3686960a1c499c91575f314842d83870c43",
+        "githubDigestMatched": true
+      },
+      {
+        "githubArtifactId": 13379379615,
+        "name": "lifecycle-engine-receipts",
+        "path": ".tmp/ci422-13379379615-423.zip",
+        "bytes": 1005919,
+        "sha256": "442cf5fa442d08782ded05c83203af9acc902a7b158b499574e768abf452a419",
+        "githubDigestMatched": true
+      },
+      {
+        "githubArtifactId": 13379356981,
+        "name": "runtime-sbom",
+        "path": ".tmp/ci422-13379356981-423.zip",
+        "bytes": 57417,
+        "sha256": "194091f916dcfc9215149898c658094293f44badaf6dabd194181e4f680e8dd3",
+        "githubDigestMatched": true
+      }
+    ],
+    "scope": "All four required jobs and policy/dependency on422. Main/engine qualifiers,1480 distinct exact Git byte matches,five original ZIP digests,ten SBOM bundles and unchanged eight-source8829-command native corpus bind the completed checkpoint. Current423replacement changes are separately qualified and do not inherit this full-green result.",
+    "evidence": {
+      "path": "docs/validation/ci-green-terminal-history-2026-11-04.json",
+      "bytes": 698121,
+      "sha256": "743a5e9467667ea1723997143f7f8ddbeeeffa99278516074a3c10363d5d20c8"
+    }
+  },
+  "continuation423": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+    "scope": "Interactive New, saved Open and file Import replacement review using existing document, edit, gesture, capture, take and artifact owners. Same-document Save acknowledgment remains independent of read-only picker ownership.",
+    "changes": [
+      "Review interactive replacement with independent canonical edits,text/curve drafts,takes/master/MIDI capture,Prelisten,retained artifacts and pending delivery.",
+      "Keep one native modal through hosted picker/Save handoff; cancel preserves source/field/caret and never coerces partial numbers. Revalidate changed revisions and later Save edits.",
+      "Bind acknowledged Save to its current document even when a read-only picker owns presentation; retain stricter transport resume fences.",
+      "Refuse active MIDI recording/Learn before operation admission so held note duration and learning target remain intact.",
+      "Observe native MIDI submission after finalization with both snapshot prefixes retained."
+    ],
+    "validation": {
+      "nodePassed": 401,
+      "newReplacementCases": 43,
+      "browserPassed": 12,
+      "broaderPreflightBrowserPassed": 54,
+      "coverage": {
+        "lines": {
+          "total": 590,
+          "covered": 557,
+          "skipped": 0,
+          "pct": 94.4
+        },
+        "statements": {
+          "total": 590,
+          "covered": 557,
+          "skipped": 0,
+          "pct": 94.4
+        },
+        "functions": {
+          "total": 104,
+          "covered": 87,
+          "skipped": 0,
+          "pct": 83.65
+        },
+        "branches": {
+          "total": 734,
+          "covered": 591,
+          "skipped": 0,
+          "pct": 80.51
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "sourceAudit": {
+        "paths": 1376,
+        "byteExact": 1363,
+        "untouchedNewlineMappings": 13,
+        "browserClosureDigest": "21b38db32266966cfdc75cc7387215f8cb2c36f3cb5a8918a46817e225094afd"
+      },
+      "evidence": {
+        "path": "docs/validation/project-replacement-review-desktop-2026-11-04.json",
+        "bytes": 1579162,
+        "sha256": "f80f5f8042287e81c23b4abc2623fcaa87b8efb52ca28ff659f0010e11376198"
+      }
+    },
+    "ci": {
+      "verified": {
+        "head": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+        "status": "success",
+        "run": 41948075545,
+        "job": 126985139964,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41948075545",
+        "engineJob": 126985139522,
+        "requiredJobs": {
+          "test": "success",
+          "lifecycle-engines": "success",
+          "native-midi-codec (windows-latest)": "success",
+          "native-midi-codec (ubuntu-latest)": "success"
+        },
+        "nodePassed": 7554,
+        "nodePending": 10,
+        "browserPassed": 355,
+        "desktopPassed": 26,
+        "workstationSmokePassed": 287,
+        "enginePassed": 42,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.87,
+          "statements": 90.87,
+          "branches": 84.26,
+          "functions": 88.72
+        },
+        "benchmark": {
+          "status": "success",
+          "profile": "smoke",
+          "source": "completed main job"
+        },
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "engineQualification": {
+          "status": "passed",
+          "files": 1278,
+          "harnessFiles": 27,
+          "configuredAudioBackend": "pulseaudio-null-sink",
+          "closureDigest": "d18962205c24b2e696c0c567ad845ef10e671150b4b368c097fc241e00bb3522",
+          "nativeClockScenarios": 24,
+          "nativeClockAvailable": 24,
+          "physicalReceiverOrAcoustics": false
+        },
+        "nativeCodec": {
+          "status": "passed",
+          "linuxJob": 126985139689,
+          "windowsJob": 126985139963,
+          "commandsPerPlatform": 8829,
+          "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+          "outputIdentical": true,
+          "deviceIO": false,
+          "shippingTransportQualified": false
+        },
+        "sourceQualification": {
+          "testedPrMergeHead": "9e1f9827be90ee5172713791253f4807401897f0",
+          "rawDirtyFlag": true,
+          "testedMergeTree": "f0edb2764f336a025126d4fc6f9437f26ca46299",
+          "publishedHeadTree": "f0edb2764f336a025126d4fc6f9437f26ca46299",
+          "gitTreesIdentical": true,
+          "allReportedSourcePaths": 1480,
+          "allReportedSourcePathsMatchPublishedHead": true,
+          "sbomComponents": 10,
+          "sbomFiles": 374,
+          "sbomComponentGitBytesMatched": true,
+          "githubArchiveDigestsMatched": true,
+          "reportDigestMatched": true,
+          "mainReportSha256": "6f695b7c5b77e81a37ed012ae04b2db2a0573ca58e41c42ebbafc1ce0850ce74"
+        },
+        "artifacts": [
+          {
+            "githubArtifactId": 13382550224,
+            "name": "workstation-browser-receipts",
+            "path": ".tmp/ci422-13382550224-423.zip",
+            "bytes": 2775053,
+            "sha256": "1036f69249a5bc406e8b87fe6d02ecadf51cb9e349245f8e3d2707e767acecde",
+            "githubDigestMatched": true
+          },
+          {
+            "githubArtifactId": 13379816219,
+            "name": "native-midi-codec-ubuntu-latest",
+            "path": ".tmp/ci422-13379816219-423.zip",
+            "bytes": 2247,
+            "sha256": "1092ea82d3a6a22fd3f229963df856f6ce336c697a42192291a6cc4d20ee6164",
+            "githubDigestMatched": true
+          },
+          {
+            "githubArtifactId": 13379697314,
+            "name": "native-midi-codec-windows-latest",
+            "path": ".tmp/ci422-13379697314-423.zip",
+            "bytes": 2147,
+            "sha256": "4d5debbe7c47e25effaf95b6104ec3686960a1c499c91575f314842d83870c43",
+            "githubDigestMatched": true
+          },
+          {
+            "githubArtifactId": 13379379615,
+            "name": "lifecycle-engine-receipts",
+            "path": ".tmp/ci422-13379379615-423.zip",
+            "bytes": 1005919,
+            "sha256": "442cf5fa442d08782ded05c83203af9acc902a7b158b499574e768abf452a419",
+            "githubDigestMatched": true
+          },
+          {
+            "githubArtifactId": 13379356981,
+            "name": "runtime-sbom",
+            "path": ".tmp/ci422-13379356981-423.zip",
+            "bytes": 57417,
+            "sha256": "194091f916dcfc9215149898c658094293f44badaf6dabd194181e4f680e8dd3",
+            "githubDigestMatched": true
+          }
+        ],
+        "scope": "All four required jobs and policy/dependency on422. Main/engine qualifiers,1480 distinct exact Git byte matches,five original ZIP digests,ten SBOM bundles and unchanged eight-source8829-command native corpus bind the completed checkpoint. Current423replacement changes are separately qualified and do not inherit this full-green result."
+      },
+      "evidence": {
+        "path": "docs/validation/ci-green-terminal-history-2026-11-04.json",
+        "bytes": 698121,
+        "sha256": "743a5e9467667ea1723997143f7f8ddbeeeffa99278516074a3c10363d5d20c8"
+      },
+      "previousVerifiedHead": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
+      "currentSource": "pending-publication"
+    },
+    "issues": {
+      "open": [
+        1073,
+        1074,
+        1120,
+        1089
+      ],
+      "inventoryOpen": 188
+    },
+    "limits": [
+      "These are desktop observations at1920×1080 minimum. No phone/tablet profile, receiver, acoustic delivery or assistive-technology qualification is claimed.",
+      "Low-level transaction methods retain explicit programmatic behavior by default. Interactive New/Open/Import and the Load command opt into review; prepared-scene/lesson replacement remains its separate owner workflow.",
+      "Review reads canonical revisions and bounded owner summaries; it does not duplicate recording/dirty managers. Save cannot include unapplied text or curve drafts. Prepared files and raw MIDI remain independently source-bound.",
+      "An active recording or MIDI Learn target is refused before lease admission, preserving held-note completion and its current target. No implicit finalization or clearing occurs on review cancellation.",
+      "Named/Recovery candidate preview and exact durable recovery range remain1073work. Pending replacement with audition, disconnect and disposal remains part of1074/1120mixed-owner qualification.",
+      "The current final source has401passingNode cases and12native journeys. The broader54-case pass is retained at its earlier preflight source; it is not presented as a full run on the later input guard.",
+      "Latest independently complete-green CI is422/bfa6861d; its7554Node/355browser pass excludes this423implementation.",
+      "Large intermediate native-clock receipt arrays are represented by byte length/digest and original report digests. Current12-case browser receipts retain their decoded bounded values once; duplicated base64 attachment bodies are replaced with their hashes."
+    ]
   }
 }

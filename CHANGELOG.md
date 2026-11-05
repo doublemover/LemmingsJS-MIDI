@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Review unfinished project work before interactive New, Open or Import; preserve exact text/curve drafts on Cancel, save before replacement and retain active MIDI entry.
+- Publish same-document Save acknowledgments even when a read-only project picker is open, while preserving document and playback ownership.
+
 - Retain source-bound terminal operation records with separate captured and accepted revisions, honest unknown Save outcomes and idempotent canceled/failed load retirement.
 
 - Retain bounded priority notice history and canonical operation phases; guard cancellation and recovery by their original owners, share project-command availability, and suppress obsolete Save errors after document replacement.

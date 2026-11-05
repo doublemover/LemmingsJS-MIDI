@@ -4,6 +4,7 @@ import { planRecordedMidiExport } from './RecordedMidiExportPlan.js';
 import { planOriginalUmpClip } from './OriginalUmpRecordingSnapshot.js';
 import { physicalMidiEpochChoices } from './PhysicalTakeMidiEpochs.js';
 import { loadDeferredWebMidi } from '../DeferredWebMidi.js';
+import { createProcgenReplacementReview } from './ProcgenReplacementPolicy.js';
 import { createProcgenOperationView, createProcgenOperationReceipt } from './ProcgenOperationView.js';
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -234,6 +235,65 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (disposed || operation.receipted) return; operation.receipted = true;
     try { const receipt = createProcgenOperationReceipt({ id: operation.id, kind: operation.kind, source: operation.source, outcome, captured, accepted, errorCode }); view?.operationReceipt?.(receipt); } catch { /* History presentation cannot own a committed mutation. */ }
   };
+  const getReplacementReview = () => {
+    const world = runtime()?.world, drafts = view?.pendingDraftState?.() || { textDrafts: 0, gestures: 0 }, midi = ports.getState(), master = masterCapture?.state(), capture = master?.capture, rendered = causalAudioRender?.state(), audition = legacy.local.audio?.getAuditionState?.(), take = causalTake?.status();
+    const projectFile = preparedExport?.metadata(), capturedFile = capture?.artifact?.metadata?.(), renderFiles = [rendered?.render?.prepared, rendered?.comparison?.prepared, rendered?.bodyComparison?.prepared].flatMap(bundle => bundle?.files || []).filter(file => file.artifact?.retained);
+    const artifacts = Number(!!projectFile?.retained) + Number(!!capturedFile?.retained) + renderFiles.length, saving = pendingSaveGenerations.has(documentGeneration), preparingFile = currentOperation?.kind === 'export' || !!midiExportPreparation || !!archiveExportPreparation, delivering = !!activeExportAbort || !!master?.writing || !!master?.pickingFile || !!rendered?.writing || !!rendered?.pickingFile;
+    const state = { documentIdentity: String(documentGeneration), name: savedName, dirty: editRevision !== savedRevision, physicalProgress: Number.isSafeInteger(world?.tickIndex) && world.tickIndex > 0, drafts,
+      take: { recording: !!causalTake && !take.captureStopped, recovering: !!take?.captureStopped && !causalTake.canReplaceDocument(), finalizing: !!causalTakeStart || !!causalTakeStop },
+      capture: { state: capture?.state || 'idle', unresolved: capture?.unresolvedOwnership === true }, recording: { active: midi.recording === true, learning: !!inputLease, retained: midi.recordedEvents },
+      prelisten: { active: audition?.active === true, unresolved: audition?.unresolvedOwnership === true }, artifact: artifacts, delivery: delivering, saving, preparingFile };
+    const identity = JSON.stringify([documentGeneration, projectRevision, editRevision, savedRevision, documentRevision, savedName, world?.worldId || null, world?.generation ?? null, state.physicalProgress, drafts.textDrafts, drafts.curveDrafts, drafts.revision, drafts.fieldRevision, drafts.gestures, state.take, state.capture, midi.recording === true, !!inputLease, midi.recordedEvents > 0, state.prelisten, artifacts, delivering, saving, preparingFile]);
+    return createProcgenReplacementReview({ ...state, identity });
+  };
+  const approveReplacement = async lease => {
+    const current = () => ownsOperation(lease) && String(documentGeneration) === lease.source.documentIdentity;
+    while (current()) {
+      const plan = getReplacementReview();
+      if (!plan.required) { lease.reviewedIdentity = plan.identity; return true; }
+      if (plan.gestures) { status('Finish the current gesture before replacing the project.'); return false; }
+      if (!view?.requestReplacementReview) throw new Error('This host cannot review unfinished project work. The current project was kept.');
+      lease.reportPhase('reviewing');
+      const decision = await view.requestReplacementReview({ readReview: getReplacementReview, signal: lease.signal, isCurrent: current, isSourceCurrent: () => !disposed && String(documentGeneration) === lease.source.documentIdentity });
+      if (!current()) return false;
+      if (!decision) { lease.controller.abort(); view?.retireProjectPicker?.(true); view?.restoreReplacementFocus?.(lease.source.documentIdentity); return false; }
+      const latest = getReplacementReview(); if (decision.identity !== latest.identity) continue;
+      if (decision.action === 'save') {
+        if (!latest.canSave) continue;
+        if (!await handlers.save()) { lease.controller.abort(); view?.retireProjectPicker?.(true); view?.restoreReplacementFocus?.(lease.source.documentIdentity); return false; }
+        if (!current()) return false;
+        const next = getReplacementReview();
+        if (editRevision === savedRevision && !next.textDrafts && !next.curveDrafts && next.canReplace && !next.finalizeTake) { lease.reviewedIdentity = next.identity; return true; }
+      } else if (decision.action === 'replace' && latest.canReplace) {
+        if (decision.finalizeTake) {
+          const revision = projectRevision, edits = editRevision; await stopCausalTake({ reason: 'reviewed-document-replacement' });
+          if (!current()) return false;
+          const next = getReplacementReview(); if (revision !== projectRevision || edits !== editRevision || !next.canReplace || next.finalizeTake) continue;
+          lease.reviewedIdentity = next.identity; return true;
+        }
+        lease.reviewedIdentity = latest.identity; return true;
+      }
+    }
+    return false;
+  };
+  const reviewAvailable = () => {
+    if (ports.getState().recording) { status('Stop MIDI recording before replacing this project. The current note entry was kept.'); return false; }
+    if (inputLease) { status('Finish or cancel MIDI Learn before replacing this project. Its current target was kept.'); return false; }
+    if (view?.canReviewReplacement?.() === false) { status('Finish or cancel the open dialog before replacing this project.'); return false; }
+    if (pendingSaveGenerations.has(documentGeneration)) { status('Wait for the pending project Save to finish before replacing it.'); return false; }
+    if (currentOperation?.kind === 'export' || midiExportPreparation || archiveExportPreparation) { status('Finish or cancel file preparation before replacing the project.'); return false; }
+    if (view?.pendingDraftState?.().gestures) { status('Finish the current gesture before replacing the project.'); return false; }
+    return true;
+  };
+  const runReviewedReplacement = async (kind, perform) => {
+    if (!reviewAvailable()) return false;
+    const lease = beginOperation(kind);
+    try {
+      while (ownsOperation(lease)) { if (!await approveReplacement(lease)) { lease.controller.abort(); return false; } if (lease.reviewedIdentity !== getReplacementReview().identity) continue; return await perform(lease); }
+      return false;
+    } catch (error) { finishOperation(lease, 'failed', error); throw error; }
+    finally { if (!lease.receipted) finishOperation(lease); }
+  };
   const beginOperation = kind => {
     if (operationSerial === Number.MAX_SAFE_INTEGER) throw new Error('Project operation identity capacity is exhausted.');
     cancelInputEdits('project transition');
@@ -243,6 +303,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     lease.reportPhase = phase => { if (!disposed && currentOperation === lease && !lease.signal.aborted) { createProcgenOperationView({ id: lease.id, kind, phase }); lease.phase = phase; try { view?.refreshOperational?.(); } catch { /* Progress presentation cannot block publication. */ } } };
     lease.signal = lease.controller.signal;
     currentOperation = lease;
+    if (kind !== 'select-session') try { view?.retireProjectPicker?.(); } catch { /* Picker presentation cannot redirect the new operation. */ }
     return lease;
   };
   const ownsOperation = lease => !disposed && currentOperation === lease && !lease.signal.aborted;
@@ -1509,7 +1570,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         sceneBrowser = browsing.createPerformanceSceneBrowser({ document, window, registry: sceneCatalog.registry, loader: sceneLoader,
           onCreateNursery: sceneCatalog.available ? async () => { const identity = sceneBaseIdentity(), reference = selected().instrumentRef; if (!reference) throw new Error('Prepare, save and apply a finite sample/FM → body graft in Seed Lab, then select that lane before opening Nursery.'); const row = await sceneCatalog.addNurseryStrike(reference); if (disposed || sceneBaseIdentity() !== identity) throw new Error('The selected lane or document changed during Nursery assembly. Select the current strike again.'); return row; } : null,
           canTeachScene: scene => definitions.some(value => value.setupScene.id === scene.id && value.setupScene.version === scene.version), onLesson: scene => physicalLessonView?.open(scene.id),
-          keepPreparedOnClose: () => stageSession?.active(), unavailableReason: sceneCatalog.reason, getLiveScene: () => project.procgen.sceneOrigin?.manifest || null, onSavedTakes: () => handlers.load(), onStatus: status });
+          keepPreparedOnClose: () => stageSession?.active(), unavailableReason: sceneCatalog.reason, getLiveScene: () => project.procgen.sceneOrigin?.manifest || null, onSavedTakes: () => handlers.load({ review: true }), onStatus: status });
       })().catch(error => { sceneToolsPending = null; throw error; });
       await sceneToolsPending;
     }
@@ -1575,12 +1636,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       preferenceHold?.release();
     }
   }
-  async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true, worldSettings = {} } = {}) {
-    if (disposed) return false;
+  async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true, worldSettings = {}, admittedLease = null } = {}) {
+    if (disposed || admittedLease && !ownsOperation(admittedLease)) return false;
     if (stageSession?.active()) return stageSession.reject();
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'world-rebuild' });
-    const lease = beginOperation('rebuild');
+    if (disposed || admittedLease && !ownsOperation(admittedLease)) return false;
+    const lease = admittedLease || beginOperation('rebuild');
     worldBusy = true;
     const previous = project, oldSettings = settingsFor(), previousTransport = transport.getState(), previousPatterns = engine.snapshot();
     const priorHistory = new Set(undo), previousRedo = [...redo];
@@ -2147,7 +2209,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       let preferenceHold = null;
       try {
         const promptName = asCopy || rename || !documentId;
-        const name = promptName ? await view.requestProjectName({ value: savedName, title: asCopy ? 'Save project copy' : rename ? 'Rename project' : 'Project name' }) : savedName;
+        const name = promptName ? await view.requestProjectName({ value: savedName, isCurrent: () => !disposed && documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial, title: asCopy ? 'Save project copy' : rename ? 'Rename project' : 'Project name' }) : savedName;
         if (name == null || disposed || documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return false;
         if (!name.trim()) { status('Enter a project name to save.'); return false; }
         saveOperation.phase = 'quiescing'; view?.refreshOperational?.();
@@ -2163,14 +2225,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           (await storage.save(name, session), null);
         saveOperation.outcome = 'committed'; saveOperation.accepted = { ...saveOperation.captured, documentId: receipt?.id ?? saveOperation.captured.documentId, storedRevision: receipt?.revision ?? null };
         if (disposed) return false;
-        if (documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return true;
+        if (documentGeneration !== saveDocumentGeneration) return true;
         if (receipt) { documentId = receipt.id; documentRevision = receipt.revision; }
         savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; lastStorageError = null; storageStatus();
-        status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
+        if (operationSerial === saveOperationSerial) status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
       } catch (error) {
         saveOperation.errorCode = String(error.code || error.name || 'save-error').slice(0, 96);
         if (saveOperation.phase !== 'finalizing') saveOperation.outcome = 'failed';
-        if (disposed || documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return false;
+        if (disposed || documentGeneration !== saveDocumentGeneration || saveOperation.phase !== 'finalizing' && operationSerial !== saveOperationSerial) return false;
+        if (saveOperation.outcome === 'committed') { saveOperation.outcome = 'committed-with-error'; throw error; }
         storageStatus(error); throw error;
       } finally {
         publishOperationReceipt(saveOperation, saveOperation.outcome, saveOperation.accepted, saveOperation.errorCode, saveOperation.captured);
@@ -2185,7 +2248,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     cancelProjectPicker() {
       if (currentOperation?.kind === 'select-session' && currentOperation.phase !== 'committing') { const lease = currentOperation; lease.controller.abort(); finishOperation(lease, 'canceled'); view?.refreshOperational?.(); }
     },
-    load: safe(async () => {
+    load: safe(async ({ review = false } = {}) => {
+      if (review && !reviewAvailable()) return false;
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('select-session');
       try {
@@ -2199,6 +2263,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         const { page, entries } = listing.value; lease.reportPhase('selecting');
         const loadSelected = async id => {
           if (!ownsOperation(lease)) return false;
+          if (review && !await approveReplacement(lease)) return false;
           lease.reportPhase('reading');
           const preferenceHold = preferenceWriter?.suspend(); let record, loaded = false;
           try {
@@ -2209,6 +2274,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             });
             record = source.value;
             if (!source.current) return false;
+            if (review && lease.reviewedIdentity !== getReplacementReview().identity && !await approveReplacement(lease)) return false;
             lease.reportPhase('validating');
             loaded = await loadSession(record.session, lease, { signal: record.signal });
             if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); finishOperation(lease, 'committed'); }
@@ -2226,13 +2292,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       finally { if (!ownsOperation(lease)) finishOperation(lease); }
     }),
     reclaimRecovery: safe(async () => { await storage.removeRecovery?.(); status('Old recovery checkpoint removed. Named projects were kept.'); }),
-    import: safe(async file => {
+    import: safe(async (file, { review = false } = {}) => {
+      if (review && !reviewAvailable()) return false;
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('import');
       let computed = null, preferenceHold = null, imported = false, importFailure = null;
       try {
         const source = await readForOperation(lease, async () => {
           if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
+          if (review && !await approveReplacement(lease)) { lease.controller.abort(); return null; }
+          if (!ownsOperation(lease)) return null; lease.reportPhase('validating');
           const generation = documentGeneration, revision = editRevision, inputBytes = file.size ?? 0;
           preferenceHold = preferenceWriter?.suspend();
           if (preferenceHold) await preferenceHold.completion; lease.signal.throwIfAborted();
@@ -2247,6 +2316,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         });
         computed = source.value;
         if (!source.current) return false;
+        if (review && lease.reviewedIdentity !== getReplacementReview().identity && !await approveReplacement(lease)) { lease.controller.abort(); return false; }
         imported = await loadSession(computed.value, lease); return imported;
       } catch (error) { importFailure = error; throw error; }
       finally { try { computed?.release(); } finally { finishOperation(lease, imported ? 'committed' : lease.signal.aborted ? 'canceled' : 'failed', importFailure); preferenceHold?.release(); } }
@@ -2314,7 +2384,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       }
       return delivery;
     },
-    new: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true })),
+    new: safe(({ review = false } = {}) => { const perform = lease => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed), fresh: true, admittedLease: lease }); return review ? runReviewedReplacement('rebuild', perform) : perform(null); }),
     reroll: safe(() => rebuild({ seed: freshProcgenSeed(window.crypto, project.procgen.seed) })),
     replay: safe(() => rebuild()), rebuild: safe(worldSettings => rebuild({ worldSettings })), seed: safe(seed => rebuild({ seed: Number(seed) >>> 0 })),
     observe(patch) {
@@ -2328,7 +2398,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const canCommand = (name, args = []) => {
     if (disposed || typeof handlers[name] !== 'function' || stageSession && !stageSession.permitsCommand(name, args)) return false;
-    if (worldBusy && ['new', 'load', 'import', 'save', 'saveAs', 'export', 'rebuild'].includes(name)) return false;
+    if ((worldBusy || currentOperation?.phase === 'committing') && ['new', 'load', 'import', 'save', 'saveAs', 'export', 'rebuild'].includes(name)) return false;
+    if (['new', 'load', 'import'].includes(name) && (pendingSaveGenerations.has(documentGeneration) || currentOperation?.kind === 'export' || midiExportPreparation || archiveExportPreparation)) return false;
     if (pendingSaveGenerations.has(documentGeneration) && ['save', 'saveAs'].includes(name)) return false;
     if (name === 'copy' || name === 'paste') return !!selected().patterns?.[state.slot] && (name === 'copy' || !!clipboard);
     if (name === 'undo' || name === 'redo') {
@@ -2471,7 +2542,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, retirement: recoveryRetirement, lastCommit: lastRecoveryCommit, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
-    getOperationalSnapshot, reportStartupFailure,
+    getOperationalSnapshot, getReplacementReview, reportStartupFailure,
     getPlaybackState: () => { const output = legacy.local.getState(); return { ...output,
       ...(output.selectedBackend === 'midi' ? ports.getOutputActivity() : { activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0 }),
       pressure: output.selectedBackend === 'midi' ? ports.getState().pressure : router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }; },

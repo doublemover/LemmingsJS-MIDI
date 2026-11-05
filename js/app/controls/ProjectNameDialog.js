@@ -1,7 +1,7 @@
 export function createProjectNameDialog({ document, window } = {}) {
   let pending = null, disposed = false;
-  const request = ({ value = '', title = 'Project name' } = {}) => {
-    if (disposed) return Promise.resolve(null); pending?.finish(null);
+  const request = ({ value = '', title = 'Project name', isCurrent = () => true } = {}) => {
+    if (disposed || !isCurrent()) return Promise.resolve(null); pending?.finish(null);
     const previousFocus = document.activeElement, dialog = document.createElement('dialog'), form = document.createElement('form');
     const label = document.createElement('label'), input = document.createElement('input'), error = document.createElement('output');
     const save = document.createElement('button'), cancel = document.createElement('button');
@@ -11,13 +11,13 @@ export function createProjectNameDialog({ document, window } = {}) {
     label.append(input); form.append(label, error, save, cancel); dialog.append(form); document.body.append(dialog);
     return new Promise(resolve => {
       let done = false;
-      const finish = result => { if (done) return; done = true; if (pending?.dialog === dialog) pending = null;
+      const finish = result => { if (done) return; const restoreFocus = !disposed && isCurrent(); done = true; if (pending?.dialog === dialog) pending = null;
         try { dialog.close?.(); } finally {
           dialog.remove(); const menu = previousFocus?.closest?.('.studio-command-menu:not([open])');
           const returnFocus = menu?.querySelector(':scope > summary') || previousFocus;
-          if (returnFocus?.isConnected !== false) returnFocus?.focus?.({ preventScroll: true }); resolve(result);
+          if (restoreFocus && returnFocus?.isConnected !== false) returnFocus?.focus?.({ preventScroll: true }); resolve(result);
         } };
-      pending = { dialog, finish };
+      pending = { dialog, finish, isCurrent };
       let backdropPointer = null;
       const outside = event => {
         const bounds = dialog.getBoundingClientRect?.();
@@ -30,7 +30,7 @@ export function createProjectNameDialog({ document, window } = {}) {
       });
       dialog.addEventListener('pointercancel', event => { if (event.pointerId === backdropPointer) backdropPointer = null; });
       form.addEventListener('submit', event => {
-        event.preventDefault(); const name = input.value.trim();
+        event.preventDefault(); if (!isCurrent()) { finish(null); return; } const name = input.value.trim();
         if (!name || name.length > 120) { error.textContent = 'Enter a project name (1–120 characters).'; input.setAttribute('aria-invalid', 'true'); input.focus?.(); return; }
         finish(name);
       });
@@ -39,5 +39,5 @@ export function createProjectNameDialog({ document, window } = {}) {
       try { dialog.showModal(); input.focus?.(); input.select?.(); } catch { finish(null); }
     });
   };
-  return Object.freeze({ request, dispose() { if (disposed) return; disposed = true; pending?.finish(null); } });
+  return Object.freeze({ request, refresh() { if (pending && !pending.isCurrent()) pending.finish(null); }, dispose() { if (disposed) return; disposed = true; pending?.finish(null); } });
 }

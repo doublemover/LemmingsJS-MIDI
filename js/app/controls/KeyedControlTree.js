@@ -5,7 +5,13 @@ const key = element => element.dataset?.fieldKey || element.dataset?.controlKey 
 
 export function createKeyedControlTree({ document, onStatus = () => {}, focusFallback = () => null, conflictHost = null }) {
   const definitions = new WeakMap(), roots = new WeakMap();
-  let disposed = false, epoch = 0, context = null, activeConflict = null, activeConflictAccepted = null, conflictSequence = 0;
+  let disposed = false, epoch = 0, context = null, activeConflict = null, activeConflictAccepted = null, conflictSequence = 0, recentDraft = null, draftRevision = 0;
+  const rememberDraft = element => { if (typeof WeakRef === 'function') recentDraft = new WeakRef(element); };
+  const draftElements = root => disposed ? [] : [...root.querySelectorAll('input,textarea')].filter(element => {
+    const definition = definitions.get(element);
+    return definition?.active && editable(element) && (!definition.getIdentity || definition.identity === definition.getIdentity()) &&
+      (definition.dirty || definition.composing || document.activeElement === element && read(element) !== definition.accepted);
+  });
   const clearConflict = element => {
     element.removeAttribute('data-edit-conflict'); element.removeAttribute('aria-invalid');
     if (activeConflict === element) { activeConflict = null; activeConflictAccepted = null; conflictSequence++; if (conflictHost) { conflictHost.hidden = true; conflictHost.replaceChildren(); } }
@@ -45,9 +51,9 @@ export function createKeyedControlTree({ document, onStatus = () => {}, focusFal
     };
     if (click) listen(element, 'click', event => { const value = current(event); value?.click?.(event); });
     if (change) {
-      listen(element, 'input', event => { const value = current(event); if (value) { value.dirty = read(element) !== value.accepted; if (value.input) { value.accepted = read(element); value.dirty = false; value.input(event); } } });
-      listen(element, 'compositionstart', event => { const value = current(event); if (value) value.composing = true; });
-      listen(element, 'compositionend', event => { const value = current(event); if (value) { value.composing = false; value.dirty = read(element) !== value.accepted; } });
+      listen(element, 'input', event => { const value = current(event); if (value) { draftRevision++; value.dirty = read(element) !== value.accepted; if (value.dirty) rememberDraft(element); if (value.input) { value.accepted = read(element); value.dirty = false; value.input(event); } } });
+      listen(element, 'compositionstart', event => { const value = current(event); if (value) { value.composing = true; draftRevision++; rememberDraft(element); } });
+      listen(element, 'compositionend', event => { const value = current(event); if (value) { value.composing = false; draftRevision++; value.dirty = read(element) !== value.accepted; } });
       const commit = event => {
         const value = current(event); if (!value || element.disabled || element.readOnly || value.composing || event.isComposing || read(element) === value.accepted) return;
         if (element.dataset.editConflict) { showConflict(element); return; }
@@ -106,6 +112,15 @@ export function createKeyedControlTree({ document, onStatus = () => {}, focusFal
     for (const child of old) if (!used.has(child) && child.parentNode === target) { retire(child); child.remove(); }
   };
   return Object.freeze({ bind,
+    draftState(root = document) {
+      const elements = draftElements(root);
+      return Object.freeze({ count: elements.length, revision: draftRevision, labels: Object.freeze(elements.slice(0, 8).map(element => String(element.getAttribute('aria-label') || element.closest('label')?.textContent || 'Edited field').slice(0, 96))) });
+    },
+    focusDraft(root = document) {
+      const elements = draftElements(root), previous = recentDraft?.deref(), target = elements.includes(previous) ? previous : elements[0];
+      if (!target || !target.isConnected || target.disabled || target.readOnly) return false;
+      target.focus({ preventScroll: true }); return true;
+    },
     update(element, value, { identity = null } = {}) {
       if (disposed) return false;
       const definition = definitions.get(element); if (!definition?.active) return false;
@@ -133,6 +148,6 @@ export function createKeyedControlTree({ document, onStatus = () => {}, focusFal
       return true;
     },
     inspect: () => Object.freeze({ epoch, context, conflict: activeConflict?.dataset.fieldKey || null }),
-    dispose() { if (disposed) return; disposed = true; epoch++; if (activeConflict) clearConflict(activeConflict); }
+    dispose() { if (disposed) return; disposed = true; recentDraft = null; epoch++; if (activeConflict) clearConflict(activeConflict); }
   });
 }

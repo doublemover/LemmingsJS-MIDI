@@ -32,7 +32,7 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
         });
       }
       row.element.dataset.phase = operation.phase; row.element.dataset.kind = operation.kind;
-      row.label.setAttribute('role', 'progressbar'); row.label.setAttribute('aria-label', operation.label); row.label.removeAttribute('aria-valuenow');
+      row.label.setAttribute('role', operation.progressKind === 'none' ? 'status' : 'progressbar'); row.label.setAttribute('aria-label', operation.label); row.label.removeAttribute('aria-valuenow');
       write(row.label, operation.label + (operation.phase === 'committing' || operation.phase === 'finalizing' ? ' · cancellation unavailable after publication begins' : ''));
       row.cancel.hidden = !operation.cancelable; row.cancel.setAttribute('aria-label', 'Cancel ' + operation.kind + ' operation');
     }

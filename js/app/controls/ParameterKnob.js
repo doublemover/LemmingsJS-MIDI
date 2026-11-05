@@ -89,7 +89,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
     on(button, 'click', () => { if (begin(null)) { change(operation(), null); finish(null); } }); root.append(button); actionButtons.push(button); return button; };
   action('−', () => draft - descriptor.step); action('+', () => draft + descriptor.step); action('Reset', () => descriptor.defaultValue); root.append(error);
   const acceptedText = () => authored == null ? '' : descriptor.formatInput ? descriptor.formatInput(authored) : String(authored);
-  let conflictMessage = null;
+  let conflictMessage = null, textRevision = 0;
   const showTextConflict = message => {
     if (message) conflictMessage = message;
     entryConflict = true; entry.dataset.editConflict = 'true'; entry.setAttribute('aria-invalid', 'true'); textConflict.hidden = false;
@@ -113,9 +113,9 @@ export function createParameterKnob({ document, window = document.defaultView, d
     textConflict.append(button); conflictButtons.set(keep, button);
   }
   root.append(textConflict);
-  on(entry, 'compositionstart', () => { entryComposing = true; });
-  on(entry, 'compositionend', () => { entryComposing = false; entryDirty = entry.value !== acceptedText(); });
-  on(entry, 'input', () => { entryDirty = entry.value !== acceptedText(); });
+  on(entry, 'compositionstart', () => { entryComposing = true; textRevision++; onEntryActivity?.(); });
+  on(entry, 'compositionend', () => { entryComposing = false; entryDirty = entry.value !== acceptedText(); textRevision++; onEntryActivity?.(); });
+  on(entry, 'input', event => { entryDirty = entry.value !== acceptedText(); textRevision++; onEntryActivity?.(event); });
   on(entry, 'change', () => { if (!compact) acceptText(); });
   on(entry, 'keydown', event => {
     if (entryComposing || event.isComposing) return;
@@ -137,7 +137,13 @@ export function createParameterKnob({ document, window = document.defaultView, d
         if (presentation === 'fader') mark.style.top = `${(1 - parameterUnitPosition(descriptor, position)) * 90}%`; }
     }
   };
-  return Object.freeze({ element: root, descriptor, inspect: () => Object.freeze({ authored, draft, gestureId: gesture?.lease.id ?? null, exactOpen: !!exactPopover?.isOpen(), textDirty: entryDirty || entryConflict || entryComposing }),
+  return Object.freeze({ element: root, descriptor, inspect: () => Object.freeze({ authored, draft, gestureId: gesture?.lease.id ?? null, exactOpen: !!exactPopover?.isOpen(), textRevision, textDirty: entryDirty || entryConflict || entryComposing }),
+    focusDraft() {
+      if (disposed || !root.isConnected || entry.disabled || entry.readOnly || !getIdentity() || !(entryDirty || entryConflict || entryComposing)) return false;
+      const start = entry.selectionStart, end = entry.selectionEnd, direction = entry.selectionDirection;
+      exactPopover?.open(); entry.focus({ preventScroll: true });
+      if (start != null && end != null) entry.setSelectionRange?.(start, end, direction); return true;
+    },
     snapshotDraft() {
       if (disposed || !getIdentity() || !(entryDirty || entryConflict || entryComposing) || entry.value.length > 2048) return null;
       return Object.freeze({ version: 1, identity: getIdentity(), descriptor: input, signature: JSON.stringify(descriptor), parse: input.parse, format: input.format, formatInput: input.formatInput,
@@ -150,7 +156,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
       if (snapshot.composing) showTextConflict('Composition ended when this lane was hidden. Review the draft or use the current value.');
       else if (snapshot.conflict || snapshot.authored !== authored || readOnly || pending) showTextConflict();
       else { if (snapshot.invalid) entry.setAttribute('aria-invalid', 'true'); error.textContent = snapshot.error || ''; paint(); }
-      onEntryActivity?.(); return true;
+      textRevision++; onEntryActivity?.(); return true;
     },
     setState({ value: next = authored, effectiveValue = null, pickupValue = null, isReadOnly = readOnly, isPending = pending } = {}) {
       if (disposed) return;

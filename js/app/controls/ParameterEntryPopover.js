@@ -49,6 +49,10 @@ export function createParameterEntryPopover({ document, window, root, cap, label
     if (window?.setTimeout) focusTimer = window.setTimeout(settleFocus, 0); else void Promise.resolve().then(settleFocus);
   });
   on(document, 'visibilitychange', () => { if (document.hidden) hide(); });
-  return Object.freeze({ isOpen: () => open, close: hide, element: panel,
-    dispose() { if (disposed) return; const focused = panel.contains(document.activeElement); hide(); clearFocusTimer(); disposed = true; for (const release of listeners) release(); panel.remove(); toggle.remove(); if (focused) focusFallback()?.focus?.({ preventScroll: true }); } });
+  return Object.freeze({ isOpen: () => open, open() {
+    let visible = !panel.hidden;
+    if (nativePopover && open) try { visible = panel.matches(':popover-open'); } catch { /* Hosts without native selector observation retain the owned visibility flag. */ }
+    if (!visible) open = false; if (!open) show();
+  }, close: hide, element: panel,
+  dispose() { if (disposed) return; const focused = panel.contains(document.activeElement); hide(); clearFocusTimer(); disposed = true; for (const release of listeners) release(); panel.remove(); toggle.remove(); if (focused) focusFallback()?.focus?.({ preventScroll: true }); } });
 }
