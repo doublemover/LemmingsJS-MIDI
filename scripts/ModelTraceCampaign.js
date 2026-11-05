@@ -36,7 +36,7 @@ export async function runModelTraceCampaign({ schema, failurePrefix, entry, sour
       checkBudget(); const selectedSeed = (seed + Math.imul(index, 0x9e3779b9)) >>> 0, trace = selectedReplay || generate(selectedSeed, { steps });
       try {
         const result = await replay(trace, { checkBudget }); if (!result.valid) throw new Error('Campaign produced an invalid command precondition.');
-        report.cases.push({ seed: selectedSeed, transitions: result.transitions, trace, ...summarize(result) });
+        report.cases.push({ seed: selectedSeed, transitions: result.transitions, trace: result.trace || trace, ...summarize(result) });
       } catch (error) {
         const signature = signatureFor(error);
         const fails = async candidate => { try { await replay(candidate, { checkBudget }); return false; } catch (failure) { return signatureFor(failure) === signature; } };

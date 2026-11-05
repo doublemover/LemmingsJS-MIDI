@@ -264,3 +264,16 @@ npm run model:assets -- --seed=1979 --runs=4096 --steps=64 --max-ms=120000 --max
 The serial reference drives the actual FileProvider, raw handle, reader and byte-lease owners with controlled XHR responses and an inline digest adapter. Every transition checks exact resident/pinned/accounted bytes, shared requests, cache locators, consumer outcome, source hash, requesting provider epoch and immutable pinned generations. Schedules include normal/reload/probe acquisition, per-consumer hash mismatch and cancellation, cache clear, reversed responses, independent reader forks, exclusive copy transfer and deferred provider disposal through a runtime lease.
 
 Both `model:assets` and `model:deliveries` share the bounded campaign/replay/shrinking runner. The asset runner admits at most256generated steps,512commands per replay and12raw sources per schedule. The owned source graph is bounded to512files/16MiB; the runner, source collector, shrinker and regression fixture are also hashed. A complete trace and stable failure signature survive an interrupted shrink. Replay accepts the same `--replay=temp/trace.json` shape described above. These controlled acquisition schedules do not qualify persistent cache transactions, real browser transport, background worker admission or process RSS; native Playwright receipts remain separate.
+
+
+## Generate persistent-cache publication schedules
+
+```powershell
+npm run model:cache -- --seed=1979 --runs=4096 --steps=128 --max-ms=120000 --max-heap-mib=256 --out-dir=temp/my-cache-model --name=rook
+```
+
+This model uses the real persistent FileProvider methods through two isolated database connections. A controlled adapter serializes overlapping transactions, supplies cloned request snapshots and publishes complete writes only on commit. An independent serial reference checks paired payload/metadata generations, UTF-8 byte totals, per-provider last observed totals, request outcomes and native transaction retirement after every event. Clear/dispose abort only their requesting provider; queued peers keep their own publication. Read-only snapshots remain coherent when a newer writer queues between metadata and payload responses.
+
+Half the deterministic seeds begin with an acknowledged stored entry; half begin empty. The adaptive scheduler chooses only available test-adapter events and current owner commands, then records concrete `native-step` traces for replay and shrinking. This is not an independent assertion of the production request sequence. A replay may use `drain` to expand an owned pending transaction into bounded individual events; the saved result contains the concrete events. At most24explicit operations,128generated steps and2048events per drain are admitted; write values are at most256UTF-8 bytes. The shared wall/observed-heap/source caps apply.
+
+The committed stale-total fixture injects an error after an actual write acknowledgment and demonstrates shrinking; it is not a historical production bug. This small-entry corpus does not qualify eviction capacity, concurrent read-only browser scheduling, actual native IndexedDB behavior, clock injection or process RSS. Real desktop IndexedDB/Web Lock qualification remains in the asset-resilience Playwright suite.

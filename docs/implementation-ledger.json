@@ -6668,5 +6668,53 @@
       "unchangedCheckoutNewlines": 12
     },
     "remaining": "Generated persistent-cache transaction/prune and recording/input matrices, remaining controller publication/cleanup boundaries and independent current CI. Latest inventoried complete-green437 stays separate."
+  },
+  "continuation448": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Generated persistent-cache publication/totals and owner retirement over actual FileProvider methods, two isolated controlled native connections and an independent committed-data reference. Shipping runtime unchanged.",
+    "evidence": {
+      "path": "docs/validation/persistent-cache-model-2026-11-05.json",
+      "bytes": 403374,
+      "sha256": "7b0ebb689708518b52ec491dd7a776297acf426545fa88623358999102e9f2da"
+    },
+    "validation": {
+      "nodeCases": 218,
+      "campaignSeeds": 4096,
+      "transitions": 209483,
+      "emptyStarts": 2048,
+      "populatedStarts": 2048,
+      "wallMs": 8475.7994,
+      "peakObservedHeapBytes": 129286120,
+      "mutationOriginalCommands": 13,
+      "mutationMinimalCommands": 9,
+      "shrinkAttempts": 23,
+      "singleDeletionMinimal": true,
+      "olderOwnerCliCompatibilitySeeds": 16,
+      "scopeCoverage": {
+        "lines": 91.08,
+        "branches": 85.78,
+        "functions": 86.17
+      }
+    },
+    "source": {
+      "browserPaths": 1289,
+      "browserDigest": "fe2e9c7d044a96889011bbd47796e959915b8de3a2e93c70a385563de424f851",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1570,
+      "byteExact": 1558,
+      "unchangedCheckoutNewlines": 12
+    },
+    "ci": {
+      "githubCompleteGreenCheckpoint": 444,
+      "passes": {
+        "node": 7798,
+        "browser": 387,
+        "pending": 10
+      },
+      "archiveAuditPending": true
+    },
+    "remaining": "Generated recording/input and wider controller/reentrancy/retirement matrices under1120, independent current CI and remaining backlog. Small-entry totals do not complete eviction-capacity qualification; latest inventoried complete-green437 remains distinct."
   }
 }

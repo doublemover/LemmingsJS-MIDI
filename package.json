@@ -100,7 +100,8 @@
     "typecheck:boundaries": "tsc -p tsconfig.boundaries.json --pretty false",
     "compare:sounds": "node scripts/compare-sound-renders.mjs",
     "model:deliveries": "node scripts/profile-export-delivery-model.mjs",
-    "model:assets": "node scripts/profile-asset-acquisition-model.mjs"
+    "model:assets": "node scripts/profile-asset-acquisition-model.mjs",
+    "model:cache": "node scripts/profile-cache-transaction-model.mjs"
   },
   "c8": {
     "check-coverage": true,
