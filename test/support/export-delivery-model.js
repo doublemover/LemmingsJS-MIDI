@@ -111,15 +111,4 @@ export async function replayDeliveryTrace(trace, { prematureReleaseOnAbort = fal
     assert.equal(nativeExportDeliveryDiagnostics().activeOwners, baseline, 'delivery-model:final-native-owners');
   }
 }
-export async function shrinkDeliveryTrace(trace, fails, { maximumAttempts = 128, checkBudget = () => {} } = {}) {
-  let result = trace.slice(), attempts = 0, width = Math.max(1, Math.floor(result.length / 2));
-  while (width >= 1) {
-    let changed = false;
-    for (let start = 0; start < result.length && attempts < maximumAttempts; start += width) {
-      checkBudget(); const candidate = result.slice(0, start).concat(result.slice(start + width)); attempts++;
-      if (await fails(candidate)) { result = candidate; changed = true; break; }
-    }
-    if (attempts >= maximumAttempts) break; if (!changed) width = Math.floor(width / 2);
-  }
-  return { trace: result, attempts, exhausted: attempts >= maximumAttempts };
-}
+export { shrinkModelTrace as shrinkDeliveryTrace } from './model-trace.js';

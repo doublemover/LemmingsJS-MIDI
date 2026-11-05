@@ -5,6 +5,50 @@ const openFixture = async page => {
   await page.goto('/__asset_fixture__');
 };
 
+test('late native XHR handles retain their request epoch and independent pinned generations', { tag: '@boundary' }, async ({ page }, testInfo) => {
+  const pending = [];
+  await page.route('**/request-epoch.bin', route => { pending.push(route); });
+  await openFixture(page);
+  await page.evaluate(async () => {
+    const [{ FileProvider }, { createResourceBudget }] = await Promise.all([import('/js/data/FileProvider.js'), import('/js/app/resources/ResourceBudget.js')]);
+    const budget = createResourceBudget({ limitBytes: 65536 });
+    const provider = new FileProvider('/', { binaryTransport: 'xhr', budgetAdapter: budget, maxResponseBytes: 16, indexedDB: null, localStorage: null });
+    const original = provider.resolveAsset('/request-epoch.bin');
+    globalThis.__requestEpochFixture = { provider, budget, original };
+  });
+  await expect.poll(() => pending.length).toBe(1);
+  await page.evaluate(() => {
+    const fixture = globalThis.__requestEpochFixture;
+    fixture.provider.clearCache(); fixture.current = fixture.provider.resolveAsset('/request-epoch.bin');
+  });
+  await expect.poll(() => pending.length).toBe(2);
+  const response = value => ({ contentType: 'application/octet-stream', headers: { 'Cache-Control': 'max-age=3600' }, body: Buffer.from([value, 11, 22, 33]) });
+  await pending[1].fulfill(response(2));
+  await page.evaluate(async () => { const f = globalThis.__requestEpochFixture; f.newHandle = await f.current; });
+  await pending[0].fulfill(response(1));
+  const result = await page.evaluate(async () => {
+    const f = globalThis.__requestEpochFixture, old = await f.original, current = f.newHandle, warm = await f.provider.resolveAsset('/request-epoch.bin');
+    await f.provider.waitForCacheWrites();
+    const identities = { old: old.identity, current: current.identity, warm: warm.identity };
+    const values = { old: [...old.copyBytes()], current: [...current.copyBytes()], warm: [...warm.copyBytes()] };
+    const fork = old.createReader(), copy = current.copyBytes(); copy[0] = 255;
+    structuredClone(copy, { transfer: [copy.buffer] });
+    warm.release(); old.release(); f.provider.dispose();
+    const afterDispose = f.budget.diagnostics().residentBytes, forkBytes = [...fork.copyBytes()];
+    current.release(); const afterCurrent = f.budget.diagnostics().residentBytes; fork.release();
+    return { identities, values, afterDispose, afterCurrent, forkBytes, transferredCopyBytes: copy.byteLength,
+      final: f.budget.diagnostics().residentBytes, storageCount: f.provider.getRawAssetStats().storageCount, cache: f.provider.getCacheStats() };
+  });
+  const receipt = { ...result, requests: pending.map(route => ({ method: route.request().method(), resourceType: route.request().resourceType() })) };
+  await testInfo.attach('native-request-epoch-generations', { body: JSON.stringify(receipt, null, 2), contentType: 'application/json' });
+  expect(pending).toHaveLength(2); expect(result.identities.old.providerEpoch).toBe(0);
+  expect(result.identities.current.providerEpoch).toBe(1); expect(result.identities.warm.providerEpoch).toBe(1);
+  expect(result.identities.old.contentHash).not.toBe(result.identities.current.contentHash);
+  expect(result.identities.warm.contentHash).toBe(result.identities.current.contentHash);
+  expect(result.values).toEqual({ old: [1, 11, 22, 33], current: [2, 11, 22, 33], warm: [2, 11, 22, 33] });
+  expect(result).toMatchObject({ afterDispose: 8, afterCurrent: 4, forkBytes: [1, 11, 22, 33], transferredCopyBytes: 0, final: 0, storageCount: 0 });
+});
+
 test('raw byte leases cover real transport and warm IndexedDB readers through final release', async ({ page }) => {
   let requests = 0;
   await page.route('**/budget-real.bin', route => {

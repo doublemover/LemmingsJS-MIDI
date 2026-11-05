@@ -253,3 +253,14 @@ npm run model:deliveries -- --seed=1979 --runs=4096 --steps=64 --max-ms=60000 --
 Each generated command has a reference-model precondition. After every transition the driver compares immutable source bytes and identity, retention, consumer leases, reserved bytes, request outcome and native-owner retirement. It explores independent consumers, retry, expiry, cancellation before open, late writes, rejection and reversed close/abort acknowledgments. A failure report retains the seed, original trace, observations and a bounded deletion-shrunk trace with the same failure. A shrinking error or exhausted budget preserves the original failure. The committed deliberate adapter-fault fixture demonstrates shrinking; it is not a historical product defect.
 
 Replay a report’s `minimalTrace` by saving it as `{"trace":[...]}` under `temp/`, then add `--replay=temp/my-trace.json` with a new output directory. No existing output directory is overwritten. The report hashes the complete owned export source closure, the model, runner and fixture, and refuses a source change during execution. Wall time and observed Node heap are checked at every transition and shrink attempt; the heap observation is not a process RSS bound. At most4096schedules,128generated steps plus bounded cleanup,160commands per replay and128shrink attempts are admitted. Controlled adapter promises establish ownership behavior, not real browser filesystem support or disk durability.
+
+
+## Generate asset-acquisition schedules
+
+```powershell
+npm run model:assets -- --seed=1979 --runs=4096 --steps=64 --max-ms=120000 --max-heap-mib=256 --out-dir=temp/my-asset-model --name=rook
+```
+
+The serial reference drives the actual FileProvider, raw handle, reader and byte-lease owners with controlled XHR responses and an inline digest adapter. Every transition checks exact resident/pinned/accounted bytes, shared requests, cache locators, consumer outcome, source hash, requesting provider epoch and immutable pinned generations. Schedules include normal/reload/probe acquisition, per-consumer hash mismatch and cancellation, cache clear, reversed responses, independent reader forks, exclusive copy transfer and deferred provider disposal through a runtime lease.
+
+Both `model:assets` and `model:deliveries` share the bounded campaign/replay/shrinking runner. The asset runner admits at most256generated steps,512commands per replay and12raw sources per schedule. The owned source graph is bounded to512files/16MiB; the runner, source collector, shrinker and regression fixture are also hashed. A complete trace and stable failure signature survive an interrupted shrink. Replay accepts the same `--replay=temp/trace.json` shape described above. These controlled acquisition schedules do not qualify persistent cache transactions, real browser transport, background worker admission or process RSS; native Playwright receipts remain separate.

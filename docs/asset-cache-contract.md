@@ -27,6 +27,11 @@ after the locator refreshes. SHA-256 availability is required for this API.
 The hash authenticates an imported requirement only when checked against an
 independently supplied `expectedHash`.
 
+`providerEpoch` is captured when the handle is requested. A response or digest
+finishing after `clearCache()` keeps that requesting epoch; it cannot be relabeled
+as a newer provider generation. Existing pinned handles and reader forks remain
+readable and charged until their own owners release them.
+
 `forceReload: true` (or `cachePolicy: 'reload'`) explicitly requests a new
 generation. Only the newest successful, required-hash-verified refresh publishes
 for future ordinary reads. A failed refresh leaves the last accepted generation

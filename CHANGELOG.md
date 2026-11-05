@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve a raw asset handle’s requesting provider epoch across cache clearing and late response or hash completion.
+
 - Reduce MIDI capture metadata allocations while preserving bounded provenance, and avoid empty per-actor terrain-score commits.
 
 - Add repeatable A/B spectrogram, spectral-difference and rhythmic-envelope reports with deterministic numerical JSON and interactive HTML/desktop PNG export.

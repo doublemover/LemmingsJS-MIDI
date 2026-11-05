@@ -383,6 +383,7 @@ const fileProviderFetchMethods = {
   },
 
   async resolveAsset(locator, opts = {}) {
+    const providerEpoch = this._cacheEpoch;
     const url = typeof locator === 'string' ? this._appendCacheBust(locator) : this._buildUrl(locator.path, locator.filename);
     const source = await this._loadResource('binary', url, typeof locator === 'string' ? '' : locator.path, opts);
     try {
@@ -391,7 +392,7 @@ const fileProviderFetchMethods = {
       if (this._disposed || opts.signal?.aborted) throw new ResourceLoadError('cancelled', url);
       if (!contentHash) throw new ResourceLoadError('unavailable', url);
       return new RawAssetHandle(source, { requestedUrl: url, contentHash, generation: contentHash, sourceRevision: opts.sourceRevision ?? this._cacheBustRevision,
-        verification: 'sha256', providerEpoch: this._cacheEpoch });
+        verification: 'sha256', providerEpoch });
     } catch (error) {
       source?.release?.();
       if (error?.name === 'ResourceBudgetError') throw new ResourceLoadError('budget', url, { cause: error, operationId: opts.operationId ?? null });

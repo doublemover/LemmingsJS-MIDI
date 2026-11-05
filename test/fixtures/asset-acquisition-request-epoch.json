@@ -1,0 +1,20 @@
+{
+  "schema": "asset-acquisition-model/v1",
+  "scope": "An old in-flight raw handle keeps its requesting provider epoch after clearCache and a newer locator publication.",
+  "sourceParent": "4ac75aadc81293ca26458791045f392170ac16aa",
+  "trace": [
+    { "kind": "load", "id": "old", "url": "a", "mode": "normal" },
+    { "kind": "clear" },
+    { "kind": "load", "id": "new", "url": "a", "mode": "normal" },
+    { "kind": "respond", "source": 2, "status": 200 },
+    { "kind": "respond", "source": 1, "status": 200 },
+    { "kind": "release", "id": "old" },
+    { "kind": "release", "id": "new" },
+    { "kind": "dispose" }
+  ],
+  "minimum": [
+    { "kind": "load", "id": "old", "url": "a", "mode": "normal" },
+    { "kind": "clear" },
+    { "kind": "respond", "source": 1, "status": 200 }
+  ]
+}
