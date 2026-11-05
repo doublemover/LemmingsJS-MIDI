@@ -1,10 +1,10 @@
 import { expect, test } from './fixtures.js';
+import { pauseWorkstationWhenReady } from '../e2e/helpers/workstationReady.js';
 import { useWorkstationControl } from '../e2e/helpers/workstationChrome.js';
 
 const ready = async page => {
   await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=8');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.workstationEnabled);
-  await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
+  await pauseWorkstationWhenReady(page);
 };
 const save = page => useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Save', exact: true }), { button: 'Save' }, 'click');
 

@@ -1,9 +1,10 @@
 import { expect, test } from './fixtures.js';
+import { pauseWorkstationWhenReady } from '../e2e/helpers/workstationReady.js';
 
 test('the same physical recipe produces identical checkpoints and complete causal batches across engines', async ({ page, nativeBrowser: browser }, testInfo) => {
   test.setTimeout(120000);
   await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=8');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.workstationEnabled);
+  await pauseWorkstationWhenReady(page);
   const result = await page.evaluate(async () => {
     const { captureProcgenCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpoint.js');
     const { hashProcgenPhysicsCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpointProvenance.js');

@@ -3,6 +3,38 @@ import { createAudioClockBridge } from '../js/app/procgen/workstation/AudioClock
 import { createCausalIntentDispatcher, createStrictLiveFramePolicy } from '../js/app/procgen/workstation/CausalIntentDispatcher.js';
 
 describe('physical intent audio clock bridge', () => {
+  for (const [label, invalid] of [
+    ['negative audio time', { currentTime: -1 }],
+    ['NaN audio time', { currentTime: NaN }],
+    ['infinite audio time', { currentTime: Infinity }],
+    ['negative infinite audio time', { currentTime: -Infinity }],
+    ['zero sample rate', { sampleRate: 0 }],
+    ['negative sample rate', { sampleRate: -48000 }],
+    ['NaN sample rate', { sampleRate: NaN }],
+    ['infinite sample rate', { sampleRate: Infinity }],
+    ['unsafe current render frame', { currentTime: Number.MAX_SAFE_INTEGER }],
+    ['overflowed current render frame', { currentTime: Number.MAX_VALUE, sampleRate: Number.MAX_VALUE }],
+    ['suspended context', { state: 'suspended' }]
+  ]) {
+    it('rejects ' + label + ' without publishing another anchor or render frame', () => {
+      const context = { state: 'running', currentTime: 2, sampleRate: 48000, baseLatency: 0, outputLatency: 0 };
+      const bridge = createAudioClockBridge({ getContext: () => context, nowMs: () => 1000 });
+      const input = { executionEpoch: 'execution', scoreEpoch: 'score', beat: 0, hostMs: 1000, bpm: 120 };
+      const anchor = bridge.rebase(input);
+      expect(bridge.currentFrame()).to.equal(96000);
+      Object.assign(context, invalid);
+      expect(bridge.isAnchored('execution', 'score', 120)).to.equal(false);
+      expect(bridge.currentFrame()).to.equal(null);
+      expect(bridge.toTargetFrame({ epoch: 'score', beat: 0 }, 'execution')).to.equal(null);
+      expect(bridge.correlateDisplay({ executionEpoch: 'execution', contextEpoch: 1 })).to.equal(null);
+      expect(() => bridge.rebase(input)).to.throw('Cannot anchor the audio clock.');
+      expect(bridge.getAnchor()).to.equal(anchor);
+      expect(bridge.diagnostics()).to.include({ currentFrame: null, rebases: 1 });
+      Object.assign(context, { state: 'running', currentTime: 2, sampleRate: 48000 });
+      expect(bridge.toTargetFrame({ epoch: 'score', beat: 0 }, 'execution')).to.equal(96000);
+    });
+  }
+
   it('correlates display frames without double-counting output latency and rejects replacement contexts', () => {
     let context = { state: 'running', currentTime: 2, sampleRate: 48000, baseLatency: 0.01, outputLatency: 0.02,
       getOutputTimestamp: () => ({ contextTime: 1.98, performanceTime: 980 }) };

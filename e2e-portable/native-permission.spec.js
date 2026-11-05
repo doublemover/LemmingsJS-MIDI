@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures.js';
+import { pauseWorkstationWhenReady } from '../e2e/helpers/workstationReady.js';
 import { useWorkstationControl } from '../e2e/helpers/workstationChrome.js';
 
 test('native denied MIDI permission is requested only explicitly and browser listening remains independently usable', async ({ page, context, baseURL, nativeBrowser }, testInfo) => {
@@ -12,8 +13,7 @@ test('native denied MIDI permission is requested only explicitly and browser lis
     } });
   });
   await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=8');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.workstationEnabled);
-  await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
+  await pauseWorkstationWhenReady(page);
   expect(await page.evaluate(() => window.nativeMidiPermission.calls)).toBe(0);
   expect(await page.evaluate(async () => (await navigator.permissions.query({ name: 'midi', sysex: false })).state)).toBe('denied');
   await useWorkstationControl(page, page.locator('#procgenOutput'), {}, 'selectOption', 'midi'); await page.locator('#procgenListen').click();

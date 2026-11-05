@@ -117,7 +117,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
   resourceBudget = null, startupIntent, startupSource = null, savedPreferences, backgroundJobs = backgroundJobService, prepareInspectionWorld = null, prepareSceneWorld = null, getInstrumentCatalog }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
-  const now = () => window.performance?.now?.() ?? performance.now();
+  /** @returns {import('./AudioClockContracts.js').HostMilliseconds} */
+  const now = () => /** @type {import('./AudioClockContracts.js').HostMilliseconds} */ (window.performance?.now?.() ?? performance.now());
   const coldHistoryReturn = window.performance?.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward';
   let saved = savedPreferences;
   if (saved === undefined) try { saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null'); } catch { saved = null; }

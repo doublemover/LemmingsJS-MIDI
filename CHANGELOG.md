@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Check physical playback and score-clock boundaries with distinct time and epoch types, preserve owner return contracts, and refuse invalid native clock frames.
+
 - Own preview-router and display subscriptions explicitly, prevent workstation handler theft, and expose immutable scheduler activity without private map reads.
 - Check the full workstation view and canonical UI state, preserving command input and outcome types through guarded async handlers.
 

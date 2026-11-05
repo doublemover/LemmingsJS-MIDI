@@ -33,10 +33,13 @@ const nativeResolution = Object.freeze({
 
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
-export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
+/** @param {Partial<import('./PhysicalPlaybackContracts.js').PhysicalPlaybackOptions>} options */
+function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
   initialMorphMechanism = null, initialCavityBody = null, presentationDelayMs = 24, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, onIntentProvenance = null, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
   if (!Number.isFinite(presentationDelayMs) || presentationDelayMs < 0 || presentationDelayMs > 1000) throw new RangeError('Invalid physical audio presentation delay.');
-  if (!Array.isArray(additionalOutputs) || additionalOutputs.length > 8 || additionalOutputs.some(output => !Array.isArray(output?.sinks) || typeof output.enabled !== 'function' || typeof output.observe !== 'function' || typeof output.dispose !== 'function')) throw new Error('Invalid physical output owners.');
+  /** @param {readonly import('./PhysicalPlaybackContracts.js').PhysicalOutputOwner[]} outputs @returns {boolean} */
+  const validOutputs = outputs => Array.isArray(outputs) && outputs.length <= 8 && outputs.every(output => Array.isArray(output?.sinks) && typeof output.enabled === 'function' && typeof output.observe === 'function' && typeof output.dispose === 'function');
+  if (!validOutputs(additionalOutputs)) throw new Error('Invalid physical output owners.');
   const externalEnabled = () => additionalOutputs.some(output => { try { return output.enabled() === true; } catch { return false; } });
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
@@ -57,8 +60,10 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, getCatalog: getInstrumentCatalog, onState: onInstrumentState, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider() }); }
   catch { routingUnavailable = 'audio-preparation-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Preparation cannot stop physics. */ } }
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
-    presentationDelayMs, maxHorizonMs: 5000 });
-  let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
+    presentationDelayMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ (presentationDelayMs), maxHorizonMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ (5000) });
+  /** @type {import('./AudioClockContracts.js').ExecutionEpoch | null} */
+  let executionEpoch = null;
+  let disposed = false, prepared = false, armEnabled = true, enableLease = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, pendingAdmissions = 0, leaseFailures = 0;
   let surfaceBodies = null, sceneMorph = null;
   const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectClockAnchor = null;
@@ -242,11 +247,12 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     const receipt = routed?.synchronizeLaneMix(clock.currentFrame()) || { status: 'rejected', reason: 'lane-mix-renderer-unavailable' };
     if (receipt.status === 'accepted') lastMixPublication = { revision, context, executionEpoch }; return receipt;
   };
+  /** @param {import('./PhysicalPlaybackContracts.js').PhysicalBatchSource} batch @param {{bpm?: number, playing?: boolean, position?: import('./PhysicalPlaybackContracts.js').PhysicalScorePosition | null}} options */
   const processBatch = (batch, { bpm, playing = true, position = null } = {}) => {
     if (disposed || !playing) return Object.freeze([]);
     if (!permitted() && session?.getState().enabled) stop();
     armEnabled = true;
-    const nextEpoch = `${batch.worldId}:${batch.generation}:${executionSerial}`;
+    const nextEpoch = /** @type {import('./AudioClockContracts.js').ExecutionEpoch} */ (`${batch.worldId}:${batch.generation}:${executionSerial}`);
     if (previousGeneration !== null && previousGeneration !== batch.generation) {
       dispatcher.cancelGeneration(previousGeneration, executionEpoch);
       clock.invalidate(); anchoredEpoch = null;
@@ -257,13 +263,14 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     cavityBody?.observe(batch, executionEpoch);
     arm();
     const score = position || scoreTimeline.map({ simTick: batch.tick });
+    const tempo = /** @type {import('./AudioClockContracts.js').TempoBpm} */ (bpm);
     for (const output of additionalOutputs) {
       try { output.observe(score, { bpm, executionEpoch }); } catch { try { onInstrumentState({ laneId: 'external', state: 'unavailable', code: 'external-clock-unavailable' }); } catch {} }
     }
     if (prepared && permitted() && session?.getState().enabled &&
-        (!clock.isAnchored(executionEpoch, score.epoch, bpm) || anchoredEpoch !== score.epoch || anchoredBpm !== bpm)) {
+        (!clock.isAnchored(executionEpoch, score.epoch, tempo) || anchoredEpoch !== score.epoch || anchoredBpm !== bpm)) {
       try {
-        effectClockAnchor = null; clock.rebase({ executionEpoch, scoreEpoch: score.epoch, beat: score.beat, hostMs: now(), bpm,
+        effectClockAnchor = null; clock.rebase({ executionEpoch, scoreEpoch: score.epoch, beat: score.beat, hostMs: now(), bpm: tempo,
           reason: anchoredEpoch === null ? 'start' : 'source-change' });
         anchoredEpoch = score.epoch; anchoredBpm = bpm;
       } catch { clock.invalidate(); anchoredEpoch = null; }
@@ -323,4 +330,10 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       sourceRender: requestSourceDiagnostics ? (backend || nativeBackend)?.renderDiagnostics?.({ includeTraces: includeSourceTraces }) || null : null,
       effects: session?.inspectEffectGraph?.({ requestHealth }) || null, preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, scoreMorph: sceneMorph?.state() || null, cavityBody: cavityBody?.state() || null, cavitySourceAdmission: cavityBackend?.cavityDiagnostics() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, laneMix: laneMix.diagnostics(), renderers: routed?.backend.renderDiagnostics() || null }) };
+}
+
+
+/** @param {import('./PhysicalPlaybackContracts.js').PhysicalPlaybackOptions} options */
+export function createProcgenPhysicalPlayback(options) {
+  return createPhysicalPlayback(options);
 }

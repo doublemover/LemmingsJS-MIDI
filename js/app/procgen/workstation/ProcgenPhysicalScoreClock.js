@@ -4,6 +4,7 @@ import { createSimScoreTimeline } from './SimScoreTimeline.js';
 // current playhead is never used as an event timestamp.
 export function createProcgenPhysicalScoreClock({ maxSegments = 2048 } = {}) {
   let timeline = null, worldId = null, generation = null, lastTick = -1, lastSourceTimeMs = -1;
+  /** @param {import('./PhysicalPlaybackContracts.js').PhysicalClockSource} batch @param {{bpm?: number}} options @returns {import('./PhysicalPlaybackContracts.js').PhysicalScoreTime} */
   const observe = (batch, { bpm } = {}) => {
     if (batch?.version !== 1 || typeof batch.worldId !== 'string' || !batch.worldId ||
         !Number.isSafeInteger(batch.generation) || !Number.isSafeInteger(batch.tick) || batch.tick < 0 ||
@@ -30,7 +31,7 @@ export function createProcgenPhysicalScoreClock({ maxSegments = 2048 } = {}) {
       }
     }
     lastTick = batch.tick; lastSourceTimeMs = batch.sourceTimeMs;
-    return timeline.map({ simTick: batch.tick });
+    return map({ simTick: batch.tick });
   };
   const snapshot = () => timeline ? Object.freeze({ version: 1, worldId, generation, lastTick, lastSourceTimeMs,
     timeline: timeline.snapshot() }) : null;
@@ -44,9 +45,10 @@ export function createProcgenPhysicalScoreClock({ maxSegments = 2048 } = {}) {
     timeline = next; worldId = saved.worldId; generation = saved.generation;
     lastTick = saved.lastTick; lastSourceTimeMs = saved.lastSourceTimeMs;
   };
+  /** @param {import('./PhysicalPlaybackContracts.js').PhysicalScoreTimeRequest} time @returns {import('./PhysicalPlaybackContracts.js').PhysicalScoreTime} */
   const map = time => {
     if (!timeline) throw new Error('No physical score timeline has been observed.');
-    return timeline.map(time);
+    return /** @type {import('./PhysicalPlaybackContracts.js').PhysicalScoreTime} */ (timeline.map(time));
   };
   return { observe, snapshot, restore, map };
 }

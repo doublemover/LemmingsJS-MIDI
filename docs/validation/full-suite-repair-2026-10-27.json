@@ -148485,5 +148485,45 @@
       },
       "currentSource": "pending-publication"
     }
+  },
+  "continuation432": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Check the actual AudioClockBridge, physical playback factory/owner and physical score producer with distinct units/epochs, typed input/output ports and deliberate invalid consumers; reject malformed native clock frames; use same-task paused portable readiness.",
+    "evidence": {
+      "path": "docs/validation/clock-unit-boundaries-desktop-2026-11-05.json",
+      "bytes": 2620795,
+      "sha256": "01a07e6ebde843f4fa21336222d8adf88fba2ea1980b9316929cf0d8d617b841"
+    },
+    "validation": {
+      "nodeCases": 361,
+      "desktopCases": 34,
+      "clockReceipts": 24,
+      "nativeClockReceipts": 16,
+      "explicitUnavailableClockPaths": 8,
+      "criticalTypes": "passed",
+      "strictConsumers": "passed",
+      "format": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserPaths": 1284,
+      "browserDigest": "87f0fe88f4e0d3f259cf24417839f9a4ec296ac60d8924db471d567ee5c8aa2f",
+      "workerFiles": 305,
+      "workerDigest": "f79568d09bd620c7e5bfca267ef092dfe1fbb4579f11667ed5fa4809114c768f",
+      "paths": 1481,
+      "byteExact": 1468,
+      "unchangedCheckoutNewlines": 13
+    },
+    "issue1089": {
+      "completed": "Distinct clock units/execution-score epochs through actual score producer, playback owner and bridge; preserved factory output inference; required output retirement; invalid native context rejection.",
+      "remaining": "Deep authored/runtime checkpoint/admission schemas, wider nominal identities/services and schema/dependency audit."
+    },
+    "ci": {
+      "latestCompleteGreen": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+      "ci430": "42engine cases pass; main309workstation cases have308pass/one boot timeout before arming.",
+      "ci431": "24actual Linux clock receipts independently qualify;41engine passes/one Firefox boot crash; main pending."
+    }
   }
 }
