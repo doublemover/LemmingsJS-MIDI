@@ -124,6 +124,7 @@ for (const backend of ['audio', 'midi']) for (const scenario of ['rates-pause-st
       await advanceLive(page, journey.boundary.tick + 96, journey);
     }
   }
+  if (backend === 'midi') await expect.poll(() => page.evaluate(() => window.__WEBMIDI_STUB__.metrics().messages.filter(message => (message.bytes[0] & 0xf0) === 0x90 && message.bytes[2]).length), { timeout: 15000, intervals: [10, 20, 40] }).toBeGreaterThan(0);
   const beforeFinalization = await page.evaluate(() => ({ diagnostics: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics(), peak: window.__liveClockPeak, nonfinite: window.__liveClockNonfinite, opens: window.__liveClockAudioOpens, midi: window.__WEBMIDI_STUB__.metrics() }));
   const actual = await finishActualPhysicalClock(page, armed.takeId);
   const live = await page.evaluate(() => ({ diagnostics: window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics(), peak: window.__liveClockPeak, nonfinite: window.__liveClockNonfinite, opens: window.__liveClockAudioOpens, midi: window.__WEBMIDI_STUB__.metrics() }));

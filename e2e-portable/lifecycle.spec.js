@@ -54,8 +54,11 @@ test('native project transactions retain the exact named revision across reload 
   await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Save', exact: true }), { button: 'Save' }, 'click');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__.getDocumentState().revision === 2);
   await page.reload(); await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.workstationEnabled);
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Unsaved reload selection' } }));
   await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), { button: 'Load' }, 'click');
   await page.getByRole('dialog', { name: 'Saved projects' }).getByRole('button', { name: /Portable named document/ }).click();
+  await page.getByRole('button', { name: 'Open selected project', exact: true }).click();
+  await page.getByRole('region', { name: 'Review project replacement' }).getByRole('button', { name: 'Discard changes and replace', exact: true }).click();
   await page.waitForFunction(id => { const document = window.__PROCGEN_STUDIO__.getDocumentState(); return document.id === id && document.revision === 2; }, before.id);
   await expect(page.locator('.studio-status')).toContainText('Project loaded paused');
   const after = await evidence(page, browser, testInfo, 'portable-native-document.json', { before });

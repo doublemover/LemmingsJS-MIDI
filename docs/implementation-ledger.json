@@ -5279,5 +5279,113 @@
       "Latest independently complete-green CI is422/bfa6861d; its7554Node/355browser pass excludes this423implementation.",
       "Large intermediate native-clock receipt arrays are represented by byte length/digest and original report digests. Current12-case browser receipts retain their decoded bounded values once; duplicated base64 attachment bodies are replaced with their hashes."
     ]
+  },
+  "continuation424": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "scope": "Metadata-only Named/Recovery preview, explicit source-bound Open, exact verified recovery prefix, named-source comparison and Save recovered copy; deterministic population-policy recovery replay.",
+    "evidence": {
+      "path": "docs/validation/project-candidates-recovery-desktop-2026-11-04.json",
+      "bytes": 1307113,
+      "sha256": "f1f26b45fa4e387e05765b054277fd5b5ac494e082153fd0ff8bbd760c1d9922"
+    },
+    "source": {
+      "parent": "afa21e34b9654efe9edce8b6898701a10fb5eef8",
+      "browserPaths": 1282,
+      "browserDigest": "44e912b90468ba07228e36ee7ce81b45be71ebd7f8b28c26530e7d3d48aee31c",
+      "workerPaths": 305,
+      "workerDigest": "147408a06b711f25ffe6f14b9729dc45b60131eb3c333340c90fc024eafc5962",
+      "qualifiedInputs": 1385,
+      "byteExact": 1372,
+      "unchangedCheckoutNewlines": 13
+    },
+    "validation": {
+      "node": {
+        "suites": 25,
+        "tests": 476,
+        "passes": 476,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-05T04:01:50.658Z",
+        "end": "2026-11-05T04:01:59.408Z",
+        "duration": 8750
+      },
+      "workstation": {
+        "startTime": "2026-11-05T04:01:49.019Z",
+        "duration": 350772.096,
+        "expected": 63,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "engine": {
+        "startTime": "2026-11-05T04:01:49.004Z",
+        "duration": 111697.159,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "scopedCoverage": {
+        "lines": {
+          "total": 870,
+          "covered": 829,
+          "skipped": 0,
+          "pct": 95.28
+        },
+        "statements": {
+          "total": 870,
+          "covered": 829,
+          "skipped": 0,
+          "pct": 95.28
+        },
+        "functions": {
+          "total": 174,
+          "covered": 147,
+          "skipped": 0,
+          "pct": 84.48
+        },
+        "branches": {
+          "total": 879,
+          "covered": 686,
+          "skipped": 0,
+          "pct": 78.04
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "fullLocalSuiteRepeated": false
+    },
+    "issues": {
+      "open": [
+        1073,
+        1074,
+        1120,
+        1089
+      ],
+      "inventoryOpen": 188
+    },
+    "ci": {
+      "latestIndependentlyCompleteGreen": {
+        "head": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+        "run": 41948075545
+      },
+      "priorHeadFailed": {
+        "head": "afa21e34b9654efe9edce8b6898701a10fb5eef8",
+        "run": 41957351443,
+        "main": "MIDI finalization before queued submission",
+        "engines": "Five older fixtures omitted replacement consent"
+      },
+      "currentSource": "pending-publication"
+    },
+    "remaining": [
+      "Prepared scene/lesson replacement must use canonical unfinished-work review.",
+      "Pending replacement with live gesture/audition/disconnect/disposal and wider generated recording/input, assets/cache and delivery schedules.",
+      "No device, acoustic, listening or assistive-technology acceptance is inferred."
+    ]
   }
 }

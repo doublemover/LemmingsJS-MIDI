@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preview named projects and recovery metadata before explicit Open; verify exact stored recovery ranges, compare their named source and save recovered work under a new identity.
+- Replay post-checkpoint population-policy changes in recovery, preserving actor release timing after paused steps and clock changes.
+
 - Review unfinished project work before interactive New, Open or Import; preserve exact text/curve drafts on Cancel, save before replacement and retain active MIDI entry.
 - Publish same-document Save acknowledgments even when a read-only project picker is open, while preserving document and playback ownership.
 

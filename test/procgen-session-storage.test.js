@@ -301,3 +301,64 @@ describe('ProcGen session storage connection lifecycle', () => {
     expect(adapter.opens).to.equal(0); expect(adapter.reads.sessions).to.equal(0); storage.close();
   });
 });
+
+describe('project and recovery candidate metadata', () => {
+  it('reads named and recovery metadata without opening their stored checkpoint payloads', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter);
+    try {
+      await storage.saveDocument('doc:summary', 0, { ...session('Summary'), project: { procgen: { version: 2 } } }, 'summary-commit');
+      await storage.saveRecovery(session('Recovery'), { documentRevision: 8, tick: 21, sourceDocumentId: 'doc:summary', sourceStoredRevision: 1 });
+      const get = adapter.records.get.bind(adapter.records), reads = []; adapter.records.get = key => { if (key.startsWith('doc:') || key.startsWith('recovery:slot:')) reads.push(key); return get(key); };
+      const named = await storage.getDocumentSummary('doc:summary'), recovery = await storage.getRecoverySummary();
+      expect(named).to.include({ id: 'doc:summary', revision: 1, name: 'Summary', laneCount: 1, seed: 7, compatibility: 'supported-header', verification: 'unverified' });
+      expect(recovery).to.include({ kind: 'recovery-checkpoint', recoveryGeneration: 1, documentRevision: 8, sourceDocumentId: 'doc:summary', sourceStoredRevision: 1, verification: 'unverified' });
+      expect(reads).to.deep.equal([]); expect(JSON.stringify(named)).not.to.include('patterns'); expect(JSON.stringify(recovery).length).to.be.lessThan(2048);
+    } finally { storage.close(); }
+  });
+  it('refuses an obsolete named revision before loading or admitting its world', async () => {
+    const adapter = fakeIndexedDb(), jobs = createBackgroundJobService({ Worker: null }), storage = createProcgenSessionStorage(adapter, { backgroundJobs: jobs });
+    try {
+      await storage.saveDocument('doc:pinned', 0, session('Before'), 'first'); await storage.saveDocument('doc:pinned', 1, session('After'), 'second');
+      const get = adapter.records.get.bind(adapter.records), reads = []; adapter.records.get = key => { if (key === 'doc:pinned') reads.push(key); return get(key); };
+      try { await storage.loadDocumentOwned('doc:pinned', { expectedRevision: 1 }); throw new Error('Unexpected source'); } catch (error) { expect(error.name).to.equal('ConflictError'); }
+      expect(reads).to.deep.equal([]); const current = await storage.loadDocumentOwned('doc:pinned', { expectedRevision: 2 }); expect(current.summary).to.include({ revision: 2, name: 'After', verification: 'stored-snapshot-checked' }); current.release();
+    } finally { storage.close(); jobs.dispose(); }
+  });
+  it('finds the last complete recovery and pins Open to that exact checksum and generation', async () => {
+    const adapter = fakeIndexedDb(), jobs = createBackgroundJobService({ Worker: null }), storage = createProcgenSessionStorage(adapter, { backgroundJobs: jobs });
+    try {
+      const first = await storage.saveRecovery(session('Complete'), { documentRevision: 1, tick: 10, sourceDocumentId: 'doc:source', sourceStoredRevision: 4 });
+      const second = await storage.saveRecovery(session('Interrupted'), { documentRevision: 2, tick: 20 }); adapter.records.get('recovery:slot:' + second.generation % 2).session.world.seed = 999;
+      expect((await storage.getRecoverySummary()).recoveryGeneration).to.equal(second.generation);
+      const selected = await storage.loadRecoveryOwned(); expect(selected.generation).to.equal(first.generation); expect(selected.summary).to.include({ name: 'Complete', documentRevision: 1, sourceDocumentId: 'doc:source', sourceStoredRevision: 4 }); selected.release();
+      const exact = await storage.loadRecoveryOwned({ expectedGeneration: first.generation, expectedChecksum: first.checksum }); expect(exact.generation).to.equal(first.generation); exact.release();
+      try { await storage.loadRecoveryOwned({ expectedGeneration: second.generation, expectedChecksum: second.checksum }); throw new Error('Unexpected corrupt source'); } catch (error) { expect(error.name).to.equal('RecoveryCandidateError'); }
+      await storage.saveRecovery(session('Replacement'), { documentRevision: 3, tick: 30 });
+      try { await storage.loadRecoveryOwned({ expectedGeneration: first.generation, expectedChecksum: first.checksum }); throw new Error('Unexpected retired source'); } catch (error) { expect(error.name).to.equal('ConflictError'); }
+    } finally { storage.close(); jobs.dispose(); }
+  });
+  it('derives verified origin from the checksummed payload and ignores mutated slot metadata', async () => {
+    const adapter = fakeIndexedDb(), jobs = createBackgroundJobService({ Worker: null }), storage = createProcgenSessionStorage(adapter, { backgroundJobs: jobs });
+    try {
+      const saved = await storage.saveRecovery(session('Bound origin'), { documentRevision: 12, tick: 30, sourceDocumentId: 'doc:original', sourceStoredRevision: 3 });
+      const record = adapter.records.get('recovery:slot:' + saved.generation % 2); record.sourceDocumentId = 'doc:other'; record.sourceStoredRevision = 99; record.documentRevision = 999;
+      const source = await storage.loadRecoveryOwned(); expect(source.summary).to.include({ sourceDocumentId: 'doc:original', sourceStoredRevision: 3, documentRevision: 12 }); source.release();
+    } finally { storage.close(); jobs.dispose(); }
+  });
+  it('keeps legacy recovery explicit and unverified, and never materializes it just for the picker', async () => {
+    const adapter = fakeIndexedDb(), jobs = createBackgroundJobService({ Worker: null }), storage = createProcgenSessionStorage(adapter, { backgroundJobs: jobs });
+    try {
+      adapter.records.set('recovery:latest', { id: 'recovery:latest', kind: 'recovery', session: session('Legacy source') });
+      expect(await storage.getRecoverySummary()).to.include({ id: 'recovery:legacy', kind: 'legacy-recovery', verification: 'unverified' });
+      const source = await storage.loadLegacyRecoveryOwned(); expect(source.verification).to.equal('unverified-legacy'); expect(source.summary.verification).to.equal('unverified'); expect(source.session.name).to.equal('Legacy source'); source.release();
+    } finally { storage.close(); jobs.dispose(); }
+  });
+  it('keeps missing, malformed and canceled recovery metadata distinct', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter);
+    try {
+      expect(await storage.getRecoverySummary()).to.equal(null); adapter.records.set('recovery:head', { generation: -1, checksum: 'bad' });
+      try { await storage.getRecoverySummary(); throw new Error('Unexpected metadata'); } catch (error) { expect(error.name).to.equal('RecoveryCandidateError'); }
+      const controller = new AbortController(); controller.abort(); try { await storage.getRecoverySummary({ signal: controller.signal }); throw new Error('Unexpected canceled metadata'); } catch (error) { expect(error.name).to.equal('AbortError'); }
+    } finally { storage.close(); }
+  });
+});

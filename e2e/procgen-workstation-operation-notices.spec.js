@@ -80,7 +80,7 @@ test('finished native Save and named load history retains captured and accepted 
   expect(saved.receipt).toMatchObject({ outcome: 'committed', accepted: { documentId: saved.document.id, storedRevision: 1, editRevision: saved.document.savedRevision }, captured: { editRevision: saved.document.savedRevision } });
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.new())).toBe(true);
   const beforeLoad = await page.evaluate(() => window.__PROCGEN_STUDIO__.getOperationalSnapshot().documentIdentity); await page.evaluate(() => { window.operationLoad = window.__PROCGEN_STUDIO__.handlers.load(); });
-  const dialog = page.getByRole('dialog', { name: 'Saved projects', exact: true }); await expect(dialog).toBeVisible(); await dialog.getByRole('button').filter({ hasText: /^Receipt source ·/ }).click(); await expect(dialog).not.toBeVisible();
+  const dialog = page.getByRole('dialog', { name: 'Saved projects', exact: true }); await expect(dialog).toBeVisible(); await dialog.getByRole('button').filter({ hasText: /^Receipt source ·/ }).click(); await dialog.getByRole('button', { name: 'Open selected project', exact: true }).click(); await expect(dialog).not.toBeVisible();
   const loaded = await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; return { document: studio.getDocumentState(), identity: studio.getOperationalSnapshot().documentIdentity, receipts: studio.getNoticeState().entries.map(entry => entry.receipt).filter(Boolean) }; });
   const receipt = loaded.receipts.find(value => value.kind === 'select-session' && value.outcome === 'committed');
   expect(receipt).toMatchObject({ source: { documentIdentity: beforeLoad }, accepted: { documentIdentity: loaded.identity, documentId: saved.document.id, storedRevision: 1 } });

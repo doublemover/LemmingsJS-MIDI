@@ -56,7 +56,8 @@ test('worker construction failure keeps Save usable and refuses stored load befo
   });
   await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), { button: 'Load' }, 'click');
   const picker = page.getByRole('dialog', { name: 'Saved projects' }), choice = picker.getByRole('button', { name: /Portable worker retry/ });
-  await choice.click();
+  await choice.click(); await picker.getByRole('button', { name: 'Open selected project', exact: true }).click();
+  await page.getByRole('region', { name: 'Review project replacement' }).getByRole('button', { name: 'Discard changes and replace', exact: true }).click();
   await expect(picker.locator('.studio-project-feedback')).toHaveText('Controlled worker construction failure');
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPreferenceState().lastError?.message)).toBeTruthy();
   await expect(picker.locator('.studio-project-feedback')).toHaveText('Controlled worker construction failure');
@@ -68,7 +69,8 @@ test('worker construction failure keeps Save usable and refuses stored load befo
   }, before.id);
   expect(failed.failures).toContain('lemmings-background-recovery-checksum'); expect(failed.sameWorld).toBe(true); expect(failed.sameProject).toBe(true);
   expect(failed.document.revision).toBe(2); expect(failed.document.dirty).toBe(true); expect(failed.storedRevision).toBe(2);
-  await page.evaluate(() => { window.blockPortableWorker = false; }); await choice.click();
+  await page.evaluate(() => { window.blockPortableWorker = false; }); await choice.click(); await picker.getByRole('button', { name: 'Open selected project', exact: true }).click();
+  await page.getByRole('region', { name: 'Review project replacement' }).getByRole('button', { name: 'Discard changes and replace', exact: true }).click();
   await page.waitForFunction(() => window.portableWorkerWorld !== window.__PROCGEN_LANES__.world && window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name === 'Retained worker retry source');
   await expect(picker).toBeHidden();
   const after = await page.evaluate(() => ({ document: window.__PROCGEN_STUDIO__.getDocumentState(), laneName: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name,

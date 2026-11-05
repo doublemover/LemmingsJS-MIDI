@@ -71,6 +71,7 @@ test('live musical edits undo and survive save/load, reroll and same-seed replay
   await page.getByLabel('Scale degree', { exact: true }).fill('9'); await page.getByLabel('Scale degree', { exact: true }).dispatchEvent('change');
   await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), {'button':'Load'}, 'click');
   await page.getByRole('dialog', { name: 'Saved projects' }).getByRole('button', { name: /Acceptance session/ }).click();
+  await page.getByRole('button', { name: 'Open selected project', exact: true }).click();
   await page.getByRole('region', { name: 'Review project replacement' }).getByRole('button', { name: 'Discard changes and replace', exact: true }).click();
   await expect(page.locator('.studio-status')).toContainText('Project loaded paused');
   expect(await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, seed: window.__PROCGEN_LANES__.world.seed, project: window.__PROCGEN_STUDIO__.getProject().procgen }))).toEqual(saved);

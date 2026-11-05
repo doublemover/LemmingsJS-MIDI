@@ -818,56 +818,53 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
+    "head": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
     "status": "success",
-    "run": 41925399883,
-    "job": 126908348481,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41925399883",
-    "engineJob": 126908348991,
+    "run": 41948075545,
+    "job": 126985139964,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41948075545",
+    "engineJob": 126985139522,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7374,
+    "nodePassed": 7554,
     "nodePending": 10,
-    "browserPassed": 346,
+    "browserPassed": 355,
     "desktopPassed": 26,
-    "workstationSmokePassed": 278,
+    "workstationSmokePassed": 287,
     "enginePassed": 42,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.84,
-      "statements": 90.84,
+      "lines": 90.87,
+      "statements": 90.87,
       "branches": 84.26,
       "functions": 88.72
     },
     "benchmark": {
       "status": "success",
       "profile": "smoke",
-      "source": "main job completed benchmark step"
+      "source": "completed main job"
     },
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1275,
+      "files": 1278,
       "harnessFiles": 27,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "85be38ceef45751b70d9e7770a35e3f8bd9e3a689d3e3e4b1fa18481c2c69187",
+      "closureDigest": "d18962205c24b2e696c0c567ad845ef10e671150b4b368c097fc241e00bb3522",
       "nativeClockScenarios": 24,
       "nativeClockAvailable": 24,
-      "nativeAudio": {
-        "status": "passed-in-required-lifecycle-journeys",
-        "physicalReceiverOrAcoustics": false
-      }
+      "physicalReceiverOrAcoustics": false
     },
     "nativeCodec": {
       "status": "passed",
-      "linuxJob": 126908349039,
-      "windowsJob": 126908348856,
+      "linuxJob": 126985139689,
+      "windowsJob": 126985139963,
       "commandsPerPlatform": 8829,
       "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
       "outputIdentical": true,
@@ -875,60 +872,63 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "14f3d89eb56f862948c287d75fb94ab815e83421",
+      "testedPrMergeHead": "9e1f9827be90ee5172713791253f4807401897f0",
       "rawDirtyFlag": true,
-      "testedMergeTree": "4cd91ec6f8af529d50ad3260bcabffc18790880a",
-      "publishedHeadTree": "4cd91ec6f8af529d50ad3260bcabffc18790880a",
+      "testedMergeTree": "f0edb2764f336a025126d4fc6f9437f26ca46299",
+      "publishedHeadTree": "f0edb2764f336a025126d4fc6f9437f26ca46299",
       "gitTreesIdentical": true,
-      "inventoryFiles": 1188,
-      "engineInventoryFiles": 1302,
-      "allReportedSourcePaths": 1466,
+      "allReportedSourcePaths": 1480,
       "allReportedSourcePathsMatchPublishedHead": true,
       "sbomComponents": 10,
       "sbomFiles": 374,
       "sbomComponentGitBytesMatched": true,
       "githubArchiveDigestsMatched": true,
       "reportDigestMatched": true,
-      "mainReportSha256": "d444f79f386cd327a7e60e953a6a3ada7e0eff0bc9fd91ab6be6f783d30ccdd6"
+      "mainReportSha256": "6f695b7c5b77e81a37ed012ae04b2db2a0573ca58e41c42ebbafc1ce0850ce74"
     },
     "artifacts": [
       {
-        "githubArtifactId": 13372887070,
-        "path": ".tmp/ci413-main-archive416.zip",
-        "bytes": 2230648,
-        "sha256": "c6050235f44ee4892c154a7375bc2da706add5cb6d9bc055cdd763e9896bf19a",
+        "githubArtifactId": 13382550224,
+        "name": "workstation-browser-receipts",
+        "path": ".tmp/ci422-13382550224-423.zip",
+        "bytes": 2775053,
+        "sha256": "1036f69249a5bc406e8b87fe6d02ecadf51cb9e349245f8e3d2707e767acecde",
         "githubDigestMatched": true
       },
       {
-        "githubArtifactId": 13369479502,
-        "path": ".tmp/ci413-engine-archive416.zip",
-        "bytes": 1038060,
-        "sha256": "72874329d57f2c5a6b468e14b707261327b6cd84740da95723928aab12bdd588",
+        "githubArtifactId": 13379816219,
+        "name": "native-midi-codec-ubuntu-latest",
+        "path": ".tmp/ci422-13379816219-423.zip",
+        "bytes": 2247,
+        "sha256": "1092ea82d3a6a22fd3f229963df856f6ce336c697a42192291a6cc4d20ee6164",
         "githubDigestMatched": true
       },
       {
-        "githubArtifactId": 13369885821,
-        "path": ".tmp/ci413-13369885821-416.zip",
-        "bytes": 57418,
-        "sha256": "cbcd06e4fd588eaddd21382abda6264e7cdfe557b36e39a9d06113503715f0f6",
+        "githubArtifactId": 13379697314,
+        "name": "native-midi-codec-windows-latest",
+        "path": ".tmp/ci422-13379697314-423.zip",
+        "bytes": 2147,
+        "sha256": "4d5debbe7c47e25effaf95b6104ec3686960a1c499c91575f314842d83870c43",
         "githubDigestMatched": true
       },
       {
-        "githubArtifactId": 13369636839,
-        "path": ".tmp/ci413-13369636839-416.zip",
-        "bytes": 2146,
-        "sha256": "424dfd910f863c9be560d8734d305bb4309a5414267bdc1a12abfe1c09dba3d2",
+        "githubArtifactId": 13379379615,
+        "name": "lifecycle-engine-receipts",
+        "path": ".tmp/ci422-13379379615-423.zip",
+        "bytes": 1005919,
+        "sha256": "442cf5fa442d08782ded05c83203af9acc902a7b158b499574e768abf452a419",
         "githubDigestMatched": true
       },
       {
-        "githubArtifactId": 13368588036,
-        "path": ".tmp/ci413-13368588036-416.zip",
-        "bytes": 2248,
-        "sha256": "9f9cf9e5ce2e9c6bce82dfb0802046eaae504f598a2be2225944a782d852d6f0",
+        "githubArtifactId": 13379356981,
+        "name": "runtime-sbom",
+        "path": ".tmp/ci422-13379356981-423.zip",
+        "bytes": 57417,
+        "sha256": "194091f916dcfc9215149898c658094293f44badaf6dabd194181e4f680e8dd3",
         "githubDigestMatched": true
       }
     ],
-    "scope": "All four required jobs plus policy/dependency on the named published source. Independent main/engine qualifiers,1466distinct exact commit-byte matches,five original ZIP digests,saved report digest,tenSBOM bundles and unchanged independently regenerated8829-command native corpus bind this completed checkpoint. Linux native import memory/refusal observations are separate from admission estimates. Later414-416software changes, acoustics, hardware, listening and the remaining backlog need their own qualification."
+    "scope": "All four required jobs and policy/dependency on422. Main/engine qualifiers,1480 distinct exact Git byte matches,five original ZIP digests,ten SBOM bundles and unchanged eight-source8829-command native corpus bind the completed checkpoint. Current423replacement changes are separately qualified and do not inherit this full-green result."
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -147844,6 +147844,114 @@
       "Notice records retain only validated bounded primitive metadata. Historical records never acquire a current headline or a replay action, and full operation IDs participate in coalescing.",
       "Native browser Save/load uses actual IndexedDB and workers. Broader1120generated owners, assistive technology and device/acoustic acceptance remain separate.",
       "Latest independently complete-green CI remains413/f4cd4ee9. No full local suite was repeated and no repository coverage threshold changed."
+    ]
+  },
+  "continuation424": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "scope": "Metadata-only Named/Recovery preview, explicit source-bound Open, exact verified recovery prefix, named-source comparison and Save recovered copy; deterministic population-policy recovery replay.",
+    "evidence": {
+      "path": "docs/validation/project-candidates-recovery-desktop-2026-11-04.json",
+      "bytes": 1307113,
+      "sha256": "f1f26b45fa4e387e05765b054277fd5b5ac494e082153fd0ff8bbd760c1d9922"
+    },
+    "source": {
+      "parent": "afa21e34b9654efe9edce8b6898701a10fb5eef8",
+      "browserPaths": 1282,
+      "browserDigest": "44e912b90468ba07228e36ee7ce81b45be71ebd7f8b28c26530e7d3d48aee31c",
+      "workerPaths": 305,
+      "workerDigest": "147408a06b711f25ffe6f14b9729dc45b60131eb3c333340c90fc024eafc5962",
+      "qualifiedInputs": 1385,
+      "byteExact": 1372,
+      "unchangedCheckoutNewlines": 13
+    },
+    "validation": {
+      "node": {
+        "suites": 25,
+        "tests": 476,
+        "passes": 476,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-05T04:01:50.658Z",
+        "end": "2026-11-05T04:01:59.408Z",
+        "duration": 8750
+      },
+      "workstation": {
+        "startTime": "2026-11-05T04:01:49.019Z",
+        "duration": 350772.096,
+        "expected": 63,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "engine": {
+        "startTime": "2026-11-05T04:01:49.004Z",
+        "duration": 111697.159,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "scopedCoverage": {
+        "lines": {
+          "total": 870,
+          "covered": 829,
+          "skipped": 0,
+          "pct": 95.28
+        },
+        "statements": {
+          "total": 870,
+          "covered": 829,
+          "skipped": 0,
+          "pct": 95.28
+        },
+        "functions": {
+          "total": 174,
+          "covered": 147,
+          "skipped": 0,
+          "pct": 84.48
+        },
+        "branches": {
+          "total": 879,
+          "covered": 686,
+          "skipped": 0,
+          "pct": 78.04
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "fullLocalSuiteRepeated": false
+    },
+    "issues": {
+      "open": [
+        1073,
+        1074,
+        1120,
+        1089
+      ],
+      "inventoryOpen": 188
+    },
+    "ci": {
+      "latestIndependentlyCompleteGreen": {
+        "head": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+        "run": 41948075545
+      },
+      "priorHeadFailed": {
+        "head": "afa21e34b9654efe9edce8b6898701a10fb5eef8",
+        "run": 41957351443,
+        "main": "MIDI finalization before queued submission",
+        "engines": "Five older fixtures omitted replacement consent"
+      },
+      "currentSource": "pending-publication"
+    },
+    "remaining": [
+      "Prepared scene/lesson replacement must use canonical unfinished-work review.",
+      "Pending replacement with live gesture/audition/disconnect/disposal and wider generated recording/input, assets/cache and delivery schedules.",
+      "No device, acoustic, listening or assistive-technology acceptance is inferred."
     ]
   }
 }

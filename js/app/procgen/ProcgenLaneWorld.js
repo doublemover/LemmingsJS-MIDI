@@ -12,7 +12,7 @@ import { createTerrainScoreState, rememberTerrainCell, commitTerrainScore, terra
 import { planTerrainCommand } from './TerrainAuthoringAdapter.js';
 import { observePhysicalFlightStep } from '../../actions/PhysicalFlightFacts.js';
 import { recordBirthCohortSlot, completedBirthCohorts } from './ProcgenBirthCohorts.js';
-import { recordProcgenRecoveryStep, getProcgenRecoveryJournal } from './workstation/ProcgenRecoveryJournal.js';
+import { recordProcgenRecoveryStep, recordProcgenRecoveryPopulationPolicy, getProcgenRecoveryJournal } from './workstation/ProcgenRecoveryJournal.js';
 import { physicalContactForMotion } from '../../actions/PhysicalMotionFacts.js';
 import { ProcgenTerrainEdits, ProcgenTerrainRevisions } from './ProcgenTerrainRetention.js';
 import { ProcgenTunnelCrewRoutes } from './ProcgenTunnelCrewRoutes.js';
@@ -248,6 +248,7 @@ class ProcgenLaneWorld {
   setPopulationPolicy(next = {}) {
     const settings = this.population.setSettings(next);
     this.spawnSpreadTicks = settings.spawnSpreadTicks;
+    recordProcgenRecoveryPopulationPolicy(this, settings);
     return { ...settings };
   }
   setReleaseGesture(value, commandId = null) {

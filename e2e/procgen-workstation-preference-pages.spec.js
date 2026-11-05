@@ -47,6 +47,7 @@ test('an owned saved-project load cancels an in-flight native preference worker 
   await page.waitForFunction(() => window.preferenceOverlap.blocked === 1 && window.__PROCGEN_STUDIO__.getPreferenceState().active);
   await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), { button: 'Load' }, 'click');
   await page.getByRole('dialog', { name: 'Saved projects' }).getByRole('button', { name: /Foreground selection/ }).click();
+  await page.getByRole('button', { name: 'Open selected project', exact: true }).click();
   await page.getByRole('region', { name: 'Review project replacement' }).getByRole('button', { name: 'Discard changes and replace', exact: true }).click();
   await expect(page.locator('.studio-status')).toContainText('Project loaded paused');
   await page.waitForFunction(() => { const studio = window.__PROCGEN_STUDIO__, state = studio.getPreferenceState(); return !state.active && !state.suspended && state.pendingRevision == null && state.durableRevision === studio.getDocumentState().editRevision; });

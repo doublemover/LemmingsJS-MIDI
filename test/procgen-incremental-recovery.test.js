@@ -47,6 +47,34 @@ describe('incremental recovery boundaries', function() {
       expect(digest(restored)).to.deep.equal(digest(original));
     } finally { original.dispose(); restored.dispose(); }
   });
+  it('replays post-checkpoint population settings before paused steps and subsequent clock changes', async () => {
+    const original = make(), restored = make();
+    const listener = () => {}; original.soundEvents.onBatch.on(listener); restored.soundEvents.onBatch.on(listener);
+    try {
+      const base = captureProcgenCheckpoint(original), journal = createProcgenRecoveryJournal(original, base);
+      original.setPopulationPolicy({ spawnBeatTicks: 25 / 3 });
+      for (let tick = 0; tick < 150; tick++) {
+        if (tick === 30) original.setPopulationPolicy({ spawnBeatTicks: 5, spawnSpreadTicks: 8, scoutsEvery: 3 });
+        original.timer.speedFactor = tick < 40 ? 3 : 2; original.step(tick * 20);
+      }
+      const saved = JSON.parse(JSON.stringify(journal.snapshot())); restoreProcgenCheckpoint(restored, base);
+      expect(saved.pages.flat().filter(record => record.kind === 'population-policy')).to.have.length(2);
+      await replayProcgenRecoveryJournal(restored, saved, { yieldTask: async () => {} });
+      expect(digest(restored)).to.deep.equal(digest(original)); expect(restored.population.snapshot()).to.deep.equal(original.population.snapshot());
+      for (let tick = 0; tick < 1000; tick++) { original.step(); restored.step(); }
+      expect(digest(restored)).to.deep.equal(digest(original));
+    } finally { original.dispose(); restored.dispose(); }
+  });
+  it('rejects malformed recovery population settings before replay', async () => {
+    const original = make(), restored = make();
+    try {
+      const base = captureProcgenCheckpoint(original), journal = createProcgenRecoveryJournal(original, base);
+      original.setPopulationPolicy({ spawnBeatTicks: 8 }); const saved = JSON.parse(JSON.stringify(journal.snapshot()));
+      saved.pages[0][0].settings.spawnBeatTicks = -1; restoreProcgenCheckpoint(restored, base); const before = digest(restored);
+      let error; try { await replayProcgenRecoveryJournal(restored, saved); } catch (value) { error = value; }
+      expect(error.message).to.equal('Invalid recovery population policy.'); expect(digest(restored)).to.deep.equal(before);
+    } finally { original.dispose(); restored.dispose(); }
+  });
   it('captures the same graph cooperatively and refuses a mutated quiescent lease', async () => {
     const world = make();
     try {

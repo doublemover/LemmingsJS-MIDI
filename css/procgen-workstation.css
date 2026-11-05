@@ -523,3 +523,14 @@ body.procgen-workstation {
 .studio-replacement-review ul { max-height: 42vh; overflow: auto; padding-left: 24px; }
 .studio-replacement-review output { display: block; min-height: 1.5em; }
 .studio-replacement-review button { min-height: 36px; }
+
+.studio-project-preview { max-width: 680px; padding: 8px; line-height: 1.5; }
+.studio-project-preview dl { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 12px; }
+.studio-project-preview dt { font-weight: 600; }
+.studio-project-preview dd { margin: 0; overflow-wrap: anywhere; }
+.studio-project-badge { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.studio-project-picker { width: 1080px; max-width: calc(100vw - 96px); }
+.studio-project-picker-body { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 16px; }
+.studio-project-items { max-height: 300px; overflow: auto; overscroll-behavior: contain; }
+.studio-project-picker .studio-replacement-review { margin-inline: auto; }

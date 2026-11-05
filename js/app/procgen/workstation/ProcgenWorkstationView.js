@@ -13,6 +13,8 @@ import { createWorkstationChrome } from './WorkstationChrome.js';
 import { getProcgenCommandDispatcher } from '../../controls/ProcgenCommandDispatcher.js';
 import { createProcgenCommandPalette } from '../../controls/ProcgenCommandPalette.js';
 import { procgenLane, procgenLaneIndex } from './ProcgenProjectIndex.js';
+import { readProcgenProjectSummary } from './ProcgenProjectSummary.js';
+import { createProcgenProjectPreview } from './ProcgenProjectPreview.js';
 import { createProjectReplacementDialog } from '../../controls/ProjectReplacementDialog.js';
 import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
 import { createParameterKnob } from '../../controls/ParameterKnob.js';
@@ -38,7 +40,7 @@ const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e'
 const laneColor = id => { let hash = 2166136261; for (const character of String(id)) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619); return COLORS[(hash >>> 0) % COLORS.length]; };
 const rendererLeases = new WeakMap(), mountedViews = new WeakMap(), motionOwners = new WeakMap();
 
-function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, getDocumentIdentity = () => null, getArmedLaneIds = () => [], dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
+function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, getDocumentIdentity = () => null, getDocumentStatus = () => null, getArmedLaneIds = () => [], dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
   mountedViews.get(document.getElementById('gameCanvas'))?.dispose();
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
   const listeners = [], parameterControls = [], laneMixControls = new Map(), lanePanControls = new Map(), parameterCache = new Map(), curveEditors = new Map();
@@ -157,6 +159,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const modalSafety = createModalOutputSafety({ document, stop: () => handlers.stopOutput?.(), panic: () => {
     const panic = document.getElementById('procgenPanic'); if (panic) panic.click(); else handlers.panicOutput?.();
   }, onStatus: message => { setStatus(message); } });
+  const projectBadge = node('span', '', 'studio-project-badge'); projectBadge.hidden = true; let recoveredCopy = null;
+  const refreshProjectStatus = () => { const value = getDocumentStatus(); if (!value) return; const name = String(value.name || 'Untitled project').slice(0, 120), label = name + ' · ' + (value.recovered ? 'Recovered; save a new project' : value.id ? 'Named project r' + value.revision : 'Session only') + (value.dirty ? ' · unsaved changes' : '') + (value.saving ? ' · saving' : '');
+    projectBadge.hidden = false; if (projectBadge.textContent !== label) { projectBadge.textContent = label; projectBadge.title = label; projectBadge.setAttribute('aria-label', 'Current project: ' + label); } if (recoveredCopy) recoveredCopy.hidden = !value.recovered; };
   const storageStatus = node('output', 'Unsaved', 'studio-storage-status'); storageStatus.setAttribute('aria-label', 'Project save status');
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
@@ -174,7 +179,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     performAction: (...args) => handlers.recoverOperational?.(...args), cancelOperation: id => handlers.cancelOperation?.(id), onStatus: text => { setStatus(text); } });
   topbar.append(operationalView.element);
   const operationalSurface = displayScheduler.register({ id: 'workstation-operational', element: operationalView.element, intervalMs: 100,
-    write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); } }); operationalSurface.invalidate();
+    write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); refreshProjectStatus(); } }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
   let motionControl = null, motionStatus = null, motionPolicy = null, motionUnsubscribe = null;
@@ -437,7 +442,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   on(exportRouteFilter, 'input', () => { if (exportRouteChoice) { exportRouteChoice.page = 0; paintExportRoutes(); } });
   exportRouteField.append(exportRouteLegend, exportRouteHelp, exportRouteFilter, exportRouteList, exportRoutePage, exportRoutePrevious, exportRouteNext, exportRouteCancel);
   exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, saveClipManifest, cancelDelivery, discardPrepared, exportRouteField);
-  footer.append(inMenu('Edit', records), inMenu('Edit', clearRecords), noticeView.element, storageStatus, recoveryStatus, commandButton('Save', 'save'), inMenu('Project', commandButton('Save As', 'saveAs')),
+  recoveredCopy = commandButton('Save recovered copy', 'saveRecoveredCopy'); recoveredCopy.hidden = true;
+  footer.append(inMenu('Edit', records), inMenu('Edit', clearRecords), noticeView.element, projectBadge, storageStatus, recoveryStatus, recoveredCopy, commandButton('Save', 'save'), inMenu('Project', commandButton('Save As', 'saveAs')),
     button('Scenes', () => handlers.scenes?.(), 'Inspect and explicitly prepare a paused physical score'), inMenu('Project', button('Rename', () => handlers.rename?.())), inMenu('Project', commandButton('Load', 'load', () => handlers.load?.({ review: true }))), inMenu('Project', commandButton('New', 'new', () => handlers.new?.({ review: true }))),
     inMenu('Project', commandButton('Export', 'export')), inMenu('Project', midiExportChoices), inMenu('Project', button('MIDI', () => handlers.exportMidi?.({ sourceLayer: midiExportSource.value, placement: midiExportPlacement.value }), 'Prepare a compatible MIDI1 file from the selected source and timing')),
     inMenu('Project', clipExportChoices), inMenu('Project', button('MIDI2 Clip', () => handlers.exportMidi?.({ format: 'ump', sourceLayer: 'authored-intent', placement: midiExportPlacement.value, tempoSource: clipExportTempo.value }), 'Export original authored UMP intent for one recorded output connection')),
@@ -455,11 +461,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const importInput = input('', () => {}, { type: 'file' }); importInput.accept = '.json,.procgen'; importInput.hidden = true; footer.append(importInput);
   on(importInput, 'change', () => { if (importInput.files?.[0]) handlers.import?.(importInput.files[0], { review: true }); importInput.value = ''; });
   footer.append(inMenu('Project', commandButton('Import', 'import', () => importInput.click())));
-  const projectList = node('dialog', null, 'studio-dialog'); projectList.setAttribute('aria-label', 'Saved projects'); presentationRoot.append(projectList);
+  const projectList = node('dialog', null, 'studio-dialog studio-project-picker'); projectList.setAttribute('aria-label', 'Saved projects'); presentationRoot.append(projectList);
   let pickerOwner = null, pendingPickerCloses = 0, parkedPickerOwner = null;
   const retirePicker = (owner, { cancel = false, close = false } = {}) => {
     if (!owner || owner.closed || pickerOwner !== owner) return;
-    owner.closed = true; owner.generation++; pickerOwner = null; if (parkedPickerOwner === owner) parkedPickerOwner = null;
+    owner.closed = true; owner.generation++; owner.preview?.dispose(); pickerOwner = null; if (parkedPickerOwner === owner) parkedPickerOwner = null;
     if (cancel) handlers.cancelProjectPicker?.();
     if (close && projectList.open) { pendingPickerCloses++; projectList.close(); }
   };
@@ -467,80 +473,116 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (event.defaultPrevented || !pickerOwner) return;
     event.preventDefault(); retirePicker(pickerOwner, { cancel: true, close: true });
   });
-  on(projectList, 'close', () => {
-    if (pendingPickerCloses) { pendingPickerCloses--; return; }
-    retirePicker(pickerOwner, { cancel: true });
-  });
-  const showProjectPage = (page, load, fetchPage = null) => {
-    if (disposed) return;
-    retirePicker(pickerOwner);
-    const owner = { generation: 0, closed: false, loading: false, query: '', cursor: null, back: [] }; pickerOwner = owner;
+  on(projectList, 'close', () => { if (pendingPickerCloses) { pendingPickerCloses--; return; } retirePicker(pickerOwner, { cancel: true }); });
+  const showProjectPage = (page, load, fetchPage = null, options = {}) => {
+    if (disposed) return; retirePicker(pickerOwner);
+    const owner = { generation: 0, closed: false, loading: false, locked: false, query: '', cursor: null, back: [], selection: null, comparison: undefined, preview: null }; pickerOwner = owner;
     const current = generation => !disposed && pickerOwner === owner && !owner.closed && owner.generation === generation;
-    const items = node('div', null, 'studio-project-items'), feedback = node('p', '', 'studio-project-feedback');
-    feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
+    const items = node('div', null, 'studio-project-items'), recoveryItems = node('div'), feedback = node('p', '', 'studio-project-feedback');
+    items.setAttribute('aria-label', 'Named projects'); recoveryItems.setAttribute('aria-label', 'Recovery checkpoints'); feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
     const search = node('input'); search.type = 'search'; search.placeholder = 'Search project names'; search.setAttribute('aria-label', 'Search project names');
-    const more = button('More projects', async () => {
-      if (!current(owner.generation) || owner.loading || !page.nextCursor || !fetchPage) return;
-      const generation = owner.generation, cursor = page.nextCursor, query = owner.query;
-      const restorePageFocus = document.activeElement === more;
-      owner.loading = true;
-      more.disabled = true; feedback.textContent = 'Loading more projects…';
+    let recoveryButton = null;
+    const projectName = entry => String(entry.name || 'Untitled project').slice(0, 120) + ' · ' + (entry.savedAt ? new Date(entry.savedAt).toLocaleString() : 'time not recorded') + ' · ' + String(entry.id).slice(-6) + (entry.revision == null ? '' : ' · r' + entry.revision);
+    const select = entry => {
+      if (!current(owner.generation) || owner.loading) return;
+      owner.selection = entry; owner.comparison = undefined;
+      for (const choice of [...items.children, ...(recoveryButton ? [recoveryButton] : [])]) choice.setAttribute('aria-pressed', String(choice.dataset.projectId === entry.id));
+      owner.preview.render(); feedback.textContent = 'Inspect this source, then choose Open. The current project is unchanged.';
+    };
+    const refreshControls = () => {
+      if (!current(owner.generation)) return;
+      search.disabled = owner.locked; more.disabled = owner.loading || !page.nextCursor; more.hidden = !page.nextCursor;
+      previous.disabled = owner.loading || !owner.back.length; previous.hidden = !owner.back.length; refresh.disabled = owner.locked;
+      for (const choice of [...items.children, ...(recoveryButton ? [recoveryButton] : [])]) choice.disabled = owner.loading;
+      owner.preview.render();
+    };
+    const openSelected = async () => {
+      const entry = owner.selection; if (!current(owner.generation) || owner.loading || !entry) return;
+      if (entry.kind === 'recovery-checkpoint' && entry.verification !== 'checksum-verified') return;
+      const generation = owner.generation; owner.loading = owner.locked = true; refreshControls(); feedback.textContent = 'Preparing selected project. The current world is kept until commit.';
       try {
-        const next = await fetchPage(cursor, query);
-        if (!current(generation) || owner.query !== query || page.nextCursor !== cursor || !next) return;
-        owner.back.push(owner.cursor); owner.cursor = cursor; page = next; append(next.items, restorePageFocus); feedback.textContent = next.items.length ? '' : next.nextCursor ?
-          'No matches in this page. Continue the search with More projects.' : 'No more matching projects.';
-      } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Could not load more projects. Retry.'; }
-      finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
-    });
-    const previous = button('Previous projects', async () => {
-      if (!fetchPage || owner.loading || !owner.back.length || !current(owner.generation)) return;
-      const generation = owner.generation, cursor = owner.back.at(-1); owner.loading = true;
-      try { const next = await fetchPage(cursor, owner.query); if (!current(generation) || !next) return;
-        owner.back.pop(); owner.cursor = cursor; page = next; append(next.items); more.disabled = !page.nextCursor; more.hidden = !page.nextCursor;
-      } catch (error) { if (current(generation)) feedback.textContent = error.message; }
-      finally { if (current(generation)) owner.loading = false; }
-    });
+        const loaded = await load(entry.id, { ...entry, allowLegacy: entry.kind === 'legacy-recovery' }); if (!current(generation)) return;
+        if (loaded) retirePicker(owner, { close: true }); else feedback.textContent = 'The selected source was not opened. The current project was kept; inspect the details or choose another source.';
+      } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project could not be opened.'; }
+      finally { if (current(generation)) { owner.loading = owner.locked = false; refreshControls(); if (parkedPickerOwner === owner && !projectList.open) { parkedPickerOwner = null; projectList.showModal(); owner.preview.element.querySelector('[data-project-action=open]').focus(); } } }
+    };
+    const verifySelected = async () => {
+      const entry = owner.selection; if (!current(owner.generation) || owner.loading || entry?.kind !== 'recovery-checkpoint' || !options.verifyRecovery) return;
+      const generation = owner.generation; owner.loading = owner.locked = true; refreshControls(); feedback.textContent = 'Verifying retained recovery bytes and journal structure. The current world is unchanged.';
+      try { const verified = await options.verifyRecovery(entry); if (!current(generation) || owner.selection !== entry) return; if (!verified) throw new Error('Recovery verification was canceled.'); owner.selection = verified; owner.comparison = undefined; renderRecovery(verified); feedback.textContent = (verified.recoveryGeneration !== entry.recoveryGeneration ? 'The latest complete recovery is generation ' + verified.recoveryGeneration + '. ' : '') + 'Stored bytes verified. Inspect the retained range before Open; later work may be missing. Physical replay is checked during preparation.'; }
+      catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Recovery could not be verified. The current project was kept.'; }
+      finally { if (current(generation)) { owner.loading = owner.locked = false; refreshControls(); } }
+    };
+    const compareSelected = async () => {
+      const entry = owner.selection; if (!current(owner.generation) || owner.loading || !entry?.sourceDocumentId || entry.verification !== 'checksum-verified' || !options.readNamedSummary) return;
+      const generation = owner.generation; owner.loading = owner.locked = true; refreshControls();
+      try { const comparison = await options.readNamedSummary(entry.sourceDocumentId); if (current(generation) && owner.selection === entry) owner.comparison = comparison; }
+      catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Named save metadata is unavailable.'; }
+      finally { if (current(generation)) { owner.loading = owner.locked = false; refreshControls(); } }
+    };
+    owner.preview = createProcgenProjectPreview({ document, readState: () => ({ selection: owner.selection, comparison: owner.comparison, busy: owner.loading, execution: getDocumentStatus()?.execution || null }), open: openSelected, verify: verifySelected, compare: compareSelected });
+    const renderRecovery = recovery => {
+      recoveryItems.replaceChildren(); recoveryButton = null;
+      if (recovery?.state) recoveryItems.append(node('p', recovery.message || 'Recovery metadata is unavailable.'));
+      else if (!recovery) recoveryItems.append(node('p', 'No recovery checkpoint is available.'));
+      else {
+        recoveryButton = button(recovery.name + ' · recovery generation ' + (recovery.recoveryGeneration ?? 'unverified'), () => select(recovery)); recoveryButton.dataset.projectId = recovery.id; recoveryButton.setAttribute('aria-pressed', String(owner.selection?.id === recovery.id)); recoveryItems.append(recoveryButton);
+      }
+      if (owner.selection?.kind !== 'checkpoint' && owner.selection && (!recovery || recovery.state || owner.selection.id !== recovery.id || owner.selection.recoveryGeneration !== recovery.recoveryGeneration || owner.selection.checksum !== recovery.checksum)) { owner.selection = null; owner.comparison = undefined; }
+      owner.preview.render();
+    };
     const append = (entries, restorePageFocus = false) => {
       const focused = document.activeElement, focusedId = focused?.dataset?.projectId;
       const restoreFocus = items.contains(focused) || focused === more || focused === previous || restorePageFocus && (focused === document.body || focused === projectList);
+      if (owner.selection?.kind === 'checkpoint' && !entries.some(entry => entry.id === owner.selection.id && entry.revision === owner.selection.revision)) { owner.selection = null; owner.comparison = undefined; }
       items.replaceChildren(); previous.hidden = !owner.back.length;
-      for (const entry of entries) {
-        const choice = button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, async () => {
-          if (!current(owner.generation) || owner.loading) return;
-          const generation = owner.generation; owner.loading = true; search.disabled = true; more.disabled = true;
-          feedback.textContent = 'Opening project…';
-          try {
-            const loaded = await load(entry.id); if (!current(generation)) return;
-            if (loaded) retirePicker(owner, { close: true });
-            else feedback.textContent = 'Project could not be opened. It may have changed or been removed; choose another or retry.';
-          } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project could not be opened.'; }
-          finally { if (current(generation)) { owner.loading = false; search.disabled = false; more.disabled = !page.nextCursor; if (parkedPickerOwner === owner && !projectList.open) { parkedPickerOwner = null; projectList.showModal(); choice.focus(); } } }
-        });
-        choice.dataset.projectId = entry.id; items.append(choice);
+      for (const raw of entries) {
+        const entry = readProcgenProjectSummary(raw), choice = button(projectName(entry), () => select(entry)); choice.dataset.projectId = entry.id; choice.setAttribute('aria-pressed', String(owner.selection?.id === entry.id)); items.append(choice);
       }
       if (restoreFocus) ([...items.children].find(choice => choice.dataset.projectId === focusedId) || items.firstElementChild || search).focus();
-      if (!items.childElementCount) feedback.textContent = page.nextCursor ? 'No matches in this page. Continue the search with More projects.' :
-        'No matching projects. Save here or import a project file.';
+      if (!items.childElementCount) feedback.textContent = page.nextCursor ? 'No matches in this page. Continue the search with More projects.' : 'No matching named projects. Save here or import a project file.';
+      owner.preview.render();
     };
+    const more = button('More projects', async () => {
+      if (!current(owner.generation) || owner.loading || !page.nextCursor || !fetchPage) return;
+      const generation = owner.generation, cursor = page.nextCursor, query = owner.query, restorePageFocus = document.activeElement === more; owner.loading = true; refreshControls(); feedback.textContent = 'Loading more projects…';
+      try { const next = await fetchPage(cursor, query); if (!current(generation) || owner.query !== query || page.nextCursor !== cursor || !next) return; owner.back.push(owner.cursor); owner.cursor = cursor; page = next; append(next.items, restorePageFocus); feedback.textContent = next.items.length ? '' : next.nextCursor ? 'No matches in this page. Continue the search with More projects.' : 'No more matching projects.'; }
+      catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Could not load more projects. Retry.'; }
+      finally { if (current(generation)) { owner.loading = false; refreshControls(); } }
+    });
+    const previous = button('Previous projects', async () => {
+      if (!fetchPage || owner.loading || !owner.back.length || !current(owner.generation)) return;
+      const generation = owner.generation, cursor = owner.back.at(-1); owner.loading = true; refreshControls();
+      try { const next = await fetchPage(cursor, owner.query); if (!current(generation) || !next) return; owner.back.pop(); owner.cursor = cursor; page = next; append(next.items); }
+      catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Could not load the previous projects.'; }
+      finally { if (current(generation)) { owner.loading = false; refreshControls(); } }
+    });
+    const refresh = button('Refresh project metadata', async () => {
+      if (!current(owner.generation) || owner.locked) return;
+      const generation = ++owner.generation; owner.loading = true; owner.selection = null; owner.comparison = undefined; owner.cursor = null; owner.back.length = 0; refreshControls(); feedback.textContent = 'Refreshing project metadata…';
+      try {
+        const [named, recovery] = await Promise.allSettled([Promise.resolve().then(() => fetchPage ? fetchPage(null, owner.query) : page), Promise.resolve().then(() => options.refreshRecovery ? options.refreshRecovery() : options.recovery)]);
+        if (!current(generation)) return;
+        if (named.status === 'fulfilled' && named.value) { page = named.value; append(page.items); } else feedback.textContent = named.reason?.message || 'Named project metadata is unavailable.';
+        if (recovery.status === 'fulfilled') renderRecovery(recovery.value); else renderRecovery({ state: 'unavailable', message: recovery.reason?.message || 'Recovery metadata is unavailable.' });
+      } finally { if (current(generation)) { owner.loading = false; refreshControls(); } }
+    });
     search.addEventListener('change', async () => {
       if (!fetchPage || !current(owner.generation) || search.disabled) return;
-      const generation = ++owner.generation, query = search.value.trim(); owner.query = query; owner.loading = true;
-      owner.cursor = null; owner.back.length = 0; previous.hidden = true; page = { items: [], nextCursor: null }; items.replaceChildren(); more.disabled = true; more.hidden = true;
-      feedback.textContent = 'Searching projects…';
-      try {
-        const next = await fetchPage(null, query); if (!current(generation) || !next) return;
-        page = next; append(next.items); if (next.items.length) feedback.textContent = '';
-      } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project search failed. Retry.'; }
-      finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
+      const generation = ++owner.generation, query = search.value.trim(); owner.query = query; owner.loading = true; owner.selection = null; owner.comparison = undefined;
+      owner.cursor = null; owner.back.length = 0; page = { items: [], nextCursor: null }; items.replaceChildren(); refreshControls(); feedback.textContent = 'Searching projects…';
+      try { const next = await fetchPage(null, query); if (!current(generation) || !next) return; page = next; append(next.items); if (next.items.length) feedback.textContent = ''; }
+      catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project search failed. Retry.'; }
+      finally { if (current(generation)) { owner.loading = false; refreshControls(); } }
     });
-    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => retirePicker(owner, { cancel: true, close: true })), search, items, feedback, previous, more);
-    append(page.items); more.hidden = !page.nextCursor;
-    if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', () => handlers.reclaimRecovery()));
+    const candidates = node('section'), body = node('div', null, 'studio-project-picker-body'); candidates.setAttribute('aria-label', 'Available project sources'); candidates.append(node('h3', 'Named projects'), items, previous, more, node('h3', 'Recovery'), recoveryItems); body.append(candidates, owner.preview.element);
+    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => retirePicker(owner, { cancel: true, close: true })), search, refresh, body, feedback);
+    append(page.items); renderRecovery(options.recovery); refreshControls();
+    if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', async () => { if (!current(owner.generation) || owner.loading) return; await handlers.reclaimRecovery(); if (current(owner.generation)) refresh.click(); }));
     projectList.showModal();
   };
   const refreshMacroState = () => { for (const [key, control] of macroControls) { const [laneId, macroId] = JSON.parse(key), receipt = handlers.macroGestureState?.(laneId, macroId); if (receipt) control.setObservations({ pickupValue: receipt.pickup01 }); } };
-  const showProjects = (entries, load) => showProjectPage({ items: entries, nextCursor: null }, load);
+  const showProjects = (entries, load, options = {}) => showProjectPage({ items: entries, nextCursor: null }, load, null, options);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
   const viewLease = () => Object.freeze({ revision: viewRevision, selectionKey: parameterScope, laneId: state.laneId, tab: state.tab, slot: state.slot, step: state.step, documentIdentity: getDocumentIdentity() });
   const currentViewLease = lease => !disposed && !superseded && lease.revision === viewRevision && lease.selectionKey === parameterScope && lease.documentIdentity === getDocumentIdentity() && lease.laneId === state.laneId && lease.tab === state.tab && lease.slot === state.slot && lease.step === state.step;
@@ -1387,6 +1429,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (artifact?.retained || preparation) exportDesk.open = true;
     },
     storage({ dirty, savedAt, error, recovery }) {
+      refreshProjectStatus();
       storageStatus.textContent = error ? 'Save failed · Export' : dirty ? 'Unsaved' : 'Saved';
       storageStatus.dataset.state = error ? 'error' : dirty ? 'dirty' : 'saved';
       storageStatus.title = error?.message || (savedAt ? 'Last saved ' + new Date(savedAt).toLocaleString() : 'No saved project yet');

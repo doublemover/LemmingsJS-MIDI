@@ -26,7 +26,7 @@ test('native hosted Open saves the current source through one naming dialog befo
   await page.evaluate(() => { window.targetSave = window.__PROCGEN_STUDIO__.handlers.save(); }); await saveName(page, 'Replacement target'); expect(await page.evaluate(() => window.targetSave)).toBe(true);
   const target = await page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState()); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.new())).toBe(true); await edit(page);
   await command(page, 'Load'); const picker = page.getByRole('dialog', { name: 'Saved projects', exact: true }); await expect(picker).toBeVisible();
-  await picker.getByRole('button').filter({ hasText: /^Replacement target ·/ }).click(); await expect(review(page)).toBeVisible(); await expect(page.locator('dialog[open]')).toHaveCount(1);
+  await picker.getByRole('button').filter({ hasText: /^Replacement target ·/ }).click(); await picker.getByRole('button', { name: 'Open selected project', exact: true }).click(); await expect(review(page)).toBeVisible(); await expect(page.locator('dialog[open]')).toHaveCount(1);
   await review(page).getByRole('button', { name: 'Save project, then replace', exact: true }).click(); await expect(page.locator('dialog[open]')).toHaveCount(1); await saveName(page, 'Source kept before Open');
   await expect(picker).not.toBeVisible(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState().id)).toBe(target.id);
   const result = await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; return { document: studio.getDocumentState(), playing: studio.transport.getState().playing, receipts: studio.getNoticeState().entries.map(value => value.receipt).filter(Boolean) }; });

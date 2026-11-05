@@ -183,7 +183,8 @@ test('production picker pages by keyboard, retains the live document on corrupt/
   expect(await page.evaluate(() => window.pickerProbe.gets)).toEqual([]);
   for (const index of [43, 42]) {
     await dialog.getByRole('button', { name: new RegExp('^Saved ' + index + ' ·') }).click();
-    await expect(dialog.locator('.studio-project-feedback')).not.toHaveText('Opening project…');
+    await dialog.getByRole('button', { name: 'Open selected project', exact: true }).click();
+    await expect(dialog.locator('.studio-project-feedback')).not.toHaveText('Preparing selected project. The current world is kept until commit.');
     await expect(dialog).toBeVisible();
     expect(await page.evaluate(() => {
       const probe = window.pickerProbe, studio = window.__PROCGEN_STUDIO__;
@@ -202,6 +203,7 @@ test('production picker pages by keyboard, retains the live document on corrupt/
   await dialog.getByRole('button', { name: 'Previous projects', exact: true }).focus(); await page.keyboard.press('Enter');
   await expect(dialog.locator('.studio-project-items button')).toHaveCount(40);
   await dialog.getByRole('button', { name: /^Repaired selected project ·/ }).focus(); await page.keyboard.press('Enter');
+  await dialog.getByRole('button', { name: 'Open selected project', exact: true }).focus(); await page.keyboard.press('Enter');
   await expect(dialog).not.toBeVisible();
   expect(await page.evaluate(() => ({ id: window.__PROCGEN_STUDIO__.getDocumentState().id, gets: window.pickerProbe.gets }))).toEqual({ id: 'doc:000042', gets: ['doc:000042'] });
   await page.evaluate(async () => { window.pickerProbe.gets.length = 0; await window.__PROCGEN_STUDIO__.handlers.load(); });

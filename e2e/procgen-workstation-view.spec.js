@@ -121,7 +121,7 @@ test('Escape cancels the picker once and late loads cannot close a newer picker 
     f.view.showProjectPage({ items: [{ id: 'target', name: 'Target', savedAt: '2026-10-22' }], nextCursor: null },
       () => new Promise(resolve => { f.finishLoad = resolve; }));
   });
-  await page.getByRole('button', { name: /Target ·/ }).click(); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Target ·/ }).click(); await page.getByRole('button', { name: 'Open selected project', exact: true }).click(); await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Saved projects' })).not.toBeVisible();
   expect(await page.evaluate(() => window.workstationViewTest.cancelCount)).toBe(1);
   await page.evaluate(() => {

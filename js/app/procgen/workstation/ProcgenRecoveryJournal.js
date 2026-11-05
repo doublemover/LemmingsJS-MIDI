@@ -1,4 +1,5 @@
 import { requireSynchronousResourceAcknowledgement } from '../../resources/ResourceRetirement.js';
+import { normalizePopulationPolicy } from '../ProcgenPopulationPolicy.js';
 import { validatePhysicalFeedbackState } from './physical/PhysicalFeedback.js';
 const owners = new WeakMap(), snapshots = new WeakSet();
 const MAX_RECORD_BYTES = 1048576, PAGE_RECORDS = 128;
@@ -32,6 +33,7 @@ export function createProcgenRecoveryJournal(world, checkpoint, { resourceBudget
       return append({ kind: 'command', command: Object.freeze({ ...command, target: Object.freeze({ ...command.target }), parameters: Object.freeze({ ...command.parameters }) }) });
     },
     feedback(state) { if (world._stepping || world._disposed) { fail('Feedback recovery needs a committed boundary.'); return false; } return append({ kind: 'feedback', state: validatePhysicalFeedbackState(state) }); },
+    populationPolicy(settings) { if (world._stepping || world._disposed) { fail('Population recovery needs a committed boundary.'); return false; } return append({ kind: 'population-policy', settings: Object.freeze({ ...settings }) }); },
     authoring(state) { if (world._stepping || world._disposed) { fail('Reentrant authoring requires a new recovery checkpoint.'); return false; } return append({ kind: 'authoring', state }); },
     cancel(commandId, reason) { if (world._stepping || world._disposed) return false; return append({ kind: 'cancel', commandId, reason }); },
     snapshot() {
@@ -57,6 +59,7 @@ export const recordProcgenRecoveryStep = (world, eventTimeMs, speedFactor) => {
   const owner = owners.get(world); if (!owner) return;
   try { owner.step(eventTimeMs, speedFactor); } catch (error) { owner.fail(error.message); }
 };
+export const recordProcgenRecoveryPopulationPolicy = (world, settings) => owners.get(world)?.populationPolicy(settings);
 export const recordProcgenRecoveryAuthoring = (world, state) => owners.get(world)?.authoring(state);
 export const recordProcgenRecoveryCommand = (world, command) => owners.get(world)?.command(command);
 export const recordProcgenRecoveryCancellation = (world, commandId, reason) => owners.get(world)?.cancel(commandId, reason);
@@ -69,7 +72,8 @@ export function validateProcgenRecoveryJournal(value) {
   for (const page of value.pages) {
     if (!Array.isArray(page) || !page.length || page.length > PAGE_RECORDS) throw new Error('Invalid recovery page.');
     for (const record of page) {
-      if (!plain(record) || record.sequence !== ++sequence || !['step', 'command', 'cancel', 'authoring', 'feedback'].includes(record.kind) || JSON.stringify(record).length * 2 > MAX_RECORD_BYTES) throw new Error('Invalid recovery record.');
+      if (!plain(record) || record.sequence !== ++sequence || !['step', 'command', 'cancel', 'authoring', 'feedback', 'population-policy'].includes(record.kind) || JSON.stringify(record).length * 2 > MAX_RECORD_BYTES) throw new Error('Invalid recovery record.');
+      if (record.kind === 'population-policy' && (!plain(record.settings) || Object.keys(record.settings).length !== 4 || Object.entries(normalizePopulationPolicy(record.settings)).some(([key, value]) => record.settings[key] !== value))) throw new Error('Invalid recovery population policy.');
       if (record.kind === 'step' && (record.eventTimeMs != null && !Number.isFinite(record.eventTimeMs) || !Number.isFinite(record.speedFactor) || record.speedFactor <= 0 || !plain(record.boundary))) throw new Error('Invalid recovery clock.');
     }
   }
@@ -87,6 +91,7 @@ export async function replayProcgenRecoveryJournal(world, value, { signal, now =
         world.timer.speedFactor = record.speedFactor; world.step(record.eventTimeMs);
         if (!same(record.boundary)) throw new Error(`Recovery diverged at sequence ${record.sequence}.`);
       } else if (record.kind === 'feedback') { const state = validatePhysicalFeedbackState(record.state); if (state.lastTick !== world.tickIndex || state.generation !== world.generation) throw new Error('Recovery feedback boundary differs.'); world.physicalFeedback = state;
+      } else if (record.kind === 'population-policy') { world.setPopulationPolicy(record.settings);
       } else if (record.kind === 'authoring') { world.configurePhysicalAuthoring(record.state.graph, record.state.instances);
       } else if (record.kind === 'command') {
         if (world.enqueueIntervention(record.command).status !== 'queued') throw new Error('Recovery command was not admitted.');
@@ -107,6 +112,7 @@ export async function validateProcgenRecoveryJournalCooperative(value, { signal,
     validateProcgenRecoveryJournal({ ...value, pages: [normalized], sequence: normalized.length });
     for (const record of page) {
       if (record.command) { Object.freeze(record.command.target); Object.freeze(record.command.parameters); Object.freeze(record.command); }
+      if (record.settings) Object.freeze(record.settings);
       if (record.boundary) Object.freeze(record.boundary); Object.freeze(record);
     }
     count += page.length; Object.freeze(page); await yieldTask();

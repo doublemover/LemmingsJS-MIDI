@@ -4,6 +4,7 @@ import { planRecordedMidiExport } from './RecordedMidiExportPlan.js';
 import { planOriginalUmpClip } from './OriginalUmpRecordingSnapshot.js';
 import { physicalMidiEpochChoices } from './PhysicalTakeMidiEpochs.js';
 import { loadDeferredWebMidi } from '../DeferredWebMidi.js';
+import { createProcgenProjectSummary } from './ProcgenProjectSummary.js';
 import { createProcgenReplacementReview } from './ProcgenReplacementPolicy.js';
 import { createProcgenOperationView, createProcgenOperationReceipt } from './ProcgenOperationView.js';
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
@@ -139,6 +140,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
   const sessionIdentities = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
+  let recoveredDocument = null;
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let recordingOrigin = null;
   let lastCausalTransport = null, causalClockBlocked = false;
@@ -214,6 +216,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     ]); return scoreViewRetirement;
   };
   const currentStorageError = () => lastStorageError?.generation === documentGeneration ? lastStorageError.error : null;
+  const executionSummary = Object.freeze({ buildId: operationalExecution.buildId ?? null, assetDigest: operationalExecution.assetDigest ?? null });
+  const getDocumentStatus = () => Object.freeze({ name: String(savedName || 'Untitled project').slice(0, 120), execution: executionSummary, id: documentId, revision: documentRevision, savedRevision, editRevision, dirty: editRevision !== savedRevision, saving: pendingSaveGenerations.has(documentGeneration), recovered: recoveredDocument?.documentGeneration === documentGeneration ? recoveredDocument.summary : null });
   const storageStatus = error => {
     if (disposed) return;
     if (error) lastStorageError = { generation: documentGeneration, error: Object.freeze({ message: String(error.message || error).slice(0, 240) }) };
@@ -1245,7 +1249,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     recoveryPending = true; lastRecovery = now(); recoveryState = 'saving'; recoveryError = null; storageStatus();
     const controller = new AbortController(); recoveryAbort = controller;
     const sourceDocumentGeneration = documentGeneration;
-    let capturedRevision = editRevision, capturedTick = runtime().world.tickIndex ?? null;
+    let capturedRevision = editRevision, capturedTick = runtime().world.tickIndex ?? null, capturedDocumentId = documentId, capturedStoredRevision = documentRevision;
     try {
       const world = runtime().world, journal = getProcgenRecoveryJournal(world);
       if (journal && !journal.stats().complete) {
@@ -1258,11 +1262,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         const snapshotStarted = now(); let session;
         try { session = snapshotSession(savedName + ' (recovery)', { recovery: true }); }
         finally { const elapsed = Math.max(0, now() - snapshotStarted); recoverySnapshotStats.calls++; recoverySnapshotStats.lastMs = elapsed; recoverySnapshotStats.totalMs += elapsed; recoverySnapshotStats.maximumMs = Math.max(recoverySnapshotStats.maximumMs, elapsed); }
-        capturedRevision = editRevision; capturedTick = runtime().world.tickIndex ?? null; return session;
+        capturedRevision = editRevision; capturedTick = runtime().world.tickIndex ?? null; capturedDocumentId = documentId; capturedStoredRevision = documentRevision; return session;
       };
       const source = storage.supportsRecoveryFactory ? captureRecovery : captureRecovery();
       const receipt = storage.saveRecovery ? await storage.saveRecovery(source, { signal: controller.signal, documentRevision: capturedRevision, tick: capturedTick,
-        laneCount: runtime().world.laneCount, incremental: !!getProcgenRecoveryJournal(runtime().world), snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick }) }) : await storage.save('__recovery__', source);
+        laneCount: runtime().world.laneCount, incremental: !!getProcgenRecoveryJournal(runtime().world), snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick, sourceDocumentId: capturedDocumentId, sourceStoredRevision: capturedStoredRevision }) }) : await storage.save('__recovery__', source);
       if (receipt?.durable) lastRecoveryCommit = Object.freeze({ documentGeneration: sourceDocumentGeneration, documentRevision: capturedRevision, tick: capturedTick, generation: receipt.generation, canceledAfterCommit: receipt.canceledAfterCommit || controller.signal.aborted, retirement: receipt.retirement || null });
       if (disposed) return false;
       if (documentGeneration !== sourceDocumentGeneration || controller.signal.aborted && !receipt?.durable) { recoveryState = 'pending'; storageStatus(); return false; }
@@ -1789,7 +1793,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     cancelOperation(id) {
       const lease = currentOperation;
       if (!lease || lease.id !== id || lease.signal.aborted || lease.phase === 'committing') return false;
-      lease.controller.abort(); if (lease.kind === 'select-session') finishOperation(lease);
+      lease.controller.abort(); if (lease.kind === 'select-session') { view?.retireProjectPicker?.(); finishOperation(lease); }
       view?.refreshOperational?.(); return true;
     },
     recoverOperational: async (action, identity) => {
@@ -2204,7 +2208,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (savePresentationSerial === Number.MAX_SAFE_INTEGER) { pendingSaveGenerations.delete(documentGeneration); throw new Error('Save operation identity capacity is exhausted.'); }
       const saveOperation = { id: 'save:' + documentGeneration + ':' + (++savePresentationSerial), kind: 'save', source: operationBoundary(), documentGeneration, phase: 'naming', outcome: 'canceled', captured: null, accepted: null, errorCode: null }; saveOperations.set(documentGeneration, saveOperation);
       const wasPlaying = transport.getState().playing; beforeRestart();
-      const saveDocumentGeneration = documentGeneration, saveOperationSerial = operationSerial;
+      const saveDocumentGeneration = documentGeneration, saveOperationSerial = operationSerial, saveOperationLease = currentOperation;
       let resumeStopGeneration = transportStopGeneration;
       let preferenceHold = null;
       try {
@@ -2227,7 +2231,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (disposed) return false;
         if (documentGeneration !== saveDocumentGeneration) return true;
         if (receipt) { documentId = receipt.id; documentRevision = receipt.revision; }
-        savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; lastStorageError = null; storageStatus();
+        recoveredDocument = null; savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; lastStorageError = null; storageStatus();
         if (operationSerial === saveOperationSerial) status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
       } catch (error) {
         saveOperation.errorCode = String(error.code || error.name || 'save-error').slice(0, 96);
@@ -2239,11 +2243,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         publishOperationReceipt(saveOperation, saveOperation.outcome, saveOperation.accepted, saveOperation.errorCode, saveOperation.captured);
         preferenceHold?.release();
         pendingSaveGenerations.delete(saveDocumentGeneration); saveOperations.delete(saveDocumentGeneration); if (!disposed) view?.refreshOperational?.();
-        if (!disposed && wasPlaying && documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial &&
+        if (!disposed && wasPlaying && documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial && !saveOperationLease?.signal.aborted &&
             transportStopGeneration === resumeStopGeneration && !transport.getState().playing) play();
       }
     }),
     saveAs: safe(() => handlers.save({ asCopy: true })),
+    saveRecoveredCopy: safe(() => recoveredDocument?.documentGeneration === documentGeneration ? handlers.save({ asCopy: true }) : false),
     rename: safe(() => handlers.save({ rename: true })),
     cancelProjectPicker() {
       if (currentOperation?.kind === 'select-session' && currentOperation.phase !== 'committing') { const lease = currentOperation; lease.controller.abort(); finishOperation(lease, 'canceled'); view?.refreshOperational?.(); }
@@ -2257,12 +2262,26 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           const page = storage.listDocumentPage ? await storage.listDocumentPage({ signal: lease.signal }) : null;
           if (!ownsOperation(lease)) return null;
           const entries = page ? null : storage.listDocuments ? await storage.listDocuments() : await storage.list();
-          return { page, entries };
+          let recovery = { state: 'unsupported', message: 'Recovery metadata is unavailable in this host.' };
+          if (storage.getRecoverySummary) try { recovery = await storage.getRecoverySummary({ signal: lease.signal }); } catch (error) { if (!ownsOperation(lease)) throw error; recovery = { state: 'unavailable', message: String(error.message || error).slice(0, 240) }; }
+          return { page, entries, recovery };
         });
         if (!listing.current) return false;
-        const { page, entries } = listing.value; lease.reportPhase('selecting');
-        const loadSelected = async id => {
+        const { page, entries, recovery } = listing.value; lease.reportPhase('selecting');
+        const sourceForSelection = (id, selection = {}) => {
+          if (id === 'recovery:checkpoint') { if (!storage.loadRecoveryOwned) throw new Error('Verified recovery loading is unavailable in this host.'); return storage.loadRecoveryOwned({ signal: lease.signal, expectedGeneration: selection.recoveryGeneration, expectedChecksum: selection.checksum }); }
+          if (id === 'recovery:legacy') { if (selection.allowLegacy !== true || !storage.loadLegacyRecoveryOwned) throw new Error('Explicit consent is required to open unverified legacy recovery.'); return storage.loadLegacyRecoveryOwned({ signal: lease.signal }); }
+          return storage.loadDocumentOwned ? storage.loadDocumentOwned(id, { signal: lease.signal, expectedRevision: selection.revision ?? null }) : storage.loadDocument ? storage.loadDocument(id) : Promise.resolve(storage.load(id)).then(session => ({ session, id: null, revision: 0 }));
+        };
+        const verifyRecovery = async () => {
+          if (!ownsOperation(lease)) return null; lease.reportPhase('validating'); let record;
+          try { const source = await readForOperation(lease, () => sourceForSelection('recovery:checkpoint')); record = source.value; if (!source.current) return null; if (record?.verification !== 'checksum-verified-recovery') throw new Error('This host did not verify the stored recovery bytes. The current project was kept.'); return record.summary || createProcgenProjectSummary(record.session, { id: 'recovery:checkpoint', kind: 'recovery-checkpoint', recoveryGeneration: record.generation, checksum: record.checksum, verification: 'checksum-verified' }); }
+          finally { try { record?.release?.(); } finally { if (ownsOperation(lease)) lease.reportPhase('selecting'); } }
+        };
+        const pickerOptions = { recovery, verifyRecovery, readNamedSummary: async id => { if (!storage.getDocumentSummary) return null; const source = await readForOperation(lease, () => storage.getDocumentSummary(id, { signal: lease.signal })); return source.current ? source.value : null; }, refreshRecovery: async () => { if (!storage.getRecoverySummary) return null; const source = await readForOperation(lease, () => storage.getRecoverySummary({ signal: lease.signal })); return source.current ? source.value : null; } };
+        const loadSelected = async (id, selection = {}) => {
           if (!ownsOperation(lease)) return false;
+          if (typeof id !== 'string' || !id || id.length > 512) throw new Error('The selected project identity is unavailable. Refresh its metadata before opening.');
           if (review && !await approveReplacement(lease)) return false;
           lease.reportPhase('reading');
           const preferenceHold = preferenceWriter?.suspend(); let record, loaded = false;
@@ -2270,14 +2289,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             const source = await readForOperation(lease, async () => {
               if (preferenceHold) await preferenceHold.completion;
               if (!ownsOperation(lease)) return null;
-              return storage.loadDocumentOwned ? storage.loadDocumentOwned(id, { signal: lease.signal }) : storage.loadDocument ? storage.loadDocument(id) : { session: await storage.load(id), id: null, revision: 0 };
+              return sourceForSelection(id, selection);
             });
             record = source.value;
             if (!source.current) return false;
             if (review && lease.reviewedIdentity !== getReplacementReview().identity && !await approveReplacement(lease)) return false;
+            if (selection.revision != null && !id.startsWith('recovery:') && record.revision !== selection.revision) throw new Error('This project changed after selection. Refresh its metadata before opening.');
             lease.reportPhase('validating');
             loaded = await loadSession(record.session, lease, { signal: record.signal });
-            if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); finishOperation(lease, 'committed'); }
+            if (loaded) {
+              if (id.startsWith('recovery:')) { recoveredDocument = { documentGeneration, summary: record.summary || createProcgenProjectSummary(record.session, { id, kind: id === 'recovery:legacy' ? 'legacy-recovery' : 'recovery-checkpoint', recoveryGeneration: record.generation, checksum: record.checksum }) }; status('Recovery checkpoint loaded paused. Save a recovered copy to keep it as a new named project.'); }
+              else { recoveredDocument = null; documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; }
+              storageStatus(); finishOperation(lease, 'committed');
+            }
             return loaded;
           } catch (error) { if (loaded) finishOperation(lease, 'committed-with-error', error); throw error; }
           finally { try { record?.release?.(); } finally { preferenceHold?.release(); if (ownsOperation(lease)) lease.reportPhase('selecting'); } }
@@ -2285,8 +2309,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
           const next = await readForOperation(lease, () => storage.listDocumentPage({ cursor, query, signal: lease.signal }));
           return next.current ? next.value : null;
-        });
-        else view.showProjects(entries || page.items, loadSelected);
+        }, pickerOptions);
+        else view.showProjects(entries || page.items, loadSelected, pickerOptions);
         return ownsOperation(lease);
       } catch (error) { if (!ownsOperation(lease)) return false; finishOperation(lease, 'failed', error); throw error; }
       finally { if (!ownsOperation(lease)) finishOperation(lease); }
@@ -2398,9 +2422,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const canCommand = (name, args = []) => {
     if (disposed || typeof handlers[name] !== 'function' || stageSession && !stageSession.permitsCommand(name, args)) return false;
-    if ((worldBusy || currentOperation?.phase === 'committing') && ['new', 'load', 'import', 'save', 'saveAs', 'export', 'rebuild'].includes(name)) return false;
+    if ((worldBusy || currentOperation?.phase === 'committing') && ['new', 'load', 'import', 'save', 'saveAs', 'saveRecoveredCopy', 'export', 'rebuild'].includes(name)) return false;
     if (['new', 'load', 'import'].includes(name) && (pendingSaveGenerations.has(documentGeneration) || currentOperation?.kind === 'export' || midiExportPreparation || archiveExportPreparation)) return false;
-    if (pendingSaveGenerations.has(documentGeneration) && ['save', 'saveAs'].includes(name)) return false;
+    if (name === 'saveRecoveredCopy' && recoveredDocument?.documentGeneration !== documentGeneration) return false;
+    if (pendingSaveGenerations.has(documentGeneration) && ['save', 'saveAs', 'saveRecoveredCopy'].includes(name)) return false;
     if (name === 'copy' || name === 'paste') return !!selected().patterns?.[state.slot] && (name === 'copy' || !!clipboard);
     if (name === 'undo' || name === 'redo') {
       const stack = name === 'undo' ? undo : redo;
@@ -2413,7 +2438,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (stageSession && !stageSession.permitsCommand(name, args)) return stageSession.reject();
     try { const result = action(...args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
-  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration,
+  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration, getDocumentStatus,
     getArmedLaneIds: () => [inputLease?.laneId, state.recording && procgenLane(project.procgen.lanes, state.laneId)?.mode === 'pattern' ? state.laneId : null].filter(Boolean), dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
   const expressionOutputKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? state.selectedOutputId ?? null, state.outputGeneration ?? null]);
@@ -2542,7 +2567,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, retirement: recoveryRetirement, lastCommit: lastRecoveryCommit, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
-    getOperationalSnapshot, getReplacementReview, reportStartupFailure,
+    getOperationalSnapshot, getReplacementReview, getDocumentStatus, reportStartupFailure,
     getPlaybackState: () => { const output = legacy.local.getState(); return { ...output,
       ...(output.selectedBackend === 'midi' ? ports.getOutputActivity() : { activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0 }),
       pressure: output.selectedBackend === 'midi' ? ports.getState().pressure : router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }; },

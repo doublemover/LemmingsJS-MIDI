@@ -1,3 +1,4 @@
+import { createProcgenProjectSummary } from './ProcgenProjectSummary.js';
 import { MAX_RECOVERY_REFERENCES, recoveryPartCount, recoveryReferenceKeys, storedRecoveryChunks, readRecoveryChunk } from './ProcgenRecoveryChunks.js';
 import { yieldBackgroundTask } from '../../resources/BackgroundTaskYield.js';
 import { encodeRecoveryProject, decodeRecoveryProject } from './ProcgenRecoveryProjectPages.js';
@@ -24,7 +25,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
     priority: 'recovery', budgetAdapter: resourceBudget, signal, maxBytes, prepareInput: () => input, isCurrent: () => !retired && isCurrent() }); stats.resultCopyMs += result.receipt?.outputTransport?.elapsedMs || 0; stats.resultCopyMaximumSliceMs = Math.max(stats.resultCopyMaximumSliceMs, result.receipt?.outputTransport?.maximumSliceMs || 0); stats.resultCopyPackets += result.receipt?.outputTransport?.packets || 0; stats.inputCopyMs += result.receipt?.inputTransport?.elapsedMs || 0; stats.inputCopyMaximumSliceMs = Math.max(stats.inputCopyMaximumSliceMs, result.receipt?.inputTransport?.maximumSliceMs || 0); stats.inputCopyPackets += result.receipt?.inputTransport?.packets || 0; stats.workerQueueWaitMs += result.receipt?.queueWaitMs || 0; stats.workerJobs++; stats[kind === 'decode-recovery-page' ? 'decodeMs' : 'encodeMs'] += performance.now() - started; return result; };
   const check = signal => { signal?.throwIfAborted(); if (retired || !isCurrent()) throw new Error('Recovery page owner retired.'); };
   return {
-    async save(session, { signal, documentRevision, tick } = {}) {
+    async save(session, { signal, documentRevision, tick, sourceDocumentId = null, sourceStoredRevision = null } = {}) {
       check(signal); validateSession(session); if (writing) throw new Error('An incremental recovery write is already pending.');
       if (!Number.isSafeInteger(documentRevision) || documentRevision < 0 || !Number.isSafeInteger(tick) || tick < 0) throw new Error('Invalid incremental recovery revision.');
       const retained = [], writes = [], published = [], removedKeys = [], referenced = new Map(), transactionToken = {}, nonce = crypto.randomUUID(), lifetime = linked(signal); signal = lifetime.signal; writing = true; let durableReceipt = null, operationError = null, transactionReserved = false, pageSliceStarted = performance.now();
@@ -74,8 +75,8 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
                     for (const key of removedKeys) yield () => store.delete(key);
                     for (const chunk of writes) for (const record of storedRecoveryChunks(chunk)) yield () => { stats.maximumStoredPayloadBytes = Math.max(stats.maximumStoredPayloadBytes, record.bytes?.byteLength || 0); return store.put(record); };
                     yield () => transaction.objectStore(GENERATION_PIN_STORE).put(recoveryGenerationPin(session, slot, generation));
-                    yield () => store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...result, paged: root, references, storedBytes, name: session.name, savedAt: session.savedAt });
-                    yield () => store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum: root.sha256 });
+                    yield () => store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...result, sourceDocumentId, sourceStoredRevision, paged: root, references, storedBytes, name: session.name, savedAt: session.savedAt });
+                    yield () => store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum: root.sha256, summary: createProcgenProjectSummary(session, { id: 'recovery:checkpoint', kind: 'recovery-checkpoint', recoveryGeneration: generation, documentRevision, checksum: root.sha256, sourceDocumentId, sourceStoredRevision }) });
                   }();
                   const next = () => {
                     const started = performance.now();
@@ -146,7 +147,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
           if (decodedRawBytes > 128 * 1024) throw new Error('Large recovery reads require an explicit owned source lease.');
           const value = structuredClone(session); release(); session = null; return value; }
         return Object.freeze({ schema: 'procgen-owned-source/v1', kind: 'recovery', generation: record.generation, checksum: record.checksum,
-          verification: 'checksum-verified-recovery', signal,
+          verification: 'checksum-verified-recovery', summary: createProcgenProjectSummary(session, { id: 'recovery:checkpoint', kind: 'recovery-checkpoint', recoveryGeneration: record.generation, documentRevision: record.documentRevision, checksum: record.checksum, sourceDocumentId: record.sourceDocumentId, sourceStoredRevision: record.sourceStoredRevision, verification: 'checksum-verified' }), signal,
           get session() { check(signal); if (!session) throw new Error('Recovery source released.'); return session; }, release() { session = null; release(); } });
       } catch (error) { try { release(); } catch (retirementError) { error.retirementError = retirementError; } if (!signal?.aborted && !['AbortError', 'BackgroundJobError'].includes(error.name)) error.name = 'RecoveryCandidateError'; throw error; }
     },
