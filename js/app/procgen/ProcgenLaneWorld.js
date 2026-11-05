@@ -1020,7 +1020,8 @@ class ProcgenLaneWorld {
         const previousX = actor.x, previousY = actor.y, previousAction = actor.action, motionActionInstanceId = actor._physicalActionInstanceId;
         this._processingLane = actor.laneIndex; this._processingActorId = actor.id; this._physicalWorkBounds = null;
         const next = actor.process(this);
-        commitTerrainScore(this, { actorId: actor.id, actionInstanceId: actor._physicalActionInstanceId, operation: previousAction?.actionName === 'exploding' ? 'explode' : 'mutation' });
+        if (this.terrainScorePending.cells.length || this.terrainScorePending.overflow)
+          commitTerrainScore(this, { actorId: actor.id, actionInstanceId: actor._physicalActionInstanceId, operation: previousAction?.actionName === 'exploding' ? 'explode' : 'mutation' });
         observePhysicalFlightStep(actor, previousX, previousY);
         this._synchronizeLane(actor);
         this.soundEvents.laneIndex = actor.laneIndex;

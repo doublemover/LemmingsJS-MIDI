@@ -75,7 +75,11 @@ const midiOutputObserverMethods = {
 
   _observe(stage, fields) {
     if (!this._captureEnabled()) return null;
-    try { return this.capture?.record(stage, { ...this._captureScaleFields(), ...fields, captureScope: this._captureScope }) ?? null; } catch { return null; }
+    try {
+      const scale = this._captureScaleFields();
+      if (typeof this.capture.recordWithContext === 'function') return this.capture.recordWithContext(stage, fields, scale, this._captureScope) ?? null;
+      return this.capture.record(stage, { ...scale, ...fields, captureScope: this._captureScope }) ?? null;
+    } catch { return null; }
   },
 
   _sendOutput(output, channel, method, args = [], meta = {}) {
@@ -100,9 +104,9 @@ const midiOutputObserverMethods = {
     }
     const [a, b, c] = args;
     const options = method === 'sendControlChange' ? c : b;
-    const fields = { ...this._outputLeases.get(output), ...meta, outputId: output?.id ?? null, outputScope: output?.captureScope ?? output?.id ?? null, channel,
+    const fields = Object.assign(Object.create(null), this._outputLeases.get(output), meta, { outputId: output?.id ?? null, outputScope: output?.captureScope ?? output?.id ?? null, channel,
       backend: output?.supportsPerNoteInstrument ? 'local-synth-api' : 'midi-output-api',
-      scheduledMs: Number.isFinite(options?.time) ? options.time : Number.isFinite(meta?.scheduledMs) ? meta.scheduledMs : this._nowMs() };
+      scheduledMs: Number.isFinite(options?.time) ? options.time : Number.isFinite(meta?.scheduledMs) ? meta.scheduledMs : this._nowMs() });
     if (method === 'sendNoteOn' || method === 'sendNoteOff') Object.assign(fields, {
       type: method === 'sendNoteOn' ? 'noteOn' : 'noteOff', note: a,
       velocity: options?.rawAttack, releaseVelocity: options?.rawRelease });

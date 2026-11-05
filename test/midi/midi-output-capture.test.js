@@ -26,6 +26,32 @@ const audioContext = clock => ({
 });
 
 describe('bounded MIDI output capture', function() {
+  it('merges capture context without losing field priority or retaining mutable input', function() {
+    const defaults = { scaleRoot: 0, scaleDegrees: [0, 2, 4], scaleName: 'major' };
+    const fields = Object.assign(Object.fromEntries(Array.from({ length: 80 }, (_, index) => ['extra' + index, index])),
+      JSON.parse('{"__proto__":{"polluted":true},"seq":999,"stage":"forged","dispatchMs":999,"scaleRoot":2,"captureScope":"forged","note":60,"laneIndex":7}'));
+    const ordinary = createMidiOutputCapture({ nowMs: () => 10 }), contextual = createMidiOutputCapture({ nowMs: () => 10 });
+    ordinary.start(); contextual.start();
+    ordinary.record('request', { ...defaults, ...fields, captureScope: 'owned-scheduler' });
+    contextual.recordWithContext('request', fields, defaults, 'owned-scheduler');
+    defaults.scaleDegrees[0] = 11; fields.note = 99;
+    expect(contextual.snapshot()).to.deep.equal(ordinary.snapshot());
+    const [record] = contextual.snapshot().records;
+    expect(record).to.include({ seq: 1, stage: 'request', dispatchMs: 10, scaleRoot: 2, note: 60, laneIndex: 7, captureScope: 'owned-scheduler' });
+    expect(record.scaleDegrees).to.deep.equal([0, 2, 4]); expect(Object.hasOwn(record, '__proto__')).to.equal(false);
+    expect(Object.getPrototypeOf(record)).to.equal(Object.prototype);
+    contextual.stop(); expect(contextual.recordWithContext('request', fields, defaults, 'owned-scheduler')).to.equal(null);
+  });
+
+  it('preserves ordinary plain metadata for custom capture observers', function() {
+    const scheduler = new MidiScheduler(config), seen = [];
+    scheduler.setCapture({ record(stage, fields) { expect(Object.getPrototypeOf(fields)).to.equal(Object.prototype); seen.push({ stage, fields }); return seen.length; } });
+    const fields = { note: 64, scaleRoot: 2, captureScope: 'forged' };
+    expect(scheduler._observe('request', fields)).to.equal(1);
+    expect(seen[0].fields).to.include({ note: 64, scaleRoot: 2, captureScope: scheduler._captureScope });
+    expect(fields.captureScope).to.equal('forged'); scheduler.dispose();
+  });
+
   it('bounds memory, clones settings and snapshots, exports CSV/JSONL and stops by duration', function() {
     let now = 0;
     const capture = createMidiOutputCapture({ capacity: 64, maxDurationMs: 100, nowMs: () => now });

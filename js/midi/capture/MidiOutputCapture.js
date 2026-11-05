@@ -7,6 +7,9 @@ const RECORD_PRIORITY = ['type', 'accepted', 'reason', 'note', 'channel', 'token
   'audioTime', 'endAudioTime', 'tick', 'beat', 'beatClock', 'baseTickMs', 'tempoBpm', 'speed', 'frameMs', 'laneIndex', 'laneCount', 'lemmingId',
   'eventType', 'sfxId', 'triggerType', 'trackId', 'ensembleRole', 'percussion', 'scaleName', 'scaleRoot', 'scaleDegrees', 'origin', 'seed', 'generation',
   'generationStartTick', 'laneSeed', 'themeId', 'originId', 'levelId', 'projectId', 'projectUpdatedAt'];
+const RECORD_PRIORITY_KEYS = new Set(RECORD_PRIORITY);
+const recordScalar = value => typeof value === 'string' ? value.slice(0, 128)
+  : typeof value === 'number' ? finite(value) : typeof value === 'boolean' ? value : null;
 const bounded = (value, depth = 0, budget = { remaining: 256 }) => {
   if (budget.remaining-- <= 0) return null;
   if (value == null || typeof value === 'boolean') return value ?? null;
@@ -22,17 +25,16 @@ const bounded = (value, depth = 0, budget = { remaining: 256 }) => {
   }
   return result;
 };
-const boundedRecord = fields => {
-  const result = {};
+const boundedRecord = (fields, result) => {
   let remaining = 2048;
-  const keys = [...new Set([...RECORD_PRIORITY.filter(key => Object.hasOwn(fields || {}, key)), ...Object.keys(fields || {})])];
+  const keys = [];
+  for (const key of RECORD_PRIORITY) if (Object.hasOwn(fields || {}, key)) keys.push(key);
+  for (const key of Object.keys(fields || {})) if (!RECORD_PRIORITY_KEYS.has(key)) keys.push(key);
   for (const key of keys.slice(0, MAX_FIELDS - 4)) {
     if (['seq', 'stage', 'dispatchMs'].includes(key)) continue;
     if (['__proto__', 'constructor', 'prototype'].includes(key)) continue;
     const raw = fields[key];
-    const scalar = value => typeof value === 'string' ? value.slice(0, 128)
-      : typeof value === 'number' ? finite(value) : typeof value === 'boolean' ? value : null;
-    const value = Array.isArray(raw) ? raw.slice(0, 32).map(scalar) : scalar(raw);
+    const value = Array.isArray(raw) ? raw.slice(0, 32).map(recordScalar) : recordScalar(raw);
     const size = key.length + JSON.stringify(value).length + 4;
     if (size > remaining) continue;
     result[key.slice(0, 64)] = value; remaining -= size;
@@ -87,7 +89,7 @@ class MidiOutputCapture {
   record(stage, fields = {}) {
     if (!this.isActive()) return null;
     const now = this._nowMs();
-    const record = { seq: ++this._written, stage: String(stage).slice(0, 64), dispatchMs: now, ...boundedRecord(fields) };
+    const record = boundedRecord(fields, { seq: ++this._written, stage: String(stage).slice(0, 64), dispatchMs: now });
     if (stage === 'api-dispatch' && record.accepted !== false) {
       const gateKey = String(record.outputScope || record.outputId || record.backend || '') + '/' + String(record.captureScope || '') + '/' + record.channel + '/' + record.note;
       if (record.type === 'noteOn') {
@@ -110,6 +112,15 @@ class MidiOutputCapture {
     }
     this._ring[(record.seq - 1) % this.capacity] = record;
     return record.seq;
+  }
+
+  // Merge internal observation layers without materializing a wide spread object.
+  // The null prototype keeps an own __proto__ field inert until bounded filtering.
+  recordWithContext(stage, fields, defaults, captureScope) {
+    if (!this.isActive()) return null;
+    const merged = Object.assign(Object.create(null), defaults, fields);
+    merged.captureScope = captureScope;
+    return this.record(stage, merged);
   }
 
   getState() {

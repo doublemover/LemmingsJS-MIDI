@@ -6595,5 +6595,39 @@
       "unchangedCheckoutNewlines": 13
     },
     "remaining": "Generated acquisition/cache and recording/input matrices under1120, plus older CI MIDI capture and isolated actor timing failures. Latest independently inventoried complete-green checkpoint remains437."
+  },
+  "continuation446": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Reduce observation metadata allocations and skip empty actor terrain-score commits without changing provenance, physical results or deadlines.",
+    "evidence": {
+      "path": "docs/validation/capture-allocation-desktop-2026-11-05.json",
+      "bytes": 664114,
+      "sha256": "b92df681751ddd07f08e92fc6a274a491dc508809fbea89fdb3b8b040ee9f74c"
+    },
+    "validation": {
+      "nodeCases": 309,
+      "nativeDesktopCases": 6,
+      "captureParityCases": 512,
+      "actorStableDebugFieldsExact": true,
+      "captureWallMs": 898,
+      "actorChildWallMs": 14333,
+      "deadlinesUnchanged": true,
+      "scopeCoverage": {
+        "lines": 79.54,
+        "branches": 67.89,
+        "functions": 74.3
+      }
+    },
+    "source": {
+      "browserPaths": 1289,
+      "browserDigest": "c790a1e7cddbc07541341ecf99c1448320a39c82d4daaae8b78baf33e6a8a9ff",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1558,
+      "byteExact": 1545,
+      "unchangedCheckoutNewlines": 13
+    },
+    "remaining": "Await independent current CI; latest inventoried complete-green437 remains separate. Continue generated acquisition/cache and recording/input matrices under1120."
   }
 }
