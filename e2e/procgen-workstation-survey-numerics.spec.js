@@ -46,7 +46,7 @@ test('authored scene source evidence preserves prepared ownership through physic
   await dialog.getByRole('listbox', { name: 'Scene versions' }).getByRole('option').first().click({ timeout: 10000 });
   await dialog.getByRole('button', { name: 'Prepare fresh', exact: true }).click();
   const load = dialog.getByRole('button', { name: 'Load fresh · stopped replacement', exact: true }); await expect(load).toBeEnabled({ timeout: 90000 });
-  page.once('dialog', prompt => prompt.accept()); await load.click();
+  page.once('dialog', prompt => prompt.accept()); await load.click(); if (await page.getByRole('region', { name: 'Review project replacement' }).count()) await page.getByRole('region', { name: 'Review project replacement' }).getByRole('button', { name: /^(?:Discard changes and replace|Replace project)$/ }).click();
   await expect.poll(() => page.evaluate(() => !!window.__PROCGEN_LANES__.world.terrain.views), { timeout: 60000 }).toBe(true);
   await dialog.getByRole('button', { name: 'Close', exact: true }).click();
   const result = await page.evaluate(async () => {

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Review unfinished work before prepared scene and lesson replacement, preserve one modal through naming and quota retry, and retain exact accepted document boundaries.
+- Keep failed Open details after picker closure, retire obsolete pickers promptly, and require source-owned Prelisten Stop before replacement.
+
 - Preview named projects and recovery metadata before explicit Open; verify exact stored recovery ranges, compare their named source and save recovered work under a new identity.
 - Replay post-checkpoint population-policy changes in recovery, preserving actor release timing after paused steps and clock changes.
 

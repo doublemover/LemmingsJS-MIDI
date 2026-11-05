@@ -1,9 +1,9 @@
 import { inspectSceneStationRehearsal } from './SceneStationPolicy.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export function createPerformanceSceneBrowser({ document, window, registry, loader, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onCreateNursery = null, onStatus = () => {} } = {}) {
+export function createPerformanceSceneBrowser({ document, window, registry, loader, onApply = options => loader.apply(options), getDocumentIdentity = () => null, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onCreateNursery = null, onStatus = () => {} } = {}) {
   if (!document?.createElement || !registry?.page || !loader?.select || !loader?.state) throw new TypeError('The scene browser requires metadata pages and the existing candidate owner.');
-  const listeners = [], rowListeners = [], retirement = createProcgenRetirementScope(); let disposed = false, selection = null, selectedManifest = null, page = null, offset = 0, opener = null, busy = false;
+  const listeners = [], rowListeners = [], retirement = createProcgenRetirementScope(); let disposed = false, selection = null, selectedManifest = null, page = null, offset = 0, opener = null, busy = false, dialogOwner = null, restoreFocus = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
   const listen = (target, event, handler, rows = false) => { target.addEventListener(event, handler); (rows ? rowListeners : listeners).push(() => target.removeEventListener(event, handler)); };
   const dialog = node('dialog'), title = node('h2', 'Playable physical scores'), live = node('p'), qualification = node('p', 'Prepare builds a separate candidate; Load fresh replaces the world and sound and leaves transport paused. Rehearse renders six seconds of actual private-world traffic through the selected Prelisten route. CURRENT and NEXT stay unchanged. Rehearsal on live output is included in master capture; a separate-device cue is excluded. Render and listening qualification remain pending.');
@@ -15,7 +15,7 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   const lesson = select('Lesson level', [['', 'All lesson levels'], ...Array.from({ length: 6 }, (_, value) => [String(value), String(value)])]);
   const rows = node('div'), details = node('section'), paging = node('div'), actions = node('div'), status = node('output'); rows.setAttribute('role', 'listbox'); rows.setAttribute('aria-label', 'Scene versions'); details.setAttribute('aria-label', 'Selected physical score'); status.setAttribute('role', 'status');
   const say = text => { if (disposed) return; status.textContent = text; try { onStatus(text); } catch {} };
-  const run = action => async () => { if (disposed || busy) return; busy = true; refresh(); try { await action(); } catch (error) { say(error.message); } finally { busy = false; refresh(); } };
+  const run = action => async () => { if (disposed || busy) return; busy = true; refresh(); try { await action(); } catch (error) { say(error.message); } finally { busy = false; refresh(); const focus = restoreFocus; restoreFocus = null; focus?.(); } };
   const button = (parent, text, action) => { const value = node('button', text); value.type = 'button'; listen(value, 'click', action); parent.append(value); return value; };
   const chosen = row => selection?.id === row.id && selection?.version === row.version && selection?.hash === row.hash;
   const showDetails = () => {
@@ -59,15 +59,23 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
     search.value = 'Instrument Nursery'; mechanism.value = density.value = lesson.value = ''; offset = 0; choose(row); renderPage(); say('Three-route Nursery selected. Prepare verifies its exact source material; Load fresh remains a separate paused replacement.');
   })) : null;
   const prepare = button(actions, 'Prepare fresh', run(async () => { if (!selectedManifest) return; loader.select(selectedManifest); const result = await loader.prepare(); say(result.status === 'ready' ? 'Candidate ready. Inspect the changed scope, then use Load fresh.' : 'Required source or capabilities are unavailable. The live world remains active.'); }));
-  const load = button(actions, 'Load fresh · stopped replacement', run(async () => { const result = await loader.apply(); say(result.status === 'committed' ? 'Scene loaded paused. Enable local audio explicitly, then perform a real physical intervention.' : 'Scene replacement canceled.'); }));
+  const load = button(actions, 'Load fresh · stopped replacement', run(async () => {
+    const owner = dialogOwner, scene = selectedManifest, sourceDocument = getDocumentIdentity(); let parked = false, acceptedDocument = sourceDocument;
+    const current = () => !disposed && dialogOwner === owner && selectedManifest === scene && getDocumentIdentity() === acceptedDocument;
+    try {
+      const result = await onApply({ hostDialog: dialog, isCurrent: current, parkHost() { if (current() && dialog.open) { parked = true; dialog.close(); } } });
+      if (result.status === 'committed' && result.documentIdentity != null) acceptedDocument = result.documentIdentity;
+      if (current()) say(result.status === 'committed' ? 'Scene loaded paused. Enable local audio explicitly, then perform a real physical intervention.' : 'Scene replacement canceled.');
+    } finally { if (current()) { if (parked && !dialog.open) dialog.showModal(); if (dialog.open) restoreFocus = () => { if (current() && dialog.open) (load.disabled ? closeButton : load).focus(); }; } }
+  }));
   const rehearse = button(actions, 'Rehearse locally', run(() => loader.rehearse())); rehearse.disabled = true; rehearse.title = 'Enable browser audio and select a Prelisten route first. This creates a new private physical phrase, not a recording of CURRENT.';
   const stationRehearsal = button(actions, 'Rehearse with private work stations', run(() => loader.rehearse({ authoredStations: true }))); stationRehearsal.hidden = true; stationRehearsal.title = 'Explicitly arms one-shot skill stations only in the private rehearsal copy. CURRENT and NEXT feedback state is unchanged.';
   const learn = typeof onLesson === 'function' ? button(actions, 'Learn this physical cause', run(async () => { const scene = selectedManifest; if (!scene || !canTeachScene(scene)) return; await loader.cancel(); if (selectedManifest !== scene) return; if (dialog.open) dialog.close(); await onLesson(scene); })) : null;
   const stopRehearsal = button(actions, 'Stop rehearsal', () => { void loader.stopPreview().catch(error => say(error.message)); });
   button(actions, 'Cancel preparation', () => { void loader.cancel().catch(error => say(error.message)); });
   button(actions, 'Open saved takes', run(async () => { await loader.cancel(); if (dialog.open) dialog.close(); await onSavedTakes(); }));
-  const close = async () => { if (dialog.open) dialog.close(); if (keepPreparedOnClose() && loader.state().canApply) await loader.stopPreview(); else await loader.cancel(); opener?.focus?.(); };
-  button(actions, 'Close', () => { void close().catch(error => say(error.message)); }); listen(dialog, 'cancel', event => { event.preventDefault(); void close().catch(error => say(error.message)); });
+  const close = async () => { dialogOwner = null; if (dialog.open) dialog.close(); if (keepPreparedOnClose() && loader.state().canApply) await loader.stopPreview(); else await loader.cancel(); opener?.focus?.(); };
+  const closeButton = button(actions, 'Close', () => { void close().catch(error => say(error.message)); }); listen(dialog, 'cancel', event => { event.preventDefault(); void close().catch(error => say(error.message)); });
   for (const input of [search, mechanism, density, lesson]) listen(input, input === search ? 'input' : 'change', () => { offset = 0; renderPage(); });
   listen(rows, 'keydown', event => { if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !page?.rows.length) return; event.preventDefault(); const at = page.rows.findIndex(chosen), index = event.key === 'Home' ? 0 : event.key === 'End' ? page.rows.length - 1 : Math.max(0, Math.min(page.rows.length - 1, at + (event.key === 'ArrowDown' ? 1 : -1))); choose(page.rows[index]); rows.children[index]?.focus(); });
   function refresh() {
@@ -86,6 +94,6 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
     if (proof?.missingOptional.length) status.textContent += ' Optional unavailable: ' + proof.missingOptional.map(entry => entry.dependency.description).join(', ');
   }
   dialog.append(title, live, qualification, filters, rows, paging, details, actions, status); (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
-  return Object.freeze({ open() { if (disposed) return; opener = document.activeElement; renderPage(); if (!dialog.open) dialog.showModal(); search.focus(); }, refresh, suspend: close,
+  return Object.freeze({ open() { if (disposed) return; dialogOwner = {}; opener = document.activeElement; renderPage(); if (!dialog.open) dialog.showModal(); search.focus(); }, refresh, suspend: close,
     dispose() { return retirement.retire([{ name: 'scene-browser', run: async () => { disposed = true; try { await loader.cancel(); } finally { for (const remove of [...rowListeners, ...listeners]) remove(); dialog.remove(); } } }]); } });
 }

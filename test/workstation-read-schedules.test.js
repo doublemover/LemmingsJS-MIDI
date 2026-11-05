@@ -27,6 +27,15 @@ describe('project read publication and terminal ownership', function() {
       expect(await reading).to.equal(null); expect(f.studio.getOperationState()).to.equal(null);
     } finally { gate.resolve({ items: [] }); await f.studio.dispose().completion; }
   });
+  it('retires the visible picker immediately when a newer listing is admitted', async () => {
+    const next = deferredRead(), old = deferredRead(), entered = deferredRead(); let lists = 0, select, retired = 0, released = 0;
+    const f = setup({ storageOverride: { listDocumentPage() { return ++lists === 1 ? Promise.resolve({ items: [], nextCursor: null }) : next.promise; }, loadDocumentOwned: () => { entered.resolve(); return old.promise; }, close() {} } }); f.studio.bindRuntime(); f.view.showProjectPage = (_page, load) => { select = load; }; f.view.retireProjectPicker = () => { retired++; };
+    try {
+      await f.studio.handlers.load(); const before = retired, opening = select('doc:old'); await entered.promise; const listing = f.studio.handlers.load(); expect(retired).to.equal(before + 1);
+      old.resolve({ get session() { throw new Error('Retired selection payload inspected'); }, release() { released++; } }); expect(await opening).to.equal(false); expect(released).to.equal(1);
+      next.resolve({ items: [], nextCursor: null }); expect(await listing).to.equal(true); expect(f.studio.getOperationState().kind).to.equal('select-session');
+    } finally { next.resolve({ items: [] }); old.resolve(null); await f.studio.dispose().completion; }
+  });
   it('keeps a current pagination failure retryable under the same picker owner', async () => {
     let fail = true;
     const f = setup({ storageOverride: { async listDocumentPage(options) { if (options.cursor && fail) throw new Error('Current continuation failed'); return { items: [], nextCursor: 'next' }; }, close() {} } });

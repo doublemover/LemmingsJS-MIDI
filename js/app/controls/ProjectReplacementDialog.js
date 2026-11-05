@@ -30,8 +30,10 @@ export function createProjectReplacementDialog({ document, restoreDraftFocus = (
         else if (result?.action === 'save') parkHost();
         resolve(result);
         if (restoreFocus) queueMicrotask(() => {
-          if (disposed || !isSourceCurrent() || document.querySelector('dialog[open]')) return;
-          if (restoreDraftFocus(documentIdentity)) return;
+          if (disposed || !isSourceCurrent()) return;
+          const openDialog = document.querySelector('dialog[open]');
+          if (openDialog && openDialog !== hostDialog) return;
+          if (!openDialog && restoreDraftFocus(documentIdentity)) return;
           const menu = previousFocus?.closest?.('.studio-command-menu:not([open])'), target = menu?.querySelector(':scope > summary') || previousFocus;
           if (target?.isConnected) target.focus?.({ preventScroll: true });
         });

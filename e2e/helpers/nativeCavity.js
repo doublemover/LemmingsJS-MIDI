@@ -21,7 +21,7 @@ async function openNativeCavity(page, recipe, options) {
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
   await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Scenes', exact: true }).click(); const catalog = page.getByRole('dialog', { name: 'Playable physical scores', exact: true }); await expect(catalog).toBeVisible();
   await catalog.getByRole('searchbox', { name: 'Search physical scores' }).fill('Digging Ocarina'); await catalog.getByRole('option', { name: new RegExp('Digging Ocarina · ' + recipe) }).click();
-  await catalog.getByRole('button', { name: 'Prepare fresh', exact: true }).click(); const load = catalog.getByRole('button', { name: 'Load fresh · stopped replacement', exact: true }); await expect(load).toBeEnabled({ timeout: 90000 }); await load.click();
+  await catalog.getByRole('button', { name: 'Prepare fresh', exact: true }).click(); const load = catalog.getByRole('button', { name: 'Load fresh · stopped replacement', exact: true }); await expect(load).toBeEnabled({ timeout: 90000 }); await load.click(); if (await page.getByRole('region', { name: 'Review project replacement' }).count()) await page.getByRole('region', { name: 'Review project replacement' }).getByRole('button', { name: /^(?:Discard changes and replace|Replace project)$/ }).click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.sceneOrigin?.manifest.title)).toBe('Digging Ocarina · ' + recipe); await page.keyboard.press('Escape');
   if (step) await page.locator('#procgenStep').click();
 }

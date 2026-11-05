@@ -250,15 +250,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const identity = JSON.stringify([documentGeneration, projectRevision, editRevision, savedRevision, documentRevision, savedName, world?.worldId || null, world?.generation ?? null, state.physicalProgress, drafts.textDrafts, drafts.curveDrafts, drafts.revision, drafts.fieldRevision, drafts.gestures, state.take, state.capture, midi.recording === true, !!inputLease, midi.recordedEvents > 0, state.prelisten, artifacts, delivering, saving, preparingFile]);
     return createProcgenReplacementReview({ ...state, identity });
   };
-  const approveReplacement = async lease => {
-    const current = () => ownsOperation(lease) && String(documentGeneration) === lease.source.documentIdentity;
+  const approveReplacement = async (lease, reviewOptions = {}) => {
+    const current = () => ownsOperation(lease) && String(documentGeneration) === lease.source.documentIdentity && (reviewOptions.isCurrent?.() ?? true);
     while (current()) {
       const plan = getReplacementReview();
       if (!plan.required) { lease.reviewedIdentity = plan.identity; return true; }
       if (plan.gestures) { status('Finish the current gesture before replacing the project.'); return false; }
       if (!view?.requestReplacementReview) throw new Error('This host cannot review unfinished project work. The current project was kept.');
       lease.reportPhase('reviewing');
-      const decision = await view.requestReplacementReview({ readReview: getReplacementReview, signal: lease.signal, isCurrent: current, isSourceCurrent: () => !disposed && String(documentGeneration) === lease.source.documentIdentity });
+      const decision = await view.requestReplacementReview({ hostDialog: reviewOptions.hostDialog, parkHost: reviewOptions.parkHost, readReview: getReplacementReview, signal: lease.signal, isCurrent: current, isSourceCurrent: () => !disposed && String(documentGeneration) === lease.source.documentIdentity });
       if (!current()) return false;
       if (!decision) { lease.controller.abort(); view?.retireProjectPicker?.(true); view?.restoreReplacementFocus?.(lease.source.documentIdentity); return false; }
       const latest = getReplacementReview(); if (decision.identity !== latest.identity) continue;
@@ -280,23 +280,25 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     return false;
   };
-  const reviewAvailable = () => {
+  const reviewAvailable = (hostDialog = null) => {
     if (ports.getState().recording) { status('Stop MIDI recording before replacing this project. The current note entry was kept.'); return false; }
     if (inputLease) { status('Finish or cancel MIDI Learn before replacing this project. Its current target was kept.'); return false; }
-    if (view?.canReviewReplacement?.() === false) { status('Finish or cancel the open dialog before replacing this project.'); return false; }
+    if (view?.canReviewReplacement?.(hostDialog) === false) { status('Finish or cancel the open dialog before replacing this project.'); return false; }
     if (pendingSaveGenerations.has(documentGeneration)) { status('Wait for the pending project Save to finish before replacing it.'); return false; }
     if (currentOperation?.kind === 'export' || midiExportPreparation || archiveExportPreparation) { status('Finish or cancel file preparation before replacing the project.'); return false; }
     if (view?.pendingDraftState?.().gestures) { status('Finish the current gesture before replacing the project.'); return false; }
     return true;
   };
-  const runReviewedReplacement = async (kind, perform) => {
-    if (!reviewAvailable()) return false;
-    const lease = beginOperation(kind);
+  const runReviewedReplacement = async (kind, perform, reviewOptions = {}) => {
+    if (reviewOptions.signal?.aborted || !reviewAvailable(reviewOptions.hostDialog)) return false;
+    const lease = beginOperation(kind), abort = () => lease.controller.abort(reviewOptions.signal?.reason);
+    reviewOptions.signal?.addEventListener('abort', abort, { once: true });
+    if (reviewOptions.signal?.aborted) abort();
     try {
-      while (ownsOperation(lease)) { if (!await approveReplacement(lease)) { lease.controller.abort(); return false; } if (lease.reviewedIdentity !== getReplacementReview().identity) continue; return await perform(lease); }
+      while (ownsOperation(lease)) { if (!await approveReplacement(lease, reviewOptions)) { lease.controller.abort(); return false; } if (lease.reviewedIdentity !== getReplacementReview().identity) continue; return await perform(lease); }
       return false;
-    } catch (error) { finishOperation(lease, 'failed', error); throw error; }
-    finally { if (!lease.receipted) finishOperation(lease); }
+    } catch (error) { finishOperation(lease, lease.signal.aborted || reviewOptions.isCurrent?.() === false ? 'canceled' : 'failed', error); throw error; }
+    finally { reviewOptions.signal?.removeEventListener('abort', abort); if (!lease.receipted) finishOperation(lease); }
   };
   const beginOperation = kind => {
     if (operationSerial === Number.MAX_SAFE_INTEGER) throw new Error('Project operation identity capacity is exhausted.');
@@ -307,13 +309,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     lease.reportPhase = phase => { if (!disposed && currentOperation === lease && !lease.signal.aborted) { createProcgenOperationView({ id: lease.id, kind, phase }); lease.phase = phase; try { view?.refreshOperational?.(); } catch { /* Progress presentation cannot block publication. */ } } };
     lease.signal = lease.controller.signal;
     currentOperation = lease;
-    if (kind !== 'select-session') try { view?.retireProjectPicker?.(); } catch { /* Picker presentation cannot redirect the new operation. */ }
+    try { view?.retireProjectPicker?.(); } catch { /* Picker presentation cannot redirect the new operation. */ }
     return lease;
   };
   const ownsOperation = lease => !disposed && currentOperation === lease && !lease.signal.aborted;
   const finishOperation = (lease, outcome = lease.signal.aborted ? 'canceled' : 'retired', error = null) => {
     if (currentOperation === lease) currentOperation = null;
-    publishOperationReceipt(lease, outcome, ['committed', 'committed-with-error'].includes(outcome) ? operationBoundary() : null, error ? String(error.code || error.name || 'operation-error').slice(0, 96) : null);
+    publishOperationReceipt(lease, outcome, ['committed', 'committed-with-error'].includes(outcome) ? (lease.acceptedBoundary || operationBoundary()) : null, error ? String(error.code || error.name || 'operation-error').slice(0, 96) : null);
   };
   const readForOperation = async (lease, read) => {
     if (!ownsOperation(lease)) return { current: false, value: null };
@@ -1540,6 +1542,18 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     undo.length = 0; redo.length = 0; lastHistoryGroup = null; trimHistory(); state.laneId = project.procgen.lanes[0].id; state.firstLane = 0; state.slot = state.step = 0;
     macroGestures.reconcile(); storageStatus(); persist();
   };
+  const applyPreparedScene = async (reviewOptions = {}) => {
+    const result = await runReviewedReplacement('scene', async lease => {
+      lease.reportPhase('preparing');
+      try {
+        const applied = await sceneLoader.apply({ signal: lease.signal, isCurrent: () => ownsOperation(lease) && lease.reviewedIdentity === getReplacementReview().identity,
+          onCommit: () => lease.reportPhase('committing'), onCommitted: () => { lease.acceptedBoundary = operationBoundary(); } });
+        if (applied.status === 'committed') { const documentIdentity = lease.acceptedBoundary.documentIdentity; finishOperation(lease, 'committed'); return Object.freeze({ ...applied, documentIdentity }); }
+        return applied;
+      } catch (error) { if (lease.acceptedBoundary) finishOperation(lease, 'committed-with-error', error); throw error; }
+    }, reviewOptions);
+    return result || Object.freeze({ status: 'canceled' });
+  };
   function refreshSceneCue() { if (disposed) return; try { sceneBrowser?.refresh(); view?.sceneCue?.(sceneLoader?.state(), project.procgen.sceneOrigin?.manifest || null, stageSession?.active()); } catch { /* Cue display cannot own a performance mutation. */ } }
   const sceneBaseIdentity = () => {
     if (disposed || !runtime()?.world || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || state.recording || masterCapture?.state?.().capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(masterCapture?.state?.().capture?.state)) throw new Error('Finish active world, history and recording operations before preparing a scene.');
@@ -1559,7 +1573,6 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         sceneLoader = loading.createPerformanceSceneLoader({ getBaseIdentity: sceneBaseIdentity, resolveDependency: sceneCatalog.resolveDependency,
           prepareCandidate: typeof prepareSceneWorld === 'function' ? adapter.createPerformanceSceneWorldAdapter({ getCatalog, getOrigin: (scene, variants) => sceneCatalog.origin(scene, variants), prepareWorld: prepareSceneWorld, resourceBudget, getMaterialProvider: legacy.local.audio?.getSoundMaterialProvider ? () => legacy.local.audio.getSoundMaterialProvider() : null }) : async () => { throw new Error('This host does not provide staged world publication.'); },
           preparePreview: typeof prepareInspectionWorld === 'function' && legacy.local.audio && resourceBudget ? rehearsal.createPerformanceSceneRehearsal({ audio: legacy.local.audio, prepareInspectionWorld, jobs: backgroundJobs, resourceBudget }) : null,
-          beforeCommit: async ({ scene }) => editRevision === savedRevision || window.confirm?.('Replace this edited world with ' + scene.title + '? The prepared scene changes the world, sound and physical mappings, and starts paused. Save the current project first to keep it.' ) === true,
           onState: refreshSceneCue });
         const definitions = await lessons.createInstalledPhysicalLessons(sceneCatalog); if (disposed) return; physicalLessonDefaultId = definitions[0]?.setupScene.id || null; operationalLessonAvailable = !!physicalLessonDefaultId; view?.refreshOperational?.();
         if (definitions.length) physicalLessonView = lessonView.createPhysicalLessonView({ document, window, definitions, cancelLoad: () => sceneLoader.cancel(), onStatus: status,
@@ -1568,10 +1581,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             signal.throwIfAborted(); const scene = sceneCatalog.registry.resolve(reference);
             if (await performanceSceneHash(scene) !== reference.hash) throw new Error('The lesson source changed.'); signal.throwIfAborted(); sceneLoader.select(scene);
             const prepared = await sceneLoader.prepare(); signal.throwIfAborted(); if (prepared.status !== 'ready') throw new Error('Lesson setup requirements are unavailable; the current world remains active.');
-            const applied = await sceneLoader.apply(); signal.throwIfAborted(); if (applied.status !== 'committed') throw new Error('Lesson setup was canceled.');
+            const applied = await applyPreparedScene({ signal }); signal.throwIfAborted(); if (applied.status !== 'committed') throw new Error('Lesson setup was canceled.');
             const world = runtime().world; return { sceneHash: reference.hash, worldId: world.worldId, generation: world.generation, documentEpoch: documentGeneration, assists: world.assists, junctionDefinitions: world.physicalJunctions.definitions, junctionStates: world.physicalJunctions.definitions.map(value => world.queryJunction(value.id, { includeDefinition: false }).actual).filter(Boolean), graph: world.physicalAuthoring.graph, releaseGesture: world.population.releaseGesture, soundIdentity: effectiveSoundLanes(project.procgen.lanes).map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|') };
           } });
-        sceneBrowser = browsing.createPerformanceSceneBrowser({ document, window, registry: sceneCatalog.registry, loader: sceneLoader,
+        sceneBrowser = browsing.createPerformanceSceneBrowser({ document, window, registry: sceneCatalog.registry, loader: sceneLoader, onApply: applyPreparedScene, getDocumentIdentity: () => String(documentGeneration),
           onCreateNursery: sceneCatalog.available ? async () => { const identity = sceneBaseIdentity(), reference = selected().instrumentRef; if (!reference) throw new Error('Prepare, save and apply a finite sample/FM → body graft in Seed Lab, then select that lane before opening Nursery.'); const row = await sceneCatalog.addNurseryStrike(reference); if (disposed || sceneBaseIdentity() !== identity) throw new Error('The selected lane or document changed during Nursery assembly. Select the current strike again.'); return row; } : null,
           canTeachScene: scene => definitions.some(value => value.setupScene.id === scene.id && value.setupScene.version === scene.version), onLesson: scene => physicalLessonView?.open(scene.id),
           keepPreparedOnClose: () => stageSession?.active(), unavailableReason: sceneCatalog.reason, getLiveScene: () => project.procgen.sceneOrigin?.manifest || null, onSavedTakes: () => handlers.load({ review: true }), onStatus: status });
@@ -2110,7 +2123,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     stage: safe(async () => {
       stageSession ||= createPerformanceStageSession({ canEnter: () => !disposed && !startupFailure && !!runtime()?.world && legacy.local.getState().status !== 'starting' && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !soundTransactions.diagnostics().active && !macroGestures.diagnostics().active && !document.querySelector?.('dialog[open]'),
         getIdentity: () => JSON.stringify([documentGeneration, projectRevision]), setPresentation: value => view?.stageMode?.(value), getCandidate: () => sceneLoader?.state(),
-        applyCandidate: () => sceneLoader.apply(), cancelCandidate: () => sceneLoader?.cancel(), onStatus: status });
+        applyCandidate: () => applyPreparedScene(), cancelCandidate: () => sceneLoader?.cancel(), onStatus: status });
       const result = await (stageSession.active() ? stageSession.exit() : stageSession.enter()); legacy.refreshShortcutHints?.(); view?.sceneCue?.(sceneLoader?.state(), project.procgen.sceneOrigin?.manifest || null, stageSession.active()); return result;
     }),
     stageExit: safe(async () => { const result = await stageSession?.exit(); legacy.refreshShortcutHints?.(); return result; }), stageGo: safe(() => stageSession?.go()),
@@ -2283,6 +2296,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           if (!ownsOperation(lease)) return false;
           if (typeof id !== 'string' || !id || id.length > 512) throw new Error('The selected project identity is unavailable. Refresh its metadata before opening.');
           if (review && !await approveReplacement(lease)) return false;
+          if ((lease.openAttempts || 0) === Number.MAX_SAFE_INTEGER) throw new Error('Project Open attempt identity capacity is exhausted.');
+          const attempt = { id: lease.id + ':open:' + (lease.openAttempts = (lease.openAttempts || 0) + 1), source: operationBoundary() };
           lease.reportPhase('reading');
           const preferenceHold = preferenceWriter?.suspend(); let record, loaded = false;
           try {
@@ -2303,7 +2318,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
               storageStatus(); finishOperation(lease, 'committed');
             }
             return loaded;
-          } catch (error) { if (loaded) finishOperation(lease, 'committed-with-error', error); throw error; }
+          } catch (error) {
+            if (loaded) finishOperation(lease, 'committed-with-error', error);
+            else if (ownsOperation(lease)) try { status('Project Open refused: ' + (error?.message || String(error)), { severity: 'warning', scope: 'operation', operationId: attempt.id, target: attempt.source.documentIdentity, createdRevision: attempt.source.editRevision, code: 'project-open-refused', present: false, detail: JSON.stringify({ projectId: id.slice(0, 192), selectedRevision: Number.isSafeInteger(selection.revision) ? selection.revision : null, recoveryGeneration: Number.isSafeInteger(selection.recoveryGeneration) ? selection.recoveryGeneration : null, cause: String(error?.code || error?.name || 'read-error').slice(0, 96) }) }); } catch { /* Failed-attempt history cannot replace the original error. */ }
+            throw error;
+          }
           finally { try { record?.release?.(); } finally { preferenceHold?.release(); if (ownsOperation(lease)) lease.reportPhase('selecting'); } }
         };
         if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {

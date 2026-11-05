@@ -1986,7 +1986,18 @@
       "source": [],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "validation425": {
+        "state": "implementation-complete",
+        "qualification": {
+          "path": "docs/validation/reviewed-scenes-lifecycle-desktop-2026-11-04.json",
+          "bytes": 545441,
+          "sha256": "c6338419c0155b79eed8a3765228c3edee1a003af075924b2b6b905d8d9ae33d"
+        },
+        "node": 527,
+        "native": 32,
+        "publication": "Issue closure follows this commit push; broad1120/1089work remains separate."
+      }
     },
     {
       "number": 1074,
@@ -1998,7 +2009,18 @@
       "source": [],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "validation425": {
+        "state": "implementation-complete",
+        "qualification": {
+          "path": "docs/validation/reviewed-scenes-lifecycle-desktop-2026-11-04.json",
+          "bytes": 545441,
+          "sha256": "c6338419c0155b79eed8a3765228c3edee1a003af075924b2b6b905d8d9ae33d"
+        },
+        "node": 527,
+        "native": 32,
+        "publication": "Issue closure follows this commit push; broad1120/1089work remains separate."
+      }
     },
     {
       "number": 1075,
@@ -5387,5 +5409,106 @@
       "Pending replacement with live gesture/audition/disconnect/disposal and wider generated recording/input, assets/cache and delivery schedules.",
       "No device, acoustic, listening or assistive-technology acceptance is inferred."
     ]
+  },
+  "continuation425": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "scope": "Shared canonical unfinished-work review for prepared scenes and lessons; current modal/name handoff, exact accepted document boundaries, active gesture/Prelisten preflight and pending-read Undo/output-loss/cancel/disposal. Desktop1920×1080; no device/acoustic/listening claim.",
+    "evidence": {
+      "path": "docs/validation/reviewed-scenes-lifecycle-desktop-2026-11-04.json",
+      "bytes": 545441,
+      "sha256": "c6338419c0155b79eed8a3765228c3edee1a003af075924b2b6b905d8d9ae33d"
+    },
+    "source": {
+      "parent": "63c1b492d0549cd4619fdca44731e4da4b1f1cf0",
+      "browserPaths": 1282,
+      "digest": "0b912b78f13d265f80c87731b1165f4276b870ea238aa4f2e3539c31e47142fe",
+      "qualifiedInputs": 1392,
+      "byteExact": 1379,
+      "unchangedCheckoutNewlines": 13
+    },
+    "validation": {
+      "node": {
+        "suites": 32,
+        "tests": 527,
+        "passes": 527,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-05T04:28:17.441Z",
+        "end": "2026-11-05T04:28:28.474Z",
+        "duration": 11033
+      },
+      "nativeCases": 32,
+      "nativeGroups": {
+        "preservedPassingOutputs": 25,
+        "finalScenes": 6,
+        "finalCavityPreview": 1
+      },
+      "scopedCoverage": {
+        "lines": {
+          "total": 310,
+          "covered": 294,
+          "skipped": 0,
+          "pct": 94.83
+        },
+        "statements": {
+          "total": 310,
+          "covered": 294,
+          "skipped": 0,
+          "pct": 94.83
+        },
+        "functions": {
+          "total": 68,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 86.76
+        },
+        "branches": {
+          "total": 414,
+          "covered": 313,
+          "skipped": 0,
+          "pct": 75.6
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "issues": {
+      "implementationCompletePendingPublication": [
+        1073,
+        1074
+      ],
+      "remaining": [
+        1120,
+        1089
+      ],
+      "inventoryBeforeClosure": 188
+    },
+    "ci": {
+      "latestCompleteGreen": {
+        "head": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+        "run": 41948075545
+      },
+      "parentRun": 41965941769,
+      "engineJob": 127042837140,
+      "parentEngine": {
+        "passed": 41,
+        "failed": 1,
+        "title": "native scheduled cancellation qualifies already rendered source frames",
+        "project": "firefox-lifecycle",
+        "expectedMaximumFrame": 41600,
+        "observedLastFrame": 41727,
+        "artifact": {
+          "id": 13388041964,
+          "bytes": 1016235,
+          "sha256": "474bb8dfbb539e0ef44e87297275ce011339a129ca3292f3710a248045d3eb0e"
+        },
+        "limit": "Current-source render-clock bracket follow-up is separate and unqualified in this425record."
+      }
+    }
   }
 }

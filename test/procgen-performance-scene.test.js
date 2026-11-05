@@ -82,6 +82,32 @@ describe('scene candidates fence live state and own late resources', () => {
     const confirmation = deferred(), f = await setup({ confirmation: () => confirmation.promise }); await f.loader.prepare(); const apply = f.loader.apply(); f.setBase('doc:2:routes:2'); confirmation.resolve(true);
     let error; try { await apply; } catch (caught) { error = caught; } expect(error.code).to.equal('stale-scene-operation'); expect(f.mutations()).to.equal(0); await f.loader.dispose(); expect(f.retired()).to.equal(1);
   });
+  it('cancels an externally aborted review without committing or discarding the prepared candidate', async () => {
+    const confirmation = deferred(), f = await setup({ confirmation: () => confirmation.promise }), controller = new AbortController(); await f.loader.prepare();
+    const applying = f.loader.apply({ signal: controller.signal }); controller.abort(); confirmation.resolve(true);
+    expect((await applying).status).to.equal('canceled'); expect(f.mutations()).to.equal(0); expect(f.loader.state().canApply).to.equal(true); expect(f.loader.state().retirementUnknown).to.equal(false);
+    expect((await f.loader.apply()).status).to.equal('committed'); expect(f.mutations()).to.equal(1); await f.loader.dispose();
+  });
+  it('joins duplicate publication while review is pending and commits exactly once', async () => {
+    const confirmation = deferred(), f = await setup({ confirmation: () => confirmation.promise }); await f.loader.prepare();
+    const first = f.loader.apply(), repeated = f.loader.apply(); expect(repeated).to.equal(first); confirmation.resolve(true);
+    expect((await first).status).to.equal('committed'); expect((await repeated).status).to.equal('committed'); expect(f.mutations()).to.equal(1); expect(f.retired()).to.equal(1); await f.loader.dispose();
+  });
+  it('rechecks the reviewed source after preparation and immediately before publication', async () => {
+    const f = await setup(); await f.loader.prepare(); let current = true;
+    expect((await f.loader.apply({ isCurrent: () => current, onCommit() { current = false; } })).status).to.equal('canceled'); expect(f.mutations()).to.equal(0); expect(f.loader.state().canApply).to.equal(true);
+    current = true; expect((await f.loader.apply({ isCurrent: () => current })).status).to.equal('committed'); expect(f.mutations()).to.equal(1); await f.loader.dispose();
+  });
+  it('acknowledges the exact committed source before later context changes', async () => {
+    const f = await setup(); await f.loader.prepare(); let accepted = null;
+    const result = await f.loader.apply({ onCommitted(receipt) { accepted = receipt; expect(f.mutations()).to.equal(1); f.setBase('doc:2'); } });
+    expect(result.status).to.equal('committed'); expect(accepted.baseIdentity).to.equal('doc:1:routes:1'); expect(result.receipt).to.deep.equal(accepted); expect(f.retired()).to.equal(1); await f.loader.dispose();
+  });
+  it('finishes candidate retirement when a post-commit observer fails', async () => {
+    const f = await setup(); await f.loader.prepare(); let error;
+    try { await f.loader.apply({ onCommitted() { throw new Error('Committed observation failed'); } }); } catch (value) { error = value; }
+    expect(error.message).to.equal('Committed observation failed'); expect(f.mutations()).to.equal(1); expect(f.retired()).to.equal(1); expect(f.loader.state().phase).to.equal('active-observation-failed'); expect(f.loader.state().retirementUnknown).to.equal(false); await f.loader.dispose();
+  });
   it('retires a late canceled candidate and preserves the newer scene selection', async () => {
     const wait = deferred(), f = await setup({ wait }); const loading = f.loader.prepare();
     await f.entered.promise;

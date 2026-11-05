@@ -4,7 +4,7 @@ const text = (value, length = 120) => typeof value === 'string' ? value.slice(0,
 export function createProcgenReplacementReview({ identity, documentIdentity, name, dirty = false, physicalProgress = false, drafts = {}, take = {}, capture = {}, recording = {}, prelisten = {}, artifact = null, delivery = false, saving = false, preparingFile = false } = {}) {
   if (typeof identity !== 'string' || !identity || identity.length > 2048 || typeof documentIdentity !== 'string' || !documentIdentity || documentIdentity.length > 128) throw new Error('Invalid replacement review source.');
   const textDrafts = count(drafts.textDrafts), curveDrafts = count(drafts.curveDrafts), gestures = count(drafts.gestures), blockedCapture = capture.unresolved === true || ['preparing', 'recording', 'stopping'].includes(capture.state),
-    blockedTake = take.recovering === true || take.finalizing === true, blocked = gestures > 0 || blockedCapture || blockedTake || recording.active === true || recording.learning === true || prelisten.unresolved === true || delivery === true || saving === true || preparingFile === true;
+    blockedTake = take.recovering === true || take.finalizing === true, blocked = gestures > 0 || blockedCapture || blockedTake || recording.active === true || recording.learning === true || prelisten.active === true || prelisten.unresolved === true || delivery === true || saving === true || preparingFile === true;
   const reasons = [];
   if (dirty) reasons.push('The current project has unsaved changes.');
   if (physicalProgress) reasons.push('The current physical world will be replaced. A project save captures a checkpoint of its current state.');

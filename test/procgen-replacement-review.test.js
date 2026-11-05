@@ -26,7 +26,7 @@ describe('source-bound replacement review', () => {
     const take = plan({ take: { recording: true } }); assert.equal(take.finalizeTake, true); assert.equal(take.canSave, false); assert.match(take.replaceLabel, /Finalize/);
     assert.ok(Object.isFrozen(drafts)); assert.ok(Object.isFrozen(drafts.reasons));
   });
-  for (const [label, state] of Object.entries({ gesture: { drafts: { gestures: 1 } }, preparing: { capture: { state: 'preparing' } }, capturing: { capture: { state: 'recording' } }, stopping: { capture: { state: 'stopping' } }, unresolved: { capture: { unresolved: true } }, recovering: { take: { recovering: true } }, finalizing: { take: { finalizing: true } }, midi: { recording: { active: true } }, learning: { recording: { learning: true } }, prelisten: { prelisten: { unresolved: true } }, write: { delivery: true }, save: { saving: true }, file: { preparingFile: true } })) it('refuses unsupported replacement while ' + label + ' owns unfinished work', () => {
+  for (const [label, state] of Object.entries({ gesture: { drafts: { gestures: 1 } }, preparing: { capture: { state: 'preparing' } }, capturing: { capture: { state: 'recording' } }, stopping: { capture: { state: 'stopping' } }, unresolved: { capture: { unresolved: true } }, recovering: { take: { recovering: true } }, finalizing: { take: { finalizing: true } }, midi: { recording: { active: true } }, learning: { recording: { learning: true } }, prelisten: { prelisten: { unresolved: true } }, audition: { prelisten: { active: true } }, write: { delivery: true }, save: { saving: true }, file: { preparingFile: true } })) it('refuses unsupported replacement while ' + label + ' owns unfinished work', () => {
     const value = plan({ dirty: true, ...state }); assert.equal(value.required, true); assert.equal(value.canReplace, false); assert.equal(value.canSave, false); assert.ok(value.reasons.length);
   });
   it('bounds metadata and rejects an unbound source without retaining a capability', () => {
@@ -70,6 +70,12 @@ describe('source-bound replacement review', () => {
     const owner = createProjectReplacementDialog({ document }); const pending = owner.request({ readReview: () => plan({ dirty: true, identity: String(revision) }), isCurrent: () => true, hostDialog: host, parkHost: () => { parks++; } });
     assert.equal(document.querySelector('#items').hidden, true); revision++; owner.refresh(); buttons(document)[0].click(); assert.equal(parks, 0); assert.equal(document.querySelectorAll('dialog').length, 1);
     buttons(document)[0].click(); assert.deepEqual(await pending, { action: 'save', identity: '2', finalizeTake: false }); assert.equal(parks, 1); assert.equal(document.querySelector('#items').hidden, false); owner.dispose(); dom.window.close();
+  });
+  it('restores the exact hosted action after Cancel while its scene dialog stays open', async () => {
+    const dom = new JSDOM('<body><dialog open><button id="apply">Load fresh</button></dialog></body>'), document = dom.window.document, host = document.querySelector('dialog'), original = document.getElementById('apply'); original.focus(); let draftFocus = 0;
+    const owner = createProjectReplacementDialog({ document, restoreDraftFocus: () => { draftFocus++; return true; } });
+    const pending = owner.request({ readReview: () => plan({ dirty: true }), isCurrent: () => true, hostDialog: host }); buttons(document).at(-1).click(); assert.equal(await pending, null); await tick();
+    assert.equal(host.open, true); assert.equal(original.hidden, false); assert.equal(document.activeElement, original); assert.equal(draftFocus, 0); owner.dispose(); dom.window.close();
   });
   it('retires an obsolete name prompt without submitting its source or refocusing a replaced field', async () => {
     const dom = new JSDOM('<body><button id="old">Old source</button><input id="current"></body>'), document = dom.window.document; let current = true; document.getElementById('old').focus();

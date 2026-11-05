@@ -13,7 +13,7 @@ const same = (a, b) => canonicalDataText(a).text === canonicalDataText(b).text;
 export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependency, prepareCandidate, preparePreview = null, beforeCommit = async () => true, onState = () => {} } = {}) {
   if (typeof getBaseIdentity !== 'function' || typeof resolveDependency !== 'function' || typeof prepareCandidate !== 'function' || preparePreview !== null && typeof preparePreview !== 'function' || typeof beforeCommit !== 'function' || typeof onState !== 'function') throw new TypeError('Scene loading requires the existing document, dependency and candidate transaction owners.');
   const unresolved = new Set();
-  let serial = 0, selected = null, pending = null, prepared = null, preview = null, retirement = Promise.resolve(), fault = null, disposed = false, phase = 'idle', lastError = null, current = null;
+  let serial = 0, selected = null, pending = null, prepared = null, preview = null, retirement = Promise.resolve(), fault = null, disposed = false, phase = 'idle', lastError = null, current = null, applying = null;
   const state = () => { let canApply = false; try { canApply = !!prepared && !pending && !disposed && !fault && selected?.serial === prepared.operation.serial && getBaseIdentity() === prepared.baseIdentity; } catch {} return freezeData({ schema: 'lemmings-performance-scene-loader/v1', phase, disposed, selection: selected ? { id: selected.scene.id, version: selected.scene.version, title: selected.scene.title, variants: selected.variants } : null,
     current, canApply, previewAvailable: preparePreview !== null, pending: !!pending, prepared: prepared ? { preflight: prepared.preflight, baseIdentity: prepared.baseIdentity, policy: 'stopped-replacement', changedScope: ['world', 'sound', 'physical-mappings', 'transport-paused'] } : null,
     preview: preview ? { state: preview.ready ? 'isolated-local' : 'preparing', sceneHash: preview.sceneHash, playing: preview.ready ? preview.owner?.state?.().playing ?? true : false,
@@ -90,18 +90,29 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
     })(); operation.promise.catch(() => {});
     try { return await operation.promise; } catch (error) { if (preview === operation) { preview = null; lastError = { code: error.code || 'scene-preview-failed', message: error.message }; if (error.retirement && error.retirement.outcome !== 'complete') fault ||= error; } report(); throw error; }
   };
-  const apply = async () => {
+  const applyOnce = async ({ signal, isCurrent = () => true, onCommit = () => {}, onCommitted = () => {} } = {}) => {
+    const admitted = () => !signal?.aborted && isCurrent();
+    if (!admitted()) return freezeData({ status: 'canceled', current });
     const source = prepared;
     if (!source || pending || disposed || fault) throw failure('scene-not-ready', 'Prepare the selected scene before applying it.');
     check(source.operation); if (!await beforeCommit({ scene: source.operation.scene, preflight: source.preflight, changedScope: ['world', 'sound', 'physical-mappings', 'transport-paused'], policy: 'stopped-replacement' })) return freezeData({ status: 'canceled', current });
-    await stopPreview(); check(source.operation); if (prepared !== source) throw failure('stale-scene-operation', 'The prepared scene changed.');
-    phase = 'committing'; report(); let fenced = false, adopted = false;
+    if (!admitted()) return freezeData({ status: 'canceled', current });
+    await stopPreview(); check(source.operation); if (!admitted()) return freezeData({ status: 'canceled', current }); if (prepared !== source) throw failure('stale-scene-operation', 'The prepared scene changed.');
+    onCommit(); if (!admitted()) return freezeData({ status: 'canceled', current });
+    phase = 'committing'; report(); let fenced = false, adopted = false, observationError = null;
     try {
-      const receipt = source.candidate.commit({ isCurrent: () => { check(source.operation); fenced = true; return true; }, policy: 'stopped-replacement' });
+      const receipt = source.candidate.commit({ isCurrent: () => { check(source.operation); if (!admitted()) throw failure('stale-scene-review', 'The reviewed source changed before scene publication. Review the current project again.'); fenced = true; return true; }, policy: 'stopped-replacement' });
       if (receipt?.then || !fenced || receipt?.status !== 'committed' || receipt.sceneHash !== source.preflight.sceneHash || receipt.baseIdentity !== source.baseIdentity || receipt.transportPlaying !== false || receipt.externalOutputEnabledByScene !== false || receipt.recordingArmedByScene !== false || receipt.localAudioEnabledByScene !== false || receipt.policy !== 'stopped-replacement') throw failure('scene-commit-unproven', 'The scene owner did not return a fenced, paused, unarmed transition receipt.');
       current = freezeData({ id: source.operation.scene.id, version: source.operation.scene.version, hash: source.preflight.sceneHash, variants: source.preflight.variants, policy: receipt.policy }); prepared = null; adopted = true;
-      await retire(source.candidate); phase = 'active'; lastError = null; report(); return freezeData({ status: 'committed', current, receipt });
-    } catch (error) { fault ||= error; phase = adopted ? 'active-retirement-unknown' : 'commit-recovery-required'; lastError = { code: error.code || 'scene-commit-failed', message: error.message }; report(); throw error; }
+      try { onCommitted(receipt); } catch (error) { observationError = error; }
+      await retire(source.candidate); if (observationError) throw observationError; phase = 'active'; lastError = null; report(); return freezeData({ status: 'committed', current, receipt });
+    } catch (error) { if (adopted && observationError === error) { phase = 'active-observation-failed'; lastError = { code: 'scene-observation-failed', message: error.message }; report(); throw error; } fault ||= error; phase = adopted ? 'active-retirement-unknown' : 'commit-recovery-required'; lastError = { code: error.code || 'scene-commit-failed', message: error.message }; report(); throw error; }
+  };
+  const apply = options => {
+    if (applying) return applying;
+    const promise = applyOnce(options); applying = promise;
+    void promise.finally(() => { if (applying === promise) applying = null; }).catch(() => {});
+    return promise;
   };
   return Object.freeze({ state, select, prepare, rehearse, stopPreview, apply, cancel,
     async dispose() { disposed = true; let error = null; try { await cancel(); } catch (caught) { error = caught; }
