@@ -58,16 +58,22 @@ export function qualifyNativeClockReceipt(receipt, project) {
   }
   if (scenario.startsWith('cancel-')) {
     const rendered = scenario === 'cancel-after-render';
-    if (receipt.cancellation?.nativeSubmissionObserved !== true || receipt.cancellation.rendered !== rendered || receipt.cancellation.deviceBufferedPcm !== 'unknown' || actual.retirement?.outcome !== 'complete' ||
+    if (receipt.cancellation?.nativeSubmissionObserved !== true || receipt.cancellation.rendered !== rendered || receipt.cancellation.deviceBufferedPcm !== 'unknown' || receipt.cancellation.nodes !== 8 ||
+        receipt.cancellation.frontier !== 'native-stop-call-bracketed-by-shared-render-quantum' || receipt.cancellation.maximumFollowingFrames !== 128 || !Array.isArray(receipt.cancellation.stopFrontiers) ||
+        !Array.isArray(snapshot.stops) || snapshot.stops.length > 1024 || snapshot.observer?.crossOriginIsolated !== true || snapshot.observer.warmed !== true || snapshot.observer.sharedBytes !== 16 ||
+        actual.retirement?.outcome !== 'complete' ||
         !integer(actual.requestedAtFrame) || nodes.some(row => row.observedThrough < row.expectedFrame)) fail();
     if (rendered) {
-      if (nodes.some(row => !integer(row.first) || !integer(row.last) || row.last < row.first)) fail();
+      if (nodes.some(row => !integer(row.first) || !integer(row.last) || row.last < row.first) || receipt.cancellation.stopFrontiers.length !== nodes.length || new Set(nodes.map(row => row.ordinal)).size !== nodes.length) fail();
       for (const row of nodes) {
         const stops = snapshot.stops?.filter(stop => stop.ordinal === row.ordinal) || [];
-        if (!stops.length || stops.some(stop => !Number.isFinite(stop.targetSeconds) || !Number.isFinite(stop.submittedSeconds)) ||
-            row.last > Math.min(...stops.map(stop => Math.round(Math.max(stop.targetSeconds, stop.submittedSeconds) * stop.sampleRate))) + 128) fail();
+        if (!stops.length || stops.some(stop => !Number.isFinite(stop.targetSeconds) || stop.targetSeconds < 0 || !Number.isFinite(stop.submittedSeconds) ||
+            stop.sampleRate !== snapshot.context.sampleRate || !integer(stop.renderFrameBeforeStop) || !integer(stop.renderFrameAfterStop) || stop.renderFrameBeforeStop % 128 || stop.renderFrameAfterStop % 128 ||
+            stop.renderFrameAfterStop < stop.renderFrameBeforeStop || stop.renderFrameAfterStop > row.observedThrough || !Number.isFinite(stop.mainSecondsAfterStop) || stop.mainSecondsAfterStop < stop.submittedSeconds)) fail();
+        const frontier = Math.min(...stops.map(stop => Math.max(Math.round(stop.targetSeconds * snapshot.context.sampleRate), stop.renderFrameAfterStop))), summary = receipt.cancellation.stopFrontiers.find(value => value.ordinal === row.ordinal);
+        if (row.last > frontier + 128 || !summary || summary.lastRenderedFrame !== row.last || summary.frontierFrame !== frontier || summary.maximumFollowingFrames !== 128 || JSON.stringify(summary.stops) !== JSON.stringify(stops)) fail();
       }
-    } else if (actual.requestedAtFrame >= Math.min(...nodes.map(row => row.expectedFrame)) || nodes.some(row => row.first !== null || row.last !== null)) fail();
+    } else if (receipt.cancellation.stopFrontiers.length || actual.requestedAtFrame >= Math.min(...nodes.map(row => row.expectedFrame)) || nodes.some(row => row.first !== null || row.last !== null)) fail();
     return { scenario, availability, cancellation: receipt.cancellation, acousticReceipt: false };
   }
   if (actual.sameContext !== true || JSON.stringify(actual.before?.anchor) !== JSON.stringify(actual.after?.anchor) || !actual.before?.anchor || actual.before.rebases !== actual.after.rebases ||

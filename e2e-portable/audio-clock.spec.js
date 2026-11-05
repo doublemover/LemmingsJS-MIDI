@@ -92,17 +92,21 @@ for (const afterRender of [false, true]) test('native scheduled cancellation qua
   if (!await privateSource(page, 512)) { await unavailable(page, info, nativeBrowser, afterRender ? 'cancel-after-render' : 'cancel-before-render'); return; }
   const { produced, actual } = await page.evaluate(async afterRender => { const produced = await window.__privateClock.produce(); return { produced, actual: await window.__privateClock.cancel({ afterRender }) }; }, afterRender), targets = verifyTargets(actual.snapshot);
   const nodes = actual.snapshot.nodes;
+  await info.attach('native-cancellation-attempt.json', { body: JSON.stringify({ produced, actual, targets }), contentType: 'application/json' });
+  const stopFrontiers = [];
   if (afterRender) {
     expect(nodes.every(row => Number.isSafeInteger(row.first) && row.last >= row.first)).toBe(true);
     for (const row of nodes) {
       const stops = actual.snapshot.stops.filter(stop => stop.ordinal === row.ordinal); expect(stops.length).toBeGreaterThan(0);
-      const frontier = Math.min(...stops.map(stop => Math.round(Math.max(stop.targetSeconds, stop.submittedSeconds) * stop.sampleRate)));
+      for (const stop of stops) { expect(Number.isSafeInteger(stop.renderFrameBeforeStop)).toBe(true); expect(Number.isSafeInteger(stop.renderFrameAfterStop)).toBe(true); expect(stop.renderFrameAfterStop).toBeGreaterThanOrEqual(stop.renderFrameBeforeStop); }
+      const frontier = Math.min(...stops.map(stop => Math.max(Math.round(stop.targetSeconds * stop.sampleRate), stop.renderFrameAfterStop)));
+      stopFrontiers.push({ ordinal: row.ordinal, lastRenderedFrame: row.last, frontierFrame: frontier, maximumFollowingFrames: 128, stops });
       expect(row.last).toBeLessThanOrEqual(frontier + 128);
     }
   } else { expect(actual.requestedAtFrame).toBeLessThan(Math.min(...nodes.map(row => row.expectedFrame))); expect(nodes.every(row => row.first === null && row.last === null)).toBe(true); }
   const retirement = await disposePrivate(page);
   await attach(info, nativeBrowser, afterRender ? 'cancel-after-render' : 'cancel-before-render', { produced, targets, actual, retirement,
-    cancellation: { nativeSubmissionObserved: true, rendered: afterRender, nodes: nodes.length, frontier: 'native-source-render-probe', deviceBufferedPcm: 'unknown' } });
+    cancellation: { nativeSubmissionObserved: true, rendered: afterRender, nodes: nodes.length, frontier: 'native-stop-call-bracketed-by-shared-render-quantum', maximumFollowingFrames: 128, stopFrontiers, deviceBufferedPcm: 'unknown' } });
 });
 
 test('an independent audio owner leaves physical correlation and scheduled sources intact', async ({ page, nativeBrowser }, info) => {

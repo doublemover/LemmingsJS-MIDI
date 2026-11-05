@@ -56,9 +56,12 @@ export async function observeNativeAudioClock(page) {
     };
     window.OscillatorNode.prototype.stop = function(when = 0) {
       const observation = window.__nativeClockObservation;
-      if (observation.stops.length < 1024) observation.stops.push({ ordinal: ordinals.get(this), context: observation.contexts.indexOf(this.context), targetSeconds: when,
-        submittedSeconds: this.context.currentTime, sampleRate: this.context.sampleRate });
-      return stop.call(this, when);
+      const row = { ordinal: ordinals.get(this), context: observation.contexts.indexOf(this.context), targetSeconds: when, submittedSeconds: this.context.currentTime, sampleRate: this.context.sampleRate };
+      if (observation.stops.length < 1024) observation.stops.push(row);
+      window.__nativeClockStopProbe?.(this, row, 'before');
+      const result = stop.call(this, when);
+      window.__nativeClockStopProbe?.(this, row, 'after');
+      return result;
     };
   });
 }

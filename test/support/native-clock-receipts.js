@@ -5,7 +5,7 @@ export function nativeClockReceipt(project, scenario) {
   const snapshot = { schema: 'lemmings-native-physical-clock/v1', source: { actorsPosed: false, processorsOverridden: false }, context: { sampleRate: 48000 }, nodes,
     viewport: { width: 1920, height: 1080 },
     observer: { crossOriginIsolated: true, sharedBytes: 16, warmed: true, slots: 8 },
-    stops: nodes.map(row => ({ ordinal: row.ordinal, targetSeconds: 0.23, submittedSeconds: 0.2, sampleRate: 48000 })) };
+    stops: nodes.map(row => ({ ordinal: row.ordinal, targetSeconds: 0.23, submittedSeconds: 0.2, sampleRate: 48000, renderFrameBeforeStop: 10880, renderFrameAfterStop: 11008, mainSecondsAfterStop: 0.2 })) };
   const receipt = { schema: 'lemmings-native-clock-qualification/v1', project, browser: 'validator-fixture', scenario, viewport: { width: 1920, height: 1080 }, acousticReceipt: false,
     availability: { available: true },
     targets: { checked: 8, presentationDelayMs: 160, sourcePrecision: 'committed-tick-and-endpoint-crossing', producerLeadClock: 'native-audio-worklet-quantum-start', producerLeadFrames: nodes.map(() => 2000) },
@@ -16,7 +16,7 @@ export function nativeClockReceipt(project, scenario) {
   } else if (scenario.startsWith('cancel-')) {
     const rendered = scenario === 'cancel-after-render';
     if (!rendered) for (const row of nodes) { row.first = null; row.last = null; row.firstWhileBlocked = null; }
-    receipt.cancellation = { nativeSubmissionObserved: true, rendered, nodes: 8, deviceBufferedPcm: 'unknown' };
+    receipt.cancellation = { nativeSubmissionObserved: true, rendered, nodes: 8, frontier: 'native-stop-call-bracketed-by-shared-render-quantum', maximumFollowingFrames: 128, deviceBufferedPcm: 'unknown', stopFrontiers: rendered ? nodes.map(row => ({ ordinal: row.ordinal, lastRenderedFrame: row.last, frontierFrame: 11040, maximumFollowingFrames: 128, stops: snapshot.stops.filter(stop => stop.ordinal === row.ordinal) })) : [] };
     Object.assign(receipt.actual, { requestedAtFrame: rendered ? 12000 : 8100, retirement: { outcome: 'complete' } });
   } else if (scenario === 'independent-owner') {
     Object.assign(receipt.actual, { sameContext: true, before: { anchor, rebases: 1 }, after: { anchor, rebases: 1 } });

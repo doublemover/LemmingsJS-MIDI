@@ -83,6 +83,25 @@ describe('native lifecycle engine qualification', () => {
     const receipt = nativeClockReceipt('chromium-semantic', 'listen-rearm'); mutate(receipt);
     expect(() => qualifyNativeClockReceipt(receipt, 'chromium-semantic')).to.throw('Incomplete native clock');
   });
+  it('qualifies cancellation against observed render time when the main-thread clock lags', () => {
+    const receipt = nativeClockReceipt('firefox-lifecycle', 'cancel-after-render');
+    for (const stop of receipt.actual.snapshot.stops) { stop.targetSeconds = 0; stop.submittedSeconds = stop.mainSecondsAfterStop = 0.1; }
+    for (const row of receipt.cancellation.stopFrontiers) row.frontierFrame = 11008;
+    expect(qualifyNativeClockReceipt(receipt, 'firefox-lifecycle').cancellation.maximumFollowingFrames).to.equal(128);
+  });
+  for (const [name, mutate] of [
+    ['missing native before bracket', row => { delete row.actual.snapshot.stops[0].renderFrameBeforeStop; }],
+    ['reversed native bracket', row => { row.actual.snapshot.stops[0].renderFrameAfterStop = 10752; }],
+    ['clock from another sample rate', row => { row.actual.snapshot.stops[0].sampleRate = 44100; }],
+    ['undeclared quantum clock', row => { row.cancellation.frontier = 'main-thread-context'; }],
+    ['widened frame limit', row => { row.cancellation.maximumFollowingFrames = 256; }],
+    ['forged frontier summary', row => { row.cancellation.stopFrontiers[0].frontierFrame++; }],
+    ['duplicated source ordinal', row => { row.actual.snapshot.nodes[1].ordinal = 0; }],
+    ['render beyond the unchanged128-frame bound', row => { row.actual.snapshot.nodes[0].last = 11169; row.cancellation.stopFrontiers[0].lastRenderedFrame = 11169; }]
+  ]) it('rejects cancellation with ' + name, () => {
+    const receipt = nativeClockReceipt('firefox-lifecycle', 'cancel-after-render'); mutate(receipt);
+    expect(() => qualifyNativeClockReceipt(receipt, 'firefox-lifecycle')).to.throw('Incomplete native clock');
+  });
   for (const [scenario, mutate] of [
     ['stall-20', row => { row.actual.snapshot.nodes[0].first += 130; }],
     ['stall-50', row => { row.onset.p95Frames = 0; }],
