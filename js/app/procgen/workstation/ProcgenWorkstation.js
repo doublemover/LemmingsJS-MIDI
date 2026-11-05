@@ -899,6 +899,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return result;
     } finally { if (!adopted) retireCausalRead(prepared); }
   };
+  /** @param {{sourceSequence?: number, eventId?: string}} options */
   const inspectPhysicalScoreCause = async ({ sourceSequence, eventId } = {}) => {
     if (!physicalScoreQuery || !physicalScore?.glyphs.some(glyph => glyph.glyphId === eventId && glyph.source.sequence === sourceSequence))
       throw new Error('Choose a source glyph from the current score window.');
@@ -1054,6 +1055,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     next.getAutomationSpanState = (id, lane) => engine.getAutomationSpanState?.(id, lane);
     next.resetClock?.({ preserveGamePhrases: true });
   };
+  /** @param {{session?: import('./ProcgenBoundaryContracts.js').SessionBindingSource, historyRestore?: boolean}} options */
   const bindRuntime = ({ session, historyRestore = false } = {}) => {
     if (disposed) return null;
     if (legacy.local.setPerformanceDocumentIdentity) legacy.local.setPerformanceDocumentIdentity('workstation:' + documentGeneration);
@@ -1320,6 +1322,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     artifact.digest().then(() => { if (preparedExport === artifact && !disposed) publishExportState(); });
     return artifact;
   };
+  /** @param {{signal?: AbortSignal}} options */
   const prepareCausalArchive = ({ signal } = {}) => {
     signal?.throwIfAborted();
     if (disposed) throw new Error('The export owner is retired.');
@@ -1357,6 +1360,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     publishExportState();
     return lastDelivery;
   };
+  /** @param {{deliver?: boolean, signal?: AbortSignal}} options */
   const prepareProjectExport = async ({ deliver = true, signal } = {}) => {
     signal?.throwIfAborted();
     if (worldBusy) throw new Error('Wait for the world change to finish before exporting.');
@@ -1385,9 +1389,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } catch (error) { preparationFailure = error; if (!ownsOperation(lease) || request !== exportPreparationRevision || generation !== documentGeneration) return null; throw error; }
     finally { try { computed?.release(); } finally { signal?.removeEventListener('abort', cancel); finishOperation(lease, preparedResult ? 'prepared' : lease.signal.aborted || generation !== documentGeneration || revision !== editRevision ? 'canceled' : 'failed', preparationFailure); preferenceHold?.release(); } }
   };
+  /** @param {import('./ProcgenBoundaryContracts.js').MidiExportRequest} options */
   const prepareMidiExport = async ({ format = 'midi1', outputRouteId, outputRouteIndex, sourceLayer, placement = 'retained-absolute-beat', tempoSource = 'captured-transport' } = {}) => {
     if (!['midi1', 'ump'].includes(format)) throw new RangeError('Choose original UMP Clip or compatible MIDI1.');
-    const clip = format === 'ump', planner = clip ? planOriginalUmpClip : planRecordedMidiExport;
+    const clip = format === 'ump';
     sourceLayer ??= clip ? 'authored-intent' : 'auto';
     archiveExportPreparation?.controller.abort();
     if (currentOperation?.kind === 'export') currentOperation.controller.abort();
@@ -1410,14 +1415,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           const snapshot = await source.prepareInput({ signal, onProgress: progress => {
             if (isCurrent()) { Object.assign(pending, progress); publishExportState(); }
           } });
-          try { planner(snapshot, options); }
+          const plan = () => {
+            const layer = options.sourceLayer;
+            if (clip) return planOriginalUmpClip(snapshot, options);
+            if (layer !== 'auto' && layer !== 'api-accepted' && layer !== 'intent-render') throw new RangeError('Select recorded output or authored MIDI intent explicitly.');
+            return planRecordedMidiExport(snapshot, { ...options, sourceLayer: layer });
+          };
+          try { plan(); }
           catch (error) {
             if (error.code !== 'midi-export-route-selection-required' || !view?.chooseMidiExportRoute) throw error;
             signal.throwIfAborted(); if (!isCurrent()) throw new Error('The recorded source changed before output selection.');
             pending.phase = 'Choose recorded output'; publishExportState();
             options.outputRouteIndex = await view.chooseMidiExportRoute(error.routes, { evidence: error.evidence, signal, isCurrent, selection: 'route-index' });
             signal.throwIfAborted(); if (!isCurrent()) throw new Error('The recorded source changed while choosing its output.');
-            planner(snapshot, options);
+            plan();
           }
           return { snapshot, window, options };
         }, onProgress: progress => { if (isCurrent()) { Object.assign(pending, progress); publishExportState(); } } });
@@ -1525,6 +1536,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       omitted: takeId ? 'External instrument or source assets may need a separate package. MIDI or audio alone does not preserve this physical take.'
         : 'Stored takes, their causal history, audio and separately supplied assets are not included. Select a finished causal take first to export its archive.' });
   };
+  /** @param {ReturnType<typeof getShareExportDescriptor>} reviewed @param {{signal?: AbortSignal}} options */
   const prepareShareExport = (reviewed, { signal } = {}) => {
     signal?.throwIfAborted();
     const current = getShareExportDescriptor();
@@ -1593,6 +1605,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     if (!disposed && showBrowser) sceneBrowser?.open();
   };
+  /** @param {unknown} value @param {ReturnType<typeof beginOperation> | null} admittedLease @param {{signal?: AbortSignal, historyRestore?: boolean}} options */
   async function loadSession(value, admittedLease = null, { signal, historyRestore = false } = {}) {
     if (stageSession?.active()) return stageSession.reject();
     signal?.throwIfAborted();
@@ -1653,6 +1666,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       preferenceHold?.release();
     }
   }
+  /** @param {{seed?: number, fresh?: boolean, projectNext?: object, history?: boolean, worldSettings?: {hazardSpacing?: number}, admittedLease?: ReturnType<typeof beginOperation>}} options */
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true, worldSettings = {}, admittedLease = null } = {}) {
     if (disposed || admittedLease && !ownsOperation(admittedLease)) return false;
     if (stageSession?.active()) return stageSession.reject();
@@ -2045,6 +2059,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onOfferResonatorSource: (index, file, options) => handlers.offerMorphSource(index, 'shape', file, options), onStatus: status }); shapeFoundry.open();
       });
     },
+    /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean}} options */
     applyInstalledInstrument(candidate, { signal, hold = false, isCurrent } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, laneId: selected().id }); },
     canvasToolAuthorityChanged() { legacy.refreshCanvasToolAuthority?.(); },
     selectNativeSound(laneId, patchId) {
@@ -2339,7 +2354,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (review && !reviewAvailable()) return false;
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('import');
-      let computed = null, preferenceHold = null, imported = false, importFailure = null;
+      let computed = null, imported = false, importFailure = null;
+      /** @type {import('./ProcgenBoundaryContracts.js').PreferenceReadHold | null} */
+      let preferenceHold = null;
       try {
         const source = await readForOperation(lease, async () => {
           if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
@@ -2455,7 +2472,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   for (const [name, action] of Object.entries(handlers)) if (typeof action === 'function') handlers[name] = (...args) => {
     if (stageSession && !stageSession.permitsCommand(name, args)) return stageSession.reject();
-    try { const result = action(...args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
+    try { const result = Reflect.apply(action, undefined, args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
   view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration, getDocumentStatus,
     getArmedLaneIds: () => [inputLease?.laneId, state.recording && procgenLane(project.procgen.lanes, state.laneId)?.mode === 'pattern' ? state.laneId : null].filter(Boolean), dispatch, handlers, canCommand, state });

@@ -43,7 +43,7 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
     return { schema: 'lemmings-native-physical-clock/v1', presentationDelayMs, viewport: { width: window.innerWidth, height: window.innerHeight }, context: { sampleRate: audio.getAudioContext().sampleRate,
       seconds: audio.getAudioContext().currentTime }, source: { worldId: world.worldId, generation: world.generation, tick: world.tickIndex,
       sourcePrecision: 'committed-tick-and-endpoint-crossing', nominalSpeed: 3, sourceProducer: 'cooperative-committed-batches;original-clock-anchor-retained', preparedSourceTick, actorsPosed: false, processorsOverridden: false, graph }, batches, intents, receipts,
-    nodes: probes.map((probe, index) => ({ ...probe.start, ...values[index] })), stops: window.__nativeClockObservation.stops,
+    nodes: probes.map((probe, index) => ({ ...probe.start, ...values[index] })), stops: window.__nativeClockObservation.stops, ends: window.__nativeClockObservation.ends,
     observer: { crossOriginIsolated: window.crossOriginIsolated, sharedBytes: observation.byteLength, warmed: probes.every(probe => Number.isSafeInteger(probe.readyFrame)), slots: probes.length,
       clock: 'native-audio-worklet-shared-observer', documentHeaders: window.__nativeClockHeaderReceipt },
     diagnostics: playback.diagnostics(), preview: audio.getState(), budget: budget.diagnostics() };
@@ -84,6 +84,7 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
       row[phase === 'before' ? 'renderFrameBeforeStop' : 'renderFrameAfterStop'] = window.Atomics.load(observation, 0);
       if (phase === 'after') row.mainSecondsAfterStop = context.currentTime;
     };
+    window.__nativeClockEndProbe = (oscillator, row) => { if (oscillator.context === context) row.renderFrameAtAcknowledgment = window.Atomics.load(observation, 0); };
     const started = performance.now();
     while (!playback.diagnostics().audioEnabled && performance.now() - started < 2000) await new Promise(resolve => setTimeout(resolve, 0));
     if (!playback.diagnostics().audioEnabled) throw new Error('Physical native owner did not arm.');
@@ -123,7 +124,11 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
       allowed = false; const receipt = playback.stop(); await receipt.completion;
       if (receipt.outcome !== 'complete') throw new Error('Native clock owner stop retirement is unresolved.');
       await waitContext(Math.max(...probes.map(probe => probe.start.targetSeconds)) + 0.2);
-      return { mode: afterRender ? 'after-render-observed' : 'after-native-submission-before-start', requestedAtFrame: Math.round(before * context.sampleRate),
+      const waiting = performance.now(), timeoutMs = 2000;
+      const missing = () => probes.filter(probe => !window.__nativeClockObservation.ends.some(end => end.ordinal === probe.start.ordinal)).map(probe => probe.start.ordinal);
+      while (missing().length && performance.now() - waiting < timeoutMs) await new Promise(resolve => setTimeout(resolve, 10));
+      const missingOrdinals = missing(), nativeEndWait = { elapsedMs: performance.now() - waiting, timeoutMs, complete: missingOrdinals.length === 0, missingOrdinals };
+      return { nativeEndWait, mode: afterRender ? 'after-render-observed' : 'after-native-submission-before-start', requestedAtFrame: Math.round(before * context.sampleRate),
         retirement: { state: receipt.state, outcome: receipt.outcome }, snapshot: await snapshot() };
     },
     async unrelatedOwner() {
@@ -134,7 +139,7 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
       return { sameContext: audio.getAudioContext() === context, before, after, other: other.getState(), snapshot: await snapshot() };
     },
     async dispose() {
-      if (retired) return; retired = true; window.__nativeClockStartProbe = null; window.__nativeClockStopProbe = null; world.soundEvents.onBatch.off(onBatch); world.timer.speedFactor = previousSpeed;
+      if (retired) return; retired = true; window.__nativeClockStartProbe = null; window.__nativeClockStopProbe = null; window.__nativeClockEndProbe = null; world.soundEvents.onBatch.off(onBatch); world.timer.speedFactor = previousSpeed;
       const stopped = playback.dispose(); await stopped.completion; if (stopped.outcome !== 'complete') throw new Error('Private playback retirement is unresolved.');
       const otherClosing = other?.dispose(); await (otherClosing?.completion || otherClosing);
       for (const probe of probes) { probe.node.port.postMessage({ kind: 'retire' }); probe.node.disconnect(); probe.node.port.close(); }

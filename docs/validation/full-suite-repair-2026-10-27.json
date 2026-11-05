@@ -148149,5 +148149,85 @@
       },
       "currentSource": "pending-publication"
     }
+  },
+  "continuation427": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Check full workstation orchestration, storage and bounded replacement/operation/scene contracts; compile strict deliberate mismatches. Observe actual trusted native oscillator ended acknowledgment separately from Stop API submission; keep128following-frame bound at acknowledged frontier. Select named documents separately from recovery rows.",
+    "evidence": {
+      "path": "docs/validation/typed-workstation-native-end-2026-11-05.json",
+      "bytes": 870739,
+      "sha256": "403bc88dea280d78239f7bafa6d8f30c7d5a221caeb037f85e74dc8e08242f88"
+    },
+    "validation": {
+      "node": {
+        "suites": 36,
+        "tests": 612,
+        "passes": 612,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-05T05:14:32.461Z",
+        "end": "2026-11-05T05:14:44.743Z",
+        "duration": 12282
+      },
+      "desktopCases": 13,
+      "engineCases": 24,
+      "nativeAvailable": 16,
+      "explicitUnavailable": 8,
+      "scopedCoverage": {
+        "lines": {
+          "total": 3550,
+          "covered": 2969,
+          "skipped": 0,
+          "pct": 83.63
+        },
+        "statements": {
+          "total": 3550,
+          "covered": 2969,
+          "skipped": 0,
+          "pct": 83.63
+        },
+        "functions": {
+          "total": 523,
+          "covered": 377,
+          "skipped": 0,
+          "pct": 72.08
+        },
+        "branches": {
+          "total": 3049,
+          "covered": 2226,
+          "skipped": 0,
+          "pct": 73
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "criticalTypes": "passed",
+      "strictMismatchFixtures": "passed"
+    },
+    "source": {
+      "browserDigest": "3869f9ad67d80160853319dfbe24b0774f96735e94da781171a93bbd5dcaf4da",
+      "paths": 1418,
+      "byteExact": 1405,
+      "unchangedCheckoutNewlines": 13
+    },
+    "ci": {
+      "latestCompleteGreen": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+      "parentEngineFailure": {
+        "head": "6b912c5d77717983092ee4305a04c08563cc2010",
+        "run": 41970008379,
+        "job": 127055787454,
+        "project": "webkit-lifecycle",
+        "actualLastFrame": 41077,
+        "stopCallMaximum": 40960,
+        "resolution": "Actual trusted native-ended acknowledgment observed separately; Stop latency retained without aclaimedceiling."
+      },
+      "remaining": "Retained424 replay-memory ResourceBudgetError remainsactive;512MiBlimitunchanged.",
+      "currentSource": "pending-publication"
+    }
   }
 }

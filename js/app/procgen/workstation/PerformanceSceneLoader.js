@@ -10,6 +10,7 @@ const same = (a, b) => canonicalDataText(a).text === canonicalDataText(b).text;
 // Candidate commit is synchronous and calls the supplied fence at its atomic
 // publication point. Retirement releases candidate ownership, including after
 // handoff, and must never retire the adopted active world.
+/** @param {Partial<import('./ProcgenBoundaryContracts.js').SceneLoaderOptions>} options */
 export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependency, prepareCandidate, preparePreview = null, beforeCommit = async () => true, onState = () => {} } = {}) {
   if (typeof getBaseIdentity !== 'function' || typeof resolveDependency !== 'function' || typeof prepareCandidate !== 'function' || preparePreview !== null && typeof preparePreview !== 'function' || typeof beforeCommit !== 'function' || typeof onState !== 'function') throw new TypeError('Scene loading requires the existing document, dependency and candidate transaction owners.');
   const unresolved = new Set();
@@ -90,6 +91,7 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
     })(); operation.promise.catch(() => {});
     try { return await operation.promise; } catch (error) { if (preview === operation) { preview = null; lastError = { code: error.code || 'scene-preview-failed', message: error.message }; if (error.retirement && error.retirement.outcome !== 'complete') fault ||= error; } report(); throw error; }
   };
+  /** @param {import('./ProcgenBoundaryContracts.js').SceneApplyOptions} options */
   const applyOnce = async ({ signal, isCurrent = () => true, onCommit = () => {}, onCommitted = () => {} } = {}) => {
     const admitted = () => !signal?.aborted && isCurrent();
     if (!admitted()) return freezeData({ status: 'canceled', current });
@@ -108,6 +110,7 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
       await retire(source.candidate); if (observationError) throw observationError; phase = 'active'; lastError = null; report(); return freezeData({ status: 'committed', current, receipt });
     } catch (error) { if (adopted && observationError === error) { phase = 'active-observation-failed'; lastError = { code: 'scene-observation-failed', message: error.message }; report(); throw error; } fault ||= error; phase = adopted ? 'active-retirement-unknown' : 'commit-recovery-required'; lastError = { code: error.code || 'scene-commit-failed', message: error.message }; report(); throw error; }
   };
+  /** @param {import('./ProcgenBoundaryContracts.js').SceneApplyOptions} [options] */
   const apply = options => {
     if (applying) return applying;
     const promise = applyOnce(options); applying = promise;

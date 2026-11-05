@@ -37,6 +37,11 @@ const createProcgenDocumentId = (crypto = globalThis.crypto) => {
   return 'doc:' + [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('') + '-' + (++documentIdSequence);
 };
 const legacyDocumentId = key => 'doc:legacy:' + String(key).split('').map(unit => unit.charCodeAt(0).toString(16).padStart(4, '0')).join('');
+/** @param {unknown} source */
+const recoverySourceLaneCount = source => {
+  if (!source || typeof source !== 'object' || !('world' in source)) return undefined;
+  const world = source.world; return world && typeof world === 'object' && 'laneCount' in world && typeof world.laneCount === 'number' ? world.laneCount : undefined;
+};
 const storageFailure = (error, fallback = 'Project storage failed.') => {
   const name = error?.name || '';
   const category = name === 'QuotaExceededError' ? 'quota' : name === 'ConflictError' ? 'conflict' : name === 'VersionError' || name === 'NotFoundError' ? 'schema' :
@@ -46,14 +51,16 @@ const storageFailure = (error, fallback = 'Project storage failed.') => {
     schema: 'Project storage has an incompatible schema. Reload the application before retrying.',
     'transaction-abort': 'Project storage canceled the write. Retry the save; the previous project remains available.',
     unavailable: 'Browser project storage is unavailable. Export a project file to save.', transient: fallback };
-  const failure = new Error(messages[category], { cause: error }); failure.name = 'ProcgenStorageError'; failure.category = category;
+  const failure = Object.assign(new Error(messages[category], { cause: error }), { name: 'ProcgenStorageError', category });
   return failure;
 };
+/** @param {IDBFactory} indexedDB @param {{openTimeoutMs?: number, onState?: (state: {state: string, error: unknown, generation: number}) => void, keyRange?: typeof IDBKeyRange, backgroundJobs?: typeof backgroundJobService, budgetAdapter?: {reserve(request: unknown): unknown, release(request: unknown): unknown}}} options */
 const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTimeoutMs = 5000, onState = () => {}, keyRange = globalThis.IDBKeyRange,
   backgroundJobs = backgroundJobService, budgetAdapter = null } = {}) => {
   if (!Number.isSafeInteger(openTimeoutMs) || openTimeoutMs < 1) throw new RangeError('Invalid project storage open timeout');
   let database = null, opening = null, generation = 0, retired = false, state = 'closed', lastError = null;
   const lifetime = new AbortController(); let checksumSequence = 0;
+  /** @param {() => unknown | Promise<unknown>} prepareSnapshot @param {import('./ProcgenBoundaryContracts.js').StorageReadOptions & {laneCount?: number}} options */
   const checksumSnapshot = async (prepareSnapshot, { signal, laneCount = 1024 } = {}) => {
     const controller = new AbortController(), cancel = () => controller.abort(signal?.reason || lifetime.signal.reason);
     signal?.addEventListener('abort', cancel, { once: true }); lifetime.signal.addEventListener('abort', cancel, { once: true });
@@ -66,7 +73,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       computed = await backgroundJobs.compute({ kind: 'recovery-checksum', ownerId: 'procgen-recovery-storage', ownerEpoch: generation,
         sourceRevision: `recovery:${++checksumSequence}`, inputBytes: 0, estimatedPeakBytes: 128 * 1048576 + Math.max(1, Math.min(1024, laneCount || 1024)) * 131072,
         priority: 'recovery', budgetAdapter, signal: controller.signal, retainInput: true, isCurrent: () => !retired,
-        prepareInput: async () => { snapshot = await prepareSnapshot(); validateProcgenSession(snapshot); return snapshot; }, releasePreparedInput: () => { snapshot = null; } });
+        prepareInput: async () => { snapshot = validateProcgenSession(await prepareSnapshot()); return snapshot; }, releasePreparedInput: () => { snapshot = null; } });
       computed.signal?.addEventListener('abort', jobAborted, { once: true }); if (computed.signal?.aborted) jobAborted();
       controller.signal.throwIfAborted();
       return { checksum: computed.value, get snapshot() { controller.signal.throwIfAborted(); if (!snapshot) throw namedError('AbortError', 'Checkpoint source was released'); return snapshot; }, signal: controller.signal, release };
@@ -134,6 +141,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     } catch (error) { finish(error); }
     return promise;
   };
+  /** @template T @param {IDBTransactionMode} mode @param {(store: IDBObjectStore, transaction: IDBTransaction) => {readonly result: T, readonly error?: unknown} | void} perform @param {string | string[]} storeName @param {AbortSignal | null} signal @returns {Promise<T>} */
   const operation = async (mode, perform, storeName = 'sessions', signal = null) => {
     signal?.throwIfAborted();
     const db = await open();
@@ -297,13 +305,16 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     supportsRecoveryFactory: true,
     getState: () => ({ state, error: lastError, generation, retired, recoveryPages: recoveryPages.stats(), preferencePages: preferencePages.diagnostics() }),
     saveDocument,
+    /** @param {string} id @param {import('./ProcgenBoundaryContracts.js').StorageReadOptions} options */
     async loadDocument(id, { signal } = {}) {
       const record = await operation('readonly', store => store.get(id), 'sessions', signal);
       if (!record || record.kind !== 'document') throw new Error('Project not found.');
       return { id, revision: record.revision, name: record.name, savedAt: record.savedAt, session: validateProcgenSession(record.session) };
     },
+    /** @param {string} id @param {import('./ProcgenBoundaryContracts.js').DocumentReadOptions} options */
     async loadDocumentOwned(id, { signal, expectedRevision = null } = {}) {
-      let record, computed;
+      /** @type {import('./ProcgenBoundaryContracts.js').StoredProjectRecord | null} */
+      let record = null; let computed;
       try {
         const metadata = await operation('readonly', store => store.get(id), 'projectMetadata', signal);
         if (expectedRevision != null && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1 || metadata?.revision !== expectedRevision)) throw namedError('ConflictError', 'This project changed after selection. Refresh its metadata before opening.');
@@ -314,16 +325,19 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
           if (metadata?.laneCount != null && (metadata.revision !== record.revision || laneCount !== record.session?.world?.laneCount)) throw namedError('ConflictError', 'Stored project admission metadata changed. Select the project again.');
           return record.session;
         }, { signal, laneCount });
+        if (!record) throw new Error('The project checksum did not capture its source record.');
         const result = ownedSource(computed, { kind: 'document', id, revision: record.revision, name: record.name, savedAt: record.savedAt,
           checksum: computed.checksum, verification: 'stored-document-snapshot', summary: createProcgenProjectSummary(computed.snapshot, { id, revision: record.revision, verification: 'stored-snapshot-checked' }) });
         record = null; computed = null; return result;
       } finally { computed?.release(); }
     },
+    /** @param {string} id @param {import('./ProcgenBoundaryContracts.js').StorageReadOptions} options */
     async getDocumentSummary(id, { signal } = {}) {
       if (typeof id !== 'string' || !id.startsWith('doc:') || id.length > 512) throw new TypeError('Invalid project metadata identity.');
       await migrateLegacy(signal); const record = await operation('readonly', store => store.get(id), 'projectMetadata', signal);
       return record && record.kind !== 'migration' ? readProcgenProjectSummary({ ...readProcgenProjectSummary(record.summary), id: record.id, revision: record.revision, name: record.name, savedAt: record.savedAt, laneCount: record.laneCount }) : null;
     },
+    /** @param {import('./ProcgenBoundaryContracts.js').StorageReadOptions} options */
     async getRecoverySummary({ signal } = {}) {
       await migrateLegacy(signal); const head = await operation('readonly', store => store.get('recovery:head'), 'sessions', signal);
       if (head) {
@@ -333,6 +347,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       const legacy = await operation('readonly', store => store.count('recovery:latest'), 'sessions', signal);
       return legacy ? readProcgenProjectSummary({ id: 'recovery:legacy', kind: 'legacy-recovery', name: 'Legacy recovery (unverified)' }) : null;
     },
+    /** @param {import('./ProcgenBoundaryContracts.js').StorageReadOptions} options */
     async loadLegacyRecoveryOwned({ signal } = {}) {
       let computed;
       try {
@@ -351,6 +366,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       return records.filter(record => record.kind !== 'migration').map(({ id, revision, name, savedAt }) => ({ id, revision, name, savedAt }))
         .sort((a, b) => b.savedAt.localeCompare(a.savedAt) || b.id.localeCompare(a.id));
     },
+    /** @param {import('./ProcgenBoundaryContracts.js').ProjectPageOptions} options */
     async listDocumentPage({ limit = 40, cursor = null, query = '', signal } = {}) {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || typeof query !== 'string' || query.length > 120 ||
           cursor && (typeof cursor.savedAt !== 'string' || typeof cursor.id !== 'string')) throw new TypeError('Invalid project page request');
@@ -386,7 +402,8 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         } catch (error) { abort(); signal?.removeEventListener('abort', abort); reject(storageFailure(error)); }
       });
     },
-    async saveRecovery(source, { signal, documentRevision = null, tick = null, sourceDocumentId = null, sourceStoredRevision = null, laneCount = source?.world?.laneCount, snapshotMetadata = null, incremental = false } = {}) {
+    /** @param {unknown} source @param {import('./ProcgenBoundaryContracts.js').RecoveryWriteOptions} options */
+    async saveRecovery(source, { signal, documentRevision = null, tick = null, sourceDocumentId = null, sourceStoredRevision = null, laneCount = recoverySourceLaneCount(source), snapshotMetadata = null, incremental = false } = {}) {
       if (incremental) {
         const token = {}, bytes = 8 * 1048576 + Math.max(1, Math.min(1024, laneCount || 1024)) * 131072;
         budgetAdapter?.reserve({ token, owner: 'incremental-recovery-snapshot', category: 'checkpoint', bytes, pinned: true, reloadable: false });
@@ -414,7 +431,9 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         return snapshot;
       }, { signal, laneCount });
       const { checksum, snapshot: session } = computed;
-      signal = computed.signal; let durableReceipt = null, operationError = null;
+      signal = computed.signal;
+      /** @type {import('./ProcgenBoundaryContracts.js').RecoveryCommitReceipt | null} */
+      let durableReceipt = null; let operationError = null;
       try {
         if (signal?.aborted) throw namedError('AbortError', 'Recovery write canceled');
         const db = await open();
@@ -434,7 +453,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
               transaction.objectStore(GENERATION_PIN_STORE).put(recoveryGenerationPin(session, slot, generation));
               store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...receipt, sourceDocumentId, sourceStoredRevision,
                 name: session.name, savedAt: session.savedAt, session });
-              store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum, summary: createProcgenProjectSummary(session, { id: 'recovery:checkpoint', kind: 'recovery-checkpoint', recoveryGeneration: generation, documentRevision, checksum, sourceDocumentId, sourceStoredRevision }) });
+              store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum, summary: createProcgenProjectSummary(session, { id: 'recovery:checkpoint', kind: 'recovery-checkpoint', recoveryGeneration: generation, checksum }) });
             };
             transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); durableReceipt = { ...receipt, durable: true, canceledAfterCommit: signal.aborted }; resolve(durableReceipt); };
             transaction.onabort = () => { signal?.removeEventListener('abort', abort);
@@ -443,6 +462,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         }), { signal });
       } catch (error) { operationError = error; throw error; } finally { try { computed.release(); if (durableReceipt) durableReceipt.retirement = resourceRetirementSummary([]); } catch (error) { if (durableReceipt) durableReceipt.retirement = resourceRetirementSummary([error]); else if (operationError) operationError.retirementError = error; else throw error; } }
     },
+    /** @param {import('./ProcgenBoundaryContracts.js').RecoveryReadOptions} options */
     async loadRecovery({ requireVerified = false, signal, owned = false, expectedGeneration = null, expectedChecksum = null } = {}) {
       await migrateLegacy();
       const head = await operation('readonly', store => store.get('recovery:head'), 'sessions', signal);
@@ -464,7 +484,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
           }, { signal });
           if (computed.checksum === record.checksum) {
             if (owned) {
-              const result = ownedSource(computed, { kind: 'recovery', generation: record.generation, checksum: record.checksum, verification: 'checksum-verified-recovery', summary: createProcgenProjectSummary(computed.snapshot, { id: 'recovery:checkpoint', kind: 'recovery-checkpoint', recoveryGeneration: record.generation, documentRevision: record.documentRevision, checksum: record.checksum, sourceDocumentId: record.sourceDocumentId, sourceStoredRevision: record.sourceStoredRevision, verification: 'checksum-verified' }) });
+              const result = ownedSource(computed, { kind: 'recovery', generation: record.generation, checksum: record.checksum, verification: 'checksum-verified-recovery', summary: createProcgenProjectSummary(computed.snapshot, { id: 'recovery:checkpoint', kind: 'recovery-checkpoint', recoveryGeneration: record.generation, checksum: record.checksum, verification: 'checksum-verified' }) });
               record = null; computed = null; return result;
             }
             return validateProcgenSession(record.session);

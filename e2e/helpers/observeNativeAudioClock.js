@@ -40,7 +40,7 @@ export async function isolateAudioClockProbe(page) {
 export async function observeNativeAudioClock(page) {
   await page.addInitScript(() => {
     const Context = window.AudioContext || window.webkitAudioContext;
-    window.__nativeClockObservation = { contexts: [], starts: [], stops: [] };
+    window.__nativeClockObservation = { contexts: [], starts: [], stops: [], ends: [] };
     if (typeof Context !== 'function') return;
     window.AudioContext = class extends Context {
       constructor(options) { super(options); window.__nativeClockObservation.contexts.push(this); }
@@ -51,12 +51,17 @@ export async function observeNativeAudioClock(page) {
         targetSeconds: when, submittedSeconds: this.context.currentTime, submittedHostMs: performance.now(), sampleRate: this.context.sampleRate };
       if (observation.starts.length < 512) observation.starts.push(row);
       ordinals.set(this, row.ordinal);
+      this.addEventListener('ended', event => {
+        const end = { ordinal: row.ordinal, context: observation.contexts.indexOf(this.context), sampleRate: this.context.sampleRate, contextSeconds: this.context.currentTime, hostMs: performance.now(), trusted: event.isTrusted, acknowledgment: 'native-source-ended' };
+        window.__nativeClockEndProbe?.(this, end);
+        if (observation.ends.length < 512) observation.ends.push(end);
+      }, { once: true });
       window.__nativeClockStartProbe?.(this, row);
       return start.call(this, when);
     };
     window.OscillatorNode.prototype.stop = function(when = 0) {
       const observation = window.__nativeClockObservation;
-      const row = { ordinal: ordinals.get(this), context: observation.contexts.indexOf(this.context), targetSeconds: when, submittedSeconds: this.context.currentTime, sampleRate: this.context.sampleRate };
+      const row = { ordinal: ordinals.get(this), context: observation.contexts.indexOf(this.context), targetSeconds: when, submittedSeconds: this.context.currentTime, submittedHostMs: performance.now(), sampleRate: this.context.sampleRate };
       if (observation.stops.length < 1024) observation.stops.push(row);
       window.__nativeClockStopProbe?.(this, row, 'before');
       const result = stop.call(this, when);

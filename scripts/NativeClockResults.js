@@ -59,19 +59,28 @@ export function qualifyNativeClockReceipt(receipt, project) {
   if (scenario.startsWith('cancel-')) {
     const rendered = scenario === 'cancel-after-render';
     if (receipt.cancellation?.nativeSubmissionObserved !== true || receipt.cancellation.rendered !== rendered || receipt.cancellation.deviceBufferedPcm !== 'unknown' || receipt.cancellation.nodes !== 8 ||
-        receipt.cancellation.frontier !== 'native-stop-call-bracketed-by-shared-render-quantum' || receipt.cancellation.maximumFollowingFrames !== 128 || !Array.isArray(receipt.cancellation.stopFrontiers) ||
-        !Array.isArray(snapshot.stops) || snapshot.stops.length > 1024 || snapshot.observer?.crossOriginIsolated !== true || snapshot.observer.warmed !== true || snapshot.observer.sharedBytes !== 16 ||
+        receipt.cancellation.frontier !== 'native-source-ended-acknowledgment' || receipt.cancellation.submissionFrontier !== 'native-stop-call-bracketed-by-shared-render-quantum' || receipt.cancellation.maximumFollowingFrames !== 128 || !Array.isArray(receipt.cancellation.stopFrontiers) ||
+        !Array.isArray(snapshot.stops) || snapshot.stops.length > 1024 || !Array.isArray(snapshot.ends) || snapshot.ends.length > 512 ||
+        actual.nativeEndWait?.complete !== true || actual.nativeEndWait.timeoutMs !== 2000 || !Array.isArray(actual.nativeEndWait.missingOrdinals) || actual.nativeEndWait.missingOrdinals.length ||
+        !Number.isFinite(actual.nativeEndWait.elapsedMs) || actual.nativeEndWait.elapsedMs < 0 || snapshot.observer?.crossOriginIsolated !== true || snapshot.observer.warmed !== true || snapshot.observer.sharedBytes !== 16 ||
         actual.retirement?.outcome !== 'complete' ||
         !integer(actual.requestedAtFrame) || nodes.some(row => row.observedThrough < row.expectedFrame)) fail();
+    for (const row of nodes) {
+      const ends = snapshot.ends.filter(end => end.ordinal === row.ordinal);
+      if (ends.length !== 1) fail(); const end = ends[0];
+      if (end.acknowledgment !== 'native-source-ended' || end.trusted !== true || !integer(end.context) || end.context !== row.context || end.sampleRate !== snapshot.context.sampleRate ||
+          !Number.isFinite(end.contextSeconds) || end.contextSeconds < 0 || !Number.isFinite(end.hostMs) || end.hostMs < row.submittedHostMs ||
+          !integer(end.renderFrameAtAcknowledgment) || end.renderFrameAtAcknowledgment % 128 || end.renderFrameAtAcknowledgment > row.observedThrough) fail();
+    }
     if (rendered) {
       if (nodes.some(row => !integer(row.first) || !integer(row.last) || row.last < row.first) || receipt.cancellation.stopFrontiers.length !== nodes.length || new Set(nodes.map(row => row.ordinal)).size !== nodes.length) fail();
       for (const row of nodes) {
         const stops = snapshot.stops?.filter(stop => stop.ordinal === row.ordinal) || [];
-        if (!stops.length || stops.some(stop => !Number.isFinite(stop.targetSeconds) || stop.targetSeconds < 0 || !Number.isFinite(stop.submittedSeconds) ||
+        if (!stops.length || stops.some(stop => !Number.isFinite(stop.targetSeconds) || stop.targetSeconds < 0 || !Number.isFinite(stop.submittedSeconds) || !Number.isFinite(stop.submittedHostMs) ||
             stop.sampleRate !== snapshot.context.sampleRate || !integer(stop.renderFrameBeforeStop) || !integer(stop.renderFrameAfterStop) || stop.renderFrameBeforeStop % 128 || stop.renderFrameAfterStop % 128 ||
             stop.renderFrameAfterStop < stop.renderFrameBeforeStop || stop.renderFrameAfterStop > row.observedThrough || !Number.isFinite(stop.mainSecondsAfterStop) || stop.mainSecondsAfterStop < stop.submittedSeconds)) fail();
-        const frontier = Math.min(...stops.map(stop => Math.max(Math.round(stop.targetSeconds * snapshot.context.sampleRate), stop.renderFrameAfterStop))), summary = receipt.cancellation.stopFrontiers.find(value => value.ordinal === row.ordinal);
-        if (row.last > frontier + 128 || !summary || summary.lastRenderedFrame !== row.last || summary.frontierFrame !== frontier || summary.maximumFollowingFrames !== 128 || JSON.stringify(summary.stops) !== JSON.stringify(stops)) fail();
+        const end = snapshot.ends.find(value => value.ordinal === row.ordinal), frontier = Math.max(Math.round(end.contextSeconds * snapshot.context.sampleRate), end.renderFrameAtAcknowledgment), summary = receipt.cancellation.stopFrontiers.find(value => value.ordinal === row.ordinal);
+        if (row.last > frontier + 128 || !summary || summary.lastRenderedFrame !== row.last || summary.frontierFrame !== frontier || summary.maximumFollowingFrames !== 128 || JSON.stringify(summary.stops) !== JSON.stringify(stops) || JSON.stringify(summary.nativeEnd) !== JSON.stringify(end) || summary.lastStopToAcknowledgmentMs !== end.hostMs - stops.at(-1).submittedHostMs) fail();
       }
     } else if (receipt.cancellation.stopFrontiers.length || actual.requestedAtFrame >= Math.min(...nodes.map(row => row.expectedFrame)) || nodes.some(row => row.first !== null || row.last !== null)) fail();
     return { scenario, availability, cancellation: receipt.cancellation, acousticReceipt: false };

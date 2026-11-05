@@ -1,6 +1,7 @@
 const count = value => Number.isSafeInteger(value) && value >= 0 ? value : 0;
 const text = (value, length = 120) => typeof value === 'string' ? value.slice(0, length) : '';
 
+/** @param {Partial<import('./ProcgenBoundaryContracts.js').ReplacementReviewInput>} options @returns {import('./ProcgenBoundaryContracts.js').ReplacementReview} */
 export function createProcgenReplacementReview({ identity, documentIdentity, name, dirty = false, physicalProgress = false, drafts = {}, take = {}, capture = {}, recording = {}, prelisten = {}, artifact = null, delivery = false, saving = false, preparingFile = false } = {}) {
   if (typeof identity !== 'string' || !identity || identity.length > 2048 || typeof documentIdentity !== 'string' || !documentIdentity || documentIdentity.length > 128) throw new Error('Invalid replacement review source.');
   const textDrafts = count(drafts.textDrafts), curveDrafts = count(drafts.curveDrafts), gestures = count(drafts.gestures), blockedCapture = capture.unresolved === true || ['preparing', 'recording', 'stopping'].includes(capture.state),

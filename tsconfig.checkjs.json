@@ -9,7 +9,11 @@
     "strict": false,
     "noImplicitAny": false,
     "noResolve": true,
-    "lib": ["ES2022", "DOM"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "ES2023.Array"
+    ],
     "skipLibCheck": true,
     "types": []
   },
@@ -39,6 +43,14 @@
     "js/app/editor-ui/EditorUiBindingTools.js",
     "js/app/e2e/E2EEditorApplyHelpers.js",
     "js/level/Trigger.js",
-    "mcp/toolRouting.js"
+    "mcp/toolRouting.js",
+    "js/app/procgen/workstation/ProcgenWorkstation.js",
+    "js/app/procgen/workstation/ProcgenProjectSummary.js",
+    "js/app/procgen/workstation/ProcgenReplacementPolicy.js",
+    "js/app/procgen/workstation/ProcgenOperationView.js",
+    "js/app/procgen/workstation/PerformanceSceneLoader.js",
+    "js/app/procgen/workstation/ProcgenNotices.js",
+    "js/app/procgen/workstation/ProcgenBoundaryContracts.d.ts",
+    "js/app/procgen/workstation/ProcgenSessionStorage.js"
   ]
 }

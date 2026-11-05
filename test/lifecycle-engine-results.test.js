@@ -86,10 +86,17 @@ describe('native lifecycle engine qualification', () => {
   it('qualifies cancellation against observed render time when the main-thread clock lags', () => {
     const receipt = nativeClockReceipt('firefox-lifecycle', 'cancel-after-render');
     for (const stop of receipt.actual.snapshot.stops) { stop.targetSeconds = 0; stop.submittedSeconds = stop.mainSecondsAfterStop = 0.1; }
-    for (const row of receipt.cancellation.stopFrontiers) row.frontierFrame = 11008;
+    for (const row of receipt.cancellation.stopFrontiers) row.frontierFrame = 11520;
     expect(qualifyNativeClockReceipt(receipt, 'firefox-lifecycle').cancellation.maximumFollowingFrames).to.equal(128);
   });
   for (const [name, mutate] of [
+    ['missing native-ended acknowledgment', row => { row.actual.snapshot.ends = []; }],
+    ['synthetic ended event', row => { row.actual.snapshot.ends[0].trusted = false; }],
+    ['acknowledgment from another context', row => { row.actual.snapshot.ends[0].context = 1; }],
+    ['acknowledgment from another sample rate', row => { row.actual.snapshot.ends[0].sampleRate = 44100; }],
+    ['unobserved acknowledgment frontier', row => { row.actual.snapshot.ends[0].renderFrameAtAcknowledgment = 24192; }],
+    ['incomplete native end wait', row => { row.actual.nativeEndWait.complete = false; }],
+    ['forged native acknowledgment summary', row => { row.cancellation.stopFrontiers[0].nativeEnd = { ...row.actual.snapshot.ends[0], hostMs: 1300 }; }],
     ['missing native before bracket', row => { delete row.actual.snapshot.stops[0].renderFrameBeforeStop; }],
     ['reversed native bracket', row => { row.actual.snapshot.stops[0].renderFrameAfterStop = 10752; }],
     ['clock from another sample rate', row => { row.actual.snapshot.stops[0].sampleRate = 44100; }],
@@ -97,7 +104,7 @@ describe('native lifecycle engine qualification', () => {
     ['widened frame limit', row => { row.cancellation.maximumFollowingFrames = 256; }],
     ['forged frontier summary', row => { row.cancellation.stopFrontiers[0].frontierFrame++; }],
     ['duplicated source ordinal', row => { row.actual.snapshot.nodes[1].ordinal = 0; }],
-    ['render beyond the unchanged128-frame bound', row => { row.actual.snapshot.nodes[0].last = 11169; row.cancellation.stopFrontiers[0].lastRenderedFrame = 11169; }]
+    ['render beyond the unchanged128-frame bound', row => { row.actual.snapshot.nodes[0].last = 11649; row.cancellation.stopFrontiers[0].lastRenderedFrame = 11649; }]
   ]) it('rejects cancellation with ' + name, () => {
     const receipt = nativeClockReceipt('firefox-lifecycle', 'cancel-after-render'); mutate(receipt);
     expect(() => qualifyNativeClockReceipt(receipt, 'firefox-lifecycle')).to.throw('Incomplete native clock');
