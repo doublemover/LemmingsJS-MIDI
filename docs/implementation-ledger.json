@@ -6629,5 +6629,44 @@
       "unchangedCheckoutNewlines": 13
     },
     "remaining": "Await independent current CI; latest inventoried complete-green437 remains separate. Continue generated acquisition/cache and recording/input matrices under1120."
+  },
+  "continuation447": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "codeCommit": "1cf83e83d76868bcd915bbd00e043340fdf85bb8",
+    "scope": "Bind raw handle identity to the requesting provider epoch; independently model actual acquisition, handle, reader and byte-lease owners, with shared bounded delivery/acquisition campaign infrastructure.",
+    "evidence": {
+      "path": "docs/validation/asset-acquisition-model-desktop-2026-11-05.json",
+      "bytes": 402838,
+      "sha256": "799a39bf453174ddffde89a74cdf7b7d11719169af81d83a99a41d5ef526abea"
+    },
+    "validation": {
+      "nodeCases": 175,
+      "nativeDesktopCases": 13,
+      "requiredDesktopBoundaryCases": 27,
+      "assetCampaignSeeds": 4096,
+      "assetTransitions": 194905,
+      "assetWallMs": 31250.964900000003,
+      "assetPeakObservedHeapBytes": 107224496,
+      "deliveryCampaignSeeds": 4096,
+      "deliveryTransitions": 25070,
+      "originalShrinkCommands": 3,
+      "originalShrinkAttempts": 16,
+      "scopeCoverage": {
+        "lines": 91.03,
+        "branches": 84.75,
+        "functions": 85.63
+      }
+    },
+    "source": {
+      "browserPaths": 1289,
+      "browserDigest": "fe2e9c7d044a96889011bbd47796e959915b8de3a2e93c70a385563de424f851",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1565,
+      "byteExact": 1553,
+      "unchangedCheckoutNewlines": 12
+    },
+    "remaining": "Generated persistent-cache transaction/prune and recording/input matrices, remaining controller publication/cleanup boundaries and independent current CI. Latest inventoried complete-green437 stays separate."
   }
 }
