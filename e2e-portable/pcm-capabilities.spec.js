@@ -49,3 +49,41 @@ test('PCM qualification rejects every nonfinite channel boundary and malformed c
   await testInfo.attach('native-pcm-measurement.json', { contentType: 'application/json', body: JSON.stringify({ project: testInfo.project.name, browser: nativeBrowser.version(), result,
     scope: 'Injected numerical boundary checks plus native offline PCM when its constructor exists. No custom-processor fault, realtime deadline, listening, hardware or acoustic qualification.' }) });
 });
+
+
+test('main audio runtime reports actual requested profiles and rates and retires each native context', async ({ page, nativeBrowser }, testInfo) => {
+  await page.goto('/e2e-portable/fixtures/pcm-evidence.html');
+  const available = await page.evaluate(() => typeof (globalThis.AudioContext || globalThis.webkitAudioContext) === 'function');
+  const observations = [];
+  if (available) {
+    await page.evaluate(() => { const button = document.createElement('button'); button.textContent = 'Enable runtime profile'; document.body.append(button); });
+    for (const runtimeConfig of [{ latencyProfile: 'performance' }, { latencyProfile: 'balanced', preferredSampleRate: 44100 }, { latencyProfile: 'performance', preferredSampleRate: 48000 }, { latencyProfile: 'robust', preferredSampleRate: 96000 }]) {
+      await page.evaluate(async config => {
+        const { BrowserNotePreview } = await import('/js/app/midi-ui/browserNotePreview.js');
+        const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
+        window.__runtimeOptions = null;
+        window.__runtimePreview = new BrowserNotePreview({ runtimeConfig: config, performanceCoordinator: null, createAudioContext: options => {
+          window.__runtimeOptions = options; return new Context(options);
+        } });
+        document.querySelector('button').onclick = () => { window.__runtimeEnabled = window.__runtimePreview.enable(); };
+      }, runtimeConfig);
+      await page.getByRole('button', { name: 'Enable runtime profile', exact: true }).click();
+      const result = await page.evaluate(async () => {
+        const enabled = await window.__runtimeEnabled, preview = window.__runtimePreview, context = preview.getAudioContext();
+        const observation = preview.getAudioRuntimeObservation(); await preview.dispose();
+        const retired = preview.getState(); window.__runtimePreview = null;
+        return { enabled, requested: window.__runtimeOptions, observation, retired: retired.retirement, closed: context?.state === 'closed' };
+      });
+      observations.push(result); expect(result.enabled).toBe(true); expect(result.closed).toBe(true);
+      expect(result.retired).toMatchObject({ state: 'retired', outcome: 'complete' });
+      expect(result.observation).toMatchObject({ schema: 'lemmings-audio-runtime-observation/v1', acousticMeasurement: false, estimatesAreAdditive: false });
+      expect(result.observation.actualSampleRate).toBeGreaterThan(0);
+      expect(result.observation.config.preferredSampleRate).toBe(runtimeConfig.preferredSampleRate ?? null);
+      expect(result.requested.latencyHint).toBe({ performance: 'interactive', balanced: 'balanced', robust: 'playback' }[runtimeConfig.latencyProfile]);
+      if (runtimeConfig.preferredSampleRate) expect(result.requested.sampleRate).toBe(runtimeConfig.preferredSampleRate);
+      else expect(result.requested).not.toHaveProperty('sampleRate');
+    }
+  }
+  await testInfo.attach('native-main-audio-runtime.json', { contentType: 'application/json', body: JSON.stringify({ project: testInfo.project.name, browser: nativeBrowser.version(), available,
+    reason: available ? null : 'native-AudioContext-absent', observations, scope: 'Actual context construction, user activation, runtime observations and retirement; no audio workload, CPU tradeoff, sink-switch or acoustic measurement.' }) });
+});

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Accept initial browser-audio latency and rate preferences, prefer the device rate by default, and expose bounded main-context latency and playback-stat diagnostics with explicit freshness.
+
 - Reject malformed sound similarity and level-matching evidence, compare every PCM channel, and retain explicit nonfinite repeat and Panic failures.
 
 - Add a separate Ensemble identities pluck source with wider stable actor timbre variation, fixed pitch and reversible sound-library application.

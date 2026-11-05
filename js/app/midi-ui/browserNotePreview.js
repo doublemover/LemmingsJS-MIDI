@@ -1,3 +1,5 @@
+import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions } from './AudioRuntimeConfig.js';
+import { createAudioRuntimeObservation } from './AudioRuntimeObservation.js';
 import { createLiveLaneSourceBuses } from './LiveLaneSourceBuses.js';
 import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
@@ -71,12 +73,14 @@ const createMixCompressor = context => {
 class BrowserNotePreview {
   constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8,
     volume = 0.15, masterVolume = 0.7, resourceBudget = null, cueVoices = 0, cueCostUnits = cueVoices, maxInstrumentBackends = 20,
-    createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices, performanceCoordinator } = {}) {
+    createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices, performanceCoordinator, runtimeConfig = {} } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
-      ? (AudioContextType ? () => new AudioContextType({ sampleRate: 48000 }) : null)
+      ? (AudioContextType ? options => new AudioContextType(options) : null)
       : createAudioContext;
     this._nowMs = nowMs || (() => globalThis.performance?.now?.() ?? Date.now());
+    this._runtimeConfig = normalizeAudioRuntimeConfig(runtimeConfig);
+    this._runtimeObservation = createAudioRuntimeObservation({ nowMs: this._nowMs });
     this._listeners = new Set();
     this._captureProvenanceListeners = new Set();
     if (typeof onStateChange === 'function') this._listeners.add(onStateChange);
@@ -430,6 +434,7 @@ class BrowserNotePreview {
       message: this._message,
       enabled: this._ready(), performanceLease: this._performanceCoordinator?.state() || null,
       contextEpoch: this._contextEpoch, contextState: this._context?.state || 'not-created',
+      audioRuntime: this.getAudioRuntimeObservation(),
       resourceAccounting: this._audioResources.diagnostics(),
       retirement: retirementState(this._retirement.getReceipt()), retiredVoices: this._retiredVoices.size, unclosedContext: !!this._retiringContext,
       activeVoices: this._voices.size, sharedMix: this._sessions.size > 0, sessionCount: this._sessions.size,
@@ -447,6 +452,9 @@ class BrowserNotePreview {
   }
 
   getAudioContext() { return this._context; }
+
+  getAudioRuntimeObservation() { return this._runtimeObservation.read(this._context, this._contextEpoch, this._runtimeConfig); }
+  resetAudioLatencyStatistics() { return this._runtimeObservation.resetLatency(); }
 
   getCaptureProvenance() {
     const context = this._context;
@@ -590,7 +598,7 @@ class BrowserNotePreview {
           resourceLease = this._audioResources.reserve({ kind: 'mix-graph', generation: this._generation,
             bytes: 4097 * 4 + audioIntervalStorageBytes(this._maxScheduledVoices + 1), estimateBytes: 65536 });
           this._intervalAdmission = createAudioIntervalAdmission({ maxIntervals: this._maxScheduledVoices + 1 });
-          context = this._createContext();
+          context = this._createContext(audioRuntimeContextOptions(this._runtimeConfig));
           master = context.createGain();
           master.gain.value = this._volume * this._masterVolume;
           limiter = createOutputCeiling(context);
@@ -813,6 +821,7 @@ class BrowserNotePreview {
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),
       { name: 'buffers', run: () => { this._noiseBuffer = null; this._captureSamples = null; this._intervalAdmission = null; } },
       { name: 'resource-reservations', run: () => this._audioResources.dispose() },
+      { name: 'runtime-observation', run: () => this._runtimeObservation.dispose() },
       { name: 'observers', run: () => this._observers.clear() },
       { name: 'context', run: () => {
         this._context = null; this._retiringContext = context;

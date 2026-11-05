@@ -1823,3 +1823,17 @@ describe('owner Stop retires autonomous creative effects', () => {
     await stopped.dispose(); await continuing.dispose(); await preview.dispose();
   });
 });
+
+
+describe('main runtime configuration factory integration', () => {
+  it('passes a profile and optional rate to the real context owner and reports the factory actual rate', async () => {
+    for (const runtimeConfig of [{}, { latencyProfile: 'robust', preferredSampleRate: 44100 }]) {
+      const received = [], context = new FakeContext(), preview = new BrowserNotePreview({ runtimeConfig, createAudioContext: options => { received.push(options); return context; } });
+      expect(await preview.enable()).to.equal(true);
+      expect(received).to.deep.equal([runtimeConfig.preferredSampleRate ? { latencyHint: 'playback', sampleRate: 44100 } : { latencyHint: 'interactive' }]);
+      expect(preview.getAudioRuntimeObservation()).to.include({ actualSampleRate: context.sampleRate, acousticMeasurement: false, estimatesAreAdditive: false });
+      expect(preview.getState().audioRuntime.config.preferredSampleRate).to.equal(runtimeConfig.preferredSampleRate ?? null);
+      await preview.dispose(); expect(preview.getAudioRuntimeObservation()).to.equal(null);
+    }
+  });
+});
