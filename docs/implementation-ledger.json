@@ -6195,5 +6195,41 @@
       },
       "currentHead": "pending-publication"
     }
+  },
+  "continuation435": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Prepared muted semantic source qualification and failure-preserving native clock attachment ownership; no product change.",
+    "evidence": {
+      "path": "docs/validation/prepared-native-clock-profile-desktop-2026-11-05.json",
+      "bytes": 3657056,
+      "sha256": "4e31e031e82d3191e84f5ad6c5a6871b617ec9d3c94ab81bada3907bb2a090a6"
+    },
+    "validation": {
+      "node": 59,
+      "browser": 24,
+      "nativeReceipts": 16,
+      "explicitUnavailable": 8,
+      "preparedPrivateNativeScenarios": 12,
+      "criticalTypes": "passed",
+      "format": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserPaths": 1285,
+      "browserDigest": "f70009345e0fb4a1f7689098c7f7d0a7bb7f76eb2edbce17a67441473055cf7a",
+      "workerFiles": 306,
+      "workerDigest": "9dffcd84b97a9dbef8ec40fdb970f2a78c9c2eb884f1c724606d41568ac20073",
+      "paths": 1464,
+      "byteExact": 1451,
+      "unchangedCheckoutNewlines": 13
+    },
+    "limits": [
+      "16 native Chromium/Firefox receipts and eight explicit Windows WebKit unavailable paths. No local native Windows WebKit acoustic qualification.",
+      "12 actual private prepared-source scenarios; four native context-rearm scenarios retain their independent shared fixture.",
+      "Preparation does not prove the historical delay cause, cold-first-use scheduling, or clean Linux CI. The original failed late-submission observation remains retained.",
+      "Scoped Node coverage of the in-page snapshot function is zero because the transport stub does not execute that callback; actual callback is exercised by the native browser cases. No coverage addition is claimed for that function."
+    ]
   }
 }

@@ -17,5 +17,6 @@ export async function observePrivateClockAttempt(page, testInfo, action, value =
     await testInfo.attach('native-clock-failed-attempt.json', { body: JSON.stringify(attempt), contentType: 'application/json' });
     throw new Error(attempt.failure.message);
   }
+  await testInfo.attach('native-clock-preassert-attempt.json', { body: JSON.stringify(attempt), contentType: 'application/json' });
   return attempt;
 }

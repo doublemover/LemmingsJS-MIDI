@@ -12,7 +12,7 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
     instruments: Array.from({ length: 8 }, (_, gate) => 40 + gate).flatMap((gateX, gate) => Array.from({ length: copies }, (_, copy) => ({ id: 'native-clock-' + gate + '-' + copy,
       sourceKind: 'MotionCommitted', sourceLanes: [0], gateX, crossingDirection: 'positive', pitchCents: 6000 + gate * 175, velocity01: 0.6, route: 'local', role: 'crossing' }))) };
   const previousSpeed = world.timer.speedFactor, receipts = [], intents = [], batches = [], probes = [], pending = new Map();
-  let producing = false, allowed = true, failure = null, requestOrdinal = 0, zero = null, other = null, retired = false, preparedSourceTick = null;
+  let producing = false, preparingSource = true, sourcePreparation = null, allowed = true, failure = null, requestOrdinal = 0, zero = null, other = null, retired = false, preparedSourceTick = null;
   world.configurePhysicalAuthoring(graph); world.timer.speedFactor = 3;
   const playback = createProcgenPhysicalPlayback({ audio, world, resourceBudget: budget, presentationDelayMs, isPlaybackEnabled: () => allowed && audio.getState().enabled,
     getGraph: () => graph, getLanes: () => studio.getProject().procgen.lanes, scoreTimeline: clock, now: () => performance.now(), isEffectCaptureEnabled: () => false,
@@ -20,9 +20,11 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
   const onBatch = batch => {
     try {
       const position = clock.observe(batch, { bpm: 120 });
-      const output = playback.processBatch(batch, { bpm: 120, playing: producing, position }); intents.push(...output);
+      const processingStarted = performance.now();
+      const output = playback.processBatch(batch, { bpm: 120, playing: producing || preparingSource, position }); intents.push(...output);
+      const processingHostDurationMs = performance.now() - processingStarted;
       if (batches.length >= 512) throw new Error('Native clock source prefix exceeded its bound.');
-      batches.push({ batchId: batch.batchId, tick: batch.tick, generation: batch.generation, position, sourceTimeMs: batch.sourceTimeMs, tickDurationMs: batch.tickDurationMs,
+      batches.push({ batchId: batch.batchId, worldId: batch.worldId, phase: preparingSource ? 'muted-preparation' : 'producing', processingHostDurationMs, tick: batch.tick, generation: batch.generation, position, sourceTimeMs: batch.sourceTimeMs, tickDurationMs: batch.tickDurationMs,
         anchors: playback.diagnostics().clock.anchor, facts: batch.facts.filter(fact => fact.kind === 'MotionCommitted' && fact.positionAfter?.x >= 37 && fact.positionAfter?.x <= 48) });
     } catch (error) { failure ||= error; }
   };
@@ -42,7 +44,7 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
     })));
     return { schema: 'lemmings-native-physical-clock/v1', presentationDelayMs, viewport: { width: window.innerWidth, height: window.innerHeight }, context: { sampleRate: audio.getAudioContext().sampleRate,
       seconds: audio.getAudioContext().currentTime }, source: { worldId: world.worldId, generation: world.generation, tick: world.tickIndex,
-      sourcePrecision: 'committed-tick-and-endpoint-crossing', nominalSpeed: 3, sourceProducer: 'cooperative-committed-batches;original-clock-anchor-retained', preparedSourceTick, actorsPosed: false, processorsOverridden: false, graph }, batches, intents, receipts,
+      sourcePrecision: 'committed-tick-and-endpoint-crossing', nominalSpeed: 3, sourceProducer: 'cooperative-committed-batches;prepared-muted-prefix;original-clock-anchor-retained', sourcePreparation, preparedSourceTick, actorsPosed: false, processorsOverridden: false, graph }, batches, intents, receipts,
     nodes: probes.map((probe, index) => ({ ...probe.start, ...values[index] })), stops: window.__nativeClockObservation.stops, ends: window.__nativeClockObservation.ends,
     observer: { crossOriginIsolated: window.crossOriginIsolated, sharedBytes: observation.byteLength, warmed: probes.every(probe => Number.isSafeInteger(probe.readyFrame)), slots: probes.length,
       clock: 'native-audio-worklet-shared-observer', documentHeaders: window.__nativeClockHeaderReceipt },
@@ -52,7 +54,10 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
   const enable = async () => {
     while (!world.actors.some(actor => !actor.failureReason && actor.x >= 38 && actor.x < 40) && world.tickIndex < 128) step();
     if (world.tickIndex >= 128) throw new Error('Ordinary source did not reach the pre-gate boundary.');
-    preparedSourceTick = world.tickIndex;
+    preparedSourceTick = world.tickIndex; preparingSource = false;
+    sourcePreparation = Object.freeze({ kind: 'muted-committed-prefix', firstTick: batches[0]?.tick, lastTick: preparedSourceTick, processedBatches: batches.length,
+      emittedIntents: intents.length, hasAudioContext: audio.getAudioContext() != null, audioEnabled: audio.getState().enabled, clockAnchored: playback.diagnostics().clock.anchor != null });
+    if (!sourcePreparation.processedBatches || sourcePreparation.emittedIntents || sourcePreparation.hasAudioContext || sourcePreparation.audioEnabled || sourcePreparation.clockAnchored) throw new Error('Native source preparation must remain muted and unanchored before the first gate.');
     if (!await audio.enable()) throw new Error('Private native audio owner was not enabled: ' + JSON.stringify(audio.getState()));
     const context = audio.getAudioContext();
     await context.audioWorklet.addModule('/e2e-portable/fixtures/clock-onset-probe.js');

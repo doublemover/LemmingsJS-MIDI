@@ -123,3 +123,23 @@ describe('native lifecycle engine qualification', () => {
     expect(() => qualifyNativeClockReceipt(receipt, 'chromium-semantic')).to.throw('Incomplete native clock');
   });
 });
+
+describe('prepared native source prefix qualification', () => {
+
+  for (const [label, mutate] of [
+    ['missing preparation', receipt => { delete receipt.actual.snapshot.source.sourcePreparation; }],
+    ['warm audio context', receipt => { receipt.actual.snapshot.source.sourcePreparation.hasAudioContext = true; }],
+    ['warm enabled output', receipt => { receipt.actual.snapshot.source.sourcePreparation.audioEnabled = true; }],
+    ['warm anchor', receipt => { receipt.actual.snapshot.batches[0].anchors = { executionEpoch: 'premature' }; }],
+    ['prefix gap', receipt => { receipt.actual.snapshot.batches[0].tick = 2; }],
+    ['another world', receipt => { receipt.actual.snapshot.batches[0].worldId = 'foreign'; }],
+    ['another generation', receipt => { receipt.actual.snapshot.batches[0].generation = 2; }],
+    ['unobserved prefix count', receipt => { receipt.actual.snapshot.source.sourcePreparation.processedBatches = 2; }],
+    ['prefix attack', receipt => { receipt.actual.snapshot.intents.push({ kind: 'begin', batchId: 'warm:1' }); }],
+    ['producing prefix', receipt => { receipt.actual.snapshot.batches[0].phase = 'producing'; }],
+    ['negative processing duration', receipt => { receipt.actual.snapshot.batches[0].processingHostDurationMs = -1; }]
+  ]) it('rejects ' + label + ' instead of qualifying a cold or audible preparation as the prepared-source profile', () => {
+    const receipt = nativeClockReceipt('chromium-semantic', 'stall-50'); mutate(receipt);
+    expect(() => qualifyNativeClockReceipt(receipt, 'chromium-semantic')).to.throw('Incomplete native clock');
+  });
+});

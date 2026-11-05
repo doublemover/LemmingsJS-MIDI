@@ -46,6 +46,15 @@ export function qualifyNativeClockReceipt(receipt, project) {
         receipt.targets.producerLeadFrames[index] !== row.expectedFrame - row.renderFrameAtSubmission || receipt.targets.producerLeadFrames[index] <= 0) ||
       !Number.isFinite(receipt.targets.presentationDelayMs) || receipt.targets.presentationDelayMs < 0 || receipt.targets.presentationDelayMs > 1000 ||
       receipt.targets.sourcePrecision !== 'committed-tick-and-endpoint-crossing' || receipt.retirement?.accountedBytes !== 0 || receipt.retirement.retired !== true) fail();
+  const preparation = snapshot.source.sourcePreparation, preparedTick = snapshot.source.preparedSourceTick;
+  if (typeof snapshot.source.worldId !== 'string' || !snapshot.source.worldId || !integer(snapshot.source.generation) || preparation?.kind !== 'muted-committed-prefix' || !integer(preparation.firstTick) || preparation.firstTick < 1 || !integer(preparation.lastTick) ||
+      !integer(preparation.processedBatches) || preparation.processedBatches < 1 || preparation.processedBatches > 128 ||
+      preparation.lastTick !== preparedTick || preparation.emittedIntents !== 0 || preparation.hasAudioContext !== false || preparation.audioEnabled !== false || preparation.clockAnchored !== false ||
+      !Array.isArray(snapshot.batches) || snapshot.batches.length > 512 || !Array.isArray(snapshot.intents) || snapshot.intents.length > 4096) fail();
+  const prefix = snapshot.batches.filter(batch => batch.tick <= preparedTick), prefixIds = new Set(prefix.map(batch => batch.batchId));
+  if (prefix.length !== preparation.processedBatches || prefixIds.size !== prefix.length || preparation.firstTick + prefix.length - 1 !== preparedTick ||
+      prefix.some((batch, index) => batch.tick !== preparation.firstTick + index || batch.phase !== 'muted-preparation' || !Number.isFinite(batch.processingHostDurationMs) || batch.processingHostDurationMs < 0 || batch.anchors !== null || batch.worldId !== snapshot.source.worldId || batch.generation !== snapshot.source.generation) ||
+      snapshot.intents.some(intent => prefixIds.has(intent.batchId))) fail();
   if (scenario.startsWith('stall-')) {
     const milliseconds = Number(scenario.slice(6)), onset = receipt.onset;
     if (actual.requestedMs !== milliseconds || actual.observedMs < milliseconds || actual.renderWindowClock !== 'native-audio-worklet-shared-observer' || !integer(actual.renderStartFrame) || !integer(actual.renderEndFrame) || actual.renderEndFrame <= actual.renderStartFrame ||

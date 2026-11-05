@@ -2,7 +2,7 @@ export function nativeClockReceipt(project, scenario) {
   const nodes = Array.from({ length: 8 }, (_, ordinal) => ({ ordinal, context: 0, expectedFrame: 10000, submittedFrame: 8000, renderFrameAtSubmission: 8000, observerReadyFrame: 1024, submittedHostMs: 1000,
     observedThrough: 24000, first: 10001, firstWhileBlocked: 10001, last: 11000 }));
   const anchor = { executionEpoch: 'owned:1', scoreEpoch: 'world:1', sampleRate: 48000 };
-  const snapshot = { schema: 'lemmings-native-physical-clock/v1', source: { actorsPosed: false, processorsOverridden: false }, context: { sampleRate: 48000 }, nodes,
+  const snapshot = { schema: 'lemmings-native-physical-clock/v1', source: { actorsPosed: false, processorsOverridden: false, worldId: 'world', generation: 1, preparedSourceTick: 1, sourcePreparation: { kind: 'muted-committed-prefix', firstTick: 1, lastTick: 1, processedBatches: 1, emittedIntents: 0, hasAudioContext: false, audioEnabled: false, clockAnchored: false } }, batches: [{ batchId: 'warm:1', worldId: 'world', generation: 1, tick: 1, phase: 'muted-preparation', processingHostDurationMs: 0, anchors: null }], intents: [], context: { sampleRate: 48000 }, nodes,
     viewport: { width: 1920, height: 1080 },
     observer: { crossOriginIsolated: true, sharedBytes: 16, warmed: true, slots: 8 },
     stops: nodes.map(row => ({ ordinal: row.ordinal, targetSeconds: 0.23, submittedSeconds: 0.2, submittedHostMs: 1100, sampleRate: 48000, renderFrameBeforeStop: 10880, renderFrameAfterStop: 11008, mainSecondsAfterStop: 0.2 })), ends: nodes.map(row => ({ ordinal: row.ordinal, context: 0, sampleRate: 48000, contextSeconds: 0.24, hostMs: 1200, trusted: true, acknowledgment: 'native-source-ended', renderFrameAtAcknowledgment: 11520 })) };
