@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures.js';
+import { observePrivateClockAttempt } from '../e2e/helpers/privateClockAttempt.js';
 import { pauseWorkstationWhenReady } from '../e2e/helpers/workstationReady.js';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
@@ -74,7 +75,7 @@ const disposePrivate = page => page.evaluate(() => window.__privateClock.dispose
 
 for (const [delay, stall] of [[128, 20], [128, 50], [160, 100]]) test('native scheduled sources retain original frames during a ' + stall + 'ms main-thread stall', async ({ page, nativeBrowser }, info) => {
   if (!await privateSource(page, delay)) { await unavailable(page, info, nativeBrowser, 'stall-' + stall); return; }
-  const { produced, actual } = await page.evaluate(async milliseconds => { const produced = await window.__privateClock.produce(); return { produced, actual: await window.__privateClock.stall(milliseconds) }; }, stall), targets = verifyTargets(actual.snapshot);
+  const { produced, actual } = await observePrivateClockAttempt(page, info, 'stall', stall), targets = verifyTargets(actual.snapshot);
   await info.attach('native-clock-attempt.json', { body: JSON.stringify({ produced, actual }), contentType: 'application/json' });
   const nodes = actual.snapshot.nodes; expect(nodes.every(row => Number.isSafeInteger(row.first))).toBe(true);
   expect(new Set(nodes.map(row => row.expectedFrame)).size).toBe(8);
@@ -91,7 +92,7 @@ for (const [delay, stall] of [[128, 20], [128, 50], [160, 100]]) test('native sc
 
 for (const afterRender of [false, true]) test('native scheduled cancellation qualifies ' + (afterRender ? 'already rendered source frames' : 'submission before source onset'), async ({ page, nativeBrowser }, info) => {
   if (!await privateSource(page, 512)) { await unavailable(page, info, nativeBrowser, afterRender ? 'cancel-after-render' : 'cancel-before-render'); return; }
-  const { produced, actual } = await page.evaluate(async afterRender => { const produced = await window.__privateClock.produce(); return { produced, actual: await window.__privateClock.cancel({ afterRender }) }; }, afterRender), targets = verifyTargets(actual.snapshot);
+  const { produced, actual } = await observePrivateClockAttempt(page, info, 'cancel', { afterRender }), targets = verifyTargets(actual.snapshot);
   const nodes = actual.snapshot.nodes;
   await info.attach('native-cancellation-attempt.json', { body: JSON.stringify({ produced, actual, targets }), contentType: 'application/json' });
   const stopFrontiers = [];
@@ -115,7 +116,7 @@ for (const afterRender of [false, true]) test('native scheduled cancellation qua
 
 test('an independent audio owner leaves physical correlation and scheduled sources intact', async ({ page, nativeBrowser }, info) => {
   if (!await privateSource(page, 512)) { await unavailable(page, info, nativeBrowser, 'independent-owner'); return; }
-  const { produced, actual } = await page.evaluate(async () => { const produced = await window.__privateClock.produce(); return { produced, actual: await window.__privateClock.unrelatedOwner() }; }), targets = verifyTargets(actual.snapshot);
+  const { produced, actual } = await observePrivateClockAttempt(page, info, 'unrelatedOwner'), targets = verifyTargets(actual.snapshot);
   expect(actual.sameContext).toBe(true); expect(actual.after.anchor).toEqual(actual.before.anchor); expect(actual.after.rebases).toBe(actual.before.rebases);
   expect(actual.snapshot.nodes.every(row => Number.isSafeInteger(row.first))).toBe(true);
   const retirement = await disposePrivate(page);

@@ -91,7 +91,7 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
     return true;
   };
   return {
-    enable,
+    enable, snapshot,
     async produce() {
       const started = performance.now();
       producing = true;
