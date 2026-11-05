@@ -779,3 +779,5 @@ contexts; it requires no previously running local server or saved user state.
 Fixtures use the supported 1920×1080 minimum and larger desktop resolutions.
 Hardware, receiver/acoustic output and actual assistive technology remain
 explicit manual/not-run qualification; browser/protocol passes do not certify them.
+
+Project picker and import reads publish only while their requesting operation is current. Canceled or superseded reads retire their owned sources without inspecting obsolete payloads or replacing current status. A current initial listing failure clears its operation, while page failures preserve the current picker for retry. Resource retirement failures and failures after an admitted world commit remain reportable.

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fence project-read publication and errors through cancellation/replacement, retire failed initial picker operations and preserve owned-source cleanup failures.
+
 - Preserve immutable preference metadata and retain fallback encoder input until publication so suspended writes can retry safely.
 - Preserve explicit Pause and Stop through Save's naming/preference waits, and suppress late storage presentation after workstation disposal.
 - Keep background result publication fenced through reentrant budget cancellation, release and unresolved retirement.

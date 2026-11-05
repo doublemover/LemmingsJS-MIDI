@@ -237,6 +237,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const ownsOperation = lease => !disposed && currentOperation === lease && !lease.signal.aborted;
   const finishOperation = lease => { if (currentOperation === lease) currentOperation = null; };
+  const readForOperation = async (lease, read) => {
+    if (!ownsOperation(lease)) return { current: false, value: null };
+    try { const value = await read(); return { current: ownsOperation(lease), value }; }
+    catch (error) { if (!ownsOperation(lease)) return { current: false, value: null }; throw error; }
+  };
   const listen = (target, event, handler, options) => { target?.addEventListener?.(event, handler, options); listeners.push(() => target?.removeEventListener?.(event, handler, options)); };
   listen(document, 'keydown', event => { if (event.key === 'Escape') toolGate.cancel(); });
   listen(document, 'pointerdown', () => toolGate.cancel(), true);
@@ -2141,29 +2146,38 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     load: safe(async () => {
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('select-session');
-      const page = storage.listDocumentPage ? await storage.listDocumentPage({ signal: lease.signal }) : null;
-      const entries = page ? null : storage.listDocuments ? await storage.listDocuments() : await storage.list();
-      if (!ownsOperation(lease)) return false;
-      const loadSelected = async id => {
-        if (!ownsOperation(lease)) return false;
-        const preferenceHold = preferenceWriter?.suspend(); let record;
-        try {
-          if (preferenceHold) await preferenceHold.completion;
+      try {
+        const listing = await readForOperation(lease, async () => {
+          const page = storage.listDocumentPage ? await storage.listDocumentPage({ signal: lease.signal }) : null;
+          if (!ownsOperation(lease)) return null;
+          const entries = page ? null : storage.listDocuments ? await storage.listDocuments() : await storage.list();
+          return { page, entries };
+        });
+        if (!listing.current) return false;
+        const { page, entries } = listing.value;
+        const loadSelected = async id => {
           if (!ownsOperation(lease)) return false;
-          record = storage.loadDocumentOwned ? await storage.loadDocumentOwned(id, { signal: lease.signal }) : storage.loadDocument ? await storage.loadDocument(id) : { session: await storage.load(id), id: null, revision: 0 };
-          if (!ownsOperation(lease)) return false;
-          const loaded = await loadSession(record.session, lease, { signal: record.signal });
-          if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
-          return loaded;
-        } finally { try { record?.release?.(); } finally { preferenceHold?.release(); } }
-      };
-      if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
-        if (!ownsOperation(lease)) return null;
-        const next = await storage.listDocumentPage({ cursor, query, signal: lease.signal });
-        return ownsOperation(lease) ? next : null;
-      });
-      else view.showProjects(entries || page.items, loadSelected);
-      return true;
+          const preferenceHold = preferenceWriter?.suspend(); let record;
+          try {
+            const source = await readForOperation(lease, async () => {
+              if (preferenceHold) await preferenceHold.completion;
+              if (!ownsOperation(lease)) return null;
+              return storage.loadDocumentOwned ? storage.loadDocumentOwned(id, { signal: lease.signal }) : storage.loadDocument ? storage.loadDocument(id) : { session: await storage.load(id), id: null, revision: 0 };
+            });
+            record = source.value;
+            if (!source.current) return false;
+            const loaded = await loadSession(record.session, lease, { signal: record.signal });
+            if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
+            return loaded;
+          } finally { try { record?.release?.(); } finally { preferenceHold?.release(); } }
+        };
+        if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
+          const next = await readForOperation(lease, () => storage.listDocumentPage({ cursor, query, signal: lease.signal }));
+          return next.current ? next.value : null;
+        });
+        else view.showProjects(entries || page.items, loadSelected);
+        return ownsOperation(lease);
+      } catch (error) { if (!ownsOperation(lease)) return false; finishOperation(lease); throw error; }
     }),
     reclaimRecovery: safe(async () => { await storage.removeRecovery?.(); status('Old recovery checkpoint removed. Named projects were kept.'); }),
     import: safe(async file => {
@@ -2171,19 +2185,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const lease = beginOperation('import');
       let computed = null, preferenceHold = null;
       try {
-        if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
-        const generation = documentGeneration, revision = editRevision, inputBytes = file.size ?? 0;
-        preferenceHold = preferenceWriter?.suspend();
-        if (preferenceHold) await preferenceHold.completion; lease.signal.throwIfAborted();
-        computed = await backgroundJobs.compute({ kind: 'parse-json', ownerId: 'procgen-import', ownerEpoch: generation,
-          sourceRevision: `${generation}:${revision}`, inputBytes, estimatedPeakBytes: Math.min(400 * 1048576, 64 * 1048576 + inputBytes * 24),
-          signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision,
-          prepareInput: async ({ signal }) => {
-            if (typeof file.stream !== 'function') return file.text();
-            const bytes = await readBrowserBuildResponse(new globalThis.Response(file.stream()), MAX_SESSION_FILE_BYTES, signal);
-            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-          }, onProgress: phase => status(`Preparing project: ${phase.phase}.`) });
-        if (!ownsOperation(lease)) return false;
+        const source = await readForOperation(lease, async () => {
+          if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
+          const generation = documentGeneration, revision = editRevision, inputBytes = file.size ?? 0;
+          preferenceHold = preferenceWriter?.suspend();
+          if (preferenceHold) await preferenceHold.completion; lease.signal.throwIfAborted();
+          return backgroundJobs.compute({ kind: 'parse-json', ownerId: 'procgen-import', ownerEpoch: generation,
+            sourceRevision: `${generation}:${revision}`, inputBytes, estimatedPeakBytes: Math.min(400 * 1048576, 64 * 1048576 + inputBytes * 24),
+            signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision,
+            prepareInput: async ({ signal }) => {
+              if (typeof file.stream !== 'function') return file.text();
+              const bytes = await readBrowserBuildResponse(new globalThis.Response(file.stream()), MAX_SESSION_FILE_BYTES, signal);
+              return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+            }, onProgress: phase => status(`Preparing project: ${phase.phase}.`) });
+        });
+        computed = source.value;
+        if (!source.current) return false;
         return await loadSession(computed.value, lease);
       } finally { try { computed?.release(); } finally { finishOperation(lease); preferenceHold?.release(); } }
     }),
