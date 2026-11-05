@@ -478,6 +478,16 @@ body.procgen-workstation {
 .studio-operational-atoms { min-width:0; max-width:100%; }
 .studio-operational-atoms > span { min-width:0; overflow-wrap:anywhere; }
 .studio-operational-actions { flex:0 0 auto; }
+.studio-operation-list { display:flex; flex-basis:100%; flex-wrap:wrap; gap:6px 16px; }
+.studio-operation-list[hidden] { display:none; }
+.studio-operation-list > div { display:flex; align-items:center; gap:8px; }
+.studio-notices { flex:1 1 20rem; min-width:0; }
+.studio-notices > output { display:block; overflow-wrap:anywhere; }
+.studio-notices[data-severity=error] > output { color:var(--state-error,#a72d21); font-weight:600; }
+.studio-notices details { font-size:11px; }
+.studio-notices ol { max-height:220px; overflow:auto; padding-left:20px; }
+.studio-notices li { margin:6px 0; overflow-wrap:anywhere; }
+.studio-notices li > button { margin-left:6px; }
 .studio-modal-output-safety { display:flex; justify-content:flex-end; gap:8px; position:sticky; top:0; margin:0 0 8px; padding:4px; background:inherit; z-index:1; }
 .studio-modal-output-safety [data-output-safety-action=output-panic] { background:#c43b49; color:#fff; }
 .studio-midi-expression { min-width:0; }

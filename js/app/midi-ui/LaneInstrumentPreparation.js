@@ -138,6 +138,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
   };
   return Object.freeze({ prepare, synchronize,
     retry(lanes) { for (const laneId of failures.keys()) observed.delete(laneId); failures.clear(); return synchronize(lanes); },
+    pendingCount: () => pending.size + queued.size,
     diagnostics: () => Object.freeze({ pending: pending.size, queued: queued.size, maxLanes, metadata: metadata.receipt(), unknownRetirement: unknown.size, failures: Object.freeze([...failures].map(([laneId, value]) => ({ laneId, code: value.code }))), disposed }),
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
       const accepted = [...new Set([...pending, ...unknown])];

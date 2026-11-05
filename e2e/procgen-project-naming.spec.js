@@ -84,7 +84,8 @@ test('production project naming commits success and preserves stored identity af
         sameBytes: JSON.stringify(await probe.storage.loadDocument(probe.before.id)) === probe.stored };
     });
     expect(failed).toEqual({ result: false, puts: 1, plays: playing ? 1 : 0, playing, sameIdentity: true, sameProject: true, sameBytes: true });
-    await expect(page.locator('.studio-status')).toContainText(/storage|quota|space/i);
+    await expect(page.locator('.studio-status')).toContainText('Project save failed');
+    expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getNoticeState().entries.find(entry => entry.code === 'storage-error')?.detail)).toMatch(/storage|quota|space/i);
   }
   await page.evaluate(() => window.nameProbe.storage.close());
 });

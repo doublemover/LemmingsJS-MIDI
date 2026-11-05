@@ -9,6 +9,11 @@ const hardware = () => { const value = base(); value.output = { selectedBackend:
   value.midi = { outputRoutes: [{ outputId: 'A', name: 'Keyboard', active: true, available: true, authorized: true }], inputId: 'clock-input', clockOutputId: 'clock-output' }; return value; };
 
 describe('read-only operational blocker and recovery policy', () => {
+  it('binds storage notices to the document independently of MIDI input/output changes and retains the cause', () => {
+    const first = hardware(); first.documentIdentity = 'document-one'; first.storage = { error: new Error('Quota refusal') };
+    const a = createProcgenOperationalSnapshot(first).conditions.find(value => value.code === 'storage-error'); first.output.selectedOutputId = 'B'; first.midi.inputId = 'another-input';
+    const b = createProcgenOperationalSnapshot(first).conditions.find(value => value.code === 'storage-error'); expect(b.target).to.equal(a.target); expect(b).to.include({ priority: 110, detail: 'Quota refusal' });
+  });
   it('keeps simulation, musical authority, browser context and named note/clock roles independent', () => {
     const input = hardware(); input.simulation.paused = true; input.transport.linked = false; const result = createProcgenOperationalSnapshot(input);
     expect(result.simulation.state).to.equal('paused'); expect(result.transport.state).to.equal('playing'); expect(result.noteOutput).to.include({ state: 'active', selectedId: 'A', activeId: 'A' });

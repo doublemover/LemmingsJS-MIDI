@@ -147633,5 +147633,102 @@
       "Native browser PCM is captured at the post-protection master, not a microphone or acoustic receiver; MIDI output is virtual.",
       "First silent positive and originalCI negative failures are retained; no full local suite repeated. Latest complete-green source remains413/f4cd4ee9."
     ]
+  },
+  "continuation421": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "820a5f93be34433e6171b0b911d34d5aaef68d0f",
+    "scope": "Bounded priority notices and canonical operation phase/cancel presentation; original-source late Save error suppression; actual1920x1080 desktop browser interaction.",
+    "changes": [
+      "Shared immutable OperationView with current-ID cancellation and canonical phases/command availability.",
+      "Bounded priority notice history, source-bound recovery actions, dismissal and optional details.",
+      "Suppress obsolete durable Save errors before notice publication."
+    ],
+    "validation": {
+      "nodePassed": 285,
+      "nativeDesktopPassed": 18,
+      "criticalTextContrast": 8.275826664059291,
+      "spamEvents": 2048,
+      "retainedNotices": 32,
+      "criticalAriaLiveChangesDuringSpam": 0,
+      "sourceAudit": {
+        "paths": 1350,
+        "byteExact": 1337,
+        "untouchedNewlineMappings": 13,
+        "browserClosureDigest": "856a4720d5267a70e345ce3bc9021e4f9896e16dc4f976a8a97a6d272a73c5fe",
+        "nodeCodeUnchangedAfterCssCorrection": true
+      },
+      "coverage": {
+        "lines": {
+          "total": 293,
+          "covered": 290,
+          "skipped": 0,
+          "pct": 98.97
+        },
+        "statements": {
+          "total": 293,
+          "covered": 290,
+          "skipped": 0,
+          "pct": 98.97
+        },
+        "functions": {
+          "total": 32,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 93.75
+        },
+        "branches": {
+          "total": 461,
+          "covered": 407,
+          "skipped": 0,
+          "pct": 88.28
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "evidence": {
+        "path": "docs/validation/operation-notices-desktop-2026-11-04.json",
+        "bytes": 1337279,
+        "sha256": "d8de6b830aeaadfdd18a0607f3cb7d7645325d842be3dff6549114bae10b0646"
+      }
+    },
+    "ci": {
+      "latestCompleteGreen": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
+      "run413": 41925399883,
+      "run420": 41941398677,
+      "engine420": {
+        "job": 126962826506,
+        "status": "success; not promoted as complete CI"
+      },
+      "native420": "both jobs successful",
+      "main420": "in-progress",
+      "retry414": {
+        "job": 126955009819,
+        "passed": 41,
+        "failed": 1,
+        "case": "Firefox worker construction refusal setup",
+        "nativeSignal": 11,
+        "cause": "unproven; different startup case than the original414crash; no weaker assertion or automatic retry added"
+      }
+    },
+    "issues": {
+      "open": [
+        1074,
+        1120,
+        1073,
+        1086
+      ],
+      "inventoryOpen": 188
+    },
+    "limits": [
+      "Remaining1074work is finished-operation document/world/revision provenance and terminal-history integration, plus the mixed pending-load/text-draft/gesture/Undo/audition/disconnect/disposal matrix.",
+      "The notice owner retains bounded plain records and source identities, not a second canonical fault or operation manager; dismissal does not clear backend faults.",
+      "Scoped Node presentation coverage98.97%L/S88.28%B93.75%F; workstation79.86%L/S69.40%B68.39%F. Native view execution is not inferred from the low injected-view Node population. Useful follow-ups include optional preparation/publication failures, unavailable refresh and recovery action rejection.",
+      "No full local suite repeated, no global thresholds changed, and no assistive-technology/hardware/acoustic or exhaustive lifecycle claim."
+    ]
   }
 }

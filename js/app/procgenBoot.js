@@ -404,6 +404,7 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
   let candidate = null, lanes = null, terrain = null, assets = null, committed = false, staged = false, preparationError = null;
   let stagedOwner = null, fileProvider = null, resourceLease = null, resources = null, resourcePromise = null, candidateBudgetToken = null, candidateBudgetOwner = 'candidate-world';
   const canCommit = () => serial === workstationInitSerial && !lease?.signal?.aborted;
+  lease?.reportPhase?.('loading-assets');
   try {
     const factory = createProcgenResourceFactory();
     fileProvider = factory.fileProvider;
@@ -432,6 +433,7 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
     if (!canCommit()) return false;
     await procgenUi.prepareCharacters(sprites);
     if (!canCommit()) return false;
+    lease?.reportPhase?.('preparing');
     candidateBudgetToken = {};
     procgenResourceBudget.reserve({ token: candidateBudgetToken, owner: candidateBudgetOwner,
       generation: serial, kind: 'candidate', bytes: estimateCandidateWorldBytes(settings),
@@ -451,6 +453,7 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
     if (!canCommit()) return false;
     const publish = ({ isCurrent = () => true } = {}) => {
       if (!canCommit() || !isCurrent() || committed) throw new Error('The prepared world is stale or already published.');
+      lease?.reportPhase?.('committing');
       procgenResourceBudget.transfer({ token: candidateBudgetToken, owner: candidateBudgetOwner,
         generation: serial, toOwner: 'active-world' });
       candidateBudgetOwner = 'active-world';

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Retain bounded priority notice history and canonical operation phases; guard cancellation and recovery by their original owners, share project-command availability, and suppress obsolete Save errors after document replacement.
+
 - Fence project-read publication and errors through cancellation/replacement, retire failed initial picker operations and preserve owned-source cleanup failures.
 
 - Preserve immutable preference metadata and retain fallback encoder input until publication so suspended writes can retry safely.

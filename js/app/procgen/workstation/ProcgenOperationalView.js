@@ -1,4 +1,4 @@
-export function createProcgenOperationalView({ document, readSnapshot, performAction, onStatus = () => {} }) {
+export function createProcgenOperationalView({ document, readSnapshot, performAction, cancelOperation = () => false, onStatus = () => {} }) {
   const node = (tag, text, className) => { const element = document.createElement(tag); if (text) element.textContent = text; if (className) element.className = className; return element; };
   const element = node('section', null, 'studio-operational'); element.setAttribute('aria-label', 'World, music and output status');
   const atoms = node('div', null, 'studio-operational-atoms'), world = node('span'), music = node('span'), output = node('span'), clock = node('span'); atoms.append(world, music, output, clock);
@@ -11,9 +11,33 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
     borrowed.push({ control, parent: control.parentNode, next: control.nextSibling, description: control.getAttribute('aria-describedby'), title: control.title, disabled: control.disabled });
     control.setAttribute('aria-describedby', [control.getAttribute('aria-describedby'), message.id].filter(Boolean).join(' ')); controls.append(control);
   }
-  controls.append(primary); element.append(atoms, message, controls, details);
+  const operations = node('div', null, 'studio-operation-list'); operations.setAttribute('aria-label', 'Current operations');
+  controls.append(primary); element.append(atoms, message, controls, operations, details);
   let disposed = false, snapshot = null, busy = false;
   const write = (target, value) => { if (target.textContent !== value) target.textContent = value; };
+  const operationRows = new Map();
+  const renderOperations = current => {
+    const active = current.operations || [];
+    for (const [id, row] of operationRows) if (!active.some(operation => operation.id === id)) { row.element.remove(); operationRows.delete(id); }
+    for (const operation of active) {
+      let row = operationRows.get(operation.id);
+      if (!row) {
+        const item = node('div'), label = node('span'), cancel = node('button', 'Cancel operation'); cancel.type = 'button';
+        item.dataset.operationId = operation.id; item.append(label, cancel); operations.append(item); row = { element: item, label, cancel }; operationRows.set(operation.id, row);
+        cancel.addEventListener('click', () => {
+          if (disposed) return;
+          const fresh = readSnapshot(), owned = fresh?.operations?.find(value => value.id === operation.id);
+          if (!owned?.cancelable) { if (fresh) render(fresh); return; }
+          cancelOperation(owned.id); render(readSnapshot());
+        });
+      }
+      row.element.dataset.phase = operation.phase; row.element.dataset.kind = operation.kind;
+      row.label.setAttribute('role', 'progressbar'); row.label.setAttribute('aria-label', operation.label); row.label.removeAttribute('aria-valuenow');
+      write(row.label, operation.label + (operation.phase === 'committing' || operation.phase === 'finalizing' ? ' · cancellation unavailable after publication begins' : ''));
+      row.cancel.hidden = !operation.cancelable; row.cancel.setAttribute('aria-label', 'Cancel ' + operation.kind + ' operation');
+    }
+    operations.hidden = !active.length;
+  };
   const rows = new Map();
   for (const label of ['World rate', 'Musical tempo', 'Browser context', 'Note destination', 'Clock roles', 'Controller evidence', 'Bridge evidence', 'Output pressure', 'Evidence limit']) {
     const title = node('dt', label), value = node('dd'); facts.append(title, value); rows.set(label, value);
@@ -23,6 +47,7 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
     if (disposed) return;
     if (!current) { write(message, snapshot?.blockedReason.severity === 'error' ? snapshot.blockedReason.message + ' Status refresh is unavailable.' : 'Operational status is unavailable. Use the dedicated controls.'); primary.hidden = true; return; }
     snapshot = current; element.dataset.state = current.blockedReason.code; element.dataset.noteOutputState = current.noteOutput.state; element.dataset.worldState = current.simulation.state; element.dataset.clockState = current.clockAuthority.state; element.dataset.severity = current.blockedReason.severity;
+    renderOperations(current);
     write(world, current.simulation.label); write(music, current.transport.label); write(output, current.noteOutput.label); write(clock, current.clockAuthority.label);
     write(message, current.blockedReason.message); const action = current.recoveryAction;
     const listen = borrowed.find(value => value.control.id === 'procgenListen')?.control;
@@ -59,7 +84,7 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
         control.title = title; control.disabled = disabled; delete control.dataset.operationalAction;
         if (parent) parent.insertBefore(control, next?.parentNode === parent ? next : null);
       }
-      element.remove();
+      operationRows.clear(); element.remove();
     }
   });
 }
