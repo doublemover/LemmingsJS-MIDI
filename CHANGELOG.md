@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Record versioned owned-source seed, algorithm, source revision and restoration contracts in live and rendered receipts while preserving saved timbre sequences.
+
 - Preserve verified survey source manifests by excluding documentation type references from executable imports and checking literal dependency edges before publication.
 
 - Save per-actor sound identity locks through timbre rerolls, Undo, causal recording and replay, with bounded inspector controls and stable physical state.

@@ -24,7 +24,7 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
 import { compileInstrumentPerformance, retainInstrumentCause } from '../../midi/content/InstrumentPerformance.js';
-import { ownedSourceSeed } from './OwnedSourceSeed.js';
+import { resolveOwnedSourceSeed } from './OwnedSourceSeed.js';
 import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 import { PROTOCOL, WIDTH as SINE_WIDTH, CAPACITY, MAX_VOICES as SINE_MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE, MIX,
   SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from './worklet/OwnedSineProcessor.js';
@@ -566,7 +566,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       } };
     if (sampleSelection) { const profile = samplePlan.entries[sampleSelection.zoneIndex].attack.cursorProfile; if (profile) voice.positionFrontier = { frame: targetFrame, released: false, length: 0, lastSequence: 0, lastEndFrame: targetFrame, lastEndPosition: traversal?.initialSourceFrame ?? profile.regionStartFrame, lastSeekFrame: -profile.slewFrames };
       if (traversal) { voice.positionFrontier.lastSequence = traversal.segment.sequence; voice.positionFrontier.lastEndFrame = traversal.segment.endOutputFrame; voice.positionFrontier.lastEndPosition = traversal.segment.endSourceFrame; } }
-    const excitationSeed = ownedSourceSeed(source, patch, intent, performance);
+    const seedResolution = resolveOwnedSourceSeed(source, patch, intent, performance), excitationSeed = seedResolution.seed;
     const sourceFields = { ...source.beginFields(parameters, excitationSeed, pcmDescriptor, sampleSelection, circularTravel), ...sampleTraversalBeginFields(traversal), ...seedLayerContactBeginFields(seedLayerMotion) };
     if (laneTapsEnabled) { try { sendLaneRoute(voice, voiceRouteMask(voice)); } catch { resourceLease?.release(); markFault('lane-route-port-failed'); return reject('lane-route-port-failed', intent.voiceId); } }
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
@@ -587,9 +587,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (Number.isFinite(nextChoke) && forceSampleEnd(voice, nextChoke, nextChoke === targetFrame).status !== 'accepted') {
       markFault('sample-choke-control-failed'); return reject('sample-choke-control-failed', intent.voiceId);
     }
-    if (circularTravel) return Object.freeze({ ...result, [source.travelReceiptKey]: circularTravel.receipt, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }) });
+    if (circularTravel) return Object.freeze({ ...result, sourceSeed: seedResolution.receipt, [source.travelReceiptKey]: circularTravel.receipt, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }) });
     if (sampleSelection) return Object.freeze({ ...result, region: sampleSelection.region, rateRatio: sampleSelection.rateRatio, readDerivative: sampleSelection.readDerivative, sourceRenderer: 'owned-sample', ...(traversal ? { sampleTraversal: traversal.receipt } : {}), sourceBank: pcmDescriptor, articulation: sampleSelection.articulation });
-    return isExtended ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}), ...(seedLayerMotion ? { seedLayerContact: seedLayerMotion.receipt } : {}) }) : result;
+    return isExtended ? Object.freeze({ ...result, sourceSeed: seedResolution.receipt, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}), ...(seedLayerMotion ? { seedLayerContact: seedLayerMotion.receipt } : {}) }) : result;
   };
   const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();

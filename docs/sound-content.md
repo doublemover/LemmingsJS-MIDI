@@ -283,7 +283,7 @@ allowlist includes committed cell counts, motion distance and observed wall-step
 height with explicit units. No force/energy estimate is inferred. Missing source
 measurements leave the prior composition intact with `no-qualified-source`.
 Lane Amount/Reroll changes only future musical controls and records one normal
-history action. Actor-specific locks and continuous control/noise remain pending.
+history action. Saved actor locks retain the selected birth identity and exact sound revision across rerolls; strike variation stays event-owned. Lock, unlock and clear use the same project/Undo/causal performance state, bounded to256saved locks and16sound revisions per actor. Continuous source noise has the separate seed/continuation contract below.
 
 **Prepare struck materials** stages Timber, Slate, Glass, Sheet metal and an
 explicit Unclassified recipe. Compiler `typed-recipes-v5` adds the fixed
@@ -322,7 +322,7 @@ The live pluck profile admits 50–2000 Hz onsets, ±200-cent expression and
 shared quotas and a 65,536-operation excitation budget per absolute 128-frame
 bucket can reject a request with an actual kernel receipt. Optional body modes
 add declared source cost. Delay/scratch/state and enlarged command storage are
-reserved before construction. Exact pluck restore/offline output are unavailable.
+reserved before construction. Owned kernel snapshots and offline controls/causal revoices are available; exact continuation is qualified for the declared fixtures and source identity, separately from listening or device behavior.
 
 For an already owned pluck, `damping01` updates string/body loss over the shared
 control ramp without a new note, new seed or reset delay line. The current sound
@@ -1246,3 +1246,24 @@ a field-level conversion receipt. Custom inline `patchDefinition` data, unknown
 aliases and invalid explicit routes refuse with named fields before publication.
 The original file/session and current document remain unchanged; supply a
 supported pinned reference explicitly instead of silently defaulting custom DSP.
+
+### Owned source seed and continuation receipts
+
+`resolveOwnedSourceSeed` records the existing `owned-onset-seed-v1` recipe without changing saved seeds. Inputs are the source domain, patch ID/revision, actor world/generation/birth or named event-only fallback, onset-or-voice ID and resolved musical variation seed. The ordered JSON array is hashed as UTF16 little-endian code units using `fnv1a32-utf16-le-latents-v1`, then mapped to an unsigned32 value. Lane, pool slot, wall time and simulation RNG are absent. Legacy partial birth inputs retain their previous seed and are labelled partial; the receipt does not establish execution ownership.
+
+| Source | Actual seeded choice | Algorithm |
+| --- | --- | --- |
+| Pluck | Finite string excitation | xorshift32(13,17,5) |
+| Choir | Breath stream and initial phase | xorshift32(13,17,5) |
+| Granular | Grain position/stereo | xorshift32(13,17,5) |
+| Seed layers | Residual grain position/stereo | xorshift32(13,17,5) |
+| Wind | Per-output-frame port noise | xorshift32(13,17,5) |
+| Friction | Scraping roughness, when selected | Seeded spatial cell avalanche and linear interpolation |
+| Texture | Material pulses | Seeded spatial cell/salt avalanche |
+| Spectrum | Initial or indexed circular partial phase | Unsigned phase normalization or indexed phase avalanche |
+
+Xorshift consumers map an all-zero state to `0x6d2b79f5`; spatial/phase consumers preserve zero. Sample-region selection retains its own selection receipt and is not reported as excitation noise. Sine has no seeded source receipt.
+
+Live accepted source receipts and fixed-control render manifests include the concrete seed, frozen inputs and shared immutable contract. Causal rendering records concrete seeds on its existing planned voices and deduplicates contracts in `sourceControls`; it reserves64extra planning bytes per captured intent instead of retaining another copy of each identity tuple. These receipts name the source build/ABI and restoration capability. `declared-source-capability;not-a-PCM-equivalence-receipt` is a capability declaration, not a qualification claim. Exact continuation restores complete kernel state, including queued controls and noise/filter/phase state; replaying only the onset seed is not a continuation.
+
+The November5qualification retains512original seed golden values and512actual onsets across all eight sources at48kHz, including completed slot reuse, canceled queued preparation, exclusive state transfer and exact continued PCM under17/23/128frame partitions. Same-frame actors produce distinct source output. Other sample rates/modes retain their separately scoped source tests. Matched-level ensemble listening, acoustic playback and general noise-distribution quality remain independent. See the source-bound validation sidecar in `docs/validation/owned-source-seed-state-desktop-2026-11-05.json`.

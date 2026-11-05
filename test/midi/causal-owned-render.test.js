@@ -96,12 +96,18 @@ describe('owned-source causal revoice rendering', function() {
       const input = { definition: compiled.prepared.patches[0].archivedDefinition, descriptor: descriptors[0], revoice: revoice(), sampleRate: 48000, endSeconds: 1, stemLaneIds: ['0'] };
       const plan = await planCausalOwnedRender(input);
       expect(plan.owned.id).to.equal(engineId); expect(plan.sourceControls.observedPhysicalUpdates).to.equal(1);
+      expect(plan.sourceControls.seededOnsets).to.equal(1); expect(plan.sourceControls.seedContracts).to.have.length(1);
+      expect([...plan.voices.values()][0].seedContract).to.equal(plan.sourceControls.seedContracts[0]);
+      expect([...plan.voices.values()][0].sourceSeed).to.be.within(0, 0xffffffff);
+      expect(plan.sourceControls.seedContracts[0].source.engineId).to.equal(engineId);
       expect(plan.sourceControls.appliedPhysicalUpdates).to.equal(1); expect(plan.events).to.have.length(3);
       const full = await renderCausalOwnedTake(input, { yieldControl: async () => {} }), cropped = await renderCausalOwnedTake({ ...input, startSeconds: 0.2 }, { yieldControl: async () => {} });
       expect(full.manifest.engineRequirement.engineId).to.equal(engineId); expect(full.manifest.commands).to.include({ capturedBegins: 1, capturedUpdates: 1, capturedEnds: 1, applied: 3 });
       expect(Buffer.from(pcm(full.files[0]))).to.deep.equal(Buffer.from(pcm(full.files[1])));
       expect(Buffer.from(pcm(cropped.files[0]))).to.deep.equal(Buffer.from(pcm(full.files[0]).subarray(9600 * 8)));
       expect(full.manifest.realization.sourceControls.observedKinds).to.deep.equal(['MotionCommitted']);
+      expect(full.manifest.realization.sourceControls.seededOnsets).to.equal(1);
+      expect(full.manifest.realization.sourceControls.seedContracts[0].restoration.capability).to.equal('exactSnapshot');
       expect(full.manifest.acousticReceipt).to.equal(false);
       const cutFrame = Math.round(0.303 * 48000), restored = await renderCausalOwnedTake({ ...input, startSeconds: 0.303, restorationMode: 'owned-state-cut' }, { yieldControl: async () => {} });
       expect(Buffer.from(pcm(restored.files[0]))).to.deep.equal(Buffer.from(pcm(full.files[0]).subarray(cutFrame * 8)));

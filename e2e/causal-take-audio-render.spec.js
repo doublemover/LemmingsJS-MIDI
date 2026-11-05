@@ -8,7 +8,7 @@ test.use({ permissions: [] });
 test.setTimeout(120000);
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
-test('an immutable worker renders a real captured physical phrase and dry stem without enabling live audio or hardware', { tag: ['@boundary'] }, async ({ page }, testInfo) => {
+for (const engineId of ['worklet-sine', 'worklet-pluck']) test('an immutable worker renders a real captured physical phrase and dry stem without enabling live audio or hardware' + (engineId === 'worklet-sine' ? '' : ' with owned seed-state receipts'), { tag: ['@boundary'] }, async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     window.causalRenderAudioOpens = 0; window.causalRenderMidiRequests = 0; const NativeContext = window.AudioContext;
     window.AudioContext = class extends NativeContext { constructor(options) { window.causalRenderAudioOpens++; super(options); } };
@@ -23,7 +23,7 @@ test('an immutable worker renders a real captured physical phrase and dry stem w
         velocity01: 0.8, role: 'crossing', route: 'local' }] } });
   });
   await inspectLane(page, 'Physical');
-  await page.getByLabel('Take name', { exact: true }).fill('Actual physical sine revoice'); await page.getByLabel('Take name', { exact: true }).blur();
+  await page.getByLabel('Take name', { exact: true }).fill('Actual physical ' + engineId + ' revoice'); await page.getByLabel('Take name', { exact: true }).blur();
   await page.getByRole('button', { name: 'Record causal take', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.causalTakeState().recording)).toBe(true);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.play(); window.__PROCGEN_LANES__.pause(); window.__PROCGEN_LANES__.step(96);
@@ -34,7 +34,7 @@ test('an immutable worker renders a real captured physical phrase and dry stem w
     takeId: window.__PROCGEN_STUDIO__.handlers.causalTakeState().last.takeId }));
   await page.getByRole('button', { name: 'Render sine WAV…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Render causal take owned-source revoice', exact: true });
-  await dialog.getByLabel('Render source model', { exact: true }).selectOption('worklet-sine');
+  await dialog.getByLabel('Render source model', { exact: true }).selectOption(engineId);
   await expect(dialog.getByRole('button', { name: 'Prepare revoice WAV', exact: true })).toBeEnabled();
   const endSeconds = Math.min(5, Number(await dialog.getByLabel('End seconds from capture').getAttribute('max')));
   await dialog.getByLabel('End seconds from capture').fill(String(endSeconds)); await dialog.getByLabel('Include all captured dry lane stems').check();
@@ -42,7 +42,7 @@ test('an immutable worker renders a real captured physical phrase and dry stem w
   await expect(dialog.getByRole('status', { name: '', exact: true })).toContainText('prepared', { timeout: 60000 });
   await expect(dialog.getByLabel('Prepared rendered file').locator('option')).toHaveCount(2);
   const downloading = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Download selected WAV', exact: true }).click();
-  const download = await downloading, filename = testInfo.outputPath('actual-causal-sine-master.wav'); await download.saveAs(filename);
+  const download = await downloading, filename = testInfo.outputPath('actual-causal-' + engineId + '-master.wav'); await download.saveAs(filename);
   const bytes = await readFile(filename), view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength); let manifest;
   for (let at = 12; at < bytes.length;) { const id = bytes.subarray(at, at + 4).toString(), size = view.getUint32(at + 4, true);
     if (id === 'lmjs') manifest = JSON.parse(bytes.subarray(at + 8, at + 8 + size).toString()); at += 8 + size + size % 2; }
@@ -51,10 +51,17 @@ test('an immutable worker renders a real captured physical phrase and dry stem w
   expect(manifest.applicationBuildId).toMatch(/^[a-f0-9]{64}$/); expect(manifest.commands.capturedBegins).toBeGreaterThan(0);
   expect(manifest.commands.applied).toBe(manifest.commands.submitted); expect(manifest.statistics.peak).toBeGreaterThan(0);
   expect(manifest.realization.liveAdmissionHistoryRecreated).toBe(false); expect(manifest.stems.allCapturedLanesIncluded).toBe(true);
+  if (engineId === 'worklet-sine') { expect(manifest.realization.sourceControls.seededOnsets).toBe(0); expect(manifest.realization.sourceControls.seedContracts).toEqual([]); }
+  else {
+    expect(manifest.realization.sourceControls.seededOnsets).toBe(manifest.commands.capturedBegins);
+    expect(manifest.realization.sourceControls.seedContracts).toHaveLength(1);
+    expect(manifest.realization.sourceControls.seedContracts[0]).toMatchObject({ schema: 'lemmings-owned-source-seed-contract/v1', recipe: 'owned-onset-seed-v1',
+      algorithm: 'xorshift32-13-17-5-v1', source: { engineId }, restoration: { capability: 'exactSnapshot', qualification: 'declared-source-capability;not-a-PCM-equivalence-receipt' } });
+  }
   const after = await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex,
     audio: window.causalRenderAudioOpens, midi: window.causalRenderMidiRequests }));
   expect(after.project).toBe(before.project); expect(after.tick).toBe(before.tick); expect(after.audio).toBe(0); expect(after.midi).toBe(0);
   await dialog.getByRole('button', { name: 'Close', exact: true }).click(); await page.getByRole('button', { name: 'Render sine WAV…', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Download selected WAV', exact: true })).toBeEnabled();
-  await testInfo.attach('causal-sine-render-manifest.json', { body: JSON.stringify(manifest), contentType: 'application/json' });
+  await testInfo.attach('causal-' + engineId + '-render-manifest.json', { body: JSON.stringify(manifest), contentType: 'application/json' });
 });

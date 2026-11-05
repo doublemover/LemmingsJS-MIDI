@@ -21,6 +21,9 @@ describe('fixed control references for the actual owned physical/spectral source
         expect(result.manifest.engineRequirement.engineId).to.equal(engineId); expect(result.manifest.pcmHash).to.match(/^[a-f0-9]{64}$/);
         expect(result.manifest.statistics.peak).to.be.greaterThan(0); expect(Number.isFinite(result.manifest.statistics.rms)).to.equal(true);
         expect(result.manifest.sourcePerformance.physicalSources).to.equal('none-in-authored-control-fixture');
+        expect(result.manifest.sourcePerformance.seedReceipt.seed).to.equal(result.manifest.sourcePerformance.seed);
+        expect(result.manifest.sourcePerformance.seedReceipt.contract.source.engineId).to.equal(engineId);
+        expect(result.manifest.sourcePerformance.seedReceipt.identityScope).to.equal('event-only');
         expect(result.manifest.sourcePerformance.bindingOutcomes.every(entry => entry.state === 'no-qualified-source')).to.equal(true);
       }
       expect(a.manifest.sourcePerformance.seed).to.equal(b.manifest.sourcePerformance.seed);

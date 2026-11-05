@@ -227,9 +227,13 @@ describe('Owned worklet host lifecycle', () => {
 
   it('prepares every non-PCM source with the real resource owner and retains runtime storage through disposal', async () => {
     for (const engineId of ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum']) {
-      const { backend, nodes, patch, preview, context } = setupHost(engineId), resources = createAudioResourceLeases(); preview._audioResources = resources;
+      const { backend, nodes, patch, preview, context, intent } = setupHost(engineId), resources = createAudioResourceLeases(); preview._audioResources = resources;
       await expectReady(backend.prepare(patch)); expect(nodes).to.have.length(1);
       const profile = getOwnedSourceProfile(engineId); expect(resources.diagnostics().exactBytes).to.be.at.least(profile.sourceBytes({ sampleRate: 48000, pcm: null }));
+      backend.renewExecutionLease(1, 'live', 48000);
+      const accepted = backend.begin(intent('seed-receipt'), 128); expect(accepted.status).to.equal('accepted');
+      if (engineId === 'worklet-sine') expect(accepted.sourceSeed).to.equal(undefined);
+      else { expect(accepted.sourceSeed.contract.source.engineId).to.equal(engineId); expect(accepted.sourceSeed.contract.source.buildId).to.equal(profile.runtime.buildId); }
       const receipt = backend.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete');
       // Module code is a separate context-lifetime estimate.
       context.state = 'closed'; resources.confirmClosedContext(); expect(resources.diagnostics().reservations).to.equal(0); await resources.dispose().completion;
