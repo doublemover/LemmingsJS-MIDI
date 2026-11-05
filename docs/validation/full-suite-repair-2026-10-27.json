@@ -147730,5 +147730,120 @@
       "Scoped Node presentation coverage98.97%L/S88.28%B93.75%F; workstation79.86%L/S69.40%B68.39%F. Native view execution is not inferred from the low injected-view Node population. Useful follow-ups include optional preparation/publication failures, unavailable refresh and recovery action rejection.",
       "No full local suite repeated, no global thresholds changed, and no assistive-technology/hardware/acoustic or exhaustive lifecycle claim."
     ]
+  },
+  "continuation422": {
+    "date": "2026-11-04",
+    "agent": "rook",
+    "sourceParent": "cc17e03aca913a439e403b10254181a5de8b1988",
+    "scope": "Immutable bounded terminal receipts with source/captured/accepted revisions, unknown Save acknowledgment, canceled/refused/committed load semantics and named-document publication.",
+    "changes": [
+      "Bounded immutable terminal operation metadata separates source/captured/accepted revisions.",
+      "Keep old Save outcomes in history, distinguish unknown acknowledgment and bind named-load acceptance after document identity publication.",
+      "Retire direct-load validation failures under the requesting lease without losing supersession or MIDI Learn cancellation."
+    ],
+    "validation": {
+      "nodePassed": 296,
+      "newProvenanceCases": 11,
+      "browserPassed": 19,
+      "coverage": {
+        "lines": {
+          "total": 328,
+          "covered": 320,
+          "skipped": 0,
+          "pct": 97.56
+        },
+        "statements": {
+          "total": 328,
+          "covered": 320,
+          "skipped": 0,
+          "pct": 97.56
+        },
+        "functions": {
+          "total": 35,
+          "covered": 32,
+          "skipped": 0,
+          "pct": 91.42
+        },
+        "branches": {
+          "total": 493,
+          "covered": 437,
+          "skipped": 0,
+          "pct": 88.64
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "orchestrationCoverage": {
+        "lines": {
+          "total": 2548,
+          "covered": 2039,
+          "skipped": 0,
+          "pct": 80.02
+        },
+        "statements": {
+          "total": 2548,
+          "covered": 2039,
+          "skipped": 0,
+          "pct": 80.02
+        },
+        "functions": {
+          "total": 369,
+          "covered": 253,
+          "skipped": 0,
+          "pct": 68.56
+        },
+        "branches": {
+          "total": 1893,
+          "covered": 1318,
+          "skipped": 0,
+          "pct": 69.62
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "sourceAudit": {
+        "paths": 1351,
+        "byteExact": 1338,
+        "untouchedNewlineMappings": 13,
+        "browserClosureDigest": "b893657538302759afdda70df5d7b6d2355aff5e163ef4cb67384b37779bb9f1"
+      },
+      "evidence": {
+        "path": "docs/validation/terminal-operation-history-desktop-2026-11-04.json",
+        "bytes": 1079113,
+        "sha256": "c112ec31a27d2e07615ddaec4f57335a0cceac9af082866ec9b416dc090052a6"
+      }
+    },
+    "ci": {
+      "latestCompleteGreen": "f4cd4ee92b26d8a9994fe5a02acca3a4b0c81ee2",
+      "run413": 41925399883,
+      "run420": 41941398677,
+      "run421": 41945041677,
+      "main420": "in-progress workstation stage; engine and both native jobs success",
+      "currentSource": "pending-publication"
+    },
+    "issues": {
+      "open": [
+        1073,
+        1074,
+        1120,
+        1089
+      ],
+      "inventoryOpen": 188
+    },
+    "limits": [
+      "This adds finished-operation provenance and explicit terminal semantics; the unfinished draft/capture/artifact replacement review and mixed pending-load/gesture/Undo/audition/disconnect/disposal matrix remain1073/1074work.",
+      "Unknown storage acknowledgment carries a captured boundary and no accepted boundary; it does not assert no write. Resource retirement remains a separate owner receipt.",
+      "Notice records retain only validated bounded primitive metadata. Historical records never acquire a current headline or a replay action, and full operation IDs participate in coalescing.",
+      "Native browser Save/load uses actual IndexedDB and workers. Broader1120generated owners, assistive technology and device/acoustic acceptance remain separate.",
+      "Latest independently complete-green CI remains413/f4cd4ee9. No full local suite was repeated and no repository coverage threshold changed."
+    ]
   }
 }

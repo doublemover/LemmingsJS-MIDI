@@ -36,16 +36,23 @@ export function createProcgenNoticeView({ document, message, readSnapshot, perfo
           finally { if (!disposed) { action.disabled = false; owner.synchronize(readSnapshot()); render(); } }
         });
       }
-      write(row.label, `${entry.severity}: ${entry.message}${entry.count > 1 ? ' · repeated ' + entry.count + ' times' : ''} · ${Math.max(0, Math.floor((state.observedAt - entry.lastAt) / 1000))}s ago · ${entry.active ? entry.dismissed ? 'dismissed; condition retained' : entry.condition ? 'unresolved' : 'retained for review' : 'resolved or earlier context'}`);
+      write(row.label, `${entry.severity}: ${entry.message}${entry.count > 1 ? ' · repeated ' + entry.count + ' times' : ''} · ${Math.max(0, Math.floor((state.observedAt - entry.lastAt) / 1000))}s ago · ${entry.active ? entry.dismissed ? 'dismissed; condition retained' : entry.condition ? 'unresolved' : 'retained for review' : entry.scope === 'operation' ? 'finished operation; resource retirement reported separately' : 'resolved or earlier context'}`);
       write(row.dismiss, entry.dismissed ? 'Show notice' : 'Dismiss notice'); row.action.hidden = !entry.actionId; write(row.action, entry.actionLabel);
-      row.technical.hidden = !entry.code && !entry.detail; write(row.technicalText, [entry.code, entry.detail].filter(Boolean).join('\n'));
+      row.technical.hidden = !entry.code && !entry.detail && !entry.receipt; write(row.technicalText, [entry.code, entry.receipt ? JSON.stringify(entry.receipt, null, 2) : entry.detail].filter(Boolean).join('\n'));
     }
   };
   details.addEventListener('toggle', render);
   return Object.freeze({ element,
+    operation(receipt) {
+      if (disposed) return;
+      owner.publish({ scope: 'operation', operationId: receipt.id, code: 'operation:' + receipt.id, target: receipt.source.documentIdentity,
+        message: receipt.kind + ' · ' + receipt.outcome + (receipt.accepted?.storedRevision != null ? ' · stored revision ' + receipt.accepted.storedRevision : ''),
+        severity: ['failed', 'unknown', 'committed-with-error'].includes(receipt.outcome) ? 'warning' : 'info',
+        createdRevision: receipt.source.editRevision, receipt, present: false }); render();
+    },
     status(text, options = {}) { if (disposed) return; const current = readSnapshot(); owner.synchronize(current); owner.publish({ message: text, target: current?.documentIdentity, createdRevision: current?.documentRevision, ...options }); render(); },
     refresh(snapshot) { if (disposed) return; owner.synchronize(snapshot); render(); },
     snapshot: owner.snapshot,
-    dispose() { if (disposed) return; disposed = true; owner.dispose(); rows.clear(); element.remove(); }
+    dispose() { if (disposed) return; disposed = true; owner.dispose(); rows.clear(); list.replaceChildren(); element.remove(); }
   });
 }

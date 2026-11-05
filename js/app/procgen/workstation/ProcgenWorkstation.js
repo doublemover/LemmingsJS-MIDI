@@ -4,7 +4,7 @@ import { planRecordedMidiExport } from './RecordedMidiExportPlan.js';
 import { planOriginalUmpClip } from './OriginalUmpRecordingSnapshot.js';
 import { physicalMidiEpochChoices } from './PhysicalTakeMidiEpochs.js';
 import { loadDeferredWebMidi } from '../DeferredWebMidi.js';
-import { createProcgenOperationView } from './ProcgenOperationView.js';
+import { createProcgenOperationView, createProcgenOperationReceipt } from './ProcgenOperationView.js';
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { normalizeWorkstationDockPreferences } from './WorkstationDockState.js';
@@ -229,19 +229,27 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (inputLease) { inputLease = null; ports?.cancelLearn(); view?.refreshLaneNavigation?.(); status(`MIDI Learn canceled: ${reason}.`); }
     noteEntries.clear();
   };
+  const operationBoundary = () => { const world = runtime()?.world; return Object.freeze({ documentIdentity: String(documentGeneration), documentId, projectRevision, editRevision, worldId: world?.worldId ?? null, generation: world?.generation ?? null, tick: world?.tickIndex ?? null, storedRevision: documentRevision }); };
+  const publishOperationReceipt = (operation, outcome, accepted = null, errorCode = null, captured = null) => {
+    if (disposed || operation.receipted) return; operation.receipted = true;
+    try { const receipt = createProcgenOperationReceipt({ id: operation.id, kind: operation.kind, source: operation.source, outcome, captured, accepted, errorCode }); view?.operationReceipt?.(receipt); } catch { /* History presentation cannot own a committed mutation. */ }
+  };
   const beginOperation = kind => {
     if (operationSerial === Number.MAX_SAFE_INTEGER) throw new Error('Project operation identity capacity is exhausted.');
     cancelInputEdits('project transition');
     currentOperation?.controller.abort();
     const lease = { ownerId: 'procgen-workstation', generation: ++operationSerial, kind, phase: kind === 'select-session' ? 'reading' : kind === 'import' ? 'validating' : kind === 'export' ? 'encoding' : 'preparing', controller: new AbortController() };
-    lease.id = 'document-operation:' + lease.generation;
+    lease.id = 'document-operation:' + lease.generation; lease.source = operationBoundary();
     lease.reportPhase = phase => { if (!disposed && currentOperation === lease && !lease.signal.aborted) { createProcgenOperationView({ id: lease.id, kind, phase }); lease.phase = phase; try { view?.refreshOperational?.(); } catch { /* Progress presentation cannot block publication. */ } } };
     lease.signal = lease.controller.signal;
     currentOperation = lease;
     return lease;
   };
   const ownsOperation = lease => !disposed && currentOperation === lease && !lease.signal.aborted;
-  const finishOperation = lease => { if (currentOperation === lease) currentOperation = null; };
+  const finishOperation = (lease, outcome = lease.signal.aborted ? 'canceled' : 'retired', error = null) => {
+    if (currentOperation === lease) currentOperation = null;
+    publishOperationReceipt(lease, outcome, ['committed', 'committed-with-error'].includes(outcome) ? operationBoundary() : null, error ? String(error.code || error.name || 'operation-error').slice(0, 96) : null);
+  };
   const readForOperation = async (lease, read) => {
     if (!ownsOperation(lease)) return { current: false, value: null };
     try { const value = await read(); return { current: ownsOperation(lease), value }; }
@@ -1289,7 +1297,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const lease = beginOperation('export'), generation = documentGeneration, revision = editRevision, id = documentId, name = savedName;
     const request = ++exportPreparationRevision, cancel = () => lease.controller.abort(signal.reason);
     signal?.addEventListener('abort', cancel, { once: true });
-    let computed = null, sourceTick = null, sourceGeneration = null;
+    let computed = null, sourceTick = null, sourceGeneration = null, preparedResult = false, preparationFailure = null;
     const preferenceHold = preferenceWriter?.suspend();
     try {
       if (preferenceHold) await preferenceHold.completion; lease.signal.throwIfAborted();
@@ -1303,11 +1311,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!ownsOperation(lease) || documentGeneration !== generation || editRevision !== revision || request !== exportPreparationRevision) return null;
       const artifact = prepareDownload({ bytes: computed.value, filename: name.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', type: 'application/json',
         sourceRef: `project:${id}:${revision}:${sourceGeneration ?? 'unknown'}:${sourceTick ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
+      preparedResult = true;
       if (deliver && deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.');
       else if (!deliver) status('Project checkpoint ready. Choose Save file or Retry file to request delivery.');
       return artifact.metadata();
-    } catch (error) { if (!ownsOperation(lease) || request !== exportPreparationRevision || generation !== documentGeneration) return null; throw error; }
-    finally { try { computed?.release(); } finally { signal?.removeEventListener('abort', cancel); finishOperation(lease); preferenceHold?.release(); } }
+    } catch (error) { preparationFailure = error; if (!ownsOperation(lease) || request !== exportPreparationRevision || generation !== documentGeneration) return null; throw error; }
+    finally { try { computed?.release(); } finally { signal?.removeEventListener('abort', cancel); finishOperation(lease, preparedResult ? 'prepared' : lease.signal.aborted || generation !== documentGeneration || revision !== editRevision ? 'canceled' : 'failed', preparationFailure); preferenceHold?.release(); } }
   };
   const prepareMidiExport = async ({ format = 'midi1', outputRouteId, outputRouteIndex, sourceLayer, placement = 'retained-absolute-beat', tempoSource = 'captured-transport' } = {}) => {
     if (!['midi1', 'ump'].includes(format)) throw new RangeError('Choose original UMP Clip or compatible MIDI1.');
@@ -1513,23 +1522,27 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'document-replacement' });
     signal?.throwIfAborted();
+    if (disposed || admittedLease && !ownsOperation(admittedLease)) return false;
     const lease = admittedLease || beginOperation('load');
     lease.reportPhase('validating');
-    let session = validateProcgenSession(value);
+    let session, validatedProject;
     const serial = ++loadSerial;
-    if (session.project?.procgen?.version !== 2) {
-      const conversion = convertLegacyProcgenWorkstationProject(session.project, { strategy: 'physical-default' });
-      const summary = `Convert this legacy project to physical playback? ${conversion.report.discardedEnabledSteps} enabled phrase steps will be removed across ${conversion.report.laneCount} lanes. Physical mappings replace the old event-advanced phrases. Unpinned local sounds use supported native aliases; external MIDI routing is retained. The imported source will not be overwritten.`;
-      if (typeof window.confirm !== 'function' || !window.confirm(summary)) return false;
-      session = { ...session, project: conversion.project, patterns: null, physicalTimeline: null, physicalState: null };
-    }
-    if (session.physicalTimeline) createProcgenPhysicalScoreClock().restore(session.physicalTimeline);
-    const validatedProject = createProcgenWorkstationProject(sanitizeMidiProject(session.project));
-    if (validatedProject.procgen.lanes.length !== session.world.laneCount) throw new Error('Project lanes and world checkpoint do not match.');
-    const preparedEngine = createProcgenPatternEngine({ getProject: () => validatedProject, now });
-    if (session.patterns) preparedEngine.restore(session.patterns);
-    else session = { ...session, patterns: preparedEngine.snapshot() };
-    signal?.throwIfAborted();
+    try {
+      session = validateProcgenSession(value);
+      if (session.project?.procgen?.version !== 2) {
+        const conversion = convertLegacyProcgenWorkstationProject(session.project, { strategy: 'physical-default' });
+        const summary = `Convert this legacy project to physical playback? ${conversion.report.discardedEnabledSteps} enabled phrase steps will be removed across ${conversion.report.laneCount} lanes. Physical mappings replace the old event-advanced phrases. Unpinned local sounds use supported native aliases; external MIDI routing is retained. The imported source will not be overwritten.`;
+        if (typeof window.confirm !== 'function' || !window.confirm(summary)) { if (!admittedLease) finishOperation(lease, 'canceled'); return false; }
+        session = { ...session, project: conversion.project, patterns: null, physicalTimeline: null, physicalState: null };
+      }
+      if (session.physicalTimeline) createProcgenPhysicalScoreClock().restore(session.physicalTimeline);
+      validatedProject = createProcgenWorkstationProject(sanitizeMidiProject(session.project));
+      if (validatedProject.procgen.lanes.length !== session.world.laneCount) throw new Error('Project lanes and world checkpoint do not match.');
+      const preparedEngine = createProcgenPatternEngine({ getProject: () => validatedProject, now });
+      if (session.patterns) preparedEngine.restore(session.patterns);
+      else session = { ...session, patterns: preparedEngine.snapshot() };
+      signal?.throwIfAborted();
+    } catch (error) { if (!admittedLease) finishOperation(lease, 'failed', error); throw error; }
     const cancel = () => lease.controller.abort(signal.reason);
     signal?.addEventListener('abort', cancel, { once: true });
     worldBusy = true;
@@ -1557,7 +1570,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       Object.assign(legacy.settings, oldSettings); lastLegacySpeed = legacy.settings.speed; if (previous.playing) play(); throw error;
     } finally {
       signal?.removeEventListener('abort', cancel); worldBusy = false;
-      if (loaded || lease.kind !== 'select-session' || runtime() !== previousRuntime) finishOperation(lease);
+      if (loaded ? lease.kind !== 'select-session' : lease.kind !== 'select-session' || runtime() !== previousRuntime) finishOperation(lease, loaded ? 'committed' : runtime() !== previousRuntime ? 'committed-with-error' : lease.signal.aborted ? 'canceled' : 'failed');
       if (deferredPersist && startupCommitted && (loaded || runtime() === previousRuntime)) persist();
       preferenceHold?.release();
     }
@@ -1625,7 +1638,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (previousTransport.playing) play();
       try { view?.render(); } catch { /* Rollback authority remains recoverable without its presentation. */ }
       throw error;
-    } finally { pendingWorldSettings = null; worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); preferenceHold?.release(); }
+    } finally { pendingWorldSettings = null; worldBusy = false; finishOperation(lease, completed ? 'committed' : runtime() !== previousRuntime ? 'committed-with-error' : lease.signal.aborted ? 'canceled' : 'failed'); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); preferenceHold?.release(); }
   }
   const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.worldThemeId !== project.procgen.lanes[index]?.worldThemeId);
   const historyMove = async (from, to) => {
@@ -2127,7 +2140,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
       pendingSaveGenerations.add(documentGeneration);
       if (savePresentationSerial === Number.MAX_SAFE_INTEGER) { pendingSaveGenerations.delete(documentGeneration); throw new Error('Save operation identity capacity is exhausted.'); }
-      const saveOperation = { id: 'save:' + documentGeneration + ':' + (++savePresentationSerial), documentGeneration, phase: 'naming' }; saveOperations.set(documentGeneration, saveOperation);
+      const saveOperation = { id: 'save:' + documentGeneration + ':' + (++savePresentationSerial), kind: 'save', source: operationBoundary(), documentGeneration, phase: 'naming', outcome: 'canceled', captured: null, accepted: null, errorCode: null }; saveOperations.set(documentGeneration, saveOperation);
       const wasPlaying = transport.getState().playing; beforeRestart();
       const saveDocumentGeneration = documentGeneration, saveOperationSerial = operationSerial;
       let resumeStopGeneration = transportStopGeneration;
@@ -2145,18 +2158,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (resumeWasCurrent) resumeStopGeneration = transportStopGeneration;
         const id = asCopy || !documentId ? createProcgenDocumentId(window.crypto) : documentId;
         const expectedRevision = asCopy || !documentId ? 0 : documentRevision;
-        saveOperation.phase = 'finalizing'; view?.refreshOperational?.();
+        saveOperation.phase = 'finalizing'; saveOperation.captured = { ...operationBoundary(), documentId: id, editRevision: revision }; saveOperation.outcome = 'unknown'; view?.refreshOperational?.();
         const receipt = storage.saveDocument ? await storage.saveDocument(id, expectedRevision, session, createProcgenDocumentId(window.crypto).replace(/^doc:/, 'commit:')) :
           (await storage.save(name, session), null);
+        saveOperation.outcome = 'committed'; saveOperation.accepted = { ...saveOperation.captured, documentId: receipt?.id ?? saveOperation.captured.documentId, storedRevision: receipt?.revision ?? null };
         if (disposed) return false;
         if (documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return true;
         if (receipt) { documentId = receipt.id; documentRevision = receipt.revision; }
         savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; lastStorageError = null; storageStatus();
         status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
       } catch (error) {
+        saveOperation.errorCode = String(error.code || error.name || 'save-error').slice(0, 96);
+        if (saveOperation.phase !== 'finalizing') saveOperation.outcome = 'failed';
         if (disposed || documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return false;
         storageStatus(error); throw error;
       } finally {
+        publishOperationReceipt(saveOperation, saveOperation.outcome, saveOperation.accepted, saveOperation.errorCode, saveOperation.captured);
         preferenceHold?.release();
         pendingSaveGenerations.delete(saveDocumentGeneration); saveOperations.delete(saveDocumentGeneration); if (!disposed) view?.refreshOperational?.();
         if (!disposed && wasPlaying && documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial &&
@@ -2166,7 +2183,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     saveAs: safe(() => handlers.save({ asCopy: true })),
     rename: safe(() => handlers.save({ rename: true })),
     cancelProjectPicker() {
-      if (currentOperation?.kind === 'select-session' && currentOperation.phase !== 'committing') { currentOperation.controller.abort(); currentOperation = null; view?.refreshOperational?.(); }
+      if (currentOperation?.kind === 'select-session' && currentOperation.phase !== 'committing') { const lease = currentOperation; lease.controller.abort(); finishOperation(lease, 'canceled'); view?.refreshOperational?.(); }
     },
     load: safe(async () => {
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
@@ -2183,7 +2200,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         const loadSelected = async id => {
           if (!ownsOperation(lease)) return false;
           lease.reportPhase('reading');
-          const preferenceHold = preferenceWriter?.suspend(); let record;
+          const preferenceHold = preferenceWriter?.suspend(); let record, loaded = false;
           try {
             const source = await readForOperation(lease, async () => {
               if (preferenceHold) await preferenceHold.completion;
@@ -2193,10 +2210,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             record = source.value;
             if (!source.current) return false;
             lease.reportPhase('validating');
-            const loaded = await loadSession(record.session, lease, { signal: record.signal });
-            if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); }
+            loaded = await loadSession(record.session, lease, { signal: record.signal });
+            if (loaded) { documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; storageStatus(); finishOperation(lease, 'committed'); }
             return loaded;
-          } finally { try { record?.release?.(); } finally { preferenceHold?.release(); if (ownsOperation(lease)) lease.reportPhase('selecting'); } }
+          } catch (error) { if (loaded) finishOperation(lease, 'committed-with-error', error); throw error; }
+          finally { try { record?.release?.(); } finally { preferenceHold?.release(); if (ownsOperation(lease)) lease.reportPhase('selecting'); } }
         };
         if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
           const next = await readForOperation(lease, () => storage.listDocumentPage({ cursor, query, signal: lease.signal }));
@@ -2204,13 +2222,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         });
         else view.showProjects(entries || page.items, loadSelected);
         return ownsOperation(lease);
-      } catch (error) { if (!ownsOperation(lease)) return false; finishOperation(lease); throw error; }
+      } catch (error) { if (!ownsOperation(lease)) return false; finishOperation(lease, 'failed', error); throw error; }
+      finally { if (!ownsOperation(lease)) finishOperation(lease); }
     }),
     reclaimRecovery: safe(async () => { await storage.removeRecovery?.(); status('Old recovery checkpoint removed. Named projects were kept.'); }),
     import: safe(async file => {
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('import');
-      let computed = null, preferenceHold = null;
+      let computed = null, preferenceHold = null, imported = false, importFailure = null;
       try {
         const source = await readForOperation(lease, async () => {
           if (file?.size != null && (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > MAX_SESSION_FILE_BYTES)) throw new Error('Project file exceeds the 64 MiB import limit.');
@@ -2228,8 +2247,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         });
         computed = source.value;
         if (!source.current) return false;
-        return await loadSession(computed.value, lease);
-      } finally { try { computed?.release(); } finally { finishOperation(lease); preferenceHold?.release(); } }
+        imported = await loadSession(computed.value, lease); return imported;
+      } catch (error) { importFailure = error; throw error; }
+      finally { try { computed?.release(); } finally { finishOperation(lease, imported ? 'committed' : lease.signal.aborted ? 'canceled' : 'failed', importFailure); preferenceHold?.release(); } }
     }),
     export: safe(() => prepareProjectExport()),
     exportMidi: safe(prepareMidiExport),

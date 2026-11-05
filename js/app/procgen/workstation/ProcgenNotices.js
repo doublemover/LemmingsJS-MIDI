@@ -1,3 +1,5 @@
+import { createProcgenOperationReceipt } from './ProcgenOperationView.js';
+
 const text = (value, length = 240) => typeof value === 'string' ? value.slice(0, length) : '';
 const priority = { info: 1, warning: 2, error: 3 };
 const increment = value => Math.min(Number.MAX_SAFE_INTEGER, value + 1);
@@ -9,14 +11,15 @@ export function createProcgenNotices({ maxEntries = 32, now = () => globalThis.p
     if (disposed || !input || !priority[input.severity || 'info']) return null;
     const value = { message: text(input.message), code: text(input.code, 96), target: text(input.target || context, 1024),
       severity: input.severity || 'info', priority: Number.isFinite(input.priority) ? Math.max(0, Math.min(1000, input.priority)) : priority[input.severity || 'info'] * 32,
-      scope: text(input.scope || 'document', 64), detail: text(input.detail, 512), condition: input.condition === true };
+      scope: text(input.scope || 'document', 64), operationId: text(input.operationId, 128), detail: text(input.detail, 512),
+      receipt: input.receipt ? createProcgenOperationReceipt(input.receipt) : null, condition: input.condition === true };
     if (!value.message) return null;
     const previous = entries.find(entry => entry.target === value.target && entry.scope === value.scope && entry.code === value.code &&
-      entry.condition === value.condition && (value.condition && value.code || entry.message === value.message));
+      entry.operationId === value.operationId && entry.condition === value.condition && (value.condition && value.code || entry.message === value.message));
     if (previous) {
       const changed = previous.message !== value.message || previous.severity !== value.severity || previous.priority !== value.priority || previous.detail !== value.detail || !previous.active;
       if (!previous.active) { previous.identity = text(input.identity, 1024); previous.actionId = text(input.actionId, 96); previous.actionLabel = text(input.actionLabel, 120); }
-      if (changed) { previous.message = value.message; previous.severity = value.severity; previous.priority = value.priority; previous.detail = value.detail; previous.active = true; previous.dismissed = false; }
+      if (changed) { previous.message = value.message; previous.severity = value.severity; previous.priority = value.priority; previous.detail = value.detail; previous.active = input.present !== false; previous.dismissed = false; }
       if (repeated) previous.count = increment(previous.count);
       if (changed || repeated) { previous.lastAt = now(); previous.lastRevision = ++revision; }
       return previous.id;
@@ -29,7 +32,7 @@ export function createProcgenNotices({ maxEntries = 32, now = () => globalThis.p
       entries.splice(victim, 1); dropped = increment(dropped);
     }
     if (sequence === Number.MAX_SAFE_INTEGER) return null;
-    const entry = { ...value, id: 'notice:' + (++sequence), active: true, dismissed: false, count: 1,
+    const entry = { ...value, id: 'notice:' + (++sequence), active: input.present !== false, dismissed: false, count: 1,
       createdRevision: Number.isSafeInteger(input.createdRevision) && input.createdRevision >= 0 ? input.createdRevision : null,
       identity: text(input.identity, 1024), actionId: text(input.actionId, 96), actionLabel: text(input.actionLabel, 120), createdAt: now(), lastAt: now(), lastRevision: revision + 1 };
     entries.push(entry); revision++; return entry.id;

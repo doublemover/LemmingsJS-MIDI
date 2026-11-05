@@ -69,6 +69,23 @@ test('native File cancellation and dialog Escape/close retire only the current o
   }
   const result = await page.evaluate(() => ({ sameWorld: window.__PROCGEN_LANES__.world === window.operationProbe.world, sameProject: window.__PROCGEN_STUDIO__.getProject() === window.operationProbe.project, operation: window.__PROCGEN_STUDIO__.getOperationState() }));
   expect(result).toEqual({ sameWorld: true, sameProject: true, operation: null }); await info.attach('native-operation-cancel', { body: JSON.stringify({ id, dialogs, ...result }), contentType: 'application/json' });
+  const receipts = await page.evaluate(() => window.__PROCGEN_STUDIO__.getNoticeState().entries.map(entry => entry.receipt).filter(Boolean));
+  expect(receipts.filter(receipt => receipt.id === id)).toHaveLength(1); expect(receipts.find(receipt => receipt.id === id)).toMatchObject({ outcome: 'canceled', accepted: null, resourceRetirement: 'reported-separately' });
+});
+
+test('finished native Save and named load history retains captured and accepted document revisions without replacing current status', { tag: ['@boundary', '@workstation-storage'] }, async ({ page }, info) => {
+  test.setTimeout(90000); await ready(page);
+  await page.evaluate(() => { window.operationSave = window.__PROCGEN_STUDIO__.handlers.save(); }); await saveName(page, 'Receipt source'); expect(await page.evaluate(() => window.operationSave)).toBe(true);
+  const saved = await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; return { document: studio.getDocumentState(), receipt: studio.getNoticeState().entries.map(entry => entry.receipt).find(value => value?.kind === 'save') }; });
+  expect(saved.receipt).toMatchObject({ outcome: 'committed', accepted: { documentId: saved.document.id, storedRevision: 1, editRevision: saved.document.savedRevision }, captured: { editRevision: saved.document.savedRevision } });
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.new())).toBe(true);
+  const beforeLoad = await page.evaluate(() => window.__PROCGEN_STUDIO__.getOperationalSnapshot().documentIdentity); await page.evaluate(() => { window.operationLoad = window.__PROCGEN_STUDIO__.handlers.load(); });
+  const dialog = page.getByRole('dialog', { name: 'Saved projects', exact: true }); await expect(dialog).toBeVisible(); await dialog.getByRole('button').filter({ hasText: /^Receipt source ·/ }).click(); await expect(dialog).not.toBeVisible();
+  const loaded = await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; return { document: studio.getDocumentState(), identity: studio.getOperationalSnapshot().documentIdentity, receipts: studio.getNoticeState().entries.map(entry => entry.receipt).filter(Boolean) }; });
+  const receipt = loaded.receipts.find(value => value.kind === 'select-session' && value.outcome === 'committed');
+  expect(receipt).toMatchObject({ source: { documentIdentity: beforeLoad }, accepted: { documentIdentity: loaded.identity, documentId: saved.document.id, storedRevision: 1 } });
+  expect(loaded.document).toMatchObject({ id: saved.document.id, revision: 1, dirty: false }); expect(new Set(loaded.receipts.map(value => value.id)).size).toBe(loaded.receipts.length);
+  await info.attach('native-terminal-operation-history', { body: JSON.stringify({ saved, loaded }), contentType: 'application/json' });
 });
 
 test('an actual MIDI disconnect stays above successful project Save and an expired recovery action cannot retarget', { tag: '@boundary' }, async ({ page }, info) => {
