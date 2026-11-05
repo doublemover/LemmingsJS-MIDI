@@ -12,7 +12,7 @@ const harnessFiles = ['playwright.lifecycle.config.js', 'scripts/run-lifecycle-e
   'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js', 'scripts/InstrumentArtifactClosure.js',
   'scripts/NativeClockResults.js', 'e2e-portable/fixtures.js', 'e2e-portable/lifecycle.spec.js', 'e2e-portable/semantic.spec.js', 'e2e-portable/capabilities.spec.js', 'e2e-portable/native-permission.spec.js',
   'e2e-portable/audio-clock.spec.js', 'e2e-portable/fixtures/clock-onset-probe.js', 'e2e/helpers/observeNativeAudioClock.js', 'e2e/helpers/physicalAudioClockFixture.js',
-  'e2e/helpers/physicalMidiClock.js', 'e2e/helpers/workstationChrome.js', 'test/support/smf.js'];
+  'e2e/helpers/physicalMidiClock.js', 'e2e/helpers/workstationChrome.js', 'e2e/helpers/workstationReady.js', 'test/support/smf.js'];
 const harness = () => Promise.all(harnessFiles.map(async name => {
   const bytes = await fs.readFile(path.join(root, name)); return { path: name, bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') };
 }));

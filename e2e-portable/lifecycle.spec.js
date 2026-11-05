@@ -1,11 +1,11 @@
 import { expect, test } from './fixtures.js';
+import { pauseWorkstationWhenReady } from '../e2e/helpers/workstationReady.js';
 import { useWorkstationControl } from '../e2e/helpers/workstationChrome.js';
 
 const playback = page => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState());
 const boot = async (page, search = '&recipe=1&seed=42&lanes=8') => {
   await page.goto('/procgen.html?e2e=1' + search);
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.workstationEnabled);
-  await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
+  await pauseWorkstationWhenReady(page);
 };
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {

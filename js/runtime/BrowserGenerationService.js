@@ -62,6 +62,7 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
       !Number.isSafeInteger(maximumCacheBytes) || maximumCacheBytes < 1 || maximumCacheBytes > 1024 * 1048576) throw new Error('Invalid browser generation owner.');
   const markerUrl = new URL('__runtime_generation_manifest__', scope).href;
   const catalog = new Map(), qualifications = new Map(), verifications = new Map();
+  let stateOwner = 0;
   let installing = null, restoring = null, state = { schemaVersion: 1, buildId, status: 'uninstalled', offlineReady: false, completedFiles: 0, totalFiles: null, completedBytes: 0 };
   const ownedName = name => name.startsWith(prefix) && /^[a-f0-9]{64}-[a-f0-9]{32}$/.test(name.slice(prefix.length));
   const request = async (url, maximum, signal) => {
@@ -104,15 +105,15 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
     if (qualifications.size >= 8) qualifications.delete(qualifications.keys().next().value);
     qualifications.set(record.name, result); return result;
   };
-  const checkStored = async (record, signal, publishProgress = true) => {
+  const checkStored = async (record, signal, publishProgress = true, isCurrent = () => true) => {
     const verified = await qualify(record, signal);
-    if (publishProgress) state = { ...state, status: 'checking-installed-generation', totalFiles: verified.files.length, completedFiles: 0, completedBytes: 0 };
+    if (publishProgress && isCurrent()) state = { ...state, status: 'checking-installed-generation', totalFiles: verified.files.length, completedFiles: 0, completedBytes: 0 };
     for (const file of verified.files) {
       const response = await withSignal(() => record.cache.match(new URL(`${record.marker.buildId}/${file.path}`, scope).href), signal);
       if (!response) return false;
       const bytes = await readBrowserBuildResponse(response, file.bytes, signal);
       if (bytes.byteLength !== file.bytes || await hashBrowserBuildBytes(bytes) !== file.sha256) return false;
-      if (publishProgress) state = { ...state, completedFiles: state.completedFiles + 1, completedBytes: state.completedBytes + bytes.byteLength };
+      if (publishProgress && isCurrent()) state = { ...state, completedFiles: state.completedFiles + 1, completedBytes: state.completedBytes + bytes.byteLength };
     }
     return true;
   };
@@ -131,6 +132,7 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
   };
   const install = () => {
     if (installing) return installing;
+    stateOwner++;
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(failure('installation-deadline', 'Browser generation installation deadline exceeded.')), 180000);
     installing = Promise.resolve().then(async () => {
       let cacheName = null;
@@ -190,16 +192,18 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
     if (installing) return installing;
     if (restoring) return restoring;
     if (state.offlineReady) return Promise.resolve(state);
+    const owner = ++stateOwner, isCurrent = () => owner === stateOwner;
     state = { ...state, status: 'checking-installed-generation', offlineReady: false };
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(failure('restore-deadline', 'Installed browser generation verification timed out.')), 180000);
     restoring = Promise.resolve().then(async () => {
       for (const record of await records(controller.signal, { requestedBuild: buildId, strict: false })) if (record.marker.status === 'complete') {
-        if (await checkStored(record, controller.signal).catch(error => { if (controller.signal.aborted) throw error; return false; })) {
+        if (await checkStored(record, controller.signal, true, isCurrent).catch(error => { if (controller.signal.aborted) throw error; return false; })) {
+          if (!isCurrent()) throw failure('generation-operation-superseded', 'A newer browser generation operation owns installation status.');
           state = { ...state, status: 'installed', offlineReady: true, error: null }; return state;
         }
       }
       throw failure('generation-unavailable', 'No complete installed browser generation matches this worker.');
-    }).catch(error => { state = { ...state, status: 'failed', offlineReady: false, error: Object.freeze({ code: error.code || error.name, message: String(error.message).slice(0, 512) }) }; throw error; })
+    }).catch(error => { if (isCurrent()) state = { ...state, status: 'failed', offlineReady: false, error: Object.freeze({ code: error.code || error.name, message: String(error.message).slice(0, 512) }) }; throw error; })
       .finally(() => { clearTimeout(timer); restoring = null; });
     return restoring;
   };
@@ -277,7 +281,9 @@ export function installBrowserGenerationWorker({ buildId, worker = globalThis } 
       event.waitUntil?.(verified); return;
     }
     if (event.data?.type === 'GENERATION_STATUS') {
-      const restored = owner.restore(); event.waitUntil?.(restored.catch(() => {}));
+      if (owner.getState().status === 'uninstalled' && !worker.registration.installing) {
+        const restored = owner.restore(); event.waitUntil?.(restored.catch(() => {}));
+      }
       event.ports?.[0]?.postMessage(owner.getState());
     }
     if (event.data?.type === 'SKIP_WAITING' && owner.getState().offlineReady) worker.skipWaiting();

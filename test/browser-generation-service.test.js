@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createBrowserGenerationService, readBrowserBuildResponse } from '../js/runtime/BrowserGenerationService.js';
+import { createBrowserGenerationService, readBrowserBuildResponse, installBrowserGenerationWorker } from '../js/runtime/BrowserGenerationService.js';
 import { browserGenerationFixture, memoryGenerationCaches } from './helpers/browserGenerationFixture.js';
 
 describe('complete immutable browser installation', () => {
@@ -102,4 +102,57 @@ describe('complete immutable browser installation', () => {
     expect([...await readBrowserBuildResponse(observed, bytes.length)]).to.deep.equal([...bytes]);
     expect(modes).to.deep.equal(['default']);
   });
+  const workerFor = (build, extra = {}) => {
+    const listeners = new Map(), pending = [], replies = [];
+    const worker = { registration: { scope, installing: { state: 'installing' } }, caches,
+      fetch: network, clients: { matchAll: async () => [] }, skipWaiting() {},
+      addEventListener(type, listener) { listeners.set(type, listener); }, ...extra };
+    const service = installBrowserGenerationWorker({ buildId: build.buildId, worker });
+    const event = { waitUntil(promise) { pending.push(promise); }, ports: [{ postMessage(value) { replies.push(value); } }] };
+    return { worker, service, pending, replies,
+      status() { listeners.get('message')({ ...event, data: { type: 'GENERATION_STATUS' } }); },
+      install() { listeners.get('install')(event); return pending.at(-1); }
+    };
+  };
+  it('observes a newly registered installer without starting restore before its install event', async () => {
+    const build = await fixture.build(); let reads = 0;
+    const native = workerFor(build, { caches: { ...caches, keys() { reads++; return caches.keys(); } } });
+    native.status(); await Promise.all(native.pending);
+    expect(native.replies.at(-1)).to.include({ status: 'uninstalled', offlineReady: false });
+    expect(native.service.getState().status).to.equal('uninstalled'); expect(reads).to.equal(0); expect(fetches).to.have.length(0);
+    await native.install(); expect(native.service.getState()).to.include({ status: 'installed', offlineReady: true });
+    const after = reads; native.status(); await Promise.all(native.pending); expect(reads).to.equal(after);
+    expect(native.replies.at(-1)).to.include({ status: 'installed', offlineReady: true });
+  });
+  it('keeps terminal installation failure observable instead of starting another restore on every status read', async () => {
+    const build = await fixture.build(); unavailable = () => true;
+    const native = workerFor(build); await native.install().catch(() => {});
+    const failed = native.service.getState(); expect(failed.status).to.equal('failed');
+    native.status(); await Promise.allSettled(native.pending);
+    expect(native.replies.at(-1)).to.deep.equal(failed); expect(native.service.getState()).to.deep.equal(failed);
+  });
+  it('restores an installed waiting worker after its realm restarts without a network request', async () => {
+    const build = await fixture.build(); await owner(build).install(); fetches.length = 0;
+    const native = workerFor(build, { registration: { scope, installing: null, waiting: { state: 'installed' } } });
+    native.status(); await Promise.all(native.pending);
+    expect(native.service.getState()).to.include({ status: 'installed', offlineReady: true }); expect(fetches).to.have.length(0);
+  });
+  for (const installed of [false, true]) it('fences an older ' + (installed ? 'successful' : 'failed') + ' restore from a newer installation', async () => {
+    const build = await fixture.build(); if (installed) await owner(build).install();
+    let releaseKeys, enteredKeys, releaseManifest, enteredManifest, first = true;
+    const keysReady = new Promise(resolve => { enteredKeys = resolve; }), keysGate = new Promise(resolve => { releaseKeys = resolve; });
+    const manifestReady = new Promise(resolve => { enteredManifest = resolve; }), manifestGate = new Promise(resolve => { releaseManifest = resolve; });
+    const service = owner(build, { cacheStorage: { ...caches, async keys() {
+      if (first) { first = false; enteredKeys(); await keysGate; } return caches.keys();
+    } }, async fetchFile(url) {
+      if (String(url).endsWith('/runtime-build.json')) { enteredManifest(); await manifestGate; } return network(url);
+    } });
+    const older = service.restore().then(() => null, error => error); await keysReady;
+    const current = service.install(); await manifestReady;
+    releaseKeys(); const oldError = await older;
+    expect(oldError.code).to.equal(installed ? 'generation-operation-superseded' : 'generation-unavailable');
+    expect(service.getState()).to.include({ status: 'reading-manifest', offlineReady: false, completedFiles: 0 });
+    releaseManifest(); await current; expect(service.getState()).to.include({ status: 'installed', offlineReady: true });
+  });
+
 });

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { waitForBrowserGeneration } from '../js/runtime/BrowserGenerationClient.js';
+import { readBrowserGenerationStatus, waitForBrowserGeneration } from '../js/runtime/BrowserGenerationClient.js';
 
 const buildId = 'a'.repeat(64), otherBuild = 'b'.repeat(64);
 function channelFactory(reply) {
@@ -46,4 +46,22 @@ describe('browser generation client terminal installation ownership', () => {
     const result = await waitForBrowserGeneration(registration, buildId, { timeout: 1000, Channel });
     expect(result.status).to.equal('installed'); expect(replies).to.equal(2);
   });
+  it('projects bounded immutable failure details and preserves the installation error code', async () => {
+    const raw = { schemaVersion: 1, buildId, status: 'failed', offlineReady: false, error: { code: 'x'.repeat(200), message: 'm'.repeat(2000), extra: 'not copied' } };
+    const Channel = channelFactory(port => queueMicrotask(() => port.onmessage({ data: raw })));
+    const worker = { postMessage(_message, [port]) { port.receive(); } };
+    const status = await readBrowserGenerationStatus(worker, { Channel });
+    expect(status.error).to.deep.equal({ code: 'x'.repeat(128), message: 'm'.repeat(512) });
+    expect(Object.isFrozen(status.error)).to.equal(true); raw.error.message = 'changed'; expect(status.error.message).to.have.length(512);
+    let error; try { await waitForBrowserGeneration({ installing: worker }, buildId, { timeout: 1000, Channel }); } catch (failure) { error = failure; }
+    expect(error).to.include({ code: 'x'.repeat(128), buildId }); expect(error.message).to.include('changed');
+  });
+  for (const error of [null, 'untyped', { code: 1, message: 'wrong code' }, { code: 'wrong-message', message: [] }]) {
+    it('omits malformed status error details ' + JSON.stringify(error), async () => {
+      const Channel = channelFactory(port => queueMicrotask(() => port.onmessage({ data: { schemaVersion: 1, buildId, status: 'failed', error } })));
+      const worker = { postMessage(_message, [port]) { port.receive(); } };
+      expect((await readBrowserGenerationStatus(worker, { Channel })).error).to.equal(null);
+    });
+  }
+
 });

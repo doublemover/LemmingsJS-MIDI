@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures.js';
+import { pauseWorkstationWhenReady } from '../e2e/helpers/workstationReady.js';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { observeNativeAudioClock, isolateAudioClockProbe } from '../e2e/helpers/observeNativeAudioClock.js';
@@ -56,7 +57,7 @@ function verifyTargets(snapshot) {
 async function privateSource(page, delay) {
   await observeNativeAudioClock(page);
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=1');
-  await page.waitForFunction(() => { if (!window.__PROCGEN_STUDIO__ || !window.__PROCGEN_LANES__?.world?.terrain) return false; window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); return true; });
+  await pauseWorkstationWhenReady(page);
   if (!await page.evaluate(() => typeof (window.AudioContext || window.webkitAudioContext) === 'function')) return null;
   await isolateAudioClockProbe(page);
   await page.evaluate(async presentationDelayMs => {

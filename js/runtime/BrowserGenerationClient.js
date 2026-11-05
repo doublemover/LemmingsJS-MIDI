@@ -18,7 +18,9 @@ export function readBrowserGenerationStatus(worker, { signal, timeout = 1500, ve
       if (!value || value.schemaVersion !== 1 || typeof value.buildId !== 'string' || !/^[a-f0-9]{64}$/.test(value.buildId)) { finish(null); return; }
       finish(null, Object.freeze({ buildId: value.buildId, status: String(value.status).slice(0, 64), offlineReady: value.offlineReady === true,
         resourceDelivery: value.resourceDelivery === 'verified-immutable-responses' ? value.resourceDelivery : null,
-        completedFiles: Number.isSafeInteger(value.completedFiles) ? value.completedFiles : null, totalFiles: Number.isSafeInteger(value.totalFiles) ? value.totalFiles : null }));
+        completedFiles: Number.isSafeInteger(value.completedFiles) ? value.completedFiles : null, totalFiles: Number.isSafeInteger(value.totalFiles) ? value.totalFiles : null,
+        error: value.error && typeof value.error.code === 'string' && typeof value.error.message === 'string'
+          ? Object.freeze({ code: value.error.code.slice(0, 128), message: value.error.message.slice(0, 512) }) : null }));
     };
     timer = setTimeout(() => finish(null), Math.max(1, Math.min(verifyBuildId ? 125000 : 5000, timeout)));
     signal?.addEventListener('abort', abort, { once: true });
@@ -38,7 +40,8 @@ export async function waitForBrowserGeneration(registration, buildId, { signal, 
       timeout: Math.min(1500, Math.max(1, deadline - performance.now())) }).catch(error => { signal?.throwIfAborted(); return { status: error.name }; })));
     const matching = states.find(value => value?.buildId === buildId); if (matching) onStatus(matching);
     if (matching?.status === 'installed' && matching.offlineReady) return matching;
-    if (matching?.status === 'failed') throw new Error('The complete browser generation could not be installed.');
+    if (matching?.status === 'failed') throw Object.assign(new Error('The complete browser generation could not be installed.' + (matching.error?.message ? ' ' + matching.error.message : '')),
+      { code: matching.error?.code || 'generation-installation-failed', buildId });
     // A failed first installation has no active worker left to answer STATUS.
     // Keep its observed candidate until its terminal state is acknowledged.
     if (candidate?.state === 'redundant' && !registration.installing && !registration.waiting)

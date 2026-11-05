@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Keep browser-generation status reads from starting premature restore work, fence obsolete restoration progress and retain bounded installation failure details.
+
 - Retire background persistence copies before take replay, preserve unknown cleanup across retries and wait for recovery retirement during disposal.
 
 - Check workstation, recovery/storage and replacement-operation boundaries with explicit contracts and strict invalid-consumer fixtures.

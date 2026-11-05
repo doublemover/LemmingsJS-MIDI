@@ -5789,5 +5789,91 @@
       },
       "currentSource": "pending-publication"
     }
+  },
+  "continuation429": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Make pending installer status observational, fence stale restoration status/progress to its owner, preserve bounded immutable failure details, fail browser fixtures promptly on terminal installation and retain bounded native startup diagnostics.",
+    "evidence": {
+      "path": "docs/validation/generation-status-ownership-desktop-2026-11-05.json",
+      "bytes": 1038125,
+      "sha256": "050800104d5474b5f8ad2825e7831f73721eac3747b9d140be525410f06e59c3"
+    },
+    "validation": {
+      "node": {
+        "suites": 6,
+        "tests": 81,
+        "passes": 81,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-05T05:58:46.019Z",
+        "end": "2026-11-05T05:58:50.144Z",
+        "duration": 4125
+      },
+      "crossEngineCases": 5,
+      "desktopOfflineCases": 1,
+      "actualNativeClockObservations": 2,
+      "explicitUnavailable": 1,
+      "scopedCoverage": {
+        "lines": {
+          "total": 368,
+          "covered": 332,
+          "skipped": 0,
+          "pct": 90.21
+        },
+        "statements": {
+          "total": 368,
+          "covered": 332,
+          "skipped": 0,
+          "pct": 90.21
+        },
+        "functions": {
+          "total": 42,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 78.57
+        },
+        "branches": {
+          "total": 296,
+          "covered": 230,
+          "skipped": 0,
+          "pct": 77.7
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "format": "passed",
+      "criticalTypes": "passed",
+      "undefinedCalls": "passed",
+      "depcheck": "passed"
+    },
+    "source": {
+      "browserDigest": "2fae07c1931012deafd2d2441604625e83f2db822ad10a81cfd49e66bef53878",
+      "paths": 1432,
+      "byteExact": 1419,
+      "unchangedCheckoutNewlines": 13,
+      "workerDigest": "147408a06b711f25ffe6f14b9729dc45b60131eb3c333340c90fc024eafc5962"
+    },
+    "counterexample": {
+      "parent": "a3202184f94836804274d686fddd522ae47ae603",
+      "commands": [
+        "create worker with pending installer and empty cache",
+        "request generation status before install event",
+        "observe all status-owned work"
+      ],
+      "oldStatus": "failed",
+      "oldCacheReads": 1,
+      "newStatus": "uninstalled",
+      "newCacheReads": 0
+    },
+    "ci": {
+      "latestCompleteGreen": "bfa6861d7d9b7fd62ff558a0c7858c106c78e091",
+      "parent427": "Preserved 40pass/twofail; screenshot proves a terminal WebKit installation failure, while exact cause and Firefox process crash remain unproven.",
+      "currentSource": "pending-publication"
+    }
   }
 }
