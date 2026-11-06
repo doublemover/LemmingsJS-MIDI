@@ -145,6 +145,6 @@ inline std::array<std::uint32_t, 2> note_off(const NoteKey &key) {
               (static_cast<std::uint32_t>(key.group) << 24) | (8u << 20) |
               (static_cast<std::uint32_t>(key.channel) << 16) |
               (static_cast<std::uint32_t>(key.note) << 8),
-          0};
+          key.protocol == 4 ? 0x80000000u : 0u};
 }
 } // namespace lemmings::companion

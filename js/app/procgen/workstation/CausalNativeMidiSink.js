@@ -1,3 +1,4 @@
+import { orchestralOnset, orchestralRelease } from '../../../midi/native/OrchestralProfileAdapter.js';
 import { resolvePercussionHit } from '../../../midi/native/DrumProfileAdapter.js';
 import { sameDevicePatchIntent } from '../../../midi/native/DevicePatchIntent.js';
 import { createNativeMidiBatchQueue } from '../../../midi/native/NativeMidiBatchQueue.js';
@@ -8,7 +9,7 @@ import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 const reject = reason => Object.freeze({ status: 'rejected', reason });
 const unit = value => Number.isFinite(value) && value >= 0 && value <= 1;
 const causal = intent => Object.freeze({ worldId: intent.worldId, generation: intent.generation, batchId: intent.batchId, intentId: intent.intentId, voiceId: intent.voiceId,
-  onsetId: intent.onsetId, pitch: intent.pitch, ...(intent.percussionHit ? { percussionHit: intent.percussionHit } : {}), expression: intent.expression, scoreTime: intent.scoreTime, eventId: intent.eventId ?? null, sourceEventIds: intent.sourceEventIds, sourceOrder: intent.sourceOrder, sourceBoundary: Object.freeze({ tick: intent.scoreTime.simTick, generation: intent.generation }) });
+  onsetId: intent.onsetId, pitch: intent.pitch, ...(intent.percussionHit ? { percussionHit: intent.percussionHit } : {}), ...(intent.orchestralArticulation ? { orchestralArticulation: intent.orchestralArticulation } : {}), expression: intent.expression, scoreTime: intent.scoreTime, eventId: intent.eventId ?? null, sourceEventIds: intent.sourceEventIds, sourceOrder: intent.sourceOrder, sourceBoundary: Object.freeze({ tick: intent.scoreTime.simTick, generation: intent.generation }) });
 const midi1 = (route, status, index, value = 0) => [(0x20000000 | route.group << 24 | status << 20 | route.channel << 16 | index << 8 | value) >>> 0];
 const noteWords = (route, status, note, velocity, pitch = note) => route.protocol === 'midi2' ?
   encodeIntent({ group: route.group, channel: route.channel, status, note, velocity: { value: Math.round(velocity * 65535), bits: 16 },
@@ -55,7 +56,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     try { onReceipt(latestReceipt); } catch {}
   };
   const send = (entry, intent, admission, words, targetMicroseconds, priority = 1, terminal = false, onset = false) => {
-    const provenance = Object.freeze({ ...causal(intent), ...(entry.parameterObservations?.length ? { deviceParameters: entry.parameterObservations } : {}) });
+    const provenance = Object.freeze({ ...causal(intent), ...(entry.parameterObservations?.length ? { deviceParameters: entry.parameterObservations } : {}), ...(entry.orchestralWire ? { orchestralWire: entry.orchestralWire } : {}) });
     const submission = batches.enqueue({ grant: entry.route.grant, execution: entry.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
       onReceipt: receipt => { if (receipt.kind === 'queued') report(entry, intent, admission, receipt, words); } });
     if (submission.status !== 'accepted') { report(entry, intent, admission, { kind: 'rejected', reason: submission.reason, acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: false }, words); return reject(submission.reason); }
@@ -113,6 +114,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (state.voices.has(intent.voiceId) || state.voices.size >= maxVoices || [...state.voices.values()].some(entry => entry.uncertain)) return reject('native-voice-capacity-or-ownership');
       let pitch = (intent.pitch?.cents + (intent.expression?.pitchOffsetCents ?? 0)) / 100 + 12 * Math.log2((intent.pitch?.referenceHz ?? 440) / 440), note = Math.min(127, Math.round(pitch));
       let percussion = null;
+      if (lane.orchestral || route.orchestral) { if (!lane.orchestral || !route.orchestral || route.orchestral.policySignature !== JSON.stringify(lane.orchestral) || route.percussion || route.mpe) return reject('explicit-current-orchestral-profile-required'); }
       if (lane.externalPercussion || lane.percussion || route.percussion) {
         if (!lane.percussion || !route.percussion || JSON.stringify(lane.percussion) !== route.percussion.policySignature) return reject('explicit-current-native-drum-map-required');
         try { percussion = resolvePercussionHit(route.percussion, intent.percussionHit); pitch = note = percussion.note; } catch (error) { return reject(error.message); }
@@ -132,7 +134,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (lane.devicePatch) entry.losses.push(Object.freeze({ kind: 'device-patch-reported-under-user-declared-address-mapping', requested: lane.devicePatch.title }));
       entry.losses.push(Object.freeze({ kind: 'receiver-protocol-unverified', requested: route.protocol }));
       const words = [], program = JSON.stringify([lane.externalProgram, lane.bankMSB, lane.bankLSB]), address = channelKey(route);
-      if (!route.mpe && !route.percussion && !lane.devicePatch && state.programs.get(address) !== program && lane.externalProgram != null) {
+      if (!route.mpe && !route.percussion && !route.orchestral && !lane.devicePatch && state.programs.get(address) !== program && lane.externalProgram != null) {
         if (channelVoices.has(address)) return reject('native-program-change-would-affect-held-voices');
         if (route.protocol === 'midi2') words.push(...encodeIntent({ group: route.group, channel: route.channel, status: 'programChange', program: lane.externalProgram,
           bankValid: lane.bankMSB != null || lane.bankLSB != null, bankMSB: lane.bankMSB ?? 0, bankLSB: lane.bankLSB ?? 0 }));
@@ -155,6 +157,9 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         } catch (error) { return reject(error.message); }
         if (lane.externalProgram != null && !lane.devicePatch) entry.losses.push(Object.freeze({ kind: 'profile-patch-requires-separate-device-mutation', requestedProgram: lane.externalProgram }));
         words.push(...noteWords(route, 'noteOn', note, intent.velocity01, note));
+      } else if (route.orchestral) {
+        try { const onset = orchestralOnset(route.orchestral, intent, { ...route, note, pitch, velocity01: intent.velocity01 }); words.push(...onset.words); entry.orchestralWire = Object.freeze({ attributeType: onset.attributeType, attributeData: onset.attributeData, qualification: onset.qualification }); }
+        catch (error) { return reject(error.message); }
       } else words.push(...noteWords(route, 'noteOn', note, intent.velocity01, pitch));
       if (!route.mpe && !route.percussion && unit(intent.expression?.pressure01)) words.push(...(route.protocol === 'midi2' ? encodeIntent({ group: route.group, channel: route.channel, status: 'polyPressure', note, controllerValue: { value: Math.round(intent.expression.pressure01 * 0xffffffff), bits: 32 } }) : midi1(route, 10, note, Math.round(intent.expression.pressure01 * 127))));
       state.voices.set(intent.voiceId, entry); wireVoices.set(wireKey, entry); channelVoices.set(address, (channelVoices.get(address) || 0) + 1); state.grants.add(route.grant);
@@ -214,7 +219,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (!enabled() || entry.uncertain) return reject('native-release-unconfirmed');
       const tail = options?.mode === 'one-shot' ? options.tailSeconds : 0;
       if (!Number.isFinite(tail) || tail < 0 || tail > 1.9) return reject('native-release-tail-outside-horizon');
-      entry.ending = true; const queued = send(entry, causeIntent || entry.intent, admission, noteWords(entry.route, 'noteOff', entry.note, entry.percussion?.releaseVelocity01 ?? 0), Math.max(Math.round(now() * 1000), targetMicroseconds + Math.round(tail * 1000000)), 0, true);
+      entry.ending = true; const queued = send(entry, causeIntent || entry.intent, admission, entry.route.orchestral ? orchestralRelease(entry.route.orchestral, { ...entry.route, note: entry.note }, entry.intent.orchestralArticulation) : noteWords(entry.route, 'noteOff', entry.note, entry.percussion?.releaseVelocity01 ?? 0), Math.max(Math.round(now() * 1000), targetMicroseconds + Math.round(tail * 1000000)), 0, true);
       if (queued.status !== 'accepted') { entry.ending = false; return queued; }
       return Object.freeze({ status: 'accepted', stage: 'accepted' });
     },

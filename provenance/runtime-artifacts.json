@@ -393,6 +393,7 @@
         "js/midi/content/InstrumentPerformance.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
+        "js/midi/content/OrchestralArticulationIntent.js",
         "js/midi/content/OriginalShapeMeshes.js",
         "js/midi/content/OwnedPcmFormat.js",
         "js/midi/content/OwnedStretchCoreIdentity.js",
@@ -460,8 +461,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 314,
-      "sha256": "953106febf92b65933107f8e59f64b3d9dafc895b79ff4a3db228c55b50550ba"
+      "fileCount": 315,
+      "sha256": "b82e053c98addbb28c36add1d3d65038f525bab610bc937ea47fbb7cc5edb872"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -509,6 +510,7 @@
         "scripts/build-native-midi-companion.js"
       ],
       "files": [
+        "js/app/midi-ui/NativeMidiArticulationView.js",
         "js/app/midi-ui/NativeMidiConnectionView.js",
         "js/app/midi-ui/NativeMidiEndpointView.js",
         "js/app/midi-ui/NativeMidiParameterView.js",
@@ -516,6 +518,7 @@
         "js/app/midi-ui/NativeMidiPercussionView.js",
         "js/app/midi-ui/NativeMidiPropertyView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
+        "js/midi/content/OrchestralArticulationIntent.js",
         "js/midi/content/PercussionRoleIntent.js",
         "js/midi/native/DeviceMutation.js",
         "js/midi/native/DeviceParameter.js",
@@ -534,6 +537,7 @@
         "js/midi/native/NativeMidiBridgeProtocol.js",
         "js/midi/native/NativeMidiIngress.js",
         "js/midi/native/NativeMidiRoutes.js",
+        "js/midi/native/OrchestralProfileAdapter.js",
         "js/midi/native/ProfileSession.js",
         "js/midi/native/PropertyChunkTransfer.js",
         "js/midi/native/PropertyClient.js",
@@ -557,8 +561,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 47,
-      "sha256": "0c14e742f8089de87c96feec5c45d875a8bd9370262b15a4a2d81fea50834a9a"
+      "fileCount": 50,
+      "sha256": "3b118ef471a4e632c8aad7e92205672488ee3a8e75e24a08ad64fe546d770f1d"
     }
   ]
 }

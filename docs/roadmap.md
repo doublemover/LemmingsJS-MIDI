@@ -10642,3 +10642,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Implement the complete M2-125 v1.0 role map, seven mutually exclusive sets, optional feature/sound-availability decoding and exact accepted single-channel profile binding. Accept current availability notifications and invalidate affected device state when the sound set changes.
 - Provide explicit profile, named-GM and unique custom-map workflows with physical action/role controls, visible actual note/group/channel and receiver qualification. Keep local kits and authored source timing independent, refuse same-drum address rotation/overlap and preserve matching releases. Avoid implicit program setup and guessed pressure controls on drum profiles.
 - Formatting passes. Functional, independent receiver and profile bitmap qualification remains deferred. Continue orchestral, piano and organ/rotary profile adapters, controller-release leases, group retirement and coordinated graph restoration before consolidated validation.
+
+
+### 2026-11-06 — Rook continuation493: standardized orchestral onset articulation
+
+- Implement all eight standard classifications and defined semantic subclasses, authored instrument context, action recipes and stable variation/direction/string/round-robin intent. Preserve these policies and resulting onset intent through project history, causal performance snapshots and replay.
+- Add exact optional-feature/variation decoding, current profile/active-protocol gating and explicit single-channel route activation. Refuse unknown sound variations and microtonal attribute-slot conflicts; do not guess keyswitches or per-note pitch support.
+- Lower articulation on the existing complete Note On transaction and keep semantic/exact wire evidence distinct. Gate optional mute, playing position and release behavior; use neutral default release velocity for owned MIDI2 cleanup. Add a compact selectable action/articulation editor with current availability and separate save/activation.
+- Formatting and native compilation/linking pass; no functional tests or receiver execution. Continue piano and independent organ/rotary adapters, controller-release leases, group-scoped retirement and coordinated graph restoration before consolidated validation.

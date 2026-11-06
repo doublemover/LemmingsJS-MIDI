@@ -1,3 +1,4 @@
+import { createOrchestralArticulationIntent } from '../../../midi/content/OrchestralArticulationIntent.js';
 import { createPercussionHitIntent } from '../../../midi/content/PercussionRoleIntent.js';
 import { validatePreparedSurfaceDefinitions, createPreparedSurfaceMapping } from './physical/PreparedSurfaceMapping.js';
 import { validatePreparedBodyStrike } from '../../../midi/content/PreparedBodyStrike.js';
@@ -103,7 +104,7 @@ const validateCausalInstrumentGraph = value => {
 };
 
 const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline = null, onIntentProvenance = null,
-  getLaneState = () => ({ available: true }), getActivityOutputState = () => ({ status: 'unobserved' }), getOnsetControls = () => undefined, getPercussionPolicy = () => null, getPhysicalControlKinds = () => [], getPerformanceState = () => null,
+  getLaneState = () => ({ available: true }), getActivityOutputState = () => ({ status: 'unobserved' }), getOnsetControls = () => undefined, getPercussionPolicy = () => null, getOrchestralPolicy = () => null, getPhysicalControlKinds = () => [], getPerformanceState = () => null,
   maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024, resourceBudget = null, world = null } = {}) => {
   if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
   if (onIntentProvenance !== null && typeof onIntentProvenance !== 'function') throw new TypeError('Invalid intent provenance observer.');
@@ -152,6 +153,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const tonalOffset = !fact?.tonalExpression ? active.get(voiceId)?.tonalOffset || 0 : 0;
     const onsetControls = kind === 'begin' ? getOnsetControls(fact?.laneId, { worldId: batch.worldId, generation: voiceGeneration, actorId: fact?.actorId ?? null }) : null;
     const velocity01 = Number.isFinite(fact?.velocity01) ? fact.velocity01 : Math.min(1, instrument.velocity01 * (Number.isFinite(fact?.velocityScale) ? fact.velocityScale : 1));
+    const orchestralArticulation = kind === 'begin' ? createOrchestralArticulationIntent(getOrchestralPolicy(fact?.laneId), { action: fact?.action, strength01: velocity01, sourceActionId: fact?.actionInstanceId }) : null;
     const percussionHit = kind === 'begin' ? createPercussionHitIntent(getPercussionPolicy(fact?.laneId), { action: fact?.action, velocity01, sourceContactId: fact?.contactId ?? fact?.eventId, sourceActionId: fact?.actionInstanceId }) : null;
     const intent = Object.freeze({
       version: 1, intentId: `${batch.batchId}:${instrument.id}:${voiceId}:${fact?.eventId || 'boundary'}:${kind}`,
@@ -168,7 +170,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       scoreTime: Object.freeze({ ...(scoreTimeline?.map(timeFor(batch, fact)) || timeFor(batch, fact)), sourceTimeMs: batch.sourceTimeMs ?? null,
         sourceTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null }),
       pitch: Object.freeze(pitch), ...(tonal?.state ? { tonalState: tonal.state } : {}),
-      ...(fact?.tonalSourceBatchId ? { tonalSourceBatchId: fact.tonalSourceBatchId } : {}), ...(fact?.mappingEdit ? { mappingEdit: Object.freeze(fact.mappingEdit) } : {}), velocity01, ...(percussionHit ? { percussionHit } : {}),
+      ...(fact?.tonalSourceBatchId ? { tonalSourceBatchId: fact.tonalSourceBatchId } : {}), ...(fact?.mappingEdit ? { mappingEdit: Object.freeze(fact.mappingEdit) } : {}), velocity01, ...(orchestralArticulation ? { orchestralArticulation } : {}), ...(percussionHit ? { percussionHit } : {}),
       expression: Object.freeze({ ...expression, ...(Number.isFinite(expression.pitchOffsetCents) && tonalOffset ? { pitchOffsetCents: expression.pitchOffsetCents + tonalOffset } : {}) }), role: instrument.role, route: instrument.route, terminationReason: reason,
       ...(instrument.preparedBodyStrike ? { preparedBodyStrike: instrument.preparedBodyStrike, graphRevision: graph.revision } : {}),
       ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),

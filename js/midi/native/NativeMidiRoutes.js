@@ -1,3 +1,4 @@
+import { createOrchestralBinding } from './OrchestralProfileAdapter.js';
 import { createDrumMapBinding } from './DrumProfileAdapter.js';
 import { createDeviceParameterCatalog } from './DeviceParameterCatalog.js';
 import { createMidiEndpointRegistry } from './MidiEndpointRegistry.js';
@@ -177,11 +178,22 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       const grant = receipt.outputGrant, target = receipt.target, owner = grants.get(grant);
       if (!owner || [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop owned notes before binding a hardware patch');
       const outputId = 'native-midi:' + owner.logicalDestination + ':' + target.group + ':' + target.channel, previous = routes.get(outputId);
-      if ((previous?.mpe || previous?.percussion) && !current(previous)) throw new Error('Patch recalled; review and rebind the accepted instrument profile before assigning this patch');
-      if ((previous?.mpe || previous?.percussion) && (!previous.laneIds.includes(laneId) || previous.protocol !== target.protocol)) throw new Error('Choose the explicitly bound instrument-profile lane and protocol');
-      const base = previous?.mpe || previous?.percussion ? previous : bind({ laneId, grant, group: target.group, channel: target.channel, protocol: target.protocol });
+      if ((previous?.mpe || previous?.percussion || previous?.orchestral) && !current(previous)) throw new Error('Patch recalled; review and rebind the accepted instrument profile before assigning this patch');
+      if ((previous?.mpe || previous?.percussion || previous?.orchestral) && (!previous.laneIds.includes(laneId) || previous.protocol !== target.protocol)) throw new Error('Choose the explicitly bound instrument-profile lane and protocol');
+      const base = previous?.mpe || previous?.percussion || previous?.orchestral ? previous : bind({ laneId, grant, group: target.group, channel: target.channel, protocol: target.protocol });
       const route = Object.freeze({ ...base, routeRevision: ++revision, patchBinding: Object.freeze({ intent: receipt.intent, receiverState: receipt.receiverState, target, reported: receipt.reported }) });
       patchClaims.set(outputId, { current: () => catalog.isReceiptCurrent(receipt) }); routes.set(outputId, route); notify(); return route;
+    },
+    bindOrchestral({ laneId, policy, grant, group, channel, protocol = 'midi2', session, profile }) {
+      if (![...profileSessions.values()].some(peers => [...peers.values()].includes(session))) throw new Error('Choose an owned orchestral profile session');
+      const owner = grants.get(grant), record = session.binding(profile, channel);
+      if (!owner || owner.direction !== 'output') throw new Error('Choose an owned native output');
+      const activeProtocol = [...endpointRegistries.values()].find(registry => registry.state().outputGrant === grant && !registry.state().stale)?.state().configuration?.protocol ?? owner.endpointMetadata?.activeProtocol;
+      if (activeProtocol !== 2) throw new Error('Read or configure a current MIDI2 endpoint Stream configuration before binding orchestral attributes');
+      const hold = api.holdForObservation(grant); api.releaseObservation(hold);
+      const binding = createOrchestralBinding(record, policy, { groupMask: owner.groupMask, group, channel, protocol });
+      const base = bind({ laneId, grant, group, channel, protocol }), route = Object.freeze({ ...base, orchestral: binding });
+      profileClaims.set(route.outputId, { grant, binding, current: () => session.isProfileBindingCurrent(record) }); routes.set(route.outputId, route); notify(); return route;
     },
     bindPercussion({ laneId, policy, grant, group, channel, protocol = 'midi2', session = null, profile = null }) {
       const owner = grants.get(grant), record = session?.binding(profile, channel);

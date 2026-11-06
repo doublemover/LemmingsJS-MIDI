@@ -1,3 +1,4 @@
+import { validateOrchestralArticulationPolicy } from '../../../midi/content/OrchestralArticulationIntent.js';
 import { validatePercussionIntentPolicy } from '../../../midi/content/PercussionRoleIntent.js';
 import { validateDeviceParameterMappings } from '../../../midi/native/DeviceParameter.js';
 import { validateDevicePatchIntent } from '../../../midi/native/DevicePatchIntent.js';
@@ -89,6 +90,7 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
     instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
     linkedThemePresetId: overrides.linkedThemePresetId === null ? null : string(overrides.linkedThemePresetId, family), soundChangePolicy: overrides.soundChangePolicy ?? 'new-notes-only',
     externalProgram: overrides.externalProgram === null ? null : integer(overrides.externalProgram, sound.program, 0, 127), externalPercussion: overrides.externalPercussion == null ? sound.percussion : overrides.externalPercussion === true,
+    ...(overrides.orchestral == null ? {} : { orchestral: trusted && overrides.orchestral === trusted.orchestral ? trusted.orchestral : validateOrchestralArticulationPolicy(overrides.orchestral) }),
     ...(overrides.percussion == null ? {} : { percussion: trusted && overrides.percussion === trusted.percussion ? trusted.percussion : validatePercussionIntentPolicy(overrides.percussion) }),
     ...(overrides.deviceParameters == null ? {} : { deviceParameters: trusted && overrides.deviceParameters === trusted.deviceParameters ? trusted.deviceParameters : validateDeviceParameterMappings(overrides.deviceParameters) }),
     instrumentRef, ...(overrides.devicePatch == null ? {} : { devicePatch: trusted && overrides.devicePatch === trusted.devicePatch ? trusted.devicePatch : validateDevicePatchIntent(overrides.devicePatch) }),
