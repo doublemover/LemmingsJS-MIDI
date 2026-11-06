@@ -1,4 +1,5 @@
 import { createVoiceLaneMix, validVoiceLaneMix } from './VoiceLaneMix.js';
+import { createRendererPublicationOwner } from './RendererPublicationOwner.js';
 import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 export { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
@@ -31,14 +32,15 @@ const frequencyFor = pitch => {
 // owner sessions and global voice budget. It never encodes semantic pitch or
 // expression through a MIDI channel before reaching the oscillator.
 const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'bounded', smoothingSeconds = 0.008,
-  maxControlEvents = 128, traceLimit = 128, engineId = 'native-oscillator' } = {}) => {
-  if (!['bounded', 'owned'].includes(gateMode) || !Number.isFinite(smoothingSeconds) || smoothingSeconds < 0 || smoothingSeconds > 1 ||
+  maxControlEvents = 128, traceLimit = 128, engineId = 'native-oscillator', publicationMuted = false } = {}) => {
+  if (typeof publicationMuted !== 'boolean' || !['bounded', 'owned'].includes(gateMode) || !Number.isFinite(smoothingSeconds) || smoothingSeconds < 0 || smoothingSeconds > 1 ||
       !Number.isSafeInteger(maxControlEvents) || maxControlEvents < 1 || maxControlEvents > 4096 ||
       !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 || !['native-oscillator', 'native-fm', 'native-modal'].includes(engineId)) throw new Error('Invalid native audio backend options.');
   const parameters = engineId === 'native-modal' ? NATIVE_MODAL_PARAMETERS : engineId === 'native-fm' ? NATIVE_FM_PARAMETERS : NATIVE_OSCILLATOR_PARAMETERS;
   const capabilities = Object.freeze({ ...baseCapabilities, maximumVoices: engineId === 'native-modal' ? 16 : engineId === 'native-fm' ? 32 : 64, supportedParameterIds: Object.freeze(Object.keys(parameters)) });
   let prepared = null, disposed = false, deliveryErrors = 0, preparationRevision = 0, traceSequence = 0, truncatedTraces = 0;
-  const voices = new Map();
+  const voices = new Map(); let publication = null;
+  const publicationFor = () => { const context = preview.getAudioContext(); if (publication && publication.context !== context) { if (publication.context.state !== 'closed' && voices.size) throw new Error('Retire the prior renderer context before publication.'); const receipt = publication.dispose({ producerRetired: true }); if (receipt.outcome !== 'complete') throw Object.assign(new Error('Prior publication retirement is unresolved.'), { retirement: receipt }); publication = null; } return publication ||= createRendererPublicationOwner({ context, resources: preview._audioResources, owner, generation: preview._generation, initiallyMuted: publicationMuted, maxGates: 128 }); };
   const retirement = createProcgenRetirementScope();
   const leases = new Map(), traces = [], decisions = Object.create(null);
   const cancelledGenerations = new Set();
@@ -183,7 +185,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     const admission = preview._inspectVoiceInterval(owner, { start, end, releaseAt: end - values.releaseSeconds, cost: sourceCost,
       patchVoices: voices.values(), patchLimit: prepared.patch.voicePolicy.maxVoices });
     if (!admission.accepted) { resourceLease.release(); return failure(admission.reason, intent); }
-    let oscillator, gain, macroGain, pressureGain, pan, voice, laneMix;
+    let oscillator, gain, macroGain, pressureGain, publicationGain, voicePublication, pan, voice, laneMix;
     try {
       const frequency = frequencyFor(intent.pitch);
       const channel = preview._channel(0, owner), release = values.releaseSeconds;
@@ -211,7 +213,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         onDestroy: reason => {
           if (voices.get(identity) === voice) voices.delete(identity);
           if (preview._semanticVoiceOwners.get(sharedIdentity) === voice) preview._semanticVoiceOwners.delete(sharedIdentity);
-          const mixRetirement = createProcgenRetirementScope().retire([{ name: 'macro-gain', run: () => macroGain.disconnect() }, { name: 'pressure-gain', run: () => pressureGain.disconnect() }, { name: 'lane-mix', run: () => laneMix.dispose() }]);
+          const mixRetirement = createProcgenRetirementScope().retire([{ name: 'macro-gain', run: () => macroGain.disconnect() }, { name: 'pressure-gain', run: () => pressureGain.disconnect() }, { name: 'publication-gain', run: () => voicePublication.removeGate(publicationGain) }, { name: 'lane-mix', run: () => laneMix.dispose() }]);
           trace({ status: 'ended', stage: 'native-source-ended', voiceId: intent.voiceId, executionEpoch,
             generation: intent.generation, targetFrame, reason, patchRevision: voice.patchRevision }); return mixRetirement;
         } };
@@ -222,12 +224,12 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       voice.macroAutomation = createSmoothedAudioParameter({ param: macroGain.gain, initialValue: values.gain01, startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
       scheduleNativeHeldEnvelope(voice);
       oscillator.connect(gain);
-      gain.connect(macroGain); macroGain.connect(pressureGain);
+      gain.connect(macroGain); macroGain.connect(pressureGain); voicePublication = publicationFor(); publicationGain = voicePublication.addGate(); pressureGain.connect(publicationGain);
       if (pan) {
         voice.panAutomation = createSmoothedAudioParameter({ param: pan.pan,
           initialValue: clamp((intent.expression?.pan01 ?? 0) + values.pan01 + prepared.patch.mix.pan01, -1, 1), startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
-        pressureGain.connect(pan); pan.connect(laneMix.input);
-      } else pressureGain.connect(laneMix.input);
+        publicationGain.connect(pan); pan.connect(laneMix.input);
+      } else publicationGain.connect(laneMix.input);
       oscillator.onended = () => preview._destroyVoice(voice,
         voice.ownedGate && !voice.released ? 'owner-lease-expired' : 'source-ended');
       preview._voices.add(voice); voices.set(identity, voice); preview._semanticVoiceOwners.set(sharedIdentity, voice);
@@ -257,7 +259,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
           { name: 'native-nodes', run: () => { native = createProcgenRetirementScope().retire([
             { name: 'stop', run: () => { if (oscillator) { oscillator.onended = null; try { oscillator.stop(); } catch (failure) { if (failure.name !== 'InvalidStateError') throw failure; } } } },
             { name: 'lane-mix', run: () => laneMix?.dispose() }, { name: 'oscillator', run: () => oscillator?.disconnect() }, { name: 'gain', run: () => gain?.disconnect() },
-            { name: 'macro-gain', run: () => macroGain?.disconnect() }, { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
+            { name: 'macro-gain', run: () => macroGain?.disconnect() }, { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'publication-gain', run: () => publicationGain && voicePublication?.removeGate(publicationGain) }, { name: 'pan', run: () => pan?.disconnect() }
           ]); return native; } },
           { name: 'reservation', run: () => releaseAudioResourceAfterRetirement(resourceLease, native) }
         ]);
@@ -376,7 +378,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   const cancelGeneration = (generation, executionEpoch = 'live') => cancelGenerationWithReceipt(generation, executionEpoch).count;
   const renderDiagnostics = ({ includeVoices = false, includeTraces = false } = {}) => {
     const now = preview._context?.currentTime ?? 0;
-    return Object.freeze({ engineId, activeVoices: [...voices.values()].filter(voice => !voice.released && voice.end > now).length,
+    return Object.freeze({ publication: publication?.diagnostics() || null, engineId, activeVoices: [...voices.values()].filter(voice => !voice.released && voice.end > now).length,
       deliveryErrors, sharedActiveVoices: preview._voices.size, capabilities, gateMode, smoothingSeconds,
       patchId: prepared?.patch.id ?? null, patchRevision: prepared?.patch.revision ?? null,
       readiness: disposed ? 'disposed' : !prepared ? 'patch-unprepared' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
@@ -396,10 +398,11 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
   const dispose = () => retirement.retire([
     { name: 'admission', run: () => { disposed = true; preparationRevision++; } },
     ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'backend-disposed') })),
+    { name: 'publication-owner', run: () => publication?.dispose({ producerRetired: retirement.getReceipt().resources.filter(resource => resource.name.startsWith('voice-')).every(resource => resource.status === 'completed') }) },
     { name: 'leases', run: () => leases.clear() }, { name: 'patch', run: () => { prepared = null; } }
   ]);
   return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updatePerformance, updateLaneMix, end, renewExecutionLease, cancelGeneration,
-    cancelGenerationWithReceipt, sourceCaptureStatus: () => Object.freeze({ mode: 'unsupported-native-hidden-state', quiescent: voices.size === 0 }), renderDiagnostics, dispose }, {
+    cancelGenerationWithReceipt, setRendererPublication: (gain01, frame) => { if (disposed) throw new Error('This renderer has retired.'); return publicationFor().schedule(gain01, frame); }, sourceCaptureStatus: () => Object.freeze({ mode: 'unsupported-native-hidden-state', quiescent: voices.size === 0 }), renderDiagnostics, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epoch => !preview._retirementFaults?.has(owner) && ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
     isVoiceSettled: (voiceId, epoch) => !preview._retirementFaults?.has(owner) && !voices.has(keyFor(epoch, voiceId)),

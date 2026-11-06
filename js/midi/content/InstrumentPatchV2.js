@@ -1,3 +1,4 @@
+import { validateInstrumentSwitchPolicy } from './InstrumentSwitchPolicy.js';
 import { validSealedBodyParameters } from './SealedBodyProfile.js';
 import { prepareWindModel, WIND_MODEL_KINDS } from './WindModel.js';
 import { prepareFrictionModel, FRICTION_MODEL_KINDS } from './FrictionModel.js';
@@ -148,7 +149,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     !integer(Number(key), 0, 127) || !integer(value, 0, 127)))) throw new Error('Invalid MIDI fallback.');
   return freeze({ schemaVersion: 2, id: input.id, revision: input.revision, name: input.name, author: input.author,
     tags: input.tags, engineId: input.engineId, engineVersion: input.engineVersion, parameters,
-    modulations, sampleRefs, ...(sampleMap ? { sampleMap } : {}), ...(seedLayers ? { seedLayers } : {}), voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal },
+    modulations, sampleRefs, ...(sampleMap ? { sampleMap } : {}), ...(seedLayers ? { seedLayers } : {}), voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal, ...(input.voicePolicy.switchPolicy == null ? {} : { switchPolicy: validateInstrumentSwitchPolicy(input.voicePolicy.switchPolicy) }) },
     mix: { gain01: input.mix.gain01, pan01: input.mix.pan01 }, macros, causalBindings, ...(variation ? { variation } : {}),
     midiFallback: midiFallback && { bankMSB: midiFallback.bankMSB, bankLSB: midiFallback.bankLSB,
       program: midiFallback.program, percussionMap: midiFallback.percussionMap || {} } });

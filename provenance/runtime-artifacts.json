@@ -396,6 +396,7 @@
         "js/midi/content/InstrumentIdentityVariation.js",
         "js/midi/content/InstrumentPatchV2.js",
         "js/midi/content/InstrumentPerformance.js",
+        "js/midi/content/InstrumentSwitchPolicy.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
         "js/midi/content/OrchestralArticulationIntent.js",
@@ -472,8 +473,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 326,
-      "sha256": "5fb9f88de01e7113a20193c0fec1e9df2a47e84a01fe076eb28103f48925340a"
+      "fileCount": 327,
+      "sha256": "8c02f4f020975d7f287c8e878469e2064bdaf6fff57eaead536f2a9977e1584f"
     },
     {
       "id": "lemmings-timing-worker-source",

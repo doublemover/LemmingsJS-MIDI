@@ -1,3 +1,4 @@
+import { INSTRUMENT_SWITCH_MODES, INSTRUMENT_SWITCH_BOUNDARIES } from '../../../midi/content/InstrumentSwitchPolicy.js';
 import { validateTimeTransform } from '../../../midi/content/TimeTransform.js';
 import { validateNativeRouteIntent } from '../../../midi/native/NativeRouteIntent.js';
 import { validateScoreContextPolicy } from '../../../midi/content/ScoreContext.js';
@@ -16,7 +17,7 @@ import { applySceneMacroAction } from './SceneMacroAction.js';
 import { validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
 import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
-import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
+import { validateSoundContentReference, getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
 import { validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
 import { validateActorTimbreLocks } from '../../../midi/content/InstrumentActorLocks.js';
 
@@ -89,11 +90,13 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
   if (!PROCGEN_SOUND_COLLECTIONS.some(item => item.id === worldThemeId)) throw new Error('Unknown physical world theme.');
   const instrumentRef = trusted && overrides.instrumentRef === trusted.instrumentRef ? trusted.instrumentRef : validateSoundContentReference(overrides.instrumentRef);
   if (instrumentRef && overrides.instrumentPatchId != null && overrides.instrumentPatchId !== instrumentRef.patchId) throw new Error('Lane sound identity differs from its pinned renderer definition.');
-  if (overrides.soundChangePolicy != null && !['new-notes-only', 'crossfade-held'].includes(overrides.soundChangePolicy)) throw new Error('Unsupported patch transition policy.');
+  if (overrides.soundChangePolicy != null && !INSTRUMENT_SWITCH_MODES.includes(overrides.soundChangePolicy)) throw new Error('Unsupported patch transition policy.');
+  if (overrides.soundChangeBoundary != null && !INSTRUMENT_SWITCH_BOUNDARIES.includes(overrides.soundChangeBoundary) || overrides.soundChangeFadeSeconds != null && (!Number.isFinite(overrides.soundChangeFadeSeconds) || overrides.soundChangeFadeSeconds < 0.005 || overrides.soundChangeFadeSeconds > 0.2)) throw new Error('Unsupported patch switch boundary or fade.');
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
   return { id: string(overrides.id, `lane-${index + 1}`), revision: integer(overrides.revision, 0, 0, Number.MAX_SAFE_INTEGER), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id, worldThemeId,
     instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
-    linkedThemePresetId: overrides.linkedThemePresetId === null ? null : string(overrides.linkedThemePresetId, family), soundChangePolicy: overrides.soundChangePolicy ?? 'new-notes-only',
+    linkedThemePresetId: overrides.linkedThemePresetId === null ? null : string(overrides.linkedThemePresetId, family), soundChangePolicy: overrides.soundChangePolicy ?? getSupportedInstrumentDefinition(instrumentRef)?.voicePolicy?.switchPolicy?.mode ?? 'new-notes-only',
+    ...(overrides.soundChangeBoundary == null ? {} : { soundChangeBoundary: overrides.soundChangeBoundary }), ...(overrides.soundChangeFadeSeconds == null ? {} : { soundChangeFadeSeconds: overrides.soundChangeFadeSeconds }),
     externalProgram: overrides.externalProgram === null ? null : integer(overrides.externalProgram, sound.program, 0, 127), externalPercussion: overrides.externalPercussion == null ? sound.percussion : overrides.externalPercussion === true,
     ...(overrides.timeTransform == null ? {} : { timeTransform: trusted && overrides.timeTransform === trusted.timeTransform ? trusted.timeTransform : validateTimeTransform(overrides.timeTransform) }),
     ...(overrides.scoreContext == null ? {} : { scoreContext: trusted && overrides.scoreContext === trusted.scoreContext ? trusted.scoreContext : validateScoreContextPolicy(overrides.scoreContext) }),

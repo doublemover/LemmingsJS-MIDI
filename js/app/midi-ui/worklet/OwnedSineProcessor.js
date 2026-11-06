@@ -125,6 +125,29 @@ class OwnedSineKernel {
     data[index + 3] = token; data[index + 4] = frame; data[index + 5] = reason;
   }
 
+  cancelQueuedOnset(epoch, generation, slot, token, frame, sequence, opcode) {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.maxVoices || this.active[slot]) return false;
+    let matched = false;
+    for (let index = 0; index < this.queueLength; index++) {
+      const at = index * this.width;
+      if (this.queue[at] === epoch && this.queue[at + 17] === generation && this.queue[at + 4] === slot && this.queue[at + 5] === token &&
+          (opcode === END && this.queue[at + 3] === BEGIN && frame <= this.queue[at + 1] || opcode === BEGIN && this.queue[at + 3] === END && this.queue[at + 1] <= frame)) { matched = true; break; }
+    }
+    if (!matched) return false;
+    let kept = 0;
+    for (let index = 0; index < this.queueLength; index++) {
+      const at = index * this.width;
+      if (this.queue[at] === epoch && this.queue[at + 17] === generation && this.queue[at + 4] === slot && this.queue[at + 5] === token) {
+        this.receipt(CANCELLED, this.queue[at + 2], slot, token, this.lastFrame, this.queue[at + 3] === BEGIN ? 9 : 3); continue;
+      }
+      if (kept !== index) for (let field = 0; field < this.width; field++) this.queue[kept * this.width + field] = this.queue[at + field];
+      kept++;
+    }
+    this.queue.fill(0, kept * this.width, this.queueLength * this.width); this.queueLength = kept;
+    for (let index = (kept >>> 1) - 1; index >= 0; index--) this.siftDown(index);
+    this.receipt(CANCELLED, sequence, slot, token, this.lastFrame, opcode === BEGIN ? 9 : 3); return true;
+  }
+
   accept(packet, count, packetSequence = this.lastPacket + 1) {
     if (!(packet instanceof Float64Array) || !Number.isInteger(count) || count < 0 || count > CAPACITY || packet.length !== count * this.width) {
       this.counters[0]++; return;
@@ -138,6 +161,7 @@ class OwnedSineKernel {
       for (let field = 0; valid && field < this.width; field++) if (!Number.isFinite(packet[source + field])) valid = false;
       if (!valid) { this.counters[0]++; this.receipt(REJECTED, sequence, packet[source + 4], packet[source + 5], this.lastFrame, 1); continue; }
       if (opcode === PANIC) { this.panicPending = true; this.receipt(SCHEDULED, sequence, -1, 0, frame); continue; }
+      if ((opcode === BEGIN || opcode === END) && this.cancelQueuedOnset(packet[source], packet[source + 17], packet[source + 4], packet[source + 5], frame, sequence, opcode)) continue;
       const isTerminal = opcode === END || opcode === CANCEL;
       if (this.queueLength >= (isTerminal ? CAPACITY : CAPACITY - MAX_VOICES)) {
         this.counters[1]++;
