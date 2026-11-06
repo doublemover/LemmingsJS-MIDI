@@ -61,10 +61,13 @@ export function createOwnedSourceRestoreOwner({ getProducer, getContext, getGene
               operation.plannedFrame > Math.floor((operation.context.currentTime + 1.8) * operation.context.sampleRate) || (operation.plannedFrame - data.blockFrame) % quantum) throw failure('source-activation-barrier-frontier');
           operation.staged = stage(value, operation.bindings, operation.plannedFrame);
           if (!operation.staged || !Array.isArray(operation.staged.lanes) || operation.staged.lanes.length > 4096 || !current(operation)) throw failure('source-bindings-not-staged');
-          operation.phase = 'armed';
-          operation.dependentActivation = Promise.resolve(operation.activationPlan?.arm());
+          operation.phase = 'arming';
+          const barrier = operation.activationPlan?.arm();
+          operation.dependentActivation = Promise.resolve(barrier && typeof barrier === 'object' && 'completion' in barrier ? barrier.completion : barrier);
           operation.dependentActivation.catch(error => { if (pending === operation) fail(operation, error); });
-          operation.producer.port.postMessage({ type: 'source-state-activate', stateTransferProtocol: 1, requestId: operation.id, startAfterFrame: operation.plannedFrame, lanes: operation.staged.lanes });
+          if (barrier?.ready) await barrier.ready;
+          if (!current(operation) || operation.plannedFrame < Math.ceil(operation.context.currentTime * operation.context.sampleRate)) throw failure('source-activation-arm-frontier-missed');
+          operation.phase = 'armed'; operation.producer.port.postMessage({ type: 'source-state-activate', stateTransferProtocol: 1, requestId: operation.id, startAfterFrame: operation.plannedFrame, lanes: operation.staged.lanes });
         } catch (error) {
           if (pending === operation) fail(operation, error, true);
           else { try { await operation.activationPlan?.cancel(); } catch {} }

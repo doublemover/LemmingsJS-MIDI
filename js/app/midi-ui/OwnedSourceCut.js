@@ -28,14 +28,14 @@ export function createOwnedSourceCutOwner({ owner, resources, getProducer, getCo
       operation.retireAfter.then(() => finish(), error => finish(error)); if (operation.signal?.aborted) abort();
     });
   };
-  const detach = ({ graphRevision, targetAudioFrame = null, retireAfter = null, signal = null, timeoutMs = 20000 } = {}) => {
+  const detach = ({ graphRevision, targetAudioFrame = null, selectTargetAudioFrame = null, retireAfter = null, signal = null, timeoutMs = 20000 } = {}) => {
     const producer = getProducer(), context = getContext(), identity = getIdentity(graphRevision);
     if (disposed || fenced || pending || !producer || !resources?.reserve || context?.state !== 'running' || !Number.isSafeInteger(serial + 1) || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 60000 ||
-        !identity || !/^[a-f0-9]{64}$/.test(identity.engineArtifactHash) || !/^[a-f0-9]{64}$/.test(identity.patchDefinitionHash) || !Number.isSafeInteger(graphRevision) || graphRevision < 0 || graphRevision > 0xffffffff || targetAudioFrame !== null && (!Number.isSafeInteger(targetAudioFrame) || targetAudioFrame < Math.ceil(context.currentTime * context.sampleRate) || targetAudioFrame > Math.ceil((context.currentTime + 2) * context.sampleRate)) || retireAfter !== null && typeof retireAfter?.then !== 'function') return Promise.reject(failure('pinned-running-source-required'));
+        !identity || !/^[a-f0-9]{64}$/.test(identity.engineArtifactHash) || !/^[a-f0-9]{64}$/.test(identity.patchDefinitionHash) || !Number.isSafeInteger(graphRevision) || graphRevision < 0 || graphRevision > 0xffffffff || targetAudioFrame !== null && (!Number.isSafeInteger(targetAudioFrame) || targetAudioFrame < Math.ceil(context.currentTime * context.sampleRate) || targetAudioFrame > Math.ceil((context.currentTime + 2) * context.sampleRate)) || retireAfter !== null && typeof retireAfter?.then !== 'function' || selectTargetAudioFrame !== null && typeof selectTargetAudioFrame !== 'function') return Promise.reject(failure('pinned-running-source-required'));
     signal?.throwIfAborted();
     let resolve, reject; const promise = new Promise((accept, deny) => { resolve = accept; reject = deny; });
     const operation = pending = { id: ++serial, producer, context, generation: getGeneration(), identity: Object.freeze({ ...identity, graphRevision }), resolve, reject, signal,
-      targetAudioFrame, retireAfter: retireAfter == null ? null : Promise.resolve(retireAfter), timeoutMs, transferred: false, lease: null, host: null, phase: 'offered', timer: null, abort: null };
+      targetAudioFrame, selectTargetAudioFrame, retireAfter: retireAfter == null ? null : Promise.resolve(retireAfter), timeoutMs, transferred: false, lease: null, host: null, phase: 'offered', timer: null, abort: null };
     operation.retireAfter?.catch(() => {});
     operation.abort = () => { if (pending === operation) fail(operation, signal.reason instanceof Error ? signal.reason : failure('source-state-aborted')); };
     signal?.addEventListener('abort', operation.abort, { once: true });
@@ -49,14 +49,23 @@ export function createOwnedSourceCutOwner({ owner, resources, getProducer, getCo
     if (!operation || data?.stateTransferProtocol !== PROTOCOL || data.requestId !== operation.id) return false;
     if (!current(operation)) { fail(operation, failure('source-state-owner-changed'), data.bytes instanceof Uint8Array && data.bytes.byteLength > 0); return true; }
     if (data.type === 'source-state-offered') {
-      if (operation.phase !== 'offered' || !Number.isSafeInteger(data.bytes) || data.bytes < 128 || data.bytes > MAX_BYTES || data.chunkBytes !== CHUNK_BYTES || operation.targetAudioFrame !== null && data.targetFrameProtocol !== 1) { fail(operation, failure('invalid-source-state-offer')); return true; }
-      try {
-        operation.lease = resources.reserve({ kind: 'source-state-cut', owner: owner + ':source-cut:' + operation.id, generation: operation.generation, bytes: data.bytes, estimateBytes: 8 * 1048576, consumerOwned: true });
-        const bytes = new Uint8Array(data.bytes); flush();
-        const text = JSON.stringify(getBindings()); if (text.length > 1048576) throw failure('source-host-state-capacity');
-        operation.host = freezeData(JSON.parse(text)); operation.phase = 'copying'; operation.bytes = data.bytes; fenced = true;
-        operation.producer.port.postMessage({ type: 'source-state-begin', stateTransferProtocol: PROTOCOL, requestId: operation.id, bytes, ...(operation.targetAudioFrame === null ? {} : { targetAudioFrame: operation.targetAudioFrame }) }, [bytes.buffer]); operation.transferred = true;
-      } catch (error) { fail(operation, error); }
+      if (operation.phase !== 'offered' || !Number.isSafeInteger(data.bytes) || data.bytes < 128 || data.bytes > MAX_BYTES || data.chunkBytes !== CHUNK_BYTES ||
+          (operation.targetAudioFrame !== null || operation.selectTargetAudioFrame) && (data.targetFrameProtocol !== 1 || !Number.isSafeInteger(data.blockFrame) || data.blockFrame < 0 || !Number.isSafeInteger(data.blockFrames) || data.blockFrames < 1 || data.blockFrames > 16384)) { fail(operation, failure('invalid-source-state-offer')); return true; }
+      operation.phase = 'planning';
+      void (async () => {
+        try {
+          if (operation.selectTargetAudioFrame) operation.targetAudioFrame = await operation.selectTargetAudioFrame([{ frame: data.blockFrame, frames: data.blockFrames }]);
+          if (!current(operation)) throw failure('source-state-owner-changed');
+          if (operation.targetAudioFrame !== null && (!Number.isSafeInteger(operation.targetAudioFrame) || operation.targetAudioFrame < Math.ceil(operation.context.currentTime * operation.context.sampleRate) ||
+              operation.targetAudioFrame > Math.floor((operation.context.currentTime + 1.8) * operation.context.sampleRate) || (operation.targetAudioFrame - data.blockFrame) % data.blockFrames)) throw failure('source-cut-frontier-unavailable');
+          operation.lease = resources.reserve({ kind: 'source-state-cut', owner: owner + ':source-cut:' + operation.id, generation: operation.generation, bytes: data.bytes, estimateBytes: 8 * 1048576, consumerOwned: true });
+          const bytes = new Uint8Array(data.bytes); flush();
+          const text = JSON.stringify(getBindings()); if (text.length > 1048576) throw failure('source-host-state-capacity');
+          operation.host = freezeData(JSON.parse(text)); operation.phase = 'copying'; operation.bytes = data.bytes; fenced = true;
+          try { operation.producer.port.postMessage({ type: 'source-state-begin', stateTransferProtocol: PROTOCOL, requestId: operation.id, bytes, ...(operation.targetAudioFrame === null ? {} : { targetAudioFrame: operation.targetAudioFrame }) }, [bytes.buffer]); operation.transferred = true; }
+          catch (error) { operation.transferred ||= bytes.byteLength === 0; throw error; }
+        } catch (error) { if (pending === operation) fail(operation, error); }
+      })();
       return true;
     }
     if (data.type === 'source-state-error') { fail(operation, failure(data.reason || 'source-state-refused'), data.bytes instanceof Uint8Array && data.bytes.byteLength === operation.bytes); return true; }

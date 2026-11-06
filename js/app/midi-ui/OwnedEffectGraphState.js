@@ -58,7 +58,8 @@ export function createOwnedEffectGraphState({ context, resources, owner, generat
   const capture = (options = {}) => {
     let op;
     try {
-      op = start('capture', options); op.targetAudioFrame = options.targetAudioFrame ?? null;
+      op = start('capture', options); op.targetAudioFrame = options.targetAudioFrame ?? null; op.selectTargetAudioFrame = options.selectTargetAudioFrame ?? null; op.onTargetAudioFrame = options.onTargetAudioFrame ?? null;
+      if (op.selectTargetAudioFrame !== null && typeof op.selectTargetAudioFrame !== 'function' || op.onTargetAudioFrame !== null && typeof op.onTargetAudioFrame !== 'function') throw fail('invalid-effect-cut-negotiator');
       if (op.targetAudioFrame !== null && !natural(op.targetAudioFrame)) throw fail('invalid-effect-cut-frame');
       for (const row of op.rows.values()) row.processor.node.port.postMessage({ type: 'effect-state-offer', effectStateProtocol: PROTOCOL, requestId: op.id });
       if (!op.rows.size) beginCapture(op);
@@ -66,19 +67,28 @@ export function createOwnedEffectGraphState({ context, resources, owner, generat
     } catch (error) { if (op) { reject(op, error); return op.ready.promise; } return Promise.reject(error); }
   };
   const beginCapture = op => {
-    current(op);
-    const earliest = Math.ceil((context.currentTime + 0.15) * context.sampleRate), latest = Math.floor((context.currentTime + 1.8) * context.sampleRate);
-    const grids = [...op.rows.values()].map(row => row.grid);
-    const target = op.targetAudioFrame ?? chooseOwnedAudioFrame(grids, earliest, latest);
-    if (target < Math.ceil(context.currentTime * context.sampleRate) || target > latest || chooseOwnedAudioFrame(grids, target, target) !== target) throw fail('effect-cut-frontier-unavailable');
-    op.targetAudioFrame = target; op.controlCut = captureControls(target); op.phase = 'capturing';
-    for (const row of op.rows.values()) row.lease = resources.reserve({ kind: 'effect-dsp-state-cut', owner, generation, bytes: row.length, consumerOwned: true });
-    for (const row of op.rows.values()) {
-      current(op); const bytes = new Uint8Array(row.length); row.phase = 'copying';
-      try { row.processor.node.port.postMessage({ type: 'effect-state-begin', effectStateProtocol: PROTOCOL, requestId: op.id, targetAudioFrame: target, bytes }, [bytes.buffer]); row.transferred = true; }
-      catch (error) { row.transferred ||= bytes.byteLength === 0; throw error; }
-    }
-    if (!op.rows.size) void completeCapture(op);
+    if (op.phase !== 'offering') throw fail('duplicate-effect-cut-negotiation');
+    op.phase = 'planning';
+    void (async () => {
+      try {
+        current(op);
+        const grids = [...op.rows.values()].map(row => row.grid);
+        let target = op.targetAudioFrame;
+        if (op.selectTargetAudioFrame) target = await op.selectTargetAudioFrame(grids.map(grid => Object.freeze({ ...grid })));
+        current(op);
+        const earliest = Math.ceil((context.currentTime + 0.15) * context.sampleRate), latest = Math.floor((context.currentTime + 1.8) * context.sampleRate);
+        target ??= chooseOwnedAudioFrame(grids, earliest, latest);
+        if (!natural(target) || target < Math.ceil(context.currentTime * context.sampleRate) || target > latest || chooseOwnedAudioFrame(grids, target, target) !== target) throw fail('effect-cut-frontier-unavailable');
+        op.onTargetAudioFrame?.(target); op.targetAudioFrame = target; op.controlCut = captureControls(target); op.phase = 'capturing';
+        for (const row of op.rows.values()) row.lease = resources.reserve({ kind: 'effect-dsp-state-cut', owner, generation, bytes: row.length, consumerOwned: true });
+        for (const row of op.rows.values()) {
+          current(op); const bytes = new Uint8Array(row.length); row.phase = 'copying';
+          try { row.processor.node.port.postMessage({ type: 'effect-state-begin', effectStateProtocol: PROTOCOL, requestId: op.id, targetAudioFrame: target, bytes }, [bytes.buffer]); row.transferred = true; }
+          catch (error) { row.transferred ||= bytes.byteLength === 0; throw error; }
+        }
+        if (!op.rows.size) void completeCapture(op);
+      } catch (error) { reject(op, error); }
+    })();
   };
   const completeCapture = async op => {
     try {

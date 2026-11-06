@@ -178,6 +178,7 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
     } } : {}),
     ...(typeof backend.prepareContinuation === 'function' ? { prepareContinuation: (...args) => backend.prepareContinuation(...args) } : {}),
     ...(typeof backend.detachSourceState === 'function' ? { detachSourceState: options => backend.detachSourceState(options) } : {}),
+    ...(typeof backend.ownsSourceVoice === 'function' ? { ownsSourceVoice: voice => backend.ownsSourceVoice(voice) } : {}),
     ...(typeof backend.inspectSourceState === 'function' ? { inspectSourceState: () => backend.inspectSourceState() } : {}),
     renderDiagnostics: options => Object.freeze({ ...backend.renderDiagnostics(options), executions: diagnostics() }),
     onOwnerStop: () => createProcgenRetirementScope().retire([

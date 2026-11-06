@@ -1,3 +1,4 @@
+import { freezeData } from '../../core/CanonicalData.js';
 import { backgroundJobService } from '../resources/BackgroundJobService.js';
 import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -18,7 +19,7 @@ export async function prepareOwnedEffectContinuation({ cut, definition, jobs = b
     signal?.throwIfAborted(); const value = job.value;
     if (!isCurrent() || value?.schema !== 'lemmings-prepared-effect-cut/v1' || value.validation !== 'worker-restored-pinned-effect-components' || value.applicationBuildId !== catalog.executionIdentity.buildId || value.metadata.graphHash !== metadata.graphHash || value.metadata.audioFrame !== metadata.audioFrame || value.components.length !== components.length || job.receipt.method !== 'dedicated-worker') fail('Prepared effect continuation differs from its executing worker and source image.');
     const entry = { job, value, busy: false, released: false, retirement };
-    const ticket = Object.freeze({ schema: 'lemmings-effect-continuation-ticket/v1', metadata: () => entry.released ? null : entry.value.metadata,
+    const ticket = Object.freeze({ schema: 'lemmings-effect-continuation-ticket/v1', metadata: () => entry.released ? null : freezeData(entry.value.metadata), definition: () => entry.released ? null : freezeData(entry.value.definition),
       release() { if (entry.busy) fail('The renderer exclusively owns this prepared effect image.'); if (entry.released) return false; entry.released = true; entry.value = null; return retirement.retire([{ name: 'prepared-effect-state', run: () => { job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) fail('Prepared effect state retirement remains unresolved.'); } }]); } });
     tickets.set(ticket, entry); return ticket;
   } catch (error) { if (job) { const receipt = retirement.retire([{ name: 'failed-effect-preparation', run: () => { job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) fail('Failed preparation retirement remains unresolved.'); } }]); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; } throw error; }

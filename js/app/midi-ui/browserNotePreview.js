@@ -107,7 +107,7 @@ class BrowserNotePreview {
     this._voices = new Set();
     this._voicesByToken = new Map();
     this._semanticVoiceOwners = new Map();
-    this._instrumentBackends = new Set();
+    this._instrumentBackends = new Set(); this._instrumentBackendSequence = 0;
     this._preparedPreviews = new Set(); this._preparedRootSession = null; this._lastPreparedPreview = null;
     this._voiceSequence = 0;
     this._onPlayback = onPlayback;
@@ -244,12 +244,13 @@ class BrowserNotePreview {
       for (const voice of this._voices) if (voice.owner === id) activeVoices++;
       for (const entry of this._preparedPreviews) if (entry.owner === id && entry.player.state().phase === 'preparing') pendingNotes += entry.noteCount;
       return { ...state, preparedPreview: session.preparedPreview || null, owner: label, ownerId: id, sharedMix: true, activeVoices, pendingNotes, enabled: session.enabled && state.enabled && !this._retirementFaults.has(id),
-        laneSources: this._laneSourceBuses.get(id)?.buses.diagnostics() || null, effectRetirement: retirementState(this._effectRetirements.get(id)?.scope.getReceipt()), retirement: retirementState(retirement.getReceipt()),
+        audioContinuation: session.audioOperation?.phase || 'idle', laneSources: this._laneSourceBuses.get(id)?.buses.diagnostics() || null, effectRetirement: retirementState(this._effectRetirements.get(id)?.scope.getReceipt()), retirement: retirementState(retirement.getReceipt()),
         status: session.disposed ? 'disposed' : this._retirementFaults.has(id) ? 'error' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
         message: session.disposed ? 'Local audio session is closed.' : session.enabled || session.starting ? state.message : 'Local audio session is off.' };
     };
     session.report = () => { this._syncPerformanceRoles(); for (const listener of session.listeners) { try { listener(getState()); } catch { /* Session observers do not own audio. */ } } this._reportCaptureProvenance(); };
     session.cancel = () => {
+      session.audioOperation?.controller.abort(new Error('The audio owner stopped during continuation transfer.'));
       session.generation++; session.enabled = false; session.starting = false;
       const operation = session.enableOperation; session.enableOperation = null; session.enablePromise = null;
       operation?.resolve(false);
@@ -303,8 +304,42 @@ class BrowserNotePreview {
       } catch { settle(false); }
       return promise;
     };
+    const instrumentSources = () => [...this._instrumentBackends].filter(entry => entry.owner === id).map(entry => ({ sourceId: entry.sourceId, backend: entry.backend }));
+    const runContinuation = async (phase, options, execute) => {
+      if (session.disposed || session.audioOperation || !this._ownerReady(id)) throw new Error('This audio owner is unavailable or already transferring a continuation.');
+      const controller = new AbortController(), generation = session.generation, context = this._context;
+      const operation = { phase, controller }; session.audioOperation = operation;
+      const abort = () => controller.abort(options.signal.reason);
+      options.signal?.addEventListener('abort', abort, { once: true }); if (options.signal?.aborted) abort();
+      const current = () => !session.disposed && generation === session.generation && context === this._context && session.audioOperation === operation && (!options.isCurrent || options.isCurrent());
+      try { session.report(); return await execute({ context, signal: controller.signal, isCurrent: current }); }
+      finally { options.signal?.removeEventListener('abort', abort); if (session.audioOperation === operation) session.audioOperation = null; session.report(); }
+    };
+    const detachAudioState = options => runContinuation('capturing', options, async operation => {
+      const { captureOwnedAudioContinuation } = await import('./OwnedAudioContinuation.js');
+      const sources = instrumentSources(), allowed = new Set(sources.map(row => row.backend)), effects = this._channels.get(id + ':0')?.effects, rackState = effects?.state();
+      if (rackState && (rackState.preparing || rackState.retiringGraphs || ['staged', 'armed', 'capturing'].includes(rackState.continuation?.phase))) throw new Error('Capture requires a stable rack after retained graph transitions have finished.');
+      const assertCoverage = () => {
+        operation.signal.throwIfAborted(); if (!operation.isCurrent() || operation.context.state !== 'running') throw new Error('The audio continuation owner changed.');
+        if (instrumentSources().some(row => !allowed.has(row.backend)) || [...this._preparedPreviews].some(entry => entry.owner === id) ||
+            [...this._voices].some(voice => voice.owner === id && !sources.some(source => source.backend.ownsSourceVoice?.(voice)))) throw new Error('This owner has a native, preview or uncaptured source outside the owned DSP cone.');
+      };
+      assertCoverage();
+      return captureOwnedAudioContinuation({ ...options, ...operation, sources, rack: rackState?.activeGraph ? effects : null, assertCoverage });
+    });
+    const restoreAudioState = options => runContinuation('restoring', options, async operation => {
+      if (workloadClass !== 'cue' && options.route !== 'owner-live') throw new Error('Use the isolated cue owner for scrub restoration, or explicitly select owner-live routing.');
+      const { restoreOwnedAudioContinuation } = await import('./OwnedAudioContinuation.js');
+      const destinations = instrumentSources(), selected = options.sources;
+      if (!Array.isArray(selected) || selected.length !== destinations.length || new Set(selected.map(row => row.backend)).size !== destinations.length ||
+          destinations.some(row => !selected.some(input => input.backend === row.backend)) || [...this._voices].some(voice => voice.owner === id)) throw new Error('Restoration requires the complete fresh prepared source inventory for this owner.');
+      return restoreOwnedAudioContinuation({ ...options, ...operation, stageRack: (continuation, rackState, stageOptions) =>
+        session.api.prepareEffectGraph(continuation.definition(), { ...stageOptions, continuation, rackState }) });
+    });
     session.api = {
-      outputIdentity: this._createOutputIdentity(id), getState, enable, stop, panic: stop,
+      outputIdentity: this._createOutputIdentity(id), getState, enable, stop, panic: stop, instrumentSources,
+      detachAudioState: (options = {}) => detachAudioState(options), restoreAudioState: (options = {}) => restoreAudioState(options),
+      prepareAudioContinuation: async options => { const { prepareOwnedAudioContinuation } = await import('./OwnedAudioContinuation.js'); return prepareOwnedAudioContinuation({ resourceBudget: this._soundMaterialBudget, ...options }); },
       getAudioContext: () => this.getAudioContext(), getSoundMaterialProvider: () => this.getSoundMaterialProvider(),
       setCaptureContext: ({ worldId, graphRevision, routeRevision, scoreMapping = null } = {}) => {
         if (session.disposed) return false;
@@ -344,11 +379,11 @@ class BrowserNotePreview {
       },
       prepareEffectGraph: async (definition, options = {}) => {
         const generation = session.generation, context = this._context;
-        if (session.disposed || !this._ownerReady(id)) throw new Error('Enable this local audio owner before preparing its effect rack.');
+        if (session.disposed || !this._ownerReady(id) || session.audioOperation && !options.continuation) throw new Error('Enable an available local audio owner before preparing its effect rack.');
         const { createOwnerEffectGraphHost } = await import('./OwnerEffectGraphHost.js');
         if (session.disposed || generation !== session.generation || context !== this._context) throw new Error('Effect owner changed during preparation.');
         const channel = this._channel(0, id);
-        if (channel.effects && channel.effects.state().generation !== generation) {
+        if (channel.effects && (channel.effects.state().generation !== generation || options.continuation && ['detached', 'failed'].includes(channel.effects.state().continuation?.phase))) {
           const previous = channel.effects, receipt = previous.dispose(); await receipt.completion;
           if (receipt.outcome !== 'complete') throw new Error('The previous effect epoch has unresolved producer retirement.');
           if (channel.effects === previous) channel.effects = null;
@@ -387,7 +422,7 @@ class BrowserNotePreview {
       getEffectPerformanceState: () => this._channels.get(id + ':0')?.effects?.performanceSnapshot() || null,
       getEffectLatencyState: () => this._channels.get(id + ':0')?.effects?.latencyState() || Object.freeze({ latencyFrames: session.disposed ? null : 0, routes: 0, unresolved: session.disposed }),
       inspectEffectGraph: ({ requestHealth = false } = {}) => { const effects = this._channels.get(id + ':0')?.effects; if (requestHealth) effects?.requestInspection(); return effects?.state() || null; },
-      preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
+      preview: (notes, options) => { if (session.audioOperation) throw new Error('This owner is transferring an audio continuation.'); return this.preview(notes, { ...options, owner: id }); },
       setMasterVolume: value => this.setMasterVolume(value),
       setCapture: (capture, context) => { if (!session.disposed) this.setCapture(capture, context, id); },
       observeCapture: (capture, context) => session.disposed ? () => {} : this._observers.attach(capture, context, id),
@@ -540,13 +575,13 @@ class BrowserNotePreview {
   }
 
   _registerInstrumentBackend(backend, owner) {
-    if (this._disposed || this._instrumentBackends.size >= this._maxInstrumentBackends) { backend.dispose(); throw new RangeError('Local audio backend limit reached.'); }
+    if (this._disposed || this._sessions.get(owner)?.audioOperation || this._instrumentBackends.size >= this._maxInstrumentBackends || !Number.isSafeInteger(this._instrumentBackendSequence + 1)) { backend.dispose(); throw new RangeError('Local audio backend limit reached.'); }
     let metadata;
     try { metadata = this._audioResources.reserve({ kind: 'instrument-backend-host', owner, generation: this._generation, estimateBytes: 4096, consumerOwned: true }); }
     catch (error) { backend.dispose(); throw error; }
-    const entry = { owner, backend: null };
+    const entry = { owner, sourceId: 'source-' + (++this._instrumentBackendSequence), backend: null };
     const retirement = createProcgenRetirementScope();
-    entry.backend = Object.freeze({ ...backend, dispose: () => {
+    entry.backend = Object.freeze({ ...backend, sourceId: entry.sourceId, dispose: () => {
       let native;
       const receipt = retirement.retire([{ name: 'backend', run: () => native = createProcgenRetirementScope().retire([{ name: 'native-backend', run: () => backend.dispose() }]) },
         { name: 'backend-host-storage', run: () => releaseAudioResourceAfterRetirement(metadata, native) }]);

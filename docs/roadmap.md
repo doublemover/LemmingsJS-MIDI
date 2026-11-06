@@ -4,7 +4,7 @@ Historical completed roadmap entries live in git history. This file is the
 current source of truth for future work and should stay focused on active
 product and tooling direction.
 
-## Active feature implementation — November 5, 2026
+## Active feature implementation — November 6, 2026
 
 Continue solo through the remaining issue features. Frontload production changes;
 keep functional tests, generated campaigns and native browser qualification for one
@@ -35,8 +35,11 @@ monotonic scheduling, cancellation and exact-prefix receipts (#978–#981, #1061
 canonical physical output, explicit group/channel allocation and wire trace export
 are implemented. Continue with native ingress/control-plane integration, protocol
 capability discovery and throughput batching.
-Whole-graph effect restoration remains alongside implemented source continuation.
-These feature changes await consolidated transport, device and browser validation.
+Owned source/effect cuts, worker preparation and common-frame owner-session restoration
+are implemented for a stable owned rack, excluding native hidden DSP and shared final
+master protection. Continue canonical semantic/body binding restoration, initial-image
+journal publication and the remaining creative/platform features before the consolidated
+functional validation pass. These changes await rendered, browser and device qualification.
 
 ## Format
 
@@ -10843,3 +10846,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Preserve finite-strike host admission/applied state without retransmitting exciters. Validate the host inventory against restored kernel queues/active pulses in the worker, rebase remaining receipts and advance future token allocation beyond restored commands. Keep spectral analysis windows on their original logical grid with explicit native-frame mapping and refuse cleared-memory replay where initial analysis history is missing.
 - Add shared per-AudioWorklet-context copy admission and fair rotation across source/effect transfers. Add an asynchronous source activation barrier for dependent effects, keeping prepared state muted until all frontiers agree. Owner-rack/source-cone publication and retained-body bindings remain integration work; this is implementation, not live PCM qualification.
 - Formatting and necessary static checks only; all functional tests remain deferred until backlog implementation is complete.
+
+
+### 2026-11-06 — Rook continuation519: complete owned audio cone and rack publication
+
+- Negotiate one compatible capture grid across every registered owned source and the active creative rack; keep all producers at the same declared native audio frame. Reject native/preview sources outside the captured cone and retained topology transitions before presenting whole-cone coverage. Retire registered producer wrappers while independent cuts keep their leases.
+- Add serial worker preparation of the complete source/rack inventory, pinned definitions and exclusive aggregate continuation tickets. Coordinate fresh source execution bindings, rack automation and output gates at one future activation frame, with a pre-arm binding hook, bounded cancellation and separate final-master/protection scope.
+- Connect capture, preparation and restoration to real BrowserNotePreview owner sessions. Default scrub restoration to isolated cue routing; require explicit owner-live selection for live publication. Preserve finite-strike token floors, restored input/dry/mute routing and immediate Panic during transfer.
+- Support one stable rack revision as the declared live capture boundary; native convolution and concurrent retained topology revisions remain explicit unsupported/alternative-history paths. Canonical semantic checkpoint/body-contribution rebinding and saved initial-image journal publication remain integration work. Formatting/static checks only; no functional tests.
