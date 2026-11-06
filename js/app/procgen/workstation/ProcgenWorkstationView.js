@@ -1,4 +1,4 @@
-import { defaultTimeTransform, validateTimeTransform } from '../../../midi/content/TimeTransform.js';
+import { defaultTimeTransform, validateTimeTransform, hasActiveTimeTransform } from '../../../midi/content/TimeTransform.js';
 import { createProcgenNoticeView } from './ProcgenNoticeView.js';
 import { createProcgenOperationalView } from './ProcgenOperationalView.js';
 import { createAudioRuntimeSettingsView } from '../../midi-ui/AudioRuntimeSettingsView.js';
@@ -642,7 +642,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         const groove = lane.timeTransform || defaultTimeTransform('groove:' + lane.id), grooveDetails = node('details');
         grooveDetails.dataset.controlKey = 'physical-groove:' + lane.id; grooveDetails.open = state.grooveOpen === true;
         controlTree.bind(grooveDetails, { toggle: event => { state.grooveOpen = event.currentTarget.open; } });
-        grooveDetails.append(node('summary', groove.mode === 'literal' || groove.strength01 === 0 ? 'Physical timing · literal' : 'Physical groove · ' + groove.mode));
+        grooveDetails.append(node('summary', !hasActiveTimeTransform(groove) ? 'Physical timing · literal' : groove.mode === 'buffered' ? 'Physical timing · explicit ' + groove.causalLatencyMs + ' ms buffer' : 'Physical groove · ' + groove.mode));
         const changeGroove = patch => {
           if (selected().id !== lane.id) return;
           const current = selected().timeTransform || defaultTimeTransform('groove:' + lane.id);

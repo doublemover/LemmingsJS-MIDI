@@ -11042,3 +11042,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Join superseded render producers, private cue/session ownership, retained artifacts and resource reservations before reuse. Source/engine/rate/effect selection changes, pointer cancel, navigation and dialog disposal cancel the relevant seek owner. Unknown retirement stays charged; a failed candidate retains the previous prepared readout.
 - Full initial live-DSP-image attachment to captured mid-held takes and physical history seek/restore remain separate integrations: a take lacking qualified initial ancestry is visibly unavailable rather than inventing a historical attack. This seek path uses complete captured history and does not claim original live PCM equivalence.
 - Formatting/static types only. Functional seek continuity, rapid supersession, cancellation and production desktop interaction belong to the final consolidated validation pass after the remaining feature work.
+
+
+### 2026-11-06 — Rook continuation543: complete explicit-buffer timing projection
+
+- Share one active-timing predicate across live dispatch, captured-history rendering, render workspace admission and lane summaries. Pure positive buffering remains active at zero groove strength, so exact-crop seek and WAV projection reconstruct the same deliberate live delay rather than silently reverting to physical timing. Literal mode retains its identity behavior.
+- Charge the same bounded timing-owner metadata for buffered-only histories, preserve held onset offsets and computed displacement/padding receipts, and identify the explicit buffer amount in the lane summary. This completes the new per-lane preparation-lead path without introducing another score clock or journal.
+- Formatting/static checks only. The complete timing/export/seek/runtime validation batch remains deferred until the feature pass is complete.

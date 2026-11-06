@@ -19,6 +19,7 @@ import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { canonicalDataText, cloneData, freezeData, hashData } from '../../core/CanonicalData.js';
 import { prepareExportArtifact } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { hasActiveTimeTransform } from '../../midi/content/TimeTransform.js';
 import { createCausalRenderTiming } from './CausalRenderTiming.js';
 import { prepareEffectRenderPlan } from './EffectRenderPlan.js';
 import { effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
@@ -89,7 +90,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
       let sourceTiming = null, grooveBytes = 0;
       const prepareTiming = () => {
         if (sourceTiming) return;
-        grooveBytes = revoice.intents.some(intent => intent.timeTransformPolicy?.mode !== 'literal' && intent.timeTransformPolicy?.strength01 > 0) ? 48 * 1048576 : 0;
+        grooveBytes = revoice.intents.some(intent => hasActiveTimeTransform(intent.timeTransformPolicy)) ? 48 * 1048576 : 0;
         operation.workspace.resize(4 * 1048576 + operation.source.receipt.retainedBytes * 4 + grooveBytes);
         sourceTiming = createCausalRenderTiming(revoice, sampleRate, { timeTransformMode }); const coverage = sourceTiming.coverage();
         if (extendGrooveOutput && Math.abs(endSeconds - coverage.sourceEndSeconds) <= 0.5 / sampleRate) {

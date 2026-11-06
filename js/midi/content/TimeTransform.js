@@ -6,6 +6,7 @@ const finite = (value, low, high) => Number.isFinite(value) && value >= low && v
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const MODES = ['literal', 'buffered', 'attract', 'swingField', 'ratioFold'];
 export const TIME_TRANSFORM_SCHEMA = 'lemmings-time-transform/v1';
+export const hasActiveTimeTransform = policy => !!policy && policy.mode !== 'literal' && (policy.mode === 'buffered' ? policy.causalLatencyMs > 0 : policy.strength01 > 0);
 export function validateTimeTransform(raw) {
   if (raw == null) return null;
   const value = cloneData(raw, { maxBytes: 32768, maxNodes: 1024 });
@@ -60,7 +61,7 @@ export function createTimeTransformOwner({ mode = 'live', maxVoices = 4096, maxA
     const cached = cache.get(intent.intentId); if (cached) return cached;
     const actor = actorKey(intent, executionEpoch);
     const key = voiceKey(intent, executionEpoch), held = voices.get(key), policy = held ? held.policy : validate(rawPolicy), time = intent.scoreTime;
-    const identity = !held && (!policy || policy.mode === 'literal' || (policy.mode === 'buffered' ? policy.causalLatencyMs === 0 : policy.strength01 === 0) || !covers(policy, intent));
+    const identity = !held && (!hasActiveTimeTransform(policy) || !covers(policy, intent));
     if (identity && !actors.has(actor)) { count++; return Object.freeze({ scoreTime: time, receipt: null }); }
     if (!time || !text(time.epoch) || !finite(time.beat, 0, 1e12) || !finite(tempoBpm, 0.001, 1000000)) fail('time-transform-score-clock', 'A current declared score clock and tempo are required.');
     const originalMs = sourceMilliseconds(time), previous = actors.get(actor);

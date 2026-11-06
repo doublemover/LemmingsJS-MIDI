@@ -1,4 +1,4 @@
-import { createTimeTransformOwner, validateTimeTransform } from '../../midi/content/TimeTransform.js';
+import { createTimeTransformOwner, validateTimeTransform, hasActiveTimeTransform } from '../../midi/content/TimeTransform.js';
 import { createSimScoreTimeline } from '../procgen/workstation/SimScoreTimeline.js';
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'CausalRenderError', code });
@@ -34,7 +34,7 @@ export function createCausalRenderTiming(source, sampleRate, { timeTransformMode
     }
     return segments[low];
   };
-  let groovePrepared = false, groove = null; const transformedMilliseconds = new Map(), grooveRequired = source.intents?.some(intent => intent.timeTransformPolicy && intent.timeTransformPolicy.mode !== 'literal' && intent.timeTransformPolicy.strength01 > 0) === true;
+  let groovePrepared = false, groove = null; const transformedMilliseconds = new Map(), grooveRequired = source.intents?.some(intent => hasActiveTimeTransform(intent.timeTransformPolicy)) === true;
   const prepareGroove = () => {
     if (groovePrepared) return; groovePrepared = true;
     if (!grooveRequired || timeTransformMode === 'literal') return;
