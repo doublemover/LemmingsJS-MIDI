@@ -1,3 +1,4 @@
+import { createDrumMapBinding } from './DrumProfileAdapter.js';
 import { createDeviceParameterCatalog } from './DeviceParameterCatalog.js';
 import { createMidiEndpointRegistry } from './MidiEndpointRegistry.js';
 import { createDevicePatchCatalog } from './DevicePatchCatalog.js';
@@ -62,7 +63,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
         !Number.isInteger(channel) || channel < 0 || channel > 15 || !['midi2', 'midi1-in-ump'].includes(protocol) || !['dedicated', 'shared-ensemble'].includes(sharing) || typeof laneId !== 'string' || !laneId) throw new Error('Choose a current output grant, group, channel and protocol');
     if (routes.size >= 1024) throw new Error('Native route capacity; revoke unused connections');
     const outputId = 'native-midi:' + owner.logicalDestination + ':' + group + ':' + channel;
-    for (const [id, claim] of profileClaims) if (id !== outputId && claim.grant === grant && claim.current() && claim.binding.addresses.some(address => address.group === group && address.channel === channel)) throw new Error('Channel is reserved by an active CI MPE allocation');
+    for (const [id, claim] of profileClaims) if (id !== outputId && claim.grant === grant && claim.current() && claim.binding.addresses.some(address => address.group === group && address.channel === channel)) throw new Error('Channel is reserved by an active CI profile allocation');
     if (profileClaims.has(outputId) && [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop owned notes before replacing a profile route');
     profileClaims.delete(outputId); patchClaims.delete(outputId);
     const previous = routes.get(outputId);
@@ -176,11 +177,21 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       const grant = receipt.outputGrant, target = receipt.target, owner = grants.get(grant);
       if (!owner || [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop owned notes before binding a hardware patch');
       const outputId = 'native-midi:' + owner.logicalDestination + ':' + target.group + ':' + target.channel, previous = routes.get(outputId);
-      if (previous?.mpe && !current(previous)) throw new Error('Patch recalled; review and rebind the accepted MPE profile before assigning this patch');
-      if (previous?.mpe && (!previous.laneIds.includes(laneId) || previous.protocol !== target.protocol)) throw new Error('Choose the explicitly bound MPE lane and protocol');
-      const base = previous?.mpe ? previous : bind({ laneId, grant, group: target.group, channel: target.channel, protocol: target.protocol });
+      if ((previous?.mpe || previous?.percussion) && !current(previous)) throw new Error('Patch recalled; review and rebind the accepted instrument profile before assigning this patch');
+      if ((previous?.mpe || previous?.percussion) && (!previous.laneIds.includes(laneId) || previous.protocol !== target.protocol)) throw new Error('Choose the explicitly bound instrument-profile lane and protocol');
+      const base = previous?.mpe || previous?.percussion ? previous : bind({ laneId, grant, group: target.group, channel: target.channel, protocol: target.protocol });
       const route = Object.freeze({ ...base, routeRevision: ++revision, patchBinding: Object.freeze({ intent: receipt.intent, receiverState: receipt.receiverState, target, reported: receipt.reported }) });
       patchClaims.set(outputId, { current: () => catalog.isReceiptCurrent(receipt) }); routes.set(outputId, route); notify(); return route;
+    },
+    bindPercussion({ laneId, policy, grant, group, channel, protocol = 'midi2', session = null, profile = null }) {
+      const owner = grants.get(grant), record = session?.binding(profile, channel);
+      if (session && ![...profileSessions.values()].some(peers => [...peers.values()].includes(session))) throw new Error('Choose an owned current drum profile session');
+      if (!owner || owner.direction !== 'output') throw new Error('Choose an owned native output for the drum map');
+      const hold = api.holdForObservation(grant); api.releaseObservation(hold);
+      const binding = createDrumMapBinding(record, policy, { groupMask: owner.groupMask, group, channel, protocol });
+      const base = bind({ laneId, grant, group, channel, protocol }), route = Object.freeze({ ...base, percussion: binding, independentSamePitchVoices: false });
+      if (record) profileClaims.set(route.outputId, { grant, binding, current: () => session.isProfileBindingCurrent(record) });
+      routes.set(route.outputId, route); notify(); return route;
     },
     bindMpe({ laneId, session, profile, scope, protocol = 'midi2', pressureForm = 'classic', thirdAxisForm = 'classic' }) {
       if (![...profileSessions.values()].some(peers => [...peers.values()].includes(session))) throw new Error('Choose an owned profile session');

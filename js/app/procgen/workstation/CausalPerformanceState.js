@@ -1,4 +1,5 @@
 import { validateActorTimbreLocks, actorTimbreControls } from '../../../midi/content/InstrumentActorLocks.js';
+import { validatePercussionIntentPolicy } from '../../../midi/content/PercussionRoleIntent.js';
 import { procgenLane, procgenLaneIndex } from './ProcgenProjectIndex.js';
 import { INSTRUMENT_PHYSICAL_SOURCE_KINDS, validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
 import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
@@ -11,12 +12,12 @@ const fail = () => { throw new TypeError('Invalid causal lane performance state.
 const keys = (value, allowed) => plain(value) && Object.keys(value).every(key => allowed.includes(key));
 const identifier = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const lane = value => {
-  if (!keys(value, ['id', 'sourceIndex', 'controls', 'physicalSourceKinds', 'mix']) || !identifier(value.id) || !Number.isSafeInteger(value.sourceIndex) || value.sourceIndex < 0 || value.sourceIndex >= 1024 ||
+  if (!keys(value, ['id', 'sourceIndex', 'controls', 'physicalSourceKinds', 'mix', 'percussion']) || !identifier(value.id) || !Number.isSafeInteger(value.sourceIndex) || value.sourceIndex < 0 || value.sourceIndex >= 1024 ||
       !Array.isArray(value.physicalSourceKinds) || value.physicalSourceKinds.length > INSTRUMENT_PHYSICAL_SOURCE_KINDS.length ||
       new Set(value.physicalSourceKinds).size !== value.physicalSourceKinds.length || value.physicalSourceKinds.some(kind => !INSTRUMENT_PHYSICAL_SOURCE_KINDS.includes(kind))) fail();
   if (value.controls?.actorTimbreLocks != null) fail();
   if (value.mix != null && (!keys(value.mix, ['gain', 'pan', 'mute', 'solo']) || !Number.isFinite(value.mix.gain) || value.mix.gain < 0 || value.mix.gain > 2 || !Number.isFinite(value.mix.pan) || Math.abs(value.mix.pan) > 127 || typeof value.mix.mute !== 'boolean' || typeof value.mix.solo !== 'boolean')) fail();
-  return Object.freeze({ id: value.id, sourceIndex: value.sourceIndex, ...(value.mix ? { mix: Object.freeze({ ...value.mix }) } : {}), controls: validateInstrumentControls(value.controls), physicalSourceKinds: Object.freeze([...value.physicalSourceKinds].sort()) });
+  return Object.freeze({ id: value.id, sourceIndex: value.sourceIndex, ...(value.mix ? { mix: Object.freeze({ ...value.mix }) } : {}), ...(value.percussion ? { percussion: validatePercussionIntentPolicy(value.percussion) } : {}), controls: validateInstrumentControls(value.controls), physicalSourceKinds: Object.freeze([...value.physicalSourceKinds].sort()) });
 };
 export function validateCausalPerformanceState(value) {
   if (!keys(value, ['version', 'lanes', 'actorTimbreLocks']) || value.version !== 1 || !Array.isArray(value.lanes) || value.lanes.length > 1024) fail();
@@ -28,13 +29,13 @@ export function validateCausalPerformanceState(value) {
 export function captureCausalPerformanceState(lanes, actorTimbreLocks) {
   if (!Array.isArray(lanes) || lanes.length > 1024) fail();
   return validateCausalPerformanceState({ version: 1, actorTimbreLocks, lanes: lanes.map((entry, sourceIndex) => ({ id: entry.id, sourceIndex, controls: entry.instrumentControls || {}, mix: { gain: entry.gain ?? 1, pan: entry.pan ?? 0, mute: !!entry.mute, solo: !!entry.solo },
-    physicalSourceKinds: causalLanePhysicalControlKinds(entry) })) });
+    ...(entry.percussion ? { percussion: entry.percussion } : {}), physicalSourceKinds: causalLanePhysicalControlKinds(entry) })) });
 }
 export function diffCausalLanePerformance(before, after, ids) {
   const capture = (lanes, id) => {
     const entry = procgenLane(lanes, id); if (!entry) return null;
     return lane({ id, sourceIndex: procgenLaneIndex(lanes).get(id), controls: entry.instrumentControls || {}, mix: { gain: entry.gain ?? 1, pan: entry.pan ?? 0, mute: !!entry.mute, solo: !!entry.solo },
-      physicalSourceKinds: causalLanePhysicalControlKinds(entry) });
+      ...(entry.percussion ? { percussion: entry.percussion } : {}), physicalSourceKinds: causalLanePhysicalControlKinds(entry) });
   };
   const upserts = [], removed = [];
   for (const id of ids) {
@@ -63,7 +64,7 @@ export function createCausalPerformanceState(initial = { version: 1, lanes: [] }
   const replace = value => { const next = validateCausalPerformanceState(value); state = next; byId = new Map(next.lanes.map(entry => [entry.id, entry])); byIndex = next.lanes; };
   replace(initial);
   const get = source => typeof source === 'number' ? byIndex[source] : byId.get(source);
-  return Object.freeze({ snapshot: () => state, getLaneState: source => { const target = get(source), solo = state.lanes.some(lane => lane.mix?.solo && !lane.mix?.mute); return { available: !!target && !target.mix?.mute && (!solo || !!target.mix?.solo) }; }, getMix: source => get(source)?.mix || null, getControls: (source, identity) => actorTimbreControls(get(source)?.controls, state.actorTimbreLocks, identity), getPhysicalControlKinds: source => get(source)?.physicalSourceKinds || [],
+  return Object.freeze({ snapshot: () => state, getLaneState: source => { const target = get(source), solo = state.lanes.some(lane => lane.mix?.solo && !lane.mix?.mute); return { available: !!target && !target.mix?.mute && (!solo || !!target.mix?.solo) }; }, getMix: source => get(source)?.mix || null, getControls: (source, identity) => actorTimbreControls(get(source)?.controls, state.actorTimbreLocks, identity), getPercussionPolicy: source => get(source)?.percussion || null, getPhysicalControlKinds: source => get(source)?.physicalSourceKinds || [],
     apply(change) {
       const validated = validateCausalPerformanceChange(change); if (validated.removed.some(id => !byId.has(id))) fail();
       const next = new Map(byId); for (const id of validated.removed) next.delete(id); for (const entry of validated.upserts) next.set(entry.id, entry);

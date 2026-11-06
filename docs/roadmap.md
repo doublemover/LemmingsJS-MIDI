@@ -10634,3 +10634,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Keep observed values, desired writes and native acceptance distinct. Preserve unknown baselines and ordered relative changes; revision-check UI edits, cancel stale drafts on device moves, and merge isolated reports only over unchanged local edits. No observation emits a feedback write.
 - Persist up to eight cached descriptor/source intents per lane, require fresh matching discovery and explicit activation, and connect pressure/impact/spacing plus completed movement/height/work facts through the existing native sink/deadline/batch ownership. Apply source-driven smoothing, deadband and soft takeover without generated note onsets. Capture matching physical-control source kinds for replay.
 - Format passes; functional tests remain deferred. Shared momentary/toggle physical controls are explicitly unavailable pending controller-release leases; instrument profile adapters, group-scoped retirement and coordinated whole-graph restore remain production work.
+
+
+### 2026-11-06 — Rook continuation492: semantic percussion and negotiated drum maps
+
+- Add persistent physical percussion-role policies, action overrides and full-resolution hit/release intent before native note assignment. Capture the policy in causal performance snapshots/change journals and replay.
+- Implement the complete M2-125 v1.0 role map, seven mutually exclusive sets, optional feature/sound-availability decoding and exact accepted single-channel profile binding. Accept current availability notifications and invalidate affected device state when the sound set changes.
+- Provide explicit profile, named-GM and unique custom-map workflows with physical action/role controls, visible actual note/group/channel and receiver qualification. Keep local kits and authored source timing independent, refuse same-drum address rotation/overlap and preserve matching releases. Avoid implicit program setup and guessed pressure controls on drum profiles.
+- Formatting passes. Functional, independent receiver and profile bitmap qualification remains deferred. Continue orchestral, piano and organ/rotary profile adapters, controller-release leases, group retirement and coordinated graph restoration before consolidated validation.
