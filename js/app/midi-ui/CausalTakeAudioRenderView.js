@@ -62,7 +62,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const effectSend = number('New render source send', 0.35, 0.65); effectSend.step = '0.01';
   const effectReturn = node('input'); effectReturn.type = 'checkbox'; effectReturn.checked = true; label('Include the simultaneous shared return WAV', effectReturn);
   const effectInfo = node('p'); effectInfo.setAttribute('aria-label', 'Effect render scope'); fields.append(effectInfo);
-  const restore = select('Range reconstruction', [['forward-preroll', 'Forward captured history'], ['owned-state-cut', 'Restore source state at range start (experimental)']]);
+  const restore = select('Range reconstruction', [['forward-preroll', 'Forward captured history'], ['owned-state-cut', 'Restore owned source + FX at range start (experimental)']]);
   const status = node('output', 'Idle'); status.setAttribute('role', 'status'); const details = node('p'), deliveryStatus = node('output'); deliveryStatus.setAttribute('aria-label', 'Rendered file delivery');
   const file = node('select'); file.setAttribute('aria-label', 'Prepared rendered file');
   const say = text => { if (!disposed) { deliveryStatus.textContent = text; try { onStatus(text); } catch { /* Status does not own a prepared render. */ } } };

@@ -45,3 +45,8 @@ export const ownedStateTransferBytes = kernel => {
   if (!Number.isSafeInteger(length) || length < 1 || length > 64 * 1048576 || typeof kernel.snapshotInto !== 'function' || typeof kernel.restoreFrom !== 'function') fail('An owned component lacks its exact state transfer adapter.');
   return length;
 };
+
+export function ownedGraphCutWorkspaceBytes(sourceBytes, effectWorkspaceBytes = 0) {
+  if (![sourceBytes, effectWorkspaceBytes].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 128 * 1048576)) fail('Invalid source/effect state workspace estimate.');
+  return 6 * (sourceBytes + effectWorkspaceBytes + OWNED_STATE_BUNDLE_HEADER) + 8 * 1048576;
+}

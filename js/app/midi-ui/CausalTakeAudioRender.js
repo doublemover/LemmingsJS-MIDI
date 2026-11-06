@@ -1,3 +1,4 @@
+import { ownedGraphCutWorkspaceBytes } from './worklet/OwnedStateBundle.js';
 import { createCausalRenderLaneResolver } from '../procgen/workstation/CausalLaneRouting.js';
 import { prepareGraftComparison } from '../../midi/content/GraftComparison.js';
 import { prepareCapturedEffectReplay } from './CapturedEffectReplay.js';
@@ -140,7 +141,10 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         const fileCount = lanes.length + returns.length + 1, pcmBytes = frames * 8 * fileCount, sourceFootprint = operation.source.receipt.retainedBytes;
         operation.workspace.resize(2 * 1048576 + sourceFootprint + (effectReplay ? 4 * 1048576 + effectReplay.events.length * 2048 : 0) + (native ? revoice.intents.length * Math.max(profile.requiresPCMSet ? 4096 : 1024, Object.keys(profile.fields).length * 256) : 0));
         const binding = { takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash };
-        let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(profile.requiresPCMSet ? 4096 : 1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6 + (restorationMode === 'owned-state-cut' ? 2 * profile.sourceBytes({ sampleRate, pcm: operation.material?.descriptor, voices: patch.voicePolicy.maxVoices }) + 4 * 1048576 : 0) + (effectPlan ? effectReplay?.graphs ? effectReplay.peakStateBytes + 8 * 1048576 : effectPlan.stateBytes + 4 * 1048576 : 0);
+        const effectWorkspaceBytes = effectPlan ? effectReplay?.graphs ? effectReplay.peakStateBytes + 8 * 1048576 : effectPlan.stateBytes + 4 * 1048576 : 0;
+        const sourceCutBytes = restorationMode === 'owned-state-cut' ? profile.sourceBytes({ sampleRate, pcm: operation.material?.descriptor, voices: patch.voicePolicy.maxVoices, ...(profile.id === 'worklet-sample' ? { sampleZones: patch.sampleMap.zones.length } : {}) }) : 0;
+        const graphCutWorkspaceBytes = restorationMode === 'owned-state-cut' ? ownedGraphCutWorkspaceBytes(sourceCutBytes, effectWorkspaceBytes) : 0;
+        let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(profile.requiresPCMSet ? 4096 : 1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6 + graphCutWorkspaceBytes + effectWorkspaceBytes;
         if (!Number.isSafeInteger(pcmBytes) || pcmBytes + 262208 * fileCount > 64 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes > 512 * 1048576)
           throw failure('render-memory-capacity', 'Choose a shorter output range or fewer stems to fit source, PCM, encoding and transfer overlap.');
         input = { ...(effectReplay ? { capturedEffects: true, effectReplayHash: effectReplay.hash } : {}), revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, restorationMode,
@@ -155,7 +159,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         }
         if (ownedConvolution) {
           const historyBytes = Math.round((endSeconds + (policy.mode === 'exact-crop' ? 0 : policy.maxSeconds ?? 4)) * sampleRate) * (1 + lanes.length) * 8;
-          const stagePeak = Math.max(estimatedPeakBytes, historyBytes * 4 + (restorationMode === 'owned-state-cut' ? 2 * profile.sourceBytes({ sampleRate, pcm: operation.material?.descriptor, voices: patch.voicePolicy.maxVoices }) + 4 * 1048576 : 0) + sourceFootprint * 6 + revoice.intents.length * Math.max(profile.requiresPCMSet ? 4096 : 1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6);
+          const stagePeak = Math.max(estimatedPeakBytes, historyBytes * 4 + (restorationMode === 'owned-state-cut' ? ownedGraphCutWorkspaceBytes(sourceCutBytes) : 0) + sourceFootprint * 6 + revoice.intents.length * Math.max(profile.requiresPCMSet ? 4096 : 1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6);
           if (!Number.isSafeInteger(historyBytes) || historyBytes > 56 * 1048576 || !Number.isSafeInteger(stagePeak) || stagePeak > 512 * 1048576) throw failure('source-pcm-capacity', 'Complete source history exceeds the native body profile. Choose fewer taps or a shorter history.');
           phase = 'rendering-source-pcm'; report();
           operation.pcmJob = await jobs.compute({ kind: 'render-causal-source-pcm', ownerId, ownerEpoch: ordinal, sourceRevision: revoice.sourceCanonicalHash,

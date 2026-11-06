@@ -10776,3 +10776,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Retire owned native performance on clock expiry, invalid observations, regression or domain discontinuity; normal fitted revisions never move a deadline already submitted. Preserve independent bridge, musical-clock and controller health semantics.
 - Add explicit stopped-performance uncertainty/lookahead budgets and compact epoch/drift/uncertainty status. Hold browser batches outside the selected native lookahead while keeping cancellation active; the companion remains the sole SDK deadline authority.
 - Release actor controller contributions at their actual source end rather than a later one-shot note-tail deadline. Formatting only; drift, suspension and timing distribution qualification remain deferred with all functional tests.
+
+
+### 2026-11-06 — Rook continuation510: coordinated-cut worker admission
+
+- Share the combined source/effect cut workspace calculation between the causal render owner and worker. Reserve transfer, decoded copy, staged graph and retained original overlap before dispatch, including captured graph histories and source-only/native-convolution staging.
+- Carry exact sample-zone capacity into source estimates and label the experimental range option as source-plus-FX restoration. Keep native hidden-state reconstruction on its explicit preroll path.
+- Formatting only; functional validation remains deferred with the backlog implementation pass.

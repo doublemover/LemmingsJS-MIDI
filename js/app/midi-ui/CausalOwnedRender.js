@@ -1,4 +1,4 @@
-import { OWNED_STATE_BUNDLE_ABI, OWNED_STATE_BUNDLE_HEADER, writeOwnedStateBundle, readOwnedStateBundle } from './worklet/OwnedStateBundle.js';
+import { ownedGraphCutWorkspaceBytes, OWNED_STATE_BUNDLE_ABI, OWNED_STATE_BUNDLE_HEADER, writeOwnedStateBundle, readOwnedStateBundle } from './worklet/OwnedStateBundle.js';
 import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/content/SampleTraversal.js';
 import { acceptsSampleCursorSegment } from '../../midi/content/SampleCursorProfile.js';
 import { planSeedLayerContactBegin, planSeedLayerContactMotion, advanceSeedLayerContactMotion, seedLayerContactBeginFields, seedLayerContactMotionFields } from '../../midi/content/SeedLayerMotion.js';
@@ -328,7 +328,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   const sourceCutEstimate = plan.owned.sourceBytes({ sampleRate: plan.sampleRate, pcm: plan.pcmDescriptor, voices: plan.patch.voicePolicy.maxVoices, ...(plan.owned.id === 'worklet-sample' ? { sampleZones: plan.patch.sampleMap.zones.length } : {}) });
   const history = plan.effectReplay?.schema === 'lemmings-captured-effect-history/v1';
   const effectWorkspace = plan.effectPlan && !sourcePhase ? history ? plan.effectReplay.peakStateBytes + 8 * 1048576 : plan.effectPlan.stateBytes + 4 * 1048576 : 0;
-  const cutWorkspace = stateCut ? 6 * (sourceCutEstimate + effectWorkspace + OWNED_STATE_BUNDLE_HEADER) + 8 * 1048576 : 0;
+  const cutWorkspace = stateCut ? ownedGraphCutWorkspaceBytes(sourceCutEstimate, effectWorkspace) : 0;
   const requiredBytes = (sourcePhase ? sourcePcmBytes : plan.pcmBytes) * 4 + plan.planningBytes + 24 * 1048576 + cutWorkspace + effectWorkspace;
   if (!natural(maxWorkingBytes) || requiredBytes > maxWorkingBytes) throw failure('render-memory-capacity', 'PCM, encoding, command and transfer overlap exceed the admitted render workspace.');
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, events, stemLaneIds, captureLaneIds } = plan;
