@@ -10805,3 +10805,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add fixed32KiB capture and worker-prevalidated restore generators to the shared effect-state codec. Serialize stable scalars and owned histories without a whole-delay-buffer clear/copy/checksum in one renderer callback.
 - Keep existing full domain-validated restore for worker/private preparation. Prepared render copying checks exact immutable layout/configuration and finite transferred data while the destination remains unpublished; the forthcoming live protocol must additionally own worker validation, exclusive transfer checksum and activation.
 - Formatting only; no functional tests or native execution. Continue the live graph transfer/worker/host integration before consolidated qualification.
+
+
+### 2026-11-06 — Rook continuation514: worker-prepared live effect images
+
+- Add a worker-only effect-continuation job and exclusive prepared-image tickets under shared background admission. Validate complete detached component inventories against the same pinned owned graph kernels, exact rate/hash, native cut frame and processor-local frontier.
+- Validate processor wrapper state for delay requests, spectral capture and source availability, restore every private component in an isolated validation graph, and prohibit that partial validation owner from rendering. Canonical output images retain independent bytes with SHA-256 identity and bounded transport checksums.
+- Admit at most48MiB of DSP image plus bounded automation/definition metadata, retain executing application-build evidence and own cancellation/result retirement. These prepared images are the prerequisite for live Worklet transfer and coordinated host publication, not a live-restore completion claim.
+- Formatting and necessary boundary typechecks only; all functional tests remain deferred.

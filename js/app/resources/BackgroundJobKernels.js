@@ -260,7 +260,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   if (kind === 'snapshot-canonical-data') return runCanonicalSnapshotKernel(kind, input, options);
-  const metadata = await inspectValue(input, options, { allowBinary: ['prepare-owned-source-cut', 'decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
+  const metadata = await inspectValue(input, options, { allowBinary: ['prepare-owned-effect-cut', 'prepare-owned-source-cut', 'decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
   if (kind === 'encode-preference-pages') {
     if (!Array.isArray(input) || input.length < 1 || input.length > 8) throw problem('invalid-data', 'Preference encoding needs one to eight owned pages.');
     const value = []; let retainedBytes = 4096;
@@ -314,6 +314,17 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const value = await encodeNativeOfflineRender(input, { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes }); guard(signal, current);
     const retainedBytes = value.files ? value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144) : value.bytes.byteLength * 2 + 262144;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Native encoded files exceed their admitted retained storage.');
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+  }
+  if (kind === 'prepare-owned-effect-cut') {
+    if (!input || Object.keys(input).some(key => !['definition', 'metadata', 'components'].includes(key)) || estimatedPeakBytes < metadata.bytes * 5 + 32 * 1048576) throw problem('invalid-contract', 'Effect continuation requires its complete admitted graph image.');
+    const identity = getActiveExecutionIdentity('browser-background-jobs');
+    if (identity.activeExecution !== 'bound') throw problem('engine-identity-unbound', 'Effect continuation requires its exact executing worker artifact.');
+    const { prepareOwnedEffectCut } = await import('./OwnedEffectCutPreparation.js'); guard(signal, current);
+    const value = await prepareOwnedEffectCut(input, { signal, yieldControl, maxWorkingBytes: estimatedPeakBytes - metadata.bytes }); guard(signal, current);
+    value.applicationBuildId = identity.buildId;
+    const retainedBytes = value.components.reduce((sum, row) => sum + row.bytes.length, 0) + canonicalDataText(value.metadata, { maxBytes: 2 * 1048576, maxNodes: 131072 }).bytes.length * 4 + 262144;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Prepared effect continuation exceeds its retained storage.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (kind === 'prepare-owned-source-cut') {

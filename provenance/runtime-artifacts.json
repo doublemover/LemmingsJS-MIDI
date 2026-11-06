@@ -334,6 +334,7 @@
         "js/app/resources/InitialBackgroundReservation.js",
         "js/app/resources/NativeOfflineEncoding.js",
         "js/app/resources/OwnedControlKernel.js",
+        "js/app/resources/OwnedEffectCutPreparation.js",
         "js/app/resources/OwnedPcmSetVerification.js",
         "js/app/resources/OwnedPcmVerification.js",
         "js/app/resources/OwnedResourceReservation.js",
@@ -467,8 +468,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 321,
-      "sha256": "69e5af9657c94a4e193b8a6b0a734671e6407c437d2d93b697faed28a3d9c30b"
+      "fileCount": 322,
+      "sha256": "4380c695b3efc6b95b2d1afc4e8446d37cca11179cce1844d742df88d2c227f5"
     },
     {
       "id": "lemmings-timing-worker-source",

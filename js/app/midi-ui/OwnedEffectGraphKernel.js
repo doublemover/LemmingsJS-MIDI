@@ -47,15 +47,17 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     else if (entry.kind === 'envelope-detector') kernel = new EnvelopeFollowerKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'envelope-mapping') kernel = new EnvelopeMappingKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'gain') { gain[index * 3] = gain[index * 3 + 1] = p.gain01; controls[at] = p.gain01; }
-    const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id).map(edge => ({ source: indices.get(edge.from.nodeId) * 2, gain01: edge.gain01, port: edge.to.port, audio: isAudioEffectPort(entry.ports.inputs[edge.to.port]), donor: edge.to.port === 'donorAudio',
+    const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id).map(edge => ({ source: indices.get(edge.from.nodeId) * 2, edgeIndex: plan.edges.indexOf(edge), gain01: edge.gain01, port: edge.to.port, audio: isAudioEffectPort(entry.ports.inputs[edge.to.port]), donor: edge.to.port === 'donorAudio',
       align: edge.alignmentFrames ? new FixedFractionalDelayKernel({ sampleRate, delayFrames: edge.alignmentFrames }) : null }));
     return { entry, index, kernel, incoming, at, sidechainOffset: (sidechainIndices.get(entry.id) ?? -1) * 2 };
   });
   const inputIndex = indices.get(plan.inputs[0]), outputIndex = indices.get(plan.outputs[0]) * 2, taps = returnNodeIds.map(id => indices.get(id) * 2), tapSamples = new Float32Array(taps.length * 2);
+  let validationOnly = false;
   let frame = 0, leftSample = 0, rightSample = 0, muted = false;
   const panic = () => { muted = true; for (const record of records) { record.kernel?.panic(); for (const edge of record.incoming) edge.align?.panic(); } values.fill(0); tapSamples.fill(0); leftSample = rightSample = 0; };
   const quarantine = (code, message) => { panic(); fail(code, message); };
   const update = (nodeId, next, apply = true) => {
+    if (validationOnly) fail('effect-validation-owner-only', 'Detached validation graphs cannot publish live controls.');
     if (muted) fail('effect-graph-retired', 'This graph was cleared; prepare a new graph for further controls.');
     const index = indices.get(nodeId), record = records[index];
     if (!record || !next || Object.getPrototypeOf(next) !== Object.prototype || !Object.keys(next).length || Object.keys(next).length > 4 || Object.values(next).some(value => !Number.isFinite(value))) fail('invalid-effect-control', 'Invalid owned effect control.');
@@ -93,6 +95,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     return !apply || Object.freeze({ status: 'applied-to-owned-render', nodeId, frame, graphDefinitionHash: hash, acousticReceipt: false });
   };
   const sample = (left, right, sidechainSamples = null, sidechainPresence = null) => {
+    if (validationOnly) fail('effect-validation-owner-only', 'Detached validation graphs cannot render audio.');
     if (sidechainPresence !== null && (!(sidechainPresence instanceof Uint8Array) || sidechainPresence.length !== plan.sidechainInputs.length)) quarantine('sidechain-input-presence', 'Source presence must match the exact prepared bus inventory.');
     if (sidechainPresence) for (let i = 0; i < sidechainPresence.length; i++) if (sidechainPresence[i] > 1) quarantine('sidechain-input-presence', 'Invalid source presence bit.');
     if (sidechainSamples !== null && (!(sidechainSamples instanceof Float32Array) || sidechainSamples.length !== plan.sidechainInputs.length * 2)) quarantine('sidechain-input-layout', 'Sidechain input must match its prepared stereo slot inventory.');
@@ -137,16 +140,17 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
   const stateIdentity = { abi: 'owned-effect-graph-cut-v1', hash, sampleRate, frameOrigin, returnNodeIds: [...returnNodeIds] };
   const stateEntries = [];
   for (const record of records) {
-    if (record.kernel) stateEntries.push({ key: 'node:' + record.index, kernel: record.kernel, bytes: ownedStateTransferBytes(record.kernel) });
-    for (let index = 0; index < record.incoming.length; index++) if (record.incoming[index].align) { const kernel = record.incoming[index].align; stateEntries.push({ key: 'alignment:' + record.index + ':' + index, kernel, bytes: ownedStateTransferBytes(kernel) }); }
+    if (record.kernel) stateEntries.push({ key: 'node:' + record.index, nodeId: record.entry.id, kind: record.entry.kind, kernel: record.kernel, bytes: ownedStateTransferBytes(record.kernel) });
+    for (let index = 0; index < record.incoming.length; index++) if (record.incoming[index].align) { const kernel = record.incoming[index].align; stateEntries.push({ key: 'alignment:' + record.index + ':' + index, nodeId: '@alignment:' + record.incoming[index].edgeIndex, kind: 'fixed-fractional-delay', kernel, bytes: ownedStateTransferBytes(kernel) }); }
   }
   const stateByteLength = () => OWNED_STATE_BUNDLE_HEADER + stateEntries.reduce((sum, entry) => sum + entry.bytes, 0);
   const snapshotInto = bytes => {
+    if (validationOnly) fail('effect-validation-owner-only', 'Detached components do not establish a render-graph frame.');
     const components = stateEntries.map(entry => { const bytes = new Uint8Array(entry.bytes); entry.kernel.snapshotInto(bytes); return { key: entry.key, bytes }; });
     return writeOwnedStateBundle(bytes, { identity: stateIdentity, frontier: { frame, leftSample, rightSample, muted, values: Array.from(values), presence: Array.from(presence), controls: Array.from(controls), gain: Array.from(gain), taps: Array.from(tapSamples) }, components });
   };
   const restoreFrom = bytes => {
-    if (frame !== 0 || muted) fail('effect-restore-staged-owner-required', 'Restore into a fresh unpublished graph, then replace the prior owner.');
+    if (frame !== 0 || muted || validationOnly) fail('effect-restore-staged-owner-required', 'Restore into a fresh unpublished graph, then replace the prior owner.');
     const { frontier, components } = readOwnedStateBundle(bytes, stateIdentity, stateEntries.map(entry => entry.key));
     if (!Number.isSafeInteger(frontier.frame) || frontier.frame < 0 || typeof frontier.muted !== 'boolean' || !Number.isFinite(frontier.leftSample) || !Number.isFinite(frontier.rightSample)) fail('effect-restore-frontier', 'Invalid graph output frontier.');
     for (const [key, target] of [['values', values], ['presence', presence], ['controls', controls], ['gain', gain], ['taps', tapSamples]]) if (!Array.isArray(frontier[key]) || frontier[key].length !== target.length || frontier[key].some(value => !Number.isFinite(value) || key === 'presence' && value !== 0 && value !== 1)) fail('effect-restore-frontier', 'Invalid graph control, routing or interpolation state.');
@@ -170,6 +174,22 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     } catch (error) { panic(); throw error; }
   };
   return Object.freeze({ plan, hash, sample, update, stateByteLength, snapshotInto, restoreFrom, validateUpdate: (id, values) => update(id, values, false), tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
+    componentStateInventory: () => Object.freeze(stateEntries.map(entry => Object.freeze({ nodeId: entry.nodeId, kind: entry.kind, bytes: entry.bytes }))),
+    validateDetachedComponentStates(components) {
+      if (frame || validationOnly || !Array.isArray(components) || components.length !== stateEntries.length || new Set(components.map(row => row?.nodeId)).size !== components.length) fail('effect-detached-component-inventory', 'Use a fresh validation graph and every exact detached component.');
+      validationOnly = true; const indexed = new Map(components.map(row => [row.nodeId, row])), validated = [];
+      for (const entry of stateEntries) {
+        const row = indexed.get(entry.nodeId);
+        if (!row || row.kind !== entry.kind || !(row.bytes instanceof Uint8Array) || row.bytes.length !== entry.bytes || !Number.isSafeInteger(row.sourceFrame) || row.sourceFrame < 0) fail('effect-detached-component-inventory', 'A detached component differs from its pinned graph inventory.');
+        entry.kernel.restoreFrom(row.bytes);
+        if (entry.kernel.frame !== row.sourceFrame || entry.kernel.faults) fail('effect-detached-component-frontier', 'Detached processor frame or containment state differs.');
+        const host = row.hostState, keys = entry.kind === 'feedback-delay' ? ['lastRequestedDelay'] : entry.kind === 'spectral-freeze' ? ['reportedCapture', 'started'] : entry.kind === 'envelope-detector' ? ['sourceOverride'] : ['multiband-vocoder', 'ring-modulator'].includes(entry.kind) ? ['carrierOverride', 'donorOverride'] : [];
+        if (!host || Object.getPrototypeOf(host) !== Object.prototype || Object.keys(host).length !== keys.length || keys.some(key => !Object.hasOwn(host, key)) || Object.keys(host).some(key => !keys.includes(key))) fail('effect-detached-host-state', 'Processor host state differs from its exact wrapper inventory.');
+        if ('lastRequestedDelay' in host && (!Number.isFinite(host.lastRequestedDelay) || host.lastRequestedDelay < entry.kernel.minimumDelayFrames || host.lastRequestedDelay > entry.kernel.maxDelayFrames) || 'reportedCapture' in host && (host.reportedCapture !== entry.kernel.captureSerial || typeof host.started !== 'boolean') || ['sourceOverride', 'donorOverride', 'carrierOverride'].some(key => key in host && host[key] !== null && typeof host[key] !== 'boolean')) fail('effect-detached-host-state', 'Invalid processor input, analysis or requested-delay frontier.');
+        const bytes = new Uint8Array(entry.bytes); entry.kernel.snapshotInto(bytes); validated.push({ nodeId: entry.nodeId, kind: entry.kind, sourceFrame: row.sourceFrame, bytes });
+      }
+      return validated;
+    },
     stateBytes: plan.stateBytes + values.byteLength + controls.byteLength + gain.byteLength + tapSamples.byteLength,
     panic,
     enqueueBodyStrike(nodeId, command) {

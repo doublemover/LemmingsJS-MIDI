@@ -46,6 +46,7 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
           source.kind === 'render-scene-rehearsal' && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
             ['encode-native-render', 'render-causal-sine-take', 'render-shape-body-calibration'].includes(source.kind) && Array.isArray(result.value?.files) && result.value.files.length <= 25 ? result.value.files.map(file => file.bytes.buffer) :
               source.kind === 'build-shape-body-content' && Array.isArray(result.value?.contents) && result.value.contents.length <= 8 ? result.value.contents.map(file => file.bytes.buffer) : [];
+      if (source.kind === 'prepare-owned-effect-cut' && Array.isArray(result.value?.components) && result.value.components.length <= 512) for (const component of result.value.components) if (component.bytes instanceof Uint8Array) transfers.push(component.bytes.buffer);
       if (source.kind === 'prepare-stretch-core-image' && result.value?.moduleBytes instanceof Uint8Array && result.value?.heapBytes instanceof Uint8Array) transfers.push(result.value.moduleBytes.buffer, result.value.heapBytes.buffer);
       if (source.kind === 'encode-recorded-ump-clip' && result.value?.bytes instanceof Uint8Array && result.value?.manifestBytes instanceof Uint8Array) transfers.push(result.value.bytes.buffer, result.value.manifestBytes.buffer);
       if (source.kind === 'decode-midi-clip') for (const columns of [result.value?.configuration, result.value?.sequence]) {
