@@ -193,3 +193,36 @@ consumer waits. Failure aborts siblings, independently retires all registered
 resources and reconciles late acquisitions within a bounded cleanup deadline.
 Failures retain a retirement receipt and a late-reconciliation promise; an
 expired deadline records unknown ownership instead of a successful release.
+
+
+The built deployment emits `_headers` for static hosts and can be served with
+`npm run serve:browser -- --name=rook --port=8443`. The server serves only the
+selected build directory, supports immutable generation URLs and bounded media
+ranges, and defaults to COOP `same-origin` plus COEP `require-corp`. For TLS,
+provide both `--cert=...` and `--key=...`; a trusted HTTPS origin is needed away
+from localhost. A subdirectory mount uses its built bootstrap/module paths.
+
+The CSP allows same-origin executable modules, exact inline bootstrap hashes
+and WebAssembly compilation via `wasm-unsafe-eval`, with no JavaScript eval,
+inline event handlers, blob workers or remote executable imports. Dynamic
+application CSS still requires the explicitly declared `style-src` exception.
+The static header file includes every current entry bootstrap hash so a broader
+policy cannot accidentally block a more specific entry. Native MIDI is allowed
+only when serving with an explicit `--native-bridge=wss://127.0.0.1:8765/midi`
+(or the HTTP localhost WS equivalent); this adds only that loopback origin.
+
+Use `--isolation=none` to exercise the declared non-isolated deployment. Runtime
+capabilities report the actual secure context, crossOriginIsolated and shared
+memory APIs independently of requested headers. Owned AudioWorklets use bounded
+MessagePorts without requiring isolation; a shared-memory-only engine is
+unavailable without that capability and needs a separately named selection.
+WASM API presence does not prove CSP permission or module/ABI readiness. The
+actual pinned compilation and processor readiness remain required. Offline
+installation preserves server CSP/COOP/COEP/permissions headers as well as
+verified bytes, with a restrictive local policy when the server omits CSP.
+
+These implementation paths still await the consolidated browser deployment
+journies. Header generation and capability preflight do not establish actual
+isolation, offline update success or measured render deadlines. Policy references:
+[script sources](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src)
+and [isolation requirements](https://developer.mozilla.org/en-US/docs/Web/API/Window/crossOriginIsolated).

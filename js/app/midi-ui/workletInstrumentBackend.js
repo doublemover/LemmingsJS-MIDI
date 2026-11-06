@@ -1,3 +1,4 @@
+import { admitBrowserAudioTransport } from '../../runtime/BrowserDeploymentPolicy.js';
 import { createRendererPublicationOwner } from './RendererPublicationOwner.js';
 import { mapOwnedCommandFrames, mapOwnedHostFrames } from './OwnedSourceCoordinates.js';
 import { prepareOwnedSourceContinuation } from './OwnedSourceContinuation.js';
@@ -328,6 +329,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (source.requiresPCM && (!preview._audioResources || assets.some(pin => { const ref = source.requiresPCMSet ? next.samplePatch.sampleRefs.find(ref => ref.sha256 === pin?.ref?.contentHash) : next.sampleRef; return !pin?.isActive?.() || !ref || pin.ref.contentHash !== ref.sha256 || pin.ref.bytes !== ref.bytes; }))) return reject('required-pcm-source-unavailable');
     const candidateContext = preview.getAudioContext();
     if (!candidateContext?.audioWorklet?.addModule) return reject('audio-worklet-unavailable');
+    if (!createWorkletNode) { const admission = admitBrowserAudioTransport({ context: candidateContext, sharedMemoryRequired: runtime.sharedMemory === true }); if (admission.status !== 'available') return reject(admission.reason); }
     if (candidateContext.state === 'closed') return reject('audio-context-closed');
     if (runtime.supportedSampleRates && !runtime.supportedSampleRates.includes(candidateContext.sampleRate)) return reject('source-sample-rate-unavailable');
     if (context && context !== candidateContext) {

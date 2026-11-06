@@ -1,3 +1,4 @@
+import { createBrowserDeploymentHeaders } from './BrowserDeploymentPolicy.js';
 import { readDurableBrowserGenerationPins, withBrowserGenerationRetentionLock } from './BrowserGenerationPins.js';
 import { hashBrowserBuildBytes, validBrowserBuildPath, verifyBrowserBuildManifest, BROWSER_ENTRY_ROUTES } from './BrowserBuildManifest.js';
 
@@ -162,12 +163,17 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
           try {
             while (cursor < verified.files.length) {
               controller.signal.throwIfAborted(); const file = verified.files[cursor++], url = new URL(`${buildId}/${file.path}`, scope);
-              const bytes = await request(url, file.bytes, controller.signal);
+              const response = await withSignal(() => fetchFile(url, { cache: 'no-store', credentials: 'same-origin', redirect: 'error', signal: controller.signal }), controller.signal);
+              const bytes = await readBrowserBuildResponse(response, file.bytes, controller.signal);
               if (bytes.byteLength !== file.bytes || await hashBrowserBuildBytes(bytes) !== file.sha256) throw failure('generation-byte-mismatch', `Browser generation bytes changed: ${file.path}`);
               const type = file.path.endsWith('.js') || file.path.endsWith('.mjs') ? 'application/javascript' : file.path.endsWith('.html') ? 'text/html' :
                 file.path.endsWith('.css') ? 'text/css' : file.path.endsWith('.json') ? 'application/json' : file.path.endsWith('.svg') ? 'image/svg+xml' :
                   file.path.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream';
-              await withSignal(() => cache.put(url.href, new globalThis.Response(bytes, { headers: { 'content-type': type, 'content-length': String(bytes.byteLength) } })), controller.signal);
+              const deployment = { ...await createBrowserDeploymentHeaders({ html: file.path.endsWith('.html') ? new TextDecoder('utf-8', { fatal: true }).decode(bytes) : null }) };
+              for (const header of ['Content-Security-Policy', 'Cross-Origin-Opener-Policy', 'Cross-Origin-Embedder-Policy', 'Permissions-Policy']) {
+                const value = response.headers?.get(header); if (value && value.length <= 16384) deployment[header] = value;
+              }
+              await withSignal(() => cache.put(url.href, new globalThis.Response(bytes, { headers: { ...deployment, 'content-type': type, 'content-length': String(bytes.byteLength) } })), controller.signal);
               state = { ...state, completedFiles: state.completedFiles + 1, completedBytes: state.completedBytes + bytes.byteLength };
             }
           } catch (error) { controller.abort(error); throw error; }

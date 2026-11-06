@@ -1,3 +1,4 @@
+import { readBrowserRuntimeCapabilities } from '../../runtime/BrowserDeploymentPolicy.js';
 import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions, audioRuntimeSinkMatches } from './AudioRuntimeConfig.js';
 import { createAudioRuntimeObservation } from './AudioRuntimeObservation.js';
 import { createAudioRuntimeTransition } from './AudioRuntimeTransition.js';
@@ -467,7 +468,7 @@ class BrowserNotePreview {
       message: this._message,
       enabled: this._ready(), performanceLease: this._performanceCoordinator?.state() || null,
       contextEpoch: this._contextEpoch, contextState: this._context?.state || 'not-created',
-      audioRuntime: this.getAudioRuntimeObservation(),
+      audioRuntime: this.getAudioRuntimeObservation(), deploymentCapabilities: readBrowserRuntimeCapabilities(globalThis, this._context),
       audioRuntimeTransition: this._runtimeTransition?.state() || null,
       resourceAccounting: this._audioResources.diagnostics(),
       retirement: retirementState(this._retirement.getReceipt()), retiredVoices: this._retiredVoices.size, unclosedContext: !!this._retiringContext,

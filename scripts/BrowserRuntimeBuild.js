@@ -1,4 +1,5 @@
 import { OWNED_STRETCH_CORE } from '../js/midi/content/OwnedStretchCoreIdentity.js';
+import { createBrowserDeploymentHeaders } from '../js/runtime/BrowserDeploymentPolicy.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -108,6 +109,12 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
   }
   const published = { 'service-worker.js': `import { installBrowserGenerationWorker } from './${buildId}/js/runtime/BrowserGenerationService.js';\ninstallBrowserGenerationWorker({buildId:${JSON.stringify(buildId)}});\n` };
   for (const route of manifest.routes) published[route] = bootstrapPage(buildId, route);
+  const deploymentDocuments = Object.values(published).filter(value => value.startsWith('<!doctype html>'));
+  for (const route of manifest.routes) {
+    deploymentDocuments.push(await fsImpl.readFile(path.join(root, route), 'utf8'));
+  }
+  const deploymentHeaders = await createBrowserDeploymentHeaders({ html: deploymentDocuments.join('\n'), isolated: true });
+  published['_headers'] = '/*\n' + Object.entries(deploymentHeaders).map(([name, value]) => '  ' + name + ': ' + value).join('\n') + '\n';
   for (const [file, source] of Object.entries(published)) {
     const temporary = path.join(realOutput, `.publish-${buildId}-${randomUUID()}-${file}`);
     try { await fsImpl.writeFile(temporary, source); await fsImpl.rename(temporary, path.join(realOutput, file)); }
