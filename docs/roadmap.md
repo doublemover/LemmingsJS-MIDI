@@ -10820,3 +10820,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add a fixed-work effect transfer owner with offer/buffer admission, exact future audio-block capture, detached-clock copying, transport checksum, worker-prevalidated staging and explicit common-frame activation. Keep source audio and processor-local logical frames separate across a new context.
 - Remain silent while detached/staged; a missed cut/activation or interrupted transfer returns owned buffers and fails without resuming partial state. Large standard effect images use32KiB generators; small custom composite images have an explicit512KiB synchronous ceiling.
 - Preserve per-component logical clock offsets in prepared worker images. Processor wrapper wiring, aggregate graph/source coordination and host publication follow next. Formatting only; no functional tests.
+
+
+### 2026-11-06 — Rook continuation516: owned effect processor transfer wiring
+
+- Attach the common capture/stage/activate owner to every owned effect processor wrapper, with capability/byte/alignment reporting and opt-in muted preparation. Preserve required delay, analysis and source-presence wrapper state; do not serialize native parameter planes or AudioNode references.
+- Fence ordinary controls during transfer while retaining explicit interruption/retirement. Rebase native membrane command/sample/receipt frames through the processor’s logical clock, preserving queued finite force support after context migration.
+- Preserve spectral logical-frame offsets and enforce hop-grid-compatible activation. Gate native graph preparation on actual restore-capable processor readiness. Aggregate source/effect capture, finite-strike host continuation, spectral receipt mapping and host publication remain implementation work, not qualified live restoration.
+- Formatting and critical/boundary typechecks only; functional tests remain deferred.

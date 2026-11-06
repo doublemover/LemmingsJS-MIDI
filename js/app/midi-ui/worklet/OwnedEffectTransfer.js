@@ -3,13 +3,15 @@ const PROTOCOL = 1, CHUNK_BYTES = 32768, MAX_BYTES = 48 * 1048576, SMALL_SYNC_BY
 const exclusive = bytes => bytes instanceof Uint8Array && bytes.buffer instanceof ArrayBuffer && !bytes.byteOffset && bytes.length === bytes.buffer.byteLength;
 const frame = value => Number.isSafeInteger(value) && value >= 0;
 export class OwnedEffectTransfer {
-  constructor({ kernel, port, restoring = false, getHostState = () => ({}), restoreHostState = () => {} }) {
+  constructor({ kernel, port, restoring = false, alignmentFrames = 1, getHostState = () => ({}), restoreHostState = () => {} }) {
     this.kernel = kernel; this.port = port; this.getHostState = getHostState; this.restoreHostState = restoreHostState;
+    if (!Number.isInteger(alignmentFrames) || alignmentFrames < 1 || alignmentFrames > 2048) throw new TypeError('Invalid effect activation grid.');
+    this.alignmentFrames = alignmentFrames;
     this.bytes = ownedStateTransferBytes(kernel); this.chunked = !!kernel.stateTransfer?.writeChunks && !!kernel.stateTransfer?.restorePreparedChunks;
     this.supported = this.bytes <= MAX_BYTES && (this.chunked || this.bytes <= SMALL_SYNC_BYTES);
     this.operation = restoring ? { phase: 'empty', requestId: 0 } : null; this.frameOffset = 0; this.blockFrame = 0; this.blockFrames = 0; this.retired = false;
   }
-  capabilities() { return { effectStateProtocol: this.supported ? PROTOCOL : null, effectStateBytes: this.bytes, effectStateChunkBytes: CHUNK_BYTES, effectStateRestore: this.operation?.phase === 'empty' }; }
+  capabilities() { return { effectStateProtocol: this.supported ? PROTOCOL : null, effectStateBytes: this.bytes, effectStateChunkBytes: CHUNK_BYTES, effectStateAlignmentFrames: this.alignmentFrames, effectStateRestore: this.operation?.phase === 'empty' }; }
   fenced() { return !!this.operation && this.operation.phase !== 'offered'; }
   logicalFrame(audioFrame) { return audioFrame + this.frameOffset; }
   audioFrame(logicalFrame) { return logicalFrame - this.frameOffset; }
@@ -47,7 +49,7 @@ export class OwnedEffectTransfer {
       operation.bytes = data.bytes; operation.targetAudioFrame = data.targetAudioFrame; operation.phase = 'waiting'; return true;
     }
     if (data.type === 'effect-state-activate') {
-      if (operation.phase !== 'prepared' || !frame(data.startAfterFrame) || data.startAfterFrame < now || data.startAfterFrame > now + globalThis.sampleRate * 2) { this.fail(operation, 'invalid-effect-activation-frontier'); return true; }
+      if (operation.phase !== 'prepared' || !frame(data.startAfterFrame) || data.startAfterFrame < now || data.startAfterFrame > now + globalThis.sampleRate * 2 || (data.startAfterFrame - operation.logicalAudioFrame) % this.alignmentFrames) { this.fail(operation, 'invalid-effect-activation-frontier'); return true; }
       operation.startAfterFrame = data.startAfterFrame; operation.phase = 'armed'; return true;
     }
     if (data.type === 'effect-state-cancel') {
@@ -94,4 +96,16 @@ export class OwnedEffectTransfer {
     } catch (error) { this.fail(operation, String(error.message || 'effect-state-transfer-failed').slice(0, 128)); }
     return true;
   }
+}
+
+export function createOwnedEffectTransfer(processor, options, hostFields = []) {
+  return new OwnedEffectTransfer({ kernel: processor.kernel, port: processor.port, restoring: options?.processorOptions?.effectStateRestore === true,
+    alignmentFrames: hostFields.includes('started') ? processor.kernel.profile.hopFrames : 1,
+    getHostState: () => Object.fromEntries(hostFields.map(key => [key, processor[key]])),
+    restoreHostState: state => {
+      if (!state || Object.getPrototypeOf(state) !== Object.prototype || Object.keys(state).length !== hostFields.length || hostFields.some(key => !Object.hasOwn(state, key))) throw new Error('effect-host-state-layout-differs');
+      for (const key of hostFields) processor[key] = state[key];
+      processor.reportedFaults = processor.kernel.faults; processor.captureFlights?.fill(0);
+    }
+  });
 }

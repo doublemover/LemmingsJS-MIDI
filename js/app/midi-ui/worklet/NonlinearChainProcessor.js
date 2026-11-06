@@ -1,3 +1,4 @@
+import { createOwnedEffectTransfer } from './OwnedEffectTransfer.js';
 import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';
 import { NonlinearChainKernel } from './NonlinearChainKernel.js';
 import { NONLINEAR_KERNEL_REVISION } from '../../../midi/content/NonlinearChainProfile.js';
@@ -10,19 +11,23 @@ export class NonlinearChainProcessor extends ProcessorBase {
     this.disposed = false; this.reportedFaults = 0; this.lastInspect = -Infinity;
     this.faultMessage = { type: 'effect-fault', revision: NONLINEAR_KERNEL_REVISION, frame: 0, faults: 0 };
     this.port.onmessage = event => {
+      if (this.effectTransfer?.consume(event.data)) return;
+      if (this.effectTransfer?.fenced() && !['dispose', 'panic', 'spectral-capture-consumed'].includes(event.data?.type)) return;
       const data = event.data;
       if (data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
       else if (this.disposed) return;
       else if (data?.type === 'panic') this.kernel.panic();
       else if (data?.type === 'inspect' && this.kernel.frame - this.lastInspect >= globalThis.sampleRate / 4) { this.lastInspect = this.kernel.frame; this.port.postMessage({ type: 'effect-health', ...this.kernel.diagnostics() }); }
     };
+    this.effectTransfer = createOwnedEffectTransfer(this, options);
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null,
       sampleRate: globalThis.sampleRate, revision: NONLINEAR_KERNEL_REVISION, stateBytes: this.kernel.state.byteLength, configurationKey: this.kernel.identity, port: this.port });
-    this.port.postMessage({ type: 'ready', revision: NONLINEAR_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.state.byteLength, configurationKey: this.kernel.identity });
+    this.port.postMessage({ type: 'ready', ...this.effectTransfer.capabilities(), revision: NONLINEAR_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.state.byteLength, configurationKey: this.kernel.identity });
   }
   process(inputs, outputs, parameters) {
     const output = outputs[0]; if (!output?.[0]) return true;
     if (this.disposed) { for (const plane of output) plane.fill(0); return false; }
+    if (this.effectTransfer.beforeProcess(outputs)) return true;
     const left = inputs[0]?.[0], right = inputs[0]?.[1] || left, drive = parameters.driveDb, trim = parameters.outputTrim01;
     for (let i = 0; i < output[0].length; i++) {
       this.kernel.sample(left?.[i] ?? 0, right?.[i] ?? 0, drive.length === 1 ? drive[0] : drive[i], trim.length === 1 ? trim[0] : trim[i]);

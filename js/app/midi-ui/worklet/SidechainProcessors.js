@@ -1,3 +1,4 @@
+import { createOwnedEffectTransfer } from './OwnedEffectTransfer.js';
 import { RingModulatorKernel } from './RingModulatorKernel.js';
 import { RING_MODULATOR_REVISION } from '../../../midi/content/RingModulatorProfile.js';
 import { VocoderBankKernel } from './VocoderBankKernel.js';
@@ -16,9 +17,12 @@ class SidechainProcessorBase extends ProcessorBase {
     this.disposed = false; this.sourceOverride = options?.processorOptions?.sourceAvailable ?? null; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0;
     this.lastInspect = -Infinity; this.reportedFaults = 0; this.faultMessage = { type: 'effect-fault', revision: this.revision, frame: 0, faults: 0 };
     const stateBytes = this.kernel.state.byteLength + (this.kernel.lookup?.byteLength || 0);
+    this.effectTransfer = createOwnedEffectTransfer(this, options, mapping ? [] : ['sourceOverride']);
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null,
       sampleRate: globalThis.sampleRate, revision: this.revision, stateBytes, configurationKey: this.kernel.identity, port: this.port });
     this.port.onmessage = event => {
+      if (this.effectTransfer?.consume(event.data)) return;
+      if (this.effectTransfer?.fenced() && !['dispose', 'panic', 'spectral-capture-consumed'].includes(event.data?.type)) return;
       const data = event.data;
       if (data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
       else if (this.disposed) return;
@@ -29,11 +33,12 @@ class SidechainProcessorBase extends ProcessorBase {
           output: this.kernel.output, sourceAvailable: this.mapping ? null : this.kernel.sourceAvailable, faults: this.kernel.faults, muted: this.kernel.muted });
       }
     };
-    this.port.postMessage({ type: 'ready', revision: this.revision, sampleRate: globalThis.sampleRate, stateBytes, configurationKey: this.kernel.identity });
+    this.port.postMessage({ type: 'ready', ...this.effectTransfer.capabilities(), revision: this.revision, sampleRate: globalThis.sampleRate, stateBytes, configurationKey: this.kernel.identity });
   }
   process(inputs, outputs) {
     const output = outputs[0]?.[0]; if (!output) return true;
     if (this.disposed) { output.fill(0); return false; }
+    if (this.effectTransfer.beforeProcess(outputs)) return true;
     const left = inputs[0]?.[0], right = inputs[0]?.[1] || left, available = this.sourceOverride ?? Boolean(left);
     for (let i = 0; i < output.length; i++) {
       if (this.mapping) this.kernel.sample(left?.[i] ?? 0); else this.kernel.sample(left?.[i] ?? 0, right?.[i] ?? 0, available);
@@ -50,9 +55,12 @@ export class VocoderBankProcessor extends ProcessorBase {
     super(); this.kernel = this.createKernel(options);
     this.revision = this.runtimeRevision(); this.disposed = false; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0; this.donorOverride = options?.processorOptions?.donorAvailable ?? null; this.carrierOverride = options?.processorOptions?.carrierAvailable ?? null;
     this.lastInspect = -Infinity; this.reportedFaults = 0; this.faultMessage = { type: 'effect-fault', revision: this.revision, frame: 0, faults: 0 };
+    this.effectTransfer = createOwnedEffectTransfer(this, options, ['donorOverride', 'carrierOverride']);
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null, sampleRate: globalThis.sampleRate,
       revision: this.revision, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity, port: this.port });
     this.port.onmessage = event => {
+      if (this.effectTransfer?.consume(event.data)) return;
+      if (this.effectTransfer?.fenced() && !['dispose', 'panic', 'spectral-capture-consumed'].includes(event.data?.type)) return;
       const data = event.data;
       if (data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
       else if (this.disposed) return;
@@ -66,7 +74,7 @@ export class VocoderBankProcessor extends ProcessorBase {
           envelopePeak: kernel.envelopePeak, bandEnvelopes: Array.from({ length: kernel.parameters.bands || 0 }, (_, i) => kernel.state[i * 9 + 8]) });
       }
     };
-    this.port.postMessage({ type: 'ready', revision: this.revision, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes,
+    this.port.postMessage({ type: 'ready', ...this.effectTransfer.capabilities(), revision: this.revision, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes,
       configurationKey: this.kernel.identity, ...(this.realizationKey() ? { realizationKey: this.realizationKey() } : {}) });
   }
   createKernel(options) { return new VocoderBankKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters }); }
@@ -75,6 +83,7 @@ export class VocoderBankProcessor extends ProcessorBase {
   process(inputs, outputs) {
     const left = outputs[0]?.[0], right = outputs[0]?.[1]; if (!left || !right) return true;
     if (this.disposed) { left.fill(0); right.fill(0); return false; }
+    if (this.effectTransfer.beforeProcess(outputs)) return true;
     const dl = inputs[0]?.[0], dr = inputs[0]?.[1] || dl, cl = inputs[1]?.[0], cr = inputs[1]?.[1] || cl;
     const donorAvailable = this.donorOverride ?? Boolean(dl), carrierAvailable = this.carrierOverride ?? Boolean(cl);
     for (let i = 0; i < left.length; i++) { this.kernel.sample(dl?.[i] ?? 0, dr?.[i] ?? 0, cl?.[i] ?? 0, cr?.[i] ?? 0, donorAvailable, carrierAvailable); left[i] = this.kernel.leftSample; right[i] = this.kernel.rightSample; }

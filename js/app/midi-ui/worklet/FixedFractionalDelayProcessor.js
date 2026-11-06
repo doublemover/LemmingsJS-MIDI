@@ -1,3 +1,4 @@
+import { createOwnedEffectTransfer } from './OwnedEffectTransfer.js';
 import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';
 import { createOwnedEffectState } from './OwnedEffectState.js';
 import { ALIGNMENT_KERNEL_REVISION } from '../../../midi/content/EffectRuntimeRevisions.js';
@@ -37,15 +38,19 @@ export class FixedFractionalDelayProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = new FixedFractionalDelayKernel({ ...options?.processorOptions, sampleRate: globalThis.sampleRate }); this.disposed = false; this.reportedFaults = 0;
     this.faultMessage = { type: 'effect-fault', revision: ALIGNMENT_KERNEL_REVISION, frame: 0, faults: 0 };
-    this.port.onmessage = event => { if (event.data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
-    else if (!this.disposed && event.data?.type === 'panic') this.kernel.panic(); };
+    this.port.onmessage = event => {
+      if (this.effectTransfer?.consume(event.data)) return;
+      if (this.effectTransfer?.fenced() && !['dispose', 'panic', 'spectral-capture-consumed'].includes(event.data?.type)) return; if (event.data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
+      else if (!this.disposed && event.data?.type === 'panic') this.kernel.panic(); };
+    this.effectTransfer = createOwnedEffectTransfer(this, options);
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null,
       sampleRate: globalThis.sampleRate, revision: ALIGNMENT_KERNEL_REVISION, stateBytes: this.kernel.buffer.byteLength, configurationKey: this.kernel.stateIdentity, port: this.port });
-    this.port.postMessage({ type: 'ready', revision: ALIGNMENT_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.buffer.byteLength, configurationKey: this.kernel.stateIdentity });
+    this.port.postMessage({ type: 'ready', ...this.effectTransfer.capabilities(), revision: ALIGNMENT_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.buffer.byteLength, configurationKey: this.kernel.stateIdentity });
   }
   process(inputs, outputs) {
     const output = outputs[0]; if (!output?.[0]) return true;
     if (this.disposed) { for (const plane of output) plane.fill(0); return false; }
+    if (this.effectTransfer.beforeProcess(outputs)) return true;
     const left = inputs[0]?.[0], right = inputs[0]?.[1] || left;
     for (let i = 0; i < output[0].length; i++) { this.kernel.sample(left?.[i] ?? 0, right?.[i] ?? 0); output[0][i] = this.kernel.leftSample; if (output[1]) output[1][i] = this.kernel.rightSample; }
     if (this.kernel.faults !== this.reportedFaults) { this.reportedFaults = this.kernel.faults; this.faultMessage.frame = globalThis.currentFrame + output[0].length; this.faultMessage.faults = this.kernel.faults; this.port.postMessage(this.faultMessage); }

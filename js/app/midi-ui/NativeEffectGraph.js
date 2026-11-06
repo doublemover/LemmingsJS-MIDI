@@ -31,11 +31,11 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 // A prepared graph has no connection to a live destination. The owner decides
 // when inputs/outputs become audible and owns all transition/tail overlap.
 export async function prepareNativeEffectGraph(definition, { context, resources, owner, generation = 0, signal, isCurrent = () => true,
-  getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, onBodyReceipt = () => {}, onEffectReceipt = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], offlineSourceBindings = null, retireOfflineContext = null } = {}) {
+  getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, onBodyReceipt = () => {}, onEffectReceipt = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], offlineSourceBindings = null, retireOfflineContext = null, stagedRestore = false } = {}) {
   let fault = null;
   const guard = () => { signal?.throwIfAborted(); if (fault) throw fault; if (!isCurrent() || context?.state === 'closed') throw failure('stale-effect-graph', 'The effect graph request no longer belongs to this context.'); };
   guard();
-  if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' || typeof onBodyReceipt !== 'function' || typeof onEffectReceipt !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' ||
+  if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' || typeof onBodyReceipt !== 'function' || typeof onEffectReceipt !== 'function' || typeof stagedRestore !== 'boolean' || stagedRestore && offlineEndFrame !== null || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' ||
       !Number.isSafeInteger(initializationTimeoutMs) || initializationTimeoutMs < 1 || initializationTimeoutMs > 30000) throw new TypeError('Effect graphs need an owned native context and resource budget.');
   const offline = offlineEndFrame !== null;
   if (offline && (!Number.isSafeInteger(offlineEndFrame) || offlineEndFrame < 1 || offlineEndFrame > context.sampleRate * 150 || context.state !== 'suspended' ||
@@ -111,7 +111,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   const prepareProcessor = async (entry, { processorName, parameterData = {}, processorOptions = {}, revision, configurationKey = null, inputChannels = 2, outputChannels = 2, numberOfInputs = 1, realizationKey = null }) => {
     guard();
     const value = node(createWorkletNode(context, processorName, { numberOfInputs, numberOfOutputs: 1, outputChannelCount: [outputChannels], channelCount: inputChannels, channelCountMode: 'explicit', parameterData,
-      processorOptions: { ...processorOptions, ...sourceSeed(entry), ...(offline ? { offlineEndFrame } : {}) } }));
+      processorOptions: { ...processorOptions, ...sourceSeed(entry), effectStateRestore: stagedRestore, ...(offline ? { offlineEndFrame } : {}) } }));
     let resolveReady, rejectReady, resolveDisposed, rejectDisposed, resolveComplete, rejectComplete;
     let readyTimer = null, completeTimer = null, retireTimer = null, readySettled = false, completeSettled = false;
     const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; }); ready.catch(() => {});
@@ -128,7 +128,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (!completeSettled) { completeSettled = true; rejectComplete(failure('effect-retired-before-complete', 'Effect completion retired before publication.')); }
     };
     const processor = { node: value, nodeId: entry.id, kind: entry.kind, profile: entry.nonlinear || null, vocoderProfile: entry.vocoder || null, revision, configurationKey, stateBytes: entry.stateBytes,
-      ready: false, completion: null, spectralSerial: 0, offlineActive: entry.offlineActive ?? audible.has(entry.id), cleanup, health: null,
+      ready: false, stateTransfer: null, completion: null, spectralSerial: 0, offlineActive: entry.offlineActive ?? audible.has(entry.id), cleanup, health: null,
       awaitReady: () => { if (!readySettled && readyTimer === null) readyTimer = setTimeout(() => failReady(failure('effect-initialization-timeout', 'Effect initialization did not acknowledge its source profile.')), initializationTimeoutMs); return ready; },
       awaitComplete: () => { if (!completeSettled && completeTimer === null) completeTimer = setTimeout(() => failComplete(failure('effect-completion-timeout', 'Offline effect omitted its terminal frame and fault receipt.')), initializationTimeoutMs); return terminal; },
       waitDisposed: () => Promise.race([retired, new Promise((_, reject) => { retireTimer = setTimeout(() => reject(failure('effect-retirement-timeout', 'The effect processor did not acknowledge retirement.')), initializationTimeoutMs); })])
@@ -138,6 +138,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     context.addEventListener?.('statechange', closed); signal?.addEventListener('abort', abort, { once: true });
     value.port.onmessage = event => {
       const data = event.data;
+      if (processor.effectStateOwner?.consume(data)) return;
       if (processor.strikes?.consume(data)) return;
       if (data?.type === 'spectral-capture') {
         if (!entry.spectral || data.sourceEpoch !== generation || !processor.ready) return;
@@ -154,7 +155,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (data?.type === 'disposed') { resolveDisposed(); return; }
       if (data?.type === 'ready') {
         if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || configurationKey != null && data.configurationKey !== configurationKey || realizationKey !== null && data.realizationKey !== realizationKey) failReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));
-        else if (!readySettled) { readySettled = true; processor.ready = true; clearTimeout(readyTimer); readyTimer = null; resolveReady(); }
+        else if (!readySettled) { if (stagedRestore && (data.effectStateProtocol !== 1 || data.effectStateRestore !== true)) { failReady(failure('effect-state-runtime-unavailable', 'The prepared processor lacks the required muted state restore protocol.')); return; } processor.stateTransfer = Object.freeze({ protocol: data.effectStateProtocol ?? null, bytes: data.effectStateBytes ?? null, chunkBytes: data.effectStateChunkBytes ?? null, alignmentFrames: data.effectStateAlignmentFrames ?? 1, restoring: data.effectStateRestore === true }); readySettled = true; processor.ready = true; clearTimeout(readyTimer); readyTimer = null; resolveReady(); }
       } else if (data?.type === 'offline-complete' && offline) {
         try { processor.strikes?.assertComplete(); processor.completion = validateOfflineEffectCompletion(data, { revision, sampleRate: context.sampleRate, stateBytes: entry.stateBytes, configurationKey, endFrame: offlineEndFrame });
           if (!completeSettled) { completeSettled = true; clearTimeout(completeTimer); completeTimer = null; resolveComplete(); }

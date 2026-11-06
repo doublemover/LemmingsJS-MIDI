@@ -1,3 +1,4 @@
+import { createOwnedEffectTransfer } from './OwnedEffectTransfer.js';
 import './PairedModalBodyProcessor.js';
 import './RectangularMembraneProcessor.js';
 import './SympatheticNetworkProcessor.js';
@@ -105,6 +106,8 @@ export class BoundedDelayProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = new BoundedDelayKernel({ ...options?.processorOptions, sampleRate: globalThis.sampleRate });
     this.reportedFaults = 0; this.faultMessage = { type: 'delay-fault', revision: DELAY_KERNEL_REVISION, frame: 0, faults: 0 }; this.lastRequestedDelay = this.kernel.targetDelay; this.disposed = false; this.lastInspect = -Infinity; this.port.onmessage = event => {
+      if (this.effectTransfer?.consume(event.data)) return;
+      if (this.effectTransfer?.fenced() && !['dispose', 'panic', 'spectral-capture-consumed'].includes(event.data?.type)) return;
       const data = event.data;
       if (data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
       else if (this.disposed) return;
@@ -117,13 +120,15 @@ export class BoundedDelayProcessor extends ProcessorBase {
         this.lastInspect = this.kernel.frame; this.port.postMessage({ type: 'delay-health', ...this.kernel.diagnostics() });
       }
     };
+    this.effectTransfer = createOwnedEffectTransfer(this, options, ['lastRequestedDelay']);
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null,
       sampleRate: globalThis.sampleRate, revision: DELAY_KERNEL_REVISION, stateBytes: this.kernel.buffer.byteLength + this.kernel.filter.byteLength, configurationKey: null, port: this.port });
-    this.port.postMessage({ type: 'ready', revision: DELAY_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.buffer.byteLength + this.kernel.filter.byteLength });
+    this.port.postMessage({ type: 'ready', ...this.effectTransfer.capabilities(), revision: DELAY_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.buffer.byteLength + this.kernel.filter.byteLength });
   }
   process(inputs, outputs, parameters) {
     const output = outputs[0]; if (!output?.[0]) return true;
     if (this.disposed) { for (const channel of output) channel.fill(0); return false; }
+    if (this.effectTransfer.beforeProcess(outputs)) return true;
     const input = inputs[0], left = input?.[0], right = input?.[1] || left, kernel = this.kernel;
     if (parameters.feedbackLowpassHz && !kernel.setFeedbackLowpassHz(parameters.feedbackLowpassHz[0])) { kernel.faults++; kernel.panic(); }
     for (let i = 0; i < output[0].length; i++) {

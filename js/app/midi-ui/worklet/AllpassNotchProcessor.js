@@ -1,3 +1,4 @@
+import { createOwnedEffectTransfer } from './OwnedEffectTransfer.js';
 import { prepareAllpassNotchProfile, allpassLatticeCoefficient, allpassNotchIdentity, ALLPASS_NOTCH_REVISION } from '../../../midi/content/AllpassNotchProfile.js';
 import { createOwnedEffectState } from './OwnedEffectState.js';
 import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';
@@ -61,15 +62,19 @@ export class AllpassNotchProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = new AllpassNotchKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters }); this.disposed = false; this.reportedFaults = 0;
     this.faultMessage = { type: 'effect-fault', revision: ALLPASS_NOTCH_REVISION, frame: 0, faults: 0 };
-    this.port.onmessage = event => { if (event.data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
-    else if (!this.disposed && event.data?.type === 'panic') this.kernel.panic(); };
+    this.port.onmessage = event => {
+      if (this.effectTransfer?.consume(event.data)) return;
+      if (this.effectTransfer?.fenced() && !['dispose', 'panic', 'spectral-capture-consumed'].includes(event.data?.type)) return; if (event.data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
+      else if (!this.disposed && event.data?.type === 'panic') this.kernel.panic(); };
+    this.effectTransfer = createOwnedEffectTransfer(this, options);
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null, sampleRate: globalThis.sampleRate,
       revision: ALLPASS_NOTCH_REVISION, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity, port: this.port });
-    this.port.postMessage({ type: 'ready', revision: ALLPASS_NOTCH_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity });
+    this.port.postMessage({ type: 'ready', ...this.effectTransfer.capabilities(), revision: ALLPASS_NOTCH_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity });
   }
   process(inputs, outputs, parameters) {
     const left = outputs[0]?.[0], right = outputs[0]?.[1]; if (!left || !right) return true;
     if (this.disposed) { left.fill(0); right.fill(0); return false; }
+    if (this.effectTransfer.beforeProcess(outputs)) return true;
     const inputLeft = inputs[0]?.[0], inputRight = inputs[0]?.[1] || inputLeft;
     for (let frame = 0; frame < left.length; frame++) {
       this.kernel.sample(inputLeft?.[frame] ?? 0, inputRight?.[frame] ?? 0,

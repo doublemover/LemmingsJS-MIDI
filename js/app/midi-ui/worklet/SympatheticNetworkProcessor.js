@@ -1,3 +1,4 @@
+import { createOwnedEffectTransfer } from './OwnedEffectTransfer.js';
 import { SympatheticNetworkKernel } from './SympatheticNetworkKernel.js';
 import { SYMPATHETIC_NETWORK_REVISION, NETWORK_LOSS_CONTROLS, NETWORK_PICKUP_CONTROLS } from '../../../midi/content/SympatheticNetworkProfile.js';
 import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';
@@ -7,16 +8,20 @@ export class SympatheticNetworkProcessor extends ProcessorBase {
   constructor(options) {
     super(); const p = options?.processorOptions || {}; this.kernel = new SympatheticNetworkKernel({ sampleRate: globalThis.sampleRate, parameters: p.parameters });
     this.disposed = false; this.reportedFaults = 0; this.inspectedAt = -Infinity; this.faultMessage = { type: 'effect-fault', revision: SYMPATHETIC_NETWORK_REVISION, frame: 0, faults: 0 };
-    this.port.onmessage = event => { if (event.data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
-    else if (!this.disposed && event.data?.type === 'panic') this.kernel.panic();
-    else if (!this.disposed && event.data?.type === 'inspect' && this.kernel.frame - this.inspectedAt >= globalThis.sampleRate / 4) { this.inspectedAt = this.kernel.frame; this.port.postMessage({ type: 'effect-health', ...this.kernel.diagnostics() }); } };
+    this.port.onmessage = event => {
+      if (this.effectTransfer?.consume(event.data)) return;
+      if (this.effectTransfer?.fenced() && !['dispose', 'panic', 'spectral-capture-consumed'].includes(event.data?.type)) return; if (event.data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
+      else if (!this.disposed && event.data?.type === 'panic') this.kernel.panic();
+      else if (!this.disposed && event.data?.type === 'inspect' && this.kernel.frame - this.inspectedAt >= globalThis.sampleRate / 4) { this.inspectedAt = this.kernel.frame; this.port.postMessage({ type: 'effect-health', ...this.kernel.diagnostics() }); } };
+    this.effectTransfer = createOwnedEffectTransfer(this, options);
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: p.offlineEndFrame ?? null, sampleRate: globalThis.sampleRate, revision: SYMPATHETIC_NETWORK_REVISION,
       stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity, port: this.port });
-    this.port.postMessage({ type: 'ready', revision: SYMPATHETIC_NETWORK_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity });
+    this.port.postMessage({ type: 'ready', ...this.effectTransfer.capabilities(), revision: SYMPATHETIC_NETWORK_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity });
   }
   process(inputs, outputs, parameters) {
     const left = outputs[0]?.[0], right = outputs[0]?.[1]; if (!left || !right) return true;
     if (this.disposed) { left.fill(0); right.fill(0); return false; }
+    if (this.effectTransfer.beforeProcess(outputs)) return true;
     const a = inputs[0]?.[0], b = inputs[0]?.[1] || a;
     for (let index = 0; index < left.length; index++) {
       if (!this.kernel.muted) for (let mask = 0; mask < this.kernel.profile.lossMasks.length; mask++) { const values = parameters[NETWORK_LOSS_CONTROLS[mask]], amount = values[values.length === 1 ? 0 : index]; if (!Number.isFinite(amount) || amount < 0 || amount > 1) { this.kernel.faults++; this.kernel.panic(); break; } this.kernel.setLossMask(mask, amount); }
