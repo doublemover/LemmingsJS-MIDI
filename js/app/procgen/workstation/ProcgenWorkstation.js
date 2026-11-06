@@ -148,7 +148,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const operationalExecution = getActiveExecutionIdentity('browser-native-audio');
   let operationalLessonAvailable = operationalExecution.activeExecution === 'bound' && ['worklet-sine', 'worklet-pluck'].every(id => operationalExecution.instrumentArtifacts?.some(artifact => artifact.engineId === id));
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
-  const nativeMidiRoutes = createNativeMidiRoutes({ canObserveInput: () => !ports?.getOperationalState().inputId });
+  const nativeMidiRoutes = createNativeMidiRoutes({ resourceBudget, canObserveInput: () => !ports?.getOperationalState().inputId });
   let nativeMidiView = null;
   const sessionIdentities = new WeakMap(), sessionAdoptions = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;

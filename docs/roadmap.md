@@ -10720,3 +10720,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Persist an authored lane context policy and capture it with causal performance snapshots/onsets/reperformance. Add compact typed harmony/annotation controls and a separate bounded received-device metadata display that cannot rewrite authored state.
 - Lower semantic ScoreContextEvents into the complete native onset transaction and publish later changes from completed physical batches through existing group/allocation executions. Keep source note deadlines unchanged, deduplicate shared group context, and preserve precise native accepted-prefix evidence. Unsupported optional metadata does not fabricate or delay an onset.
 - Existing Clip framing retains the new known Flex packets. Legal Clip tempo/meter boundary projection and the complete native accepted-output export selection remain separate integration work; independent vectors/receiver qualification remain deferred with the consolidated validation pass. No functional tests run.
+
+
+### 2026-11-06 — Rook continuation503: bounded native SDK output recording
+
+- Add explicit one-output/session recording directly from validated native SDK observations, excluding logical-receipt duplicates. Preserve complete packet words, acceptance/uncertainty, native call intervals, execution/batch/driver identities and cleanup/JR provenance.
+- Store up to65536 packets in compact fixed typed columns under an owned16MiB reservation. Admit pages before allocation, stop visibly at capacity, and create one cancellable exclusive snapshot lease with export-copy headroom.
+- Add native record/stop/discard and exact binary observation export controls. Keep unknown/open note boundaries explicit, stop on routing/session retirement, and never append future releases or equate SDK acceptance with receiver/acoustic proof.
+- Exact observation artifacts use the documented application capture format, not a mislabeled standards Clip. Standards accepted-output projection and legal metadata timing follow next. Formatting only; no functional tests.

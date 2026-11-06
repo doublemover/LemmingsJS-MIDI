@@ -515,6 +515,7 @@
       ],
       "files": [
         "js/app/midi-ui/NativeMidiArticulationView.js",
+        "js/app/midi-ui/NativeMidiCaptureView.js",
         "js/app/midi-ui/NativeMidiConnectionView.js",
         "js/app/midi-ui/NativeMidiDeviceStateView.js",
         "js/app/midi-ui/NativeMidiEndpointView.js",
@@ -526,6 +527,7 @@
         "js/app/midi-ui/NativeMidiPropertyView.js",
         "js/app/midi-ui/NativeMidiScoreContextView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
+        "js/app/resources/OwnedResourceReservation.js",
         "js/midi/content/OrchestralArticulationIntent.js",
         "js/midi/content/OrganRotaryIntent.js",
         "js/midi/content/PercussionRoleIntent.js",
@@ -550,6 +552,7 @@
         "js/midi/native/NativeMidiBridgeProtocol.js",
         "js/midi/native/NativeMidiIngress.js",
         "js/midi/native/NativeMidiRoutes.js",
+        "js/midi/native/NativeUmpCapture.js",
         "js/midi/native/OrchestralProfileAdapter.js",
         "js/midi/native/OrganRotaryPart.js",
         "js/midi/native/OrganRotaryProfileAdapter.js",
@@ -580,8 +583,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 65,
-      "sha256": "5b2ab79344afbd159786bb34577397adad25d86640776dee4d3c7ad6edf6e216"
+      "fileCount": 68,
+      "sha256": "8971889ed0e19ce186f73eab2e48b534c1e6180e07ff5c7adfb00dde719d49f6"
     }
   ]
 }
