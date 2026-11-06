@@ -551,6 +551,7 @@
         "native/midi-companion/NativeBatch.hpp",
         "native/midi-companion/NativeIo.hpp",
         "native/midi-companion/NativeJrTiming.hpp",
+        "native/midi-companion/NativePedalOwnership.hpp",
         "native/midi-companion/Protocol.hpp",
         "native/midi-companion/UmpStreamCodec.hpp",
         "native/midi-companion/WindowsUmpEndpoint.hpp",
@@ -561,8 +562,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 50,
-      "sha256": "3b118ef471a4e632c8aad7e92205672488ee3a8e75e24a08ad64fe546d770f1d"
+      "fileCount": 51,
+      "sha256": "ce20c8001f843c79f1d3d858e3a80dbed2b6381c54e0d708b249cfd6d1576abc"
     }
   ]
 }

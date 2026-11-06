@@ -24,7 +24,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       const results = await Promise.allSettled([...executions.values()].filter(state => state.grants.has(grant)).map(async state => {
         const wireExecution = state.grantExecutions.get(grant); batches.cancelExecution(grant, wireExecution);
         const receipt = await routes.client.cancelExecution(grant, wireExecution);
-        if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Native device-change cleanup remains unconfirmed');
+        if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Native device-change cleanup remains unconfirmed');
         for (const entry of state.voices.values()) if (entry.route.grant === grant) removeVoice(entry);
         state.grants.delete(grant); state.grantExecutions.delete(grant);
         for (const key of state.programs.keys()) if (key.startsWith(grant + ':')) state.programs.delete(key);
@@ -89,7 +89,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     const receipt = state.retirement.retire([...state.grants].map(grant => ({ name: 'native-grant-' + grant, run: async () => {
       batches.cancelExecution(grant, state.grantExecutions.get(grant));
       const receipt = await routes.client.cancelExecution(grant, state.grantExecutions.get(grant));
-      if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Native owned-note cleanup is unconfirmed');
+      if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Native owned-note cleanup is unconfirmed');
       for (const entry of state.voices.values()) if (entry.route.grant === grant) removeVoice(entry);
     } }))); 
     receipt.completion.then(done => { if (done.outcome === 'complete') { executions.delete(execution); if (!executions.size) anchor = null; } });

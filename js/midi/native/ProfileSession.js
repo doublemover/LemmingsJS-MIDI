@@ -24,7 +24,7 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
     if (!active) return; const request = active; active = null; clearTimeout(request.timer); latest = Object.freeze(result);
     const outcome = latest, fence = (async () => {
       if (request.wireExecution && routes.client.session === identity.connectionEpoch && routes.isGrantActive(identity.outputGrant)) {
-        try { const receipt = await routes.client.cancelExecution(identity.outputGrant, request.wireExecution); if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Profile transaction cancellation remains unconfirmed'); }
+        try { const receipt = await routes.client.cancelExecution(identity.outputGrant, request.wireExecution); if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Profile transaction cancellation remains unconfirmed'); }
         catch (error) { routes.quarantineDeviceState(identity.outputGrant, error.message); request.resolve(Object.freeze({ status: 'incomplete', reason: error.message, receiverState: 'unknown' })); return; }
       }
       request.resolve(outcome);

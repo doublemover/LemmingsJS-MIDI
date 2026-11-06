@@ -138,7 +138,7 @@ export function createDevicePatchCatalog({ routes, ci, properties, peerMuid, now
             if (!submission) routes.recordSubmission({ words, provenance, receipt: { session: identity.connectionEpoch, grant: identity.outputGrant, execution: wireExecution, kind: 'error', acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: error.notSubmitted !== true, submissionExtent: error.notSubmitted === true ? 'observed-prefix' : 'unobserved-batch', reason: error.message } });
             return Object.freeze({ status: 'incomplete', reason: error.message, receiverState: 'unknown', submission });
           } finally {
-            try { const receipt = await routes.client.cancelExecution(identity.outputGrant, wireExecution); if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Patch control cancellation remains unconfirmed'); }
+            try { const receipt = await routes.client.cancelExecution(identity.outputGrant, wireExecution); if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Patch control cancellation remains unconfirmed'); }
             catch (error) { routes.quarantineDeviceState(identity.outputGrant, error.message); throw error; }
           }
         }

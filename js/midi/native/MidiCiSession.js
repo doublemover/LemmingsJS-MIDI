@@ -20,7 +20,7 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
   const cancelOwnedExecution = value => {
     if (cancellationExecution === value && cancellation) return cancellation;
     cancellationExecution = value;
-    cancellation = routes.client.session === initial.connectionEpoch && routes.isGrantActive(outputGrant) ? routes.client.cancelExecution(outputGrant, value).then(receipt => { if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('MIDI-CI native cancellation remains unconfirmed'); }) : Promise.resolve();
+    cancellation = routes.client.session === initial.connectionEpoch && routes.isGrantActive(outputGrant) ? routes.client.cancelExecution(outputGrant, value).then(receipt => { if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('MIDI-CI native cancellation remains unconfirmed'); }) : Promise.resolve();
     cancellation.catch(error => { cancellationError = error.message; }); return cancellation;
   };
   const stale = message => {

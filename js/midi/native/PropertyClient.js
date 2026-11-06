@@ -55,7 +55,7 @@ export function createPropertyClient({ routes, ci, peerMuid, now = () => perform
     const outcomeRecord = latest;
     const fence = (async () => {
       if (routes.client.session === identity.connectionEpoch && routes.isGrantActive(identity.outputGrant)) {
-        try { const receipt = await routes.client.cancelExecution(identity.outputGrant, entry.wireExecution); if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Property control cancellation remains unconfirmed'); }
+        try { const receipt = await routes.client.cancelExecution(identity.outputGrant, entry.wireExecution); if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Property control cancellation remains unconfirmed'); }
         catch (error) { routes.quarantineDeviceState(identity.outputGrant, error.message); entry.resolve(result('incomplete', error.message, { ...outcomeRecord, status: 'incomplete', reason: error.message, receiverState: 'unknown' })); return; }
       }
       entry.resolve(outcomeRecord);

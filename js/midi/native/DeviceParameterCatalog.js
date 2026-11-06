@@ -138,7 +138,7 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
         latest = result(receipt.kind === 'driver-submitted' ? 'submitted' : 'incomplete', receipt.reason, { receipt, receiverState: 'unknown' }); return latest;
       } catch (error) { latest = result('rejected', error.message); return latest; }
       finally {
-        try { if (sent && routes.client.session === scope.connectionEpoch && routes.isGrantActive(scope.outputGrant) && wireExecution != null) { const receipt = await routes.client.cancelExecution(scope.outputGrant, wireExecution); if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Device-control retirement remains unconfirmed'); } }
+        try { if (sent && routes.client.session === scope.connectionEpoch && routes.isGrantActive(scope.outputGrant) && wireExecution != null) { const receipt = await routes.client.cancelExecution(scope.outputGrant, wireExecution); if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Device-control retirement remains unconfirmed'); } }
         catch (error) { routes.quarantineDeviceState(scope.outputGrant, error.message); latest = result('incomplete', error.message); }
         if (hold) routes.releaseObservation(hold); writing = false; finishWrite?.(); finishWrite = null; emit(); return latest;
       }

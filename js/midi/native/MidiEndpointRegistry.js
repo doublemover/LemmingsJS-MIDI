@@ -124,7 +124,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
   };
   const fence = async wireExecution => {
     if (routes.client.session !== initial.connectionEpoch || !routes.isGrantActive(outputGrant)) return;
-    try { const receipt = await routes.client.cancelExecution(outputGrant, wireExecution); if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes || receipt.protocolStateConfirmed === false) throw new Error('Endpoint control cancellation is unconfirmed'); }
+    try { const receipt = await routes.client.cancelExecution(outputGrant, wireExecution); if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls) || receipt.protocolStateConfirmed === false) throw new Error('Endpoint control cancellation is unconfirmed'); }
     catch (error) { routes.quarantineDeviceState(outputGrant, error.message); throw error; }
   };
   const api = Object.freeze({

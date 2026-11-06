@@ -10650,3 +10650,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add exact optional-feature/variation decoding, current profile/active-protocol gating and explicit single-channel route activation. Refuse unknown sound variations and microtonal attribute-slot conflicts; do not guess keyswitches or per-note pitch support.
 - Lower articulation on the existing complete Note On transaction and keep semantic/exact wire evidence distinct. Gate optional mute, playing position and release behavior; use neutral default release velocity for owned MIDI2 cleanup. Add a compact selectable action/articulation editor with current availability and separate save/activation.
 - Formatting and native compilation/linking pass; no functional tests or receiver execution. Continue piano and independent organ/rotary adapters, controller-release leases, group-scoped retirement and coordinated graph restoration before consolidated validation.
+
+
+### 2026-11-06 — Rook continuation494: scoped performance pedal cleanup
+
+- Add fixed-capacity MIDI1/MIDI2 sustain, sostenuto and una-corda ownership only for accepted/uncertain native performance writes. Confirmed zero clears the lease; ordinary control-plane state writes remain separate.
+- Lift owned pedals before matching owned-note cleanup on execution/grant/session retirement. Preserve separate note/controller uncertainty and original SDK cleanup traces; propagate both failure classes through CI, PE, profile, patch, endpoint, parameter and performance owners.
+- Require a pedal-free boundary for JR/Stream policy changes and expose a cleanup capability for the upcoming piano adapter. Native compilation/linking and formatting pass; no functional tests or device execution. Shared part aggregation and user controls follow with the piano implementation.

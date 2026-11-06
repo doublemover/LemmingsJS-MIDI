@@ -4,6 +4,7 @@
 #include "UmpStreamCodec.hpp"
 #include "NativeBatch.hpp"
 #include "NativeJrTiming.hpp"
+#include "NativePedalOwnership.hpp"
 #include "NativeIo.hpp"
 #include "Protocol.hpp"
 #include "WindowsUmpEndpoint.hpp"
@@ -98,7 +99,10 @@ struct Grant {
   std::array<std::uint32_t, 256> channels{};
   std::map<NoteKey, OwnedNote> notes;
   std::set<std::uint32_t> cancelled;
-  std::uint64_t ingress_sequence{}, filtered{}, malformed{}, cleanup_unknown{};
+  std::uint64_t ingress_sequence{}, filtered{}, malformed{}, cleanup_unknown{}, cleanup_note_unknown{}, cleanup_control_unknown{};
+  std::array<std::uint32_t, 1536> owned_pedals{};
+  std::uint16_t owned_pedal_count{};
+  bool has_owned_pedals() const { return owned_pedal_count != 0; }
   stdx::error write(const std::uint32_t *words, std::size_t count) {
 #if defined(LIBREMIDI_WINMIDI)
     if (windows)
@@ -259,7 +263,7 @@ class Companion {
     if (timing.failed) throw std::runtime_error("jr-clock-failed-reopen-endpoint");
     if (timing.enabled != (mode != 0)) {
       for (const auto &[grant_id, peer] : grants_) if (!peer.retiring && peer.timing == owner.timing) {
-        if (!peer.notes.empty() || batches_.has_grant(grant_id))
+        if (!peer.notes.empty() || peer.has_owned_pedals() || batches_.has_grant(grant_id))
           throw std::runtime_error("stop-all-owned-endpoint-scopes-before-jr-policy-change");
       }
       timing.enabled = mode != 0; timing.stamp_valid = false;
@@ -435,8 +439,17 @@ class Companion {
     }
   }
 
-  std::uint64_t cleanup(Grant &owner, std::uint32_t execution = 0) {
-    std::uint64_t unknown = 0;
+  CleanupCount cleanup(Grant &owner, std::uint32_t execution = 0) {
+    CleanupCount unknown;
+    for (std::size_t index = 0; index < owner.owned_pedals.size() && owner.owned_pedal_count; ++index) {
+      const auto lease = owner.owned_pedals[index]; if (!lease || (execution && lease != execution)) continue;
+      const auto words = pedal_release(index); const auto count = index >= 768 ? 2u : 1u;
+      try {
+        NativeJrEnvelope envelope{}; const bool timing = timing_prefix(owner, now_us(), lease, 0, envelope, true);
+        if (observed_write(owner, {words.data(), count}, lease, 0, "owned-controller-cleanup").is_set() || !timing) ++unknown.controls;
+        else { owner.owned_pedals[index] = 0; --owner.owned_pedal_count; }
+      } catch (...) { ++unknown.controls; }
+    }
     for (auto at = owner.notes.begin(); at != owner.notes.end();) {
       auto &note = at->second;
       if (execution && note.execution != execution) {
@@ -449,9 +462,9 @@ class Companion {
         try {
           NativeJrEnvelope envelope{};
           const bool timing = timing_prefix(owner, now_us(), note.execution, 0, envelope, true);
-          if (observed_write(owner, {words.data(), count}, note.execution, 0, "owned-note-cleanup").is_set() || !timing) ++unknown;
+          if (observed_write(owner, {words.data(), count}, note.execution, 0, "owned-note-cleanup").is_set() || !timing) ++unknown.notes;
         } catch (...) {
-          ++unknown;
+          ++unknown.notes;
         }
       }
       active_notes_ -= std::min<std::uint64_t>(active_notes_, note.active);
@@ -464,20 +477,20 @@ class Companion {
     flush_egress();
     return unknown;
   }
-  std::pair<bool, std::uint64_t> retire_grant(std::uint32_t id,
+  GrantRetirement retire_grant(std::uint32_t id,
                                               std::string_view reason) {
     const auto found = grants_.find(id);
     if (found == grants_.end())
       return {true, 0};
     if (found->second.retiring)
-      return {false, found->second.cleanup_unknown};
+      return {false, found->second.cleanup_unknown, found->second.cleanup_note_unknown, found->second.cleanup_control_unknown};
     auto &owner = found->second;
     owner.retiring = true;
     if (owner.timing && owner.timing->control_grant == id && owner.timing->control_session == owner.session) { if (!owner.timing->control_confirmed) owner.timing->failed = true; owner.timing->control_execution = owner.timing->control_grant = owner.timing->control_session = 0; }
     owner.fence->live.store(false, std::memory_order_release);
     cancel_batches([&](const auto &batch) { return batch.grant == id; },
                    reason);
-    const auto unknown = owner.cleanup_unknown = cleanup(owner);
+    const auto unknown = cleanup(owner); owner.cleanup_unknown = unknown.total(); owner.cleanup_note_unknown = unknown.notes; owner.cleanup_control_unknown = unknown.controls;
     bool closed = true;
 #if defined(LIBREMIDI_WINMIDI)
     if (owner.windows)
@@ -499,13 +512,13 @@ class Companion {
     emit("{\"event\":\"grant-retired\",\"session\":" +
          std::to_string(owner.session) + ",\"grant\":" + std::to_string(id) +
          ",\"reason\":" + quote(reason) +
-         ",\"cleanupUnconfirmedNotes\":" + std::to_string(unknown) +
+         ",\"cleanupUnconfirmedNotes\":" + std::to_string(unknown.notes) + ",\"cleanupUnconfirmedControls\":" + std::to_string(unknown.controls) +
          ",\"nativeCloseConfirmed\":" + (closed ? "true" : "false") + "}");
     if (closed) {
       const auto timing_key = owner.timing_key; grants_.erase(found);
       if (timing_key && std::none_of(grants_.begin(), grants_.end(), [&](const auto &row) { return row.second.timing_key == timing_key; })) jr_states_.erase(timing_key);
     }
-    return {closed, unknown};
+    return {closed, unknown.total(), unknown.notes, unknown.controls};
   }
   void retire_session(std::uint32_t session, std::string_view reason) {
     sessions_.erase(session);
@@ -669,7 +682,7 @@ class Companion {
       throw std::invalid_argument(validated.error.code);
     if (stream_configuration) {
       if (!owner.timing || validated.packets.size() != 1) throw std::invalid_argument("stream-configuration-must-be-isolated");
-      for (const auto &[other_id, other] : grants_) if (other.timing == owner.timing && (!other.notes.empty() || batches_.has_grant(other_id))) throw std::runtime_error("endpoint-has-other-owned-voices-or-queued-work");
+      for (const auto &[other_id, other] : grants_) if (other.timing == owner.timing && (!other.notes.empty() || other.has_owned_pedals() || batches_.has_grant(other_id))) throw std::runtime_error("endpoint-has-other-owned-voices-or-queued-work");
     }
     auto channels = owner.channels;
     for (const auto &packet : validated.packets) {
@@ -725,7 +738,12 @@ class Companion {
               ",\"nativeMonoUs\":" + std::to_string(now));
   }
   void account_packet(Grant &owner, std::span<const std::uint32_t> words,
-                      bool uncertain = false) {
+                      bool uncertain = false, bool own_controls = false) {
+    if (own_controls) if (const auto pedal = pedal_mutation(words)) {
+      auto &lease = owner.owned_pedals[pedal->index];
+      if (pedal->active || uncertain) { if (!lease) ++owner.owned_pedal_count; lease = owner.channels[pedal->channel_address]; }
+      else if (lease) { lease = 0; --owner.owned_pedal_count; }
+    }
     const auto mutation = note_mutation(words);
     if (!mutation)
       return;
@@ -773,7 +791,7 @@ class Companion {
         entered_driver = true;
         const auto result = self.observed_write(owner, {words, count}, batch.execution, batch.request, "batch-packet");
         if (!result.is_set() && !owner.fence->fault.load())
-          self.account_packet(owner, {words, count});
+          self.account_packet(owner, {words, count}, false, batch.priority != Priority::control);
         if (!result.is_set() && owner.fence->fault.load())
           return std::errc::io_error;
         return result;
@@ -794,7 +812,7 @@ class Companion {
       account_packet(owner,
                      std::span<const std::uint32_t>{batch.words}.subspan(
                          offset, ump::word_counts[batch.words[offset] >> 28]),
-                     true);
+                     true, batch.priority != Priority::control);
     }
     release_pending(batch);
     flush_egress();
@@ -1083,8 +1101,8 @@ class Companion {
               "\"grant\":" + std::to_string(id) +
                   ",\"execution\":" + std::to_string(execution) +
                   ",\"protocolStateConfirmed\":" + (protocol_confirmed ? "true" : "false") +
-                  ",\"cleanupUnconfirmedNotes\":" + std::to_string(unknown));
-        if (unknown)
+                  ",\"cleanupUnconfirmedNotes\":" + std::to_string(unknown.notes) + ",\"cleanupUnconfirmedControls\":" + std::to_string(unknown.controls));
+        if (unknown.total())
           retire_grant(id, "execution-cleanup-uncertain");
       } else if (operation == "X") {
         const auto id = static_cast<std::uint32_t>(input.number());
@@ -1097,7 +1115,7 @@ class Companion {
               "\"grant\":" + std::to_string(id) + ",\"nativeCloseConfirmed\":" +
                   (retired.first ? "true" : "false") +
                   ",\"cleanupUnconfirmedNotes\":" +
-                  std::to_string(retired.second));
+                  std::to_string(retired.notes) + ",\"cleanupUnconfirmedControls\":" + std::to_string(retired.controls));
       } else if (operation == "D") {
         input.finish();
         retire_session(session, "session-closed");
@@ -1139,7 +1157,7 @@ public:
          ",\"selectedApi\":" + std::to_string(static_cast<int>(api_)) +
          ",\"libremidiRevision\":\"" LIBREMIDI_REVISION
          "\",\"ciCodec\":\"ni-midi2:" NI_MIDI2_REVISION
-         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,\"jrEncoderVersion\":1,"
+         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,\"jrEncoderVersion\":1,\"ownedPedalCleanupVersion\":1,"
          "\"clockDomain\":\"companion-steady-microseconds\","
          "\"nativeJrAllowed\":" + std::string(api_ == libremidi::API::WINDOWS_MIDI_SERVICES ? "false" : "true") +
          ",\"endpointDiscoveryOwner\":\"" + std::string(api_ == libremidi::API::WINDOWS_MIDI_SERVICES ? "os" : "companion") + "\"," +
