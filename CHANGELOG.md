@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Retire cue listeners and native resources independently after partial setup or cleanup failures, preserving unknown reservations and the live master.
+
 - Add per-browser audio profile CPU and observation-cost measurements, admit complete immutable replay inventories, and isolate canonical snapshot workers from DSP imports.
 
 - Invalidate main audio queues on device availability or explicit-output permission changes, and qualify transactional profile/rate replacement across the native browser engines.

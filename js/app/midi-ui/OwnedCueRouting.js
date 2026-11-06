@@ -1,3 +1,4 @@
+import { createOwnedAudioListeners } from './OwnedAudioListeners.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 
@@ -14,7 +15,7 @@ let cueRouteSerial = 0;
 // Device identifiers and native handles never leave this owner's closures.
 export function createOwnedCueRouting({ context, masterInput, resources, createElement, mediaDevices, onChange = () => {} } = {}) {
   if (!context?.createGain || !masterInput || !resources?.reserve || typeof createElement !== 'function' || typeof onChange !== 'function') throw new TypeError('Invalid cue graph owner.');
-  const retirement = createProcgenRetirementScope(), pending = new Set(), uncertain = new Set();
+  const retirement = createProcgenRetirementScope(), graphRetirement = createProcgenRetirementScope(), graphListeners = createOwnedAudioListeners(), pending = new Set(), uncertain = new Set();
   let disposed = false, generation = 0, revision = 0, current = null, selectedMode = 'muted', level = 0.5, active = false, graphLease, input, fader, ceiling;
   let message = 'Choose an explicit prelisten route.', graphError = null;
   const state = () => Object.freeze({ schema: 'lemmings-monitor-route/v1', revision, state: disposed ? 'disposed' : pending.size ? 'preparing' :
@@ -42,17 +43,35 @@ export function createOwnedCueRouting({ context, masterInput, resources, createE
     if (route.retirement.getReceipt()) return route.retirement.getReceipt();
     let nativeReceipt;
     const receipt = route.retirement.retire([
-      { name: 'route-listeners', run: () => { for (const [type, callback] of route.listeners) route.element?.removeEventListener(type, callback); route.listeners.length = 0; } },
       { name: 'native-route', run: () => nativeReceipt = createProcgenRetirementScope().retire([
+        { name: 'route-listeners', run: () => route.listeners.dispose() },
         { name: 'route-edge', run: () => { if (route.connected) { ceiling.disconnect(route.destination); route.connected = false; } } },
         { name: 'media-pause', run: () => route.element?.pause() },
-        { name: 'media-source', run: () => { if (route.element) { route.element.srcObject = null; route.element.removeAttribute?.('src'); route.element.load?.(); } } },
-        ...[...(route.destination?.stream?.getTracks?.() || [])].map((track, index) => ({ name: 'cue-track-' + index, run: () => track.stop() })),
+        { name: 'media-source', run: () => { if (route.element) route.element.srcObject = null; } },
+        { name: 'media-source-attribute', run: () => route.element?.removeAttribute?.('src') },
+        { name: 'media-load', run: () => route.element?.load?.() },
+        { name: 'stream-tracks', run: () => {
+          const tracks = route.destination?.stream?.getTracks?.() || [];
+          if (!Array.isArray(tracks) || tracks.length > 16) throw failure('Cue stream retirement inventory is unavailable.');
+          return createProcgenRetirementScope().retire(tracks.map((track, index) => ({ name: 'cue-track-' + index, run: () => track.stop() })));
+        } },
         { name: 'media-node', run: () => { if (route.mode === 'separate-device') route.destination?.disconnect(); } }
       ]) },
       { name: 'route-reservation', run: () => releaseAudioResourceAfterRetirement(route.lease, nativeReceipt) }
     ]);
-    if (receipt.outcome !== 'complete') uncertain.add(route);
+    if (receipt.outcome !== 'complete') { uncertain.add(route); receipt.completion.then(() => { if (receipt.outcome === 'complete') uncertain.delete(route); }); }
+    return receipt;
+  };
+  const retireGraph = () => {
+    let nativeReceipt;
+    const receipt = graphRetirement.retire([
+      { name: 'native-graph', run: () => nativeReceipt = createProcgenRetirementScope().retire([
+        { name: 'cue-listeners', run: () => graphListeners.dispose() },
+        { name: 'input', run: () => input?.disconnect() }, { name: 'fader', run: () => fader?.disconnect() }, { name: 'ceiling', run: () => ceiling?.disconnect() }
+      ]) },
+      { name: 'cue-graph-reservation', run: () => releaseAudioResourceAfterRetirement(graphLease, nativeReceipt) }
+    ]);
+    if (receipt.outcome !== 'complete') { uncertain.add(graphRetirement); receipt.completion.then(() => { if (receipt.outcome === 'complete') uncertain.delete(graphRetirement); }); }
     return receipt;
   };
   const ensureGraph = () => {
@@ -63,13 +82,10 @@ export function createOwnedCueRouting({ context, masterInput, resources, createE
       const curve = new Float32Array(4097);
       for (let index = 0; index < curve.length; index++) { const sample = index * 2 / (curve.length - 1) - 1; curve[index] = Math.tanh(sample * 1.25) * 0.7; }
       ceiling.curve = curve; input.connect(fader); fader.connect(ceiling);
-      context.addEventListener?.('statechange', onContextState); mediaDevices?.addEventListener?.('devicechange', onDeviceChange);
+      graphListeners.add(context, 'statechange', onContextState); graphListeners.add(mediaDevices, 'devicechange', onDeviceChange);
     } catch (error) {
       graphError = error;
-      const receipt = createProcgenRetirementScope().retire([
-        { name: 'cue-input', run: () => input?.disconnect() }, { name: 'cue-fader', run: () => fader?.disconnect() }, { name: 'cue-ceiling', run: () => ceiling?.disconnect() }
-      ]);
-      try { releaseAudioResourceAfterRetirement(graphLease, receipt); } catch { uncertain.add({}); }
+      retireGraph();
       throw error;
     }
   };
@@ -89,7 +105,7 @@ export function createOwnedCueRouting({ context, masterInput, resources, createE
         if (disposed || generation !== epoch) throw failure('Prelisten route selection was superseded.');
         ensureGraph();
         const lease = resources.reserve({ kind: 'cue-output-route', owner: 'prelisten', estimateBytes: mode === 'separate-device' ? 256 * 1024 : 4096 });
-        candidate = { id: ++cueRouteSerial, mode, lease, element: null, destination: null, connected: false, listeners: [], retirement: createProcgenRetirementScope(), invalid: false };
+        candidate = { id: ++cueRouteSerial, mode, lease, element: null, destination: null, connected: false, listeners: createOwnedAudioListeners(), retirement: createProcgenRetirementScope(), invalid: false };
         if (mode === 'separate-device') {
           if (!selected || selected.kind !== 'audiooutput' || typeof selected.deviceId !== 'string' || !selected.deviceId ||
               ['default', 'communications'].includes(selected.deviceId)) throw failure('Select a concrete separate output; the default device is not a private cue route.');
@@ -103,7 +119,7 @@ export function createOwnedCueRouting({ context, masterInput, resources, createE
           await candidate.element.play();
           const acceptedRoute = candidate;
           const invalid = () => { if (current === acceptedRoute) invalidate('Cue output changed or stopped. Revalidate before prelisten.'); };
-          for (const type of ['error', 'pause', 'ended', 'sinkchange']) { candidate.element.addEventListener(type, invalid); candidate.listeners.push([type, invalid]); }
+          for (const type of ['error', 'pause', 'ended', 'sinkchange']) candidate.listeners.add(candidate.element, type, invalid);
         } else candidate.destination = masterInput;
         if (disposed || generation !== epoch || context.state !== 'running') throw failure('Cue readiness belongs to a retired operation.');
         const previous = current; current = null;
@@ -131,16 +147,12 @@ export function createOwnedCueRouting({ context, masterInput, resources, createE
       active = true; setGain(); report(); return state();
     }, setLevel(value) { if (!Number.isFinite(value) || value < 0 || value > 1) throw new RangeError('Invalid cue gain.'); level = value; setGain(); report(); },
     dispose() {
-      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); const prior = current; current = null;
-      let graphReceipt;
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; const prior = current; current = null;
       return retirement.retire([
+        { name: 'cue-stop', run: stop },
         { name: 'accepted-route-preparation', run: async () => { await Promise.allSettled([...pending].map(operation => operation.promise)); if (uncertain.size) throw failure('Cue preparation retirement is unresolved.'); } },
         { name: 'selected-route', run: () => retireRoute(prior) },
-        { name: 'cue-listeners', run: () => { context.removeEventListener?.('statechange', onContextState); mediaDevices?.removeEventListener?.('devicechange', onDeviceChange); } },
-        { name: 'cue-graph', run: () => graphReceipt = createProcgenRetirementScope().retire([
-          { name: 'input', run: () => input?.disconnect() }, { name: 'fader', run: () => fader?.disconnect() }, { name: 'ceiling', run: () => ceiling?.disconnect() }
-        ]) },
-        { name: 'cue-graph-reservation', run: () => releaseAudioResourceAfterRetirement(graphLease, graphReceipt) }
+        { name: 'cue-graph', run: retireGraph }
       ]);
     }
   });

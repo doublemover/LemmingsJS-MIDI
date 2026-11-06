@@ -7081,5 +7081,43 @@
       "Profile cohorts are not exclusive DSP CPU, full-world capacity, acoustic latency or universal performance ordering.",
       "Seven cue-cleanup fault cases and a bounded captured-listener owner are frontloaded for the next source batch; they are separate from this publication."
     ]
+  },
+  "continuation457": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Captured cue listener ownership and independent native cleanup; partial/unknown retirement remains charged.",
+    "evidence": {
+      "path": "docs/validation/cue-independent-retirement-desktop-2026-11-05.json",
+      "bytes": 14680,
+      "sha256": "8cc009c6d0da297027f05638628dce9e410b6e4b08136ff676f6b817288db467"
+    },
+    "validation": {
+      "nodeCases": 179,
+      "desktopCases": 3,
+      "originalFaultCases": 8,
+      "originalFailuresReproduced": 8,
+      "registryLinesFunctionsBranches": 100,
+      "scopeLines": 100,
+      "scopeFunctions": 97.82,
+      "scopeBranches": 88.64,
+      "types": "critical-and-strict-pass",
+      "fullLocalSuiteRepeated": false
+    },
+    "source": {
+      "browserPaths": 1296,
+      "browserDigest": "38c079968e958777abbca4f484781765bacff82a2881109440d03bf1ac32b5bf",
+      "workerFiles": 308,
+      "workerDigest": "faa29153ba01e6719371b4dc35d1e8fdf8ad9f50a2cab93ffb6f96969540b512",
+      "inputs": 1620,
+      "byteExact": 1608,
+      "untouchedNewlineMappings": 12
+    },
+    "remaining": [
+      "The eight original fault counterexamples use independently asserted native-boundary fixtures; they do not claim physical hardware failures were delivered.",
+      "The three actual desktop journeys qualify held preview/replacement/kept A/B and Undo in Chromium at 1920x1080. They do not establish every tool/capture/device cross-product or new listening quality.",
+      "All cleanup resources are attempted independently. Failed native removal/stream inspection/closure remains observable and charged; a partial receipt is not complete retirement.",
+      "The full 51-engine/profile cohort on the preceding source is separate; fresh whole-current-source CI remains required.",
+      "Remaining cue branches include optional/native unsupported APIs, track-capacity refusal and broader failure/device combinations; repository coverage thresholds are unchanged."
+    ]
   }
 }
