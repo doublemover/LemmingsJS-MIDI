@@ -27,10 +27,11 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     const completion = (async () => {
       const results = await Promise.allSettled([...executions.values()].map(async state => {
         const owned = [...state.grantExecutions].filter(([, row]) => row.grant === grant && row.groupMask & groupMask); if (!owned.length) return;
+        if (nativeRetirement && 'nativeCloseConfirmed' in nativeRetirement && (nativeRetirement.nativeCloseConfirmed !== true || nativeRetirement.cleanupUnconfirmedNotes || nativeRetirement.cleanupUnconfirmedControls)) { for (const entry of state.voices.values()) if (entry.route.grant === grant) entry.uncertain = true; throw new Error('Retired native grant retains unconfirmed cleanup'); }
         const ids = new Set(owned.map(([, row]) => row.execution)), retiredMask = owned.reduce((mask, [, row]) => mask | row.groupMask, 0);
         for (const [, row] of owned) batches.cancelExecution(grant, row.execution);
         await Promise.all(owned.map(async ([, row]) => {
-          if (nativeRetirement && !nativeRetirement.cleanupUnconfirmedNotes && !nativeRetirement.cleanupUnconfirmedControls && nativeRetirement.executions?.includes(row.execution)) return;
+          if (nativeRetirement && !nativeRetirement.cleanupUnconfirmedNotes && !nativeRetirement.cleanupUnconfirmedControls && (nativeRetirement.nativeCloseConfirmed === true || nativeRetirement.executions?.includes(row.execution))) return;
           const receipt = await routes.client.cancelExecution(grant, row.execution);
           if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls) throw new Error('Native group-change cleanup remains unconfirmed');
         }));
@@ -45,7 +46,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       const failures = results.filter(row => row.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(row => row.reason), 'Native group-change retirement failed');
     })(); invalidatingGrants.set(scopeKey, completion); completion.then(() => invalidatingGrants.delete(scopeKey), () => {}); return completion;
   };
-  const invalidateGrant = grant => invalidateGroups(grant);
+  const invalidateGrant = (grant, nativeRetirement = null) => invalidateGroups(grant, 65535, nativeRetirement);
   const executions = new Map(), wireVoices = new Map(), channelVoices = new Map(), retirement = createProcgenRetirementScope();
   let sourceContext = null, latestContext = null;
   let disposed = false, anchor = null, latestReceipt = null, laneSource = null, laneIds = new Map(), soloCount = 0, contextLaneCount = 0;
@@ -104,25 +105,33 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     if (successful) admission?.acknowledge?.({ ackState: 'driver-submitted', acknowledgedTime: now(), acknowledgementTimeDomain: 'performance-ms' });
     try { onReceipt(latestReceipt); } catch {}
   };
+  const retireFailedRelease = (entry, reason) => {
+    entry.uncertain = true;
+    void routes.invalidateDeviceGroups(entry.route.grant, entry.wireOwner?.groupMask || 1 << entry.route.group, reason || 'native-source-release-unconfirmed').catch(error => routes.quarantineDeviceState(entry.route.grant, error.message));
+  };
   const send = (entry, intent, admission, words, targetMicroseconds, priority = 1, terminal = false, onset = false) => {
     const contextEvents = entry.contextEvents; entry.contextEvents = null;
     const pianoUpdate = entry.pianoUpdate; entry.pianoUpdate = null; const organUpdate = entry.organUpdate; entry.organUpdate = null;
     const provenance = entry.controlProvenance || Object.freeze({ ...causal(intent), ...(contextEvents?.length ? { scoreContextEvents: contextEvents } : {}), ...(pianoUpdate ? { pianoPartControls: pianoUpdate.values } : {}), ...(entry.parameterObservations?.length ? { deviceParameters: entry.parameterObservations } : {}), ...(entry.orchestralWire ? { orchestralWire: entry.orchestralWire } : {}) });
-    const submission = batches.enqueue({ grant: entry.route.grant, execution: entry.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
+    const dependencies = [];
+    if (terminal && entry.onsetCompletion) dependencies.push({ completion: entry.onsetCompletion, requireSubmitted: true });
+    if (pianoUpdate && entry.pianoPart.lastControlCompletion) dependencies.push({ completion: entry.pianoPart.lastControlCompletion, requireSubmitted: false });
+    const submission = batches.enqueue({ dependencies, grant: entry.route.grant, execution: entry.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
       onReceipt: receipt => { if (receipt.kind === 'queued') report(entry, intent, admission, receipt, words); } });
-    if (submission.status !== 'accepted') { report(entry, intent, admission, { kind: 'rejected', reason: submission.reason, acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: false }, words); return reject(submission.reason); }
+    if (submission.status !== 'accepted') { report(entry, intent, admission, { kind: 'rejected', reason: submission.reason, acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: false }, words); if (terminal || pianoUpdate) retireFailedRelease(entry, submission.reason); return reject(submission.reason); }
+    if (onset) entry.onsetCompletion = submission.completion;
     if (organUpdate) entry.organPart.owner.track(organUpdate, submission.completion);
     if (entry.pianoTuningRequested) entry.pianoPart.tuningQueued = true;
-    if (pianoUpdate) { Object.assign(entry.pianoPart.queued, pianoUpdate.values); entry.pianoPart.pending++; }
+    if (pianoUpdate) { entry.pianoPart.lastControlCompletion = submission.completion; Object.assign(entry.pianoPart.queued, pianoUpdate.values); entry.pianoPart.pending++; }
     submission.completion.then(receipt => {
       if (pianoUpdate) { entry.pianoPart.pending--; if (receipt.kind === 'driver-submitted') Object.assign(entry.pianoPart.submitted, pianoUpdate.values); else entry.pianoPart.fault = receipt.reason || 'piano-part-control-unconfirmed'; routes.notifyPerformanceChange?.(); }
       report(entry, intent, admission, receipt, words);
-      if (receipt.kind !== 'driver-submitted') { if (entry.setupRequested) entry.state.programs.delete(channelKey(entry.route)); if (entry.mpeSetupRequested) entry.state.mpeSetups.delete(entry.mpeSetupRequested); entry.uncertain = !onset || !!receipt.acceptedWords || !!receipt.failedPacketUnconfirmed; if (!entry.uncertain) removeVoice(entry); }
+      if (receipt.kind !== 'driver-submitted') { if (entry.setupRequested) entry.state.programs.delete(channelKey(entry.route)); if (entry.mpeSetupRequested) entry.state.mpeSetups.delete(entry.mpeSetupRequested); entry.uncertain = !onset || !!receipt.acceptedWords || !!receipt.failedPacketUnconfirmed; if (!entry.uncertain) removeVoice(entry); if (terminal || pianoUpdate) retireFailedRelease(entry, receipt.reason); }
       else { if (onset && entry.percussion?.mutuallyExclusiveSet) for (const previous of entry.state.voices.values()) if (previous !== entry && previous.route.grant === entry.route.grant && previous.route.group === entry.route.group && previous.route.channel === entry.route.channel && previous.percussion?.mutuallyExclusiveSet === entry.percussion.mutuallyExclusiveSet) previous.choked = true;
         if (entry.mpeSetupRequested) { const gain = entry.state.mpeGains.get(entry.mpeSetupRequested); if (gain) gain.pending = false; } if (terminal) removeVoice(entry); }
     }, error => {
       if (pianoUpdate) { entry.pianoPart.pending--; entry.pianoPart.fault = error.message; routes.notifyPerformanceChange?.(); }
-      entry.uncertain = true; if (entry.mpeSetupRequested) entry.state.mpeSetups.delete(entry.mpeSetupRequested); report(entry, intent, admission, { kind: 'error', reason: error.message, failedPacketUnconfirmed: true }, words);
+      entry.uncertain = true; if (terminal || pianoUpdate) retireFailedRelease(entry, error.message); if (entry.mpeSetupRequested) entry.state.mpeSetups.delete(entry.mpeSetupRequested); report(entry, intent, admission, { kind: 'error', reason: error.message, failedPacketUnconfirmed: true }, words);
     });
     return Object.freeze({ status: 'accepted', stage: submission.stage });
   };
@@ -354,8 +363,10 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (!Number.isFinite(tail) || tail < 0 || tail > 1.9) return reject('native-release-tail-outside-horizon');
       const releaseTarget = Math.max(Math.round(now() * 1000), targetMicroseconds + Math.round(tail * 1000000));
       const releaseWords = entry.route.piano ? pianoNoteWords(entry.route, entry.route.piano, entry.intent, entry.note, entry.pitch, true) : entry.route.orchestral ? orchestralRelease(entry.route.orchestral, { ...entry.route, note: entry.note }, entry.intent.orchestralArticulation) : noteWords(entry.route, 'noteOff', entry.note, entry.percussion?.releaseVelocity01 ?? 0);
-      if (entry.pianoPart) { entry.pianoPart.contributors.delete(voiceId); entry.pianoUpdate = pianoWords(entry.pianoPart, laneFor(entry.laneId) || { pianoControls: { sustain01: 0, sostenuto01: 0, unaCorda01: 0 } }, releaseTarget, { force: !entry.pianoPart.contributors.size, sampleSource: true }); }
-      entry.ending = true; const queued = send(entry, causeIntent || entry.intent, admission, [...releaseWords, ...(entry.pianoUpdate?.words || [])], releaseTarget, 0, true);
+      let pianoUpdate = null;
+      if (entry.pianoPart) { entry.pianoPart.contributors.delete(voiceId); pianoUpdate = pianoWords(entry.pianoPart, laneFor(entry.laneId) || { pianoControls: { sustain01: 0, sostenuto01: 0, unaCorda01: 0 } }, releaseTarget, { force: !entry.pianoPart.contributors.size, sampleSource: true }); }
+      entry.ending = true; const queued = send(entry, causeIntent || entry.intent, admission, releaseWords, releaseTarget, 0, true);
+      if (pianoUpdate?.words.length) { entry.pianoUpdate = pianoUpdate; send(entry, causeIntent || entry.intent, null, pianoUpdate.words, releaseTarget, Object.values(pianoUpdate.values).every(value => value === 0) ? 0 : 1); }
       if (queued.status !== 'accepted') { entry.ending = false; return queued; }
       return Object.freeze({ status: 'accepted', stage: 'accepted' });
     },

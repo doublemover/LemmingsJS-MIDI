@@ -25,6 +25,10 @@ export function createNativeMidiBatchQueue({ client, maximumWords = 65536, maxim
   };
   const settle = (group, row) => { if (group.settled) return; for (const job of group.jobs) job.resolve(receiptFor(group, job, row)); release(group); };
   const startGroup = async group => {
+    const outcomes = await Promise.all(group.dependencies.map(async dependency => {
+      try { const receipt = await dependency.completion; return !dependency.requireSubmitted || receipt?.kind === 'driver-submitted'; } catch { return !dependency.requireSubmitted; }
+    }));
+    if (outcomes.some(allowed => !allowed)) { settle(group, { kind: 'cancelled', acceptedWords: 0, failedPacketUnconfirmed: false, reason: 'dependent-native-write-was-not-submitted' }); return false; }
     if (group.settled || closed) { settle(group, { kind: 'cancelled', acceptedWords: 0, failedPacketUnconfirmed: false, reason: 'native-batch-owner-retired' }); return false; }
     group.started = true;
     const words = new Array(group.wordCount); let at = 0; for (const job of group.jobs) for (const word of job.words) words[at++] = word;
@@ -52,22 +56,24 @@ export function createNativeMidiBatchQueue({ client, maximumWords = 65536, maxim
     }
   };
   return Object.freeze({
-    enqueue({ grant, execution, targetTimeMs, priority = 1, words, provenance, leasePolicyIds = [], onReceipt }) {
+    enqueue({ grant, execution, targetTimeMs, priority = 1, words, provenance, leasePolicyIds = [], dependencies = [], onReceipt }) {
       if (closed || !Number.isSafeInteger(grant) || grant < 1 || !Number.isSafeInteger(execution) || execution < 1 || !Number.isFinite(targetTimeMs) || !Number.isInteger(priority) || priority < 0 || priority > 2) return { status: 'rejected', reason: 'native-batch-owner-unavailable' };
       let owned, metadata, packetEnds, bytes, policies;
       try {
         if (typeof SharedArrayBuffer === 'function' && words?.buffer instanceof SharedArrayBuffer) throw failure('Shared native batch words');
+        if (!Array.isArray(dependencies) || dependencies.length > 16 || dependencies.some(row => !row || typeof row.completion?.then !== 'function' || typeof row.requireSubmitted !== 'boolean')) throw failure('Invalid native write dependencies');
         policies = validateControllerPolicyIds(leasePolicyIds);
         owned = Array.from(words); const packets = parseWords(owned, { maximumWords: 4096, preserveUnknown: false }); if (!packets.length) throw failure('Empty native batch');
         let offset = 0; packetEnds = packets.map(packet => offset += packet.wordCount);
-        const json = JSON.stringify(provenance); if (!json || json.length > 8192) throw failure('Native causal metadata capacity'); metadata = Object.freeze(JSON.parse(json)); bytes = 512 + owned.length * 8 + json.length * 2 + policies.length * 16;
+        const json = JSON.stringify(provenance); if (!json || json.length > 8192) throw failure('Native causal metadata capacity'); metadata = Object.freeze(JSON.parse(json)); bytes = 512 + owned.length * 8 + json.length * 2 + policies.length * 16 + dependencies.length * 64;
       } catch (error) { return { status: 'rejected', reason: error.message }; }
       const key = JSON.stringify([client.session, grant, execution, targetTimeMs, priority, metadata.worldId, metadata.generation, metadata.batchId]);
-      let group = tails.get(key); if (group && (group.wordCount + owned.length > 4096 || group.jobs.length >= 1024 || new Set([...group.leasePolicyIds, ...policies]).size > 64)) group = null;
+      let group = tails.get(key); if (group && (group.wordCount + owned.length > 4096 || group.jobs.length >= 1024 || group.dependencies.length + dependencies.length > 64 || dependencies.some(row => group.completions.has(row.completion)) || new Set([...group.leasePolicyIds, ...policies]).size > 64)) group = null;
       if (queuedWords + owned.length > maximumWords - (priority === 0 ? 0 : 4096) || jobs >= maximumJobs || retainedBytes + bytes > maximumBytes ||
           !group && groups.size >= maximumBatches - (priority === 0 ? 0 : 8)) return { status: 'rejected', reason: 'native-batch-capacity' };
-      if (!group) { group = { key, session: client.session, grant, execution, targetTimeMs, priority, wordCount: 0, retainedBytes: 0, jobs: [], leasePolicyIds: new Set(), submitted: false, started: false, settled: false }; groups.add(group); tails.set(key, group); }
+      if (!group) { group = { key, session: client.session, grant, execution, targetTimeMs, priority, wordCount: 0, retainedBytes: 0, jobs: [], leasePolicyIds: new Set(), dependencies: [], completions: new Set(), submitted: false, started: false, settled: false }; groups.add(group); tails.set(key, group); }
       let resolve; const completion = new Promise(done => { resolve = done; });
+      group.completions.add(completion); group.dependencies.push(...dependencies);
       group.jobs.push({ offset: group.wordCount, words: owned, packetEnds, provenance: metadata, onReceipt, resolve }); group.wordCount += owned.length; group.retainedBytes += bytes;
       for (const id of policies) group.leasePolicyIds.add(id);
       queuedWords += owned.length; jobs++; retainedBytes += bytes;

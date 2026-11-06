@@ -85,8 +85,8 @@ class BatchQueue {
   std::vector<PendingBatch> queue_;
   std::size_t words_{};
   static bool before(const PendingBatch &left, const PendingBatch &right) {
-    return std::tie(left.deadline, left.priority, left.ordinal) <
-           std::tie(right.deadline, right.priority, right.ordinal);
+    return std::tie(left.deadline, left.ordinal) <
+           std::tie(right.deadline, right.ordinal);
   }
 
 public:

@@ -10744,3 +10744,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Track partial MIDI1 selector/data progress and clear only touched selectors when no data write reached the receiver. Retire one policy with its queued dependent work and exact scoped cleanup; keep unknown note/controller cleanup separate. Reserve release admission for owned Note Offs, pedal-zero writes and registered exact resets.
 - Carry policy identities through versioned binary metadata, bridge commands and bounded browser coalescing without treating diagnostic provenance as authority. Keep edge-triggered toggle automation explicitly baseline-dependent, including absolute carriers; an observed trigger level is not the latched receiver property.
 - Release late capture-view snapshot/artifact leases when disposal or selection changes win. Native compilation/linking passes; formatting only otherwise, with functional qualification deferred. Shared actor aggregation and source release integration follow next.
+
+
+### 2026-11-06 — Rook continuation506: release dependencies and shared pedal transitions
+
+- Admit owned Note Offs only after their actual onset completion, and controller releases after the prior part-control frontier. Keep waiting browser batches cancellable, bound dependency retention, and split coalescing where a dependency would otherwise wait on its own batch.
+- Preserve native admission order at equal deadlines rather than reversing an onset/release pair by priority. Reserved release capacity remains independent of ordering.
+- Separate matching Note Offs from shared piano part updates. A departing actor can lower its contribution without lifting another actor or an explicit pedal override; positive/decreased depth changes retain ordinary performance priority. Failed release admission/submission retires the affected group execution instead of leaving stuck ownership.
+- Reconcile confirmed automatic native grant cleanup with browser voices/parts, retaining explicit uncertainty for failed note/controller cleanup. No functional tests; formatting only. Continue shared generic switch mappings and coordinated graph restoration before consolidated validation.
