@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, finite, integer, bounds, boundedList, freeze, copy } from './PhysicalSchema.js';
 import { validatePhysicalTuning, nearestTuningPitch, tuningDegree } from './Tuning.js';
 import { createPickupQueryPlan } from './PickupGates.js';
@@ -73,6 +74,7 @@ export function createHarmonicFieldResolver({ maxActors = 32768, maxQueries = 26
   };
   return { configure, observe, pitch, view: actorId => views.get(actorId) ?? null,
     snapshot: () => freeze({ version: 1, boundary, pendingEdit, states: [...states.values()].map(copy) }),
+    snapshotCooperative: options => captureContinuationRecord({ version: 1, boundary, pendingEdit }, { states: states.values() }, options),
     restore(value) { if (value?.version !== 1 || !Array.isArray(value.states) || value.states.length > maxActors || value.boundary != null && typeof value.boundary !== 'string') throw new Error('Invalid field checkpoint.'); const next = new Map();
       for (const state of value.states) { if (!integer(state.actorId) || next.has(state.actorId) || !fields.some(field => field.id === state.fieldId && field.revision === state.fieldRevision)) throw new Error('Invalid field membership.'); next.set(state.actorId, { actorId: state.actorId, fieldId: state.fieldId, fieldRevision: state.fieldRevision }); }
       if (value.pendingEdit != null && (!plain(value.pendingEdit) || value.pendingEdit.graphRevision !== lastRevision || value.pendingEdit.commandId != null && !identity(value.pendingEdit.commandId))) throw new Error('Invalid pending field edit.');

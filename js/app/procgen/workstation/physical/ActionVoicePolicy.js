@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, integer, freeze, copy, boundedList } from './PhysicalSchema.js';
 
 const names = new Set(['walking', 'falling', 'floating', 'climbing', 'hoisting', 'jumping', 'building', 'bashing', 'digging', 'mining', 'blocking', 'shrug', 'ohno', 'exploding', 'drowning', 'frying', 'splatting', 'exiting']);
@@ -53,6 +54,7 @@ export function createActionVoiceAdmission({ maxPending = 512 } = {}) {
     return freeze({ facts, completeness: failure ? { status: 'incomplete', reason: failure } : { status: 'complete' } });
   };
   return { configure, prepare, reset() { pending.clear(); boundary = null; }, snapshot: () => freeze({ version: 1, boundary, signatures: [...signatures], pending: [...pending].map(([key, value]) => [key, copy(value)]) }),
+    snapshotCooperative: options => captureContinuationRecord({ version: 1, boundary }, { signatures: signatures.entries(), pending: pending.entries() }, options),
     restore(value) { if (value?.version !== 1 || value.boundary != null && typeof value.boundary !== 'string' || JSON.stringify(value.signatures) !== JSON.stringify([...signatures]) || !Array.isArray(value.pending) || value.pending.length > maxPending) throw new Error('Invalid action voice admission checkpoint.'); const next = new Map(); for (const [key, record] of value.pending) { if (key !== `${record.instrumentId}/${record.actorId}` || !signatures.has(record.instrumentId) || next.has(key) || !integer(record.actorId) || !integer(record.admittedTick) || !integer(record.maximumHoldTicks, 1000000) || !names.has(record.action) || typeof record.actionInstanceId !== 'string' || typeof record.sourceEventId !== 'string' || !['motion', 'contact'].includes(record.beginCondition)) throw new Error('Invalid pending action owner.'); next.set(key, copy(record)); } pending.clear(); for (const [key, record] of next) pending.set(key, record); boundary = value.boundary; },
     diagnostics: () => ({ pending: pending.size }) };
 }

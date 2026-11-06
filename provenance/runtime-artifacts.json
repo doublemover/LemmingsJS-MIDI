@@ -265,6 +265,7 @@
         "js/app/procgen/workstation/CausalStoredSourceVerification.js",
         "js/app/procgen/workstation/CavityGeometryControl.js",
         "js/app/procgen/workstation/CavitySourceAdmission.js",
+        "js/app/procgen/workstation/CooperativeContinuationCapture.js",
         "js/app/procgen/workstation/DiggingOcarinaScore.js",
         "js/app/procgen/workstation/EmbeddedScenePatch.js",
         "js/app/procgen/workstation/LaneMixState.js",
@@ -475,8 +476,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 328,
-      "sha256": "2c7c5dc564ed2f3094ccc5f5c9096bb284a820bf4264993120c66e7627865841"
+      "fileCount": 329,
+      "sha256": "ffb8f4b5f2458d3b698cd98c9d2fd031e6ae8f853044f055e3a08db5097d75f8"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -814,6 +815,7 @@
         "js/app/procgen/workstation/CausalProbabilityPolicy.js",
         "js/app/procgen/workstation/CausalRandom.js",
         "js/app/procgen/workstation/CausalStoredSourceVerification.js",
+        "js/app/procgen/workstation/CooperativeContinuationCapture.js",
         "js/app/procgen/workstation/LaneMixState.js",
         "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
         "js/app/procgen/workstation/OriginalUmpRecordingSnapshot.js",
@@ -1151,8 +1153,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 535,
-      "sha256": "05ce5437b0846091b289ae8881c168f89edc75bec5ae0ce77df04694b9a1ab9f"
+      "fileCount": 536,
+      "sha256": "10f731bfcd67ef6b3920ff8fbbf035710b0928e142a7f9cf9615c28cf6d4994c"
     }
   ]
 }

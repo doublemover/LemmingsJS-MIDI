@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, integer, finite, bounds, freeze, copy } from './PhysicalSchema.js';
 export const MOTIF_PHYSICAL_KINDS = Object.freeze(['MotionCommitted', 'ContactResolved', 'ActionEntered', 'ActionExited', 'TerrainWorkCommitted', 'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorBorn', 'ActorTerminated', 'ActorLaneTransferred', 'PickupCrossing', 'RouteLap', 'EncounterBegan', 'EncounterEnded', 'RendezvousCompleted', 'RouteCompleted', 'RouteFailed', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RestStarted', 'RestEnded']);
 const physicalRoots = fact => fact.sourceEventIds || (fact.eventId ? [fact.eventId] : []);
@@ -130,6 +131,7 @@ export function createPhysicalMotifObserver({ maximumPartials = 1024, maximumWor
   };
   return { configure, observe, reset() { partials.clear(); boundary = null; lastTick = -1; terrainRevision = null; last = null; },
     snapshot: () => freeze(copy({ version: 1, boundary, serial, lastTick, terrainRevision, partials: [...partials] })),
+    snapshotCooperative: options => captureContinuationRecord({ version: 1, boundary, serial, lastTick, terrainRevision }, { partials: partials.entries() }, options),
     restore(value) {
       if (value?.version !== 1 || value.boundary != null && (typeof value.boundary !== 'string' || value.boundary.length > 256) || !integer(value.serial) || !Number.isSafeInteger(value.lastTick) || value.lastTick < -1 || value.terrainRevision != null && !integer(value.terrainRevision) || !Array.isArray(value.partials) || value.partials.length > 32 || JSON.stringify(value).length * 2 > 8 * 1048576) throw new Error('Invalid motif checkpoint.');
       const next = new Map(); let count = 0; const serials = new Set();

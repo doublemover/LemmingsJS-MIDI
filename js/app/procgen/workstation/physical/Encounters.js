@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, integer, finite, bounds, freeze, copy } from './PhysicalSchema.js';
 const roots = fact => fact?.sourceEventIds || (fact?.eventId ? [fact.eventId] : []);
 const inside = (point, b) => point.x >= b.x1 && point.x < b.x2 && point.y >= b.y1 && point.y < b.y2;
@@ -158,6 +159,7 @@ export function createEncounterObserver({ maximumEpisodes = 2048, maximumState =
     lastFacts = output; return { facts: output, responses, completeness: { status: censored ? 'censored' : 'complete', diagnostics: [...diagnostics], diagnosticOverflow } };
   };
   return { configure, observe, snapshot: () => freeze(copy({ version: 1, boundary, serial, lastTick, episodes: [...episodes], cooldowns: [...cooldowns], rendezvous: [...rendezvous], pitchMemory: [...pitchMemory], coordinates: [...coordinates] })),
+    snapshotCooperative: options => captureContinuationRecord({ version: 1, boundary, serial, lastTick }, { episodes: episodes.entries(), cooldowns: cooldowns.entries(), rendezvous: rendezvous.entries(), pitchMemory: pitchMemory.entries(), coordinates: coordinates.entries() }, options),
     restore(value) {
       if (JSON.stringify(value).length * 2 > 8 * 1048576) throw new Error('Encounter checkpoint byte capacity exceeded.');
       if (value?.version !== 1 || value.boundary != null && typeof value.boundary !== 'string' || !integer(value.serial) || !Number.isSafeInteger(value.lastTick) || value.lastTick < -1) throw new Error('Invalid encounter checkpoint.');

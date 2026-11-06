@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, integer, finite, bounds, freeze, copy } from './PhysicalSchema.js';
 import { MOTIF_PHYSICAL_KINDS } from './PhysicalMotifs.js';
 import { topologyResultMatchesRegion } from './TopologyInstrumentRegion.js';
@@ -95,6 +96,7 @@ export function createActivityWindowObserver({ maximumWork = 262144, maximumComp
     lastTick = batch.tick; last = freeze({ facts: result, responses, windows: views, completeness: { status: censored ? 'censored' : 'complete', work } }); return last;
   };
   return { configure, observe, reset() { states.clear(); completions.clear(); boundary = null; lastTick = -1; last = null; }, snapshot: () => freeze(copy({ version: 2, signatures: [...signatures], boundary, lastTick, states: [...states], completions: [...completions] })),
+    snapshotCooperative: options => captureContinuationRecord({ version: 2, boundary, lastTick }, { signatures: signatures.entries(), states: states.entries(), completions: completions.entries() }, options),
     restore(value) {
       const emptyLegacy = value?.version === 1 && value.boundary === null && value.lastTick === -1 && Array.isArray(value.states) && value.states.length === 0 && Array.isArray(value.completions) && value.completions.length === 0;
       if (!emptyLegacy && (value?.version !== 2 || JSON.stringify(value.signatures) !== JSON.stringify([...signatures])) || value.boundary != null && (typeof value.boundary !== 'string' || value.boundary.length > 256) || !Number.isSafeInteger(value.lastTick) || value.lastTick < -1 || !Array.isArray(value.states) || value.states.length > 64 || !Array.isArray(value.completions) || value.completions.length > maximumCompletions || JSON.stringify(value).length * 2 > 4 * 1048576) throw new Error('Invalid activity checkpoint.');

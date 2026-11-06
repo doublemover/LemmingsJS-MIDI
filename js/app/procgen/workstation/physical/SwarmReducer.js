@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, integer, freeze, copy } from './PhysicalSchema.js';
 
 const MODES = ['individual', 'centroidChord', 'densityCloud', 'representativeStrikes'];
@@ -159,6 +160,6 @@ export const createSwarmReducer = () => {
     if ([...nextAudible.values()].reduce((sum, record) => sum + bytes(record), 0) > LIMITS.bytes / 4 || owned > LIMITS.bytes / 2 || buckets > LIMITS.buckets) throw new Error('Swarm continuation capacity exceeded.');
     held = nextHeld; audible = nextAudible; groups = nextGroups; heldBytes = owned; applied = value.applied; serial = value.serial; cursor = copy(value.cursor); summary = null;
   };
-  return { configure, reduce, snapshot, restore, diagnostics: () => summary || freeze({ mode: config?.representation || 'disabled', heldSources: held.size, audibleVoices: audible.size, retainedGroups: groups.size, ownedSourceBytes: heldBytes }) };
+  return { configure, reduce, snapshot, snapshotCooperative: options => captureContinuationRecord({ version: 1, config, applied, serial, cursor }, { held: held.entries(), audible: audible.entries(), groups: groups.entries() }, options), restore, diagnostics: () => summary || freeze({ mode: config?.representation || 'disabled', heldSources: held.size, audibleVoices: audible.size, retainedGroups: groups.size, ownedSourceBytes: heldBytes }) };
 };
 export const SWARM_REDUCER_LIMITS = LIMITS;

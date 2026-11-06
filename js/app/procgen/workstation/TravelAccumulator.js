@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from './CooperativeContinuationCapture.js';
 const SCOPES = new Set(['actorJourney', 'actionInstance', 'contactSpan']);
 const METRICS = new Set(['segment-path', 'endpoint-chord', 'axis-projection', 'qualified-route-arc-pixels']);
 const ORIENTATIONS = new Set(['unsigned', 'signedX', 'signedY', 'directed-route']);
@@ -159,7 +160,7 @@ const createTravelAccumulator = ({ maxEntries = 16384, maxCrossingsPerFact = 128
     }
     entries = next;
   };
-  return { consume, observeLifecycle, snapshot, restore, release, rebaseGraph(revision, predicate) { for (const state of entries.values()) if (predicate(state)) state.graphRevision = revision; }, reset: () => entries.clear() };
+  return { consume, observeLifecycle, snapshot, snapshotCooperative: options => captureContinuationRecord({ version: 1 }, { entries: entries.values() }, options), restore, release, rebaseGraph(revision, predicate) { for (const state of entries.values()) if (predicate(state)) state.graphRevision = revision; }, reset: () => entries.clear() };
 };
 const freezeState = state => Object.freeze({ ...state, origin: Object.freeze({ ...state.origin }), previousPosition: Object.freeze({ ...state.previousPosition }) });
 

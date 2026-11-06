@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, integer, boundedList, freeze, copy } from './PhysicalSchema.js';
 
 export const RHYTHMIC_SOURCE_KINDS = Object.freeze(['CrowdArrival', 'WorkResponse', 'RicochetResponse', 'FlightArc']);
@@ -194,6 +195,7 @@ export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192, ma
     return freeze({ facts: output, completeness: failure ? { status: 'incomplete', reason: failure } : { status: 'complete' } });
   };
   return { configure, expand, reset() { states.clear(); pending = []; pendingBytes = 0; currentTick = -1; boundary = null; }, snapshot: () => freeze({ version: 2, boundary, currentTick, signatures: [...signatures], states: [...states].map(([key, state]) => [key, copy(state)]), pending: pending.map(copy) }),
+    snapshotCooperative: options => captureContinuationRecord({ version: 2, boundary, currentTick, pending }, { signatures: signatures.entries(), states: states.entries() }, options),
     restore(value) { if (![1, 2].includes(value?.version) || value.boundary != null && typeof value.boundary !== 'string' || JSON.stringify(value.signatures) !== JSON.stringify([...signatures]) || !Array.isArray(value.states) || value.states.length > maxStates) throw new Error('Invalid response checkpoint.'); const nextTick = value.version === 1 ? -1 : value.currentTick, nextPending = [], pendingIds = new Set(); let nextBytes = 0;
       if (!Number.isSafeInteger(nextTick) || nextTick < -1 || value.version === 1 && configured.some(instrument => instrument.response?.type === 'crowdInterval' && instrument.response.mode !== 'literal-arrival') || value.version === 2 && (!Array.isArray(value.pending) || value.pending.length > maxPending)) throw new Error('Invalid pending crowd boundary.');
       for (const record of value.pending || []) {

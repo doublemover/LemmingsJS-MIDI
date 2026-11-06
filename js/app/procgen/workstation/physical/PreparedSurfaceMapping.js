@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { cloneData, freezeData, canonicalDataText } from '../../../../core/CanonicalData.js';
 import { validatePreparedSurfaceMap, validateMappedBodyPreparation, projectPreparedSurfacePoint } from '../../../../midi/content/PreparedSurface.js';
 
@@ -97,6 +98,6 @@ export function createPreparedSurfaceMapping() {
     }
     held.clear(); for (const [key, record] of next) held.set(key, record); last = { ...p.cursor }; declined = p.declined; capped = p.capped;
   };
-  return Object.freeze({ configure, validateConfiguration: values => prepareConfiguration(values).next, consume, snapshot, restore, reset(frontier = null) { held.clear(); last = frontier ? { ...frontier } : { worldId: null, generation: null, tick: -1, sequence: -1 }; },
+  return Object.freeze({ configure, validateConfiguration: values => prepareConfiguration(values).next, consume, snapshot, snapshotCooperative: options => captureContinuationRecord({ version: 1, configuration, cursor: last, declined, capped }, { held: (function*() { for (const [key, value] of held) yield { key, ...value }; })() }, options), restore, reset(frontier = null) { held.clear(); last = frontier ? { ...frontier } : { worldId: null, generation: null, tick: -1, sequence: -1 }; },
     diagnostics: () => Object.freeze({ surfaces: definitions.length, heldPreparations: held.size, declined, capped, maximumHeld: MAX_HELD, maximumCommandsPerBatch: MAX_COMMANDS, semanticOnsets: 0 }) });
 }

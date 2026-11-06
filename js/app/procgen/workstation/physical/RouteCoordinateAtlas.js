@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, integer, finite, point, bounds, boundedList, freeze, copy } from './PhysicalSchema.js';
 import { describeRoutePeriods } from './RoutePeriodEvidence.js';
 
@@ -156,6 +157,7 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
     coordinateStatus: state.status, periodTicks: state.periodTicks, requestedPeriodTicks: byId.get(state.routeId).requestedPeriodTicks, lastCompletedLapTick: state.lastReturnTick, sourceObservationId: state.lastLapObservationId, sourceEventIds: [...state.lastLapSourceEventIds] })));
   return { configure, observe, coordinate, neighbors, periods, reset() { trackers.clear(); invalid.clear(); boundary = null; },
     snapshot: () => freeze({ version: 2, boundary, currentTick, signatures: [...signatures], trackers: [...trackers.values()].map(copy), invalid: [...invalid].map(([id, segments]) => [id, [...segments]]) }),
+    snapshotCooperative: options => captureContinuationRecord({ version: 2, boundary, currentTick }, { signatures: signatures.entries(), trackers: trackers.values(), invalid: (function*() { for (const [id, segments] of invalid) yield [id, [...segments]]; })() }, options),
     restore(value) {
       const legacyEmpty = value?.version === 1 && Array.isArray(value.trackers) && value.trackers.length === 0 && Array.isArray(value.invalid) && value.invalid.length === 0;
       if (value?.version === 1 && !legacyEmpty) throw new Error('Observed route history requires marker-bound checkpoint version 2.');

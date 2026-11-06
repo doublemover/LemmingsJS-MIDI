@@ -43,7 +43,8 @@ import { createProcgenTransport } from './ProcgenTransport.js';
 import { createProcgenMidiPorts } from './ProcgenMidiPorts.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
 import { createLaneDisplayEvidence } from './LaneDisplayEvidence.js';
-import { captureProcgenCheckpoint, assetIdentity } from './ProcgenCheckpoint.js';
+import { captureProcgenCheckpoint, captureProcgenCheckpointCooperative, assetIdentity } from './ProcgenCheckpoint.js';
+import { continuationCaptureStale } from './CooperativeContinuationCapture.js';
 import { causalRuntimeSourceVersions, describeCausalReperformance } from './CausalRuntimeIdentity.js';
 import { borrowCausalPage, borrowCausalTake, retireCausalRead } from './CausalReadLeases.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
@@ -162,7 +163,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let recoveryCompletion = Promise.resolve(null);
   let recoveryOwnershipFailure = null;
   const persistenceReadHolds = new Set();
-  const recoverySnapshotStats = { calls: 0, totalMs: 0, maximumMs: 0, lastMs: null };
+  const recoverySnapshotStats = { calls: 0, totalMs: 0, maximumMs: 0, lastMs: null, slices: 0, maximumSliceMs: 0, deferred: 0, lastDeferredReason: null };
   let recoveryState = 'unsaved', recoveryError = null, durableRecoveryRevision = -1, durableRecoveryTick = null, durableRecoveryGeneration = null, recoveryRetirement = null, lastRecoveryCommit = null;
   let lastRecoveryError = -Infinity;
   let lastBudgetNotice = -Infinity;
@@ -1329,14 +1330,32 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         await prepareProcgenRecoveryJournal(world, { resourceBudget, signal: controller.signal,
           isCurrent: () => !disposed && runtime()?.world === world && documentGeneration === sourceDocumentGeneration && !transport.getState().playing });
       }
-      const captureRecovery = () => {
+      const captureRecovery = async () => {
         if (disposed || documentGeneration !== sourceDocumentGeneration) throw new Error('Recovery document changed before snapshot admission.');
+        syncWorldSeed(); const sourceProject = project, sourceWorld = runtime().world, sourceTick = sourceWorld.tickIndex, sourcePhysical = physicalPlayback,
+          sourceRevision = editRevision, sourceStoredRevision = documentRevision, sourceDocumentId = documentId,
+          current = () => !disposed && documentGeneration === sourceDocumentGeneration && project === sourceProject && runtime()?.world === sourceWorld &&
+            sourceWorld.tickIndex === sourceTick && physicalPlayback === sourcePhysical && !worldBusy,
+          onSlice = slice => { recoverySnapshotStats.slices++; recoverySnapshotStats.maximumSliceMs = Math.max(recoverySnapshotStats.maximumSliceMs, slice.durationMs || 0); },
+          options = { signal: controller.signal, isCurrent: current, onSlice };
         const snapshotStarted = now(); let session;
-        try { session = snapshotSession(savedName + ' (recovery)', { recovery: true }); }
+        try {
+          const patterns = await engine.snapshotCooperative(options), physicalState = sourcePhysical ? await sourcePhysical.engine.snapshotCooperative(options) : null;
+          controller.signal.throwIfAborted(); if (!current()) throw continuationCaptureStale();
+          const journal = getProcgenRecoveryJournal(sourceWorld);
+          if (!journal && transport.getState().playing) throw continuationCaptureStale();
+          const checkpoint = journal ? journal.checkpoint() : await captureProcgenCheckpointCooperative(sourceWorld, options);
+          controller.signal.throwIfAborted(); if (!current()) throw continuationCaptureStale();
+          session = createProcgenSession({ name: savedName + ' (recovery)', project: sourceProject, settings: clone(settingsFor(sourceProject)),
+            world: checkpoint, recoveryJournal: journal ? journal.snapshot() : null, transport: transport.snapshot(), patterns, physicalState,
+            physicalTimeline: physicalScoreClock.snapshot(), camera: renderer()?.camera?.getState?.(),
+            ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } });
+          if (!current()) throw continuationCaptureStale();
+        }
         finally { const elapsed = Math.max(0, now() - snapshotStarted); recoverySnapshotStats.calls++; recoverySnapshotStats.lastMs = elapsed; recoverySnapshotStats.totalMs += elapsed; recoverySnapshotStats.maximumMs = Math.max(recoverySnapshotStats.maximumMs, elapsed); }
-        capturedRevision = editRevision; capturedTick = runtime().world.tickIndex ?? null; capturedDocumentId = documentId; capturedStoredRevision = documentRevision; return session;
+        capturedRevision = sourceRevision; capturedTick = sourceTick; capturedDocumentId = sourceDocumentId; capturedStoredRevision = sourceStoredRevision; recoverySnapshotStats.lastDeferredReason = null; return session;
       };
-      const source = storage.supportsRecoveryFactory ? captureRecovery : captureRecovery();
+      const source = storage.supportsRecoveryFactory ? captureRecovery : await captureRecovery();
       const receipt = storage.saveRecovery ? await storage.saveRecovery(source, { signal: controller.signal, documentRevision: capturedRevision, tick: capturedTick,
         laneCount: runtime().world.laneCount, incremental: !!getProcgenRecoveryJournal(runtime().world), snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick, sourceDocumentId: capturedDocumentId, sourceStoredRevision: capturedStoredRevision }) }) : await storage.save('__recovery__', source);
       if (receipt?.retirement?.status === 'unknown') recoveryCleanupFailure = Object.assign(new Error('Recovery is durably saved but resource retirement is unresolved.'), { name: 'ResourceOwnershipError' });
@@ -1358,6 +1377,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (recoveryCleanupFailure) recoveryRetirement = resourceRetirementSummary([recoveryCleanupFailure]);
       if (disposed) return false;
       if (controller.signal.aborted && !recoveryCleanupFailure) { recoveryState = 'pending'; storageStatus(); return false; }
+      if (error.code === 'continuation-source-changed' && !recoveryCleanupFailure) {
+        recoveryState = 'deferred'; recoveryError = null; recoverySnapshotStats.deferred++; recoverySnapshotStats.lastDeferredReason = 'The source changed during bounded capture; the prior durable revision is preserved.'; storageStatus();
+        if (now() - lastRecoveryError >= 60000) { lastRecoveryError = now(); status('Recovery is waiting for a stable completed boundary. Pause to capture a large continuation; the prior saved recovery remains available.'); }
+        return false;
+      }
       recoveryState = 'unavailable'; recoveryError = error; storageStatus();
       if (now() - lastRecoveryError >= 60000) {
         lastRecoveryError = now(); status('Recovery checkpoint was not saved. Export this project if storage remains unavailable. ' + (error?.message || ''));

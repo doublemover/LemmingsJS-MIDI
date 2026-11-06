@@ -13,6 +13,7 @@ export const causalLanePhysicalControlKinds = entry => [...new Set([...(getSuppo
   ...(entry?.organ?.profiles !== 'organ' && entry?.organ?.rotarySource === 'cohort-circulation' ? ['MotionCommitted'] : []), ...(entry?.deviceParameters || []).flatMap(mapping => ['positionYWorldPixels', 'displacementPixels'].includes(mapping.source) ? ['MotionCommitted'] : mapping.source === 'changedSolidCells' ? ['TerrainWorkCommitted'] : [])])];
 
 const plain = value => value && Object.getPrototypeOf(value) === Object.prototype;
+const validatedPerformance = new WeakSet();
 const fail = () => { throw new TypeError('Invalid causal lane performance state.'); };
 const keys = (value, allowed) => plain(value) && Object.keys(value).every(key => allowed.includes(key));
 const identifier = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
@@ -25,11 +26,12 @@ const lane = value => {
   return Object.freeze({ id: value.id, sourceIndex: value.sourceIndex, ...(value.mix ? { mix: Object.freeze({ ...value.mix }) } : {}), ...(value.timeTransform ? { timeTransform: validateTimeTransform(value.timeTransform) } : {}), ...(value.scoreContext ? { scoreContext: validateScoreContextPolicy(value.scoreContext) } : {}), ...(value.organ ? { organ: validateOrganRotaryPolicy(value.organ) } : {}), ...(value.organControls ? { organControls: validateOrganRotaryControls(value.organControls) } : {}), ...(value.piano ? { piano: validatePianoPerformancePolicy(value.piano) } : {}), ...(value.pianoControls ? { pianoControls: validatePianoPartControls(value.pianoControls) } : {}), ...(value.orchestral ? { orchestral: validateOrchestralArticulationPolicy(value.orchestral) } : {}), ...(value.percussion ? { percussion: validatePercussionIntentPolicy(value.percussion) } : {}), controls: validateInstrumentControls(value.controls), physicalSourceKinds: Object.freeze([...value.physicalSourceKinds].sort()) });
 };
 export function validateCausalPerformanceState(value) {
+  if (validatedPerformance.has(value)) return value;
   if (!keys(value, ['version', 'lanes', 'actorTimbreLocks']) || value.version !== 1 || !Array.isArray(value.lanes) || value.lanes.length > 1024) fail();
   const lanes = value.lanes.map(lane).sort((a, b) => a.sourceIndex - b.sourceIndex);
   if (new Set(lanes.map(entry => entry.id)).size !== lanes.length || lanes.some((entry, index) => entry.sourceIndex !== index)) fail();
   const actorTimbreLocks = validateActorTimbreLocks(value.actorTimbreLocks);
-  return Object.freeze({ version: 1, lanes: Object.freeze(lanes), ...(actorTimbreLocks.length ? { actorTimbreLocks } : {}) });
+  const result = Object.freeze({ version: 1, lanes: Object.freeze(lanes), ...(actorTimbreLocks.length ? { actorTimbreLocks } : {}) }); validatedPerformance.add(result); return result;
 }
 export function captureCausalPerformanceState(lanes, actorTimbreLocks) {
   if (!Array.isArray(lanes) || lanes.length > 1024) fail();

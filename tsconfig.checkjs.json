@@ -46,6 +46,7 @@
     "js/level/Trigger.js",
     "mcp/toolRouting.js",
     "js/app/procgen/workstation/ProcgenWorkstation.js",
+    "js/app/procgen/ProcgenSimulationHost.d.ts",
     "js/app/procgen/workstation/ProcgenProjectSummary.js",
     "js/app/procgen/workstation/ProcgenReplacementPolicy.js",
     "js/app/procgen/workstation/ProcgenOperationView.js",

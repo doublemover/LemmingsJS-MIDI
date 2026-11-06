@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, finite, integer, point, bounds, boundedList, freeze, copy } from './PhysicalSchema.js';
 
 const EPS = 1e-9, cross = (ax, ay, bx, by) => ax * by - ay * bx;
@@ -149,6 +150,7 @@ export function createPickupGateObserver({ maxStates = 16384, maxObservations = 
     return freeze({ observations, completeness: incomplete ? { status: 'incomplete', reason: incomplete } : { status: 'complete' } });
   };
   return { configure, observe, reset() { states.clear(); recent.clear(); boundary = null; }, snapshot: () => freeze({ version: 1, boundary, states: [...states.values()].map(copy) }),
+    snapshotCooperative: options => captureContinuationRecord({ version: 1, boundary }, { states: states.values() }, options),
     restore(value) { if (value?.version !== 1 || value.boundary != null && typeof value.boundary !== 'string' || !Array.isArray(value.states) || value.states.length > maxStates) throw new Error('Invalid pickup checkpoint.');
       const next = new Map(); for (const state of value.states) { if (!plan.byId.has(state.gateId) || !integer(state.actorId) || !integer(state.ordinal) || typeof state.armed !== 'boolean' || typeof state.sounding !== 'boolean') throw new Error('Invalid pickup ownership.'); const id = key(state.gateId, state.actorId); if (next.has(id)) throw new Error('Duplicate pickup ownership.'); next.set(id, copy(state)); } states.clear(); for (const [id, state] of next) states.set(id, state); boundary = value.boundary; },
     diagnostics: () => freeze({ states: states.size, queryPlan: plan.stats(), completeness: incomplete, recent: [...recent.values()] }) };

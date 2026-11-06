@@ -40,6 +40,7 @@ export function createTonalInterpretation() {
   return { configure, observe(value, domain) { batch = value; fields.observe(value, domain); formations.observe(value, domain, fields); }, resolve, cause,
     enabled: () => !!(graph?.harmonicFields?.length || graph?.formations?.length),
     snapshot: () => freeze({ version: 1, fields: fields.snapshot(), formations: formations.snapshot() }),
+    snapshotCooperative: async options => Object.freeze({ version: 1, fields: await fields.snapshotCooperative(options), formations: await formations.snapshotCooperative(options) }),
     restore(value) { if (value?.version !== 1) throw new Error('Invalid tonal checkpoint.'); const nextFields = createHarmonicFieldResolver({ getMaterialTag: actor => actor.terrainProvenance ?? { status: 'unknown' } }), nextFormations = createFormationHarmony(); nextFields.configure(graph.harmonicFields || [], graph.revision); nextFormations.configure(graph.formations || []); nextFields.restore(value.fields); nextFormations.restore(value.formations); fields = nextFields; formations = nextFormations; },
     reset() { fields.reset(); formations.reset(); batch = null; }, diagnostics: () => freeze({ fields: fields.diagnostics(), formations: formations.diagnostics() }) };
 }

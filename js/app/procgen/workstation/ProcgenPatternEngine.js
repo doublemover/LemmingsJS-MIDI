@@ -6,6 +6,7 @@ import { positionCurveValue } from '../../../midi/midi-mapping/PositionCurve.js'
 import { resolveAxisValues, resolveAxisValue } from '../../../midi/midi-mapping/MidiMappingDomain.js';
 import { meterQuarterLength } from '../../../midi/project/MidiMusicalPosition.js';
 import { createSinkAdmissionRegistry } from './SinkAdmissionRegistry.js';
+import { copyContinuationCooperative, collectContinuationEntries, continuationCaptureStale } from './CooperativeContinuationCapture.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -36,10 +37,12 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
   const emptyState = () => ({ version: 1, beat: -1, timestamp: 0, bpm: 120, lanes: {}, pending: [], active: [], cursor: 0, budget: maxNotesPerPulse, ccBudget: maxNotesPerPulse, automationSerial: 0 });
   const automation = new MidiAutomationSpans([]);
   let state = emptyState(), cachedProject = null, solo = false, soloCount = 0, liveLanes = new Map(), spatialCurves = [];
-  const admissions = createSinkAdmissionRegistry({ onTransition: onAdmission }), deferred = new Map(), pendingKeys = new Map();
+  let continuationRevision = 0;
+  const admissions = createSinkAdmissionRegistry({ onTransition: value => { continuationRevision++; onAdmission(value); } }), deferred = new Map(), pendingKeys = new Map();
   let admissionGeneration = 0, eventSerial = 0;
   const derive = project => {
     if (cachedProject === project) return;
+    continuationRevision++;
     const previous = cachedProject, change = previous && procgenProjectChange(previous, project);
     if (previous?.automation !== project.automation) {
       automation.configure(project.automation);
@@ -60,15 +63,16 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
     cachedProject = project;
   };
   const laneState = lane => {
-    if (!Object.hasOwn(state.lanes, lane.id)) Object.defineProperty(state.lanes, lane.id, { enumerable: true, configurable: true, writable: true, value: {
+    if (!Object.hasOwn(state.lanes, lane.id)) { continuationRevision++; Object.defineProperty(state.lanes, lane.id, { enumerable: true, configurable: true, writable: true, value: {
       slot: lane.activeSlot, launchSerial: -1, origin: 0, lastStep: -1, events: 0, attempts: 0, observed: { action: '', terrain: '' }, cc: {}
-    } });
+    } }); }
     return state.lanes[lane.id];
   };
   const audible = (project, lane) => !lane.mute && lane.gain > 0 && (!solo || lane.solo);
   const accepted = receipt => receipt?.status === 'accepted' && receipt.outputRequested !== false;
   const routeFor = lane => String(getSinkKey(lane));
   const releaseEntry = entry => {
+    continuationRevision++;
     deferred.delete(entry.receipt.receiptId);
     if (pendingKeys.get(entry.pendingKey) === entry) pendingKeys.delete(entry.pendingKey);
   };
@@ -96,6 +100,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
     for (const entry of deferred.values()) if (reason || !currentEntry(entry)) cancelEntry(entry, reason || 'admission-context-retired');
   };
   const commitActive = (spec, meta, receipt, route) => {
+    continuationRevision++;
     state.active.push({ spec, meta, receipt, routeKey: route, endBeat: meta.beat + spec.durationMs * state.bpm / 60000 });
   };
   const dispatchAdmission = (callback, spec, meta, accept, { isNote = false, coalesceKey = null, onTargets = () => {} } = {}) => {
@@ -358,6 +363,14 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
   };
   const reset = () => { admissionGeneration++; sweepAdmissions('engine-reset'); state = emptyState(); automation.reset(); };
   const snapshot = () => clone({ ...state, automation: automation.exportState(), admissionCursor: { ...admissions.counters(), eventSerial }, pendingAdmissions: [...deferred.values()].map(entry => ({ receipt: entry.receipt, cancelling: !!entry.cancelling, cancellationUnconfirmed: !!entry.cancellationUnconfirmed })) });
+  const snapshotCooperative = async (options = {}) => {
+    const revision = continuationRevision, project = getProject(), check = () => {
+        options.signal?.throwIfAborted(); if (continuationRevision !== revision || getProject() !== project || options.isCurrent?.() === false) throw continuationCaptureStale();
+      }, settings = { ...options, check, isCurrent: () => continuationRevision === revision && getProject() === project && options.isCurrent?.() !== false };
+    check(); const source = { ...state }, automationState = await automation.exportStateCooperative(collectContinuationEntries, settings);
+    const pendingAdmissions = await collectContinuationEntries((function*() { for (const entry of deferred.values()) yield { receipt: entry.receipt, cancelling: !!entry.cancelling, cancellationUnconfirmed: !!entry.cancellationUnconfirmed }; })(), settings);
+    check(); return copyContinuationCooperative({ ...source, automation: automationState, admissionCursor: { ...admissions.counters(), eventSerial }, pendingAdmissions }, settings);
+  };
   const restore = value => {
     reset();
     if (value?.version === 1 && Number.isFinite(value.beat) && value.lanes && Array.isArray(value.pending)) {
@@ -395,7 +408,8 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
     if (next) for (const item of state.active) if (item.receipt.receiptId === next.receiptId) item.receipt = next;
     return next;
   };
-  return { onBeat, onGameEvent, snapshot, restore, reset, flush, resume, cancelPendingAdmissions: sweepAdmissions, getAdmissions: admissions.snapshot, acknowledgeAdmission,
+  const mutating = operation => (...args) => { continuationRevision++; return operation(...args); };
+  return { onBeat: mutating(onBeat), onGameEvent: mutating(onGameEvent), snapshot, snapshotCooperative, restore: mutating(restore), reset: mutating(reset), flush: mutating(flush), resume: mutating(resume), cancelPendingAdmissions: mutating(sweepAdmissions), getAdmissions: admissions.snapshot, acknowledgeAdmission: mutating(acknowledgeAdmission),
     getState: snapshot, getLanePosition, getAutomationSpanState: (id, lane) => automation.snapshot(id, lane) };
 };
 export { createProcgenPatternEngine, procgenStepNotes };

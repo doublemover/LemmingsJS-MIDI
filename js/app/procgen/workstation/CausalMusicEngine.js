@@ -23,6 +23,9 @@ import { validateInstrumentControls, captureInstrumentCause, INSTRUMENT_PHYSICAL
 import { validateCausalProbabilityPolicy, validateCausalSeedSet, causalNamespaceSeed, createCausalProbabilityContext, causalPolicyDecision } from './CausalProbabilityPolicy.js';
 import { createTravelAccumulator, validateArticulationField } from './TravelAccumulator.js';
 import { validateCausalPerformanceState } from './CausalPerformanceState.js';
+import { copyContinuationCooperative, collectContinuationEntries, continuationCaptureStale } from './CooperativeContinuationCapture.js';
+import { yieldBackgroundTask } from '../../resources/BackgroundTaskYield.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const SOURCE_KINDS = new Set(['TerrainWorkCommitted', 'ContactResolved', 'MotionCommitted', 'ActionEntered', 'ContactSpanBegan', 'EncounterResponse', 'MotifResponse', 'CadenceResponse', 'CargoDelivery', ...DERIVED_PHYSICAL_KINDS, ...RHYTHMIC_SOURCE_KINDS]);
 const plain = value => value && typeof value === 'object' && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
@@ -113,6 +116,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   if (!Number.isSafeInteger(maxPhysicalUpdatesPerBatch) || maxPhysicalUpdatesPerBatch < 0 || maxPhysicalUpdatesPerBatch > 4096) throw new Error('Invalid physical control budget.');
   const resourceOwner = createCausalObserverResources({ resourceBudget, maxVoices, maxBeginsPerBatch, traceLimit });
   let disposed = false, disposalError = null, snapshotCache = null, traceBytes = 0, traceOmitted = 0; const traceSizes = [];
+  let continuationRevision = 0, continuationWork = null, continuationAbort = null, continuationRetirement = null;
   let bodyPreparations = createPreparedSurfaceMapping(), latestBodyPreparations = null;
   let tones = createTonalInterpretation(); const onsetPlans = new Map();
   let swarm = createSwarmReducer();
@@ -222,7 +226,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       const next = validateCausalInstrumentGraph(source);
       const fingerprint = JSON.stringify(next);
       if (graph && next.revision === graph.revision && fingerprint !== graphFingerprint) throw new Error('Causal graph changed without a new revision.');
-      resourceOwner.admitGraph(next); snapshotCache = null;
+      resourceOwner.admitGraph(next); snapshotCache = null; continuationRevision++;
       const solo = next.instruments.some(instrument => instrument.solo && !instrument.mute);
       const live = next.instruments.filter(instrument => !instrument.mute && (!solo || instrument.solo));
       const nextIndex = new Map();
@@ -265,7 +269,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       for (const fact of batch.facts) scoreTimeline.map({ simTick: batch.tick,
         subTick: fact.subTick ?? 0, precision: fact.precision ?? 'tick' });
     }
-    snapshotCache = null; seen.add(batch.batchId); seenOrder.push(batch.batchId);
+    snapshotCache = null; continuationRevision++; seen.add(batch.batchId); seenOrder.push(batch.batchId);
     if (seenOrder.length > 1024) seen.delete(seenOrder.shift());
     const output = []; batchDecisions.length = 0; probabilityCount = 0; probabilityBytes = 0; onsetDecisions.clear();
     if (generation !== null && (generation !== batch.generation || cursor.worldId !== batch.worldId)) {
@@ -533,7 +537,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     }
     return publish(batch, output);
   };
-  const serializeVoices = records => Object.freeze([...records.values()].map(record => Object.freeze({ voiceId: record.voiceId,
+  const serializeVoice = record => Object.freeze({ voiceId: record.voiceId,
     instrumentId: record.instrument.id, graphRevision: record.graphRevision, generation: record.generation, actorId: record.actorId,
     laneId: record.laneId, actionInstanceId: record.actionInstanceId,
     ...(record.topologyBinding ? { topologyBinding: record.topologyBinding, topologyPitchCents: record.topologyPitchCents } : {}),
@@ -541,7 +545,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     ...(record.rootVoiceId ? { rootVoiceId: record.rootVoiceId } : {}),
     ...(record.startedTick != null ? { startedTick: record.startedTick } : {}), ...(record.lastExpression ? { lastExpression: Object.freeze({ ...record.lastExpression }), lastExpressionTick: record.lastExpressionTick } : {}),
     ...(record.physicalSourceKinds.length ? { physicalSourceKinds: record.physicalSourceKinds } : {}),
-    ...(record.lifetimeScope ? { lifetimeScope: record.lifetimeScope, scopeInstanceId: record.scopeInstanceId } : {}) })));
+    ...(record.lifetimeScope ? { lifetimeScope: record.lifetimeScope, scopeInstanceId: record.scopeInstanceId } : {}) });
+  const serializeVoices = records => Object.freeze([...records.values()].map(serializeVoice));
   const captureSnapshot = (performance, state = { graph, bodyPreparations, swarm, generation, recoveryRequired, cargo, activity, motifs, encounters, tones, instrumentEpochs, travel, actionAdmission, rhythmic, physical, cursor, active, suppressed }) => Object.freeze({
     version: 1, ...(state.graph.preparedSurfaces?.length || state.bodyPreparations.diagnostics().heldPreparations ? { preparedSurfaces: state.bodyPreparations.snapshot() } : {}),
     swarm: state.swarm.snapshot(), generation: state.generation, graphRevision: state.graph.revision, recoveryRequired: state.recoveryRequired,
@@ -558,7 +563,38 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const snapshot = () => { getCurrentGraph(); const performance = getPerformanceState(); if (snapshotCache && snapshotCache.performanceKey === JSON.stringify(performance)) return snapshotCache.value;
     const value = resourceOwner.stage('causal-observer-snapshot-copy', () => captureSnapshot(performance));
     snapshotCache = { value, performanceKey: JSON.stringify(performance) }; return value; };
+  const snapshotCooperative = (options = {}) => {
+    if (continuationWork || continuationRetirement) throw new Error('A causal continuation capture or retirement is already active.');
+    getCurrentGraph(); const revision = continuationRevision, sourceGraph = graph, performance = getPerformanceState(), controller = new AbortController(),
+      cancel = () => controller.abort(options.signal.reason), yieldTask = options.yieldTask || yieldBackgroundTask,
+      check = () => { controller.signal.throwIfAborted(); if (disposed || revision !== continuationRevision || graph !== sourceGraph || options.isCurrent?.() === false) throw continuationCaptureStale(); },
+      settings = { ...options, signal: controller.signal, yieldTask, check, isCurrent: () => !disposed && revision === continuationRevision && graph === sourceGraph && options.isCurrent?.() !== false };
+    options.signal?.addEventListener('abort', cancel, { once: true }); if (options.signal?.aborted) cancel(); continuationAbort = controller;
+    continuationWork = resourceOwner.stageCooperative('causal-continuation-paged-copy', async () => {
+      check(); const result = { version: 1, generation, graphRevision: sourceGraph.revision, recoveryRequired }, parts = [
+        ['preparedSurfaces', sourceGraph.preparedSurfaces?.length || bodyPreparations.diagnostics().heldPreparations, () => bodyPreparations.snapshotCooperative(settings)],
+        ['swarm', true, () => swarm.snapshotCooperative(settings)], ['cargo', sourceGraph.cargoStations?.length, () => cargo.snapshotCooperative(settings)],
+        ['activity', sourceGraph.activityWindows?.length, () => activity.snapshotCooperative(settings)], ['motifs', sourceGraph.motifs?.length, () => motifs.snapshotCooperative(settings)],
+        ['encounters', sourceGraph.encounters?.length, () => encounters.snapshotCooperative(settings)], ['tonalInterpretation', tones.enabled(), () => tones.snapshotCooperative(settings)],
+        ['travel', true, () => travel.snapshotCooperative(settings)], ['actionAdmission', sourceGraph.instruments.some(instrument => instrument.actionVoicePolicy), () => actionAdmission.snapshotCooperative(settings)],
+        ['rhythmicResponses', sourceGraph.instruments.some(instrument => instrument.response), () => rhythmic.snapshotCooperative(settings)],
+        ['physicalDomain', sourceGraph.pickups?.length || sourceGraph.ensembles?.length || sourceGraph.routes?.length, () => physical.snapshotCooperative(settings)],
+        ['performanceInputs', !!performance, () => validateCausalPerformanceState(performance)]
+      ];
+      for (const [key, enabled, capture] of parts) {
+        if (!enabled) continue; check(); const started = globalThis.performance.now(), pending = capture();
+        options.onSlice?.({ phase: 'causal-component-setup', component: key, durationMs: Math.max(0, globalThis.performance.now() - started) }); result[key] = await pending; await yieldTask(); check();
+      }
+      const epochs = await collectContinuationEntries(instrumentEpochs.entries(), settings); result.instrumentEpochs = Object.fromEntries(epochs); result.physicalCursor = { ...cursor };
+      if (sourceGraph.topologyRegions?.length) result.topologyDefinitions = await collectContinuationEntries((function*() { for (const region of sourceGraph.topologyRegions) yield [region.id, topologyDefinitionSignature(region)]; })(), settings);
+      result.active = await collectContinuationEntries((function*() { for (const record of active.values()) yield serializeVoice(record); })(), settings);
+      if (suppressed.size) result.suppressed = await collectContinuationEntries((function*() { for (const record of suppressed.values()) yield serializeVoice(record); })(), settings);
+      check(); return copyContinuationCooperative(result, settings);
+    }).finally(() => { options.signal?.removeEventListener('abort', cancel); continuationWork = null; continuationAbort = null; });
+    return continuationWork;
+  };
   const restore = value => {
+    continuationRevision++;
     const current = getCurrentGraph();
     return resourceOwner.stageInput('causal-observer-restore-old-plus-new', { checkpoint: value, graph: current }, () => {
       estimateJournalBytes(value, { maxBytes: 64 * 1048576, maxNodes: 1048576 });
@@ -627,13 +663,19 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const prepareGraph = source => { resourceOwner.check(); estimateJournalBytes(source, { maxBytes: 2 * 1048576, maxNodes: 131072 }); const next = validateCausalInstrumentGraph(source); bodyPreparations.validateConfiguration(next.preparedSurfaces); return resourceOwner.prepareGraph(next); };
   let releaseGraphAdmission = null;
   try { if (world) releaseGraphAdmission = registerPhysicalGraphAdmission(world, prepareGraph); } catch (error) { resourceOwner.dispose(); throw error; }
-  const dispose = () => { if (disposalError) throw disposalError; if (disposed) return false;
+  const disposeNow = () => { if (disposalError) throw disposalError; if (disposed) return false;
     releaseGraphAdmission?.(); releaseGraphAdmission = null;
     for (const collection of [onsetPlans, instrumentEpochs, active, suppressed, byActor, seen, accepted, rejectedByInstrument, onsetDecisions]) collection.clear();
     seenOrder.length = trace.length = traceSizes.length = decisions.length = batchDecisions.length = 0; traceBytes = 0;
     graph = graphSource = graphFingerprint = liveIds = indexed = snapshotCache = latestPhysicalAnalysis = probabilityAnalysis = null;
     latestBodyPreparations = null; bodyPreparations = tones = swarm = cargo = activity = motifs = encounters = physical = rhythmic = actionAdmission = travel = null;
     disposed = true; try { resourceOwner.dispose(); } catch (error) { disposalError = error; throw error; } return true; };
+  const dispose = () => {
+    if (continuationRetirement) return continuationRetirement.getReceipt();
+    if (!continuationWork) return disposeNow();
+    continuationAbort.abort(new Error('The causal continuation owner retired.')); const work = continuationWork;
+    continuationRetirement = createProcgenRetirementScope(); return continuationRetirement.retire([{ name: 'cooperative-continuation', run: async () => { await Promise.allSettled([work]); return disposeNow(); } }]);
+  };
   const activeVoiceView = ({ limit = 64, instrumentIds = null, includePitch = false } = {}) => {
     resourceOwner.check(); if (!includePitch) getCurrentGraph();
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 4096 || instrumentIds !== null && (!Array.isArray(instrumentIds) || instrumentIds.length > 512 || instrumentIds.some(id => typeof id !== 'string' || !id || id.length > 128))) throw new TypeError('Voice inspection requires bounded identities and count.');
@@ -647,8 +689,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     }
     return Object.freeze(result);
   };
-  return { processBatch, snapshot, bodyPreparations: () => latestBodyPreparations, activeVoiceView, recentIntentView: () => Object.freeze(trace.slice()), restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, routePeriods: () => physical.routePeriods(), probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
-    resourceOwner.check(); snapshotCache = null;
+  return { processBatch, snapshot, snapshotCooperative, bodyPreparations: () => latestBodyPreparations, activeVoiceView, recentIntentView: () => Object.freeze(trace.slice()), restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, routePeriods: () => physical.routePeriods(), probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
+    resourceOwner.check(); snapshotCache = null; continuationRevision++;
     if (!discardUnknownHeldState || active.size || suppressed.size) throw new Error('Rearming requires explicit discard of unknown held state at an empty boundary.');
     bodyPreparations.reset({ worldId: cursor.worldId, generation: cursor.generation, tick: cursor.tick, sequence: cursor.lastSequence }); latestBodyPreparations = null; recoveryRequired = false; return Object.freeze({ status: 'rearmed', resumesHeldVoices: false, sourceBoundary: Object.freeze({ ...cursor }) });
   } };

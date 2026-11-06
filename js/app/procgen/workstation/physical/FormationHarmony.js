@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, finite, integer, freeze, copy } from './PhysicalSchema.js';
 import { validatePhysicalTuning, tuningDegree } from './Tuning.js';
 
@@ -120,6 +121,7 @@ export function createFormationHarmony({ maxStates = 4096, maxDescriptorWork = 2
   return { configure, observe, definition: id => definitions.find(value => value.id === id),
     pitch(id, actorId) { const view = views.get(id); if (view?.status !== 'complete') return { status: 'unknown', reason: view?.reason || 'formation-unobserved' }; return view.assignments.find(value => value.actorId === actorId) || { status: 'unrepresented', reason: 'bounded-formation-representatives' }; },
     snapshot: () => freeze({ version: 2, boundary, signatures: definitions.map(value => [value.id, JSON.stringify(value)]), states: [...states].map(([id, state]) => ({ id, ...copy(state) })) }),
+    snapshotCooperative: options => captureContinuationRecord({ version: 2, boundary }, { signatures: (function*() { for (const value of definitions) yield [value.id, JSON.stringify(value)]; })(), states: (function*() { for (const [id, state] of states) yield { id, ...state }; })() }, options),
     restore(value) { const emptyLegacy = value?.version === 1 && Array.isArray(value.states) && value.states.length === 0;
       if (!emptyLegacy && (value?.version !== 2 || JSON.stringify(value.signatures) !== JSON.stringify(definitions.map(value => [value.id, JSON.stringify(value)]))) || !Array.isArray(value.states) || value.states.length > definitions.length || value.boundary != null && typeof value.boundary !== 'string') throw new Error('Invalid or unbound formation checkpoint.'); const next = new Map(); let count = 0;
       for (const state of value.states) { const definition = definitions.find(item => item.id === state.id); if (!definition || next.has(state.id) || !integer(state.spreadTier, 32) || !Array.isArray(state.assignments) || state.assignments.length > definition.maximumVoices || (count += state.assignments.length) > maxStates) throw new Error('Invalid formation assignment checkpoint.');

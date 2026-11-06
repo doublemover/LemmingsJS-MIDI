@@ -49,12 +49,18 @@ export function createCausalObserverResources({ resourceBudget, ...capacity } = 
     try { return operation(); } finally { activeOperation = false; try { lease.release(); } catch (error) { retirementError = error; throw error; } }
   };
   const stage = (kind, operation) => admitStage(kind, operation, profile.stateBytes + profile.scratchBytes);
+  const stageCooperative = async (kind, operation) => {
+    check(); if (activeOperation) throw new Error('Causal observer staging is already active.');
+    const lease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-observer-staging', kind, category: 'candidate', bytes: profile.stateBytes + profile.scratchBytes });
+    activeOperation = true;
+    try { return await operation(); } finally { activeOperation = false; try { lease.release(); } catch (error) { retirementError = error; throw error; } }
+  };
   const stageInput = (kind, input, operation) => {
     check(); const inventory = estimateJournalFootprint(input, { maxBytes: 128 * MiB, maxNodes: 2097152 });
     const bytes = Math.min(profile.stateBytes + profile.scratchBytes, Math.max(MiB, inventory.bytes * 12 + inventory.nodes * 192 + 65536));
     return admitStage(kind, operation, bytes);
   };
-  return Object.freeze({ check, admitGraph, prepareGraph, stage, stageInput,
+  return Object.freeze({ check, admitGraph, prepareGraph, stage, stageInput, stageCooperative,
     diagnostics: () => Object.freeze({ ...profile, reservation: owner.receipt(), activeOperation, disposed, pendingGraphProposals: pending.size, retirementError: retirementError?.message || null, retentionPolicy: 'feature-high-water-until-owner-retirement' }),
     dispose() { if (retirementError) throw retirementError; if (disposed) return false; if (activeOperation) throw new Error('Causal observer operation is still active.'); owner.release(); pending.clear(); disposed = true; return true; }
   });

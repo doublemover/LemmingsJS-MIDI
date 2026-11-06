@@ -88,7 +88,8 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
       try {
         const checkpoint = await captureProcgenCheckpointCooperative(world, { signal, onSlice, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation });
         signal?.throwIfAborted(); if (disposed || !isCurrent()) throw simulationFailure('checkpoint-stale', 'The simulation checkpoint owner changed.');
-        return Object.freeze({ world: checkpoint, engine: engine?.snapshot() || null, timeline: clock?.snapshot() || null, performance: getPerformance(),
+        const semantic = engine ? await engine.snapshotCooperative({ signal, onSlice, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation }) : null;
+        return Object.freeze({ world: checkpoint, engine: semantic, timeline: clock?.snapshot() || null, performance: getPerformance(),
           replay: Object.freeze({ version: 2, playing, bpm, scoreTimeline }), boundary: state() });
       } finally { capturing = false; publish(); }
     },

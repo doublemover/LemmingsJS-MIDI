@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, integer, finite, bounds, freeze, copy } from './PhysicalSchema.js';
 const MAX_TOKENS = 1024, MAX_BYTES = 2097152, MAX_WORK = 131072;
 const pitches = payload => payload.kind === 'pitch' ? [payload.cents] : payload.kind === 'ratio' ? [payload.baseCents + 1200 * Math.log2(payload.numerator / payload.denominator)] : payload.intervals.reduce((values, interval) => { values.push((values.at(-1) ?? payload.baseCents) + interval); return values; }, []);
@@ -133,5 +134,5 @@ export function createPhraseCargoObserver() {
     tokenSizes.clear(); recentSizes.clear(); for (const [id, size] of nextTokenSizes) tokenSizes.set(id, size); for (const [id, size] of nextRecentSizes) recentSizes.set(id, size); tokenBytes = nextTokenBytes; recentBytes = nextRecentBytes;
     tokens = nextTokens; families = nextFamilies; familySlots = new Map(); for (const [id, token] of tokens) { const slots = familySlots.get(token.familyId) || new Set(); slots.add(id); familySlots.set(token.familyId, slots); } recent = nextRecent; cursor = { ...value.cursor }; serial = value.serial; trace = copy(value.trace); completeness = copy(value.completeness || { status: 'complete' }); pruneFamilies();
   };
-  return { configure, observe, snapshot, restore, reset, diagnostics: () => freeze({ tokens: [...tokens.values()].map(copy), familyBudgets: [...families].map(([familyId, value]) => ({ familyId, ...value })), recentActors: recent.size, ownedBytes: tokenBytes + recentBytes, trace: copy(trace), completeness: copy(completeness) }) };
+  return { configure, observe, snapshot, snapshotCooperative: options => captureContinuationRecord({ version: 1, cursor, serial, trace, completeness }, { tokens: tokens.entries(), families: families.entries(), recent: recent.entries() }, options), restore, reset, diagnostics: () => freeze({ tokens: [...tokens.values()].map(copy), familyBudgets: [...families].map(([familyId, value]) => ({ familyId, ...value })), recentActors: recent.size, ownedBytes: tokenBytes + recentBytes, trace: copy(trace), completeness: copy(completeness) }) };
 }

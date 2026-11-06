@@ -1,3 +1,4 @@
+import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { plain, identity, integer, bounds, actorKey, freeze, copy, boundedList } from './PhysicalSchema.js';
 
 export function validateEnsembleDefinition(input) {
@@ -99,6 +100,7 @@ export function createEnsembleResolver({ maxDefinitions = 128, maxMemberships = 
   return { configure, observe, view: id => views.get(id) ?? null,
     membership(id, actorId) { if (id == null) return { status: 'complete', includes: true }; const view = views.get(id); return { status: view?.completeness.status ?? 'unknown', includes: view?.memberIds.includes(actorId) ?? false }; },
     snapshot: () => freeze({ version: 1, revision, definitions: definitions.map(copy), rosters: [...rosters].map(([id, members]) => ({ id, members: copy(members) })) }),
+    snapshotCooperative: options => captureContinuationRecord({ version: 1, revision, definitions }, { rosters: (function*() { for (const [id, members] of rosters) yield { id, members }; })() }, options),
     restore(value) { if (value?.version !== 1 || !integer(value.revision) || !Array.isArray(value.rosters) || value.rosters.length > maxDefinitions || JSON.stringify(value.definitions) !== JSON.stringify(definitions)) throw new Error('Incompatible ensemble checkpoint.');
       const next = new Map(); let count = 0; for (const roster of value.rosters) { const definition = definitions.find(entry => entry.id === roster.id);
         if (!definition || definition.membershipMode !== 'fixedAtAdmission' || next.has(roster.id) || !Array.isArray(roster.members) || roster.members.length > definition.maximumMembers || (count += roster.members.length) > maxMemberships) throw new Error('Invalid fixed roster.');
