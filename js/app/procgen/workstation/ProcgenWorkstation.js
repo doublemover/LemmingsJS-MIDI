@@ -59,7 +59,7 @@ import { captureCausalPerformanceState, diffCausalPerformanceState, diffCausalLa
 import { prepareCausalTakeArchive } from './CausalTakeArchive.js';
 import { createPhysicalScoreProjection } from './PhysicalScoreProjection.js';
 import { createProcgenWorldInspector } from './ProcgenWorldInspector.js';
-import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { createProcgenRetirementScope, afterProcgenRetirement } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
@@ -241,8 +241,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return pattern && lease.index < pattern.length && pattern.steps?.[lease.index] ? { lane, pattern } : null;
   };
   const cancelInputEdits = reason => {
-    if (inputLease) { inputLease = null; ports?.cancelLearn(); view?.refreshLaneNavigation?.(); status(`MIDI Learn canceled: ${reason}.`); }
     noteEntries.clear();
+    if (inputLease) { inputLease = null; ports?.cancelLearn(); if (!disposed) view?.refreshLaneNavigation?.(); status(`MIDI Learn canceled: ${reason}.`); }
   };
   const operationBoundary = () => { const world = runtime()?.world; return Object.freeze({ documentIdentity: String(documentGeneration), documentId, projectRevision, editRevision, worldId: world?.worldId ?? null, generation: world?.generation ?? null, tick: world?.tickIndex ?? null, storedRevision: documentRevision }); };
   const publishOperationReceipt = (operation, outcome, accepted = null, errorCode = null, captured = null) => {
@@ -395,8 +395,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     authoredStorage: typeof storage.savePreferences === 'function' ? storage : null,
     storage: window.localStorage, key: STORAGE_KEY, getGeneration: () => documentGeneration,
     onState: result => { if (result.error) status('Project preferences could not be stored. Export a project file to save.'); } }) : null;
-  const writePersist = () => {
-    if (suppressPersistence || disposed) return;
+  const writePersist = ({ retiring = false } = {}) => {
+    if (suppressPersistence || disposed && !retiring) return;
     if (!startupCommitted) return;
     if (worldBusy) { deferredPersist = true; return; }
     try {
@@ -406,14 +406,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     catch { status('Project preferences could not be stored. Export a project file to save.'); }
   };
-  const persist = ({ immediate = false } = {}) => {
-    if (suppressPersistence || disposed) return;
+  const persist = ({ immediate = false, retiring = false } = {}) => {
+    if (suppressPersistence || disposed && !retiring) return;
     if (!startupCommitted) return;
     if (worldBusy) { deferredPersist = true; return; }
     deferredPersist = false;
     if (immediate || !window.setTimeout) {
       if (persistTimer != null) { window.clearTimeout?.(persistTimer); persistTimer = null; }
-      writePersist(); return;
+      writePersist({ retiring }); return;
     }
     if (persistTimer == null) persistTimer = window.setTimeout(() => { persistTimer = null; writePersist(); }, 250);
   };
@@ -976,7 +976,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       status(receipt.complete ? `Causal take ${receipt.takeId} saved.` :
         `Causal take ${receipt.takeId} saved as partial. Inspect its coverage before relying on it.`);
       return receipt;
-    }).finally(() => { causalTakeStop = null; view?.renderInspector?.(); });
+    }).finally(() => { causalTakeStop = null; if (!disposed) view?.renderInspector?.(); });
     return causalTakeStop;
   };
   const discardCausalTail = async () => {
@@ -1020,7 +1020,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } finally {
       causalTakeStart = null;
       if (wasPlaying && !disposed && runtime() === sourceRuntime) play();
-      view?.renderInspector?.();
+      if (!disposed) view?.renderInspector?.();
     }
   };
   const cancelCausalTakeArm = () => {
@@ -2715,17 +2715,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     get settings() { return legacy.settings; },
     dispose() {
       if (disposed) return retirement.retire();
-      physicalScoreAbort?.abort();
-      cancelInputEdits('workstation closed');
-      persist({ immediate: true });
       disposed = true; loadSerial++;
       const operation = currentOperation; currentOperation = null;
       const timer = recoveryTimer; recoveryTimer = null;
       const pendingPersist = persistTimer; persistTimer = null;
       const removeListeners = listeners.splice(0);
-      const pendingCausalStop = causalTake || causalTakeStart || causalTakeStop ? stopCausalTake({ reason: 'workstation-disposed' }) : null;
-      const pendingWorkbenchStop = causalWorkbench?.dispose();
+      const storageReaders = createProcgenRetirementScope();
       return retirement.retire([
+        { name: 'physical-score-request', run: () => physicalScoreAbort?.abort() },
+        { name: 'physical-authoring-request', run: () => physicalAuthoringAbort?.abort() },
+        { name: 'input-edits', run: () => cancelInputEdits('workstation closed') },
+        { name: 'final-preferences', run: () => persist({ immediate: true, retiring: true }) },
+        { name: 'storage-readers', run: () => storageReaders.retire([
+          { name: 'causal-take', run: () => causalTake || causalTakeStart || causalTakeStop ? stopCausalTake({ reason: 'workstation-disposed' }) : null },
+          { name: 'causal-workbench', run: () => causalWorkbench?.dispose() },
+          { name: 'archive-exports', run: () => archiveExportTasks.size ? Promise.allSettled([...archiveExportTasks]) : null }
+        ]) },
         { name: 'preference-writer', run: () => preferenceWriter?.dispose({ flush: true }) },
         { name: 'operation', run: () => operation?.controller.abort() },
         { name: 'recovery-write', run: async () => { recoveryAbort?.abort(); const failure = await recoveryCompletion; if (failure) throw failure; } },
@@ -2742,7 +2747,6 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'native-sound-selection', run: () => nativeSoundSelection?.dispose() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
-        { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
         { name: 'patch-variations', run: () => patchVariations?.dispose() },
         { name: 'release-gesture-view', run: () => releaseGestureView?.dispose() },
@@ -2771,8 +2775,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           const close = () => createProcgenRetirementScope().retire([
             { name: 'journal-qualifications', run: () => causalJournal?.releaseQualifications() }, { name: 'database', run: () => storage.close?.() }
           ]);
-          return pendingCausalStop || pendingWorkbenchStop || archiveExportTasks.size ?
-            Promise.all([pendingCausalStop, pendingWorkbenchStop, Promise.allSettled([...archiveExportTasks])]).then(close) : close();
+          return afterProcgenRetirement([storageReaders.getReceipt()], close);
         } }
       ]);
     }

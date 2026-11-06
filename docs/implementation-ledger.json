@@ -7440,5 +7440,33 @@
       "Consolidated final runtime/native validation remains pending. No new functional pass or exact-source closure qualification is claimed.",
       "Broader authored/runtime checkpoint schemas, nominal identities, imported-owner coverage and dependency-direction audit remain under1089."
     ]
+  },
+  "continuation466": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "issues": [
+      1120,
+      1048
+    ],
+    "scope": "Start controller retirement before invoking fallible preflight callbacks and retain database prerequisites.",
+    "implementation": [
+      "The workstation invalidates canonical ownership before any destructor callback. Abort, Learn/input cleanup and final preference publication now execute as named independent retirement actions rather than a throwing preamble. Reentrant callbacks receive the already-published common receipt.",
+      "Input entry state is cleared before fallible callbacks; disposed views no longer receive input-navigation or causal take finalizer presentation. Physical authoring requests are explicitly aborted.",
+      "Causal recorder, workbench and archive readers retire in a child scope. Database close depends on their confirmed completion through the existing retirement prerequisite API; a failed or unknown reader cannot be treated as permission to close its database. Independent ports, renderer consumers and views still retire.",
+      "The final preference snapshot has a private retiring path after invalidation; ordinary late preference timers remain disarmed."
+    ],
+    "validation": {
+      "format": "passed",
+      "functionalTests": "intentionally deferred until remaining development is implemented per user instruction",
+      "newRegressionSource": "test/workstation-retirement-entry.test.js",
+      "newCases": "authored: reentrant/throwing input cancellation, both timer cancellation frontiers, final preference publication and late callback suppression",
+      "nativeExecution": "not run",
+      "fullSuiteExecution": "not run",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Execute the consolidated final regression/native batch before claiming these frontiers qualified.",
+      "The teardown defect is established by source inspection here; no original-version runtime reproduction or native device failure is claimed."
+    ]
   }
 }
