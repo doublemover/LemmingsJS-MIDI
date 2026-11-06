@@ -76,7 +76,7 @@ export function createNativeMidiIngress({ now = () => performance.now(), maximum
           } catch (error) { loss(owner, error.message); }
         }
         if (owner.epoch !== event.ingressEpoch) continue;
-        if (category === 'channel-observation' && owner.claim) {
+        if (owner.claim && (category === 'channel-observation' || entry.packet.kind === 'system' && ['quarterFrame', 'songPosition', 'songSelect'].includes(entry.packet.status))) {
           const claim = owner.claim; if (now() > claim.deadline || ++claim.packets > claim.maximumPackets) loss(owner, 'isolated-observation-capacity-or-timeout');
           else { try { claim.consume(Object.freeze({ ...event, category: 'isolated-state-observation', observationToken: claim.token })); } catch { loss(owner, 'isolated-observation-consumer-failed'); } }
         } else emit(event);
@@ -95,7 +95,7 @@ export function createNativeMidiIngress({ now = () => performance.now(), maximum
         if (owner.collector.sweep()) loss(owner, 'multipart-input-timeout');
       }
     },
-    subscribe(listener) { if (retired || typeof listener !== 'function' || listeners.size >= 16) throw new Error('Native input listener capacity'); listeners.add(listener); return () => listeners.delete(listener); },
+    subscribe(listener) { if (retired || typeof listener !== 'function' || listeners.size >= 32) throw new Error('Native input listener capacity'); listeners.add(listener); return () => listeners.delete(listener); },
     state: () => Object.freeze({ grants: grants.size, receivedPackets: received, losses, traceWords, omittedRecords: omitted, lastObservation }),
     trace: () => Object.freeze({ schema: 'lemmings-native-input-trace/v1', sourcePrecision: 'unknown', timeMapping: 'original-native-domains-unmapped-to-score', omittedRecords: omitted, records: Object.freeze([...history]) }),
     dispose() { if (retired) return; retired = true; for (const owner of grants.values()) loss(owner, 'native-input-owner-retired'); grants.clear(); listeners.clear(); history.length = traceWords = 0; }

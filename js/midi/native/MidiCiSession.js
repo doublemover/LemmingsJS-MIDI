@@ -10,7 +10,7 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
       !Number.isInteger(group) || group < 0 || group > 15 || !(input.groupMask & output.groupMask & 1 << group) || ![127, 126, ...Array.from({ length: 16 }, (_, i) => i)].includes(scope) ||
       !Number.isSafeInteger(maximumPeers) || maximumPeers < 1 || maximumPeers > 64 || !Number.isSafeInteger(maximumMessageBytes) || maximumMessageBytes < 128 || maximumMessageBytes > 2048 ||
       !Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000) throw new Error('MIDI-CI needs explicit current SysEx input/output grants and group');
-  const peers = new Map(), pending = new Map(), listeners = new Set(), receive = [];
+  const peers = new Map(), pending = new Map(), listeners = new Set(), protocolObservers = new Set(), receive = [];
   let status = 'idle', reason = null, localMuid = randomMuid(), epoch = 1, execution = routes.allocateExecutionEpoch(), disposed = false, sendTail = Promise.resolve(), receiveRunning = false, receiveBytes = 0;
   let cancellation = null, cancellationExecution = null, cancellationError = null, receiveTail = Promise.resolve(), disposal = null, discovery = null, discoveryTimer = null, lastDiscoveryMs = -Infinity, collisions = [], lastVerifiedMs = null;
   const current = () => !disposed && status !== 'stale' && routes.isGrantActive(inputGrant) && routes.isGrantActive(outputGrant) && routes.client.session === initial.connectionEpoch && routes.input.scope(inputGrant)?.ingressEpoch === inputIdentity.ingressEpoch;
@@ -98,8 +98,13 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
     catch (error) { stale(error.message); } emit();
   };
   const handle = async message => {
-    if (!message.known || ![126, 127].includes(message.scope) && !(message.scope >= 0 && message.scope < 16) || message.sourceMuid === BROADCAST || message.destinationMuid !== localMuid && message.destinationMuid !== BROADCAST) return;
+    if (![126, 127].includes(message.scope) && !(message.scope >= 0 && message.scope < 16) || message.sourceMuid === BROADCAST) return;
+    if (!message.known || message.destinationMuid !== localMuid && message.destinationMuid !== BROADCAST) {
+      for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: message.known ? 'foreign-ci' : 'unknown-ci', message: Object.freeze(message), epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group })); } catch {} }
+      return;
+    }
     if (message.sourceMuid === localMuid || message.subtype === 126 && message.targetMuid === localMuid) { await collision(); return; }
+    for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: 'ci', message: Object.freeze(message), epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group })); } catch {} }
     if (message.subtype === 112 || message.subtype === 113) {
       if (message.subtype === 113 && !discovery) return; remember(message);
       if (message.subtype === 112) await send('discovery-reply', { destinationMuid: message.sourceMuid, deviceScope: 127, parameters: [maximumMessageBytes, 127] });
@@ -118,8 +123,9 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
     try {
       while (receive.length && current()) {
         const entry = receive.shift(); receiveBytes -= entry.bytes; const capturedEpoch = epoch;
+        if (entry.observation) { for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: 'observation', observation: entry.observation, epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group })); } catch {} } continue; }
         try { const message = await routes.client.decodeCi(inputGrant, entry.payload); if (current() && capturedEpoch === epoch) await handle(message); }
-        catch (error) { if (current() && capturedEpoch === epoch) { reason = 'Malformed or unavailable MIDI-CI response: ' + error.message; emit(); } }
+        catch (error) { if (current() && capturedEpoch === epoch) { reason = 'Malformed or unavailable MIDI-CI response: ' + error.message; for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: 'malformed-ci', reason, epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group })); } catch {} } emit(); } }
       }
     } finally { receiveRunning = false; }
   };
@@ -127,17 +133,21 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
     if (event.grant !== inputGrant) return;
     if (event.event === 'ingress-loss') { stale(event.reason); return; }
     if (event.event !== 'native-payload' || event.message.kind !== 'sysex7' || event.message.group !== group || event.message.payload[0] !== 126 || event.message.payload[2] !== 13) return;
-    const payload = event.message.payload; if (payload.length > maximumMessageBytes || receive.length >= 128 || receiveBytes + payload.length * 2 + 512 > 1048576) { stale('MIDI-CI receive capacity exceeded'); return; }
+    const payload = event.message.payload; if (payload.length > maximumMessageBytes || receive.length >= 2048 || receiveBytes + payload.length * 2 + 512 > 1048576) { stale('MIDI-CI receive capacity exceeded'); return; }
     const bytes = payload.length * 2 + 512; receive.push({ payload, bytes }); receiveBytes += bytes; if (!receiveRunning) receiveTail = drain();
   });
   return Object.freeze({
     discover, invalidate: stale,
+    getPeer(muid) { const peer = peers.get(muid); return current() && peer?.state === 'discovered' && now() - peer.lastVerifiedMs <= 300000 ? peer : null; },
+    sendReadControl(peerMuid, { operation, parameters = [], deviceScope = scope, isCurrent = () => true }) { const peer = peers.get(peerMuid); if (!current() || peer?.state !== 'discovered' || peer.version !== 2 || now() - peer.lastVerifiedMs > 300000 || !['message-report', 'profile-inquiry', 'profile-details'].includes(operation)) return Promise.reject(new Error('Unsupported or stale CI read operation')); const category = operation === 'message-report' ? 16 : 4; if (!(peer.categories & category)) return Promise.reject(new Error('Device did not advertise this CI category')); return send(operation, { destinationMuid: peerMuid, deviceScope, parameters, isCurrent }); },
+    subscribeProtocol(observer) { if (disposed || typeof observer !== 'function' || protocolObservers.size >= 8) throw new Error('CI protocol observer capacity'); protocolObservers.add(observer); return () => protocolObservers.delete(observer); },
+    enqueueObservation(observation) { if (!current() || receive.length >= 2048 || receiveBytes + 528 > 1048576) { stale('CI ordered observation queue exceeded'); return false; } receive.push({ observation, bytes: 528 }); receiveBytes += 528; if (!receiveRunning) receiveTail = drain(); return true; },
     endpointInformation: (peerMuid, status = 0) => request(peerMuid, 'endpoint-inquiry', 115, [status], 127),
-    processCapabilities: peerMuid => request(peerMuid, 'process-inquiry', 65),
+    processCapabilities: peerMuid => request(peerMuid, 'process-inquiry', 65, [], 127),
     subscribe(listener) { if (disposed || typeof listener !== 'function' || listeners.size >= 8) throw new Error('MIDI-CI observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
     state: () => Object.freeze({ status, reason, connectionEpoch: initial.connectionEpoch, ingressEpoch: inputIdentity.ingressEpoch, epoch, inputGrant, outputGrant, group, scope, localMuid, advertisedCategories: 0,
       codec: 'pinned-ni-midi2-CI-v1.2', cancellationError, conformance: 'awaiting-consolidated-qualification-and-v1.2.1-errata-review', identityTier: 'non-commercial-development-id', lastVerifiedMs,
       peers: Object.freeze([...peers.values()].map(peer => Object.freeze({ ...peer, freshness: current() && now() - peer.lastVerifiedMs <= 300000 ? 'current' : 'stale' }))), pendingRequests: pending.size, pendingReceiveMessages: receive.length, pendingReceiveBytes: receiveBytes }),
-    dispose() { if (disposal) return disposal; disposed = true; epoch++; unsubscribe(); clearTimeout(discoveryTimer); discoveryTimer = null; discovery?.reject(new Error('MIDI-CI session retired')); discovery = null; clearPending(new Error('MIDI-CI session retired')); receive.length = receiveBytes = 0; listeners.clear(); status = 'disposed'; disposal = Promise.all([cancelOwnedExecution(execution), sendTail, receiveTail]).then(() => {}); return disposal; }
+    dispose() { if (disposal) return disposal; disposed = true; epoch++; unsubscribe(); clearTimeout(discoveryTimer); discoveryTimer = null; discovery?.reject(new Error('MIDI-CI session retired')); discovery = null; clearPending(new Error('MIDI-CI session retired')); receive.length = receiveBytes = 0; listeners.clear(); protocolObservers.clear(); status = 'disposed'; disposal = Promise.all([cancelOwnedExecution(execution), sendTail, receiveTail]).then(() => {}); return disposal; }
   });
 }

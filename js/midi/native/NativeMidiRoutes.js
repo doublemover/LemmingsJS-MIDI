@@ -1,11 +1,12 @@
+import { createMidiMessageReportSession } from './MidiMessageReportSession.js';
 import { createMidiCiSession } from './MidiCiSession.js';
 import { createNativeMidiIngress } from './NativeMidiIngress.js';
 import { UMP_WORD_COUNTS } from '../protocol/UmpPacketCodec.js';
 import { NativeMidiBridgeClient } from './NativeMidiBridgeClient.js';
 
-export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), onTrace = () => {} } = {}) {
+export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), onTrace = () => {}, canObserveInput = () => true } = {}) {
   const ingress = createNativeMidiIngress();
-  const ciSessions = new Set(), grants = new Map(), routes = new Map(), listeners = new Set(), trace = [];
+  const reportSessions = new Map(), performanceOwners = new Set(), observationHolds = new Map(), ciSessions = new Set(), grants = new Map(), routes = new Map(), listeners = new Set(), trace = [];
   let disposal = null, notificationPending = false, executionSequence = 0, revision = 0, traceWords = 0, omittedTrace = 0, disposed = false, inventory = null;
   const notify = () => { revision++; if (notificationPending) return; notificationPending = true; queueMicrotask(() => { notificationPending = false; if (disposed) return; for (const listener of listeners) { try { listener(); } catch {} } }); };
   const current = route => route && grants.has(route.grant) && route.connectionEpoch === client.session && client.state === 'connected';
@@ -35,6 +36,11 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
   };
   const api = Object.freeze({
     client, input: ingress,
+    registerPerformanceOwner(owner) { if (disposed || performanceOwners.size >= 8 || typeof owner?.isQuiescent !== 'function') throw new Error('Native performance owner capacity'); performanceOwners.add(owner); return () => performanceOwners.delete(owner); },
+    allowsPerformance(grant) { return !disposed && !observationHolds.has(grant); },
+    allowsOrdinaryInput() { return !disposed && observationHolds.size === 0; },
+    holdForObservation(grant) { if (canObserveInput() !== true) throw new Error('Disconnect the ordinary MIDI input before reading isolated device state'); if (disposed || !grants.has(grant) || observationHolds.has(grant) || [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop native performance and wait for owned notes before reading device state'); const token = Object.freeze({ grant, connectionEpoch: client.session }); observationHolds.set(grant, token); return token; },
+    releaseObservation(token) { if (observationHolds.get(token?.grant) !== token) return false; observationHolds.delete(token.grant); return true; },
     isGrantActive(grant) { return !disposed && grants.get(grant)?.connectionEpoch === client.session; },
     createCiSession(options) {
       if (disposed || !client.capabilities?.ciCodec) throw new Error('Build and pair a companion with the MIDI-CI codec');
@@ -42,7 +48,8 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       if (ciSessions.size >= 8) throw new Error('MIDI-CI session capacity');
       const session = createMidiCiSession({ routes: api, ...options }); ciSessions.add(session); return session;
     },
-    async closeCiSession(session) { if (!ciSessions.has(session)) return; await session.dispose(); ciSessions.delete(session); },
+    createMessageReportSession(ci) { if (disposed || !ciSessions.has(ci)) throw new Error('An owned CI session is required'); if (reportSessions.has(ci)) return reportSessions.get(ci); if (reportSessions.size >= 8) throw new Error('Device report session capacity'); const report = createMidiMessageReportSession({ routes: api, ci }); reportSessions.set(ci, report); return report; },
+    async closeCiSession(session) { if (!ciSessions.has(session)) return; reportSessions.get(session)?.dispose(); reportSessions.delete(session); await session.dispose(); ciSessions.delete(session); },
 
     allocateExecutionEpoch() { if (disposed || executionSequence >= 0xffffffff) throw new Error('Native execution identity exhausted'); return ++executionSequence; },
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
@@ -87,7 +94,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     wireTrace() { return Object.freeze({ schema: 'lemmings-native-wire-trace/v1', claim: 'native-driver-submitted-prefix-not-receiver-or-acoustic', omittedRecords: omittedTrace, records: Object.freeze([...trace]) }); },
     async closeGrant(grant) { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or owned-note cleanup is unconfirmed'); grants.delete(grant); for (const [id, route] of routes) if (route.grant === grant) routes.delete(id); notify(); return receipt; },
     disconnect() { client.disconnect(); ingress.clearGrants(); grants.clear(); inventory = null; notify(); },
-    dispose() { if (disposal) return disposal; disposed = true; unsubscribe(); unsubscribeInput(); ingress.dispose(); disposal = (async () => { const ci = await Promise.allSettled([...ciSessions].map(session => session.dispose())); const devices = await Promise.allSettled([...grants.keys()].map(async grant => { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or cleanup remains unconfirmed'); })); client.disconnect(); const failures = [...ci, ...devices].filter(result => result.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Native MIDI retirement has ' + failures.length + ' unconfirmed resources'); ciSessions.clear(); grants.clear(); routes.clear(); listeners.clear(); trace.length = traceWords = 0; })(); return disposal; }
+    dispose() { if (disposal) return disposal; disposed = true; unsubscribe(); unsubscribeInput(); for (const report of reportSessions.values()) report.dispose(); reportSessions.clear(); ingress.dispose(); disposal = (async () => { const ci = await Promise.allSettled([...ciSessions].map(session => session.dispose())); const devices = await Promise.allSettled([...grants.keys()].map(async grant => { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or cleanup remains unconfirmed'); })); client.disconnect(); const failures = [...ci, ...devices].filter(result => result.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Native MIDI retirement has ' + failures.length + ' unconfirmed resources'); ciSessions.clear(); grants.clear(); routes.clear(); listeners.clear(); trace.length = traceWords = 0; })(); return disposal; }
   });
   return api;
 }

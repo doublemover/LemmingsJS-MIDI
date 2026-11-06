@@ -52,6 +52,9 @@ inline midi::ci::message make_ci_message(Tokens &input) {
   }
   if (operation == "process-inquiry") {
     input.finish();
+    if (scope != 127)
+      throw std::invalid_argument(
+          "process-capabilities-requires-function-block");
     return midi::ci::make_process_inquiry_capabilities_inquiry(
         source, destination, scope);
   }
@@ -59,6 +62,9 @@ inline midi::ci::message make_ci_message(Tokens &input) {
     const auto data = input.number(127), system = input.number(127),
                controllers = input.number(127), notes = input.number(127);
     input.finish();
+    if ((data != 0 && data != 1 && data != 127) || system > 7 ||
+        controllers > 63 || notes > 31 || (system && scope != 127))
+      throw std::invalid_argument("invalid-message-report-categories");
     return midi::ci::make_midi_message_report_inquiry(
         source, destination, data, system, controllers, notes, scope);
   }
@@ -88,7 +94,7 @@ inline std::string encode_ci(Tokens &input) {
 }
 inline std::string decode_ci(Tokens &input) {
   const auto count = input.number(maximum_ci_bytes);
-  if (count < 14)
+  if (count < 13)
     throw std::invalid_argument("truncated-ci-envelope");
   std::vector<midi::uint7_t> bytes;
   bytes.reserve(count);
@@ -190,6 +196,12 @@ inline std::string decode_ci(Tokens &input) {
         midi::ci::as<midi::ci::midi_message_report_reply_view>(message);
     if (!view)
       throw std::invalid_argument("malformed-ci-report-reply");
+    if (message.data[midi::ci::midi_message_report_reply_view::field_offsets::
+                         _reserved_control] ||
+        view->system_message_types() > 7 ||
+        view->channel_controller_message_types() > 63 ||
+        view->note_data_message_types() > 31)
+      throw std::invalid_argument("reserved-message-report-field");
     result +=
         ",\"systemTypes\":" + std::to_string(view->system_message_types()) +
         ",\"controllerTypes\":" +

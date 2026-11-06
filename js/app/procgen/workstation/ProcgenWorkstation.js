@@ -148,7 +148,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const operationalExecution = getActiveExecutionIdentity('browser-native-audio');
   let operationalLessonAvailable = operationalExecution.activeExecution === 'bound' && ['worklet-sine', 'worklet-pluck'].every(id => operationalExecution.instrumentArtifacts?.some(artifact => artifact.engineId === id));
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
-  const nativeMidiRoutes = createNativeMidiRoutes();
+  const nativeMidiRoutes = createNativeMidiRoutes({ canObserveInput: () => !ports?.getOperationalState().inputId });
   let nativeMidiView = null;
   const sessionIdentities = new WeakMap(), sessionAdoptions = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
@@ -641,7 +641,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const recordingViewState = midiState => ({ ...midiState, recordingOrigin,
     foreignRecording: !!(midiState.recordedEvents && recordingOrigin && recordingOrigin.generation !== documentGeneration) });
   ports = createProcgenMidiPorts({ transport, now, resourceBudget, schedulerConfig: projectToMidiConfig(project),
-    createOutputAdmission: () => legacy.local.createOutputAdmission?.(), canActivate: () => !stageSession?.active() && !worldBusy,
+    createOutputAdmission: () => legacy.local.createOutputAdmission?.(), canActivate: () => !stageSession?.active() && !worldBusy, canActivateInput: () => nativeMidiRoutes.allowsOrdinaryInput(),
     onMonitor(event) { const endpoint = ports?.getState(); if (endpoint?.inputId) macroGestures.observeController(event, { endpointId: endpoint.inputId, endpointEpoch: endpoint.inputLiveness.connectionEpoch }); state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
     onState(midiState) {
       const endpoint = { id: midiState.inputId, epoch: midiState.inputLiveness.connectionEpoch }, prior = macroInputEndpoint; macroInputEndpoint = endpoint;

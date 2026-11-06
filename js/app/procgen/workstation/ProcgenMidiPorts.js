@@ -73,7 +73,7 @@ export function encodeProcgenMidi(event) {
 
 export function createProcgenMidiPorts({ transport, now = () => performance.now(), scheduler: suppliedScheduler, schedulerConfig = { defaultChannel: 1 },
   onMonitor = () => {}, onLearn = () => {}, onRecord = () => {}, onState = () => {}, onInputSafety = () => {}, maxRecordedEvents = 100000, resourceBudget = null,
-  performanceCoordinator, createOutputAdmission, canActivate = () => true } = {}) {
+  performanceCoordinator, createOutputAdmission, canActivate = () => true, canActivateInput = () => true } = {}) {
   const scheduler = suppliedScheduler || new MidiScheduler(schedulerConfig);
   let input = null, noteOutput = null, clockOutput = null, removeInput = null;
   let thru = false, recording = false, learn = null, retiring = false, disposed = false, records = [], droppedRecords = 0;
@@ -597,6 +597,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     } else if (inputLiveness.mode === 'armed') { inputLiveness.lastTrafficTime = observedAt; inputLiveness.deadline = observedAt + ACTIVE_SENSING_TIMEOUT_MS; }
     else if (expiredAt != null) { inputLiveness.mode = 'unobserved'; inputLiveness.evidence = 'no-active-sensing-observed'; inputLiveness.reason = null; }
     if (inputLiveness.mode === 'armed') scheduleSensingWatchdog();
+    if (packet[0] < 0xf8 && !canActivateInput()) return false;
     callConsumer('monitor', onMonitor, event);
     if (!inputIsCurrent(connectionEpoch, sourceRoute)) return false;
     transport?.receiveMidi?.(packet, timestamp);
@@ -627,6 +628,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   }
   const replaceInput = (port, { reason = port ? 'input-replaced' : 'input-detached' } = {}) => {
     if (input === port || retiring || disposed) return;
+    if (port && !canActivateInput()) throw new Error('Finish or cancel the isolated device-state read before selecting MIDI input');
     const revision = ++inputSelectionRevision;
     terminateInputSource(reason, reason === 'port-disconnected' ? 'port-disconnected' : 'source-selection-changed');
     if (revision !== inputSelectionRevision || retiring || disposed) return;

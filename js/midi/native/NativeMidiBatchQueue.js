@@ -80,6 +80,7 @@ export function createNativeMidiBatchQueue({ client, maximumWords = 65536, maxim
       performanceChains.delete([client.session, grant, execution].join(':'));
       return Object.freeze({ removedJobs, removedWords });
     },
+    hasPendingGrant: grant => [...groups].some(group => group.grant === grant && !group.settled),
     state: () => Object.freeze({ closed, pendingBatches: groups.size, pendingWords: queuedWords, pendingJobs: jobs, retainedEstimateBytes: retainedBytes }),
     dispose() { if (closed) return; closed = true; performanceChains.clear(); for (const group of [...groups]) if (!group.started) settle(group, { kind: 'cancelled', acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: false, reason: 'native-batch-owner-retired' }); }
   });

@@ -15,7 +15,9 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
   const batches = createNativeMidiBatchQueue({ client: routes.client });
   const executions = new Map(), wireVoices = new Map(), channelVoices = new Map(), retirement = createProcgenRetirementScope();
   let disposed = false, anchor = null, latestReceipt = null, laneSource = null, laneIds = new Map(), soloCount = 0;
-  const enabled = () => !disposed && routes.enabled();
+  let ownerFailure = null, removeOwner = null;
+  try { removeOwner = routes.registerPerformanceOwner({ isQuiescent: grant => !batches.hasPendingGrant(grant) && ![...executions.values()].some(state => [...state.voices.values()].some(entry => entry.route.grant === grant)) }); } catch (error) { ownerFailure = error.message; }
+  const enabled = () => !disposed && !ownerFailure && routes.enabled();
   const readLanes = () => { const lanes = getLanes(); if (lanes !== laneSource) { laneSource = lanes; laneIds = new Map(lanes.map(lane => [lane.id, lane])); soloCount = lanes.reduce((count, lane) => count + Number(lane.solo && !lane.mute), 0); } return lanes; };
   const laneFor = id => { readLanes(); return laneIds.get(id); };
   const unavailable = lane => !lane ? 'native-lane-unavailable' : lane.mute || (lane.gain ?? 1) <= 0 || soloCount && !lane.solo ? 'native-lane-muted' : null;
@@ -72,6 +74,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       const state = executions.get(execution), lane = laneFor(intent.laneId), route = routes.resolve(lane?.outputId, lane?.id);
       if (!enabled() || !state || state.closed || intent.generation !== state.generation || !route) return reject('native-route-unavailable');
       const silence = unavailable(lane); if (silence) return reject(silence);
+      if (!routes.allowsPerformance(route.grant)) return reject('native-device-observation-active');
       if (!Number.isSafeInteger(targetMicroseconds) || routes.client.clockStatus().status !== 'synchronized') return reject('native-clock-unavailable');
       if (state.voices.has(intent.voiceId) || state.voices.size >= maxVoices || [...state.voices.values()].some(entry => entry.uncertain)) return reject('native-voice-capacity-or-ownership');
       const pitch = (intent.pitch?.cents + (intent.expression?.pitchOffsetCents ?? 0)) / 100 + 12 * Math.log2((intent.pitch?.referenceHz ?? 440) / 440), note = Math.min(127, Math.round(pitch));
@@ -143,7 +146,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         const lane = laneFor(entry.laneId); if (!entry.ending && (unavailable(lane) || lane.outputId !== entry.route.outputId)) backend.end(entry.voiceId, {}, Math.round(now() * 1000), execution, entry.intent);
       }
     },
-    diagnostics: () => Object.freeze({ disposed, enabled: enabled(), executions: executions.size, latestReceipt, queue: batches.state(), clock: routes.client.clockStatus() }),
-    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; batches.dispose(); return retirement.retire([...executions].map(([execution, state]) => ({ name: state.epoch, run: () => retireExecution(execution) }))); }
+    diagnostics: () => Object.freeze({ disposed, ownerFailure, enabled: enabled(), executions: executions.size, latestReceipt, queue: batches.state(), clock: routes.client.clockStatus() }),
+    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; batches.dispose(); const receipt = retirement.retire([...executions].map(([execution, state]) => ({ name: state.epoch, run: () => retireExecution(execution) }))); receipt.completion.then(done => { if (done.outcome === 'complete') { removeOwner?.(); removeOwner = null; } }); return receipt; }
   };
 }

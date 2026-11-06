@@ -10,13 +10,13 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const input = (label, value, type = 'text', parent = controls) => { const node = element(document, 'input'); node.type = type; node.value = value; return field(label, node, parent); };
   const select = (label, parent = controls) => field(label, element(document, 'select'), parent);
   const checkbox = label => { const node = input(label, '', 'checkbox'); node.checked = false; return node; };
-  const button = (text, action, parent = controls) => {
+  const button = (text, action, parent = controls, urgent = false) => {
     const node = element(document, 'button', text); node.type = 'button'; buttons.push(node);
-    bindEvent(node, 'click', async () => { if (busy) return; busy = true; render(); try { await action(); } catch (error) { message.textContent = error.message; onStatus(error.message); } finally { busy = false; render(); } }); parent.append(node); return node;
+    bindEvent(node, 'click', async () => { if (busy && !urgent) return; const operation = ++operationSerial; busy = true; render(); try { await action(); } catch (error) { if (operation === operationSerial) { message.textContent = error.message; onStatus(error.message); } } finally { if (operation === operationSerial) busy = false; render(); } }); parent.append(node); return node;
   };
   const bridgeUrl = input('Companion address', routes.client.url, 'url'), pairing = input('Local pairing code', '', 'password'); pairing.autocomplete = 'off'; pairing.spellcheck = false;
   const connect = button('Pair companion', async () => { routes.client.setUrl(bridgeUrl.value); const pairingCode = pairing.value; pairing.value = ''; await routes.connect({ pairingCode }); await routes.enumerate(); message.textContent = 'Paired. Select a device or publish a performance source.'; });
-  const disconnect = button('Disconnect companion', () => routes.disconnect());
+  const disconnect = button('Disconnect companion', () => routes.disconnect(), controls, true);
   const backend = select('Native backend'), switchBackend = button('Select backend', async () => { await routes.client.selectBackend(Number(backend.value)); await routes.enumerate(); });
   const endpoint = select('Native device'), refresh = button('Refresh native devices', () => routes.enumerate());
   const groups = input('Granted groups (1–16, comma-separated)', '1');
@@ -36,7 +36,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const publish = button('Publish Lemmings Performance', async () => { const grant = await routes.publish({ name: publicationName.value, direction: 'output', groupMask: groupMask(), permissions: permissions() }); selectedGrant = grant.grant; message.textContent = 'Performance source published. Select it in your DAW and assign lanes below. DAW recording compatibility is unverified.'; });
   const publishInput = button('Publish control input', async () => { const grant = await routes.publish({ name: publicationName.value + ' Control', direction: 'input', groupMask: groupMask(), permissions: permissions() }); selectedGrant = grant.grant; message.textContent = 'Separate control input published under its own grant.'; });
   const active = select('Owned connection', routeControls);
-  const revoke = button('Revoke connection / unpublish', async () => { if (!active.value) throw new Error('Select an owned connection'); await routes.closeGrant(Number(active.value)); message.textContent = 'Connection revoked; owned notes cleaned up by the companion.'; }, routeControls);
+  const revoke = button('Revoke connection / unpublish', async () => { if (!active.value) throw new Error('Select an owned connection'); await routes.closeGrant(Number(active.value)); message.textContent = 'Connection revoked; owned notes cleaned up by the companion.'; }, routeControls, true);
   const lane = select('Lane', routeControls), group = select('Group', routeControls), channel = select('Channel', routeControls), protocol = select('Requested channel protocol', routeControls), sharing = select('Channel ownership', routeControls);
   for (let value = 0; value < 16; value++) { const a = element(document, 'option', String(value + 1)); a.value = String(value); group.append(a); const b = a.cloneNode(true); channel.append(b); }
   for (const [value, label] of [['midi2', 'MIDI2 · receiver support unverified'], ['midi1-in-ump', 'MIDI1 in UMP · reduced expression']]) { const option = element(document, 'option', label); option.value = value; protocol.append(option); }
@@ -55,7 +55,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   }, routeControls);
   const ciInput = select('CI receive connection', routeControls), ciPeer = select('Discovered peer', routeControls);
   const showCi = () => {
-    const state = ciSession?.state(); ciStatus.textContent = state ? 'Device discovery: ' + state.status + (state.reason ? ' · ' + state.reason : '') + ' · ' + state.peers.length + ' peers · advertised advanced categories: none' : 'Device features unknown. Discovery requires separately selected SysEx input and output grants.';
+    const state = ciSession?.state(); ciStatus.textContent = state ? 'Device discovery: ' + state.status + (state.reason ? ' · ' + state.reason : '') + ' · ' + state.peers.length + ' peers' : 'Device features unknown. Discovery requires separately selected SysEx input and output grants.';
     options(ciPeer, (state?.peers || []).map(peer => [peer.muid, 'Peer 0x' + peer.muid.toString(16).padStart(7, '0') + ' · CI v' + peer.version + ' · ' + peer.freshness]), 'Choose a discovered peer');
   };
   const ensureCi = async () => {
@@ -63,12 +63,33 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     if (ciSession && (previous.inputGrant !== selected.inputGrant || previous.outputGrant !== selected.outputGrant || previous.group !== selected.group || ['stale', 'disposed'].includes(previous.status))) {
       ciUnsubscribe?.(); ciUnsubscribe = null; await routes.closeCiSession(ciSession); ciSession = null;
     }
-    if (!ciSession) { ciSession = routes.createCiSession(selected); ciUnsubscribe = ciSession.subscribe(showCi); } return ciSession;
+    if (!ciSession) { ciSession = routes.createCiSession(selected); ciUnsubscribe = ciSession.subscribe(showCi); showCi(); } return ciSession;
   };
   const ciDiscover = button('Discover device features (SysEx)', async () => { const session = await ensureCi(); await session.discover(); showCi(); }, routeControls);
   const ciInformation = button('Read endpoint information', async () => { if (!ciSession || !ciPeer.value) throw new Error('Discover and select a current peer'); const reply = await ciSession.endpointInformation(Number(ciPeer.value)); message.textContent = 'Endpoint information received: ' + reply.informationData.length + ' bytes.'; showCi(); }, routeControls);
   const ciProcess = button('Read Process Inquiry support', async () => { if (!ciSession || !ciPeer.value) throw new Error('Discover and select a current peer'); const reply = await ciSession.processCapabilities(Number(ciPeer.value)); message.textContent = 'Device Process Inquiry feature bitmap: 0x' + reply.supportedFeatures.toString(16) + '.'; showCi(); }, routeControls);
   const ciClose = button('Close device discovery', async () => { ciUnsubscribe?.(); ciUnsubscribe = null; if (ciSession) await routes.closeCiSession(ciSession); ciSession = null; showCi(); }, routeControls);
+  const isolated = checkbox('Device idle; no other playback, controller or Thru traffic');
+  const showReport = () => {
+    const state = reportSession?.state(), result = state?.latest; cancelState.disabled = !state?.busy; reportStatus.textContent = state ? 'Controller state: ' + state.phase + (state.probe ? ' · checking reportable categories' : '') + (result?.reason ? ' · ' + result.reason : '') : 'Controller state is unknown until an isolated report completes.';
+    reportValues.replaceChildren();
+    if (!result?.observation) return;
+    const observation = result.observation;
+    reportValues.append(element(document, 'p', observation.values.length + ' reported values · ' + observation.conflicts.length + ' newer local-edit conflicts · unreported values remain unknown.', 'midi-help'));
+    const table = element(document, 'table'), head = element(document, 'tr');
+    for (const label of ['Group / channel', 'Reported control', 'Raw value', 'Wire bits']) head.append(element(document, 'th', label)); table.append(head);
+    for (const entry of observation.values.slice(0, 64)) { const row = element(document, 'tr'); for (const text of [(entry.group + 1) + ' / ' + (entry.channel == null ? '—' : entry.channel + 1), entry.kind + (entry.index === '' ? '' : ' ' + entry.index), String(entry.value), String(entry.wireBits)]) row.append(element(document, 'td', text)); table.append(row); }
+    reportValues.append(table); if (observation.values.length > 64) reportValues.append(element(document, 'p', 'Showing the first 64 values. The original input trace retains the received packets.', 'midi-help'));
+  };
+  const readState = button('Read selected channel state', async () => {
+    const session = await ensureCi(); if (!ciPeer.value) throw new Error('Discover and select a current peer');
+    if (reportSession && reportCi !== session) { reportUnsubscribe?.(); reportSession = null; reportCi = null; }
+    if (!reportSession) { reportSession = routes.createMessageReportSession(session); reportCi = session; reportUnsubscribe = reportSession.subscribe(showReport); }
+    const owner = reportSession;
+    const result = await owner.read({ peerMuid: Number(ciPeer.value), channel: Number(channel.value), controllers: 63, quiescent: isolated.checked });
+    if (owner !== reportSession) return; message.textContent = result.status === 'complete' ? 'Read-only controller state received; authored settings remain separate.' : result.reason || result.status; showReport();
+  }, routeControls);
+  const cancelState = button('Cancel state read', () => reportSession?.cancel(), routeControls, true);
   const exportInput = button('Save native input trace', () => {
     const blob = new Blob([JSON.stringify(routes.input.trace(), null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), link = element(document, 'a'); link.href = url; link.download = 'lemmings-native-input-trace.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
   }, routeControls);
@@ -76,10 +97,11 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const details = element(document, 'p', '', 'midi-help'); details.textContent = 'A native connection does not verify the receiver or DAW. Queued, driver-submitted, receiver-observed and audible are separate stages. Receiver protocol, conversion and original hardware precision remain unknown until independently qualified.';
   const inputStatus = element(document, 'output', '', 'midi-status'); inputStatus.setAttribute('aria-live', 'off');
   const ciStatus = element(document, 'output', '', 'midi-status'); ciStatus.setAttribute('role', 'status'); ciStatus.setAttribute('aria-live', 'polite');
-  root.append(controls, routeControls, status, inputStatus, ciStatus, message, details); container.append(root);
-  let ciSession = null, ciUnsubscribe = null, inputTimer = null;
+  const reportStatus = element(document, 'output', '', 'midi-status'), reportValues = element(document, 'div'); reportStatus.setAttribute('role', 'status'); reportStatus.setAttribute('aria-live', 'polite');
+  root.append(controls, routeControls, status, inputStatus, ciStatus, reportStatus, reportValues, message, details); container.append(root);
+  let reportSession = null, reportCi = null, reportUnsubscribe = null, ciSession = null, ciUnsubscribe = null, inputTimer = null;
   const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category : ''); };
-  let busy = false, selectedGrant = null, inventoryEpoch = null, laneSignature = '';
+  let operationSerial = 0, busy = false, selectedGrant = null, inventoryEpoch = null, laneSignature = '';
   const options = (node, rows, placeholder) => {
     const previous = node.value; node.replaceChildren(); const empty = element(document, 'option', placeholder); empty.value = ''; node.append(empty);
     for (const [value, label] of rows) { const option = element(document, 'option', label); option.value = String(value); node.append(option); } node.value = [...node.options].some(option => option.value === previous) ? previous : '';
@@ -88,12 +110,12 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     if (!root.open) return;
     const state = routes.state(), connected = !!state.connectionEpoch, writable = state.grants.some(row => row.direction === 'output');
     for (const node of buttons) node.disabled = busy;
-    connect.disabled ||= connected; disconnect.disabled ||= !connected; refresh.disabled ||= !connected; open.disabled ||= !connected || !state.inventory; publish.disabled ||= !connected; publishInput.disabled ||= !connected;
-    switchBackend.disabled ||= !connected || !!state.grants.length; revoke.disabled ||= !state.grants.length; assign.disabled ||= !writable; all.disabled ||= !writable; exportTrace.disabled ||= !state.traceRecords; exportInput.disabled ||= !state.ingress.receivedPackets; renderInput();
+    connect.disabled ||= connected; disconnect.disabled = !connected; refresh.disabled ||= !connected; open.disabled ||= !connected || !state.inventory; publish.disabled ||= !connected; publishInput.disabled ||= !connected;
+    switchBackend.disabled ||= !connected || !!state.grants.length; revoke.disabled = !state.grants.length; assign.disabled ||= !writable; all.disabled ||= !writable; exportTrace.disabled ||= !state.traceRecords; exportInput.disabled ||= !state.ingress.receivedPackets; renderInput();
     status.textContent = state.state + (connected ? ' · native UMP · ' + state.grants.length + ' owned connections · clock ' + state.clock.status : ' · local audio remains available');
     const capabilities = routes.client.capabilities;
     const ciReady = !!capabilities?.ciCodec && connected && state.grants.some(row => row.direction === 'input' && (row.permissions & 1)) && state.grants.some(row => row.direction === 'output' && (row.permissions & 1));
-    ciDiscover.disabled ||= !ciReady; ciInformation.disabled ||= !ciSession; ciProcess.disabled ||= !ciSession; ciClose.disabled ||= !ciSession;
+    ciDiscover.disabled ||= !ciReady; ciInformation.disabled ||= !ciSession; ciProcess.disabled ||= !ciSession; ciClose.disabled ||= !ciSession; readState.disabled ||= !ciReady || capabilities?.ciMessageReportCodecVersion !== 1; cancelState.disabled = !reportSession?.state().busy; showReport();
     options(ciInput, state.grants.filter(row => row.direction === 'input' && (row.permissions & 1)).map(row => [row.grant, row.endpoint?.name || 'Published control input']), 'Choose a SysEx input'); showCi();
     if (capabilities && backend.options.length !== capabilities.compiledApis.length + 1) options(backend, capabilities.compiledApis.map(api => [api.id, api.name]), 'Choose backend');
     if (capabilities && !backend.value) backend.value = String(capabilities.selectedApi);
@@ -106,5 +128,5 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
   bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; });
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
-  return { render, dispose() { unsubscribe(); ciUnsubscribe?.(); ciUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
+  return { render, dispose() { unsubscribe(); ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
 }

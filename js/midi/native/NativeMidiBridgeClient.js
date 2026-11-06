@@ -101,7 +101,7 @@ export class NativeMidiBridgeClient {
   }
   encodeCi(grant, { group, operation, sourceMuid, destinationMuid = 0x0fffffff, scope = 127, parameters = [] }) { return this.#request('ciEncode', { grant, group, operation, sourceMuid, destinationMuid, scope, parameters }); }
   decodeCi(grant, payload) {
-    if (!Array.isArray(payload) && !(payload instanceof Uint8Array) || payload.length < 14 || payload.length > 2048 || Array.from(payload).some(byte => !Number.isInteger(byte) || byte < 0 || byte > 127)) return Promise.reject(beforeSubmission('Invalid CI payload'));
+    if (!Array.isArray(payload) && !(payload instanceof Uint8Array) || payload.length < 13 || payload.length > 2048 || Array.from(payload).some(byte => !Number.isInteger(byte) || byte < 0 || byte > 127)) return Promise.reject(beforeSubmission('Invalid CI payload'));
     const payloadHex = Array.from(payload, byte => byte.toString(16).padStart(2, '0')).join('');
     return this.#request('ciDecode', { grant, payloadHex });
   }

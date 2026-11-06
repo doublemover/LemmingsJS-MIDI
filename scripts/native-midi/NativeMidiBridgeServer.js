@@ -80,7 +80,7 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     }
     case 'ciDecode': {
       const grant = client.grants.get(uint(row.grant));
-      if (!grant || grant.direction !== 'input' || !(grant.permissions & 1) || typeof row.payloadHex !== 'string' || row.payloadHex.length < 28 || row.payloadHex.length > 4096 || row.payloadHex.length % 2 || !/^[0-9a-f]+$/.test(row.payloadHex)) throw Object.assign(new Error('Explicit SysEx input grant and bounded CI payload required'), { notSubmitted: true });
+      if (!grant || grant.direction !== 'input' || !(grant.permissions & 1) || typeof row.payloadHex !== 'string' || row.payloadHex.length < 26 || row.payloadHex.length > 4096 || row.payloadHex.length % 2 || !/^[0-9a-f]+$/.test(row.payloadHex)) throw Object.assign(new Error('Explicit SysEx input grant and bounded CI payload required'), { notSubmitted: true });
       const bytes = Buffer.from(row.payloadHex, 'hex'); if (bytes.some(byte => byte > 127)) throw Object.assign(new Error('CI payload must be 7-bit data'), { notSubmitted: true });
       return call(client, requestId, 'Y', [row.grant, bytes.length, ...bytes]);
     }

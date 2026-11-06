@@ -116,8 +116,8 @@ native input trace.
 All incoming channel packets are read-only observations. Explicit quiescent
 observation scopes can consume report bodies before ordinary observers; they
 expire or revoke on loss and connection replacement. This provides the ingress
-boundary for application CI/report owners. Discovery, Profile/Property Exchange,
-live controller mapping and full message-report transactions remain outstanding.
+boundary for application CI/report owners. Profile/Property Exchange and
+live controller mapping remain outstanding.
 
 The companion now links the immutable ni-midi2 dependency for MIDI-CI constructors
 and views. Authorized CI encode/decode requests require an explicit directional
@@ -136,5 +136,21 @@ low-priority native control budgets. Ordinary performance grants remain separate
 The application advertises zero advanced CI categories. Its development identity
 uses the non-commercial SysEx identifier, with no registered manufacturer claim.
 The pinned library implements CI v1.2; v1.2.1 errata and platform/interoperability
-qualification remain outstanding. Profiles, Property Exchange, full isolated
-Message Reports and native live-controller mapping remain separate feature work.
+qualification remain outstanding. Profiles, Property Exchange and native
+live-controller mapping remain separate feature work.
+
+The connection panel now reads selected-channel controller/program state through
+isolated Message Report transactions. It probes Process Inquiry support and report
+categories before requesting values. Only a matching begin/body/end sequence in
+the current peer/input epoch can atomically publish a read-only observation.
+Missing values remain unknown; raw MIDI1/MIDI2 widths and unverified CC-pair
+interpretations remain separate. Newer local edits are preserved with conflicts.
+
+The performer explicitly confirms device idleness. Ordinary WebMIDI input must be
+disconnected before the read, and cannot be activated while it holds isolation.
+Owned native notes and queued attacks must be quiescent; new attacks are held off
+while releases remain available. Report bodies never reach learn, Thru, recording,
+macro gestures or physical actors. Ambiguous traffic, loss, cancellation, malformed
+brackets or timeout invalidate the observation. The panel offers cancellation and
+a bounded values display. This feature still awaits consolidated functional and
+independent-peer qualification.
