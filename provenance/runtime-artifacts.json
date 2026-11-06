@@ -426,6 +426,7 @@
         "js/midi/content/SampleInstrumentMap.js",
         "js/midi/content/SampleReadProfile.js",
         "js/midi/content/SampleTraversal.js",
+        "js/midi/content/ScoreContext.js",
         "js/midi/content/SealedBodyProfile.js",
         "js/midi/content/SeedLayerMotion.js",
         "js/midi/content/SeedLayerProfile.js",
@@ -449,6 +450,7 @@
         "js/midi/project/MidiProjectSnapshot.js",
         "js/midi/protocol/MidiClipFile.js",
         "js/midi/protocol/MidiProtocolLowering.js",
+        "js/midi/protocol/UmpFlexData.js",
         "js/midi/protocol/UmpPacketCodec.js",
         "js/midi/protocol/UmpPayloadCollector.js",
         "js/render/BaseImageInfo.js",
@@ -463,8 +465,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 317,
-      "sha256": "6f0c273d14ca7e2eb0cc1af5b657079fb8a782caecd5eed02dcde539f95c1e45"
+      "fileCount": 319,
+      "sha256": "cf42ec6fc9ae04f414d929159d6c4bb032182fe2e6717a44e3f2bf5ebd521878"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -522,11 +524,13 @@
         "js/app/midi-ui/NativeMidiPercussionView.js",
         "js/app/midi-ui/NativeMidiPianoView.js",
         "js/app/midi-ui/NativeMidiPropertyView.js",
+        "js/app/midi-ui/NativeMidiScoreContextView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
         "js/midi/content/OrchestralArticulationIntent.js",
         "js/midi/content/OrganRotaryIntent.js",
         "js/midi/content/PercussionRoleIntent.js",
         "js/midi/content/PianoPerformanceIntent.js",
+        "js/midi/content/ScoreContext.js",
         "js/midi/native/DeviceMutation.js",
         "js/midi/native/DeviceParameter.js",
         "js/midi/native/DeviceParameterCatalog.js",
@@ -555,6 +559,7 @@
         "js/midi/native/PropertyClient.js",
         "js/midi/native/PropertyDataCodec.js",
         "js/midi/protocol/MidiControllerMutations.js",
+        "js/midi/protocol/UmpFlexData.js",
         "native/midi-codec/UmpBatchGuard.hpp",
         "native/midi-codec/dependencies.json",
         "native/midi-companion/CMakeLists.txt",
@@ -575,8 +580,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 62,
-      "sha256": "83f159c97bd1f558c464e7881d925a435ee7b74a1b0d777be576a0f4c8a9ebb4"
+      "fileCount": 65,
+      "sha256": "5b2ab79344afbd159786bb34577397adad25d86640776dee4d3c7ad6edf6e216"
     }
   ]
 }

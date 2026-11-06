@@ -35,7 +35,7 @@ const nativeResolution = Object.freeze({
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
 /** @param {Partial<import('./PhysicalPlaybackContracts.js').PhysicalPlaybackOptions>} options */
-function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], getActorTimbreLocks = () => EMPTY_ACTOR_TIMBRE_LOCKS, isPlaybackEnabled = () => !!audio?.getState?.().enabled,
+function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreContext = () => null, renderer = null, resourceBudget = null, world = null, getLanes = () => [], getActorTimbreLocks = () => EMPTY_ACTOR_TIMBRE_LOCKS, isPlaybackEnabled = () => !!audio?.getState?.().enabled,
   initialMorphMechanism = null, initialCavityBody = null, presentationDelayMs = 24, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, onIntentProvenance = null, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
   if (!Number.isFinite(presentationDelayMs) || presentationDelayMs < 0 || presentationDelayMs > 1000) throw new RangeError('Invalid physical audio presentation delay.');
   /** @param {readonly import('./PhysicalPlaybackContracts.js').PhysicalOutputOwner[]} outputs @returns {boolean} */
@@ -200,6 +200,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes(), getActorTimbreLocks()),
     getOnsetControls: (laneId, identity) => actorTimbreControls((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity),
+    getScoreContextPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.scoreContext || null,
     getPianoPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.piano || null,
     getPianoControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.pianoControls || null,
     getOrchestralPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.orchestral || null,
@@ -275,7 +276,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
     const score = position || scoreTimeline.map({ simTick: batch.tick });
     const tempo = /** @type {import('./AudioClockContracts.js').TempoBpm} */ (bpm);
     for (const output of additionalOutputs) {
-      try { output.observe(score, { bpm, executionEpoch }); } catch { try { onInstrumentState({ laneId: 'external', state: 'unavailable', code: 'external-clock-unavailable' }); } catch {} }
+      try { output.observe(score, { bpm, executionEpoch, generation: batch.generation, worldId: batch.worldId, batchId: batch.batchId, scoreContext: getScoreContext() }); } catch { try { onInstrumentState({ laneId: 'external', state: 'unavailable', code: 'external-clock-unavailable' }); } catch {} }
     }
     if (prepared && permitted() && session?.getState().enabled &&
         (!clock.isAnchored(executionEpoch, score.epoch, tempo) || anchoredEpoch !== score.epoch || anchoredBpm !== bpm)) {

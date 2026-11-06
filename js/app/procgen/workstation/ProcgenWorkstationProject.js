@@ -1,3 +1,4 @@
+import { validateScoreContextPolicy } from '../../../midi/content/ScoreContext.js';
 import { validateOrganRotaryPolicy, validateOrganRotaryControls } from '../../../midi/content/OrganRotaryIntent.js';
 import { validatePianoPerformancePolicy, validatePianoPartControls } from '../../../midi/content/PianoPerformanceIntent.js';
 import { validateOrchestralArticulationPolicy } from '../../../midi/content/OrchestralArticulationIntent.js';
@@ -92,6 +93,7 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
     instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
     linkedThemePresetId: overrides.linkedThemePresetId === null ? null : string(overrides.linkedThemePresetId, family), soundChangePolicy: overrides.soundChangePolicy ?? 'new-notes-only',
     externalProgram: overrides.externalProgram === null ? null : integer(overrides.externalProgram, sound.program, 0, 127), externalPercussion: overrides.externalPercussion == null ? sound.percussion : overrides.externalPercussion === true,
+    ...(overrides.scoreContext == null ? {} : { scoreContext: trusted && overrides.scoreContext === trusted.scoreContext ? trusted.scoreContext : validateScoreContextPolicy(overrides.scoreContext) }),
     ...(overrides.organ == null ? {} : { organ: trusted && overrides.organ === trusted.organ ? trusted.organ : validateOrganRotaryPolicy(overrides.organ) }),
     ...(overrides.organControls == null ? {} : { organControls: trusted && overrides.organControls === trusted.organControls ? trusted.organControls : validateOrganRotaryControls(overrides.organControls) }),
     ...(overrides.piano == null ? {} : { piano: trusted && overrides.piano === trusted.piano ? trusted.piano : validatePianoPerformancePolicy(overrides.piano) }),

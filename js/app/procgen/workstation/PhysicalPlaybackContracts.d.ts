@@ -8,6 +8,11 @@ export interface PlaybackLaneSource {
   readonly id: string;
   readonly instrumentRef?: { readonly packHash: string; readonly definitionHash: string } | null;
   readonly instrumentControls?: unknown;
+  readonly scoreContext?: unknown;
+  readonly piano?: unknown;
+  readonly pianoControls?: unknown;
+  readonly orchestral?: unknown;
+  readonly percussion?: unknown;
 }
 export interface PlaybackGraphSource {
   readonly revision: number;
@@ -26,7 +31,8 @@ export interface PlaybackDisplayPort {
 export interface PhysicalOutputOwner {
   readonly sinks: readonly unknown[];
   enabled(): boolean;
-  observe(position: PhysicalScorePosition, context: { bpm: number; executionEpoch: ExecutionEpoch }): void;
+  observe(position: PhysicalScorePosition, context: { bpm: number; executionEpoch: ExecutionEpoch; generation?: number; worldId?: string; batchId?: string; scoreContext?: { meter?: { beats: number; unit: number } | null } | null }): void;
+  flushSourceControls?(batch: PhysicalBatchSource): void;
   synchronizeLaneMix?(): void;
   dispose(): unknown;
   diagnostics?(): unknown;
@@ -66,6 +72,7 @@ export interface PhysicalPlaybackOptions {
   resourceBudget?: ReturnType<typeof createResourceBudget> | null;
   world?: unknown;
   getLanes?: () => readonly PlaybackLaneSource[];
+  getScoreContext?: () => { meter?: { beats: number; unit: number } | null } | null;
   getActorTimbreLocks?: () => readonly import('../../../midi/content/InstrumentActorLocks.js').ActorTimbreLock[];
   isPlaybackEnabled?: () => boolean;
   initialMorphMechanism?: unknown;

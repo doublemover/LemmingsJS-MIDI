@@ -10712,3 +10712,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Publish scoped retirement receipts and reuse confirmed native cleanup at the browser owner. Preserve cross-group MPE dependency retirement; retain whole-grant retirement for removal, global protocol change or uncertain cleanup.
 - Add explicit current-inventory group revalidation limited to the original grant, with conflict checks and a connection control. Revalidation grants no automatic lane/CI reactivation. Refresh OS metadata read-only, discard only affected multipart input state, and invalidate only dependent CI/controller baselines.
 - Native compilation/linking passes. Formatting only otherwise; functional, hotplug and device qualification remains deferred. Continue release leases, remaining score metadata and coordinated graph restoration before the final validation batch.
+
+
+### 2026-11-06 — Rook continuation502: authored physical score context through Flex Data
+
+- Add published Flex tempo/meter/key/chord lowering, all 28 chord qualities and defined alterations/bass fields, exact typed decoding and bounded UTF-8 segmentation. Enforce the standard 32-packet text ceiling and retain explicit unsupported/loss outcomes for MIDI1 harmony/address projection.
+- Persist an authored lane context policy and capture it with causal performance snapshots/onsets/reperformance. Add compact typed harmony/annotation controls and a separate bounded received-device metadata display that cannot rewrite authored state.
+- Lower semantic ScoreContextEvents into the complete native onset transaction and publish later changes from completed physical batches through existing group/allocation executions. Keep source note deadlines unchanged, deduplicate shared group context, and preserve precise native accepted-prefix evidence. Unsupported optional metadata does not fabricate or delay an onset.
+- Existing Clip framing retains the new known Flex packets. Legal Clip tempo/meter boundary projection and the complete native accepted-output export selection remain separate integration work; independent vectors/receiver qualification remain deferred with the consolidated validation pass. No functional tests run.

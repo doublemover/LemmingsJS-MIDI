@@ -1,3 +1,4 @@
+import { decodeFlexScoreValue } from './UmpFlexData.js';
 import { scaleMidiResolution } from './MidiProtocolLowering.js';
 
 export const UMP_CODEC_VERSION = 'lemmings-ump-v1';
@@ -98,7 +99,7 @@ export function decodeUmpPacket(input, { preserveUnknown = true } = {}) {
     if (bank === 0 && status === 0) { if (!second) throw bad('tempo-zero', 'A Flex tempo must be nonzero.'); zero(words[2] | words[3], 'tempo payload'); }
     if (bank === 0 && status === 1) { zero(second & 255, 'time-signature payload'); zero(words[2] | words[3], 'time-signature padding'); }
     result = packet(words, { kind: 'flex-data', group, format, address: address ? 'group' : 'channel', ...(address ? {} : { channel }), bank, status,
-      ...(bank === 0 && FLEX_SETUP[status] ? { subtype: FLEX_SETUP[status] } : {}), payload: Object.freeze(bytesOf(words).slice(4)), known, dispatchable: known, ...(known ? {} : { reason: 'unsupported-flex-status' }) });
+      ...(bank === 0 && FLEX_SETUP[status] ? { subtype: FLEX_SETUP[status] } : {}), ...(bank === 0 && known ? { scoreContext: decodeFlexScoreValue(words, { bank, status, address: address ? 'group' : 'channel' }) } : {}), payload: Object.freeze(bytesOf(words).slice(4)), known, dispatchable: known, ...(known ? {} : { reason: 'unsupported-flex-status' }) });
   } else if (type === 15) {
     const format = (first >>> 26) & 3, status = (first >>> 16) & 1023, subtype = STREAM[status];
     if (subtype && ![3, 4, 18].includes(status) && format) throw bad('stream-format', 'This Stream message cannot be fragmented.');

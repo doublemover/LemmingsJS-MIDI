@@ -24,7 +24,7 @@ export function createUmpPayloadCollector({ maximumStreams = 32, maximumMessageB
       const previous = streams.get(frame.key);
       if ([0, 1].includes(format) ? !!previous : !previous) { remove(frame.key); throw failure('payload-order', 'Unexpected complete/start/continuation/end sequence.'); }
       const stream = previous || { identity: frame.identity, text: !!frame.text, chunks: [], bytes: 0, packets: 0, startedAt: at };
-      if (stream.bytes + frame.payload.length > maximumMessageBytes || totalBytes + frame.payload.length > maximumTotalBytes || stream.packets + 1 > maximumPackets || !previous && streams.size >= maximumStreams) { remove(frame.key); throw failure('payload-capacity', 'Multipart UMP data exceeds its admitted collector capacity.'); }
+      if (packet.kind === 'flex-data' && stream.packets >= 32 || stream.bytes + frame.payload.length > maximumMessageBytes || totalBytes + frame.payload.length > maximumTotalBytes || stream.packets + 1 > maximumPackets || !previous && streams.size >= maximumStreams) { remove(frame.key); throw failure('payload-capacity', 'Multipart UMP data exceeds its admitted collector capacity.'); }
       if (frame.payload.some(byte => !Number.isInteger(byte) || byte < 0 || byte > (packet.kind === 'sysex7' ? 127 : 255))) { remove(frame.key); throw failure('payload-byte', 'Invalid multipart payload byte.'); }
       if (!previous) streams.set(frame.key, stream);
       stream.chunks.push(Uint8Array.from(frame.payload)); stream.bytes += frame.payload.length; stream.packets++; totalBytes += frame.payload.length;
