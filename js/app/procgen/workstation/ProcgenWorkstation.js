@@ -202,6 +202,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let transportStopGeneration = 0;
   const historySizes = new WeakMap();
   const physicalHistory = createPhysicalAuthoringHistory({ resourceBudget, maxBytes: Math.max(1048576, Math.min(128 * 1048576, historyBytesLimit)) });
+  const simulationCandidates = new Set(); let simulationPreparation = null, simulationCandidateSerial = 0;
   let physicalAuthoringAbort = null, pendingPhysicalAuthoring = null, physicalAuthoringSerial = 0;
   let historyDropped = 0;
   const historyBytes = value => {
@@ -1264,6 +1265,33 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(), physicalState: physicalPlayback?.engine.snapshot() || null,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } }),
     { signal, isCurrent: () => !disposed && runtime()?.world === sourceWorld && project === sourceProject && documentGeneration === sourceGeneration && sourceWorld.tickIndex === sourceTick && !transport.getState().playing });
+  };
+  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, requiredPorts = [], consume = null, onState = () => {} } = {}) => {
+    if (disposed || !resourceBudget || simulationPreparation || simulationCandidates.size >= 2 || worldBusy || pendingHistory || physicalAuthoringAbort ||
+        causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback) throw new Error('Prepare a worker candidate from an exclusive paused physical project boundary.');
+    const sourceWorld = runtime()?.world, sourceProject = project, sourceGeneration = documentGeneration, sourceTick = sourceWorld?.tickIndex,
+      controller = new AbortController(), pending = { controller, completion: null }; simulationPreparation = pending;
+    const isCurrent = () => !disposed && documentGeneration === sourceGeneration && project === sourceProject && runtime()?.world === sourceWorld && sourceWorld.tickIndex === sourceTick && !transport.getState().playing;
+    pending.completion = (async () => {
+      let capsule = null, candidate = null;
+      try {
+        capsule = await capturePhysicalHistory(sourceWorld, sourceProject, controller.signal); controller.signal.throwIfAborted();
+        if (!isCurrent()) throw new Error('The source changed before authoritative host preparation.');
+        const source = capsule.session(), { prepareWorkerProcgenSimulationHost } = await import('../ProcgenSimulationHost.js'); controller.signal.throwIfAborted();
+        if (!source.physicalState || !isCurrent()) throw new Error('This source has no current semantic continuation.');
+        candidate = await prepareWorkerProcgenSimulationHost({ resourceBudget, signal: controller.signal, requiredPorts, consume, onState,
+          manifest: { schema: 'lemmings-authoritative-simulation/v1', ownerId: 'workstation-candidate-' + (++simulationCandidateSerial), ownerEpoch: sourceGeneration,
+            documentRevision: projectRevision, rootPath, checkpoint: source.world, semantic: source.physicalState, timeline: source.physicalTimeline,
+            graph: sourceProject.procgen.physicalGraph, performance: captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
+            bpm: transport.getState().bpm, playing: true, scoreTimeline: true } });
+        if (!isCurrent()) throw new Error('The source changed while its worker candidate was preparing.');
+        simulationCandidates.add(candidate); const owned = candidate; candidate = null;
+        return Object.freeze({ ...owned, dispose() { const receipt = owned.dispose(); receipt.completion.then(() => { if (receipt.outcome === 'complete') simulationCandidates.delete(owned); }); return receipt; } });
+      } finally {
+        if (candidate) { const receipt = candidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') status('The abandoned simulation candidate retains unresolved ownership.'); }
+        if (capsule && !capsule.discard()) throw new Error('The simulation source checkpoint retirement remains unresolved.');
+      }
+    })(); try { return await pending.completion; } finally { if (simulationPreparation === pending) simulationPreparation = null; }
   };
   const applyPausedPhysicalCommand = async buildCommand => {
     if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing) throw new Error('Pause playback and finish the take/world operation before physical authoring. Use a physical branch for recorded performance edits.');
@@ -2783,6 +2811,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getScenePreparationState: () => sceneLoader?.state() || null,
     getPhysicalOutputDiagnostics: options => physicalPlayback?.diagnostics(options) || null,
     getPhysicalScoreClock: () => physicalScoreClock, getWorldInspector: () => worldInspector,
+    stageAuthoritativeSimulation,
+    getSimulationHostState: () => Object.freeze({ preparing: !!simulationPreparation, candidates: Object.freeze([...simulationCandidates].map(candidate => candidate.diagnostics())), defaultEnabled: false }),
     get settings() { return legacy.settings; },
     dispose() {
       if (disposed) return retirement.retire();
@@ -2796,6 +2826,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'physical-score-request', run: () => physicalScoreAbort?.abort() },
         { name: 'physical-authoring-request', run: () => physicalAuthoringAbort?.abort() },
         { name: 'input-edits', run: () => cancelInputEdits('workstation closed') },
+        { name: 'authoritative-simulation-candidates', run: async () => {
+          simulationPreparation?.controller.abort(); if (simulationPreparation) await Promise.allSettled([simulationPreparation.completion]);
+          const receipts = [...simulationCandidates].map(candidate => candidate.dispose()); await Promise.all(receipts.map(receipt => receipt.completion));
+          if (receipts.some(receipt => receipt.outcome !== 'complete')) throw new Error('An authoritative simulation candidate retains unresolved ownership.'); simulationCandidates.clear();
+        } },
         { name: 'final-preferences', run: () => persist({ immediate: true, retiring: true }) },
         { name: 'storage-readers', run: () => storageReaders.retire([
           { name: 'causal-take', run: () => causalTake || causalTakeStart || causalTakeStop ? stopCausalTake({ reason: 'workstation-disposed' }) : null },
