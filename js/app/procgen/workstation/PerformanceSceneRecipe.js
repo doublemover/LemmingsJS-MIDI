@@ -1,4 +1,4 @@
-import { prepareSceneEffectRack, SCENE_EFFECT_RACK_REQUIREMENT } from './SceneEffectRack.js';
+import { prepareSceneEffectRack, SCENE_EFFECT_RACK_REQUIREMENTS } from './SceneEffectRack.js';
 import { validateSceneMorphMechanism } from './SceneMorphMechanism.js';
 import { validateSceneCavityBody, SCENE_CAVITY_REQUIREMENT } from './SceneCavityBody.js';
 import { validateCavitySoundRegion } from './physical/CavitySoundMap.js';
@@ -38,7 +38,8 @@ export function validatePerformanceSceneOrigin(raw) {
   if (!keys(value, ['schema', 'manifest', 'sceneHash', 'recipe', 'variants']) || value.schema !== 'lemmings-performance-scene-origin/v1' || !hash(value.sceneHash) || !Array.isArray(value.variants) || value.variants.length > 256 || value.variants.some(id => typeof id !== 'string' || id.length > 128) || new Set(value.variants).size !== value.variants.length) fail();
   const manifest = validatePerformanceScene(value.manifest), recipe = validatePerformanceSceneRecipe(value.recipe);
   if (manifest.worldRecipeRef.id !== recipe.id || manifest.worldRecipeRef.revision !== recipe.revision || manifest.sourceVersion.hash !== recipe.sourceHash || manifest.cost.lanes !== recipe.settings.laneCount || value.variants.some(id => !manifest.requirements.substitutableWithNamedApproximation.some(entry => entry.variantId === id))) fail();
-  if (!!recipe.initialEffectRack !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_EFFECT_RACK_REQUIREMENT) || recipe.initialEffectRack && manifest.cost.sharedBodies !== 0) fail();
+  const rackRequirements = manifest.requirements.required.filter(entry => entry.kind === 'renderer' && SCENE_EFFECT_RACK_REQUIREMENTS.includes(entry.id));
+  if (recipe.initialEffectRack ? rackRequirements.length !== 1 || rackRequirements[0].id !== prepareSceneEffectRack(recipe.initialEffectRack, 96000).requirementId || manifest.cost.sharedBodies !== 0 : rackRequirements.length) fail();
   if (!!recipe.initialCavityBody !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_CAVITY_REQUIREMENT)) fail();
   if (recipe.initialCavityBody) {
     const map = recipe.initialCavityBody.map, region = manifest.causalMappings.topologyRegions?.find(region => region.id === map.topologyRegionRef.id); if (!region) fail(); validateCavitySoundRegion(map, region);

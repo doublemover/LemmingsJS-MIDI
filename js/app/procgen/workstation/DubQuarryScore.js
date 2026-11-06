@@ -1,5 +1,5 @@
 import { hashData, freezeData } from '../../../core/CanonicalData.js';
-import { createQuarryEcho, createQuarryDuck, createQuarryTape, validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
+import { createQuarryEcho, createQuarryDuck, createQuarryTape, createQuarryTapeSpring, createQuarryBody, validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
 import { validateSceneTerrainLayout } from '../SceneTerrainLayout.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { normalizeWorkerLimits } from '../ProcgenWorkerLimits.js';
@@ -8,6 +8,7 @@ import { createScoreStepJunction } from './ScoreRouteJunction.js';
 import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 import { validatePerformanceScene } from './PerformanceScene.js';
 import { createEmbeddedScenePatch } from './EmbeddedScenePatch.js';
+import { SCENE_EFFECT_RACK_REQUIREMENT, SCENE_NATIVE_RACK_REQUIREMENT } from './SceneEffectRack.js';
 
 export const DUB_QUARRY_ROUTES = freezeData([
   { id: 'tight-tunnel', title: 'Tight tunnel', width: 512, spread: 8, echoSeconds: 0.18, roof: true },
@@ -27,6 +28,7 @@ export async function createDubQuarryScores({ sourceHash, descriptor, signal } =
   }
   const dependencies = await Promise.all(['MotionCommitted', 'PickupCrossing'].map(async id => ({ kind: 'physical-observation', id, revision: 1, hash: await hashData({ buildId: sourceHash, observation: id, physicalBatch: 1, policy: 'quarry-actual-arrivals-v1' }), description: 'Actual swept physical arrivals and safe route outcomes, never a bass pattern timer' })));
   dependencies.push({ kind: 'renderer', id: 'owned-static-scene-delay-rack', revision: 1, hash: await hashData({ buildId: sourceHash, profile: 'owned-gain-delay-detector-mapping-modulation-nonlinear;explicit-static-prefix;four-second-preview-tail' }), description: 'Saved owned echo, return-duck and tape graphs with explicit live preparation/THROW, declared latency and bounded private rehearsal tail' });
+  const nativeDependency = { kind: 'renderer', id: SCENE_NATIVE_RACK_REQUIREMENT, revision: 1, hash: await hashData({ buildId: sourceHash, profile: 'same-full-mixed-source;native-convolution-and-owned-tape;explicit-IR-normalization;four-second-preview-tail' }), description: 'One shared owner reflection body over the actual mixed dry source; explicit prepared IR, unmeasured native latency and bounded native private rehearsal' };
   const output = [];
   for (const route of DUB_QUARRY_ROUTES) {
     signal?.throwIfAborted(); const lanes = [0, 1, 2], gateX = [96, route.width - 160, 160], layout = validateSceneTerrainLayout({ schema: 'lemmings-scene-terrain/v1', id: 'terrain.dub-quarry.' + route.id, revision: 1, width: route.width, laneHeight: 96, lanes: lanes.map(laneId => ({ laneId, regions: [
@@ -44,20 +46,24 @@ export async function createDubQuarryScores({ sourceHash, descriptor, signal } =
     output.push({ scene, recipe, recipeHash, dependencies });
     for (const variant of [
       { id: 'duck', title: 'return duck', create: createQuarryDuck, explanation: 'The same dry owner input drives a peak detector. A negative envelope mapping ducks only the stored echo return while fresh attacks pass dry; the return recovers over the declared release. This is signal-derived ducking, without a second note or rhythm clock.' },
-      { id: 'tape', title: 'tape color', create: createQuarryTape, explanation: 'The send passes through the owned cubic/ADAA preamp before the damped echo. Open Quarry Echo to perform AGE and tape-glide TIME. Saturation colors admitted source audio; it does not generate a new actor attack or claim a physical tape model.' }
+      { id: 'tape', title: 'tape color', create: createQuarryTape, explanation: 'The send passes through the owned cubic/ADAA preamp before the damped echo. Open Quarry Echo to perform AGE and tape-glide TIME. Saturation colors admitted source audio; it does not generate a new actor attack or claim a physical tape model.' },
+      { id: 'spring', title: 'Hollow Spring', create: createQuarryBody, explanation: 'One shared original Hollow Spring response receives the prepared momentary send. The dry transient bypasses the body. Its authored predelay and bounded tail are separate from unmeasured native algorithm latency and from any actor travel.' },
+      { id: 'tape-spring', title: 'tape and spring', create: createQuarryTapeSpring, explanation: 'The owned preamp and dark feedback echo feed one shared original spring blend. AGE and TIME affect the audio branch; THROW release closes new input while the existing echo and body decay under their declared limits.' },
+      { id: 'room', title: route.id === 'echo-gallery' ? 'shared Crossed Gallery' : route.id === 'open-courtyard' ? 'shared Stone Courtyard' : 'shared tunnel spring', create: options => createQuarryBody({ ...options, bodyId: route.id === 'echo-gallery' ? 'quarry-crossed-gallery' : route.id === 'open-courtyard' ? 'quarry-stone-courtyard' : 'quarry-hollow-spring' }), explanation: 'One shared original reflection response colors the admitted source send. The gallery uses a four-channel true-stereo body and the courtyard a stereo body. This audio response does not change terrain, add physical journeys or produce new causal onset facts.' }
     ]) {
       signal?.throwIfAborted();
       const graph = variant.create({ delaySeconds: route.echoSeconds, feedback: 0.3, send01: 0, return01: 0.2, mode: 'glide' });
       const variantRecipe = validatePerformanceSceneRecipe({ ...recipe, id: recipe.id + '.' + variant.id,
         initialEffectRack: validateOwnerEffectRack({ schema: 'lemmings-owner-effect-rack/v1', graph, bypass: 'active' }) });
+      const impulses = graph.nodes.filter(node => node.kind === 'convolution-native').map(node => node.impulse), variantDependencies = impulses.length ? [...dependencies.filter(entry => entry.id !== SCENE_EFFECT_RACK_REQUIREMENT), nativeDependency, ...[...new Map(impulses.map(impulse => [impulse.asset.contentHash, impulse])).values()].map(impulse => ({ kind: 'asset', id: impulse.asset.path, revision: 1, hash: impulse.asset.contentHash, description: 'Original generated reflection body; exact decoded material and normalization required before activation' }))] : dependencies;
       const variantHash = await hashData(variantRecipe), variantScene = validatePerformanceScene({ ...scene, id: 'dub-quarry.' + route.id + '.pluck-' + variant.id,
-        title: 'Dub Quarry · ' + route.title + ' · ' + variant.title, worldRecipeRef: { id: variantRecipe.id, revision: variantRecipe.revision, hash: variantHash },
+        title: 'Dub Quarry · ' + route.title + ' · ' + variant.title, requirements: { ...scene.requirements, required: variantDependencies }, worldRecipeRef: { id: variantRecipe.id, revision: variantRecipe.revision, hash: variantHash },
         description: 'The original finite bass/reply/wood physical score with an explicitly prepared ' + variant.title + ' rack. ' + variant.explanation +
           ' Load saved defaults, prepare the rack, then hold THROW. Its saved send starts at zero; private rehearsal uses those exact static defaults. Release stops new input and preserves the bounded return. The same route-end pickups own all onsets. Device cost, numerical character and listening remain unqualified.',
         expectedLandmarks: [...scene.expectedLandmarks, { id: 'quarry-' + variant.id, observationKind: 'PickupCrossing', sourceObjectId: 'dub-quarry-bass',
           consequence: variant.explanation, help: 'Compare the same real arrivals with the plain echo. Prepare saved defaults explicitly and hold/release THROW; effect repeats have no new physical onset identity.' }],
         credits: [{ name: 'LemmingsJS-MIDI', role: 'Original finite route and owned ' + variant.title + ' performance recipe', source: null }] });
-      output.push({ scene: variantScene, recipe: variantRecipe, recipeHash: variantHash, dependencies });
+      output.push({ scene: variantScene, recipe: variantRecipe, recipeHash: variantHash, dependencies: variantDependencies });
     }
   }
   return output;

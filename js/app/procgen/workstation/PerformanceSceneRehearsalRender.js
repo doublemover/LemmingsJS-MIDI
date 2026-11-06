@@ -5,8 +5,8 @@ import { inspectSceneStationRehearsal, sceneStationRehearsalReceipt } from './Sc
 import { prepareSceneRehearsalLane, sceneOwnedMaterialReceipt } from './SceneRehearsalLane.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from '../../midi-ui/NativeOfflineProfile.js';
 import { encodeNativeOfflineRender } from '../../resources/NativeOfflineEncoding.js';
-import { prepareSceneEffectRack, SCENE_EFFECT_RACK_REQUIREMENT } from './SceneEffectRack.js';
-import { prepareEffectGraphRevision } from '../../../midi/content/EffectGraphRevision.js';
+import { prepareSceneEffectRack, SCENE_EFFECT_RACK_REQUIREMENTS } from './SceneEffectRack.js';
+import { prepareEffectGraphRevision, effectGraphHash } from '../../../midi/content/EffectGraphRevision.js';
 import { createResonatorMorphGraph } from '../../../midi/content/ResonatorMorphGraph.js';
 import { travelColorationValue } from '../../../midi/content/TravelColorationRecipes.js';
 import { createOwnedEffectGraphKernel } from '../../midi-ui/OwnedEffectGraphKernel.js';
@@ -51,7 +51,8 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
     if (recipeHash !== scene.worldRecipeRef.hash || recipe.id !== scene.worldRecipeRef.id || recipe.sourceHash !== buildId || recipe.settings.laneCount !== scene.cost.lanes || !recipe.initialEffectRack) throw failure('The rehearsal rack needs its exact authored recipe and executing source.');
     effects = prepareSceneEffectRack(recipe.initialEffectRack, rate); check();
   }
-  if (!!effects !== scene.requirements?.required?.some(entry => entry.kind === 'renderer' && entry.id === SCENE_EFFECT_RACK_REQUIREMENT)) throw failure('The declared scene rack cannot be omitted or inserted as an unlisted mechanism.');
+  const rackRequirements = scene.requirements?.required?.filter(entry => entry.kind === 'renderer' && SCENE_EFFECT_RACK_REQUIREMENTS.includes(entry.id)) || [];
+  if (effects ? rackRequirements.length !== 1 || rackRequirements[0].id !== effects.requirementId : rackRequirements.length) throw failure('The declared scene rack cannot be omitted or inserted as an unlisted mechanism.');
   if (!!cavity !== scene.requirements?.required?.some(entry => entry.kind === 'renderer' && entry.id === SCENE_CAVITY_REQUIREMENT) || !cavity && source.cavity != null) throw failure('The declared observed cavity route cannot be omitted or inserted into another private scene.');
   const sourceHash = await hashData(source, { maxBytes: 8 * 1048576, maxNodes: 524288 }), mix = createLaneMixState(); check(); mix.synchronize(scene.mix.map(row => ({ ...row, id: row.laneId })));
   const frames = Math.ceil((source.durationSeconds + 0.5) * rate) + (bodyPlan?.maximumTailFrames || effects?.previewTailFrames || 0), left = new Float64Array(frames), right = new Float64Array(frames), lanes = [], ownedMaterial = []; let outputFrames = 0;
@@ -124,23 +125,38 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
   }
   let effectReceipt = null;
   if (effects) {
-    const graph = await createOwnedEffectGraphKernel({ definition: effects.rack.graph, sampleRate: rate }), sourceFrames = outputFrames; outputFrames += effects.previewTailFrames;
+    const sourceFrames = outputFrames; outputFrames += effects.previewTailFrames;
     if (outputFrames > frames) throw failure('The scene rack exceeded its admitted source and tail window.');
-    for (let first = 0; first < outputFrames; first += 4096) {
-      check(); const end = Math.min(outputFrames, first + 4096);
-      for (let frame = first; frame < end; frame++) { graph.sample(frame < sourceFrames ? Math.fround(left[frame]) : 0, frame < sourceFrames ? Math.fround(right[frame]) : 0); left[frame] = graph.leftSample; right[frame] = graph.rightSample; }
-      await yieldControl();
+    effectReceipt = { latencyFrames: effects.plan.latencyFrames, latencyPolicy: effects.rack.graph.latencyPolicy, definitionHash: await hashData(effects.rack.graph, { maxBytes: 65536, maxNodes: 8192 }), graphHash: await effectGraphHash(effects.plan), sourceFrames, tailFrames: effects.previewTailFrames, declaredMaximumTailFrames: effects.plan.maximumTailFrames, tailTruncatedByPreviewBound: effects.previewTailFrames < effects.plan.maximumTailFrames, tailPolicy: 'four-second-preview-bound-after-source-output;full-rack-tail-remains-explicit', controls: 'authored-static-defaults;no-replayed-throw-gestures', semanticOnsetsAdded: 0, acousticReceipt: false,
+      ...(effects.native ? { definition: effects.rack.graph, processingRevisions: effects.plan.processingRevisions, realization: 'awaiting-native-offline-owner' } : {}) };
+    if (!effects.native) {
+      const graph = await createOwnedEffectGraphKernel({ definition: effects.rack.graph, sampleRate: rate });
+      if (graph.hash !== effectReceipt.graphHash) throw failure('The owned effect kernel differs from its prepared plan.');
+      for (let first = 0; first < outputFrames; first += 4096) {
+        check(); const end = Math.min(outputFrames, first + 4096);
+        for (let frame = first; frame < end; frame++) { graph.sample(frame < sourceFrames ? Math.fround(left[frame]) : 0, frame < sourceFrames ? Math.fround(right[frame]) : 0); left[frame] = graph.leftSample; right[frame] = graph.rightSample; }
+        await yieldControl();
+      }
+      graph.panic(); check();
     }
-    effectReceipt = { latencyFrames: effects.plan.latencyFrames, latencyPolicy: effects.rack.graph.latencyPolicy, definitionHash: await hashData(effects.rack.graph, { maxBytes: 65536, maxNodes: 8192 }), graphHash: graph.hash, sourceFrames, tailFrames: effects.previewTailFrames, declaredMaximumTailFrames: effects.plan.maximumTailFrames, tailTruncatedByPreviewBound: effects.previewTailFrames < effects.plan.maximumTailFrames, tailPolicy: 'four-second-preview-bound-after-source-output;full-rack-tail-remains-explicit', controls: 'authored-static-defaults;no-replayed-throw-gestures', semanticOnsetsAdded: 0, acousticReceipt: false };
-    graph.panic(); check();
+  }
+  const manifestBase = { schema: 'lemmings-scene-rehearsal-render/v1', sceneHash: input.sceneHash, sourceHash, applicationBuildId: buildId, initialTick: 0, ticks: source.ticks, sourceDurationSeconds: source.durationSeconds,
+    sampleRate: rate, frames: outputFrames, channels: 2, sampleFormat: 'ieee-float32-le', lanes, ...(ownedMaterial.length ? { ownedMaterial } : {}), ...(bodyReceipt ? { recipeHash, body: bodyReceipt } : {}), ...(effectReceipt ? { recipeHash, effects: effectReceipt } : {}),
+    scope: cavity ? 'new-private-world-source;complete-invariant-initial-cavity;actual-work-contact-excitation;declared-complete-body-tail' : effectReceipt ? 'new-private-world-source;authored-static-lane-mix-and-saved-effect-rack;declared-stopped-source-tail;no-replayed-live-gestures' : bodyReceipt ? (bodyReceipt.bodyCount === 2 ? 'new-private-world-source;authored-static-lane-mix;two-independent-endpoint-bodies;actual-journey-readout-MORPH;both-declared-body-tails' : 'new-private-world-source;authored-static-lane-mix;one-reviewed-shared-body;actual-journey-MORPH;declared-source-and-body-tail') : 'new-private-world-source-render;authored-static-lane-gain-and-stereo-pan;half-second-boundary-release', currentWorldAdvanced: false, nextWorldAdvanced: false, externalOutput: false,
+    ...(source.stations ? { privateStations: sceneStationRehearsalReceipt(source.stations) } : {}), historicalPerformanceEvidence: false, acousticReceipt: false, renderQualification: 'not-independently-qualified' };
+  if (effects?.native) {
+    const planes = [new Float32Array(outputFrames), new Float32Array(outputFrames)];
+    for (let first = 0; first < outputFrames; first += 16384) { check(); const end = Math.min(outputFrames, first + 16384);
+      for (let frame = first; frame < end; frame++) { const l = Math.fround(left[frame]), r = Math.fround(right[frame]); if (!Number.isFinite(l) || !Number.isFinite(r)) throw failure('Scene mix produced non-finite PCM.'); planes[0][frame] = l; planes[1][frame] = r; } await yieldControl(); }
+    const planeByteHashes = await Promise.all(planes.map(plane => digest(plane.buffer))), endian = new Uint32Array([0x01020304]); check();
+    const manifest = freezeData(manifestBase); canonicalDataText(manifest, { maxBytes: 262144 });
+    return { schema: 'lemmings-scene-rack-source-pcm/v1', frames: outputFrames, channels: 2, sampleRate: rate, planes, planeByteHashes,
+      planeHashByteOrder: new Uint8Array(endian.buffer)[0] === 4 ? 'little-endian' : 'big-endian', manifest };
   }
   const pcm = new Uint8Array(outputFrames * 8), view = new DataView(pcm.buffer); let peak = 0, squares = 0;
   for (let first = 0; first < outputFrames; first += 16384) { check(); const end = Math.min(outputFrames, first + 16384);
     for (let frame = first; frame < end; frame++) { const l = Math.fround(left[frame]), r = Math.fround(right[frame]); if (!Number.isFinite(l) || !Number.isFinite(r)) throw failure('Scene mix produced non-finite PCM.');
       view.setFloat32(frame * 8, l, true); view.setFloat32(frame * 8 + 4, r, true); peak = Math.max(peak, Math.abs(l), Math.abs(r)); squares += l * l + r * r; } await yieldControl(); }
-  const manifest = freezeData({ schema: 'lemmings-scene-rehearsal-render/v1', sceneHash: input.sceneHash, sourceHash, applicationBuildId: buildId, initialTick: 0, ticks: source.ticks, sourceDurationSeconds: source.durationSeconds,
-    sampleRate: rate, frames: outputFrames, channels: 2, sampleFormat: 'ieee-float32-le', pcmHash: await digest(pcm), lanes, ...(ownedMaterial.length ? { ownedMaterial } : {}), ...(bodyReceipt ? { recipeHash, body: bodyReceipt } : {}), ...(effectReceipt ? { recipeHash, effects: effectReceipt } : {}), statistics: { peak, rms: Math.sqrt(squares / (outputFrames * 2)) },
-    scope: cavity ? 'new-private-world-source;complete-invariant-initial-cavity;actual-work-contact-excitation;declared-complete-body-tail' : effectReceipt ? 'new-private-world-source;authored-static-lane-mix-and-saved-delay-rack;declared-stopped-source-tail;no-replayed-live-gestures' : bodyReceipt ? (bodyReceipt.bodyCount === 2 ? 'new-private-world-source;authored-static-lane-mix;two-independent-endpoint-bodies;actual-journey-readout-MORPH;both-declared-body-tails' : 'new-private-world-source;authored-static-lane-mix;one-reviewed-shared-body;actual-journey-MORPH;declared-source-and-body-tail') : 'new-private-world-source-render;authored-static-lane-gain-and-stereo-pan;half-second-boundary-release', currentWorldAdvanced: false, nextWorldAdvanced: false, externalOutput: false,
-    ...(source.stations ? { privateStations: sceneStationRehearsalReceipt(source.stations) } : {}), historicalPerformanceEvidence: false, acousticReceipt: false, renderQualification: 'not-independently-qualified' }); check();
+  const manifest = freezeData({ ...manifestBase, pcmHash: await digest(pcm), statistics: { peak, rms: Math.sqrt(squares / (outputFrames * 2)) } }); check();
   canonicalDataText(manifest, { maxBytes: 262144 }); return { bytes: encodeCausalRenderWave(pcm, outputFrames, rate, manifest), manifest };
 }

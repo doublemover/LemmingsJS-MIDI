@@ -294,6 +294,7 @@
         "js/app/procgen/workstation/SceneCavityRehearsal.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
+        "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -478,8 +479,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 330,
-      "sha256": "148f75ed9d77541290ca31ec34daaca370146311302c52345e6428e8dfc8616c"
+      "fileCount": 331,
+      "sha256": "2a90dcd95f5d9683d4399444bc38871aab398a06031e4d77e02c159c1a95c4ac"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -850,6 +851,7 @@
         "js/app/procgen/workstation/SceneCavityRehearsal.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
+        "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -1172,8 +1174,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 553,
-      "sha256": "0a932cd53dea11bae1222e9c47cca8d659457b86b84a0792d629e24db662e6f0"
+      "fileCount": 554,
+      "sha256": "1557959645eb89f3e2a7de5a272ae32d0b0bc242faa29ecffc3560b3014d6dea"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1332,6 +1334,7 @@
         "js/app/procgen/workstation/SceneCavityRehearsal.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
+        "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -1515,8 +1518,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 327,
-      "sha256": "33fe11659c6644498b778a0a424216ead8e2a036402c3b5be573a061a9435a03"
+      "fileCount": 328,
+      "sha256": "07a98d8b70dd2290dea307a10a955bc3fe38e39a5c9d688b22469a55ff6413e4"
     }
   ]
 }

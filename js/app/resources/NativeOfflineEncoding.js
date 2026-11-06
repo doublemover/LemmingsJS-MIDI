@@ -20,6 +20,7 @@ const encode = (pcm, manifest) => {
 
 export async function encodeNativeOfflineRender({ mode, manifest, planes, firstFrame = 0, endFrame, stemLaneIds = [] } = {},
   { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), onProgress = () => {}, maxWorkingBytes = 512 * 1048576 } = {}) {
+  if (mode === 'scene-native-rack') { const { encodeSceneNativeRack } = await import('../procgen/workstation/SceneNativeRackEncoding.js'); return encodeSceneNativeRack({ manifest, planes, firstFrame, endFrame, stemLaneIds }, { signal, yieldControl, maxWorkingBytes }); }
   const requested = manifest?.effectGraph; let effectPlan = null, returns = [];
   if (requested != null) {
     if (!requested || Object.getPrototypeOf(requested) !== Object.prototype || !requested.definition || !requested.processingRevisions || !Array.isArray(manifest.stems?.sharedReturns)) throw failure('Native effect manifest omitted its graph and simultaneous return inventory.');
