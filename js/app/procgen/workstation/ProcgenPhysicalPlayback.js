@@ -200,6 +200,8 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes(), getActorTimbreLocks()),
     getOnsetControls: (laneId, identity) => actorTimbreControls((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity),
+    getPianoPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.piano || null,
+    getPianoControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.pianoControls || null,
     getOrchestralPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.orchestral || null,
     getPercussionPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.percussion || null,
     getPhysicalControlKinds: laneId => causalLanePhysicalControlKinds(typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId)),

@@ -231,7 +231,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       preparationStage = 'semantic-owner-admission';
       engine = createCausalMusicEngine({ resourceBudget, world, getGraph: () => world.physicalAuthoring?.graph || current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0,
         getLaneState: source => performance?.getLaneState(source) || { available: true },
-        getPerformanceState: () => performance?.snapshot() || null, getOnsetControls: (source, identity) => performance?.getControls(source, identity), getOrchestralPolicy: source => performance?.getOrchestralPolicy(source) || null, getPercussionPolicy: source => performance?.getPercussionPolicy(source) || null, getPhysicalControlKinds: source => performance?.getPhysicalControlKinds(source) || [] });
+        getPerformanceState: () => performance?.snapshot() || null, getOnsetControls: (source, identity) => performance?.getControls(source, identity), getPianoPolicy: source => performance?.getPianoPolicy(source) || null, getPianoControls: source => performance?.getPianoControls(source) || null, getOrchestralPolicy: source => performance?.getOrchestralPolicy(source) || null, getPercussionPolicy: source => performance?.getPercussionPolicy(source) || null, getPhysicalControlKinds: source => performance?.getPhysicalControlKinds(source) || [] });
       preparationStage = 'semantic-restore'; engine.restore(initial.engine); preparationStage = 'replay';
       listener = batch => {
         if (released || disposed || world?._disposed) return;

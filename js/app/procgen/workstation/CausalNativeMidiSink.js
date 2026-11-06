@@ -1,3 +1,4 @@
+import { pianoControllerWords, pianoNoteWords, pianoPedalValues, pianoTuningWords } from '../../../midi/native/PianoProfileAdapter.js';
 import { orchestralOnset, orchestralRelease } from '../../../midi/native/OrchestralProfileAdapter.js';
 import { resolvePercussionHit } from '../../../midi/native/DrumProfileAdapter.js';
 import { sameDevicePatchIntent } from '../../../midi/native/DevicePatchIntent.js';
@@ -9,7 +10,7 @@ import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 const reject = reason => Object.freeze({ status: 'rejected', reason });
 const unit = value => Number.isFinite(value) && value >= 0 && value <= 1;
 const causal = intent => Object.freeze({ worldId: intent.worldId, generation: intent.generation, batchId: intent.batchId, intentId: intent.intentId, voiceId: intent.voiceId,
-  onsetId: intent.onsetId, pitch: intent.pitch, ...(intent.percussionHit ? { percussionHit: intent.percussionHit } : {}), ...(intent.orchestralArticulation ? { orchestralArticulation: intent.orchestralArticulation } : {}), expression: intent.expression, scoreTime: intent.scoreTime, eventId: intent.eventId ?? null, sourceEventIds: intent.sourceEventIds, sourceOrder: intent.sourceOrder, sourceBoundary: Object.freeze({ tick: intent.scoreTime.simTick, generation: intent.generation }) });
+  onsetId: intent.onsetId, pitch: intent.pitch, ...(intent.percussionHit ? { percussionHit: intent.percussionHit } : {}), ...(intent.orchestralArticulation ? { orchestralArticulation: intent.orchestralArticulation } : {}), ...(intent.pianoPerformance ? { pianoPerformance: intent.pianoPerformance } : {}), expression: intent.expression, scoreTime: intent.scoreTime, eventId: intent.eventId ?? null, sourceEventIds: intent.sourceEventIds, sourceOrder: intent.sourceOrder, sourceBoundary: Object.freeze({ tick: intent.scoreTime.simTick, generation: intent.generation }) });
 const midi1 = (route, status, index, value = 0) => [(0x20000000 | route.group << 24 | status << 20 | route.channel << 16 | index << 8 | value) >>> 0];
 const noteWords = (route, status, note, velocity, pitch = note) => route.protocol === 'midi2' ?
   encodeIntent({ group: route.group, channel: route.channel, status, note, velocity: { value: Math.round(velocity * 65535), bits: 16 },
@@ -26,7 +27,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         const receipt = await routes.client.cancelExecution(grant, wireExecution);
         if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Native device-change cleanup remains unconfirmed');
         for (const entry of state.voices.values()) if (entry.route.grant === grant) removeVoice(entry);
-        state.grants.delete(grant); state.grantExecutions.delete(grant);
+        state.grants.delete(grant); state.grantExecutions.delete(grant); for (const [key, part] of state.pianoParts) if (part.route.grant === grant) state.pianoParts.delete(key);
         for (const key of state.programs.keys()) if (key.startsWith(grant + ':')) state.programs.delete(key);
         for (const key of state.mpeSetups) if (key.startsWith(grant + ':')) { state.mpeSetups.delete(key); state.mpeGains.delete(key); }
       }));
@@ -36,16 +37,16 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
   const executions = new Map(), wireVoices = new Map(), channelVoices = new Map(), retirement = createProcgenRetirementScope();
   let disposed = false, anchor = null, latestReceipt = null, laneSource = null, laneIds = new Map(), soloCount = 0;
   let ownerFailure = null, removeOwner = null;
-  try { removeOwner = routes.registerPerformanceOwner({ invalidateGrant, isQuiescent: grant => !batches.hasPendingGrant(grant) && ![...executions.values()].some(state => [...state.voices.values()].some(entry => entry.route.grant === grant)) }); } catch (error) { ownerFailure = error.message; }
+  try { removeOwner = routes.registerPerformanceOwner({ invalidateGrant, pianoPerformanceState: laneId => [...executions.values()].filter(state => !state.closed).flatMap(state => [...state.pianoParts.values()].filter(part => part.laneId === laneId).map(part => Object.freeze({ laneId, grant: part.route.grant, outputId: part.route.outputId, routeRevision: part.route.routeRevision, contributors: part.contributors.size, pending: part.pending, fault: part.fault, submitted: Object.freeze({ ...part.submitted }), observed: Object.freeze({ ...part.observed }), queued: Object.freeze({ ...part.queued }) }))), isQuiescent: grant => !batches.hasPendingGrant(grant) && ![...executions.values()].some(state => [...state.voices.values()].some(entry => entry.route.grant === grant) || [...state.pianoParts.values()].some(part => part.route.grant === grant && (part.pending || Object.values(part.queued).some(value => value > 0)))) }); } catch (error) { ownerFailure = error.message; }
   const enabled = () => !disposed && !ownerFailure && routes.enabled();
   const readLanes = () => { const lanes = getLanes(); if (lanes !== laneSource) { laneSource = lanes; laneIds = new Map(lanes.map(lane => [lane.id, lane])); soloCount = lanes.reduce((count, lane) => count + Number(lane.solo && !lane.mute), 0); } return lanes; };
   const laneFor = id => { readLanes(); return laneIds.get(id); };
   const unavailable = lane => !lane ? 'native-lane-unavailable' : lane.mute || (lane.gain ?? 1) <= 0 || soloCount && !lane.solo ? 'native-lane-muted' : null;
   const keyFor = (route, note) => [route.grant, route.group, route.channel, note].join(':');
   const channelKey = route => [route.grant, route.group, route.channel].join(':');
-  const removeVoice = entry => { if (entry.state.voices.get(entry.voiceId) !== entry) return; entry.state.voices.delete(entry.voiceId); wireVoices.delete(keyFor(entry.route, entry.note)); const address = channelKey(entry.route), count = channelVoices.get(address) || 0; if (count > 1) channelVoices.set(address, count - 1); else channelVoices.delete(address); };
+  const removeVoice = entry => { if (entry.state.voices.get(entry.voiceId) !== entry) return; entry.state.voices.delete(entry.voiceId); entry.pianoPart?.contributors.delete(entry.voiceId); wireVoices.delete(keyFor(entry.route, entry.note)); const address = channelKey(entry.route), count = channelVoices.get(address) || 0; if (count > 1) channelVoices.set(address, count - 1); else channelVoices.delete(address); };
   const report = (entry, intent, admission, receipt, words) => {
-    const provenance = causal(intent); const successful = receipt.kind === 'driver-submitted';
+    const provenance = entry.controlProvenance || causal(intent); const successful = receipt.kind === 'driver-submitted';
     if (Number.isSafeInteger(receipt.acceptedWords)) routes.recordSubmission({ words, receipt, provenance });
     latestReceipt = Object.freeze({ ...provenance, sinkId: 'physical-native-midi:' + intent.route, executionEpoch: entry.state.epoch,
       connectionEpoch: entry.route.connectionEpoch, routeRevision: entry.route.routeRevision, outputId: entry.route.outputId,
@@ -56,16 +57,21 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     try { onReceipt(latestReceipt); } catch {}
   };
   const send = (entry, intent, admission, words, targetMicroseconds, priority = 1, terminal = false, onset = false) => {
-    const provenance = Object.freeze({ ...causal(intent), ...(entry.parameterObservations?.length ? { deviceParameters: entry.parameterObservations } : {}), ...(entry.orchestralWire ? { orchestralWire: entry.orchestralWire } : {}) });
+    const pianoUpdate = entry.pianoUpdate; entry.pianoUpdate = null;
+    const provenance = entry.controlProvenance || Object.freeze({ ...causal(intent), ...(pianoUpdate ? { pianoPartControls: pianoUpdate.values } : {}), ...(entry.parameterObservations?.length ? { deviceParameters: entry.parameterObservations } : {}), ...(entry.orchestralWire ? { orchestralWire: entry.orchestralWire } : {}) });
     const submission = batches.enqueue({ grant: entry.route.grant, execution: entry.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
       onReceipt: receipt => { if (receipt.kind === 'queued') report(entry, intent, admission, receipt, words); } });
     if (submission.status !== 'accepted') { report(entry, intent, admission, { kind: 'rejected', reason: submission.reason, acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: false }, words); return reject(submission.reason); }
+    if (entry.pianoTuningRequested) entry.pianoPart.tuningQueued = true;
+    if (pianoUpdate) { Object.assign(entry.pianoPart.queued, pianoUpdate.values); entry.pianoPart.pending++; }
     submission.completion.then(receipt => {
+      if (pianoUpdate) { entry.pianoPart.pending--; if (receipt.kind === 'driver-submitted') Object.assign(entry.pianoPart.submitted, pianoUpdate.values); else entry.pianoPart.fault = receipt.reason || 'piano-part-control-unconfirmed'; routes.notifyPerformanceChange?.(); }
       report(entry, intent, admission, receipt, words);
       if (receipt.kind !== 'driver-submitted') { if (entry.setupRequested) entry.state.programs.delete(channelKey(entry.route)); if (entry.mpeSetupRequested) entry.state.mpeSetups.delete(entry.mpeSetupRequested); entry.uncertain = !onset || !!receipt.acceptedWords || !!receipt.failedPacketUnconfirmed; if (!entry.uncertain) removeVoice(entry); }
       else { if (onset && entry.percussion?.mutuallyExclusiveSet) for (const previous of entry.state.voices.values()) if (previous !== entry && previous.route.grant === entry.route.grant && previous.route.group === entry.route.group && previous.route.channel === entry.route.channel && previous.percussion?.mutuallyExclusiveSet === entry.percussion.mutuallyExclusiveSet) previous.choked = true;
         if (entry.mpeSetupRequested) { const gain = entry.state.mpeGains.get(entry.mpeSetupRequested); if (gain) gain.pending = false; } if (terminal) removeVoice(entry); }
     }, error => {
+      if (pianoUpdate) { entry.pianoPart.pending--; entry.pianoPart.fault = error.message; routes.notifyPerformanceChange?.(); }
       entry.uncertain = true; if (entry.mpeSetupRequested) entry.state.mpeSetups.delete(entry.mpeSetupRequested); report(entry, intent, admission, { kind: 'error', reason: error.message, failedPacketUnconfirmed: true }, words);
     });
     return Object.freeze({ status: 'accepted', stage: submission.stage });
@@ -83,6 +89,55 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (receipt.kind === 'driver-submitted') control.value = value; else control.fault = receipt.reason || 'cohort-gain-unconfirmed';
     }, error => { control.pending = false; control.fault = error.message; });
   };
+  const partKey = route => route.grant + ':' + route.routeRevision;
+  const pianoPart = (state, route, lane, wireExecution) => {
+    const key = partKey(route); let part = state.pianoParts.get(key);
+    if (!part) {
+      if (state.pianoParts.size >= 1024) throw new Error('Native piano part capacity');
+      const baseline = routes.pianoBaseline?.(route.grant, route.group, route.channel) || {};
+      part = { state, route, laneId: lane.id, wireExecution, contributors: new Map(), queued: {}, submitted: {}, observed: {}, pickup: {}, source: null, target: null, pending: 0, fault: null, latestIntent: null };
+      for (const name of ['sustain01', 'sostenuto01', 'unaCorda01']) { part.observed[name] = baseline[name] || { known: false, value: null, revision: 0 }; part.pickup[name] = { waiting: route.piano.policy.pickup, previous: null }; }
+      state.pianoParts.set(key, part);
+    }
+    if (part.fault) throw new Error(part.fault);
+    return part;
+  };
+  const pianoWords = (part, lane, target, { force = false, sampleSource = false } = {}) => {
+    if (part.fault || !routes.allowsPerformance(part.route.grant)) return { words: [], values: {} };
+    const binding = part.route.piano, controls = lane.pianoControls || {}; let source = 0; for (const value of part.contributors.values()) source = Math.max(source, value);
+    const elapsed = part.target == null ? null : Math.max(0, (target - part.target) / 1000);
+    const filtered = !part.contributors.size ? 0 : !sampleSource ? part.source ?? source : part.source == null || !binding.policy.smoothingMs || elapsed == null ? source : part.source + (source - part.source) * -Math.expm1(-elapsed / binding.policy.smoothingMs);
+    if (sampleSource) { part.target = Math.max(part.target ?? target, target); part.source = filtered; }
+    const desired = pianoPedalValues(binding, controls, filtered), words = [], values = {};
+    for (const [name, controller] of [['sustain01', 64], ['sostenuto01', 66], ['unaCorda01', 67]]) {
+      const value = desired[name], observed = part.observed[name], pickup = part.pickup[name], override = controls[name] != null;
+      if (pickup.waiting && !override && !force) {
+        if (!observed.known || Math.abs(value - observed.value) > 0.01 && !(pickup.previous != null && (pickup.previous - observed.value) * (value - observed.value) <= 0)) { pickup.previous = value; continue; }
+        pickup.waiting = false;
+      }
+      if (part.queued[name] != null && Math.abs(part.queued[name] - value) <= binding.policy.deadband01 && !(value === 0 && part.queued[name] !== 0)) continue;
+      if (name !== 'sustain01' && !binding.features[name === 'sostenuto01' ? 'sostenuto' : 'unaCorda']) continue;
+      words.push(...pianoControllerWords(part.route, controller, Math.round(value * 0xffffffff))); values[name] = value;
+    }
+    return { words, values };
+  };
+  const pianoContribution = (entry, intent, expression, target) => {
+    const part = entry.pianoPart, lane = laneFor(entry.laneId); if (!part || !lane) return { words: [], values: {} };
+    const policy = part.route.piano.policy;
+    const value = policy.sustainSource === 'pressure01' ? Math.max(0, Math.min(1, expression?.pressure01 ?? intent.expression?.pressure01 ?? part.contributors.get(entry.voiceId) ?? 0)) :
+      policy.sustainSource === 'swarm-density01' ? Math.max(0, Math.min(1, intent.swarm?.sourceCount != null ? Math.log2(intent.swarm.sourceCount + 1) / 8 : intent.pianoPerformance?.sustainContribution01 ?? part.contributors.get(entry.voiceId) ?? 0)) : 0;
+    part.contributors.set(entry.voiceId, value); part.latestIntent = intent; return pianoWords(part, lane, target, { sampleSource: true });
+  };
+  const removePianoInput = routes.input.subscribe(event => {
+    if (event.event !== 'native-packet' || !event.dispatchable || !routes.allowsOrdinaryInput() || event.packet.status !== 'controlChange') return;
+    const packet = event.packet, midi2 = packet.kind === 'midi2-channel-voice', controller = midi2 ? packet.controller : packet.data?.[0], name = ({ 64: 'sustain01', 66: 'sostenuto01', 67: 'unaCorda01' })[controller];
+    if (!name) return; const value = midi2 ? packet.controllerValue.value / 0xffffffff : packet.data[1] / 127;
+    for (const state of executions.values()) for (const part of state.pianoParts.values()) if (event.grant === part.route.pianoInputGrant && packet.group === part.route.group && packet.channel === part.route.channel) {
+      const previous = part.observed[name]; if (previous.known && previous.value === value) continue;
+      part.observed[name] = { known: true, value, revision: previous.revision + 1 };
+      part.pickup[name] = { waiting: part.route.piano.policy.pickup && (part.queued[name] == null || Math.abs(part.queued[name] - value) > 0.01), previous: null }; routes.notifyPerformanceChange?.();
+    }
+  });
   const retireExecution = execution => {
     const state = executions.get(execution); if (!state) return createProcgenRetirementScope().retire(); if (state.retirement) return state.retirement.getReceipt();
     state.closed = true; state.retirement = createProcgenRetirementScope();
@@ -102,7 +157,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       for (const [execution, state] of executions) if (state.epoch === executionEpoch && state.generation === generation && !state.closed) return { status: 'accepted', execution };
       if (executions.size >= 2) return reject('native-execution-capacity');
       const execution = Object.freeze({ schema: 'causal-native-midi-execution/v1', epoch: executionEpoch, generation });
-      executions.set(execution, { epoch: executionEpoch, generation, grantExecutions: new Map(), mpeSetups: new Set(), mpeGains: new Map(), voices: new Map(), grants: new Set(), programs: new Map(), closed: false, retirement: null }); return { status: 'accepted', execution };
+      executions.set(execution, { epoch: executionEpoch, generation, grantExecutions: new Map(), mpeSetups: new Set(), mpeGains: new Map(), pianoParts: new Map(), voices: new Map(), grants: new Set(), programs: new Map(), closed: false, retirement: null }); return { status: 'accepted', execution };
     },
     begin(intent, targetMicroseconds, execution, admission) {
       const state = executions.get(execution), lane = laneFor(intent.laneId); let route = routes.resolve(lane?.outputId, lane?.id);
@@ -114,6 +169,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (state.voices.has(intent.voiceId) || state.voices.size >= maxVoices || [...state.voices.values()].some(entry => entry.uncertain)) return reject('native-voice-capacity-or-ownership');
       let pitch = (intent.pitch?.cents + (intent.expression?.pitchOffsetCents ?? 0)) / 100 + 12 * Math.log2((intent.pitch?.referenceHz ?? 440) / 440), note = Math.min(127, Math.round(pitch));
       let percussion = null;
+      if (lane.piano || route.piano) { if (!lane.piano || !route.piano || route.piano.policySignature !== JSON.stringify(lane.piano) || route.percussion || route.orchestral || route.mpe) return reject('explicit-current-piano-profile-required'); }
       if (lane.orchestral || route.orchestral) { if (!lane.orchestral || !route.orchestral || route.orchestral.policySignature !== JSON.stringify(lane.orchestral) || route.percussion || route.mpe) return reject('explicit-current-orchestral-profile-required'); }
       if (lane.externalPercussion || lane.percussion || route.percussion) {
         if (!lane.percussion || !route.percussion || JSON.stringify(lane.percussion) !== route.percussion.policySignature) return reject('explicit-current-native-drum-map-required');
@@ -134,16 +190,20 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (lane.devicePatch) entry.losses.push(Object.freeze({ kind: 'device-patch-reported-under-user-declared-address-mapping', requested: lane.devicePatch.title }));
       entry.losses.push(Object.freeze({ kind: 'receiver-protocol-unverified', requested: route.protocol }));
       const words = [], program = JSON.stringify([lane.externalProgram, lane.bankMSB, lane.bankLSB]), address = channelKey(route);
-      if (!route.mpe && !route.percussion && !route.orchestral && !lane.devicePatch && state.programs.get(address) !== program && lane.externalProgram != null) {
+      if (!route.mpe && !route.percussion && !route.orchestral && !route.piano && !lane.devicePatch && state.programs.get(address) !== program && lane.externalProgram != null) {
         if (channelVoices.has(address)) return reject('native-program-change-would-affect-held-voices');
         if (route.protocol === 'midi2') words.push(...encodeIntent({ group: route.group, channel: route.channel, status: 'programChange', program: lane.externalProgram,
           bankValid: lane.bankMSB != null || lane.bankLSB != null, bankMSB: lane.bankMSB ?? 0, bankLSB: lane.bankLSB ?? 0 }));
         else { if (lane.bankMSB != null) words.push(...midi1(route, 11, 0, lane.bankMSB)); if (lane.bankLSB != null) words.push(...midi1(route, 11, 32, lane.bankLSB)); words.push(...midi1(route, 12, lane.externalProgram)); }
         entry.setupRequested = true;
       }
+      if (route.piano) {
+        try { entry.pianoPart = pianoPart(state, route, lane, entry.wireExecution); entry.pianoUpdate = pianoContribution(entry, intent, intent.expression, targetMicroseconds); if (!entry.pianoPart.tuningQueued) { words.push(...pianoTuningWords(route, route.piano)); entry.pianoTuningRequested = true; } words.push(...entry.pianoUpdate.words); }
+        catch (error) { return reject(error.message); }
+      }
       if (lane.deviceParameters?.length) {
         try { const plan = routes.deviceParameterWords(lane, { ...route, note }, intent, entry.parameterState, targetMicroseconds); words.push(...plan.words); entry.parameterObservations = plan.observations; }
-        catch (error) { return reject(error.message); }
+        catch (error) { entry.pianoPart?.contributors.delete(intent.voiceId); return reject(error.message); }
       }
       if (route.mpe) {
         const setupKey = route.grant + ':' + route.routeRevision;
@@ -157,11 +217,13 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         } catch (error) { return reject(error.message); }
         if (lane.externalProgram != null && !lane.devicePatch) entry.losses.push(Object.freeze({ kind: 'profile-patch-requires-separate-device-mutation', requestedProgram: lane.externalProgram }));
         words.push(...noteWords(route, 'noteOn', note, intent.velocity01, note));
+      } else if (route.piano) {
+        try { words.push(...pianoNoteWords(route, route.piano, intent, note, pitch)); } catch (error) { entry.pianoPart?.contributors.delete(intent.voiceId); return reject(error.message); }
       } else if (route.orchestral) {
         try { const onset = orchestralOnset(route.orchestral, intent, { ...route, note, pitch, velocity01: intent.velocity01 }); words.push(...onset.words); entry.orchestralWire = Object.freeze({ attributeType: onset.attributeType, attributeData: onset.attributeData, qualification: onset.qualification }); }
         catch (error) { return reject(error.message); }
       } else words.push(...noteWords(route, 'noteOn', note, intent.velocity01, pitch));
-      if (!route.mpe && !route.percussion && unit(intent.expression?.pressure01)) words.push(...(route.protocol === 'midi2' ? encodeIntent({ group: route.group, channel: route.channel, status: 'polyPressure', note, controllerValue: { value: Math.round(intent.expression.pressure01 * 0xffffffff), bits: 32 } }) : midi1(route, 10, note, Math.round(intent.expression.pressure01 * 127))));
+      if (!route.mpe && !route.percussion && !route.piano && unit(intent.expression?.pressure01)) words.push(...(route.protocol === 'midi2' ? encodeIntent({ group: route.group, channel: route.channel, status: 'polyPressure', note, controllerValue: { value: Math.round(intent.expression.pressure01 * 0xffffffff), bits: 32 } }) : midi1(route, 10, note, Math.round(intent.expression.pressure01 * 127))));
       state.voices.set(intent.voiceId, entry); wireVoices.set(wireKey, entry); channelVoices.set(address, (channelVoices.get(address) || 0) + 1); state.grants.add(route.grant);
       const queued = send(entry, intent, admission, words, targetMicroseconds, 1, false, true); if (queued.status !== 'accepted') { removeVoice(entry); return queued; } if (entry.setupRequested) state.programs.set(address, program); if (entry.mpeSetupRequested) { state.mpeSetups.add(entry.mpeSetupRequested); state.mpeGains.set(entry.mpeSetupRequested, { value: Math.min(1, lane.gain ?? 1), pending: true, fault: null }); }
       return Object.freeze({ status: 'degraded', stage: 'accepted', losses: Object.freeze(entry.losses), outputId: route.outputId, channel: route.channel + 1, group: route.group });
@@ -172,6 +234,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (entry.choked) return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'receiver-profile-mutually-exclusive-sound' });
       const words = [], losses = [];
       if (!routes.allowsPerformance(entry.route.grant)) return reject('native-device-observation-active');
+      if (entry.pianoPart) { try { entry.pianoUpdate = pianoContribution(entry, causeIntent || entry.intent, expression, targetMicroseconds); words.push(...entry.pianoUpdate.words); } catch (error) { return reject(error.message); } }
       if (laneFor(entry.laneId)?.deviceParameters?.length) {
         try { const plan = routes.deviceParameterWords(laneFor(entry.laneId), { ...entry.route, note: entry.note }, { ...(causeIntent || entry.intent), expression }, entry.parameterState, targetMicroseconds); words.push(...plan.words); entry.parameterObservations = plan.observations; }
         catch (error) { return reject(error.message); }
@@ -188,7 +251,8 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         return Object.freeze({ status: losses.length ? 'degraded' : 'accepted', stage: words.length ? 'accepted' : 'semantic-observation', outputRequested: !!words.length, losses: Object.freeze(losses) });
       }
       for (const [name, value] of Object.entries(expression || {})) {
-        if (name === 'pressure01' && !entry.route.percussion) {
+        if (name === 'pressure01' && entry.route.piano) continue;
+        else if (name === 'pressure01' && !entry.route.percussion) {
           if (!unit(value)) return reject('invalid-native-pressure');
           words.push(...(entry.route.protocol === 'midi2' ? encodeIntent({ group: entry.route.group, channel: entry.route.channel, status: 'polyPressure', note: entry.note, controllerValue: { value: Math.round(value * 0xffffffff), bits: 32 } }) : midi1(entry.route, 10, entry.note, Math.round(value * 127))));
         } else if (name === 'pitchOffsetCents' && value === entry.baseOffset) continue;
@@ -219,7 +283,10 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (!enabled() || entry.uncertain) return reject('native-release-unconfirmed');
       const tail = options?.mode === 'one-shot' ? options.tailSeconds : 0;
       if (!Number.isFinite(tail) || tail < 0 || tail > 1.9) return reject('native-release-tail-outside-horizon');
-      entry.ending = true; const queued = send(entry, causeIntent || entry.intent, admission, entry.route.orchestral ? orchestralRelease(entry.route.orchestral, { ...entry.route, note: entry.note }, entry.intent.orchestralArticulation) : noteWords(entry.route, 'noteOff', entry.note, entry.percussion?.releaseVelocity01 ?? 0), Math.max(Math.round(now() * 1000), targetMicroseconds + Math.round(tail * 1000000)), 0, true);
+      const releaseTarget = Math.max(Math.round(now() * 1000), targetMicroseconds + Math.round(tail * 1000000));
+      const releaseWords = entry.route.piano ? pianoNoteWords(entry.route, entry.route.piano, entry.intent, entry.note, entry.pitch, true) : entry.route.orchestral ? orchestralRelease(entry.route.orchestral, { ...entry.route, note: entry.note }, entry.intent.orchestralArticulation) : noteWords(entry.route, 'noteOff', entry.note, entry.percussion?.releaseVelocity01 ?? 0);
+      if (entry.pianoPart) { entry.pianoPart.contributors.delete(voiceId); entry.pianoUpdate = pianoWords(entry.pianoPart, laneFor(entry.laneId) || { pianoControls: { sustain01: 0, sostenuto01: 0, unaCorda01: 0 } }, releaseTarget, { force: !entry.pianoPart.contributors.size, sampleSource: true }); }
+      entry.ending = true; const queued = send(entry, causeIntent || entry.intent, admission, [...releaseWords, ...(entry.pianoUpdate?.words || [])], releaseTarget, 0, true);
       if (queued.status !== 'accepted') { entry.ending = false; return queued; }
       return Object.freeze({ status: 'accepted', stage: 'accepted' });
     },
@@ -238,8 +305,19 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       for (const [execution, state] of executions) if (!state.closed) for (const entry of state.voices.values()) {
         const lane = laneFor(entry.laneId); if (lane && entry.route.mpe && !entry.ending) synchronizeMpeGain(entry, lane); if (!entry.ending && (unavailable(lane) || lane.outputId !== entry.route.outputId)) backend.end(entry.voiceId, {}, Math.round(now() * 1000), execution, entry.intent);
       }
+      for (const state of executions.values()) if (!state.closed) for (const part of state.pianoParts.values()) {
+        if (part.pending || part.fault || !part.latestIntent || !routes.allowsPerformance(part.route.grant)) continue;
+        const lane = laneFor(part.laneId), silent = unavailable(lane) || lane?.outputId !== part.route.outputId;
+        try {
+          const target = Math.round((now() + 10) * 1000), actual = silent ? { pianoControls: { sustain01: 0, sostenuto01: 0, unaCorda01: 0 } } : lane, update = pianoWords(part, actual, target, { force: !!silent });
+          if (!update.words.length) continue;
+          const entry = { state, route: part.route, wireExecution: part.wireExecution, laneId: part.laneId, voiceId: null, losses: [], pianoPart: part, pianoUpdate: update,
+            controlProvenance: Object.freeze({ schema: 'lemmings-native-piano-part-control/v1', laneId: part.laneId, outputId: part.route.outputId, executionEpoch: state.epoch, connectionEpoch: part.route.connectionEpoch, routeRevision: part.route.routeRevision, controls: Object.freeze({ ...actual.pianoControls }), represented: Object.freeze({ ...update.values }), observedHostMs: now() }) };
+          const queued = send(entry, part.latestIntent, null, update.words, target); if (queued.status !== 'accepted') part.fault = queued.reason;
+        } catch (error) { part.fault = error.message; }
+      }
     },
     diagnostics: () => Object.freeze({ disposed, ownerFailure, enabled: enabled(), executions: executions.size, latestReceipt, queue: batches.state(), clock: routes.client.clockStatus() }),
-    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; batches.dispose(); const receipt = retirement.retire([...executions].map(([execution, state]) => ({ name: state.epoch, run: () => retireExecution(execution) }))); receipt.completion.then(done => { if (done.outcome === 'complete') { removeOwner?.(); removeOwner = null; } }); return receipt; }
+    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; removePianoInput(); batches.dispose(); const receipt = retirement.retire([...executions].map(([execution, state]) => ({ name: state.epoch, run: () => retireExecution(execution) }))); receipt.completion.then(done => { if (done.outcome === 'complete') { removeOwner?.(); removeOwner = null; } }); return receipt; }
   };
 }

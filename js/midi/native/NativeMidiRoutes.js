@@ -1,3 +1,4 @@
+import { createPianoProfileBinding } from './PianoProfileAdapter.js';
 import { createOrchestralBinding } from './OrchestralProfileAdapter.js';
 import { createDrumMapBinding } from './DrumProfileAdapter.js';
 import { createDeviceParameterCatalog } from './DeviceParameterCatalog.js';
@@ -178,12 +179,30 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       const grant = receipt.outputGrant, target = receipt.target, owner = grants.get(grant);
       if (!owner || [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop owned notes before binding a hardware patch');
       const outputId = 'native-midi:' + owner.logicalDestination + ':' + target.group + ':' + target.channel, previous = routes.get(outputId);
-      if ((previous?.mpe || previous?.percussion || previous?.orchestral) && !current(previous)) throw new Error('Patch recalled; review and rebind the accepted instrument profile before assigning this patch');
-      if ((previous?.mpe || previous?.percussion || previous?.orchestral) && (!previous.laneIds.includes(laneId) || previous.protocol !== target.protocol)) throw new Error('Choose the explicitly bound instrument-profile lane and protocol');
-      const base = previous?.mpe || previous?.percussion || previous?.orchestral ? previous : bind({ laneId, grant, group: target.group, channel: target.channel, protocol: target.protocol });
+      if ((previous?.mpe || previous?.percussion || previous?.orchestral || previous?.piano) && !current(previous)) throw new Error('Patch recalled; review and rebind the accepted instrument profile before assigning this patch');
+      if ((previous?.mpe || previous?.percussion || previous?.orchestral || previous?.piano) && (!previous.laneIds.includes(laneId) || previous.protocol !== target.protocol)) throw new Error('Choose the explicitly bound instrument-profile lane and protocol');
+      const base = previous?.mpe || previous?.percussion || previous?.orchestral || previous?.piano ? previous : bind({ laneId, grant, group: target.group, channel: target.channel, protocol: target.protocol });
       const route = Object.freeze({ ...base, routeRevision: ++revision, patchBinding: Object.freeze({ intent: receipt.intent, receiverState: receipt.receiverState, target, reported: receipt.reported }) });
       patchClaims.set(outputId, { current: () => catalog.isReceiptCurrent(receipt) }); routes.set(outputId, route); notify(); return route;
     },
+    bindPiano({ laneId, policy, grant, group, channel, protocol = 'midi2', session, profile }) {
+      if (![...profileSessions.values()].some(peers => [...peers.values()].includes(session))) throw new Error('Choose an owned receiving piano profile session');
+      const owner = grants.get(grant), record = session.binding(profile, channel); if (!owner || owner.direction !== 'output') throw new Error('Choose an owned native piano output');
+      const hold = api.holdForObservation(grant); api.releaseObservation(hold);
+      const binding = createPianoProfileBinding(record, policy, { groupMask: owner.groupMask, group, channel, protocol, cleanupVersion: client.capabilities?.ownedPedalCleanupVersion });
+      const base = bind({ laneId, grant, group, channel, protocol }), route = Object.freeze({ ...base, piano: binding, pianoInputGrant: session.state().inputGrant });
+      profileClaims.set(route.outputId, { grant, binding, current: () => session.isProfileBindingCurrent(record) }); routes.set(route.outputId, route); notify(); return route;
+    },
+    notifyPerformanceChange() { notify(); },
+    pianoBaseline(grant, group, channel) {
+      const values = {};
+      for (const report of reportSessions.values()) { const observation = report.state().latest?.observation;
+        if (!observation?.complete || observation.scope.outputGrant !== grant || observation.scope.connectionEpoch !== client.session || observation.scope.group !== group || observation.scope.channel != null && observation.scope.channel !== channel) continue;
+        for (const row of observation.values) { const name = ({ 64: 'sustain01', 66: 'sostenuto01', 67: 'unaCorda01' })[row.index]; if (name && row.kind === 'controlChange' && row.group === group && row.channel === channel && !observation.conflicts.includes(row.address)) values[name] = Object.freeze({ known: true, value: row.value / (2 ** row.wireBits - 1), revision: observation.revision, wireBits: row.wireBits, origin: 'isolated-message-report' }); }
+      }
+      return Object.freeze(values);
+    },
+    pianoPerformanceState(laneId) { return Object.freeze([...performanceOwners].flatMap(owner => owner.pianoPerformanceState?.(laneId) || [])); },
     bindOrchestral({ laneId, policy, grant, group, channel, protocol = 'midi2', session, profile }) {
       if (![...profileSessions.values()].some(peers => [...peers.values()].includes(session))) throw new Error('Choose an owned orchestral profile session');
       const owner = grants.get(grant), record = session.binding(profile, channel);

@@ -10657,3 +10657,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add fixed-capacity MIDI1/MIDI2 sustain, sostenuto and una-corda ownership only for accepted/uncertain native performance writes. Confirmed zero clears the lease; ordinary control-plane state writes remain separate.
 - Lift owned pedals before matching owned-note cleanup on execution/grant/session retirement. Preserve separate note/controller uncertainty and original SDK cleanup traces; propagate both failure classes through CI, PE, profile, patch, endpoint, parameter and performance owners.
 - Require a pedal-free boundary for JR/Stream policy changes and expose a cleanup capability for the upcoming piano adapter. Native compilation/linking and formatting pass; no functional tests or device execution. Shared part aggregation and user controls follow with the piano implementation.
+
+
+### 2026-11-06 — Rook continuation495: Piano Profile dynamics and shared pedals
+
+- Implement exact 2026 Piano Profile ID/target0x40 details, sender-versus-receiver features, playable note range, dynamic centers/ranges, receiver-default release, gated tuning and protocol-specific lowering. Pin the inspected primary PDF digest; do not bundle reference audio.
+- Persist authored dynamic/source policies and independent shared pedal overrides, carry performance intent through causal source/replay snapshots and include new profile/control fields in recorded performance-change detection. Keep physical impact separate from measured hammer force and local engine conformity.
+- Aggregate actor sustain contributions per native part, preserve shared sostenuto/una-corda ownership, use existing native executions and pedal retirement, and distinguish desired/queued/submitted/observed values. Seed pickup only from isolated observations, accept device movement without echo, and keep source smoothing independent of render refresh.
+- Add keyboard-accessible dynamic, tuning and pedal-depth controls with explicit profile activation. Formatting passes; functional/receiver/listening qualification remains deferred. Independent organ/rotary adapters, generic controller-release leases, group-scoped retirement and whole-graph restoration remain production work.
