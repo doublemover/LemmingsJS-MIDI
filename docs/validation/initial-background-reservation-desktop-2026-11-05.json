@@ -1,0 +1,506 @@
+{
+  "schema": "initial-background-reservation-desktop/v1",
+  "date": "2026-11-05",
+  "agent": "rook",
+  "source": {
+    "parent": "0822a86efae99ebd2952e96b82291732c6a869a0",
+    "browserPaths": 1297,
+    "browserClosureDigest": "a60036e448b326050ab6dbfc7cb17eeab9cba4dace925afe2ce990f726ae9121",
+    "workerFiles": 312,
+    "workerDigest": "0cfd853e837f29abbfcf387688cdb8f54a26ad5b0b76a87445e9f3d8b6d4dfdc",
+    "inputInventory": {
+      "encoding": "sha256-bound-base-plus-upserts/v1",
+      "baseReceipt": {
+        "path": "docs/validation/background-budget-fault-model-2026-11-05.json",
+        "bytes": 9746,
+        "sha256": "87d0055004c28c2e7f7c48d1e86e6e32bb6a8babf27f89a0ed68dbcc3d11a85b"
+      },
+      "baseField": "source.inputInventory",
+      "upsert": [
+        {
+          "path": "e2e/procgen-workstation-background-ownership.spec.js",
+          "bytes": 14424,
+          "sha256": "c90d7ccb11588f83aacddffe37334b8945ac6bda4aaba7b14571a789007a2b5f"
+        },
+        {
+          "path": "js/app/resources/BackgroundWorkerAdmission.js",
+          "bytes": 11727,
+          "sha256": "e54f74714cca605179ec8b21a0fb72f5dc3b9fc376bf098f1a8eb84f0aada5e2"
+        },
+        {
+          "path": "js/app/resources/InitialBackgroundReservation.js",
+          "bytes": 2859,
+          "sha256": "6b4393795dc4f0d177eefb93a3d788855a3c669ea6cf174cf259d03f3269310e"
+        },
+        {
+          "path": "js/app/resources/ResourceBudget.js",
+          "bytes": 11611,
+          "sha256": "af6049ac18b53f3a2412980078517b931259b99ee9097dce602c6df309936181"
+        },
+        {
+          "path": "provenance/runtime-artifacts.json",
+          "bytes": 23473,
+          "sha256": "1523664088cf615bd72870cc868f3327df7d454c820c11557544afe9c331f31a"
+        },
+        {
+          "path": "test/initial-background-reservation.test.js",
+          "bytes": 8981,
+          "sha256": "2e0fdf4648d947574497091077b02063d5c5689c056c0f4974cda6bbd1c9d984"
+        }
+      ],
+      "removed": [],
+      "pathCount": 1661
+    },
+    "stagedByteAudit": {
+      "paths": 1661,
+      "byteExact": 1649,
+      "untouchedNewlineInputs": [
+        {
+          "path": "css/procgen-world-inspector.css",
+          "workingBytes": 1576,
+          "workingSha256": "117e4d4b077871be05cb761e35322ff1e5b29c234e65588c4568a647f3b2c684",
+          "indexBytes": 1574,
+          "indexSha256": "b293d64556310dd7514e9fa6a4edbc3bbef2b75873c009e99ee5511adcc28cc3"
+        },
+        {
+          "path": "js/app/procgen/ActorEffectVisualProfile.js",
+          "workingBytes": 2855,
+          "workingSha256": "61f52aeeae3efbaab0d8fb95b3ba44d75ab7802d06ada8037a09142434768eb6",
+          "indexBytes": 2827,
+          "indexSha256": "7868ef9bb397d135ca873d0639c9dd6e0a9dfeb79ac41cfd57a6bd3c1092e85d"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectPass.js",
+          "workingBytes": 6019,
+          "workingSha256": "16441a79bd4480932b27ceef9c3d4679276a03126c0e6a1542474ca41df3827e",
+          "indexBytes": 5957,
+          "indexSha256": "cc47893b214d16c1c6237e0331664f8bb940d68f67e4fa08d3ffff07c882a902"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectSource.js",
+          "workingBytes": 1517,
+          "workingSha256": "57a697d8a5d542ddc5daf0ffff0b625f8babe6cc78d9c09582c882ca40cfb9ae",
+          "indexBytes": 1516,
+          "indexSha256": "777a7fd07293f47b7d1df39f41a6e590201d29b088189bab9bd4cf7dba1ba274"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationHost.js",
+          "workingBytes": 9542,
+          "workingSha256": "9d04bf0ac26ede44a694bace0059ba543c3f5df89596d336591b6dfa0c5bac35",
+          "indexBytes": 9441,
+          "indexSha256": "f9a7eb990b4b5fd8939c6619853dc3718cf3b5bbde136c2e259bf73b7668f0c4"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationSnapshot.js",
+          "workingBytes": 11674,
+          "workingSha256": "1e1920ba079a31720bdf7709fa0262262f5eb3ca697505a0c95d713de5ca2e05",
+          "indexBytes": 11543,
+          "indexSha256": "3a9ee413244f7b65bcd7ac003a9e1bdce4724d36e737e27ba7f99acd6d74ddcb"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenCausalJournal.js",
+          "workingBytes": 43603,
+          "workingSha256": "be474b5fcdd7c1a30d6cab05c6aafb343c639becfd2f710b48fdb8246f4775bc",
+          "indexBytes": 43072,
+          "indexSha256": "298d81f7271b179c3141644c0c8757c588ca2faccd4a19ef5347725dbab4e84c"
+        },
+        {
+          "path": "js/app/procgenAssetManager.js",
+          "workingBytes": 6329,
+          "workingSha256": "87ece444038074ededfe1d9e98deeca4be7dacf324d9391b40ea91b29bc0e9b6",
+          "indexBytes": 6127,
+          "indexSha256": "63180bec0443b8a399de2b51b10ff82c5cf86421883ca6a2a79c9ced5867ebc6"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCache.js",
+          "workingBytes": 5902,
+          "workingSha256": "b14828c6cb18a5bf2525abe342c2af7a3fa2d34e3c9a9a636f5ce4a11bbabf5f",
+          "indexBytes": 5751,
+          "indexSha256": "4c77eb850770782b7326f873c303ee9ba8efbe7197dadd0eb9ddfdfbadccc50d"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCore.js",
+          "workingBytes": 5699,
+          "workingSha256": "9f625f7ad2ef7511f66ba9a5c727142f7f0280c24a7b4fc559e0bb6a4c14bafd",
+          "indexBytes": 5582,
+          "indexSha256": "748233dbc3a567c793c6616f68fd4748334e3f4af529b8c67de0e6cfccd5c260"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderStorage.js",
+          "workingBytes": 25667,
+          "workingSha256": "521e7f98c594dcd2aee33ca7d51d02e3257b6bd1c5e13856a7a19627e2cee90e",
+          "indexBytes": 25148,
+          "indexSha256": "2de574ca65a70ede60b7cba120ef88a58eaa0ea8d3a9d4392c517ab2d2309a1e"
+        },
+        {
+          "path": "js/editor/EditorAssetCache.js",
+          "workingBytes": 12316,
+          "workingSha256": "5b5d8eebe2141654b0eddf00f9848ddc8393c410b0e6ffd0692bf0425561a3cd",
+          "indexBytes": 12065,
+          "indexSha256": "78da502737d925d32394ae10c90599bdc6fd1580cbd2a2a3d425ce6939f989ea"
+        }
+      ],
+      "mismatches": []
+    }
+  },
+  "originalCounterexamples": {
+    "source": "0822a86efae99ebd2952e96b82291732c6a869a0",
+    "raw": {
+      "path": ".tmp/rook462-original-reservation-frontiers.json",
+      "bytes": 347,
+      "sha256": "79e0363f69643867f5f63e54f61b2450ca1a7d408585402b6ea8b8cb46b922e7"
+    },
+    "rows": [
+      {
+        "frontier": "throw-after-reserve",
+        "rejected": true,
+        "sharedBytes": 0,
+        "externalBytes": 8192,
+        "active": 0
+      },
+      {
+        "frontier": "asynchronous-reserve",
+        "grantedBeforeAcknowledgment": true,
+        "phase": "running"
+      }
+    ],
+    "scope": "Fresh Node20 process using the actual committed admission/resource owners and explicit failing budget adapters; no production/prototype replacement."
+  },
+  "implementation": [
+    "Capture initial reserve/release/exact-token inspection methods before callbacks; register each attempted reservation before invoking it. Throws and explicit refusals cannot orphan a side effect.",
+    "Require synchronous initial acknowledgment. A Promise is refused before prepareInput or Worker construction; track its settlement and roll back any late side effect before reporting released.",
+    "Keep the shared accounting guard until external reservation retirement is acknowledged. Return a bounded failed-admission diagnostic, a completion receipt and explicit private/batch retry; disposal joins pending retirement instead of admitting a producer.",
+    "A false release is accepted only when captured exact-token inspection proves absence. Opaque false remains unknown; successful retries cannot erase live reservations.",
+    "The resource budget exposes one immutable O(1) observation for the requested token/owner, without listing or mutating other reservations. Failed-admission records are bounded by maxQueuedJobs+maxWorkers.",
+    "Retain every declared worker/caller anchor. Closing that declared graph adds the new owner plus three existing transitive sources; no prior308files are removed. This312file inventory is distinct from the smaller actual cold-worker request observations."
+  ],
+  "validation": {
+    "node": {
+      "suites": 11,
+      "tests": 127,
+      "passes": 127,
+      "pending": 0,
+      "failures": 0,
+      "start": "2026-11-06T03:16:25.311Z",
+      "end": "2026-11-06T03:16:41.472Z",
+      "duration": 16161,
+      "raw": {
+        "path": ".tmp/rook462-node-qualified.json",
+        "bytes": 113014,
+        "sha256": "3c75b85b3d4ded04ed79d5dc685113a47a34363a02b541b0b0dca756382dfc74"
+      },
+      "log": {
+        "path": ".tmp/rook462-node-qualified.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "newInitialAdmissionCases": 22
+    },
+    "coverage": {
+      "invocationExitCode": 0,
+      "scope": "Three changed runtime modules only; repository thresholds unchanged.",
+      "summary": {
+        "path": ".tmp/rook462-coverage/coverage-summary.json",
+        "bytes": 1379,
+        "sha256": "9cb78b5daed1a47485d2e26b864e8b36f6f5ebe7f8e92756660bdf17db703f41"
+      },
+      "totals": {
+        "lines": {
+          "total": 329,
+          "covered": 328,
+          "skipped": 0,
+          "pct": 99.69
+        },
+        "statements": {
+          "total": 329,
+          "covered": 328,
+          "skipped": 0,
+          "pct": 99.69
+        },
+        "functions": {
+          "total": 45,
+          "covered": 45,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 275,
+          "covered": 237,
+          "skipped": 0,
+          "pct": 86.18
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "files": [
+        {
+          "path": "js/app/resources/BackgroundWorkerAdmission.js",
+          "coverage": {
+            "lines": {
+              "total": 153,
+              "covered": 152,
+              "skipped": 0,
+              "pct": 99.34
+            },
+            "functions": {
+              "total": 22,
+              "covered": 22,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 153,
+              "covered": 152,
+              "skipped": 0,
+              "pct": 99.34
+            },
+            "branches": {
+              "total": 120,
+              "covered": 103,
+              "skipped": 0,
+              "pct": 85.83
+            }
+          }
+        },
+        {
+          "path": "js/app/resources/InitialBackgroundReservation.js",
+          "coverage": {
+            "lines": {
+              "total": 45,
+              "covered": 45,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 6,
+              "covered": 6,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 45,
+              "covered": 45,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 37,
+              "covered": 34,
+              "skipped": 0,
+              "pct": 91.89
+            }
+          }
+        },
+        {
+          "path": "js/app/resources/ResourceBudget.js",
+          "coverage": {
+            "lines": {
+              "total": 131,
+              "covered": 131,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 17,
+              "covered": 17,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 131,
+              "covered": 131,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 118,
+              "covered": 100,
+              "skipped": 0,
+              "pct": 84.74
+            }
+          }
+        }
+      ]
+    },
+    "retainedPreBindingFailure": {
+      "raw": {
+        "path": ".tmp/rook462-node-final.json",
+        "bytes": 114230,
+        "sha256": "f56cb2745df5d9094d5f0dbb8543ce31df6eeba44c313cb6166afe47fefd9159"
+      },
+      "passes": 126,
+      "failures": 1,
+      "cause": "The expanded Node command was launched before the attempted worker-inventory update succeeded; the positive provenance fixture correctly rejected the stale hash. The declared closure and digest were then corrected and all127cases rerun together."
+    },
+    "nativeDesktop": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "startTime": "2026-11-06T03:15:47.965Z",
+      "duration": 7678.37,
+      "expected": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "raw": {
+        "path": ".tmp/rook462-native.json",
+        "bytes": 30441,
+        "sha256": "a2a16d43d3a049d7a5032475535fc19ac49cb23e8797b655e13b3d913717e7eb"
+      },
+      "initialAdmission": {
+        "rows": [
+          {
+            "mode": "throw-after",
+            "beforeSettlement": {
+              "prepared": 0,
+              "created": 0,
+              "failedAdmissions": 1,
+              "sharedBytes": 8519680
+            },
+            "afterSettlement": {
+              "prepared": 0,
+              "created": 0,
+              "failedAdmissions": 0,
+              "sharedBytes": 0,
+              "externalBytes": 0
+            },
+            "retirement": {
+              "jobId": "background-1",
+              "kind": "parse-json",
+              "ownerId": "native-initial",
+              "ownerEpoch": 1,
+              "sourceRevision": "desktop:1",
+              "phase": "released",
+              "estimatedPeakBytes": 8519680,
+              "admission": "not-granted",
+              "reason": null
+            },
+            "value": {
+              "marker": "initial-native-ownership"
+            },
+            "method": "dedicated-worker",
+            "created": 1,
+            "terminated": 1,
+            "sharedBytes": 0,
+            "externalBytes": 0
+          },
+          {
+            "mode": "delayed-resolve",
+            "beforeSettlement": {
+              "prepared": 0,
+              "created": 0,
+              "failedAdmissions": 1,
+              "sharedBytes": 8519680
+            },
+            "afterSettlement": {
+              "prepared": 0,
+              "created": 0,
+              "failedAdmissions": 0,
+              "sharedBytes": 0,
+              "externalBytes": 0
+            },
+            "retirement": {
+              "jobId": "background-1",
+              "kind": "parse-json",
+              "ownerId": "native-initial",
+              "ownerEpoch": 1,
+              "sourceRevision": "desktop:1",
+              "phase": "released",
+              "estimatedPeakBytes": 8519680,
+              "admission": "not-granted",
+              "reason": null
+            },
+            "value": {
+              "marker": "initial-native-ownership"
+            },
+            "method": "dedicated-worker",
+            "created": 1,
+            "terminated": 1,
+            "sharedBytes": 0,
+            "externalBytes": 0
+          },
+          {
+            "mode": "delayed-reject",
+            "beforeSettlement": {
+              "prepared": 0,
+              "created": 0,
+              "failedAdmissions": 1,
+              "sharedBytes": 8519680
+            },
+            "afterSettlement": {
+              "prepared": 0,
+              "created": 0,
+              "failedAdmissions": 0,
+              "sharedBytes": 0,
+              "externalBytes": 0
+            },
+            "retirement": {
+              "jobId": "background-1",
+              "kind": "parse-json",
+              "ownerId": "native-initial",
+              "ownerEpoch": 1,
+              "sourceRevision": "desktop:1",
+              "phase": "released",
+              "estimatedPeakBytes": 8519680,
+              "admission": "not-granted",
+              "reason": null
+            },
+            "value": {
+              "marker": "initial-native-ownership"
+            },
+            "method": "dedicated-worker",
+            "created": 1,
+            "terminated": 1,
+            "sharedBytes": 0,
+            "externalBytes": 0
+          }
+        ],
+        "source": {
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "playing": false
+        }
+      },
+      "scope": "Three actual initial-refusal modes prepare zero inputs/create zero workers, retire every delayed side effect, then each admits/terminates an actual dedicated-worker control. Existing native result retirement and simple/terrain module-loading cases pass in the same batch."
+    },
+    "criticalAndStrictTypes": "passed",
+    "dependencies": "passed",
+    "format": "passed;fullnpmformat plus changed-file fixes",
+    "undefinedCalls": "passed",
+    "whitespace": "passed",
+    "provenance": "passed",
+    "fullLocalSuiteRepeated": false
+  },
+  "priorObservedGreenCi": {
+    "head": "fd8af338aa03df3f53bcc8ab82865bbe7fbdbb76",
+    "run": 42149669413,
+    "mainJob": 127669544790,
+    "allFourRequiredJobs": "success",
+    "nodePasses": 8016,
+    "nodePending": 10,
+    "desktopCases": 31,
+    "workstationCases": 315,
+    "engineCases": 51,
+    "nativeProfiles": 9,
+    "coverage": {
+      "lines": 90.85,
+      "branches": 84.46,
+      "functions": 88.84
+    },
+    "qualification": "Observed completed job summaries and decoded logs; not an independent artifact/source-inventory audit and not current462source."
+  },
+  "limits": [
+    "The native cases use real Windows Chromium workers on the production1920×1080page with controlled budget faults. They do not certify native OS/filesystem/device failure handling.",
+    "Async admission is deliberately unsupported and refused; its actual pending work remains owned through settlement. Unconfirmed rollback remains visible and charged rather than reported complete.",
+    "The preceding4096seed post-admission campaign has its own source-bound receipt; it was not repeated after this initial-admission runtime change. All affected127cases, including its generated schedules, were rerun on the repair.",
+    "Broader coupled controller, Thru/UMP/active-sensing, cache eviction/capacity and mixed8/128/1024native workloads remain under1120/1234.",
+    "Fresh whole-branch CI for this later source follows publication; the observed green checkpoint is the earlierfd8af338."
+  ]
+}

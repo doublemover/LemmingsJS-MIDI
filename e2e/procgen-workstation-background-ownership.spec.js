@@ -99,3 +99,47 @@ for (const workload of ['simple-data', 'terrain']) test('native background modul
     await info.attach('native-background-module-loading-' + workload, { body: JSON.stringify({ ...result, requests, uniqueFiles: files }), contentType: 'application/json' });
   } finally { page.context().removeListener('request', observe); }
 });
+
+test('initial budget refusal never prepares native input or constructs a worker and retires delayed side effects', { tag: ['@boundary', '@workstation-background-resource'] }, async ({ page }, info) => {
+  await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  const result = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.transport.pause(); api.pause();
+    const world = api.world, project = studio.getProject(), documentState = JSON.stringify(studio.getDocumentState()), checkpoint = JSON.stringify(studio.capture().world);
+    const { createBackgroundWorkerAdmission } = await import('/js/app/resources/BackgroundWorkerAdmission.js');
+    const { createBackgroundJobService } = await import('/js/app/resources/BackgroundJobService.js');
+    const { createResourceBudget } = await import('/js/app/resources/ResourceBudget.js');
+    const rows = [], input = '{"marker":"initial-native-ownership"}';
+    for (const mode of ['throw-after', 'delayed-resolve', 'delayed-reject']) {
+      const shared = createResourceBudget(), external = createResourceBudget(); let fault = true, settle = null, prepared = 0, created = 0, terminated = 0;
+      const budgetAdapter = { reserve(request) {
+        if (!fault) return external.reserve(request); fault = false;
+        if (mode === 'throw-after') { external.reserve(request); throw new Error('Initial reservation failed after side effect'); }
+        return new Promise((resolve, reject) => { settle = () => { external.reserve(request); if (mode === 'delayed-reject') reject(new Error('Delayed initial reservation failed')); else resolve(); }; });
+      }, release: external.release, inspectReservation: external.inspectReservation };
+      class ObservedWorker extends window.Worker { constructor(...args) { super(...args); created++; } terminate() { terminated++; return super.terminate(); } }
+      const admission = createBackgroundWorkerAdmission({ resourceBudget: shared }), jobs = createBackgroundJobService({ admission, Worker: ObservedWorker });
+      const request = { kind: 'parse-json', ownerId: 'native-initial', ownerEpoch: 1, sourceRevision: 'desktop:1', inputBytes: input.length, estimatedPeakBytes: 8 * 1048576, budgetAdapter };
+      try {
+        let error; try { const unexpected = await jobs.compute({ ...request, prepareInput: () => { prepared++; return input; } }); unexpected.release(); } catch (failure) { error = failure; }
+        if (!error) throw new Error('Initial reservation incorrectly published a native result');
+        const beforeSettlement = { prepared, created, failedAdmissions: admission.diagnostics().failedAdmissionRetirements, sharedBytes: shared.diagnostics().residentBytes };
+        settle?.(); const retirement = await error.backgroundRetirementCompletion;
+        const afterSettlement = { prepared, created, failedAdmissions: admission.diagnostics().failedAdmissionRetirements, sharedBytes: shared.diagnostics().residentBytes, externalBytes: external.diagnostics().residentBytes };
+        const control = await jobs.compute({ ...request, ownerId: 'native-after-retirement', prepareInput: () => input });
+        const value = control.value, method = control.receipt.method; control.release();
+        rows.push({ mode, beforeSettlement, afterSettlement, retirement, value, method, created, terminated, sharedBytes: shared.diagnostics().residentBytes, externalBytes: external.diagnostics().residentBytes });
+      } finally { jobs.dispose(); admission.dispose(); }
+    }
+    return { rows, source: { sameWorld: api.world === world, sameProject: studio.getProject() === project, sameDocument: JSON.stringify(studio.getDocumentState()) === documentState, sameCheckpoint: JSON.stringify(studio.capture().world) === checkpoint, playing: studio.transport.getState().playing } };
+  });
+  await info.attach('native-initial-reservation-frontiers', { body: JSON.stringify(result), contentType: 'application/json' });
+  expect(result.rows).toHaveLength(3);
+  for (const row of result.rows) {
+    expect(row.beforeSettlement).toMatchObject({ prepared: 0, created: 0 });
+    if (row.mode !== 'throw-after') { expect(row.beforeSettlement.failedAdmissions).toBe(1); expect(row.beforeSettlement.sharedBytes).toBeGreaterThan(0); }
+    expect(row.afterSettlement).toEqual({ prepared: 0, created: 0, failedAdmissions: 0, sharedBytes: 0, externalBytes: 0 });
+    expect(row).toMatchObject({ retirement: { phase: 'released', admission: 'not-granted' }, value: { marker: 'initial-native-ownership' }, method: 'dedicated-worker', created: 1, terminated: 1, sharedBytes: 0, externalBytes: 0 });
+  }
+  expect(result.source).toEqual({ sameWorld: true, sameProject: true, sameDocument: true, sameCheckpoint: true, playing: false });
+});

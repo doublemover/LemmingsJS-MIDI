@@ -261,6 +261,7 @@
         "js/app/procgen/workstation/CavityGeometryControl.js",
         "js/app/procgen/workstation/CavitySourceAdmission.js",
         "js/app/procgen/workstation/DiggingOcarinaScore.js",
+        "js/app/procgen/workstation/EmbeddedScenePatch.js",
         "js/app/procgen/workstation/LaneMixState.js",
         "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
         "js/app/procgen/workstation/OriginalUmpRecordingSnapshot.js",
@@ -277,6 +278,7 @@
         "js/app/procgen/workstation/ProcgenRecoveryChecksum.js",
         "js/app/procgen/workstation/ProcgenRecoveryChunks.js",
         "js/app/procgen/workstation/ProcgenRecoveryPageCodec.js",
+        "js/app/procgen/workstation/ProcgenRecoveryProjectPages.js",
         "js/app/procgen/workstation/ProcgenSmfBytes.js",
         "js/app/procgen/workstation/RecordedMidiEncoding.js",
         "js/app/procgen/workstation/RecordedMidiExportPlan.js",
@@ -328,6 +330,7 @@
         "js/app/resources/GroundAssetDecode.js",
         "js/app/resources/GroundAssetRegistry.js",
         "js/app/resources/ImpulseResponseAnalysis.js",
+        "js/app/resources/InitialBackgroundReservation.js",
         "js/app/resources/NativeOfflineEncoding.js",
         "js/app/resources/OwnedControlKernel.js",
         "js/app/resources/OwnedPcmSetVerification.js",
@@ -438,6 +441,7 @@
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
         "js/midi/content/WindModel.js",
+        "js/midi/project/MidiProjectSnapshot.js",
         "js/midi/protocol/MidiClipFile.js",
         "js/midi/protocol/MidiProtocolLowering.js",
         "js/midi/protocol/UmpPacketCodec.js",
@@ -454,8 +458,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 308,
-      "sha256": "0b226c0f0ebbf75d7bc9fe9730a0ca4028ccfdf7aa33e6fb7cf30e00432beb95"
+      "fileCount": 312,
+      "sha256": "0cfd853e837f29abbfcf387688cdb8f54a26ad5b0b76a87445e9f3d8b6d4dfdc"
     },
     {
       "id": "lemmings-timing-worker-source",

@@ -82,6 +82,11 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
     estimatedOverheadBytes -= entry.cost - entry.bytes;
     return true;
   };
+  const inspectReservation = ({ token, owner } = {}) => {
+    const entry = entries.get(token);
+    if (!entry || owner != null && owner !== entry.owner) return null;
+    return Object.freeze({ owner: entry.owner, generation: entry.generation, revision: entry.revision, category: entry.category, bytes: entry.bytes, accountedBytes: entry.cost, pinned: entry.pinned, unreleased: entry.unreleased });
+  };
   const transfer = ({ token, owner, generation, toOwner, toGeneration = generation, revision: expectedRevision = null } = {}) => {
     const entry = entries.get(token);
     if (!entry || entry.owner !== owner || entry.generation !== generation || expectedRevision != null && expectedRevision !== entry.revision ||
@@ -122,5 +127,5 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
     return Object.freeze({ status: omittedEntries ? 'truncated' : 'complete', omittedEntries, omittedAccountedBytes, owners: Object.freeze(ordered.map(Object.freeze)) });
   };
   const retire = () => { retired = true; evictors.clear(); return diagnostics(); };
-  return { reserve, release, transfer, registerEvictor, diagnostics, inspectOwners, retire };
+  return { reserve, release, inspectReservation, transfer, registerEvictor, diagnostics, inspectOwners, retire };
 }

@@ -7281,5 +7281,62 @@
       "Heap is sampled at bounded checkpoints and is not an instantaneous process/RSS peak. A finite seeded corpus is not exhaustive proof.",
       "Browser/audio runtime is unchanged; no redundant native or full local repository suite was repeated. Current whole-branch CI remains separate."
     ]
+  },
+  "continuation462": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Fix original orphaned and premature initial budget reservations through captured rollback and settlement ownership.",
+    "evidence": {
+      "path": "docs/validation/initial-background-reservation-desktop-2026-11-05.json",
+      "bytes": 18634,
+      "sha256": "aff4780d5b52304ad9b9d16480a52c49d2615355b8610b98668d983a0f5ba225"
+    },
+    "validation": {
+      "nodeCases": 127,
+      "nativeDesktopCases": 4,
+      "newInitialCases": 22,
+      "actualNativeFaultModes": 3,
+      "scopedCoverage": {
+        "lines": 99.69,
+        "functions": 100,
+        "branches": 86.18
+      },
+      "formatTypesDependenciesUndefinedProvenance": "passed",
+      "fullLocalSuiteRepeated": false
+    },
+    "source": {
+      "browserPaths": 1297,
+      "browserDigest": "a60036e448b326050ab6dbfc7cb17eeab9cba4dace925afe2ce990f726ae9121",
+      "workerFiles": 312,
+      "workerDigest": "0cfd853e837f29abbfcf387688cdb8f54a26ad5b0b76a87445e9f3d8b6d4dfdc",
+      "inputPaths": 1661,
+      "byteExact": 1649,
+      "untouchedNewlineMappings": 12
+    },
+    "remaining": [
+      "The native cases use real Windows Chromium workers on the production1920×1080page with controlled budget faults. They do not certify native OS/filesystem/device failure handling.",
+      "Async admission is deliberately unsupported and refused; its actual pending work remains owned through settlement. Unconfirmed rollback remains visible and charged rather than reported complete.",
+      "The preceding4096seed post-admission campaign has its own source-bound receipt; it was not repeated after this initial-admission runtime change. All affected127cases, including its generated schedules, were rerun on the repair.",
+      "Broader coupled controller, Thru/UMP/active-sensing, cache eviction/capacity and mixed8/128/1024native workloads remain under1120/1234.",
+      "Fresh whole-branch CI for this later source follows publication; the observed green checkpoint is the earlierfd8af338."
+    ]
+  },
+  "latestObservedGreenCiCheckpoint": {
+    "head": "fd8af338aa03df3f53bcc8ab82865bbe7fbdbb76",
+    "run": 42149669413,
+    "mainJob": 127669544790,
+    "allFourRequiredJobs": "success",
+    "nodePasses": 8016,
+    "nodePending": 10,
+    "desktopCases": 31,
+    "workstationCases": 315,
+    "engineCases": 51,
+    "nativeProfiles": 9,
+    "coverage": {
+      "lines": 90.85,
+      "branches": 84.46,
+      "functions": 88.84
+    },
+    "qualification": "Observed completed job summaries and decoded logs; not an independent artifact/source-inventory audit and not current462source."
   }
 }

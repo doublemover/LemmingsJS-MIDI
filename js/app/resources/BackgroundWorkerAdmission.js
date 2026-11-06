@@ -1,5 +1,6 @@
 import { BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
 import { requireSynchronousResourceAcknowledgement } from './ResourceRetirement.js';
+import { createInitialBackgroundReservation } from './InitialBackgroundReservation.js';
 import { createResourceBudget } from './ResourceBudget.js';
 
 const priorities = Object.freeze({ interactive: 3, recovery: 2, background: 1 });
@@ -9,7 +10,7 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
   resourceBudget = createResourceBudget(), now = () => performance.now() } = {}) {
   if (!Number.isSafeInteger(maxWorkers) || maxWorkers < 1 || maxWorkers > 4 || !Number.isSafeInteger(maxQueuedJobs) || maxQueuedJobs < 0 || maxQueuedJobs > 128 ||
       !Number.isSafeInteger(maxQueuedInputBytes) || maxQueuedInputBytes < 0 || maxQueuedInputBytes > 256 * 1048576) throw invalid('Invalid background worker admission limits.');
-  const queue = [], active = new Set(), retained = new Set(); let sequence = 0, queuedBytes = 0, retired = false, admitted = 0, denied = 0, peakWorkers = 0, queueWaitMs = 0, peakQueueWaitMs = 0;
+  const queue = [], active = new Set(), retained = new Set(), failedAdmissions = new Set(); let sequence = 0, queuedBytes = 0, retired = false, admitted = 0, denied = 0, peakWorkers = 0, queueWaitMs = 0, peakQueueWaitMs = 0;
   const releaseBudget = record => {
     const errors = [];
     record.budgetBusy = true;
@@ -47,22 +48,19 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
         !Number.isSafeInteger(inputBytes) || inputBytes < 0 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < 4096 || estimatedPeakBytes > 512 * 1048576 ||
         !Number.isSafeInteger(deadlineMs) || deadlineMs < 1 || deadlineMs > 600000 || onCancel != null && typeof onCancel !== 'function' ||
         budgetAdapter != null && (typeof budgetAdapter.reserve !== 'function' || typeof budgetAdapter.release !== 'function')) throw invalid('Invalid background job admission.');
-    if (queue.length >= maxQueuedJobs && active.size >= maxWorkers || queuedBytes + inputBytes > maxQueuedInputBytes || sequence === Number.MAX_SAFE_INTEGER) {
+    if (failedAdmissions.size >= maxQueuedJobs + maxWorkers || queue.length >= maxQueuedJobs && active.size >= maxWorkers || queuedBytes + inputBytes > maxQueuedInputBytes || sequence === Number.MAX_SAFE_INTEGER) {
       denied++; return Promise.reject(invalid('Background job queue or retained input capacity is occupied.'));
     }
     const record = { kind, owner: 'background:' + ownerId, ownerEpoch, sourceRevision, priority, signal, inputBytes,
       externalBudget: budgetAdapter, reservedBudgets: [], token: {}, estimatedPeakBytes, queuedAt: now(), sequence: ++sequence, phase: 'queued', timer: null,
       budgetBusy: false, settlingTransitions: false, deferredTransitions: new Map() };
-    try {
-      const request = { token: record.token, owner: record.owner, generation: ownerEpoch, category: 'candidate', bytes: estimatedPeakBytes, pinned: true, reloadable: false };
-      resourceBudget.reserve(request);
-      record.reservedBudgets.push(resourceBudget);
-      if (budgetAdapter && budgetAdapter !== resourceBudget) { budgetAdapter.reserve(request); record.reservedBudgets.push(budgetAdapter); }
-    } catch (error) {
-      denied++; try { releaseBudget(record); } catch (cleanup) { record.phase = 'failed-or-unknown'; record.reason = cleanup.message; active.add(record); }
-      return Promise.reject(error);
-    }
-    if (retired) { try { releaseBudget(record); } catch { record.phase = 'failed-or-unknown'; active.add(record); } return Promise.reject(invalid('Background owner retired during admission.')); }
+    const initial = createInitialBackgroundReservation({ budgets: [...new Set([resourceBudget, budgetAdapter].filter(Boolean))],
+      request: { token: record.token, owner: record.owner, generation: ownerEpoch, category: 'candidate', bytes: estimatedPeakBytes, pinned: true, reloadable: false },
+      identity: { jobId: 'background-' + record.sequence, kind, ownerId, ownerEpoch, sourceRevision },
+      onPending: owner => failedAdmissions.add(owner), onReleased: owner => { failedAdmissions.delete(owner); drain(); } });
+    try { record.reservedBudgets = initial.reserve(); }
+    catch (error) { denied++; return Promise.reject(initial.refuse(error)); }
+    if (retired) return Promise.reject(initial.refuse(invalid('Background owner retired during admission.')));
     const promise = new Promise((resolve, reject) => { record.resolve = resolve; record.reject = reject; });
     const defer = (kind, transition) => {
       if (!record.budgetBusy) return false;
@@ -142,10 +140,12 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
   };
   return Object.freeze({ acquire,
     diagnostics: () => Object.freeze({ activeWorkers: active.size, retainedResults: retained.size, queuedJobs: queue.length, queuedInputBytes: queuedBytes, maxWorkers, maxQueuedJobs,
-      maxQueuedInputBytes, admitted, denied, peakWorkers, queueWaitMs, peakQueueWaitMs, retired, failedOrUnknown: [...active].filter(record => record.phase === 'failed-or-unknown').length,
+      maxQueuedInputBytes, failedAdmissionRetirements: failedAdmissions.size, admitted, denied, peakWorkers, queueWaitMs, peakQueueWaitMs, retired, failedOrUnknown: [...active].filter(record => record.phase === 'failed-or-unknown').length,
       memory: resourceBudget.diagnostics() }),
+    retryFailedAdmissions: () => Promise.all([...failedAdmissions].map(owner => owner.retry())),
     dispose() {
       if (retired) return; retired = true;
+      for (const owner of failedAdmissions) owner.retry();
       for (const record of [...queue, ...active, ...retained]) record.cancel?.(invalid('Background worker owner retired.'));
     } });
 }
