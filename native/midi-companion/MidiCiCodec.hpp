@@ -68,6 +68,33 @@ inline midi::ci::message make_ci_message(Tokens &input) {
     return midi::ci::make_midi_message_report_inquiry(
         source, destination, data, system, controllers, notes, scope);
   }
+  if (operation == "profile-inquiry") {
+    input.finish();
+    return midi::ci::make_profile_inquiry_message(source, destination, scope);
+  }
+  if (operation == "profile-details" || operation == "profile-on" ||
+      operation == "profile-off") {
+    const midi::ci::profile_id profile{
+        static_cast<midi::uint7_t>(input.number(127)),
+        static_cast<midi::uint7_t>(input.number(127)),
+        static_cast<midi::uint7_t>(input.number(127)),
+        static_cast<midi::uint7_t>(input.number(127)),
+        static_cast<midi::uint7_t>(input.number(127))};
+    const auto value = input.number(operation == "profile-details" ? 127 : 256);
+    input.finish();
+    if (operation == "profile-details")
+      return midi::ci::make_profile_details_inquiry(
+          source, destination, profile, value, scope);
+    if ((operation == "profile-off" && value != 0) ||
+        (operation == "profile-on" &&
+         ((scope >= 126 && value != 0) || (scope < 16 && value == 0))))
+      throw std::invalid_argument("invalid-profile-channel-allocation");
+    const midi::ci::profile_destination target{
+        scope, static_cast<midi::uint14_t>(value)};
+    return operation == "profile-on"
+               ? midi::ci::make_profile_on_request(source, destination, profile, target)
+               : midi::ci::make_profile_off_request(source, destination, profile, target);
+  }
   if (operation == "nak") {
     const auto transaction = input.number(127), status = input.number(127),
                detail = input.number(127);
@@ -91,6 +118,22 @@ inline std::string encode_ci(Tokens &input) {
   return "\"codec\":\"ni-midi2:" NI_MIDI2_REVISION
          "\",\"identityTier\":\"non-commercial-development-id\",\"bytes\":" +
          ci_bytes_json(message) + ",\"words\":" + words_json(words);
+}
+inline std::string ci_profile_json(const midi::ci::profile_id &profile) {
+  return "[" + std::to_string(profile.byte1) + "," +
+         std::to_string(profile.byte2) + "," + std::to_string(profile.byte3) +
+         "," + std::to_string(profile.byte4) + "," +
+         std::to_string(profile.byte5) + "]";
+}
+inline std::string ci_data_json(const midi::uint7_t *data, std::size_t length) {
+  if (length > maximum_ci_bytes)
+    throw std::invalid_argument("ci-data-capacity");
+  std::string result = "[";
+  for (std::size_t index = 0; index < length; ++index) {
+    if (index) result += ',';
+    result += std::to_string(data[index]);
+  }
+  return result + "]";
 }
 inline std::string decode_ci(Tokens &input) {
   const auto count = input.number(maximum_ci_bytes);
@@ -147,6 +190,59 @@ inline std::string decode_ci(Tokens &input) {
       throw std::invalid_argument("malformed-ci-discovery-reply");
     result += discovery(*view) +
               ",\"functionBlock\":" + std::to_string(view->function_block());
+    known = true;
+    break;
+  }
+  case midi::ci::subtype::profile_inquiry_reply: {
+    const auto view = midi::ci::as<midi::ci::profile_inquiry_reply_view>(message);
+    if (!view || view->num_enabled_profiles() + view->num_disabled_profiles() > 128)
+      throw std::invalid_argument("malformed-or-excessive-ci-profile-list");
+    const auto profiles = [](const auto &values) {
+      std::string json = "[";
+      for (const auto &profile : values) {
+        if (json.size() > 1) json += ',';
+        json += ci_profile_json(profile);
+      }
+      return json + "]";
+    };
+    result += ",\"enabledProfiles\":" + profiles(view->enabled_profiles()) +
+              ",\"disabledProfiles\":" + profiles(view->disabled_profiles());
+    known = true;
+    break;
+  }
+  case midi::ci::subtype::profile_enabled:
+  case midi::ci::subtype::profile_disabled:
+  case midi::ci::subtype::profile_added:
+  case midi::ci::subtype::profile_removed:
+  case midi::ci::subtype::profile_details_reply:
+  case midi::ci::subtype::profile_specific_data: {
+    if (!midi::ci::profile_id_view::validate(message))
+      throw std::invalid_argument("malformed-ci-profile-id");
+    result += ",\"profile\":" +
+              ci_profile_json(midi::ci::profile_id_view{message}.profile());
+    if (subtype == midi::ci::subtype::profile_enabled ||
+        subtype == midi::ci::subtype::profile_disabled) {
+      if (base.message_version() == 1) {
+        result += ",\"channels\":null";
+      } else {
+        if (!midi::ci::profile_destination_view::validate(message))
+          throw std::invalid_argument("malformed-ci-profile-allocation");
+        const auto channels = midi::ci::profile_destination_view{message}.num_channels();
+        const auto scope = midi::universal_sysex_device_id_of(message);
+        if (channels > 256 || (scope >= 126 && channels != 0))
+          throw std::invalid_argument("invalid-ci-profile-allocation");
+        result += ",\"channels\":" + std::to_string(channels);
+      }
+    } else if (subtype == midi::ci::subtype::profile_details_reply) {
+      const auto view = midi::ci::as<midi::ci::profile_details_reply_view>(message);
+      if (!view) throw std::invalid_argument("malformed-ci-profile-details");
+      result += ",\"target\":" + std::to_string(view->target()) +
+                ",\"profileData\":" + ci_data_json(view->target_data(), view->target_data_length());
+    } else if (subtype == midi::ci::subtype::profile_specific_data) {
+      const auto view = midi::ci::as<midi::ci::profile_specific_data_view>(message);
+      if (!view) throw std::invalid_argument("malformed-ci-profile-data");
+      result += ",\"profileData\":" + ci_data_json(view->data_begin(), view->data_size());
+    }
     known = true;
     break;
   }

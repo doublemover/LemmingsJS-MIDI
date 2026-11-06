@@ -154,3 +154,24 @@ macro gestures or physical actors. Ambiguous traffic, loss, cancellation, malfor
 brackets or timeout invalidate the observation. The panel offers cancellation and
 a bounded values display. This feature still awaits consolidated functional and
 independent-peer qualification.
+
+
+Profile Configuration is now available from the same selected CI connection. The
+panel queries channel, group or function-block profiles, including bounded
+multi-reply inventories across granted input groups. It keeps advertised support,
+reported enablement, channel-allocation details and requested changes separate.
+Unknown profile IDs remain read-only. The reviewed catalog currently identifies
+MPE M2-120 v2.0.3; profile-specific musical lowering is still a separate adapter.
+
+An explicit profile change requires stopped/quiescent owned output, disconnected
+ordinary input and confirmation of its affected device. A route-scoped mutation
+holds new attacks, retires only that grant's application executions and invalidates
+old device revisions. Only the matching receiver enabled/disabled report commits
+reported state; refusal, partial allocation, timeout and cancellation remain
+visible. Reassign affected lanes after reviewing the accepted state. External
+profile changes invalidate old native routing and retire only app-owned notes.
+No unrelated hardware state is restored automatically. Functional/peer
+qualification remains deferred.
+
+Profile framing follows the pinned NI implementation, [MIDI-CI v1.2 section 7](https://amei.or.jp/midistandardcommittee/MIDI2.0/MIDI2.0-DOCS/M2-101-UM_v1-2_MIDI-CI_Specification.pdf)
+and [Common Profile Rules v1.1](https://amei.or.jp/midistandardcommittee/MIDI2.0/MIDI2.0-DOCS/M2-102-U_v1-1_Common_Rules_for_MIDI-CI_Profiles.pdf).

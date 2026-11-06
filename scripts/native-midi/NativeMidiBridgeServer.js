@@ -74,7 +74,7 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     case 'cancel': if (!client.grants.has(uint(row.grant)) || !uint(row.execution)) throw new Error('Owned execution required'); return call(client, requestId, 'C', [row.grant, row.execution], { priority: true });
     case 'ciEncode': {
       const grant = client.grants.get(uint(row.grant));
-      if (!grant || grant.direction !== 'output' || !(grant.permissions & 1) || !['discovery', 'discovery-reply', 'endpoint-inquiry', 'invalidate', 'process-inquiry', 'message-report', 'nak'].includes(row.operation) ||
+      if (!grant || grant.direction !== 'output' || !(grant.permissions & 1) || !['discovery', 'discovery-reply', 'endpoint-inquiry', 'invalidate', 'process-inquiry', 'message-report', 'profile-inquiry', 'profile-details', 'profile-on', 'profile-off', 'nak'].includes(row.operation) ||
           !Array.isArray(row.parameters) || row.parameters.length > 6 || row.parameters.some(value => !Number.isSafeInteger(value) || value < 0 || value > 0x0fffffff)) throw Object.assign(new Error('Explicit SysEx output grant and supported CI operation required'), { notSubmitted: true });
       return call(client, requestId, 'K', [row.grant, uint(row.group, 15), row.operation, uint(row.sourceMuid, 0x0ffffeff), uint(row.destinationMuid, 0x0fffffff), uint(row.scope, 127), ...row.parameters]);
     }

@@ -105,6 +105,7 @@ export function createMidiMessageReportSession({ routes, ci, store: suppliedStor
     },
     state: () => Object.freeze({ disposed, busy, phase: active?.phase || latest?.status || 'idle', probe: active?.probe || false, messageCount: active?.messages || latest?.messageCount || 0, latest, observationStore: store.state() }),
     store,
+    invalidateOutput(grant, reason) { if (ci.state().outputGrant !== grant) return; readGeneration++; busy = false; if (active) finish('incomplete', reason, false); capabilities.clear(); store.clear(); latest = Object.freeze({ status: 'stale', reason, observation: null }); emit(); },
     subscribe(listener) { if (disposed || typeof listener !== 'function' || listeners.size >= 8) throw new Error('Device report observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
     cancel() { readGeneration++; busy = false; if (active) finish('cancelled', 'Device report cancelled', true); emit(); },
     dispose() { if (disposed) return; disposed = true; readGeneration++; busy = false; if (active) finish('cancelled', 'Device report owner retired', true); unsubscribeProtocol(); unsubscribeCi(); unsubscribeInput(); capabilities.clear(); listeners.clear(); latest = null; if (!suppliedStore) store.clear(); }

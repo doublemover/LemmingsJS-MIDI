@@ -13,10 +13,25 @@ const noteWords = (route, status, note, velocity, pitch = note) => route.protoco
   midi1(route, status === 'noteOn' ? 9 : 8, note, status === 'noteOn' ? Math.max(1, Math.round(velocity * 127)) : Math.round(velocity * 127));
 export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = () => {}, maxVoices = 1024, delayMs = 24 } = {}) {
   const batches = createNativeMidiBatchQueue({ client: routes.client });
+  const invalidatingGrants = new Map();
+  const invalidateGrant = grant => {
+    if (invalidatingGrants.has(grant)) return invalidatingGrants.get(grant);
+    const completion = (async () => {
+      const results = await Promise.allSettled([...executions.values()].filter(state => state.grants.has(grant)).map(async state => {
+        const wireExecution = state.grantExecutions.get(grant); batches.cancelExecution(grant, wireExecution);
+        const receipt = await routes.client.cancelExecution(grant, wireExecution);
+        if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Native device-change cleanup remains unconfirmed');
+        for (const entry of state.voices.values()) if (entry.route.grant === grant) removeVoice(entry);
+        state.grants.delete(grant); state.grantExecutions.delete(grant);
+        for (const key of state.programs.keys()) if (key.startsWith(grant + ':')) state.programs.delete(key);
+      }));
+      const failures = results.filter(row => row.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(row => row.reason), 'Native device-change retirement failed');
+    })(); invalidatingGrants.set(grant, completion); completion.then(() => invalidatingGrants.delete(grant), () => {}); return completion;
+  };
   const executions = new Map(), wireVoices = new Map(), channelVoices = new Map(), retirement = createProcgenRetirementScope();
   let disposed = false, anchor = null, latestReceipt = null, laneSource = null, laneIds = new Map(), soloCount = 0;
   let ownerFailure = null, removeOwner = null;
-  try { removeOwner = routes.registerPerformanceOwner({ isQuiescent: grant => !batches.hasPendingGrant(grant) && ![...executions.values()].some(state => [...state.voices.values()].some(entry => entry.route.grant === grant)) }); } catch (error) { ownerFailure = error.message; }
+  try { removeOwner = routes.registerPerformanceOwner({ invalidateGrant, isQuiescent: grant => !batches.hasPendingGrant(grant) && ![...executions.values()].some(state => [...state.voices.values()].some(entry => entry.route.grant === grant)) }); } catch (error) { ownerFailure = error.message; }
   const enabled = () => !disposed && !ownerFailure && routes.enabled();
   const readLanes = () => { const lanes = getLanes(); if (lanes !== laneSource) { laneSource = lanes; laneIds = new Map(lanes.map(lane => [lane.id, lane])); soloCount = lanes.reduce((count, lane) => count + Number(lane.solo && !lane.mute), 0); } return lanes; };
   const laneFor = id => { readLanes(); return laneIds.get(id); };
@@ -37,7 +52,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
   };
   const send = (entry, intent, admission, words, targetMicroseconds, priority = 1, terminal = false, onset = false) => {
     const provenance = causal(intent);
-    const submission = batches.enqueue({ grant: entry.route.grant, execution: entry.state.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
+    const submission = batches.enqueue({ grant: entry.route.grant, execution: entry.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
       onReceipt: receipt => { if (receipt.kind === 'queued') report(entry, intent, admission, receipt, words); } });
     if (submission.status !== 'accepted') { report(entry, intent, admission, { kind: 'rejected', reason: submission.reason, acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: false }, words); return reject(submission.reason); }
     submission.completion.then(receipt => {
@@ -53,8 +68,8 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     const state = executions.get(execution); if (!state) return createProcgenRetirementScope().retire(); if (state.retirement) return state.retirement.getReceipt();
     state.closed = true; state.retirement = createProcgenRetirementScope();
     const receipt = state.retirement.retire([...state.grants].map(grant => ({ name: 'native-grant-' + grant, run: async () => {
-      batches.cancelExecution(grant, state.wireExecution);
-      const receipt = await routes.client.cancelExecution(grant, state.wireExecution);
+      batches.cancelExecution(grant, state.grantExecutions.get(grant));
+      const receipt = await routes.client.cancelExecution(grant, state.grantExecutions.get(grant));
       if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Native owned-note cleanup is unconfirmed');
       for (const entry of state.voices.values()) if (entry.route.grant === grant) removeVoice(entry);
     } }))); 
@@ -68,7 +83,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       for (const [execution, state] of executions) if (state.epoch === executionEpoch && state.generation === generation && !state.closed) return { status: 'accepted', execution };
       if (executions.size >= 2) return reject('native-execution-capacity');
       const execution = Object.freeze({ schema: 'causal-native-midi-execution/v1', epoch: executionEpoch, generation });
-      executions.set(execution, { epoch: executionEpoch, generation, wireExecution: routes.allocateExecutionEpoch(), voices: new Map(), grants: new Set(), programs: new Map(), closed: false, retirement: null }); return { status: 'accepted', execution };
+      executions.set(execution, { epoch: executionEpoch, generation, grantExecutions: new Map(), voices: new Map(), grants: new Set(), programs: new Map(), closed: false, retirement: null }); return { status: 'accepted', execution };
     },
     begin(intent, targetMicroseconds, execution, admission) {
       const state = executions.get(execution), lane = laneFor(intent.laneId), route = routes.resolve(lane?.outputId, lane?.id);
@@ -81,7 +96,8 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (!Number.isFinite(pitch) || pitch < 0 || pitch >= 128 || !unit(intent.velocity01)) return reject('native-pitch-or-velocity-unrepresentable');
       const wireKey = keyFor(route, note);
       if (wireVoices.has(wireKey)) return reject('native-same-pitch-voice-overlap');
-      const entry = { state, route, intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false, setupRequested: false };
+      if (!state.grantExecutions.has(route.grant)) state.grantExecutions.set(route.grant, routes.allocateExecutionEpoch());
+      const entry = { state, route, wireExecution: state.grantExecutions.get(route.grant), intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false, setupRequested: false };
       if (route.protocol === 'midi1-in-ump' && pitch !== note) entry.losses.push(Object.freeze({ kind: 'midi1-pitch-quantization', requested: pitch, represented: note }));
       entry.losses.push(Object.freeze({ kind: 'receiver-protocol-unverified', requested: route.protocol }));
       const words = [], program = JSON.stringify([lane.externalProgram, lane.bankMSB, lane.bankLSB]), address = channelKey(route);

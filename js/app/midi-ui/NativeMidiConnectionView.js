@@ -69,6 +69,44 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const ciInformation = button('Read endpoint information', async () => { if (!ciSession || !ciPeer.value) throw new Error('Discover and select a current peer'); const reply = await ciSession.endpointInformation(Number(ciPeer.value)); message.textContent = 'Endpoint information received: ' + reply.informationData.length + ' bytes.'; showCi(); }, routeControls);
   const ciProcess = button('Read Process Inquiry support', async () => { if (!ciSession || !ciPeer.value) throw new Error('Discover and select a current peer'); const reply = await ciSession.processCapabilities(Number(ciPeer.value)); message.textContent = 'Device Process Inquiry feature bitmap: 0x' + reply.supportedFeatures.toString(16) + '.'; showCi(); }, routeControls);
   const ciClose = button('Close device discovery', async () => { ciUnsubscribe?.(); ciUnsubscribe = null; if (ciSession) await routes.closeCiSession(ciSession); ciSession = null; showCi(); }, routeControls);
+  const profileScope = select('Profile scope', routeControls);
+  for (const [value, label] of [['channel', 'Selected channel / manager'], ['126', 'Selected group'], ['127', 'Function block — all profiles']]) { const option = element(document, 'option', label); option.value = value; profileScope.append(option); }
+  const profileChoice = select('Device profile', routeControls), profileChannels = input('Requested profile channels (including manager)', '2', 'number', routeControls);
+  profileChannels.min = '1'; profileChannels.max = '256'; profileChannels.step = '1';
+  const profileConsent = input('Apply this profile change to the selected device; playback is stopped and controllers may be reassigned', '', 'checkbox', routeControls);
+  const selectedProfile = () => profileSession?.state().profiles.find(row => [row.group, row.scope, row.id].join(':') === profileChoice.value) || null;
+  const showProfiles = () => {
+    const state = profileSession?.state(), previous = profileChoice.value;
+    options(profileChoice, (state?.profiles || []).map(row => [[row.group, row.scope, row.id].join(':'), (row.specification?.name || 'Unreviewed profile ' + row.id.match(/../g).join(' ')) +
+      ' · group ' + (row.group + 1) + ' · ' + (row.scope < 16 ? 'channel ' + (row.scope + 1) : row.scope === 126 ? 'group scope' : 'function-block scope') +
+      ' · ' + (row.enabled == null ? 'unknown' : row.enabled ? 'enabled' : 'disabled') + (row.channels == null ? '' : ' · ' + row.channels + ' channels') + (row.origin === 'changed-externally' ? ' · changed externally' : '')]), 'Read and select a profile');
+    if (previous !== profileChoice.value) profileConsent.checked = false;
+    const row = selectedProfile(), result = state?.latest, mutable = !!row?.specification && row.group === state?.group && row.freshness === 'current' && row.supported;
+    profileStatus.textContent = state ? 'Device profiles: ' + state.profiles.length + ' · ' + (state.busy ? 'pending' : result?.status || 'idle') + (result?.reason ? ' · ' + result.reason : '') +
+      (row?.allocation ? ' · channel allocation ' + row.allocation.current + ' / ' + row.allocation.maximum : '') +
+      (row ? ' · ' + (row.specification?.revision || 'Unreviewed specification; read-only inspection') : '') : 'Device profiles are unknown until queried.';
+    profileEnable.disabled = busy || !mutable || !profileConsent.checked; profileDisable.disabled = busy || !mutable || !profileConsent.checked;
+    profileDetails.disabled = busy || !row || row.group !== state?.group; profileCancel.disabled = !state?.busy;
+  };
+  const ensureProfile = async () => {
+    const session = await ensureCi(), peerMuid = Number(ciPeer.value);
+    if (!ciPeer.value) throw new Error('Discover and select a current Profile Configuration peer');
+    if (!profileSession || profileCi !== session || profileSession.state().peerMuid !== peerMuid) {
+      profileUnsubscribe?.(); profileUnsubscribe = null; profileSession = routes.createProfileSession(session, peerMuid); profileCi = session;
+      profileUnsubscribe = profileSession.subscribe(showProfiles); profileConsent.checked = false;
+    }
+    return profileSession;
+  };
+  const profileRead = button('Read supported device profiles', async () => { const session = await ensureProfile(); const result = await session.inquire(profileScope.value === 'channel' ? Number(channel.value) : Number(profileScope.value)); message.textContent = result.reason || 'Profile inquiry: ' + result.status; showProfiles(); }, routeControls);
+  const profileDetails = button('Read profile channel allocation', async () => { const session = await ensureProfile(), row = selectedProfile(); if (!row || row.group !== session.state().group) throw new Error('Select a profile in the current group'); const result = await session.details(row.profile, row.scope, 0); message.textContent = result.reason || 'Channel allocation: ' + result.status; showProfiles(); }, routeControls);
+  const changeProfile = async enabled => {
+    const session = await ensureProfile(), row = selectedProfile(); if (!row || row.group !== session.state().group) throw new Error('Select a reviewed profile in the current group');
+    const result = await session.setEnabled({ profile: row.profile, scope: row.scope, enabled, channels: Number(profileChannels.value), confirmed: profileConsent.checked });
+    profileConsent.checked = false; message.textContent = result.reason || (result.status === 'ok' ? 'Device reported the requested profile state. Review its accepted channel count, then explicitly reassign affected native lanes.' : 'Profile change: ' + result.status); showProfiles();
+  };
+  const profileEnable = button('Enable selected profile', () => changeProfile(true), routeControls), profileDisable = button('Disable selected profile', () => changeProfile(false), routeControls);
+  const profileCancel = button('Cancel profile request', () => { profileSession?.cancel(); showProfiles(); }, routeControls, true);
+  bindEvent(profileChoice, 'change', () => { profileConsent.checked = false; showProfiles(); }); bindEvent(profileConsent, 'change', showProfiles);
   const isolated = checkbox('Device idle; no other playback, controller or Thru traffic');
   const showReport = () => {
     const state = reportSession?.state(), result = state?.latest; cancelState.disabled = !state?.busy; reportStatus.textContent = state ? 'Controller state: ' + state.phase + (state.probe ? ' · checking reportable categories' : '') + (result?.reason ? ' · ' + result.reason : '') : 'Controller state is unknown until an isolated report completes.';
@@ -98,7 +136,9 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const inputStatus = element(document, 'output', '', 'midi-status'); inputStatus.setAttribute('aria-live', 'off');
   const ciStatus = element(document, 'output', '', 'midi-status'); ciStatus.setAttribute('role', 'status'); ciStatus.setAttribute('aria-live', 'polite');
   const reportStatus = element(document, 'output', '', 'midi-status'), reportValues = element(document, 'div'); reportStatus.setAttribute('role', 'status'); reportStatus.setAttribute('aria-live', 'polite');
-  root.append(controls, routeControls, status, inputStatus, ciStatus, reportStatus, reportValues, message, details); container.append(root);
+  const profileStatus = element(document, 'output', '', 'midi-status'); profileStatus.setAttribute('role', 'status'); profileStatus.setAttribute('aria-live', 'polite');
+  root.append(controls, routeControls, status, inputStatus, ciStatus, profileStatus, reportStatus, reportValues, message, details); container.append(root);
+  let profileSession = null, profileCi = null, profileUnsubscribe = null;
   let reportSession = null, reportCi = null, reportUnsubscribe = null, ciSession = null, ciUnsubscribe = null, inputTimer = null;
   const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category : ''); };
   let operationSerial = 0, busy = false, selectedGrant = null, inventoryEpoch = null, laneSignature = '';
@@ -115,7 +155,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     status.textContent = state.state + (connected ? ' · native UMP · ' + state.grants.length + ' owned connections · clock ' + state.clock.status : ' · local audio remains available');
     const capabilities = routes.client.capabilities;
     const ciReady = !!capabilities?.ciCodec && connected && state.grants.some(row => row.direction === 'input' && (row.permissions & 1)) && state.grants.some(row => row.direction === 'output' && (row.permissions & 1));
-    ciDiscover.disabled ||= !ciReady; ciInformation.disabled ||= !ciSession; ciProcess.disabled ||= !ciSession; ciClose.disabled ||= !ciSession; readState.disabled ||= !ciReady || capabilities?.ciMessageReportCodecVersion !== 1; cancelState.disabled = !reportSession?.state().busy; showReport();
+    ciDiscover.disabled ||= !ciReady; ciInformation.disabled ||= !ciSession; ciProcess.disabled ||= !ciSession; ciClose.disabled ||= !ciSession; readState.disabled ||= !ciReady || capabilities?.ciMessageReportCodecVersion !== 1; cancelState.disabled = !reportSession?.state().busy; showReport(); profileRead.disabled ||= !ciReady || capabilities?.ciProfileCodecVersion !== 1; showProfiles();
     options(ciInput, state.grants.filter(row => row.direction === 'input' && (row.permissions & 1)).map(row => [row.grant, row.endpoint?.name || 'Published control input']), 'Choose a SysEx input'); showCi();
     if (capabilities && backend.options.length !== capabilities.compiledApis.length + 1) options(backend, capabilities.compiledApis.map(api => [api.id, api.name]), 'Choose backend');
     if (capabilities && !backend.value) backend.value = String(capabilities.selectedApi);
@@ -128,5 +168,5 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
   bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; });
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
-  return { render, dispose() { unsubscribe(); ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
+  return { render, dispose() { unsubscribe(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
 }

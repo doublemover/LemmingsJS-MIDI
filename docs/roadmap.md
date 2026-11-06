@@ -10579,3 +10579,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Probe declared report categories; commit only a matching complete read-only observation with original value precision and unknown missing values. Preserve newer local edits and conflicts. Bound time, messages, values and receive queues; quarantine ambiguous or interrupted reports.
 - Require explicit device idleness, disconnected ordinary WebMIDI input and quiescent native attacks. Hold new attacks/input activation during the read while retaining releases and cancellation. No learn/record/Thru/macro/gameplay dispatch from report data.
 - Development remains frontloaded. Formatting and native compilation/type boundaries have been checked; functional/device/throughput qualification is deferred to the consolidated run. Profiles, Property Exchange, profile-specific musical adapters and coordinated whole-graph restore remain production work.
+
+
+### 2026-11-06 — Rook continuation485: profile sessions and device mutations
+
+- Implement native Profile Inquiry/Details/on/off constructors and bounded list/allocation/data views; preserve version-1 allocation uncertainty. Receive relevant CI messages across granted input groups without confusing their group identities.
+- Add owned ProfileSession with atomic bounded inventories, supported/active/requested distinctions, channel details, partial/refused/timeout results, external notifications and explicit panel controls. Unknown specifications remain read-only; MPE's published identity is cataloged separately from its upcoming musical adapter.
+- Add quiescent DeviceMutation ownership. Hold new attacks and ordinary input, invalidate route/device observations and retire only affected native grant executions. Preserve receiver-state uncertainty and require explicit lane reassignment. Keep per-grant wire execution identities fresh after retirement.
+- Formatting and the Windows companion compile/link pass; functional and interoperability tests remain deferred with the rest of the feature pass.

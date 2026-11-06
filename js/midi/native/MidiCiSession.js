@@ -97,14 +97,15 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
     try { await cancelOwnedExecution(previousExecution); await send('invalidate', { sourceMuid: previousMuid, parameters: [previousMuid] }); if (current()) void discover().catch(error => { if (current()) { reason = error.message; emit(); } }); }
     catch (error) { stale(error.message); } emit();
   };
-  const handle = async message => {
+  const handle = async (message, messageGroup) => {
     if (![126, 127].includes(message.scope) && !(message.scope >= 0 && message.scope < 16) || message.sourceMuid === BROADCAST) return;
     if (!message.known || message.destinationMuid !== localMuid && message.destinationMuid !== BROADCAST) {
-      for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: message.known ? 'foreign-ci' : 'unknown-ci', message: Object.freeze(message), epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group })); } catch {} }
+      for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: message.known ? 'foreign-ci' : 'unknown-ci', message: Object.freeze(message), epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group: messageGroup })); } catch {} }
       return;
     }
     if (message.sourceMuid === localMuid || message.subtype === 126 && message.targetMuid === localMuid) { await collision(); return; }
-    for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: 'ci', message: Object.freeze(message), epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group })); } catch {} }
+    for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: 'ci', message: Object.freeze(message), epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group: messageGroup })); } catch {} }
+    if (messageGroup !== group) return;
     if (message.subtype === 112 || message.subtype === 113) {
       if (message.subtype === 113 && !discovery) return; remember(message);
       if (message.subtype === 112) await send('discovery-reply', { destinationMuid: message.sourceMuid, deviceScope: 127, parameters: [maximumMessageBytes, 127] });
@@ -124,22 +125,27 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
       while (receive.length && current()) {
         const entry = receive.shift(); receiveBytes -= entry.bytes; const capturedEpoch = epoch;
         if (entry.observation) { for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: 'observation', observation: entry.observation, epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group })); } catch {} } continue; }
-        try { const message = await routes.client.decodeCi(inputGrant, entry.payload); if (current() && capturedEpoch === epoch) await handle(message); }
-        catch (error) { if (current() && capturedEpoch === epoch) { reason = 'Malformed or unavailable MIDI-CI response: ' + error.message; for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: 'malformed-ci', reason, epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group })); } catch {} } emit(); } }
+        try { const message = await routes.client.decodeCi(inputGrant, entry.payload); if (current() && capturedEpoch === epoch) await handle(message, entry.group); }
+        catch (error) { if (current() && capturedEpoch === epoch) { reason = 'Malformed or unavailable MIDI-CI response: ' + error.message; for (const observer of protocolObservers) { try { observer(Object.freeze({ kind: 'malformed-ci', reason, epoch, connectionEpoch: initial.connectionEpoch, inputGrant, group: entry.group })); } catch {} } emit(); } }
       }
     } finally { receiveRunning = false; }
   };
   const unsubscribe = routes.input.subscribe(event => {
     if (event.grant !== inputGrant) return;
     if (event.event === 'ingress-loss') { stale(event.reason); return; }
-    if (event.event !== 'native-payload' || event.message.kind !== 'sysex7' || event.message.group !== group || event.message.payload[0] !== 126 || event.message.payload[2] !== 13) return;
+    if (event.event !== 'native-payload' || event.message.kind !== 'sysex7' || !(input.groupMask & 1 << event.message.group) || event.message.payload[0] !== 126 || event.message.payload[2] !== 13) return;
     const payload = event.message.payload; if (payload.length > maximumMessageBytes || receive.length >= 2048 || receiveBytes + payload.length * 2 + 512 > 1048576) { stale('MIDI-CI receive capacity exceeded'); return; }
-    const bytes = payload.length * 2 + 512; receive.push({ payload, bytes }); receiveBytes += bytes; if (!receiveRunning) receiveTail = drain();
+    const bytes = payload.length * 2 + 512; receive.push({ payload, bytes, group: event.message.group }); receiveBytes += bytes; if (!receiveRunning) receiveTail = drain();
   });
   return Object.freeze({
     discover, invalidate: stale,
     getPeer(muid) { const peer = peers.get(muid); return current() && peer?.state === 'discovered' && now() - peer.lastVerifiedMs <= 300000 ? peer : null; },
     sendReadControl(peerMuid, { operation, parameters = [], deviceScope = scope, isCurrent = () => true }) { const peer = peers.get(peerMuid); if (!current() || peer?.state !== 'discovered' || peer.version !== 2 || now() - peer.lastVerifiedMs > 300000 || !['message-report', 'profile-inquiry', 'profile-details'].includes(operation)) return Promise.reject(new Error('Unsupported or stale CI read operation')); const category = operation === 'message-report' ? 16 : 4; if (!(peer.categories & category)) return Promise.reject(new Error('Device did not advertise this CI category')); return send(operation, { destinationMuid: peerMuid, deviceScope, parameters, isCurrent }); },
+    sendProfileControl(peerMuid, { operation, parameters = [], deviceScope = scope, isCurrent = () => true }) {
+      const peer = peers.get(peerMuid);
+      if (!current() || peer?.state !== 'discovered' || peer.version !== 2 || !(peer.categories & 4) || !['profile-on', 'profile-off'].includes(operation) || now() - peer.lastVerifiedMs > 300000) return Promise.reject(new Error('Unsupported or stale CI profile mutation'));
+      return send(operation, { destinationMuid: peerMuid, parameters, deviceScope, isCurrent });
+    },
     subscribeProtocol(observer) { if (disposed || typeof observer !== 'function' || protocolObservers.size >= 8) throw new Error('CI protocol observer capacity'); protocolObservers.add(observer); return () => protocolObservers.delete(observer); },
     enqueueObservation(observation) { if (!current() || receive.length >= 2048 || receiveBytes + 528 > 1048576) { stale('CI ordered observation queue exceeded'); return false; } receive.push({ observation, bytes: 528 }); receiveBytes += 528; if (!receiveRunning) receiveTail = drain(); return true; },
     endpointInformation: (peerMuid, status = 0) => request(peerMuid, 'endpoint-inquiry', 115, [status], 127),
