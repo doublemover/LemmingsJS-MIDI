@@ -767,8 +767,24 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         const toggle = button(take.starting ? 'Cancel arming' : take.recovering ? 'Retry saving take' : take.recording ? 'Stop causal take' : 'Record causal take', () =>
           take.starting ? handlers.cancelCausalTakeArm?.() : take.recording || take.recovering ? handlers.stopCausalTake?.() :
             handlers.startCausalTake?.({ takeName: state.takeNameDraft }));
-        toggle.disabled = take.stopping;
+        toggle.disabled = take.stopping || !!take.ownedArm && !take.starting && !take.recording && !take.recovering;
         controls.append(toggle);
+        if (!take.recording && !take.recovering && !take.starting && !take.ownedArm) {
+          const owned = button('Record with held sound state', () => handlers.startCausalTake?.({ takeName: state.takeNameDraft, ownedAudio: true }), 'Capture supported owned sources and creative rack at one audio frame, retain the initial image in the take and continue without a new note onset');
+          owned.disabled = !take.ownedCaptureAvailable; controls.append(owned);
+          controls.append(node('p', 'Held sound capture requires internal playback, physical lanes, prepared owned instruments and no external output. Source-state restoration is implemented; PCM equivalence awaits qualification.', 'studio-hint'));
+        }
+        if (take.ownedArm) {
+          const arm = take.ownedArm;
+          controls.append(node('output', 'Owned sound: ' + arm.phase.replaceAll('-', ' ') + (arm.image ? ' · initial image prepared' : '') + (arm.failure ? ' · ' + arm.failure : ''), 'studio-physical-take-status'));
+          if (arm.retained && !arm.busy) {
+            const retry = button('Retry recording retained sound', () => handlers.retryOwnedCausalTake?.(state.takeNameDraft)); retry.disabled = !arm.canRetry || take.recovering;
+            const restore = button('Resume held sound without recording', () => handlers.restoreOwnedCausalSound?.()); restore.disabled = !arm.canRetry || take.recovering;
+            const discard = button('Discard retained sound state', () => handlers.discardOwnedCausalSound?.(), 'Permanently release this captured sound image and start fresh sound only after explicit Play'); discard.disabled = arm.retirementUnknown;
+            controls.append(retry, restore, discard);
+            if (!arm.canRetry && !arm.retirementUnknown) controls.append(node('p', 'The original world or transport hold changed. Discard the retained sound before continuing this world.', 'studio-hint'));
+          }
+        }
         if (take.recovering && !take.stopping) controls.append(button('Discard unsaved tail', () => handlers.discardCausalTail?.(),
           'Confirm permanent loss of unsaved records and preserve a partial take with its exact omitted range'));
         if (take.recording) {

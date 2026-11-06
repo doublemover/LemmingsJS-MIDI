@@ -23,7 +23,7 @@ const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-b
   descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['prepared-surfaces', 'effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'route-coordinate-history-v2', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
-  boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
+  boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null, signal = null } = {}) => {
   const profile = validateCaptureProfile(captureProfile), graph = validateCausalInstrumentGraph(mapping);
   const initialPerformance = initialCheckpoint?.engine?.performanceInputs ? validateCausalPerformanceState(initialCheckpoint.engine.performanceInputs) : null;
   if (existingWriter && (!['appendMany', 'append', 'manifest', 'status', 'checkpoint', 'stop'].every(key => typeof existingWriter[key] === 'function') ||
@@ -38,7 +38,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
       canonicalJournalText(existingWriter.manifest().captureProfile).text !== canonicalJournalText(profile).text)) throw new Error('A branch recorder requires its admitted writer and qualified clipped prefix cursor.');
   if (!existingWriter && (prefixCoverage || sourceCursor)) throw new Error('Inherited take coverage requires an existing branch writer.');
   const writer = existingWriter || await journal.createTake({ takeId, takeName, documentId, sourceVersions, captureProfile: profile, boundaryState,
-    initialCheckpoint, mapping: graph, assetRefs });
+    initialCheckpoint, mapping: graph, assetRefs, signal });
   const observedFactKinds = new Set(prefixCoverage?.observedFactKinds || []), intentKinds = new Set(prefixCoverage?.intentKinds || []),
     mappingRevisions = new Set([...(prefixCoverage?.mappingRevisions || []), graph.revision]);
   const topologyRegions = new Map((prefixCoverage?.topologyRegions || []).map(region => [`${region.id}:${region.revision}`, region]));

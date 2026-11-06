@@ -56,7 +56,7 @@ import { createCausalNativeMidiSink } from './CausalNativeMidiSink.js';
 import { createNativeMidiRoutes } from '../../../midi/native/NativeMidiRoutes.js';
 import { createNativeMidiConnectionView } from '../../midi-ui/NativeMidiConnectionView.js';
 import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
-import { createCausalTakeRecorder, querySoundOnlyRevoiceOwned } from './CausalTake.js';
+import { PHYSICAL_CAPTURE_PROFILE, createCausalTakeRecorder, querySoundOnlyRevoiceOwned } from './CausalTake.js';
 import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
 import { actorTimbreLocksFor, validateActorTimbreLock, actorTimbrePatchKey, EMPTY_ACTOR_TIMBRE_LOCKS } from '../../../midi/content/InstrumentActorLocks.js';
 import { captureCausalPerformanceState, diffCausalPerformanceState, diffCausalLanePerformance } from './CausalPerformanceState.js';
@@ -175,7 +175,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null, causalMarkerCheckpoint = null;
   let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0, lastCausalBranchPublication = null, lastWorkerPublication = null;
   const continuationExecutionIdentity = () => lastCausalBranchPublication || lastWorkerPublication ? { ...getActiveExecutionIdentity(), ...(lastCausalBranchPublication ? { physicalBranch: lastCausalBranchPublication } : {}), ...(lastWorkerPublication ? { workerContinuation: lastWorkerPublication } : {}) } : undefined;
-  let causalTakeArmCanceled = false;
+  let causalTakeArmCanceled = false, ownedCausalArm = null, ownedCausalPersistence = null;
   let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalProvenanceBuffer = null, physicalProvenanceDropped = 0, physicalReceiptBoundary = null, causalTakeErrorReported = false;
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
@@ -462,6 +462,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false, restoringWorld = false } = {}) => {
     if (physicalAuthoringAbort && !restoringWorld) throw new Error('Physical authoring owns this paused project boundary.');
+    if (ownedCausalArm && !['complete', 'discarded', 'failed'].includes(ownedCausalArm.state().phase) && !(ownedCausalArm.state().phase === 'activating-world' && ['procgen/launched', 'procgen/launchedBatch'].includes(renderAction?.type))) throw new Error('Finish or discard the retained owned sound-state transaction before editing its project.');
     const change = procgenProjectChange(project, next);
     const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
     const instrumentRefsChanged = change && !change.structural ? change.laneIds.some(id => {
@@ -786,6 +787,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return true;
   }
   const play = () => {
+    if (ownedCausalArm && !['complete', 'discarded', 'failed'].includes(ownedCausalArm.state().phase)) { status('Finish or discard the retained owned sound-state transaction before ordinary Play.'); return; }
     if (causalClockBlocked && causalTake) { status('Save or recover the stopped take before playing.'); return; }
     if (physicalAuthoringAbort) { status('Wait for physical history preparation before playing.'); return; }
     if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld || simulationWorkbenchLoading) { status('Close the isolated worker candidate before resuming the live world.'); return; }
@@ -800,7 +802,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const next = transport.getState();
     if (held && previous.bpm !== next.bpm) { pendingResume = false; if (held.length) engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
-  const beforeRestart = () => {
+  const beforeRestart = ({ suspendOwned = false } = {}) => {
+    if (ownedCausalArm && !['complete', 'discarded', 'failed'].includes(ownedCausalArm.state().phase)) { if (!suspendOwned) throw new Error('Finish or discard retained owned sound before replacing the world or transport.'); ownedCausalArm.cancel(); }
     midiConnectSerial++;
     toolGate.cancel();
     macroGestures.cancelAll(); soundTransactions.cancel('The world or transport is being replaced.');
@@ -828,7 +831,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,
     recovering: !!causalTake?.status().captureStopped && !causalTake.canReplaceDocument(),
-    starting: !!causalTakeStart, stopping: !!causalTakeStop,
+    starting: !!causalTakeStart, stopping: !!causalTakeStop, ownedArm: ownedCausalArm?.state() || null,
+    ownedCaptureAvailable: !project.procgen.lanes.some(lane => lane.mode === 'pattern') && !!transport.getState().playing && transport.getState().clockSource === 'internal' && physicalPlayback?.audioContinuation.capabilities().ready === true,
     physicalRecoveryRequired: physicalPlayback?.engine.diagnostics().recoveryRequired === true,
     active: causalTake?.status() || null, last: lastCausalTake, inspection: lastCausalInspection,
     publication: lastCausalBranchPublication, selectedTakeId: selectedCausalTakeId, takePage: causalTakePage, takePageNumber: causalTakeBack.length + 1,
@@ -1014,6 +1018,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } finally { if (!adopted) retireCausalRead(prepared); }
   };
   const stopCausalTake = async ({ reason = 'user-stop' } = {}) => {
+    if (ownedCausalArm?.state().busy && reason !== 'user-stop') ownedCausalArm.cancel();
     if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
     if (causalMarkerCheckpoint) await causalMarkerCheckpoint.catch(() => {});
     if (causalTakeStop) return causalTakeStop;
@@ -1051,12 +1056,80 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     causalTake.discardPending({ reason: 'performer-discarded-undurable-tail' });
     return stopCausalTake({ reason: 'explicit-tail-discard' });
   };
-  const startCausalTake = async ({ takeName = 'Untitled take' } = {}) => {
+  const publishCausalRecorder = (recorder, sourceWorld) => {
+    causalTake = recorder; causalClockBlocked = false; sampledMacroPerformance = captureCausalPerformanceState(project.procgen.lanes, project.procgen.actorTimbreLocks); sampledMacroRevision = macroGestures.revision();
+    lastCausalTransport = { playing: false, bpm: transport.getState().bpm, speedFactor: sourceWorld.timer.speedFactor };
+    lastCausalInspection = null; causalTakeErrorReported = false;
+  };
+  const runOwnedCausalArm = ({ takeName = 'Untitled take', record = true } = {}) => {
+    if (!ownedCausalArm || causalTakeStart || causalTake || causalTakeStop) throw new Error('Finish the current take operation before restoring retained sound.');
+    const arm = ownedCausalArm, pending = arm.run({ record, takeName }); causalTakeStart = pending; view?.renderInspector?.();
+    return pending.then(receipt => { status(record ? 'Causal take recording with its durable initial owned sound image.' : 'Retained owned sound restored; recording remains off.'); return receipt; }).finally(() => {
+      causalTakeStart = null;
+      if (['complete', 'discarded', 'failed'].includes(arm.state().phase) && !arm.state().retirementUnknown) { if (ownedCausalArm === arm) ownedCausalArm = null; ownedCausalPersistence?.release(); ownedCausalPersistence = null; }
+      if (!disposed) view?.renderInspector?.();
+    });
+  };
+  const discardOwnedCausalArm = async ({ restoreSemantic = true } = {}) => {
+    const arm = ownedCausalArm; if (!arm) return false;
+    await arm.discard({ restoreSemantic }); if (ownedCausalArm === arm) ownedCausalArm = null;
+    ownedCausalPersistence?.release(); ownedCausalPersistence = null;
+    if (!disposed) { status('Retained sound state discarded. The world remains paused; press Play to start fresh output.'); view?.renderInspector?.(); } return true;
+  };
+  const startOwnedCausalTake = async ({ takeName }) => {
+    if (ownedCausalArm) return runOwnedCausalArm({ takeName });
+    if (project.procgen.lanes.some(lane => lane.mode === 'pattern') || pendingHistory || physicalAuthoringAbort || currentOperation || state.recording || state.thru || masterCapture?.state().capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(masterCapture?.state().capture?.state) || macroGestures.diagnostics().active || soundTransactions.diagnostics().active)
+      throw new Error('Finish document, capture, sound and macro operations and disarm MIDI thru before owned sound capture.');
+    const { createOwnedCausalTakeArm } = await import('./OwnedCausalTakeArm.js');
+    if (disposed || causalTake || causalTakeStart || causalTakeStop || ownedCausalArm || worldBusy || !transport.getState().playing || !physicalPlayback?.audioContinuation.capabilities().ready) throw new Error('Owned take capture needs active internal playback with a complete prepared owned-source inventory, supported creative rack and no external output.');
+    const sourceRuntime = runtime(), sourceWorld = sourceRuntime.world, sourceProject = project, sourceGeneration = documentGeneration,
+      sourceBoundary = Object.freeze({ worldId: sourceWorld.worldId, tick: sourceWorld.tickIndex, generation: sourceWorld.generation });
+    const hold = transport.holdForOwnedAudio();
+    midiConnectSerial++; toolGate.cancel(); physicalFeedback?.disarm(); recoveryAbort?.abort();
+    ownedCausalPersistence = holdBackgroundPersistence();
+    const current = () => !disposed && runtime() === sourceRuntime && project === sourceProject && documentGeneration === sourceGeneration && sourceWorld.tickIndex === sourceBoundary.tick && sourceWorld.generation === sourceBoundary.generation;
+    ownedCausalArm = createOwnedCausalTakeArm({ hold, sourceBoundary, isCurrent: current,
+      captureSession: async ({ signal }) => { await ownedCausalPersistence.completion; return capturePhysicalHistory(sourceWorld, sourceProject, signal); },
+      captureAudio: options => physicalPlayback.audioContinuation.captureImage({ ...options, semanticBoundary: { schema: 'lemmings-owned-take-physical-boundary/v1', ...sourceBoundary, sourceTimeMs: sourceWorld.simulationTimeMs, graphRevision: sourceProject.procgen.physicalGraph.revision, binding: 'initial-journal-checkpoint' } }),
+      encodeAudio: options => physicalPlayback.audioContinuation.encode(options),
+      prepareOwner: options => preparePhysicalAudioReplacement(options),
+      createRecorder: ({ takeName: recordedName, session, image, transport: held, signal }) => {
+        const takeId = createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:');
+        const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+        return createCausalTakeRecorder({ journal, takeId, takeName: recordedName, documentId: documentId || 'unsaved:' + takeId,
+          sourceVersions: causalRuntimeSourceVersions(sourceWorld, sourceProject.procgen.physicalGraph.revision, session.world.version), signal,
+          captureProfile: { ...PHYSICAL_CAPTURE_PROFILE, id: 'physical-owned-audio-v1', stateKinds: [...PHYSICAL_CAPTURE_PROFILE.stateKinds, 'owned-audio'] },
+          initialCheckpoint: { world: session.world, engine: session.physicalState, timeline: session.physicalTimeline, ownedAudio: image.checkpoint(), replay: { version: 2, bpm: held.bpm, scoreTimeline: true, playing: true } },
+          mapping: sourceProject.procgen.physicalGraph, assetRefs: session.world.assets || [], boundaryState: { ...causalBoundary(), 'owned-audio': image.metadata() } });
+      },
+      publishRecorder: recorder => publishCausalRecorder(recorder, sourceWorld),
+      retireRecorder: async recorder => {
+        recorder.markGap({ kind: 'all', firstTick: sourceBoundary.tick, lastTick: sourceBoundary.tick, generation: sourceBoundary.generation, reason: 'owned-audio-activation-failed' });
+        lastCausalTake = await recorder.stop({ boundaryState: causalBoundary(), reason: 'owned-audio-activation-failed' }); selectedCausalTakeId = lastCausalTake.takeId;
+        if (!recorder.canReplaceDocument()) { causalTake = recorder; throw new Error('Save or explicitly discard the undurable take tail before retrying owned sound restoration.'); }
+        if (causalTake === recorder) causalTake = null;
+      },
+      recordActivation: ({ recorder, activation, clock, image }) => {
+        if (!recorder) return true;
+        const receipt = recorder.recordSinkOutcome({ schema: 'lemmings-owned-take-activation/v1', source: sourceBoundary, imageSha256: image.sha256,
+          sourceAudioFrame: activation.sourceAudioFrame, audioFrame: activation.audioFrame, sampleRate: activation.sampleRate, graphRevision: activation.graphRevision,
+          scope: activation.scope, qualification: activation.qualification, clock, acousticReceipt: false }, sourceBoundary);
+        if (receipt.status !== 'accepted') throw new Error('The take did not admit its exact owned activation boundary.'); return true;
+      },
+      discardAudio: async ({ restoreSemantic, session }) => {
+        const receipt = physicalPlayback?.stop(); await receipt?.completion; if (receipt?.outcome && receipt.outcome !== 'complete') throw Object.assign(new Error('Physical source stop remains unresolved.'), { retirement: receipt });
+        if (restoreSemantic && current()) { const fresh = await preparePhysicalAudioReplacement({ semanticState: session?.physicalState || physicalPlayback.engine.snapshot(), isCurrent: current }); fresh.engine.rearm({ discardUnknownHeldState: true }); fresh.audioContinuation.activate(); await fresh.synchronizeLaneInstruments(project.procgen.lanes); }
+      }, onState: () => { if (!disposed) view?.renderInspector?.(); } });
+    return runOwnedCausalArm({ takeName });
+  };
+  const startCausalTake = async ({ takeName = 'Untitled take', ownedAudio = false } = {}) => {
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current causal take first.');
     if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld) throw new Error('Close the isolated worker candidate/checkpoint before recording a live causal take.');
     if (worldBusy || !runtime()?.world || !physicalPlayback) throw new Error('Wait for the committed world before recording a causal take.');
     if (!['commitCausalTake', 'loadCausalTake', 'loadCausalChunk', 'loadCausalCheckpoint'].every(key => typeof storage[key] === 'function'))
       throw new Error('Causal take storage is unavailable in this browser.');
+    if (ownedAudio) return startOwnedCausalTake({ takeName });
+    if (ownedCausalArm) throw new Error('Restore or discard retained owned sound before starting another take.');
     const wasPlaying = transport.getState().playing;
     beforeRestart();
     causalTakeArmCanceled = false;
@@ -1091,6 +1164,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
   };
   const cancelCausalTakeArm = () => {
+    if (ownedCausalArm?.cancel()) { status('Canceling owned source preparation; captured sound remains retained for recovery.'); return true; }
     if (!causalTakeStart) return false;
     causalTakeArmCanceled = true; status('Canceling causal take preparation after storage responds.');
     return true;
@@ -1805,6 +1879,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   /** @param {unknown} value @param {ReturnType<typeof beginOperation> | null} admittedLease @param {{signal?: AbortSignal, historyRestore?: boolean, workerHandoff?: boolean}} options */
   async function loadSession(value, admittedLease = null, { signal, historyRestore = false, workerHandoff = false } = {}) {
     if (stageSession?.active()) return stageSession.reject();
+    if (ownedCausalArm) throw new Error('Restore or discard retained owned sound before loading another world.');
     if (workerHandoff && (simulationWorkbench?.state().phase !== 'publishing-worker' || simulationWorkbench.state().active)) throw new Error('Only the admitted detached worker checkpoint publisher may hand off this world.');
     if (!workerHandoff && (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld)) await simulationWorkbench.close();
     signal?.throwIfAborted();
@@ -1867,6 +1942,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   }
   /** @param {{seed?: number, fresh?: boolean, projectNext?: object, history?: boolean, worldSettings?: {hazardSpacing?: number}, admittedLease?: ReturnType<typeof beginOperation>}} options */
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true, worldSettings = {}, admittedLease = null } = {}) {
+    if (ownedCausalArm) throw new Error('Restore or discard retained owned sound before rebuilding the world.');
     if (disposed || admittedLease && !ownsOperation(admittedLease)) return false;
     if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld) await simulationWorkbench.close();
     if (stageSession?.active()) return stageSession.reject();
@@ -2428,6 +2504,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     advanceSimulationWorkbench: safe(() => simulationWorkbench?.advance(32)), pauseSimulationWorkbench: safe(() => simulationWorkbench?.pause()), resumeSimulationWorkbench: safe(() => simulationWorkbench?.resume()),
     detachSimulationCheckpoint: safe(() => simulationWorkbench?.detachCheckpoint()), publishWorkerContinuation: safe(publishWorkerContinuation), workerContinuationOrigin: () => lastWorkerPublication,
     projectSimulationWorkbench: safe(viewport => simulationWorkbench?.project(viewport)), closeSimulationWorkbench: safe(() => simulationWorkbench?.close()), cancelSimulationWorkbench: () => simulationWorkbench?.cancel(),
+    restoreOwnedCausalSound: safe(() => runOwnedCausalArm({ record: false })), retryOwnedCausalTake: safe(/** @param {string} takeName */ (takeName = 'Untitled take') => runOwnedCausalArm({ takeName })), discardOwnedCausalSound: safe(() => discardOwnedCausalArm()),
     causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), discardCausalTail: safe(discardCausalTail), cancelCausalTakeArm,
     markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),
     prepareCausalArchive: safe(prepareCausalArchive), browseCausalTakes: safe(browseCausalTakes), selectCausalTake: safe(selectCausalTake),
@@ -2858,7 +2935,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const workbench = causalWorkbench;
     if (workbench) void workbench.dispose().then(() => { if (causalWorkbench === workbench) causalWorkbench = null; }, error => status('Branch recovery: ' + error.message));
     state.thru = false; ports.configure({ recording: false, thru: false });
-    beforeRestart(); ports.stopPerformance?.(reason); legacy.local.stop?.();
+    beforeRestart({ suspendOwned: true }); ports.stopPerformance?.(reason); legacy.local.stop?.();
     persist({ immediate: true }); recover();
     if (causalTake || causalTakeStart) void stopCausalTake({ reason }).catch(error => status('Causal take finalization: ' + error.message));
     status('Page suspended. Press Play after returning to resume.');
@@ -2948,6 +3025,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     get settings() { return legacy.settings; },
     dispose() {
       if (disposed) return retirement.retire();
+      ownedCausalArm?.cancel();
       disposed = true; loadSerial++;
       const operation = currentOperation; currentOperation = null;
       const timer = recoveryTimer; recoveryTimer = null;
@@ -2965,7 +3043,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         } },
         { name: 'final-preferences', run: () => persist({ immediate: true, retiring: true }) },
         { name: 'storage-readers', run: () => storageReaders.retire([
-          { name: 'causal-take', run: () => causalTake || causalTakeStart || causalTakeStop ? stopCausalTake({ reason: 'workstation-disposed' }) : null },
+          { name: 'causal-take', run: async () => { if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'workstation-disposed' }); await discardOwnedCausalArm({ restoreSemantic: false }); } },
           { name: 'causal-workbench', run: () => causalWorkbench?.dispose() },
           { name: 'simulation-workbench', run: () => simulationWorkbench?.dispose() },
           { name: 'archive-exports', run: () => archiveExportTasks.size ? Promise.allSettled([...archiveExportTasks]) : null }
@@ -2990,7 +3068,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'patch-variations', run: () => patchVariations?.dispose() },
         { name: 'release-gesture-view', run: () => releaseGestureView?.dispose() },
         { name: 'physical-authoring-view', run: () => physicalAuthoringView?.dispose() },
-        { name: 'physical-authoring-history', run: () => physicalHistory.dispose() },
+        { name: 'physical-authoring-history', run: () => afterProcgenRetirement([storageReaders.getReceipt()], () => physicalHistory.dispose()) },
         { name: 'physical-junction-view', run: () => physicalJunctionView?.dispose() },
         { name: 'lazy-tool-requests', run: () => toolGate.dispose() },
         { name: 'rectangular-membrane-view', run: () => rectangularMembraneView?.dispose() },
