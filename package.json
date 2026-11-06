@@ -104,7 +104,8 @@
     "model:assets": "node scripts/profile-asset-acquisition-model.mjs",
     "model:cache": "node scripts/profile-cache-transaction-model.mjs",
     "model:midi-input": "node scripts/profile-midi-input-recording-model.mjs",
-    "model:workstation-controller": "node scripts/profile-workstation-controller-model.mjs"
+    "model:workstation-controller": "node scripts/profile-workstation-controller-model.mjs",
+    "build:native-midi": "node scripts/build-native-midi-companion.js"
   },
   "c8": {
     "check-coverage": true,

@@ -28,6 +28,13 @@ Continue with live DSP source/effect state transfer and remaining protocol featu
 Implementation details and unvalidated scope are recorded in the implementation
 ledger; recent feature commits do not imply rendered or browser qualification.
 
+The native companion has a compiled C++20 transport target with pinned Windows SDK
+inputs, explicit device and virtual publication grants, bounded raw ingress, native
+monotonic scheduling, cancellation and exact-prefix receipts (#978–#981, #1061,
+#1143, #1199). Browser pairing and endpoint integration remain in development.
+Whole-graph effect restoration remains alongside implemented source continuation.
+These feature changes await consolidated transport, device and browser validation.
+
 ## Format
 
 Each milestone uses the same shape:
