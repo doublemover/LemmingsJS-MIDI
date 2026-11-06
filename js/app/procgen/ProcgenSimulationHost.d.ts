@@ -21,6 +21,7 @@ export interface SimulationHost {
   readonly mode: 'worker'; readonly identity: Readonly<{ ownerId: string; ownerEpoch: number; documentRevision: number }>; state(): SimulationState | null;
   pause(): Promise<unknown>; resume(): Promise<unknown>; advance(steps: number): Promise<unknown>;
   project(viewport?: { x?: number; firstLane?: number; laneCount?: number; width?: number; pixelWidth?: number; pixelHeight?: number }): Promise<{ read(): Readonly<Record<string, unknown>>; release(): boolean }>;
+  detachCheckpoint(): Promise<{ schema: string; receipt(): Readonly<Record<string, unknown>> | null; read(): Readonly<Record<string, unknown>>; release(): boolean }>;
   submit(command: unknown): Promise<unknown>; checkpoint(): Promise<unknown>;
   diagnostics(): Readonly<Record<string, unknown>>; dispose(): SimulationRetirement;
 }

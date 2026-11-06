@@ -173,7 +173,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let laneObserver = null;
   let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, physicalFeedback = null, physicalFeedbackView = null, physicalDomainEditor = null, feedbackEpoch = 0, worldInspector = null;
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null, causalMarkerCheckpoint = null;
-  let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0, lastCausalBranchPublication = null;
+  let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0, lastCausalBranchPublication = null, lastWorkerPublication = null;
+  const continuationExecutionIdentity = () => lastCausalBranchPublication || lastWorkerPublication ? { ...getActiveExecutionIdentity(), ...(lastCausalBranchPublication ? { physicalBranch: lastCausalBranchPublication } : {}), ...(lastWorkerPublication ? { workerContinuation: lastWorkerPublication } : {}) } : undefined;
   let causalTakeArmCanceled = false;
   let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalProvenanceBuffer = null, physicalProvenanceDropped = 0, physicalReceiptBoundary = null, causalTakeErrorReported = false;
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
@@ -785,7 +786,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const play = () => {
     if (causalClockBlocked && causalTake) { status('Save or recover the stopped take before playing.'); return; }
     if (physicalAuthoringAbort) { status('Wait for physical history preparation before playing.'); return; }
-    if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbenchLoading) { status('Close the isolated worker candidate before resuming the live world.'); return; }
+    if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld || simulationWorkbenchLoading) { status('Close the isolated worker candidate before resuming the live world.'); return; }
     if (pageLifecycle && !pageLifecycle.resumeExplicitly()) { status('Page is suspended; return to the visible instrument before pressing Play.'); return; }
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
     transport.play(); if (held?.length) engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held });
@@ -877,38 +878,47 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return result;
     } finally { hold.release(); }
   };
-  const publishCausalBranch = async () => {
-    if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || state.recording || !causalWorkbench?.state().canStep) throw new Error('Finish active recording/world operations and prepare a paused physical branch first.');
+  const adoptPhysicalContinuation = async (snapshot, { signal = null, branchOrigin = null, workerOrigin = null, workerHandoff = false } = {}) => {
+    if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || state.recording) throw new Error('Finish recording and physical world operations before adopting a prepared continuation.');
     beforeRestart(); const previous = project, sourceWorld = runtime()?.world, controller = new AbortController(), hold = holdBackgroundPersistence();
     /** @type {Awaited<ReturnType<typeof capturePhysicalHistory>> | null} */ let capsule = null;
-    physicalAuthoringAbort = controller;
+    let historyPublished = false, attemptedLoadSerial = null;
+    const cancel = () => controller.abort(signal.reason); signal?.addEventListener('abort', cancel, { once: true }); if (signal?.aborted) cancel(); physicalAuthoringAbort = controller;
+    const publishHistory = () => { if (capsule && !historyPublished) { capsule.promote(previous); undo.push(previous); redo.length = 0; trimHistory(); historyPublished = true; } };
     try {
-      await hold.completion;
-      const published = await causalWorkbench.publishBranch(async (snapshot, { signal }) => {
-        const cancel = () => controller.abort(signal.reason); signal.addEventListener('abort', cancel, { once: true }); if (signal.aborted) cancel();
-        try {
-          if (snapshot.world.laneCount !== previous.procgen.lanes.length) throw new Error('Open a project with the captured lane count before publishing this physical branch.');
-          const capturedHistory = await capturePhysicalHistory(sourceWorld, previous, controller.signal); capsule = capturedHistory; controller.signal.throwIfAborted();
-          if (disposed || project !== previous || runtime()?.world !== sourceWorld) throw new Error('The live project changed during branch publication.');
-          const assignments = snapshot.world.terrainAssignments?.laneAssignments;
-          const next = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...previous, procgen: { ...previous.procgen, revision: previous.procgen.revision + 1, seed: snapshot.world.seed,
-            physicalGraph: snapshot.authoring.graph, fragmentInstances: snapshot.authoring.instances, junctions: snapshot.authoring.junctions,
-            lanes: previous.procgen.lanes.map((lane, index) => ({ ...lane, worldThemeId: assignments?.[index] || lane.worldThemeId })) } }));
-          const origin = { takeId: snapshot.ancestry.takeId, parentTakeId: snapshot.ancestry.parentTakeId, tick: snapshot.ancestry.branchTick, generation: snapshot.ancestry.branchGeneration,
-            sourceCanonicalHash: snapshot.ancestry.qualification.sourceCanonicalHash, actualPhysicsHash: snapshot.ancestry.qualification.actualPhysicsHash, mode: 'paused-current-runtime-physical-branch;semantic-audio-resume' };
-          const session = createProcgenSession({ name: savedName + ' branch', project: next, settings: { ...settingsFor(next), speed: snapshot.world.clock.speedFactor }, world: snapshot.world,
-            transport: { ...transport.snapshot(), clockSource: 'internal', linked: false, speedMode: 'game', gameSpeed: snapshot.world.clock.speedFactor, bpm: snapshot.replay.bpm, baseBpm: snapshot.replay.bpm, playing: false }, patterns: engine.snapshot(), physicalTimeline: snapshot.timeline, physicalState: snapshot.engine,
-            executionIdentity: { ...getActiveExecutionIdentity(), physicalBranch: origin }, camera: renderer()?.camera?.getState?.(), ui: { ...state, recording: false, thru: false, inputId: null, clockOutputId: null, lastMidi: '' } });
-          const loaded = await loadSession(session, null, { signal: controller.signal, historyRestore: true });
-          if (!loaded) return false;
-          capturedHistory.promote(previous); undo.push(previous); redo.length = 0; trimHistory(); lastCausalBranchPublication = origin;
-          transport.pause(); ports.configure({ recording: false, thru: false }); persist(); view?.render();
-          return true;
-        } finally { signal.removeEventListener('abort', cancel); }
-      });
-      if (published) { status('Physical branch adopted paused with undo history. Save the branch take, then press Play explicitly to start fresh output.'); }
-      return published;
-    } finally { capsule?.discard(); physicalAuthoringAbort = null; hold.release(); }
+      await hold.completion; controller.signal.throwIfAborted();
+      if (snapshot.world.laneCount !== previous.procgen.lanes.length) throw new Error('Open a project with the captured lane count before adopting this physical continuation.');
+      capsule = await capturePhysicalHistory(sourceWorld, previous, controller.signal); controller.signal.throwIfAborted();
+      if (disposed || project !== previous || runtime()?.world !== sourceWorld) throw new Error('The live project changed during continuation publication.');
+      const assignments = snapshot.world.terrainAssignments?.laneAssignments;
+      const next = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...previous, procgen: { ...previous.procgen, revision: previous.procgen.revision + 1, seed: snapshot.world.seed,
+        physicalGraph: snapshot.authoring.graph, fragmentInstances: snapshot.authoring.instances, junctions: snapshot.authoring.junctions,
+        lanes: previous.procgen.lanes.map((lane, index) => ({ ...lane, worldThemeId: assignments?.[index] || lane.worldThemeId })) } }));
+      const session = createProcgenSession({ name: savedName + (workerOrigin ? ' worker continuation' : ' branch'), project: next, settings: { ...settingsFor(next), speed: snapshot.world.clock.speedFactor }, world: snapshot.world,
+        transport: { ...transport.snapshot(), clockSource: 'internal', linked: false, speedMode: 'game', gameSpeed: snapshot.world.clock.speedFactor, bpm: snapshot.replay.bpm, baseBpm: snapshot.replay.bpm, playing: false }, patterns: engine.snapshot(), physicalTimeline: snapshot.timeline, physicalState: snapshot.engine,
+        executionIdentity: { ...getActiveExecutionIdentity(), ...(branchOrigin ? { physicalBranch: branchOrigin } : {}), ...(workerOrigin ? { workerContinuation: workerOrigin } : {}) },
+        camera: renderer()?.camera?.getState?.(), ui: { ...state, recording: false, thru: false, inputId: null, clockOutputId: null, lastMidi: '' } });
+      attemptedLoadSerial = loadSerial + 1;
+      const loaded = await loadSession(session, null, { signal: controller.signal, historyRestore: true, workerHandoff });
+      if (!loaded) return false;
+      publishHistory(); lastCausalBranchPublication = branchOrigin; lastWorkerPublication = workerOrigin;
+      transport.pause(); ports.configure({ recording: false, thru: false }); persist(); view?.render(); return true;
+    } catch (error) { if (runtime()?.world !== sourceWorld && attemptedLoadSerial === loadSerial) publishHistory(); throw error; }
+    finally { signal?.removeEventListener('abort', cancel); capsule?.discard(); physicalAuthoringAbort = null; hold.release(); }
+  };
+  const publishCausalBranch = async () => {
+    if (!causalWorkbench?.state().canStep) throw new Error('Prepare a paused physical branch first.');
+    const published = await causalWorkbench.publishBranch((snapshot, { signal }) => adoptPhysicalContinuation(snapshot, { signal,
+      branchOrigin: { takeId: snapshot.ancestry.takeId, parentTakeId: snapshot.ancestry.parentTakeId, tick: snapshot.ancestry.branchTick, generation: snapshot.ancestry.branchGeneration,
+        sourceCanonicalHash: snapshot.ancestry.qualification.sourceCanonicalHash, actualPhysicsHash: snapshot.ancestry.qualification.actualPhysicsHash, mode: 'paused-current-runtime-physical-branch;semantic-audio-resume' } }));
+    if (published) status('Physical branch adopted paused with undo history. Save the branch take, then press Play explicitly to start fresh output.'); return published;
+  };
+  const publishWorkerContinuation = async () => {
+    if (!simulationWorkbench) throw new Error('Detach a paused worker checkpoint first.');
+    const result = await simulationWorkbench.publishCheckpoint((snapshot, { signal, receipt }) => adoptPhysicalContinuation(snapshot, { signal, workerHandoff: true,
+      workerOrigin: { ownerId: receipt.ownerId, ownerEpoch: receipt.ownerEpoch, sourceDocumentRevision: receipt.documentRevision, worldId: receipt.worldId, generation: receipt.generation, tick: receipt.tick,
+        sourceHash: receipt.sourceHash, continuationHash: receipt.continuationHash, physicsHash: receipt.physicsHash, mode: receipt.mode } }));
+    if (result) status('Worker physical checkpoint adopted paused with undo history. Current sound/macro/mix choices remain; press Play explicitly for semantic audio resume.'); return result;
   };
   const finishCausalBranch = async ({ discard = false } = {}) => {
     if (!causalWorkbench?.state().active) throw new Error('No physical branch is open.');
@@ -1041,7 +1051,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const startCausalTake = async ({ takeName = 'Untitled take' } = {}) => {
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current causal take first.');
-    if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy) throw new Error('Close the isolated worker candidate before recording a live causal take.');
+    if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld) throw new Error('Close the isolated worker candidate/checkpoint before recording a live causal take.');
     if (worldBusy || !runtime()?.world || !physicalPlayback) throw new Error('Wait for the committed world before recording a causal take.');
     if (!['commitCausalTake', 'loadCausalTake', 'loadCausalChunk', 'loadCausalCheckpoint'].every(key => typeof storage[key] === 'function'))
       throw new Error('Causal take storage is unavailable in this browser.');
@@ -1154,13 +1164,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       Object.assign(state, session.ui || {}, { hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, inputId: null, clockOutputId: null });
       if (!procgenLane(project.procgen.lanes, state.laneId)) state.laneId = project.procgen.lanes[0].id;
       state.slot = Math.max(0, Math.min(3, state.slot || 0)); state.step = Math.max(0, Math.min((selected().patterns?.[state.slot]?.length || 1) - 1, state.step || 0));
-      lastCausalBranchPublication = session.executionIdentity?.physicalBranch || null;
+      lastCausalBranchPublication = session.executionIdentity?.physicalBranch || null; lastWorkerPublication = session.executionIdentity?.workerContinuation || null;
       savedName = session.name; lastHistoryGroup = null; sessionAdoptions.set(sessionIdentity, next);
       if (!historyRestore) { documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; undo.length = 0; redo.length = 0; }
     }
     if (legacy.local.setPerformanceDocumentIdentity) legacy.local.setPerformanceDocumentIdentity('workstation:' + documentGeneration);
     else legacy.local.audio?.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
     ports.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
+    if (!session) { lastCausalBranchPublication = null; lastWorkerPublication = null; }
     if (session) { setLegacyProject(project); if (!historyRestore) physicalHistory.clear(); trimHistory(); }
     recoveryAbort?.abort(); soundTransactions.cancel('The physical playback owner changed.');
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; laneDisplayWorldEpoch++; boundRuntime = next; boundSession = sessionIdentity;
@@ -1304,7 +1315,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     syncWorldSeed();
     const journal = recovery && getProcgenRecoveryJournal(runtime().world);
     return createProcgenSession({ name, project: recovery ? project : clone(project), settings: clone(settingsFor()),
-      ...(lastCausalBranchPublication ? { executionIdentity: { ...getActiveExecutionIdentity(), physicalBranch: lastCausalBranchPublication } } : {}),
+      executionIdentity: continuationExecutionIdentity(),
       world: journal ? journal.checkpoint() : captureCheckpoint(runtime().world), recoveryJournal: journal ? journal.snapshot() : null,
       transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(),
       physicalState: physicalPlayback?.engine.snapshot() || null,
@@ -1312,7 +1323,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const capturePhysicalHistory = async (sourceWorld, sourceProject, signal) => {
     const sourceGeneration = documentGeneration, sourceTick = sourceWorld.tickIndex;
-    return physicalHistory.capture(sourceWorld, sourceProject, (checkpoint, capturedProject) => createProcgenSession({ name: savedName, project: capturedProject, settings: clone(settingsFor(capturedProject)), ...(lastCausalBranchPublication ? { executionIdentity: { ...getActiveExecutionIdentity(), physicalBranch: lastCausalBranchPublication } } : {}), world: checkpoint,
+    return physicalHistory.capture(sourceWorld, sourceProject, (checkpoint, capturedProject) => createProcgenSession({ name: savedName, project: capturedProject, settings: clone(settingsFor(capturedProject)), executionIdentity: continuationExecutionIdentity(), world: checkpoint,
       transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(), physicalState: physicalPlayback?.engine.snapshot() || null,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } }),
     { signal, isCurrent: () => !disposed && runtime()?.world === sourceWorld && project === sourceProject && documentGeneration === sourceGeneration && sourceWorld.tickIndex === sourceTick && !transport.getState().playing });
@@ -1338,7 +1349,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             bpm: transport.getState().bpm, playing: true, scoreTimeline: true } });
         if (!isCurrent()) throw new Error('The source changed while its worker candidate was preparing.');
         simulationCandidates.add(candidate); const owned = candidate; candidate = null;
-        return Object.freeze({ ...owned, dispose() { const receipt = owned.dispose(); receipt.completion.then(() => { if (receipt.outcome === 'complete') simulationCandidates.delete(owned); }); return receipt; } });
+        return Object.freeze({ ...owned, async detachCheckpoint() { const checkpoint = await owned.detachCheckpoint(); simulationCandidates.delete(owned); return checkpoint; }, dispose() { const receipt = owned.dispose(); receipt.completion.then(() => { if (receipt.outcome === 'complete') simulationCandidates.delete(owned); }); return receipt; } });
       } finally {
         if (candidate) { const receipt = candidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') status('The abandoned simulation candidate retains unresolved ownership.'); }
         if (capsule && !capsule.discard()) throw new Error('The simulation source checkpoint retirement remains unresolved.');
@@ -1351,7 +1362,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (simulationWorkbench) return simulationWorkbench;
     if (!simulationWorkbenchLoading) simulationWorkbenchLoading = import('./ProcgenSimulationWorkbench.js').then(({ createProcgenSimulationWorkbench }) => {
       if (disposed) throw new Error('The workstation closed before worker simulation preparation.');
-      return simulationWorkbench = createProcgenSimulationWorkbench({ prepareHost: stageAuthoritativeSimulation, onState: () => view?.renderInspector?.() });
+      return simulationWorkbench = createProcgenSimulationWorkbench({ prepareHost: stageAuthoritativeSimulation, getSourceIdentity: () => documentGeneration + ':' + projectRevision + ':' + runtime()?.world?.worldId + ':' + runtime()?.world?.generation + ':' + runtime()?.world?.tickIndex, onState: () => view?.renderInspector?.() });
     }).finally(() => { simulationWorkbenchLoading = null; });
     return simulationWorkbenchLoading;
   };
@@ -1414,7 +1425,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           const checkpoint = journal ? journal.checkpoint() : await captureProcgenCheckpointCooperative(sourceWorld, options);
           controller.signal.throwIfAborted(); if (!current()) throw continuationCaptureStale();
           session = createProcgenSession({ name: savedName + ' (recovery)', project: sourceProject, settings: clone(settingsFor(sourceProject)),
-            ...(lastCausalBranchPublication ? { executionIdentity: { ...getActiveExecutionIdentity(), physicalBranch: lastCausalBranchPublication } } : {}),
+            executionIdentity: continuationExecutionIdentity(),
             world: checkpoint, recoveryJournal: journal ? journal.snapshot() : null, transport: transport.snapshot(), patterns, physicalState,
             physicalTimeline: physicalScoreClock.snapshot(), camera: renderer()?.camera?.getState?.(),
             ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } });
@@ -1773,10 +1784,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     if (!disposed && showBrowser) sceneBrowser?.open();
   };
-  /** @param {unknown} value @param {ReturnType<typeof beginOperation> | null} admittedLease @param {{signal?: AbortSignal, historyRestore?: boolean}} options */
-  async function loadSession(value, admittedLease = null, { signal, historyRestore = false } = {}) {
+  /** @param {unknown} value @param {ReturnType<typeof beginOperation> | null} admittedLease @param {{signal?: AbortSignal, historyRestore?: boolean, workerHandoff?: boolean}} options */
+  async function loadSession(value, admittedLease = null, { signal, historyRestore = false, workerHandoff = false } = {}) {
     if (stageSession?.active()) return stageSession.reject();
-    if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy) await simulationWorkbench.close();
+    if (workerHandoff && (simulationWorkbench?.state().phase !== 'publishing-worker' || simulationWorkbench.state().active)) throw new Error('Only the admitted detached worker checkpoint publisher may hand off this world.');
+    if (!workerHandoff && (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld)) await simulationWorkbench.close();
     signal?.throwIfAborted();
     if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
@@ -1838,7 +1850,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   /** @param {{seed?: number, fresh?: boolean, projectNext?: object, history?: boolean, worldSettings?: {hazardSpacing?: number}, admittedLease?: ReturnType<typeof beginOperation>}} options */
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true, worldSettings = {}, admittedLease = null } = {}) {
     if (disposed || admittedLease && !ownsOperation(admittedLease)) return false;
-    if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy) await simulationWorkbench.close();
+    if (simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld) await simulationWorkbench.close();
     if (stageSession?.active()) return stageSession.reject();
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'world-rebuild' });
@@ -2393,9 +2405,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       physicalPlayback?.engine.rearm({ discardUnknownHeldState: true });
       status('Physical music rearmed at the next complete boundary; unknown held state was discarded.'); view.renderInspector();
     }),
-    simulationWorkbenchState: () => simulationWorkbench?.state() || { phase: simulationWorkbenchLoading ? 'loading' : 'idle', active: false, busy: !!simulationWorkbenchLoading, worker: null, counts: null, failure: null, output: 'off' },
+    simulationWorkbenchState: () => simulationWorkbench?.state() || { phase: simulationWorkbenchLoading ? 'loading' : 'idle', active: false, checkpointHeld: false, checkpointReceipt: null, busy: !!simulationWorkbenchLoading, worker: null, counts: null, failure: null, output: 'off' },
     simulationWorkbenchProjection: () => simulationWorkbench?.projection() || null, startSimulationWorkbench: safe(startSimulationWorkbench),
     advanceSimulationWorkbench: safe(() => simulationWorkbench?.advance(32)), pauseSimulationWorkbench: safe(() => simulationWorkbench?.pause()), resumeSimulationWorkbench: safe(() => simulationWorkbench?.resume()),
+    detachSimulationCheckpoint: safe(() => simulationWorkbench?.detachCheckpoint()), publishWorkerContinuation: safe(publishWorkerContinuation), workerContinuationOrigin: () => lastWorkerPublication,
     projectSimulationWorkbench: safe(viewport => simulationWorkbench?.project(viewport)), closeSimulationWorkbench: safe(() => simulationWorkbench?.close()), cancelSimulationWorkbench: () => simulationWorkbench?.cancel(),
     causalTakeState, startCausalTake: safe(startCausalTake), stopCausalTake: safe(stopCausalTake), discardCausalTail: safe(discardCausalTail), cancelCausalTakeArm,
     markCausalTake: safe(markCausalTake), inspectLastCausalTake: safe(inspectLastCausalTake),

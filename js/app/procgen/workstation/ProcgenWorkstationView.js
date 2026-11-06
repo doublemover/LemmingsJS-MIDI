@@ -832,6 +832,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
             if (physicalHistoryViewError) branchControls.append(node('p', physicalHistoryViewError, 'studio-hint'));
           }
           if (take.publication) branchControls.append(node('p', 'Live world from branch ' + take.publication.takeId + ' at tick ' + take.publication.tick + '. Physical ancestry retained; output uses a fresh execution and semantic audio resume.', 'studio-hint'));
+          branchControls.append(node('p', 'Branch adoption restores the physical world, mapping and timeline. Current patch, macro and lane mix choices remain; output stays disarmed and audio resumes semantically.', 'studio-hint'));
           if (branch?.busy) branchControls.append(button('Cancel comparison / step', () => handlers.cancelCausalWorkbench?.()));
           branchControls.append(node('p', branch?.active ? `${branch.active.takeId} · ${branch.phase} · tick ${branch.active.tick} · ${branch.active.completedBatches} new physical batches · output off` :
             `${branch?.phase || 'idle'} · isolated current-runtime comparison · current project unchanged · output off`, 'studio-hint'));
@@ -872,17 +873,24 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (simulation) {
         const worker = node('fieldset', null, 'studio-worker-simulation'); worker.append(node('legend', 'Isolated worker simulation'));
         worker.append(node('p', 'Prepare the current physical world in a worker. The live world stays paused; this candidate keeps its prepared mapping. Audio, MIDI and recording stay off.', 'studio-hint'));
-        if (!simulation.active) {
+        if (simulation.checkpointHeld) {
+          const receipt = simulation.checkpointReceipt, adopt = button('Use worker checkpoint as live world · paused', () => handlers.publishWorkerContinuation?.()), discard = button('Discard retained worker checkpoint', () => handlers.closeSimulationWorkbench?.());
+          adopt.disabled = simulation.busy; discard.disabled = simulation.busy; worker.append(adopt, discard);
+          worker.append(node('p', 'Retained in memory at tick ' + (receipt?.tick ?? 'unknown') + '. The worker producer has retired. Adoption restores world, physical mapping and timeline; current patch, macro and lane mix choices remain. Output stays disarmed and audio resumes semantically. Keep the source project unchanged while reviewing.', 'studio-hint'));
+        } else if (!simulation.active) {
           const prepare = button('Prepare worker world · paused', () => handlers.startSimulationWorkbench?.()); prepare.disabled = simulation.busy || take?.recording || take?.starting || take?.recovering; worker.append(prepare);
         } else {
           const step = button('Step worker 32 ticks', () => handlers.advanceSimulationWorkbench?.()), run = button('Run worker · output off', () => handlers.resumeSimulationWorkbench?.()), pause = button('Pause worker and inspect', () => handlers.pauseSimulationWorkbench?.()), close = button('Close worker · return to paused live world', () => handlers.closeSimulationWorkbench?.());
-          step.disabled = simulation.busy || !simulation.worker?.paused; run.disabled = simulation.busy || !simulation.worker?.paused; pause.disabled = simulation.busy || simulation.worker?.paused; close.disabled = simulation.busy; worker.append(step, run, pause, close);
+          step.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; run.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; pause.disabled = simulation.busy || !!simulation.failure || simulation.worker?.paused; close.disabled = simulation.busy; worker.append(step, run, pause, close);
+          const detach = button('Park worker and retain checkpoint', () => handlers.detachSimulationCheckpoint?.()); detach.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; worker.append(detach);
           if (!simulationPreview && !simulationPreviewError) { try { simulationPreview = createCausalPhysicalHistoryView({ document, resourceBudget, label: 'Paused worker collision overview' }); } catch (error) { simulationPreviewError = error.message; } }
           if (simulationPreview) { simulationPreview.render(handlers.simulationWorkbenchProjection?.()); worker.append(simulationPreview.element); }
           if (simulationPreviewError) worker.append(node('p', simulationPreviewError, 'studio-hint'));
         }
         worker.append(node('p', simulation.phase + ' · tick ' + (simulation.worker?.tick ?? '—') + ' · ' + (simulation.counts?.batches ?? 0) + ' complete batches observed · ' + (simulation.counts?.intents ?? 0) + ' intents · output off', 'studio-hint'));
+        const workerOrigin = handlers.workerContinuationOrigin?.(); if (workerOrigin) worker.append(node('p', 'Current world continues worker ' + workerOrigin.ownerId + ' from tick ' + workerOrigin.tick + ' with preserved physical checkpoint hashes.', 'studio-hint'));
         if (simulation.failure) worker.append(node('p', simulation.failure.message, 'studio-hint'));
+        if (simulation.failure && simulation.active) worker.append(node('p', 'Close this failed candidate to return to the retained paused source world. Uncaptured worker progress is not represented as a recovered checkpoint.', 'studio-hint'));
         if (simulation.busy) worker.append(button('Cancel worker preparation', () => handlers.cancelSimulationWorkbench?.()));
         nextFields.append(worker);
       }

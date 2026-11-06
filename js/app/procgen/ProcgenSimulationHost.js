@@ -24,7 +24,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
   activeHosts++;
   const scope = createProcgenRetirementScope({ deadlineMs: 15000 }), requests = new Map(), projections = new Set(), controller = new AbortController();
   let worker = null, consumer = null, retired = false, confirmed = false, disposed = false, failure = null, latestState = null, requestSerial = 0,
-    inputAck = null, checkpointReceiver = null, checkpointRequestId = null, inputProducer = null, terminateError = null, portsTransferred = false, readyResolve, readyReject, retiredResolve;
+    inputAck = null, checkpointReceiver = null, checkpointRequestId = null, checkpointTransfer = null, inputProducer = null, terminateError = null, portsTransferred = false, readyResolve, readyReject, retiredResolve;
   const ready = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; }); ready.catch(() => {});
   const retirementAck = new Promise(resolve => { retiredResolve = resolve; });
   const check = () => { controller.signal.throwIfAborted(); if (disposed || failure) throw failure || simulationFailure('worker-retired', 'The simulation owner retired.'); };
@@ -49,7 +49,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
     check(); if (requests.size >= 8 || requestSerial >= Number.MAX_SAFE_INTEGER - 1) return Promise.reject(simulationFailure('request-capacity', 'The authoritative host request queue is full.'));
     const requestId = ++requestSerial;
     return new Promise((resolve, reject) => {
-      const timer = timers.setTimeout(() => { requests.delete(requestId); const error = simulationFailure('request-timeout', 'The authoritative request did not complete; the generation must be reviewed paused.'); reject(error); fail(error); }, type === 'checkpoint' ? 180000 : 30000);
+      const timer = timers.setTimeout(() => { requests.delete(requestId); const error = simulationFailure('request-timeout', 'The authoritative request did not complete; the generation must be reviewed paused.'); reject(error); fail(error); }, ['checkpoint', 'checkpoint-detach'].includes(type) ? 180000 : 30000);
       requests.set(requestId, { resolve, reject, timer, kind: type }); try { send(type, { ...fields, requestId }); } catch (error) { timers.clearTimeout(timer); requests.delete(requestId); reject(error); fail(error); }
     });
   };
@@ -91,14 +91,14 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       if (message.type === 'response') { requests.delete(message.requestId); timers.clearTimeout(pending.timer); if (message.value?.phase) publish(message.value); else if (message.value?.state) publish(message.value.state); pending.resolve(message.value); return; }
       if (message.type === 'checkpoint-start') {
         if (checkpointReceiver || message.sequence !== 0) throw simulationFailure('checkpoint-overlap', 'Only one checkpoint receiver may own its streamed pages.');
-        checkpointRequestId = message.requestId; checkpointReceiver = createBackgroundSnapshotReceiver({ maxBytes: 128 * 1048576, maxNodes: 4000000, estimatedPeakBytes: 384 * 1048576 });
+        checkpointRequestId = message.requestId; checkpointReceiver = createBackgroundSnapshotReceiver({ maxBytes: (pending.kind === 'checkpoint-detach' ? 16 : 128) * 1048576, maxNodes: 4000000, estimatedPeakBytes: 384 * 1048576 });
         send('checkpoint-ack', { sequence: 0 }); return;
       }
       if (!checkpointReceiver || checkpointRequestId !== message.requestId) throw simulationFailure('checkpoint-stale', 'The checkpoint stream has no admitted request owner.');
       if (message.type === 'checkpoint-page') { const receipt = checkpointReceiver.push(message.packet); send('checkpoint-ack', { sequence: receipt.sequence }); return; }
       if (message.type !== 'checkpoint-end') throw simulationFailure('response-invalid', 'Unsupported authoritative worker response.');
-      const value = checkpointReceiver.finish(message.sequence); checkpointReceiver = null; checkpointRequestId = null;
-      requests.delete(message.requestId); timers.clearTimeout(pending.timer); pending.resolve(value);
+      const retainedBytes = checkpointReceiver.diagnostics().retainedEstimateBytes + 1048576, value = checkpointReceiver.finish(message.sequence); checkpointReceiver = null; checkpointRequestId = null;
+      requests.delete(message.requestId); timers.clearTimeout(pending.timer); pending.resolve(pending.kind === 'checkpoint-detach' ? { value, retainedBytes } : value);
     } catch (error) { fail(error); }
   };
   const abort = () => { if (!disposed) fail(signal.reason || simulationFailure('worker-canceled', 'The authoritative simulation preparation was canceled.')); };
@@ -123,9 +123,25 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
         await Promise.all([producerRetirement, consumerRetirement]);
         if (!terminationConfirmed) throw terminateError || simulationFailure('retirement-unknown', 'The worker may still own its authoritative world.');
         if (portsTransferred && requiredPorts.length && !confirmed) throw simulationFailure('consumer-retirement-unknown', 'Direct consumer ownership was not acknowledged; the aggregate reservation remains charged.');
-        retired = true; worker = null; latestState = null; reservation.release(); activeHosts--;
+        retired = true; worker = null; latestState = null; if (!checkpointTransfer) reservation.release(); activeHosts--;
       } }
     ]);
+  };
+  const detachCheckpoint = async () => {
+    check();
+    if (!latestState?.paused || requests.size || checkpointTransfer) throw simulationFailure('checkpoint-handoff-boundary', 'Detach one checkpoint from an idle paused authoritative host.');
+    const source = { ...latestState }, result = await request('checkpoint-detach'); check();
+    const value = result.value, receipt = value?.receipt;
+    if (value?.schema !== 'lemmings-owned-simulation-checkpoint/v1' || receipt?.schema !== 'lemmings-simulation-checkpoint-receipt/v1' || receipt.applicationBuildId !== execution.buildId || receipt.ownerId !== manifest.ownerId || receipt.ownerEpoch !== manifest.ownerEpoch ||
+        receipt.documentRevision !== manifest.documentRevision || receipt.worldId !== source.worldId || receipt.generation !== source.generation || receipt.tick !== source.tick || receipt.paused !== true || !['sourceHash', 'continuationHash', 'physicsHash'].every(key => /^[a-f0-9]{64}$/.test(receipt[key] || '')) ||
+        !Number.isSafeInteger(result.retainedBytes) || result.retainedBytes < 4096 || result.retainedBytes > 128 * 1048576 || value.snapshot?.authoring?.graph == null || value.snapshot.engine?.version !== 1) throw simulationFailure('checkpoint-handoff-invalid', 'The checkpoint differs from its exact paused worker, build or retained representation.');
+    freezeData(value.receipt); checkpointTransfer = { value, released: false, published: false };
+    const retirement = dispose(); await retirement.completion;
+    if (retirement.outcome !== 'complete') throw Object.assign(simulationFailure('checkpoint-producer-retirement', 'The checkpoint remains charged to its unresolved worker producer.'), { retirement });
+    reservation.resize(result.retainedBytes); checkpointTransfer.published = true;
+    return Object.freeze({ schema: 'lemmings-owned-simulation-checkpoint/v1', receipt: () => checkpointTransfer.released ? null : checkpointTransfer.value.receipt,
+      read() { if (checkpointTransfer.released || !checkpointTransfer.published) throw simulationFailure('checkpoint-retired', 'This checkpoint no longer has an active independent owner.'); return checkpointTransfer.value.snapshot; },
+      release() { if (checkpointTransfer.released) return false; checkpointTransfer.value = null; reservation.release(); checkpointTransfer.released = true; return true; } });
   };
   try {
     worker = new Worker(new URL('./ProcgenSimulationWorker.js', import.meta.url), { type: 'module', name: 'authoritative-procgen-' + manifest.ownerEpoch });
@@ -143,8 +159,8 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       check(); input = null; send('input-end', { sequence });
     })(); await inputProducer; await timeout(ready, 180000, 'The authoritative world did not finish preparation.'); check();
     return Object.freeze({ mode: 'worker', identity: Object.freeze({ ...manifest }), state: () => latestState, pause: () => request('pause'), resume: () => request('resume'),
-      project, advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
-      diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null, retainedProjections: projections.size,
+      project, detachCheckpoint, advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
+      diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null, retainedProjections: projections.size, checkpointHandoff: checkpointTransfer ? checkpointTransfer.released ? 'released' : checkpointTransfer.published ? 'independently-owned' : 'waiting-for-producer-retirement' : null,
         buildId: execution.buildId, defaultEnabled: false, performanceQualification: 'required-before-default', reservation: reservation.receipt() }), dispose });
   } catch (error) { const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
 }

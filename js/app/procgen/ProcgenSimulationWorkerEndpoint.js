@@ -81,15 +81,23 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
       transferStorage?.release(); inputStorage?.release(); phase = 'closed'; send('retired', { outcome: 'complete' }); close();
     })().catch(error => { try { send('retired', { outcome: 'unknown', error: String(error.message).slice(0, 512) }); } finally { phase = 'closed'; close(); } }); return closing;
   };
-  const sendCheckpoint = async requestId => {
-    const value = await host.checkpoint({ signal: controller.signal });
+  const sendCheckpoint = async (requestId, detached = false) => {
+    let value = await host.checkpoint({ signal: controller.signal, ...(detached ? { maxGraphBytes: 8 * 1048576, maxSemanticBytes: 8 * 1048576 } : {}) });
+    if (detached) {
+      const { hashData } = await import('../../core/CanonicalData.js'), { hashProcgenContinuationCheckpoint, hashProcgenPhysicsCheckpoint } = await import('./workstation/ProcgenCheckpointProvenance.js');
+      const sourceHash = await hashData(value, { maxBytes: 16 * 1048576 - 4096, maxNodes: 1000000 }), continuationHash = await hashProcgenContinuationCheckpoint(value.world), physicsHash = await hashProcgenPhysicsCheckpoint(value.world);
+      controller.signal.throwIfAborted();
+      value = { schema: 'lemmings-owned-simulation-checkpoint/v1', snapshot: value, receipt: { schema: 'lemmings-simulation-checkpoint-receipt/v1', applicationBuildId: identity().buildId,
+        ownerId: manifest.ownerId, ownerEpoch: manifest.ownerEpoch, documentRevision: manifest.documentRevision, worldId: value.boundary.worldId, generation: value.boundary.generation, tick: value.boundary.tick,
+        sourceHash, continuationHash, physicsHash, mode: 'completed-current-runtime-physical-continuation;not-original-PCM-equivalence', paused: true, audio: false, hardware: false } };
+    }
     const transmit = (type, fields, transfers = []) => new Promise((resolve, reject) => {
       if (outputAck) throw simulationFailure('checkpoint-backpressure', 'A checkpoint packet remains leased.');
       const timer = timers.setTimeout(() => { if (outputAck?.sequence === fields.sequence) { outputAck = null; reject(simulationFailure('checkpoint-timeout', 'The checkpoint receiver stopped acknowledging its pages.')); } }, 5000);
       outputAck = { sequence: fields.sequence, resolve: () => { timers.clearTimeout(timer); resolve(); }, reject: error => { timers.clearTimeout(timer); reject(error); } }; send(type, { requestId, ...fields }, transfers);
     });
     await transmit('checkpoint-start', { sequence: 0 }); let sequence = 0;
-    for await (const packet of encodeBackgroundSnapshotPages(value, { maxBytes: 128 * 1048576, maxNodes: 4000000, estimatedPeakBytes: 384 * 1048576, signal: controller.signal })) {
+    for await (const packet of encodeBackgroundSnapshotPages(value, { maxBytes: (detached ? 16 : 128) * 1048576, maxNodes: 4000000, estimatedPeakBytes: 384 * 1048576, signal: controller.signal })) {
       sequence = packet.sequence; await transmit('checkpoint-page', { sequence, packet }, backgroundSnapshotTransfers(packet));
     }
     send('checkpoint-end', { requestId, sequence });
@@ -136,7 +144,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
           try { const value = projection.read(); send('projection', { requestId: request.requestId, value }, [value.cells.buffer]); } finally { projection.release(); }
           return;
         }
-        else if (request.type === 'checkpoint') { if (pumping) await pumping; await sendCheckpoint(request.requestId); return; }
+        else if (request.type === 'checkpoint' || request.type === 'checkpoint-detach') { if (pumping) await pumping; await sendCheckpoint(request.requestId, request.type === 'checkpoint-detach'); return; }
         else throw simulationFailure('host-command-unsupported', 'Unsupported authoritative simulation command.');
         send('response', { requestId: request.requestId, value });
       })(); try { await activeWork; } finally { activeRequest = false; activeWork = null; }

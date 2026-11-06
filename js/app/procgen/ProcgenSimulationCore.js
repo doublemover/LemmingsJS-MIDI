@@ -1,3 +1,4 @@
+import { cloneData } from '../../core/CanonicalData.js';
 import { captureProcgenPausedProjection } from './ProcgenPausedProjection.js';
 import { captureProcgenCheckpointCooperative } from './workstation/ProcgenCheckpoint.js';
 import { simulationFailure, simulationInteger } from './ProcgenSimulationProtocol.js';
@@ -89,14 +90,15 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
       try { return await captureProcgenPausedProjection(world, { ...viewport, resourceBudget, signal, isCurrent: () => !disposed && !failed && isCurrent() }); }
       finally { projecting = false; capturing = false; publish(); }
     },
-    async checkpoint({ signal, isCurrent = () => true, onSlice } = {}) {
+    async checkpoint({ signal, isCurrent = () => true, onSlice, maxGraphBytes = 128 * 1048576, maxSemanticBytes = 32 * 1048576 } = {}) {
       check(); if (!paused) throw simulationFailure('checkpoint-needs-pause', 'Pause at a completed tick before capturing an authoritative continuation.');
       capturing = true; publish(); const tick = world.tickIndex, generation = world.generation;
       try {
-        const checkpoint = await captureProcgenCheckpointCooperative(world, { signal, onSlice, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation });
+        const checkpoint = await captureProcgenCheckpointCooperative(world, { signal, onSlice, maxGraphBytes, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation });
         signal?.throwIfAborted(); if (disposed || !isCurrent()) throw simulationFailure('checkpoint-stale', 'The simulation checkpoint owner changed.');
-        const semantic = engine ? await engine.snapshotCooperative({ signal, onSlice, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation }) : null;
+        const semantic = engine ? await engine.snapshotCooperative({ signal, onSlice, maxBytes: maxSemanticBytes, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation }) : null;
         return Object.freeze({ world: checkpoint, engine: semantic, timeline: clock?.snapshot() || null, performance: getPerformance(),
+          authoring: cloneData({ graph: world.physicalAuthoring?.graph || null, instances: world.physicalAuthoring?.instances || [], junctions: world.physicalJunctions?.definitions || [] }, { maxBytes: 4 * 1048576, maxNodes: 262144 }),
           replay: Object.freeze({ version: 2, playing, bpm, scoreTimeline }), boundary: state() });
       } finally { capturing = false; publish(); }
     },
