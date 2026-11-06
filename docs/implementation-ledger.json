@@ -7044,5 +7044,42 @@
       "The retained cavity dynamic import error is avoided for canonical snapshots by an isolated eager kernel; three actual cavity render journeys pass. The trace did not identify a definitive underlying network/browser cause for the broad DSP graph.",
       "Four concrete cue cleanup fault regressions are frontloaded separately; cue owner cleanup changes are the next development batch."
     ]
+  },
+  "continuation456": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Publish the source-bound native profile cohort and all51 local engine journeys; correct the new tool to its directly declared browser API package.",
+    "evidence": {
+      "path": "docs/validation/native-audio-profiles-and-ci-repairs-2026-11-05.json",
+      "bytes": 291461,
+      "sha256": "3e3026165cdc7857425b7e1d1f3bdb63eda950e1b6a751c6208d5c6a1f3e3411"
+    },
+    "validation": {
+      "nativeEngineJourneys": 51,
+      "nativeClockTargetsAndTolerancesUnchanged": true,
+      "actualAudioEngines": 2,
+      "explicitWindowsWebkitConstructorAbsence": true,
+      "profileContexts": 6,
+      "profileSamples": 18,
+      "sampleIntervalMs": 5000,
+      "activeSemanticVoices": 64,
+      "actualSampleRate": 48000,
+      "allContextsRetired": true,
+      "dependencyCheck": "passed",
+      "postImportCorrectionNodeCases": 20,
+      "sameInstalledBrowserObjects": true,
+      "wholeSourceCi": "pending; preceding0efmainstopsattransitiveimport"
+    },
+    "source": {
+      "measuredCommit": "0ef02c3f57d6acc9c4c913d4f89801ce5115e16e",
+      "browserDigest": "b27c181f4e9a69c52232775fa72d39675454c77b91f142886d4822bbf9121264",
+      "workerFiles": 308,
+      "workerDigest": "faa29153ba01e6719371b4dc35d1e8fdf8ad9f50a2cab93ffb6f96969540b512"
+    },
+    "remaining": [
+      "Fresh whole-source/Linux CI remains required; Windows WebKit absence is not actual native audio qualification.",
+      "Profile cohorts are not exclusive DSP CPU, full-world capacity, acoustic latency or universal performance ordering.",
+      "Seven cue-cleanup fault cases and a bounded captured-listener owner are frontloaded for the next source batch; they are separate from this publication."
+    ]
   }
 }

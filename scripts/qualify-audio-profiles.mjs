@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { chromium, firefox, webkit } from 'playwright';
+import { chromium, firefox, webkit } from '@playwright/test';
 import { withBoundaryServer } from './run-browser-boundaries.js';
 import { collectBrowserRuntimeClosure } from './BrowserRuntimeClosure.js';
 import { createBrowserProcessCpuObserver, compareBrowserProcessCpu, summarizeProfileSamples } from './BrowserProcessCpu.js';
