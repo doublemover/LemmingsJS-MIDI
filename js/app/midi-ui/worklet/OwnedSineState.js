@@ -182,3 +182,27 @@ export function* writeOwnedKernelStateChunks(kernel, destination, identity) {
   return Object.freeze({ abi: SINE_STATE_ABI, frame: kernel.lastFrame, bytes: length, sampleRate: kernel.sampleRate, maxVoices: kernel.maxVoices,
     futureCommands: kernel.queueLength, pendingReceipts: kernel.receiptCount, equivalence: 'same-artifact-rate-and-profile', validation: 'captured-awaiting-independent-validation', ...identity });
 }
+
+export function* restoreOwnedStateArrayChunks(source, offset, array) {
+  const width = array.BYTES_PER_ELEMENT, view = new DataView(source.buffer, source.byteOffset, source.byteLength), step = OWNED_STATE_CHUNK_BYTES / width;
+  for (let start = 0; start < array.length; start += step) {
+    for (let index = start, end = Math.min(array.length, start + step); index < end; index++) {
+      const at = offset + index * width, value = array instanceof Float64Array ? view.getFloat64(at, true) : array instanceof Float32Array ? view.getFloat32(at, true) : array instanceof Uint32Array ? view.getUint32(at, true) : view.getUint8(at);
+      if (!Number.isFinite(value)) fail('Prepared DSP state contains nonfinite storage.'); array[index] = value;
+    }
+    yield;
+  }
+}
+// The renderer calls this only after exclusive transfer of a worker-restored cut
+// and completion of its transport checksum, while the new source is muted.
+export function* restorePreparedOwnedKernelStateChunks(kernel, source, identity) {
+  const { WIDTH, VOICE, ACTIVE, MIX, COUNTERS, RECEIPT, LANES, PENDING, GAIN, bytes: length } = layoutFor(kernel.width);
+  inspectKernel(kernel); inspectIdentity(identity); const view = viewFor(source, length);
+  if (view.getUint32(0, true) !== 0x31534e4c || view.getUint32(4, true) !== 5 || view.getUint32(8, true) !== length || view.getUint32(12, true) !== kernel.maxVoices || view.getFloat64(16, true) !== kernel.sampleRate || view.getUint32(120, true) !== identity.graphRevision || view.getUint32(124, true) !== (WIDTH === 18 ? 0 : WIDTH)) fail('Prepared DSP core identity differs.');
+  for (let field = 0; field < identityFields.length; field++) for (let index = 0; index < 32; index++) if (view.getUint8(56 + field * 32 + index) !== parseInt(identity[identityFields[field]].slice(index * 2, index * 2 + 2), 16)) fail('Prepared DSP artifact or patch differs.');
+  for (const [offset, array] of [[QUEUE, kernel.queue], [VOICE, kernel.voice], [MIX, kernel.mix], [COUNTERS, kernel.counters], [RECEIPT, kernel.receipts], [LANES, kernel.laneRoutes], [PENDING, kernel.pendingLanes], [GAIN, kernel.gainControl], [ACTIVE, kernel.active]]) yield* restoreOwnedStateArrayChunks(source, offset, array);
+  kernel.lastFrame = view.getFloat64(24, true); kernel.lastPacket = view.getFloat64(32, true); kernel.queueLength = view.getUint32(40, true); kernel.receiptCount = view.getUint32(44, true); kernel.nonfinite = 0; kernel.panicPending = !!view.getUint32(52, true);
+  kernel.displayTokens.fill(0); kernel.displayState.fill(0); kernel.displayData.fill(0); kernel.displayCount = 0;
+  kernel.displayEnabled = kernel.displayReady = false; kernel.displayInterval = kernel.displayNext = kernel.displayRevision = kernel.displaySequence = kernel.displayDropped = 0;
+  return Object.freeze({ abi: SINE_STATE_ABI, frame: kernel.lastFrame, futureCommands: kernel.queueLength, pendingReceipts: kernel.receiptCount, displaySubscriptions: 'new-observation-required' });
+}

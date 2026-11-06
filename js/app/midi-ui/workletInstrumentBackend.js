@@ -634,7 +634,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const outcome = command(UPDATE, targetFrame, voice, { 15: 8, 18: segment.firstOutputFrame, 19: segment.endOutputFrame, 20: segment.firstSourceFrame,
       21: segment.endSourceFrame, 22: segment.sequence, 23: SAMPLE_CURSOR_DISCONTINUITIES.indexOf(discontinuity) });
     if (outcome.status === 'accepted') { frontier.lastSequence = segment.sequence; frontier.lastEndFrame = segment.endOutputFrame; frontier.lastEndPosition = segment.endSourceFrame;
-      if (discontinuity !== 'continuous') frontier.lastSeekFrame = targetFrame; voice.positionCommands.add(outcome.sequence); }
+      if (discontinuity !== 'continuous') { frontier.lastSeekFrame = targetFrame; frontier.lastSeekFrameIsInitial = false; } voice.positionCommands.add(outcome.sequence); }
     return outcome;
   };
   const updateSamplePosition = (...args) => queueSamplePosition(...args);

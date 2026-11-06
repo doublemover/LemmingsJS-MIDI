@@ -7762,5 +7762,32 @@
       "Stage the prepared source into a new sink epoch with bounded restore work, frame/token rebinding and explicit activation.",
       "Coordinate canonical checkpoint plus whole-graph effect continuation and expose seek/clone publication."
     ]
+  },
+  "continuation476": {
+    "date": "2026-11-06",
+    "agent": "rook",
+    "issues": [
+      1138,
+      1018,
+      1089
+    ],
+    "scope": "Implement bounded staged source restoration, worker-backed continuation tickets and explicit source/audio frame conversions.",
+    "implementation": [
+      "New muted source staging checks the exclusively transferred prepared buffer incrementally, restores core/source arrays in bounded 32 KiB bulk steps and separately chunks sample cursor rehydration. It restores the kernel frame, envelope age, phase, PRNG/source memory, gain slew and future command heap without invoking another onset.",
+      "Staged processors remain muted until explicit block activation. Activation rebinds captured lane tokens to current source buses and publishes the actual source/audio frame offset. Renderer-local source time remains independent of the new AudioContext frame origin.",
+      "Main-thread preparation returns an opaque owned ticket from the actual worker operation. A ticket cannot be reused or released while a renderer owns its transferred buffer. The existing cut remains available for another independently admitted branch preparation.",
+      "Frame conversion maps only declared absolute output-frame fields; it preserves durations, world/source coordinates and source-frame cursors. Host onset/control, future-command, lease, contact/traversal and note-age frontiers have explicit conversion rules.",
+      "Preparation accepts source-profile slot capacities rather than assuming every engine has 64 slots, and compares executable runtime identity without treating a deployment URL as immutable DSP identity."
+    ],
+    "validation": {
+      "format": "passed",
+      "functionalTests": "deferred until all remaining development is implemented",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Finish the main sink owner: reconstitute execution/voice/queue ownership from the prepared ticket, apply frame conversion at serialization and publish activation only under current opaque execution bindings.",
+      "Connect coordinated source/effect cuts to canonical take checkpoints and seek/clone UI ownership.",
+      "Run the consolidated runtime/audio/browser qualification batch after remaining features are implemented."
+    ]
   }
 }

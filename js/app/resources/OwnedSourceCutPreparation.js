@@ -13,7 +13,7 @@ export async function prepareOwnedSourceCut({ definition, descriptor, metadata, 
   if (metadata?.schema !== 'lemmings-live-source-cut/v1' || metadata.sourceClock !== 'frozen-at-detached-block-boundary' || metadata.effects !== 'not-included-source-cut-only' || !cut || !host ||
       ![44100, 48000, 96000].includes(cut.sampleRate) || !natural(cut.frame) || !natural(cut.maxVoices, profile.voices) || cut.maxVoices < 1 || !natural(cut.graphRevision, 0xffffffff) ||
       cut.engineArtifactHash !== descriptor.artifactHash || cut.patchDefinitionHash !== await hashData(definition) || host.engineId !== profile.id || host.patchId !== patch.id || host.patchRevision !== patch.revision ||
-      !equal(host.runtime, profile.runtime) || !equal(metadata.runtime, { engineArtifactHash: cut.engineArtifactHash, patchDefinitionHash: cut.patchDefinitionHash, graphRevision: cut.graphRevision }) ||
+      !['engineId', 'engineVersion', 'buildId', 'runtimeABI', 'stateTransferProtocol'].every(key => host.runtime?.[key] === profile.runtime[key]) || !equal(metadata.runtime, { engineArtifactHash: cut.engineArtifactHash, patchDefinitionHash: cut.patchDefinitionHash, graphRevision: cut.graphRevision }) ||
       !(bytes instanceof Uint8Array) || !(bytes.buffer instanceof ArrayBuffer) || bytes.byteOffset || bytes.byteLength !== bytes.buffer.byteLength || bytes.length !== cut.bytes || bytes.length > 16 * 1048576)
     fail('exact pinned engine, patch, rate, graph and source cut are required');
   signal?.throwIfAborted();
@@ -25,7 +25,7 @@ export async function prepareOwnedSourceCut({ definition, descriptor, metadata, 
   const identity = { engineArtifactHash: descriptor.artifactHash, patchDefinitionHash: cut.patchDefinitionHash, graphRevision: cut.graphRevision };
   const restored = kernel.restoreFrom(bytes, identity); if (restored.frame !== cut.frame || kernel.stateByteLength() !== bytes.length || restored.abi !== cut.abi) fail('source state frontier or ABI differs');
   if (!Array.isArray(host.voices) || host.voices.length > cut.maxVoices || !Array.isArray(host.epochs) || host.epochs.length > 64 || !Array.isArray(host.inFlight) || host.inFlight.length > 512 ||
-      !natural(host.commandSequence) || !natural(host.packetSequence) || host.packetSequence !== kernel.lastPacket || !natural(host.nextEpoch) || !Array.isArray(host.slotTokens) || host.slotTokens.length !== 64 || host.slotTokens.some(value => !natural(value, 0xffffffff)) ||
+      !natural(host.commandSequence) || !natural(host.packetSequence) || host.packetSequence !== kernel.lastPacket || !natural(host.nextEpoch) || !Array.isArray(host.slotTokens) || host.slotTokens.length !== profile.voices || host.slotTokens.some(value => !natural(value, 0xffffffff)) ||
       !Array.isArray(host.laneIdentities) || host.laneIdentities.length > 4096) fail('invalid producer ownership inventory');
   const epochs = new Map(), epochTokens = new Set(), lanes = new Set(), laneTokens = new Set();
   for (const pair of host.epochs) { if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== 'string' || !pair[0] || pair[0].length > 512 || !natural(pair[1]) || !pair[1] || epochs.has(pair[0]) || epochTokens.has(pair[1]) || pair[1] > host.nextEpoch) fail('invalid source epoch binding'); epochs.set(...pair); epochTokens.add(pair[1]); }

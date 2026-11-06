@@ -191,6 +191,12 @@ export class OwnedSampleSource {
       yield;
     }
   }
+  *rehydrateStateChunks() {
+    for (let start = 0; start < this.cursors.length; start += 128) {
+      for (let index = start, end = Math.min(this.cursors.length, start + 128); index < end; index++) if (this.cursors[index]) for (let field = 0; field < SCALARS; field++) this.cursors[index][OWNED_SAMPLE_CURSOR_SCALARS[field]] = this.cursorScalars[index * SCALARS + field];
+      yield;
+    }
+  }
   rehydrateState() {
     for (let index = 0; index < this.cursors.length; index++) if (this.cursors[index]) for (let field = 0; field < SCALARS; field++) this.cursors[index][OWNED_SAMPLE_CURSOR_SCALARS[field]] = this.cursorScalars[index * SCALARS + field];
   }
