@@ -144,7 +144,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const operationalExecution = getActiveExecutionIdentity('browser-native-audio');
   let operationalLessonAvailable = operationalExecution.activeExecution === 'bound' && ['worklet-sine', 'worklet-pluck'].every(id => operationalExecution.instrumentArtifacts?.some(artifact => artifact.engineId === id));
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
-  const sessionIdentities = new WeakMap();
+  const sessionIdentities = new WeakMap(), sessionAdoptions = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let recoveredDocument = null;
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
@@ -1088,16 +1088,27 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   /** @param {{session?: import('./ProcgenBoundaryContracts.js').SessionBindingSource, historyRestore?: boolean}} options */
   const bindRuntime = ({ session, historyRestore = false } = {}) => {
     if (disposed) return null;
-    if (legacy.local.setPerformanceDocumentIdentity) legacy.local.setPerformanceDocumentIdentity('workstation:' + documentGeneration);
-    else legacy.local.audio?.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
-    ports.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
     let sessionIdentity = null;
     if (session) { sessionIdentity = sessionIdentities.get(session); if (!sessionIdentity) { sessionIdentity = Object.freeze({}); sessionIdentities.set(session, sessionIdentity); } }
     const next = runtime(); if (!next || (next === boundRuntime && sessionIdentity === boundSession)) return next;
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
+    const boundProject = session ? sealMidiProjectSnapshot(isCanonicalMidiProject(session.project) ? session.project : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(session.project)))) : project;
+    if (session && sessionAdoptions.get(sessionIdentity) !== next) {
+      project = boundProject; documentGeneration++; projectRevision++; editRevision++;
+      Object.assign(legacy.settings, session.settings, { workstation: true }); acceptWorldSettings(legacy.settings); lastLegacySpeed = legacy.settings.speed;
+      Object.assign(state, session.ui || {}, { hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, inputId: null, clockOutputId: null });
+      if (!procgenLane(project.procgen.lanes, state.laneId)) state.laneId = project.procgen.lanes[0].id;
+      state.slot = Math.max(0, Math.min(3, state.slot || 0)); state.step = Math.max(0, Math.min((selected().patterns?.[state.slot]?.length || 1) - 1, state.step || 0));
+      savedName = session.name; lastHistoryGroup = null; sessionAdoptions.set(sessionIdentity, next);
+      if (!historyRestore) { documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; undo.length = 0; redo.length = 0; }
+    }
+    if (legacy.local.setPerformanceDocumentIdentity) legacy.local.setPerformanceDocumentIdentity('workstation:' + documentGeneration);
+    else legacy.local.audio?.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
+    ports.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
+    if (session) { setLegacyProject(project); if (!historyRestore) physicalHistory.clear(); trimHistory(); }
     recoveryAbort?.abort(); soundTransactions.cancel('The physical playback owner changed.');
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; laneDisplayWorldEpoch++; boundRuntime = next; boundSession = sessionIdentity;
-    const boundProject = session?.project || project; let bindingSession = !!session;
+    let bindingSession = !!session;
     const playbackProject = () => bindingSession ? boundProject : project;
     try {
       next.world?.configurePhysicalAuthoring?.(boundProject.procgen.physicalGraph, boundProject.procgen.fragmentInstances || []);
@@ -1107,7 +1118,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const physicalBus = next.world?.soundEvents?.onBatch;
       physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
       if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-      let physicalDocumentEpoch = documentGeneration;
+      const physicalDocumentEpoch = documentGeneration;
       const onPhysicalReceipt = receipt => {
         if (physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
         physicalLessonView?.observeReceipt(receipt, physicalDocumentEpoch);
@@ -1202,23 +1213,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       unhookRouter = () => { unsubscribeRouter?.(); previewRouterBinding?.release(); previewRouterBinding = null; attachedPreviewRouter = null; };
       attachRouter(next.view?.midiPreviewRouter);
       if (session) {
-        ports.configure({ recording: false, thru: false });
-        documentGeneration++;
-        physicalDocumentEpoch = documentGeneration;
+        ports.configure({ recording: false, thru: false, schedulerConfig: projectToMidiConfig(project) });
         if (legacy.local.getState().selectedBackend === 'midi') legacy.local.stop?.();
         cancelInputEdits('project loaded');
         if (!historyRestore) { documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; }
         suppressPersistence = true;
         try {
-          syncProject(session.project, { history: false, render: false, restoringWorld: true }); Object.assign(legacy.settings, session.settings, { workstation: true });
-          acceptWorldSettings(legacy.settings);
-          lastLegacySpeed = legacy.settings.speed;
-          Object.assign(state, session.ui || {}, { hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
+          getPointerGestureArbiter(document).revalidate(); engine.cancelPendingAdmissions(); macroGestures.reconcile(); soundTransactions.reconcile();
           transport.restore(session.project?.procgen?.sceneOrigin ? { ...session.transport, playing: false } : session.transport); engine.restore(session.patterns); pendingResume = true;
-          if (!historyRestore) { undo.length = 0; redo.length = 0; physicalHistory.clear(); }
           if (session.camera) renderer()?.camera?.applyState?.(session.camera);
         } finally { suppressPersistence = false; }
-        storageStatus(); view?.recording?.(false, recordingViewState(ports.getState())); status(historyRestore ? 'Physical history restored at its checkpoint, paused.' : 'Project loaded paused. Press Play to resume.');
+        storageStatus(); refreshSceneCue(); view?.recording?.(false, recordingViewState(ports.getState())); status(historyRestore ? 'Physical history restored at its checkpoint, paused.' : 'Project loaded paused. Press Play to resume.');
       }
       bindingSession = false; prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
       const timer = next.world?.timer; if (timer) timer.speedFactor = transport.getState().effectiveSpeed;
@@ -1664,7 +1669,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         session = { ...session, project: conversion.project, patterns: null, physicalTimeline: null, physicalState: null };
       }
       if (session.physicalTimeline) createProcgenPhysicalScoreClock().restore(session.physicalTimeline);
-      validatedProject = createProcgenWorkstationProject(sanitizeMidiProject(session.project));
+      validatedProject = sealMidiProjectSnapshot(markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(session.project))));
       if (validatedProject.procgen.lanes.length !== session.world.laneCount) throw new Error('Project lanes and world checkpoint do not match.');
       const preparedEngine = createProcgenPatternEngine({ getProject: () => validatedProject, now });
       if (session.patterns) preparedEngine.restore(session.patterns);

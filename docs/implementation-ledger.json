@@ -7468,5 +7468,33 @@
       "Execute the consolidated final regression/native batch before claiming these frontiers qualified.",
       "The teardown defect is established by source inspection here; no original-version runtime reproduction or native device failure is claimed."
     ]
+  },
+  "continuation467": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "issues": [
+      1048,
+      1120
+    ],
+    "scope": "Adopt the prepared loaded project, document metadata and history at the accepted world frontier before external consumer binding.",
+    "implementation": [
+      "Load validates and seals its candidate project before restarting the world. Binding adopts that exact canonical project, document generation/revisions, name, settings, UI selection and reset history before output identity callbacks, outgoing adapter retirement or physical consumer creation.",
+      "An accepted session/runtime pair records adoption before callback publication, so an early failed binding retry cannot allocate another document revision. Physical playback and performance identity use the adopted document generation.",
+      "Explicit post-adoption synchronization retains pattern/transport restore, canonical macro/input reconciliation, scheduler configuration, scene cue, camera and UI publication. A later binding failure leaves current project/name/history matching the committed world and the load error path pauses output.",
+      "Source regressions cover six early/late callback failures, pre-publication restart refusal, early binding retry and a prior finalizing save acknowledged after successful load."
+    ],
+    "validation": {
+      "format": "passed",
+      "criticalTypes": "passed",
+      "functionalTests": "intentionally deferred until remaining backlog development is implemented per user instruction",
+      "newRegressionSource": "test/workstation-session-adoption.test.js",
+      "nativeExecution": "not run",
+      "fullSuiteExecution": "not run",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Execute the consolidated controller/native qualification; source inspection is not an executed historical repro.",
+      "Transport and engine publication failure frontiers and native consumer retirement remain distinct; matching canonical project/world does not prove every consumer bound successfully."
+    ]
   }
 }
