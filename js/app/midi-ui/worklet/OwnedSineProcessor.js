@@ -2,6 +2,7 @@
 // Storage is fixed at construction; process() inspects the supplied block size.
 import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState, writeOwnedSourceStateChunks, restorePreparedOwnedSourceStateChunks } from './OwnedSourceState.js';
 import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState, writeOwnedKernelStateChunks, restorePreparedOwnedKernelStateChunks, OWNED_STATE_CHUNK_BYTES } from './OwnedSineState.js';
+import { claimOwnedStateCopy, releaseOwnedStateCopy } from './OwnedStateCopyBudget.js';
 import { SINE_LAYOUT, LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL, LIVE_LANE_ID_LIMIT } from '../OwnedSourceLayout.js';
 const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
 const PERFORMANCE_GAIN = 65536;
@@ -383,7 +384,7 @@ class OwnedSineProcessor extends ProcessorBase {
     this.port.onmessage = event => {
       const data = event.data;
       if (data?.type === 'retire-processor' && data.protocol === PROTOCOL && data.retirementProtocol === 1 && Number.isSafeInteger(data.retirementId) && data.retirementId > 0) {
-        const frame = this.kernel.lastFrame; this.retired = true; this.stateCut = this.stateRestore = null; this.kernel = null; this.laneTaps = null; this.port.onmessage = null;
+        const frame = this.kernel.lastFrame; releaseOwnedStateCopy(this.stateCut); releaseOwnedStateCopy(this.stateRestore); this.retired = true; this.stateCut = this.stateRestore = null; this.kernel = null; this.laneTaps = null; this.port.onmessage = null;
         this.port.postMessage({ type: 'processor-retired', protocol: PROTOCOL, retirementProtocol: 1, retirementId: data.retirementId, stage: 'processor-state-released', frame, renderingContinues: false }); return;
       }
       if (data?.type === 'source-state-restore' && data.stateTransferProtocol === 1 && Number.isSafeInteger(data.requestId) && data.requestId > 0) {
@@ -416,7 +417,7 @@ class OwnedSineProcessor extends ProcessorBase {
         this.stateCut.destination = data.bytes; this.stateCut.targetAudioFrame = data.targetAudioFrame ?? null; this.stateCut.phase = 'pending'; return;
       }
       if (data?.type === 'source-state-cancel' && data.stateTransferProtocol === 1 && this.stateCut?.requestId === data.requestId) {
-        const cut = this.stateCut; this.stateCut = cut.phase === 'offered' ? null : { phase: 'detached', requestId: cut.requestId };
+        const cut = this.stateCut; releaseOwnedStateCopy(cut); this.stateCut = cut.phase === 'offered' ? null : { phase: 'detached', requestId: cut.requestId };
         this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: cut.requestId, reason: 'source-state-transfer-cancelled', ...(cut.destination ? { bytes: cut.destination } : {}) }, cut.destination ? [cut.destination.buffer] : []); return;
       }
       if (this.stateCut && this.stateCut.phase !== 'offered') { this.port.postMessage({ type: 'source-state-fenced', stateTransferProtocol: 1, requestId: this.stateCut.requestId }); return; }
@@ -482,15 +483,16 @@ class OwnedSineProcessor extends ProcessorBase {
       } else {
         for (const output of outputs) for (const channel of output) channel.fill(0);
         try {
+          if (['checking', 'restoring'].includes(restore.phase) && !claimOwnedStateCopy(restore, globalThis.currentFrame, this.lastAudioBlockFrames)) return true;
           if (restore.phase === 'checking') {
             const end = Math.min(restore.bytes.length, restore.cursor + OWNED_STATE_CHUNK_BYTES);
             while (restore.cursor < end) restore.checksum = Math.imul(restore.checksum ^ restore.bytes[restore.cursor++], 16777619);
             if (restore.cursor === restore.bytes.length) { if ((restore.checksum >>> 0) !== restore.expectedChecksum) throw new Error('Source transfer checksum differs.'); restore.phase = 'restoring'; restore.iterator = this.kernel.restorePreparedChunks(restore.bytes, restore.identity); }
           } else if (restore.phase === 'restoring') {
-            const step = restore.iterator.next(); if (step.done) { const bytes = restore.bytes; restore.bytes = restore.iterator = null; restore.phase = 'prepared'; this.port.postMessage({ type: 'source-state-staged', stateTransferProtocol: 1, requestId: restore.requestId, cut: step.value, bytes, blockFrame: globalThis.currentFrame, blockFrames: outputs[0]?.[0]?.length || 0 }, [bytes.buffer]); }
+            const step = restore.iterator.next(); if (step.done) { releaseOwnedStateCopy(restore); const bytes = restore.bytes; restore.bytes = restore.iterator = null; restore.phase = 'prepared'; this.port.postMessage({ type: 'source-state-staged', stateTransferProtocol: 1, requestId: restore.requestId, cut: step.value, bytes, blockFrame: globalThis.currentFrame, blockFrames: outputs[0]?.[0]?.length || 0 }, [bytes.buffer]); }
           }
         } catch {
-          const bytes = restore.bytes; this.stateRestore = { phase: 'failed', requestId: restore.requestId };
+          releaseOwnedStateCopy(restore); const bytes = restore.bytes; this.stateRestore = { phase: 'failed', requestId: restore.requestId };
           this.port.postMessage({ type: 'source-restore-error', stateTransferProtocol: 1, requestId: restore.requestId, reason: 'source-staging-failed', ...(bytes ? { bytes } : {}) }, bytes ? [bytes.buffer] : []);
         }
         return true;
@@ -507,12 +509,14 @@ class OwnedSineProcessor extends ProcessorBase {
         for (let index = 0; index < this.kernel.queueLength; index++) { const at = index * this.kernel.width; if (this.kernel.queue[at + 3] === BEGIN) cut.tokens[this.kernel.queue[at + 4]] = this.kernel.queue[at + 5]; }
       }
       if (cut.phase === 'copying') try {
+        if (!claimOwnedStateCopy(cut, globalThis.currentFrame, this.lastAudioBlockFrames)) return true;
         const step = cut.iterator.next(); if (step.done) {
+          releaseOwnedStateCopy(cut);
           const bytes = cut.destination; this.stateCut = { phase: 'detached', requestId: cut.requestId };
           this.port.postMessage({ type: 'source-state-complete', stateTransferProtocol: 1, requestId: cut.requestId, bytes, cut: step.value, audioFrame: cut.audioFrame, voiceTokens: cut.tokens, sourceClock: 'frozen-at-detached-block-boundary' }, [bytes.buffer, cut.tokens.buffer]);
         }
       } catch {
-        const bytes = cut.destination; this.stateCut = { phase: 'detached', requestId: cut.requestId };
+        releaseOwnedStateCopy(cut); const bytes = cut.destination; this.stateCut = { phase: 'detached', requestId: cut.requestId };
         this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: cut.requestId, reason: 'source-state-copy-failed', bytes }, [bytes.buffer]);
       }
       return true;

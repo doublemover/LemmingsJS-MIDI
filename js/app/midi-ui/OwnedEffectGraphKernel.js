@@ -1,3 +1,4 @@
+import { assertMembraneStrikeKernelContinuation } from './MembraneStrikeContinuation.js';
 import { OWNED_STATE_BUNDLE_HEADER, writeOwnedStateBundle, readOwnedStateBundle, ownedStateTransferBytes } from './worklet/OwnedStateBundle.js';
 import { verifyResonatorBlendKernelProfile } from '../../midi/content/ResonatorBlendProfile.js';
 import { PairedModalBodyKernel } from './worklet/PairedModalBodyKernel.js';
@@ -175,8 +176,10 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
   };
   return Object.freeze({ plan, hash, sample, update, stateByteLength, snapshotInto, restoreFrom, validateUpdate: (id, values) => update(id, values, false), tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
     componentStateInventory: () => Object.freeze(stateEntries.map(entry => Object.freeze({ nodeId: entry.nodeId, kind: entry.kind, bytes: entry.bytes }))),
-    validateDetachedComponentStates(components) {
+    validateDetachedComponentStates(components, hostState = null, audioFrame = null) {
       if (frame || validationOnly || !Array.isArray(components) || components.length !== stateEntries.length || new Set(components.map(row => row?.nodeId)).size !== components.length) fail('effect-detached-component-inventory', 'Use a fresh validation graph and every exact detached component.');
+      if (hostState !== null && (hostState.schema !== 'lemmings-native-effect-host-cut/v1' || hostState.audioFrame !== audioFrame || !Array.isArray(hostState.bodies) ||
+          hostState.bodies.length !== records.filter(record => record.entry.membrane).length || new Set(hostState.bodies.map(row => row?.nodeId)).size !== hostState.bodies.length)) fail('effect-detached-body-host', 'The finite-strike host inventory must match its complete graph.');
       validationOnly = true; const indexed = new Map(components.map(row => [row.nodeId, row])), validated = [];
       for (const entry of stateEntries) {
         const row = indexed.get(entry.nodeId);
@@ -186,6 +189,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         const host = row.hostState, keys = entry.kind === 'feedback-delay' ? ['lastRequestedDelay'] : entry.kind === 'spectral-freeze' ? ['reportedCapture', 'started'] : entry.kind === 'envelope-detector' ? ['sourceOverride'] : ['multiband-vocoder', 'ring-modulator'].includes(entry.kind) ? ['carrierOverride', 'donorOverride'] : [];
         if (!host || Object.getPrototypeOf(host) !== Object.prototype || Object.keys(host).length !== keys.length || keys.some(key => !Object.hasOwn(host, key)) || Object.keys(host).some(key => !keys.includes(key))) fail('effect-detached-host-state', 'Processor host state differs from its exact wrapper inventory.');
         if ('lastRequestedDelay' in host && (!Number.isFinite(host.lastRequestedDelay) || host.lastRequestedDelay < entry.kernel.minimumDelayFrames || host.lastRequestedDelay > entry.kernel.maxDelayFrames) || 'reportedCapture' in host && (host.reportedCapture !== entry.kernel.captureSerial || typeof host.started !== 'boolean') || ['sourceOverride', 'donorOverride', 'carrierOverride'].some(key => key in host && host[key] !== null && typeof host[key] !== 'boolean')) fail('effect-detached-host-state', 'Invalid processor input, analysis or requested-delay frontier.');
+        if (hostState !== null && entry.kind === 'rectangular-membrane') assertMembraneStrikeKernelContinuation(hostState.bodies.find(body => body.nodeId === entry.nodeId)?.state, entry.kernel, audioFrame, row.logicalAudioFrame);
         const bytes = new Uint8Array(entry.bytes); entry.kernel.snapshotInto(bytes); validated.push({ nodeId: entry.nodeId, kind: entry.kind, sourceFrame: row.sourceFrame, bytes });
       }
       return validated;

@@ -1,4 +1,5 @@
 import { ownedStateTransferBytes } from './OwnedStateBundle.js';
+import { claimOwnedStateCopy, releaseOwnedStateCopy } from './OwnedStateCopyBudget.js';
 const PROTOCOL = 1, CHUNK_BYTES = 32768, MAX_BYTES = 48 * 1048576, SMALL_SYNC_BYTES = 524288;
 const exclusive = bytes => bytes instanceof Uint8Array && bytes.buffer instanceof ArrayBuffer && !bytes.byteOffset && bytes.length === bytes.buffer.byteLength;
 const frame = value => Number.isSafeInteger(value) && value >= 0;
@@ -17,13 +18,14 @@ export class OwnedEffectTransfer {
   audioFrame(logicalFrame) { return logicalFrame - this.frameOffset; }
   reply(type, operation, fields = {}, transfers = []) { this.port.postMessage({ type, effectStateProtocol: PROTOCOL, requestId: operation.requestId, ...fields }, transfers); }
   fail(operation, reason) {
+    releaseOwnedStateCopy(operation);
     const bytes = operation.bytes; operation.bytes = operation.iterator = null; operation.phase = 'failed';
     this.reply('effect-state-error', operation, { reason, ...(exclusive(bytes) && bytes.length ? { bytes } : {}) }, exclusive(bytes) && bytes.length ? [bytes.buffer] : []);
   }
   consume(data) {
     if (data?.type === 'dispose' || data?.type === 'panic') {
       if (this.operation && !['empty', 'detached', 'failed'].includes(this.operation.phase)) this.fail(this.operation, 'effect-state-owner-interrupted');
-      if (data.type === 'dispose') this.retired = true; return false;
+      if (data.type === 'dispose') { releaseOwnedStateCopy(this.operation); this.retired = true; } return false;
     }
     if (typeof data?.type !== 'string' || !data.type.startsWith('effect-state-')) return false;
     if (data.effectStateProtocol !== PROTOCOL || !Number.isInteger(data.requestId) || data.requestId < 1 || data.requestId > 0xffffffff || this.retired || !this.supported) return true;
@@ -74,9 +76,10 @@ export class OwnedEffectTransfer {
         operation.iterator = this.chunked ? this.kernel.stateTransfer.writeChunks(operation.bytes) : (function* (kernel, bytes) { kernel.snapshotInto(bytes); return { frame: kernel.frame }; })(this.kernel, operation.bytes);
         operation.phase = 'copying';
       }
+      if (['copying', 'checking', 'restoring'].includes(operation.phase) && !claimOwnedStateCopy(operation, this.blockFrame, this.blockFrames)) return true;
       if (operation.phase === 'copying') {
         const step = operation.iterator.next();
-        if (step.done) { const bytes = operation.bytes; operation.bytes = operation.iterator = null; operation.phase = 'detached';
+        if (step.done) { releaseOwnedStateCopy(operation); const bytes = operation.bytes; operation.bytes = operation.iterator = null; operation.phase = 'detached';
           this.reply('effect-state-complete', operation, { bytes, audioFrame: operation.audioFrame, logicalAudioFrame: operation.logicalAudioFrame, sourceFrame: operation.sourceFrame, hostState: operation.hostState, sourceClock: 'frozen-at-common-audio-block-boundary' }, [bytes.buffer]); }
       } else if (operation.phase === 'checking') {
         const end = Math.min(operation.cursor + CHUNK_BYTES, operation.bytes.length);
@@ -88,6 +91,7 @@ export class OwnedEffectTransfer {
       } else if (operation.phase === 'restoring') {
         const step = operation.iterator.next();
         if (step.done) {
+          releaseOwnedStateCopy(operation);
           if (this.kernel.frame !== operation.sourceFrame) throw new Error('effect-restored-frame-differs');
           this.restoreHostState(operation.hostState); const bytes = operation.bytes; operation.bytes = operation.iterator = null; operation.phase = 'prepared';
           this.reply('effect-state-staged', operation, { bytes, sourceFrame: this.kernel.frame, sourceAudioFrame: operation.sourceAudioFrame, logicalAudioFrame: operation.logicalAudioFrame, blockFrame: this.blockFrame, blockFrames: this.blockFrames }, [bytes.buffer]);

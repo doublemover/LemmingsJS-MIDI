@@ -1,3 +1,4 @@
+import { validateMembraneStrikeContinuation } from './MembraneStrikeContinuation.js';
 import { MEMBRANE_STRIKE_QUEUE_CAPACITY, MEMBRANE_STRIKE_VOICES, MEMBRANE_STRIKE_RECEIPTS } from '../../midi/content/RectangularMembraneProfile.js';
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'EffectGraphError', code });
@@ -58,6 +59,20 @@ export function createMembraneStrikeTransport({ profile, node, context, nodeId, 
     return true;
   };
   return Object.freeze({ enqueue, consume, lastDriveFrame: () => lastDriveFrame,
+    tokenFloor: () => Math.max(0, ...pending.keys()),
+    snapshot(audioFrame) {
+      if (blocked) throw failure('body-strike-quarantined', 'Unresolved finite strikes cannot form an exact cut.');
+      return validateMembraneStrikeContinuation({ schema: 'lemmings-membrane-strike-cut/v1', audioFrame, pending: [...pending.values()], applied, ended, rejected, lastDriveFrame }, profile, audioFrame);
+    },
+    restore(raw, sourceAudioFrame, activationFrame) {
+      if (blocked || pending.size || applied || ended || rejected || lastDriveFrame || !natural(activationFrame)) throw failure('fresh-body-strike-owner-required', 'Restore finite commands only into a fresh unpublished transport.');
+      const state = validateMembraneStrikeContinuation(raw, profile, sourceAudioFrame), shift = activationFrame - sourceAudioFrame;
+      const records = state.pending.map(record => ({ ...record, command: Object.freeze({ ...record.command, frame: record.command.frame + shift }) }));
+      if (records.some(record => !natural(record.command.frame) || !Number.isSafeInteger(record.command.frame + profile.pulses[record.command.pulseIndex].frames))) throw failure('body-strike-frame-underflow', 'The activation frontier cannot represent this continuing finite pulse.');
+      for (const record of records) pending.set(record.command.token, record);
+      applied = state.applied; ended = state.ended; rejected = state.rejected; lastDriveFrame = Math.max(0, state.lastDriveFrame + shift);
+      return { pending: pending.size, retransmitted: false, tokenFloor: Math.max(0, ...pending.keys()) };
+    },
     assertComplete() { if (blocked || pending.size || rejected) throw failure('body-strike-incomplete', 'The body lacks complete applied and ended receipts for every finite strike.'); },
     state: () => ({ blocked, pending: pending.size, applied, ended, rejected, lastDriveFrame }) });
 }

@@ -157,6 +157,7 @@
         "js/app/midi-ui/CausalSineRender.js",
         "js/app/midi-ui/EffectRenderPlan.js",
         "js/app/midi-ui/EffectSourceBindings.js",
+        "js/app/midi-ui/MembraneStrikeContinuation.js",
         "js/app/midi-ui/NativeFmSource.js",
         "js/app/midi-ui/NativeInstrumentSchema.js",
         "js/app/midi-ui/NativeModalSource.js",
@@ -212,6 +213,7 @@
         "js/app/midi-ui/worklet/OwnedSourceState.js",
         "js/app/midi-ui/worklet/OwnedSpectrumProcessor.js",
         "js/app/midi-ui/worklet/OwnedStateBundle.js",
+        "js/app/midi-ui/worklet/OwnedStateCopyBudget.js",
         "js/app/midi-ui/worklet/OwnedTextureProcessor.js",
         "js/app/midi-ui/worklet/OwnedTextureState.js",
         "js/app/midi-ui/worklet/OwnedWindProcessor.js",
@@ -469,8 +471,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 323,
-      "sha256": "9b9b48ff5cdd7572f79395e8751a264bafb2448d4cad46bbb1f796460c1dd1a4"
+      "fileCount": 325,
+      "sha256": "2c9457c29425dc808c03cf27332cc1ac5ebeb6a8d82d861d37e2695cc9b6a288"
     },
     {
       "id": "lemmings-timing-worker-source",

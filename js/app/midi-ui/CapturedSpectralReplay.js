@@ -25,7 +25,15 @@ export function prepareCapturedSpectralReplay({ packets, publication, plan, fram
     }
     let serial = 0, lastEnd = -1, episodeIndex = 0;
     for (const { packet, projected } of packets.filter(item => item.packet.operation === 'spectral-capture' && item.packet.nodeId === nodeId).sort((a, b) => a.packet.spectralCapture.serial - b.packet.spectralCapture.serial)) {
-      const capture = validateSpectralCaptureReceipt(packet.spectralCapture, node.spectral);
+      const original = validateSpectralCaptureReceipt(packet.spectralCapture, node.spectral), offset = packet.spectralFrameOffset ?? 0;
+      if (!Number.isSafeInteger(offset)) fail('effect-spectral-clock-mapping', 'The captured spectral window has an invalid logical clock mapping.');
+      const mapped = { ...original };
+      for (const key of ['requestFrame', 'startFrame', 'endFrame', 'processedThroughFrame']) {
+        mapped[key] -= offset;
+        if (!Number.isSafeInteger(mapped[key]) || mapped[key] < 0) fail('effect-spectral-initial-state-required', 'This continued spectral window requires its initial DSP image or complete prior source history.');
+      }
+      const capture = validateSpectralCaptureReceipt(mapped, node.spectral);
+      if (!serial && capture.serial !== 1 && offset) fail('effect-spectral-initial-state-required', 'A continued capture sequence requires its initial spectral image; cleared-memory replay is unavailable.');
       if (packet.executionEpoch !== publication.executionEpoch || projected.origin !== frameOrigin || packet.sampleRate !== sampleRate || capture.serial !== ++serial || capture.endFrame <= lastEnd) fail('effect-spectral-window-history', 'Spectral windows mix clock owners or omit/duplicate a capture serial.'); lastEnd = capture.endFrame;
       while (episodeIndex < episodes.length && episodes[episodeIndex].stop <= capture.requestFrame) episodeIndex++;
       const source = episodes[episodeIndex];

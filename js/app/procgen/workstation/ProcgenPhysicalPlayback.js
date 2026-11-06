@@ -131,7 +131,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   const captureEffect = effectCapture.capture;
   let unsubscribeEffectReceipts = null;
   const observeEffectReceipt = receipt => {
-    if (!disposed && receipt.status === 'accepted' && receipt.stage === 'spectral-capture-applied') captureEffect('spectral-capture', receipt, { nodeId: receipt.nodeId, spectralCapture: receipt.spectralCapture });
+    if (!disposed && receipt.status === 'accepted' && receipt.stage === 'spectral-capture-applied') captureEffect('spectral-capture', receipt, { nodeId: receipt.nodeId, spectralCapture: receipt.spectralCapture, spectralFrameOffset: receipt.spectralFrameOffset ?? 0 });
   };
   const prepareEffectGraph = async (definition, options) => { if (!session?.prepareEffectGraph) throw new Error('Physical owner effects are unavailable.');
     const result = await session.prepareEffectGraph(definition, options), state = session.getEffectPerformanceState?.();

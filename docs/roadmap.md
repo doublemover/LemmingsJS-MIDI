@@ -10835,3 +10835,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Extend the live source cut handshake with an explicit future audio-frame target and reported block grid, while preserving the source’s independent continuation-frame offset. Missed/unsupported boundaries fail before a false common-frame claim.
 - Let source detachment wait for a bounded, abortable dependent graph-capture barrier before retiring the old renderer. Returned-buffer failures still retire a transferred/fenced producer and retain unresolved producer ownership appropriately.
 - Carry actual audio frame/offset through source metadata and worker preparation checks. Aggregate graph/host/source publication and receipt ownership remain the next production integration; no functional tests run.
+
+
+### 2026-11-06 — Rook continuation518: aggregate live effect continuation ownership
+
+- Connect native graph capture, independent cut leases, worker-prepared staging, exact common-frame activation and producer retirement through one bounded owner. Capture every owned processor/alignment node and its automation at one declared output frame; refuse hidden native convolution state. Fence controls while transferring and retain unresolved producer ownership.
+- Preserve finite-strike host admission/applied state without retransmitting exciters. Validate the host inventory against restored kernel queues/active pulses in the worker, rebase remaining receipts and advance future token allocation beyond restored commands. Keep spectral analysis windows on their original logical grid with explicit native-frame mapping and refuse cleared-memory replay where initial analysis history is missing.
+- Add shared per-AudioWorklet-context copy admission and fair rotation across source/effect transfers. Add an asynchronous source activation barrier for dependent effects, keeping prepared state muted until all frontiers agree. Owner-rack/source-cone publication and retained-body bindings remain integration work; this is implementation, not live PCM qualification.
+- Formatting and necessary static checks only; all functional tests remain deferred until backlog implementation is complete.

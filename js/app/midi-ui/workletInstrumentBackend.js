@@ -911,9 +911,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       for (const voice of staged.voices) { voice.submitted = true; display.admit(voice, { voiceId: voice.voiceId, generation: voice.semanticGeneration, worldId: voice.performanceIdentity?.worldId, actorId: voice.performanceIdentity?.actorId, onsetId: voice.onsetId }); if (laneTapsEnabled) sendLaneRoute(voice, voiceRouteMask(voice)); }
       laneRegistry?.refreshSources(); display.configure(true); record({ ...receipt, evidenceClass: 'render-kernel-restoration-activation' });
     }, retire: () => lifecycle.api.dispose() });
-  const restoreSourceState = ({ continuation, bindings, graphRevision, signal, isCurrent, timeoutMs } = {}) => {
+  const restoreSourceState = ({ continuation, bindings, graphRevision, signal, isCurrent, timeoutMs, beforeActivate } = {}) => {
     if (continuation?.metadata?.()?.cut?.graphRevision !== graphRevision) return Promise.resolve(reject('source-graph-revision-mismatch'));
-    return sourceRestoreOwner.restore(continuation, bindings, { signal, isCurrent, timeoutMs });
+    return sourceRestoreOwner.restore(continuation, bindings, { signal, isCurrent, timeoutMs, beforeActivate });
   };
   const sourceCutOwner = createOwnedSourceCutOwner({ owner: String(owner ?? 'unscoped'), resources: preview._audioResources,
     getProducer: () => ready && !disposed && !fault && !ownerStopped && !sourceRestoreOwner.pending() ? node : null, getContext: () => context, getGeneration: () => preview._generation,

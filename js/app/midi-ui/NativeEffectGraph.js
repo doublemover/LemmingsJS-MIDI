@@ -22,6 +22,7 @@ import { ALIGNMENT_KERNEL_REVISION } from '../../midi/content/EffectRuntimeRevis
 import { fixedFractionalDelayIdentity } from './worklet/FixedFractionalDelayProcessor.js';
 import { NONLINEAR_KERNEL_REVISION, nonlinearChainIdentity } from '../../midi/content/NonlinearChainProfile.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { createOwnedEffectGraphState } from './OwnedEffectGraphState.js';
 import { createMembraneStrikeTransport } from './MembraneStrikeTransport.js';
 
 const delayModule = Object.freeze({ id: 'effect-delay', moduleClass: 'effect', heapEstimate: 2 * 1048576,
@@ -54,6 +55,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   if (prepared.outcome !== 'complete') throw Object.assign(failure('effect-preparation-retirement', 'Effect metadata preparation retirement is unresolved.'), { cause: preparationError, retirement: prepared });
   if (preparationError) throw preparationError;
   const scope = createProcgenRetirementScope({ deadlineMs: offline ? 180000 + initializationTimeoutMs : initializationTimeoutMs + 1000 }), nodes = [], processors = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map(), sidechainInputs = new Map();
+  let stateOwner = null;
   let disposed = false, controlSequence = 0, initializationConfirmed = false, offlineCompletionConfirmed = false, sidechainsActivated = false, lastInspectionTime = -Infinity, refreshSourcePresence = () => {};
   const audible = new Set([...plan.outputs, ...offlineReturnNodeIds]);
   for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
@@ -104,8 +106,8 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         binding.unsubscribe?.(); binding.unsubscribe = null;
         if (binding.pin) { await binding.pin.release(); binding.pin = null; }
       }
-      storage.release();
-    } catch (error) { storage.retainUnknown(error); throw error; }
+      storage.release(); stateOwner?.retired(true);
+    } catch (error) { stateOwner?.retired(false); storage.retainUnknown(error); throw error; }
   } }]);
 
   const prepareProcessor = async (entry, { processorName, parameterData = {}, processorOptions = {}, revision, configurationKey = null, inputChannels = 2, outputChannels = 2, numberOfInputs = 1, realizationKey = null }) => {
@@ -143,12 +145,13 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (data?.type === 'spectral-capture') {
         if (!entry.spectral || data.sourceEpoch !== generation || !processor.ready) return;
         try {
-          const capture = validateSpectralCaptureReceipt(data.capture, entry.spectral);
+          const capture = validateSpectralCaptureReceipt(data.capture, entry.spectral), spectralFrameOffset = data.logicalFrameOffset ?? 0, targetFrame = capture.endFrame - spectralFrameOffset;
+          if (!Number.isSafeInteger(spectralFrameOffset) || !Number.isSafeInteger(targetFrame) || targetFrame < 0) throw failure('effect-spectral-clock-mapping', 'The logical analysis clock cannot be mapped to this native output frame.');
           if (capture.serial <= processor.spectralSerial) { value.port.postMessage({ type: 'spectral-capture-consumed', sourceEpoch: generation, serial: capture.serial }); return; }
           if (capture.serial !== processor.spectralSerial + 1) throw failure('effect-spectral-capture-gap', 'The spectral processor omitted an acknowledged window.');
           processor.spectralSerial = capture.serial; processor.health = Object.freeze({ ...processor.health, lastCapture: capture });
           value.port.postMessage({ type: 'spectral-capture-consumed', sourceEpoch: generation, serial: capture.serial });
-          onEffectReceipt(Object.freeze({ status: 'accepted', stage: 'spectral-capture-applied', nodeId: entry.id, graphDefinitionHash: hash, sampleRate: context.sampleRate, targetFrame: capture.endFrame, spectralCapture: capture, acousticReceipt: false }));
+          onEffectReceipt(Object.freeze({ status: 'accepted', stage: 'spectral-capture-applied', nodeId: entry.id, graphDefinitionHash: hash, sampleRate: context.sampleRate, targetFrame, spectralCapture: capture, spectralFrameOffset, acousticReceipt: false }));
         } catch (error) { fault ||= error; try { onFault(fault); } catch {} }
         return;
       }
@@ -268,6 +271,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     throw error;
   }
   const update = (nodeId, values, targetFrame = null) => {
+    stateOwner?.assertMutable();
     const now = context.currentTime; targetFrame ??= Math.ceil(now * context.sampleRate); guard(); if (disposed || fault || !Number.isSafeInteger(targetFrame) || targetFrame < Math.ceil(now * context.sampleRate) || targetFrame > (now + 1) * context.sampleRate ||
         !values || Object.getPrototypeOf(values) !== Object.prototype || !Object.keys(values).length || Object.keys(values).length > 4) throw failure('invalid-effect-control', 'Effect controls require a bounded owned native frame target.');
     const entry = plan.nodes.find(entry => entry.id === nodeId), next = { ...controls.get(nodeId), ...values }, changes = [];
@@ -317,6 +321,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     return Object.freeze({ status: 'accepted', stage: 'native-control-submitted', nodeId, targetFrame, sequence: ++controlSequence, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
   };
   refreshSourcePresence = () => {
+    if (stateOwner?.fenced()) return;
     const present = new Map();
     for (const entry of plan.nodes) {
       const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id), has = port => incoming.some(edge => (!port || edge.to.port === port) && present.get(edge.from.nodeId));
@@ -329,7 +334,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   };
   if (!offline) refreshSourcePresence();
   const gateSidechains = (gain01, time = context.currentTime, seconds = 0.02) => {
-    const now = context.currentTime; guard();
+    const now = context.currentTime; guard(); stateOwner?.assertMutable();
     if (disposed || !Number.isFinite(gain01) || gain01 < 0 || gain01 > 1 || !Number.isFinite(time) || time < now || time > now + 1 || !Number.isFinite(seconds) || seconds < 0 || seconds > 0.2 || [...sidechainGates.values()].some(gate => !gate.canInsert(now))) throw failure('sidechain-gate-capacity', 'Sidechain publication requires bounded owned gain ramps.');
     try { for (const gate of sidechainGates.values()) if (!gate.insert(gain01, time, now, seconds)) throw new Error('Sidechain gate queue rejected activation.'); }
     catch (caught) { fault = caught; try { onFault(caught); } catch {} throw failure('sidechain-gate-failed', 'Sidechain gate scheduling failed.'); }
@@ -358,7 +363,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     sidechainsActivated = true; refreshSourcePresence();
   };
   const requestInspection = () => {
-    if (disposed || context.state !== 'running' || context.currentTime - lastInspectionTime < 0.25) return false;
+    if (disposed || stateOwner?.fenced() || context.state !== 'running' || context.currentTime - lastInspectionTime < 0.25) return false;
     lastInspectionTime = context.currentTime;
     for (const binding of sidechainBindings.values()) if (binding.connected && !binding.pin.isActive()) { disconnectSidechain(binding); binding.status = 'stale'; refreshSourcePresence(); }
     for (const entry of processors) entry.node.port.postMessage({ type: 'inspect' });
@@ -382,7 +387,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   };
   const restoreControlState = (state, activationFrame) => {
     checkPublication();
-    if (offline || sidechainsActivated || controlSequence || controlsRestored || !Number.isSafeInteger(activationFrame) || activationFrame < Math.ceil(context.currentTime * context.sampleRate)) throw failure('effect-control-restore-staging', 'Restore control state only into a fresh unpublished graph at a future audio frame.');
+    if (offline || sidechainsActivated && !stagedRestore || controlSequence || controlsRestored || !Number.isSafeInteger(activationFrame) || activationFrame < Math.ceil(context.currentTime * context.sampleRate)) throw failure('effect-control-restore-staging', 'Restore control state only into a fresh unpublished graph at a future audio frame.');
     const value = cloneData(state, { maxBytes: 2 * 1048576, maxNodes: 131072 }), inventory = controlInventory();
     if (value.schema !== 'lemmings-native-effect-control-cut/v1' || value.graphHash !== hash || value.sampleRate !== context.sampleRate || !Number.isSafeInteger(value.frame) || value.frame < 0 || !Number.isSafeInteger(value.controlSequence) || value.controlSequence < 0 || !Array.isArray(value.curves) || value.curves.length !== inventory.length || canonicalDataText(Object.keys(value.controls || {}).sort()).text !== canonicalDataText([...controls.keys()].sort()).text) throw failure('effect-control-restore-identity', 'Control state differs from the exact prepared graph, rate or parameter inventory.');
     for (let index = 0; index < inventory.length; index++) {
@@ -396,25 +401,36 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       return Object.freeze({ status: 'control-state-restaged', sourceFrame: value.frame, activationFrame, sampleRate: context.sampleRate, futureControls: value.curves.reduce((sum, curve) => sum + curve.state.future.length, 0), graphHash: hash, dspMemory: 'not-restored-by-control-state', acousticReceipt: false });
     } catch (error) { fault ||= error; for (const processor of processors) processor.node.port.postMessage({ type: 'panic' }); throw error; }
   };
-  return Object.freeze({ plan, hash, update, captureControlState, restoreControlState, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+  stateOwner = createOwnedEffectGraphState({ context, resources, owner, generation, hash, processors, stagedRestore, unsupported: offline || impulses.length > 0,
+    check: checkPublication, captureControls: captureControlState, restoreControls: restoreControlState,
+    captureHost: audioFrame => ({ schema: 'lemmings-native-effect-host-cut/v1', audioFrame, bodies: processors.filter(entry => entry.strikes).map(entry => ({ nodeId: entry.nodeId, state: entry.strikes.snapshot(audioFrame) })) }),
+    restoreHost: (state, sourceFrame, activationFrame) => {
+      const bodies = processors.filter(entry => entry.strikes);
+      if (state?.schema !== 'lemmings-native-effect-host-cut/v1' || state.audioFrame !== sourceFrame || !Array.isArray(state.bodies) || state.bodies.length !== bodies.length || new Set(state.bodies.map(row => row.nodeId)).size !== bodies.length) throw failure('effect-host-cut-inventory', 'The finite body host inventory differs from its exact graph.');
+      for (const entry of bodies) { const row = state.bodies.find(row => row.nodeId === entry.nodeId); if (!row) throw failure('effect-host-cut-inventory', 'A finite body host is missing.'); entry.strikes.restore(row.state, sourceFrame, activationFrame); }
+    }, retire: dispose });
+  return Object.freeze({ plan, hash, update, detachState: stateOwner.capture, stageState: stateOwner.stage, captureControlState, restoreControlState, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+    reconcileSourcePresence: () => { checkPublication(); refreshSourcePresence(); },
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
     isBodyQuarantined: nodeId => processors.find(processor => processor.nodeId === nodeId && ['rectangular-membrane', 'sympathetic-network', 'paired-modal-body', 'resonator-blend-body'].includes(processor.kind))?.health?.muted === true,
     bodyLossTargets: nodeId => NETWORK_LOSS_CONTROLS.map(key => Math.max(controls.get(nodeId)?.[key] ?? 0, parameterControls.get(nodeId)?.get(key)?.valueAt(context.currentTime) ?? 0)),
     bodyLossFuture: nodeId => NETWORK_LOSS_CONTROLS.map(key => parameterControls.get(nodeId)?.get(key)?.hasFutureEvents(context.currentTime) === true),
     bodyPickupControls: nodeId => Object.fromEntries(NETWORK_PICKUP_CONTROLS.map(key => [key, { target01: controls.get(nodeId)?.[key] ?? parameterControls.get(nodeId)?.get(key)?.valueAt(context.currentTime) ?? 0.5, pendingFuture: parameterControls.get(nodeId)?.get(key)?.hasFutureEvents(context.currentTime) === true }])),
     enqueueBodyStrike(nodeId, command) {
-      checkPublication(); const processor = processors.find(entry => entry.nodeId === nodeId && entry.strikes);
+      checkPublication(); stateOwner.assertMutable(); const processor = processors.find(entry => entry.nodeId === nodeId && entry.strikes);
       if (!processor || processor.health?.muted) throw failure('stale-prepared-body', 'The exact finite-strike body is unavailable.');
       return processor.strikes.enqueue(command);
     },
+    bodyStrikeTokenFloor: nodeId => processors.find(entry => entry.nodeId === nodeId)?.strikes?.tokenFloor() || 0,
     lastBodyDriveFrame: () => Math.max(0, ...processors.map(entry => entry.strikes?.lastDriveFrame() || 0)),
     panicBody(nodeId) {
+      stateOwner.assertMutable();
       const processor = processors.find(processor => processor.nodeId === nodeId && (processor.kind === 'rectangular-membrane' || processor.kind === 'paired-modal-body' || processor.kind === 'resonator-blend-body' || processor.kind === 'sympathetic-network' && (plan.nodes.find(node => node.id === nodeId).network.lossMasks.length || plan.nodes.find(node => node.id === nodeId).network.pickupGrid)));
       if (disposed || !processor) throw failure('stale-prepared-body', 'The named body is unavailable.'); processor.node.port.postMessage({ type: 'panic' }); processor.health = Object.freeze({ muted: true, containment: 'body-only' });
       return Object.freeze({ status: 'accepted', stage: 'body-panic-submitted', nodeId, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
     },
     panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
-    diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
+    diagnostics: () => Object.freeze({ continuation: stateOwner.diagnostics(), hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
       runtime: { blendBodyRevision: plan.processingRevisions.blendBody ?? null, pairedBodyRevision: plan.processingRevisions.pairedBody ?? null, membraneRevision: plan.processingRevisions.membrane ?? null, networkRevision: plan.processingRevisions.network ?? null, spectralRevision: plan.processingRevisions.spectral ?? null, allpassRevision: processors.some(entry => entry.kind === 'allpass-notch') ? ALLPASS_NOTCH_REVISION : null, ringRevision: processors.some(entry => entry.kind === 'ring-modulator') ? RING_MODULATOR_REVISION : null, hostRevision: 'owned-native-effect-host-v2', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, detectorRevision: processors.some(entry => entry.kind === 'envelope-detector') ? ENVELOPE_DETECTOR_REVISION : null, envelopeMappingRevision: processors.some(entry => entry.kind === 'envelope-mapping') ? ENVELOPE_MAPPING_REVISION : null, vocoderRevision: processors.some(entry => entry.kind === 'multiband-vocoder') ? VOCODER_BANK_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
       initialization: { mode: offline ? 'offline-before-publication' : 'live-before-route', confirmed: offline ? initializationConfirmed : processors.every(entry => entry.ready),
         offlineEndFrame, completionConfirmed: offlineCompletionConfirmed, completionProtocol: offline ? OFFLINE_EFFECT_COMPLETION_REVISION : null },

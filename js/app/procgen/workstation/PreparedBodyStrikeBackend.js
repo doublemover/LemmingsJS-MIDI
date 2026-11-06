@@ -53,6 +53,8 @@ export function createPreparedBodyStrikeBackend({ owner, resolveBody, inventory,
       let plan;
       try {
         if (!Array.isArray(intent.sourceEventIds) || !intent.sourceEventIds.length || intent.sourceEventIds.length > 16 || intent.sourceEventIds.some(id => typeof id !== 'string' || !id || id.length > 512) || [intent.intentId, intent.voiceId, intent.onsetId].some(id => typeof id !== 'string' || !id || id.length > 1024)) throw new Error('Source identity exceeds the bounded finite exciter metadata.');
+        sequence = Math.max(sequence, body.strikeTokenFloor || 0);
+        if (!Number.isSafeInteger(sequence + 1)) return { status: 'rejected', reason: 'finite-body-token-capacity' };
         plan = planPreparedBodyStrike(intent, body, frame, sequence + 1);
         const voices = [...pending.values()].filter(record => record.body.bodyInstanceId === body.bodyInstanceId);
         if (voices.length >= 68 || !intervals.inspect({ voices, first: frame, last: plan.endFrame, limit: 4, cost: 1 }).accepted) return { status: 'rejected', reason: 'finite-body-exciter-capacity' };
