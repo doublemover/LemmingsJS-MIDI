@@ -408,11 +408,12 @@ class OwnedSineProcessor extends ProcessorBase {
         try {
           const bytes = this.kernel.stateByteLength(); if (bytes > 16 * 1048576 || !data.identity || !/^[a-f0-9]{64}$/.test(data.identity.engineArtifactHash) || !/^[a-f0-9]{64}$/.test(data.identity.patchDefinitionHash) || !Number.isSafeInteger(data.identity.graphRevision) || data.identity.graphRevision < 0 || data.identity.graphRevision > 0xffffffff) throw new Error('source-state-identity-or-size');
           this.stateCut = { phase: 'offered', requestId: data.requestId, identity: Object.freeze({ ...data.identity }), bytes, destination: null, iterator: null };
-          this.port.postMessage({ type: 'source-state-offered', stateTransferProtocol: 1, requestId: data.requestId, bytes, chunkBytes: OWNED_STATE_CHUNK_BYTES });
+          this.port.postMessage({ type: 'source-state-offered', stateTransferProtocol: 1, requestId: data.requestId, bytes, chunkBytes: OWNED_STATE_CHUNK_BYTES, targetFrameProtocol: 1, blockFrame: this.lastAudioBlockFrame ?? 0, blockFrames: this.lastAudioBlockFrames ?? 0 });
         } catch { this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: data.requestId, reason: 'source-state-offer-refused' }); } return;
       }
       if (data?.type === 'source-state-begin' && data.stateTransferProtocol === 1 && this.stateCut?.phase === 'offered' && data.requestId === this.stateCut.requestId && data.bytes instanceof Uint8Array && data.bytes.buffer instanceof ArrayBuffer && !data.bytes.byteOffset && data.bytes.length === this.stateCut.bytes && data.bytes.buffer.byteLength === data.bytes.length) {
-        this.stateCut.destination = data.bytes; this.stateCut.phase = 'pending'; return;
+        if (data.targetAudioFrame != null && (!Number.isSafeInteger(data.targetAudioFrame) || data.targetAudioFrame < globalThis.currentFrame || data.targetAudioFrame > globalThis.currentFrame + globalThis.sampleRate * 2)) { this.stateCut = { phase: 'detached', requestId: data.requestId }; this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: data.requestId, reason: 'invalid-source-cut-target', bytes: data.bytes }, [data.bytes.buffer]); return; }
+        this.stateCut.destination = data.bytes; this.stateCut.targetAudioFrame = data.targetAudioFrame ?? null; this.stateCut.phase = 'pending'; return;
       }
       if (data?.type === 'source-state-cancel' && data.stateTransferProtocol === 1 && this.stateCut?.requestId === data.requestId) {
         const cut = this.stateCut; this.stateCut = cut.phase === 'offered' ? null : { phase: 'detached', requestId: cut.requestId };
@@ -442,7 +443,7 @@ class OwnedSineProcessor extends ProcessorBase {
       else this.port.postMessage({ type: 'protocol-error', protocol: PROTOCOL });
       this.flushReceipts();
     };
-    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, retirementProtocol: 1, stateTransferProtocol: 1, stateRestoreProtocol: 1, stateChunkBytes: OWNED_STATE_CHUNK_BYTES, maxStateBytes: 16 * 1048576, ...this.runtimeIdentity(),
+    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, retirementProtocol: 1, stateTransferProtocol: 1, stateRestoreProtocol: 1, stateCutTargetProtocol: 1, stateChunkBytes: OWNED_STATE_CHUNK_BYTES, maxStateBytes: 16 * 1048576, ...this.runtimeIdentity(),
       laneTapProtocol: this.laneTaps ? LIVE_LANE_TAP_PROTOCOL : null, maxLaneTaps: this.laneTaps ? LIVE_LANE_TAP_LIMIT : 0,
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
@@ -470,6 +471,7 @@ class OwnedSineProcessor extends ProcessorBase {
     this.kernel.receiptCount = 0;
   }
   process(_inputs, outputs) {
+    this.lastAudioBlockFrame = globalThis.currentFrame; this.lastAudioBlockFrames = outputs[0]?.[0]?.length || 0;
     if (this.retired) { for (const output of outputs) for (const channel of output) channel.fill(0); return false; }
     if (this.stateRestore) {
       const restore = this.stateRestore;
@@ -494,11 +496,12 @@ class OwnedSineProcessor extends ProcessorBase {
         return true;
       }
     }
-    if (this.stateCut && this.stateCut.phase !== 'offered') {
+    if (this.stateCut && this.stateCut.phase !== 'offered' && !(this.stateCut.phase === 'pending' && this.stateCut.targetAudioFrame !== null && globalThis.currentFrame < this.stateCut.targetAudioFrame)) {
       for (const output of outputs) for (const channel of output) channel.fill(0);
       const cut = this.stateCut;
       if (cut.phase === 'pending') {
-        this.flushReceipts(); cut.phase = 'copying'; cut.iterator = this.kernel.stateChunks(cut.destination, cut.identity);
+        if (cut.targetAudioFrame !== null && globalThis.currentFrame !== cut.targetAudioFrame) { const bytes = cut.destination; this.stateCut = { phase: 'detached', requestId: cut.requestId }; this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: cut.requestId, reason: 'source-cut-frame-missed', bytes }, [bytes.buffer]); return true; }
+        cut.audioFrame = globalThis.currentFrame; this.flushReceipts(); cut.phase = 'copying'; cut.iterator = this.kernel.stateChunks(cut.destination, cut.identity);
         cut.tokens = new Uint32Array(MAX_VOICES);
         for (let slot = 0; slot < this.kernel.maxVoices; slot++) if (this.kernel.active[slot]) cut.tokens[slot] = this.kernel.voice[slot * 28 + 2];
         for (let index = 0; index < this.kernel.queueLength; index++) { const at = index * this.kernel.width; if (this.kernel.queue[at + 3] === BEGIN) cut.tokens[this.kernel.queue[at + 4]] = this.kernel.queue[at + 5]; }
@@ -506,7 +509,7 @@ class OwnedSineProcessor extends ProcessorBase {
       if (cut.phase === 'copying') try {
         const step = cut.iterator.next(); if (step.done) {
           const bytes = cut.destination; this.stateCut = { phase: 'detached', requestId: cut.requestId };
-          this.port.postMessage({ type: 'source-state-complete', stateTransferProtocol: 1, requestId: cut.requestId, bytes, cut: step.value, voiceTokens: cut.tokens, sourceClock: 'frozen-at-detached-block-boundary' }, [bytes.buffer, cut.tokens.buffer]);
+          this.port.postMessage({ type: 'source-state-complete', stateTransferProtocol: 1, requestId: cut.requestId, bytes, cut: step.value, audioFrame: cut.audioFrame, voiceTokens: cut.tokens, sourceClock: 'frozen-at-detached-block-boundary' }, [bytes.buffer, cut.tokens.buffer]);
         }
       } catch {
         const bytes = cut.destination; this.stateCut = { phase: 'detached', requestId: cut.requestId };

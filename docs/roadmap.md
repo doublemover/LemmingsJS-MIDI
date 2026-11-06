@@ -10828,3 +10828,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Fence ordinary controls during transfer while retaining explicit interruption/retirement. Rebase native membrane command/sample/receipt frames through the processor’s logical clock, preserving queued finite force support after context migration.
 - Preserve spectral logical-frame offsets and enforce hop-grid-compatible activation. Gate native graph preparation on actual restore-capable processor readiness. Aggregate source/effect capture, finite-strike host continuation, spectral receipt mapping and host publication remain implementation work, not qualified live restoration.
 - Formatting and critical/boundary typechecks only; functional tests remain deferred.
+
+
+### 2026-11-06 — Rook continuation517: shared-frame source detachment
+
+- Extend the live source cut handshake with an explicit future audio-frame target and reported block grid, while preserving the source’s independent continuation-frame offset. Missed/unsupported boundaries fail before a false common-frame claim.
+- Let source detachment wait for a bounded, abortable dependent graph-capture barrier before retiring the old renderer. Returned-buffer failures still retire a transferred/fenced producer and retain unresolved producer ownership appropriately.
+- Carry actual audio frame/offset through source metadata and worker preparation checks. Aggregate graph/host/source publication and receipt ownership remain the next production integration; no functional tests run.
