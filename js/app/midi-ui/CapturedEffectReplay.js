@@ -67,8 +67,9 @@ export function createCapturedEffectReplayDriver(replay, graph, { externalLifecy
   if (!replay || replay.schema !== 'lemmings-captured-effect-replay/v1' || graph.hash !== replay.graphHash) fail('effect-replay-identity', 'Effect command replay needs its exact admitted graph.');
   const lifecycle = createCapturedEffectLifecycleDriver(replay, graph);
   for (const event of replay.events) { if (event.kind === 'lifecycle') lifecycle.validate(event); else if (event.kind === 'spectral-capture') { if (typeof graph.validateSpectralCapture !== 'function' || typeof graph.assertSpectralCapture !== 'function') fail('effect-spectral-replay-unavailable', 'The graph cannot validate acknowledged analysis windows.'); graph.validateSpectralCapture(event.nodeId, event.capture); } else if (event.kind !== 'body-strike') graph.validateUpdate(event.nodeId, event.values); }
-  let cursor = 0, leftSample = 0, rightSample = 0;
+  let cursor = 0, lastFrame = null, leftSample = 0, rightSample = 0;
   return Object.freeze({ sample(left, right, frame, sidechainSamples = null, presence = null) {
+    if (!Number.isSafeInteger(frame) || frame < 0 || lastFrame !== null && frame !== lastFrame + 1) fail('effect-replay-frontier', 'Effect replay requires contiguous actual output frames.'); lastFrame = frame;
     const begin = cursor;
     while (cursor < replay.events.length && replay.events[cursor].frame <= frame) { const event = replay.events[cursor++]; if (event.kind === 'lifecycle') lifecycle.apply(event, frame); else if (event.kind === 'spectral-capture') { if (event.frame !== frame) fail('effect-spectral-late-replay', 'An analysis window missed its exact replay frontier.'); graph.update(event.nodeId, { hold01: 1 }); } else if (event.kind === 'body-strike') { if (event.frame !== frame) fail('effect-body-late-replay', 'A finite source missed its exact replay frame.'); graph.enqueueBodyStrike(event.nodeId, event.command); } else graph.update(event.nodeId, event.values); }
     lifecycle.step(frame); const gate = externalLifecycle ? 1 : lifecycle.inputGain;
@@ -76,5 +77,11 @@ export function createCapturedEffectReplayDriver(replay, graph, { externalLifecy
     graph.sample(left * gate, right * gate, sidechainSamples, presence);
     for (let index = begin; index < cursor; index++) { const event = replay.events[index]; if (event.kind === 'spectral-capture') graph.assertSpectralCapture(event.nodeId, event.capture); }
     leftSample = externalLifecycle ? graph.leftSample : graph.leftSample * lifecycle.outputGain + left * lifecycle.dryGain; rightSample = externalLifecycle ? graph.rightSample : graph.rightSample * lifecycle.outputGain + right * lifecycle.dryGain;
+  }, snapshot: () => Object.freeze({ schema: 'lemmings-effect-replay-frontier/v1', replayHash: replay.hash, graphHash: graph.hash, graphFrame: graph.frame, cursor, lastFrame, leftSample, rightSample, lifecycle: lifecycle.snapshot() }),
+  restore(state) {
+    if (cursor || lastFrame !== null || state?.schema !== 'lemmings-effect-replay-frontier/v1' || state.replayHash !== replay.hash || state.graphHash !== graph.hash || state.graphFrame !== graph.frame || !Number.isSafeInteger(state.cursor) || state.cursor < 0 || state.cursor > replay.events.length || state.lastFrame !== null && (!Number.isSafeInteger(state.lastFrame) || state.lastFrame < 0) || ![state.leftSample, state.rightSample].every(Number.isFinite)) fail('effect-replay-state', 'The staged effect command cursor differs from its exact graph and immutable history.');
+    if (replay.events.slice(0, state.cursor).some(event => state.lastFrame === null || event.frame > state.lastFrame) || replay.events.slice(state.cursor).some(event => state.lastFrame !== null && event.frame <= state.lastFrame) || state.lifecycle?.frame !== (state.lastFrame ?? -1)) fail('effect-replay-state', 'Effect commands straddle the restored output frontier.');
+    lifecycle.restore(state.lifecycle); cursor = state.cursor; lastFrame = state.lastFrame; leftSample = state.leftSample; rightSample = state.rightSample;
   }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; } });
+
 }

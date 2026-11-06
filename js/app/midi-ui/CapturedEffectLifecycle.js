@@ -24,13 +24,20 @@ export function prepareCapturedEffectLifecycle(plan, events, graphStartFrame, tr
 export function createCapturedEffectLifecycleDriver(replay, graph) {
   const width = replay.transitionFrames, maximumTail = replay.lifecycle?.maximumTailFrames ?? 0;
   if (!Number.isSafeInteger(width) || width < 1 || !Number.isSafeInteger(maximumTail) || maximumTail < 0 || replay.events.some(event => event.kind === 'lifecycle') && typeof graph.panic !== 'function') fail('effect-lifecycle-driver-contract', 'Owner lifecycle needs its exact bounded transition/tail and graph-clear contract.');
+  let lastFrame = -1;
   let inputFrom = 0, inputTo = 1, inputFirst = replay.graphStartFrame, inputEnd = inputFirst + width, dryFrom = 1, dryTo = 0, dryFirst = inputFirst, dryEnd = inputEnd, outputGate = 1, retired = false, retirementFrame = Infinity, inputGain = 0, dryGain = 1;
   const at = (from, to, first, end, frame) => from + (to - from) * Math.max(0, Math.min(1, (frame - first) / (end - first)));
   const step = frame => {
+    if (!Number.isSafeInteger(frame) || frame < lastFrame) fail('effect-lifecycle-frontier', 'Owner lifecycle must retain its monotonic output frontier.'); lastFrame = frame;
     inputGain = at(inputFrom, inputTo, inputFirst, inputEnd, frame); dryGain = at(dryFrom, dryTo, dryFirst, dryEnd, frame);
     if (!retired && frame >= retirementFrame) { retired = true; outputGate = 0; graph.panic(); }
   };
   return Object.freeze({ step,
+    snapshot: () => Object.freeze({ frame: lastFrame, inputFrom, inputTo, inputFirst, inputEnd, dryFrom, dryTo, dryFirst, dryEnd, outputGate, retired, retirementFrame: Number.isFinite(retirementFrame) ? retirementFrame : null, inputGain, dryGain }),
+    restore(state) {
+      if (lastFrame !== -1 || !state || !Number.isSafeInteger(state.frame) || state.frame < -1 || typeof state.retired !== 'boolean' || ![state.inputFrom, state.inputTo, state.dryFrom, state.dryTo, state.inputGain, state.dryGain].every(value => Number.isFinite(value) && value >= 0 && value <= 1) || ![0, 1].includes(state.outputGate) || ![state.inputFirst, state.inputEnd, state.dryFirst, state.dryEnd].every(Number.isSafeInteger) || state.inputEnd - state.inputFirst !== width || state.dryEnd - state.dryFirst !== width || state.retirementFrame !== null && (!Number.isSafeInteger(state.retirementFrame) || state.retirementFrame < 0)) fail('effect-lifecycle-state', 'Invalid staged owner lifecycle frontier.');
+      lastFrame = state.frame; inputFrom = state.inputFrom; inputTo = state.inputTo; inputFirst = state.inputFirst; inputEnd = state.inputEnd; dryFrom = state.dryFrom; dryTo = state.dryTo; dryFirst = state.dryFirst; dryEnd = state.dryEnd; outputGate = state.outputGate; retired = state.retired; retirementFrame = state.retirementFrame ?? Infinity; inputGain = state.inputGain; dryGain = state.dryGain;
+    },
     validate(event) { if (!event || event.kind !== 'lifecycle' || !modes.has(event.mode) || !Number.isSafeInteger(event.frame) || event.frame < 0) fail('effect-lifecycle-driver-contract', 'Unsupported captured owner lifecycle event.'); },
     apply(event, frame) {
       if (event.frame !== frame) fail('effect-lifecycle-late-replay', 'An owner lifecycle event missed its exact revoice frontier.'); step(frame);

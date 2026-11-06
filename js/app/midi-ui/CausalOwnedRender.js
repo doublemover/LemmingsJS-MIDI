@@ -1,3 +1,4 @@
+import { OWNED_STATE_BUNDLE_ABI, OWNED_STATE_BUNDLE_HEADER, writeOwnedStateBundle, readOwnedStateBundle } from './worklet/OwnedStateBundle.js';
 import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/content/SampleTraversal.js';
 import { acceptsSampleCursorSegment } from '../../midi/content/SampleCursorProfile.js';
 import { planSeedLayerContactBegin, planSeedLayerContactMotion, advanceSeedLayerContactMotion, seedLayerContactBeginFields, seedLayerContactMotionFields } from '../../midi/content/SeedLayerMotion.js';
@@ -324,17 +325,18 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   if (sourcePhase && (!natural(sourcePcmBytes) || sourcePcmBytes > 56 * 1048576)) throw failure('source-pcm-capacity', 'Complete source history exceeds the bounded native convolution PCM profile.');
   const stateCut = input.restorationMode === 'owned-state-cut';
   if (input.restorationMode != null && !['forward-preroll', 'owned-state-cut'].includes(input.restorationMode)) throw failure('restore-mode-unavailable', 'Choose a supported owned-source restoration mode.');
-  const cutWorkspace = stateCut ? 2 * plan.owned.sourceBytes({ sampleRate: plan.sampleRate, pcm: plan.pcmDescriptor, voices: plan.patch.voicePolicy.maxVoices, ...(plan.owned.id === 'worklet-sample' ? { sampleZones: plan.patch.sampleMap.zones.length } : {}) }) + 4 * 1048576 : 0;
+  const sourceCutEstimate = plan.owned.sourceBytes({ sampleRate: plan.sampleRate, pcm: plan.pcmDescriptor, voices: plan.patch.voicePolicy.maxVoices, ...(plan.owned.id === 'worklet-sample' ? { sampleZones: plan.patch.sampleMap.zones.length } : {}) });
   const history = plan.effectReplay?.schema === 'lemmings-captured-effect-history/v1';
   const effectWorkspace = plan.effectPlan && !sourcePhase ? history ? plan.effectReplay.peakStateBytes + 8 * 1048576 : plan.effectPlan.stateBytes + 4 * 1048576 : 0;
+  const cutWorkspace = stateCut ? 6 * (sourceCutEstimate + effectWorkspace + OWNED_STATE_BUNDLE_HEADER) + 8 * 1048576 : 0;
   const requiredBytes = (sourcePhase ? sourcePcmBytes : plan.pcmBytes) * 4 + plan.planningBytes + 24 * 1048576 + cutWorkspace + effectWorkspace;
   if (!natural(maxWorkingBytes) || requiredBytes > maxWorkingBytes) throw failure('render-memory-capacity', 'PCM, encoding, command and transfer overlap exceed the admitted render workspace.');
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, events, stemLaneIds, captureLaneIds } = plan;
   const renderedLaneIds = sourcePhase ? captureLaneIds : stemLaneIds;
   const WIDTH = plan.owned.width;
   let kernel = await createOwnedControlKernel(plan.owned, sampleRate, plan.renderVoices, { signal, yieldControl, pcm: plan.sourcePCM, patch: plan.patch });
-  const effects = plan.effectPlan && !sourcePhase ? history ? createCapturedEffectHistoryDriver(plan.effectReplay, plan.effectReturnNodeIds) : await createOwnedEffectGraphKernel({ definition: plan.effectPlan.definition, sampleRate, returnNodeIds: plan.effectReturnNodeIds, frameOrigin: plan.effectReplay?.frameOrigin || 0 }) : null;
-  const effectReplayDriver = effects && plan.effectReplay ? history ? effects : createCapturedEffectReplayDriver(plan.effectReplay, effects) : null;
+  let effects = plan.effectPlan && !sourcePhase ? history ? createCapturedEffectHistoryDriver(plan.effectReplay, plan.effectReturnNodeIds) : await createOwnedEffectGraphKernel({ definition: plan.effectPlan.definition, sampleRate, returnNodeIds: plan.effectReturnNodeIds, frameOrigin: plan.effectReplay?.frameOrigin || 0 }) : null;
+  let effectReplayDriver = effects && plan.effectReplay ? history ? effects : createCapturedEffectReplayDriver(plan.effectReplay, effects) : null;
   signal?.throwIfAborted(); if (effects && effects.hash !== plan.effectHash) throw failure('effect-render-identity', 'Effect preparation differs from its admitted graph.');
   let transfer = stateCut ? new Uint8Array(kernel.stateByteLength()) : null, stateReceipt = null;
   if (transfer && transfer.byteLength * 2 > cutWorkspace) throw failure('restore-memory-capacity', 'The exact source cut exceeds its admitted transfer and clone workspace.');
@@ -357,12 +359,36 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     if (transfer && frame === firstFrame) {
       const identity = { engineArtifactHash: plan.descriptor.artifactHash, patchDefinitionHash: plan.definitionHash, graphRevision: 0 };
       const cut = kernel.snapshotInto(transfer, identity);
-      const staged = await createOwnedControlKernel(plan.owned, sampleRate, plan.renderVoices, { signal, yieldControl, pcm: plan.sourcePCM, patch: plan.patch, sourceBank: kernel.source?.bank });
-      signal?.throwIfAborted(); staged.restoreFrom(transfer, identity);
-      stateReceipt = { abi: cut.abi, frame: cut.frame, bytes: transfer.byteLength, stateHash: await digest(transfer), consumedPlannedEvents: cursor,
-        sequence, packetSequence, nextEventFrame: events[cursor]?.frame ?? null, plannerContinuation: 'same-admitted-immutable-intent-plan',
-        immutableAssets: 'shared-read-only', mutableState: 'independent-staged-copy', effects: sourcePhase ? 'native-body-reconstructed-from-complete-source-history-not-an-effect-state-cut' : effects ? 'continued-same-admitted-preroll-graph-not-a-graph-state-cut' : 'none', qualification: 'implementation-awaiting-pcm-equivalence' };
-      signal?.throwIfAborted(); transfer.fill(0); transfer = null; kernel = staged;
+      if (cut.frame !== frame || effects && effects.frame !== frame) throw failure('restore-graph-frontier', 'Source and effects must be stopped at the same declared output frame.');
+      const effectBytes = effects ? new Uint8Array(effects.stateByteLength()) : null;
+      if (effectBytes) effects.snapshotInto(effectBytes);
+      const bundleIdentity = { abi: 'causal-owned-graph-cut-v1', ...identity, sampleRate, intentHash: plan.intentHash, effectHash: plan.effectHash, replayHash: plan.effectReplay?.hash || null };
+      const components = [{ key: 'source', bytes: transfer }, ...(effectBytes ? [{ key: 'effects', bytes: effectBytes }] : [])];
+      const bundleBytes = OWNED_STATE_BUNDLE_HEADER + components.reduce((sum, row) => sum + row.bytes.length, 0);
+      if (bundleBytes * 6 > cutWorkspace) throw failure('restore-memory-capacity', 'The combined graph cut and independent clone exceed the admitted state workspace.');
+      const bundle = new Uint8Array(bundleBytes);
+      writeOwnedStateBundle(bundle, { identity: bundleIdentity, frontier: { frame, cursor, sequence, packetSequence, applied, routeMasks: Array.from(routes), laneTokens: Array.from(laneTokens), nextEventFrame: events[cursor]?.frame ?? null, nextIntentId: events[cursor]?.intentId ?? null, effectReplay: effectReplayDriver && !history ? effectReplayDriver.snapshot() : null }, components });
+      let staged = null, stagedEffects = null, stagedDriver = null, decoded = null;
+      try {
+        decoded = readOwnedStateBundle(bundle, bundleIdentity, components.map(row => row.key));
+        const frontier = decoded.frontier;
+        if (frontier.frame !== frame || frontier.cursor !== cursor || frontier.sequence !== sequence || frontier.packetSequence !== packetSequence || frontier.applied !== applied || frontier.nextEventFrame !== (events[cursor]?.frame ?? null) || frontier.nextIntentId !== (events[cursor]?.intentId ?? null) || frontier.routeMasks.length !== routes.length || frontier.laneTokens.length !== laneTokens.length || frontier.routeMasks.some(value => !Number.isInteger(value) || value < 0 || value > 65535) || frontier.laneTokens.some(value => !Number.isSafeInteger(value) || value < 0 || value > LIVE_LANE_ID_LIMIT)) throw failure('restore-planner-frontier', 'The immutable intent plan, routing or future command frontier differs from its graph cut.');
+        staged = await createOwnedControlKernel(plan.owned, sampleRate, plan.renderVoices, { signal, yieldControl, pcm: plan.sourcePCM, patch: plan.patch, sourceBank: kernel.source?.bank });
+        signal?.throwIfAborted(); staged.restoreFrom(decoded.components[0].bytes, identity);
+        if (effects) {
+          stagedEffects = history ? createCapturedEffectHistoryDriver(plan.effectReplay, plan.effectReturnNodeIds) : await createOwnedEffectGraphKernel({ definition: plan.effectPlan.definition, sampleRate, returnNodeIds: plan.effectReturnNodeIds, frameOrigin: plan.effectReplay?.frameOrigin || 0 });
+          await stagedEffects.restoreFrom(decoded.components[1].bytes); signal?.throwIfAborted();
+          stagedDriver = plan.effectReplay ? history ? stagedEffects : createCapturedEffectReplayDriver(plan.effectReplay, stagedEffects) : null;
+          if (stagedDriver && !history) stagedDriver.restore(frontier.effectReplay);
+          if (stagedEffects.frame !== frame) throw failure('restore-graph-frontier', 'The staged effect graph did not restore the source output frontier.');
+        }
+        stateReceipt = { abi: OWNED_STATE_BUNDLE_ABI, sourceAbi: cut.abi, frame: cut.frame, bytes: bundle.length, sourceBytes: transfer.length, effectBytes: effectBytes?.length || 0, stateHash: await digest(bundle), consumedPlannedEvents: cursor,
+          sequence, packetSequence, nextEventFrame: events[cursor]?.frame ?? null, plannerContinuation: 'bound-immutable-intent-plan-and-restored-future-control-frontier',
+          immutableAssets: 'shared-read-only', mutableState: 'independent-staged-source-effects-and-body-memory', effects: sourcePhase ? 'native-body-reconstructed-from-complete-source-history-not-an-effect-state-cut' : effects ? history ? 'all-retained-graph-revisions-and-transition-frontiers-restored' : 'complete-owned-effect-graph-and-replay-cursor-restored' : 'none', qualification: 'implementation-awaiting-pcm-equivalence' };
+        signal?.throwIfAborted(); routes.set(frontier.routeMasks); laneTokens.set(frontier.laneTokens);
+        const retiredEffects = effects; kernel = staged; effects = stagedEffects; effectReplayDriver = stagedDriver; retiredEffects?.panic();
+      } catch (error) { stagedEffects?.panic(); throw error; }
+      finally { transfer.fill(0); effectBytes?.fill(0); bundle.fill(0); for (const component of decoded?.components || []) component.bytes.fill(0); transfer = null; }
     }
     if (panicFrame === frame && !panicApplied) { packet.fill(0); packet[0] = 1; packet[1] = frame; packet[2] = ++sequence; packet[3] = PANIC; packet[17] = 1; kernel.accept(packet, 1, ++packetSequence); checkReceipts(); panicApplied = true; cursor = events.length; }
     while (cursor < events.length && events[cursor].frame <= frame) {

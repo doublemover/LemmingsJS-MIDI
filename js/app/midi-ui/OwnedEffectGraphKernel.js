@@ -1,3 +1,4 @@
+import { OWNED_STATE_BUNDLE_HEADER, writeOwnedStateBundle, readOwnedStateBundle, ownedStateTransferBytes } from './worklet/OwnedStateBundle.js';
 import { verifyResonatorBlendKernelProfile } from '../../midi/content/ResonatorBlendProfile.js';
 import { PairedModalBodyKernel } from './worklet/PairedModalBodyKernel.js';
 import { verifyPairedModalBodyProfile } from '../../midi/content/PairedModalBodyProfile.js';
@@ -133,7 +134,42 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     leftSample = values[outputIndex]; rightSample = values[outputIndex + 1];
     for (let i = 0; i < taps.length; i++) { tapSamples[i * 2] = values[taps[i]]; tapSamples[i * 2 + 1] = values[taps[i] + 1]; } frame++;
   };
-  return Object.freeze({ plan, hash, sample, update, validateUpdate: (id, values) => update(id, values, false), tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
+  const stateIdentity = { abi: 'owned-effect-graph-cut-v1', hash, sampleRate, frameOrigin, returnNodeIds: [...returnNodeIds] };
+  const stateEntries = [];
+  for (const record of records) {
+    if (record.kernel) stateEntries.push({ key: 'node:' + record.index, kernel: record.kernel, bytes: ownedStateTransferBytes(record.kernel) });
+    for (let index = 0; index < record.incoming.length; index++) if (record.incoming[index].align) { const kernel = record.incoming[index].align; stateEntries.push({ key: 'alignment:' + record.index + ':' + index, kernel, bytes: ownedStateTransferBytes(kernel) }); }
+  }
+  const stateByteLength = () => OWNED_STATE_BUNDLE_HEADER + stateEntries.reduce((sum, entry) => sum + entry.bytes, 0);
+  const snapshotInto = bytes => {
+    const components = stateEntries.map(entry => { const bytes = new Uint8Array(entry.bytes); entry.kernel.snapshotInto(bytes); return { key: entry.key, bytes }; });
+    return writeOwnedStateBundle(bytes, { identity: stateIdentity, frontier: { frame, leftSample, rightSample, muted, values: Array.from(values), presence: Array.from(presence), controls: Array.from(controls), gain: Array.from(gain), taps: Array.from(tapSamples) }, components });
+  };
+  const restoreFrom = bytes => {
+    if (frame !== 0 || muted) fail('effect-restore-staged-owner-required', 'Restore into a fresh unpublished graph, then replace the prior owner.');
+    const { frontier, components } = readOwnedStateBundle(bytes, stateIdentity, stateEntries.map(entry => entry.key));
+    if (!Number.isSafeInteger(frontier.frame) || frontier.frame < 0 || typeof frontier.muted !== 'boolean' || !Number.isFinite(frontier.leftSample) || !Number.isFinite(frontier.rightSample)) fail('effect-restore-frontier', 'Invalid graph output frontier.');
+    for (const [key, target] of [['values', values], ['presence', presence], ['controls', controls], ['gain', gain], ['taps', tapSamples]]) if (!Array.isArray(frontier[key]) || frontier[key].length !== target.length || frontier[key].some(value => !Number.isFinite(value) || key === 'presence' && value !== 0 && value !== 1)) fail('effect-restore-frontier', 'Invalid graph control, routing or interpolation state.');
+    for (const record of records) {
+      const at = record.at, p = record.entry.parameters, c = frontier.controls, kind = record.entry.kind;
+      const next = kind === 'gain' ? { gain01: c[at] } : kind === 'feedback-delay' ? { delaySeconds: c[at] / sampleRate, feedback: c[at + 1], wet01: c[at + 2], feedbackLowpassHz: c[at + 3] } : kind === 'nonlinear-chain' ? { driveDb: c[at], outputTrim01: c[at + 1] } : ['paired-modal-body', 'resonator-blend-body'].includes(kind) ? { morph01: c[at] } : kind === 'sympathetic-network' ? { couple01: c[at], damp01: c[at + 1] } : kind === 'spectral-freeze' ? { hold01: c[at] } : kind === 'allpass-notch' ? { baseFrequencyHz: c[at], feedback: c[at + 1], wet01: c[at + 2] } : null;
+      if (next) update(record.entry.id, next, false);
+      const offset = record.index * 3;
+      if (kind === 'gain') { if (frontier.gain[offset] < 0 || frontier.gain[offset] > p.gainMaximum01 || frontier.gain[offset + 1] !== c[at] || !Number.isSafeInteger(frontier.gain[offset + 2]) || frontier.gain[offset + 2] < 0 || frontier.gain[offset + 2] > Math.max(1, Math.round(sampleRate * 0.008))) fail('effect-restore-gain-ramp', 'Invalid in-flight gain interpolation.'); }
+      else if (frontier.gain.slice(offset, offset + 3).some(value => value !== 0)) fail('effect-restore-gain-ramp', 'A routing node contains an invented gain ramp.');
+    }
+    try {
+      for (let index = 0; index < stateEntries.length; index++) stateEntries[index].kernel.restoreFrom(components[index].bytes);
+      for (const entry of stateEntries) if (!frontier.muted && Number.isSafeInteger(entry.kernel.frame)) {
+        const spectral = records.some(record => record.kernel === entry.kernel && record.entry.kind === 'spectral-freeze');
+        if (entry.kernel.frame !== frontier.frame + (spectral ? frameOrigin : 0)) fail('effect-restore-component-frontier', 'The graph contains states from different output frames.');
+      }
+      values.set(frontier.values); presence.set(frontier.presence); controls.set(frontier.controls); gain.set(frontier.gain); tapSamples.set(frontier.taps);
+      frame = frontier.frame; leftSample = frontier.leftSample; rightSample = frontier.rightSample; muted = frontier.muted;
+      return Object.freeze({ status: 'restored-unpublished-graph', frame, hash, components: components.length, bytes: bytes.length, mutableState: 'independent', qualification: 'implementation-awaiting-pcm-equivalence' });
+    } catch (error) { panic(); throw error; }
+  };
+  return Object.freeze({ plan, hash, sample, update, stateByteLength, snapshotInto, restoreFrom, validateUpdate: (id, values) => update(id, values, false), tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
     stateBytes: plan.stateBytes + values.byteLength + controls.byteLength + gain.byteLength + tapSamples.byteLength,
     panic,
     enqueueBodyStrike(nodeId, command) {

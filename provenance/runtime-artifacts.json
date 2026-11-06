@@ -210,6 +210,7 @@
         "js/app/midi-ui/worklet/OwnedSineState.js",
         "js/app/midi-ui/worklet/OwnedSourceState.js",
         "js/app/midi-ui/worklet/OwnedSpectrumProcessor.js",
+        "js/app/midi-ui/worklet/OwnedStateBundle.js",
         "js/app/midi-ui/worklet/OwnedTextureProcessor.js",
         "js/app/midi-ui/worklet/OwnedTextureState.js",
         "js/app/midi-ui/worklet/OwnedWindProcessor.js",
@@ -465,8 +466,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 319,
-      "sha256": "750ee6520bd959cd292d4f7e59a290827b403f618ee66f60df1ad473440b291c"
+      "fileCount": 320,
+      "sha256": "c4d72006be0db5b0ea16d18b81d726b2654367456138d380baae88c65b5c0753"
     },
     {
       "id": "lemmings-timing-worker-source",
