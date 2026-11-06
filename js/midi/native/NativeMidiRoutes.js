@@ -1,17 +1,22 @@
+import { createNativeMidiIngress } from './NativeMidiIngress.js';
 import { UMP_WORD_COUNTS } from '../protocol/UmpPacketCodec.js';
 import { NativeMidiBridgeClient } from './NativeMidiBridgeClient.js';
 
 export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), onTrace = () => {} } = {}) {
+  const ingress = createNativeMidiIngress();
   const grants = new Map(), routes = new Map(), listeners = new Set(), trace = [];
   let disposal = null, notificationPending = false, executionSequence = 0, revision = 0, traceWords = 0, omittedTrace = 0, disposed = false, inventory = null;
   const notify = () => { revision++; if (notificationPending) return; notificationPending = true; queueMicrotask(() => { notificationPending = false; if (disposed) return; for (const listener of listeners) { try { listener(); } catch {} } }); };
   const current = route => route && grants.has(route.grant) && route.connectionEpoch === client.session && client.state === 'connected';
   const descriptor = (receipt, endpoint = null) => Object.freeze({ ...receipt, logicalDestination: globalThis.crypto.randomUUID(), endpoint, connectionEpoch: client.session });
+  const unsubscribeInput = ingress.subscribe(event => { for (const listener of listeners) { try { listener(event); } catch {} } });
   const unsubscribe = client.subscribe(event => {
-    if (event.event === 'grant-retired') { grants.delete(event.grant); notify(); }
-    else if (event.event === 'state' && event.state === 'disconnected') { grants.clear(); inventory = null; notify(); }
+    if (event.event === 'grant-retired') { ingress.revoke(event.grant, event.reason); grants.delete(event.grant); notify(); }
+    else if (event.event === 'state' && event.state === 'disconnected') { ingress.clearGrants(); grants.clear(); inventory = null; notify(); }
     else if (event.event === 'ports-changed') { inventory = null; notify(); }
-    else if (event.event === 'ingress' || event.event === 'ingress-loss') for (const listener of listeners) { try { listener(event); } catch {} }
+    else if (event.event === 'ingress') ingress.acceptColumns(event);
+    else if (event.event === 'ingress-loss') ingress.markLoss(event);
+    else if (event.event === 'receipt' && event.kind === 'heartbeat') ingress.poll();
   });
   const bind = ({ laneId, grant, group, channel, protocol = 'midi2', sharing = 'dedicated' }) => {
     const owner = grants.get(grant);
@@ -28,7 +33,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     routes.set(outputId, route); notify(); return route;
   };
   return Object.freeze({
-    client,
+    client, input: ingress,
     allocateExecutionEpoch() { if (disposed || executionSequence >= 0xffffffff) throw new Error('Native execution identity exhausted'); return ++executionSequence; },
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     async connect(options) { if (disposed) throw new Error('Native routing owner retired'); await client.connect(options); notify(); return client.capabilities; },
@@ -39,9 +44,10 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       if (!endpoint) throw new Error('Select a native endpoint');
       const receipt = await client.open(options);
       if (disposed || receipt.connectionEpoch != null && receipt.connectionEpoch !== client.session) throw new Error('Native route owner retired');
+      if (receipt.direction === 'input') ingress.register(receipt);
       grants.set(receipt.grant, descriptor(receipt, endpoint)); notify(); return grants.get(receipt.grant);
     },
-    async publish(options) { if (disposed) throw new Error('Native routing owner retired'); const receipt = await client.publish(options); if (disposed) throw new Error('Native route owner retired'); grants.set(receipt.grant, descriptor(receipt)); notify(); return grants.get(receipt.grant); },
+    async publish(options) { if (disposed) throw new Error('Native routing owner retired'); const receipt = await client.publish(options); if (disposed) throw new Error('Native route owner retired'); if (receipt.direction === 'input') ingress.register(receipt); grants.set(receipt.grant, descriptor(receipt)); notify(); return grants.get(receipt.grant); },
     bind,
     allocateDedicated(laneIds, { grant, protocol = 'midi2' }) {
       const owner = grants.get(grant); if (!owner || owner.direction !== 'output' || !Array.isArray(laneIds) || laneIds.length > 1024 || new Set(laneIds).size !== laneIds.length) throw new Error('Invalid native lane allocation');
@@ -60,7 +66,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     resolve(outputId, laneId = null) { const route = routes.get(outputId); return current(route) && (laneId == null || route.laneIds.includes(laneId)) ? route : null; },
     enabled() { return !disposed && [...routes.values()].some(current); },
     state() { return Object.freeze({ state: client.state, connectionEpoch: client.session, revision, inventory, grants: Object.freeze([...grants.values()]), routes: Object.freeze([...routes.values()].map(route => Object.freeze({ ...route, active: !!current(route) }))),
-      clock: client.clockStatus(), traceRecords: trace.length, traceWords, omittedTrace }); },
+      clock: client.clockStatus(), ingress: ingress.state(), traceRecords: trace.length, traceWords, omittedTrace }); },
     recordSubmission({ words, receipt, provenance }) {
       const retained = Object.freeze({ connectionEpoch: receipt.session, grant: receipt.grant, execution: receipt.execution, receipt: Object.freeze({ ...receipt }), provenance,
         words: Object.freeze(words.slice(0, receipt.acceptedWords || 0)), unconfirmedWords: receipt.submissionExtent === 'unobserved-batch' ? Object.freeze([...words]) : null, unconfirmedPacket: receipt.failedPacketUnconfirmed && receipt.submissionExtent !== 'unobserved-batch' ? Object.freeze(words.slice(receipt.failureWordOffset, receipt.failureWordOffset + UMP_WORD_COUNTS[words[receipt.failureWordOffset] >>> 28])) : null });
@@ -70,7 +76,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     },
     wireTrace() { return Object.freeze({ schema: 'lemmings-native-wire-trace/v1', claim: 'native-driver-submitted-prefix-not-receiver-or-acoustic', omittedRecords: omittedTrace, records: Object.freeze([...trace]) }); },
     async closeGrant(grant) { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or owned-note cleanup is unconfirmed'); grants.delete(grant); for (const [id, route] of routes) if (route.grant === grant) routes.delete(id); notify(); return receipt; },
-    disconnect() { client.disconnect(); grants.clear(); inventory = null; notify(); },
-    dispose() { if (disposal) return disposal; disposed = true; unsubscribe(); disposal = Promise.all([...grants.keys()].map(async grant => { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or cleanup remains unconfirmed'); })).then(() => { client.disconnect(); grants.clear(); routes.clear(); listeners.clear(); trace.length = traceWords = 0; }); return disposal; }
+    disconnect() { client.disconnect(); ingress.clearGrants(); grants.clear(); inventory = null; notify(); },
+    dispose() { if (disposal) return disposal; disposed = true; unsubscribe(); unsubscribeInput(); ingress.dispose(); disposal = Promise.all([...grants.keys()].map(async grant => { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or cleanup remains unconfirmed'); })).then(() => { client.disconnect(); grants.clear(); routes.clear(); listeners.clear(); trace.length = traceWords = 0; }); return disposal; }
   });
 }

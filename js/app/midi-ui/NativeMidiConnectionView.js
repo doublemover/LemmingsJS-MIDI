@@ -53,9 +53,15 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const exportTrace = button('Save native wire trace', () => {
     const blob = new Blob([JSON.stringify(routes.wireTrace(), null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), link = element(document, 'a'); link.href = url; link.download = 'lemmings-native-wire-trace.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
   }, routeControls);
+  const exportInput = button('Save native input trace', () => {
+    const blob = new Blob([JSON.stringify(routes.input.trace(), null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), link = element(document, 'a'); link.href = url; link.download = 'lemmings-native-input-trace.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, routeControls);
   const status = element(document, 'output', '', 'midi-status'), message = element(document, 'p', '', 'midi-help'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   const details = element(document, 'p', '', 'midi-help'); details.textContent = 'A native connection does not verify the receiver or DAW. Queued, driver-submitted, receiver-observed and audible are separate stages. Receiver protocol, conversion and original hardware precision remain unknown until independently qualified.';
-  root.append(controls, routeControls, status, message, details); container.append(root);
+  const inputStatus = element(document, 'output', '', 'midi-status'); inputStatus.setAttribute('aria-live', 'off');
+  root.append(controls, routeControls, status, inputStatus, message, details); container.append(root);
+  let inputTimer = null;
+  const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category : ''); };
   let busy = false, selectedGrant = null, inventoryEpoch = null, laneSignature = '';
   const options = (node, rows, placeholder) => {
     const previous = node.value; node.replaceChildren(); const empty = element(document, 'option', placeholder); empty.value = ''; node.append(empty);
@@ -66,7 +72,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     const state = routes.state(), connected = !!state.connectionEpoch, writable = state.grants.some(row => row.direction === 'output');
     for (const node of buttons) node.disabled = busy;
     connect.disabled ||= connected; disconnect.disabled ||= !connected; refresh.disabled ||= !connected; open.disabled ||= !connected || !state.inventory; publish.disabled ||= !connected; publishInput.disabled ||= !connected;
-    switchBackend.disabled ||= !connected || !!state.grants.length; revoke.disabled ||= !state.grants.length; assign.disabled ||= !writable; all.disabled ||= !writable; exportTrace.disabled ||= !state.traceRecords;
+    switchBackend.disabled ||= !connected || !!state.grants.length; revoke.disabled ||= !state.grants.length; assign.disabled ||= !writable; all.disabled ||= !writable; exportTrace.disabled ||= !state.traceRecords; exportInput.disabled ||= !state.ingress.receivedPackets; renderInput();
     status.textContent = state.state + (connected ? ' · native UMP · ' + state.grants.length + ' owned connections · clock ' + state.clock.status : ' · local audio remains available');
     const capabilities = routes.client.capabilities;
     if (capabilities && backend.options.length !== capabilities.compiledApis.length + 1) options(backend, capabilities.compiledApis.map(api => [api.id, api.name]), 'Choose backend');
@@ -79,6 +85,6 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   }
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
   bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; });
-  const unsubscribe = routes.subscribe(event => { if (!event && root.open) render(); }); render();
-  return { render, dispose() { unsubscribe(); for (const remove of removers) remove(); root.remove(); } };
+  const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
+  return { render, dispose() { unsubscribe(); clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
 }

@@ -104,3 +104,17 @@ The browser queue bounds retained words, batches, jobs and metadata estimates.
 Native physical admission allows 1024 owned voices; real receiver polyphony is
 still unverified. This batching implementation awaits the consolidated functional
 and throughput run. It is not a measured latency or sustained-throughput claim.
+
+Native input now has an owned browser ingress boundary. It validates complete
+column batches before publishing observations, preserves signed int64 source
+timestamps as decimal strings, retains wire precision separately from unknown
+hardware precision, and invalidates multipart state at queue losses or sequence
+gaps. Bounded SysEx/Flex/Stream collectors expire through application heartbeats.
+The connection panel shows packet/loss counters and exports a separate original
+native input trace.
+
+All incoming channel packets are read-only observations. Explicit quiescent
+observation scopes can consume report bodies before ordinary observers; they
+expire or revoke on loss and connection replacement. This provides the ingress
+boundary for application CI/report owners. Discovery, Profile/Property Exchange,
+live controller mapping and full message-report transactions remain outstanding.

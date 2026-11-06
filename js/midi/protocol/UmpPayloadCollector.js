@@ -36,6 +36,7 @@ export function createUmpPayloadCollector({ maximumStreams = 32, maximumMessageB
         return Object.freeze({ status: 'complete', ...stream.identity, payload, ...(stream.text ? { text } : {}), packets: stream.packets });
       } finally { remove(frame.key); }
     },
+    sweep() { const at = now(); if (!Number.isFinite(at) || at < lastTime) throw failure('collector-clock', 'Payload expiry requires monotonic receive time.'); lastTime = at; const before = expired; expire(at); return expired - before; },
     reset() { streams.clear(); totalBytes = 0; expired = 0; lastTime = -Infinity; },
     diagnostics() { return Object.freeze({ streams: streams.size, retainedBytes: totalBytes, expired, maximumStreams, maximumMessageBytes, maximumTotalBytes }); }
   });

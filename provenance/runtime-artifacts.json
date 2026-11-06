@@ -460,7 +460,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 313,
-      "sha256": "ac88e47c15d97733a580a219d90204320059b2a419ba15968a1e0d0adb2f3472"
+      "sha256": "b79dfaac771e3b66294928ecf97d759f1340c565c5dc607f407ff235f1f42b56"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -513,6 +513,7 @@
         "js/midi/native/NativeMidiBatchQueue.js",
         "js/midi/native/NativeMidiBridgeClient.js",
         "js/midi/native/NativeMidiBridgeProtocol.js",
+        "js/midi/native/NativeMidiIngress.js",
         "js/midi/native/NativeMidiRoutes.js",
         "native/midi-codec/UmpBatchGuard.hpp",
         "native/midi-codec/dependencies.json",
@@ -530,8 +531,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 21,
-      "sha256": "a6df3f6775a3c00bd92ccf60ce3b2bf19d3e8afaf2a1cb6249fb2c59bbc79d20"
+      "fileCount": 22,
+      "sha256": "d5833ba4a5fa8d990751edbb69c53e9a7c80f0c8dadc0f759f145e3482f45460"
     }
   ]
 }
