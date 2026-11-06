@@ -5,6 +5,7 @@ import { createProcgenRetirementScope } from './ProcgenRetirement.js';
 import { attachProcgenSimulationConsumer } from './ProcgenSimulationConsumer.js';
 import { prepareProcgenSimulationRealm } from './ProcgenSimulationRealm.js';
 import { SIMULATION_MAX_CONSUMERS, simulationEnvelope, isSimulationEnvelope, simulationFailure, validateSimulationManifest } from './ProcgenSimulationProtocol.js';
+export { attachProcgenSimulationOutput, attachProcgenNativeSimulationOutput } from './ProcgenSimulationOutputConsumer.js';
 
 let activeHosts = 0;
 export const prepareInProcessProcgenSimulationHost = options => prepareProcgenSimulationRealm(options);
@@ -120,7 +121,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
         signal: controller.signal, isCurrent: () => !disposed && !failure })) { sequence = packet.sequence; await transmitInput('input-page', sequence, { packet }, backgroundSnapshotTransfers(packet)); }
       check(); input = null; send('input-end', { sequence });
     })(); await inputProducer; await timeout(ready, 180000, 'The authoritative world did not finish preparation.'); check();
-    return Object.freeze({ mode: 'worker', state: () => latestState, pause: () => request('pause'), resume: () => request('resume'),
+    return Object.freeze({ mode: 'worker', identity: Object.freeze({ ...manifest }), state: () => latestState, pause: () => request('pause'), resume: () => request('resume'),
       advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
       diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null,
         buildId: execution.buildId, defaultEnabled: false, performanceQualification: 'required-before-default', reservation: reservation.receipt() }), dispose });

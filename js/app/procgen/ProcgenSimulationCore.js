@@ -24,9 +24,9 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
   const listener = batch => {
     try {
       if (!collecting || batch.worldId !== world.worldId || batch.generation !== world.generation || collecting.length >= 2) throw simulationFailure('batch-boundary', 'The world published outside its host-owned completed step.');
-      if (scoreTimeline) clock.observe(batch, { bpm });
+      const scoreTime = scoreTimeline ? clock.observe(batch, { bpm }) : null;
       const intents = playing && engine ? engine.processBatch(batch) : [];
-      const packet = Object.freeze({ sequence: ++sequence, documentRevision, batch, intents,
+      const packet = Object.freeze({ sequence: ++sequence, documentRevision, batch, intents, scoreTime, tempoBpm: bpm,
         bodyCommands: playing && engine ? engine.bodyPreparations()?.commands || Object.freeze([]) : Object.freeze([]) });
       collecting.push(packet); latest = batch.snapshot;
     } catch (error) { listenerError = error; }

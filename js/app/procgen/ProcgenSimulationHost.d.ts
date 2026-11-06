@@ -15,9 +15,10 @@ export interface SimulationRetirement {
 export interface SimulationPacket {
   readonly sequence: number; readonly documentRevision: number; readonly batch: Readonly<Record<string, unknown>>;
   readonly intents: readonly unknown[]; readonly bodyCommands: readonly unknown[];
+  readonly scoreTime: Readonly<Record<string, unknown>> | null; readonly tempoBpm: number;
 }
 export interface SimulationHost {
-  readonly mode: 'worker'; state(): SimulationState | null;
+  readonly mode: 'worker'; readonly identity: Readonly<{ ownerId: string; ownerEpoch: number; documentRevision: number }>; state(): SimulationState | null;
   pause(): Promise<unknown>; resume(): Promise<unknown>; advance(steps: number): Promise<unknown>;
   submit(command: unknown): Promise<unknown>; checkpoint(): Promise<unknown>;
   diagnostics(): Readonly<Record<string, unknown>>; dispose(): SimulationRetirement;
@@ -28,6 +29,8 @@ export interface SimulationHostOptions {
   onState?: (state: SimulationState) => void; Worker?: typeof Worker; MessageChannel?: typeof MessageChannel;
 }
 export function prepareWorkerProcgenSimulationHost(options: SimulationHostOptions): Promise<SimulationHost>;
+export function attachProcgenSimulationOutput(options: Readonly<Record<string, unknown>>): { state(): Readonly<Record<string, unknown>>; dispose(): SimulationRetirement };
+export function attachProcgenNativeSimulationOutput(options: Readonly<Record<string, unknown>>): { state(): Readonly<Record<string, unknown>>; dispose(): SimulationRetirement };
 export function prepareInProcessProcgenSimulationHost(options: {
   manifest: SimulationManifest; resourceBudget: unknown; signal?: AbortSignal;
   requiredConsumer?: (packet: SimulationPacket) => unknown | Promise<unknown>;

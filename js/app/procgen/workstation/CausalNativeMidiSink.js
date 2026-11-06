@@ -58,7 +58,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
   const enabled = () => !disposed && !ownerFailure && routes.enabled();
   const readLanes = () => { const lanes = getLanes(); if (lanes !== laneSource) { laneSource = lanes; routes.reconcileDeviceMappings?.(lanes); laneIds = new Map(lanes.map(lane => [lane.id, lane])); soloCount = lanes.reduce((count, lane) => count + Number(lane.solo && !lane.mute), 0); contextLaneCount = lanes.reduce((count, lane) => count + Number(lane.scoreContext?.enabled === true), 0); } return lanes; };
   const resolveLane = lane => mode === 'auxiliary' ? routes.resolveAuxiliary(lane?.id) : routes.resolve(lane?.outputId, lane?.id);
-  const laneFor = id => { readLanes(); return laneIds.get(id); };
+  const laneFor = id => { const lanes = readLanes(); return typeof id === 'number' ? lanes[id] : laneIds.get(id); };
   const scoreContextPlan = (entry, lane, scoreTime, sourceId) => {
     const policy = lane.scoreContext, owner = entry.wireOwner;
     const empty = { words: [], events: [], commit() {} };
