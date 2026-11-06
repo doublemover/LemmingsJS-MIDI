@@ -693,22 +693,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!transport.getState().playing) return admission('rejected', sinkId, spec, meta, 'transport-stopped');
       if (!targetSink(meta, sinkId)) return admission('rejected', sinkId, spec, meta, 'sink-not-targeted');
       const event = { ...spec, type: 'cc', timestamp: spec.timeMs };
-      if (localEnabled()) {
-        const scheduler = router()?.scheduler, channel = scheduler?.output?.channels?.[spec.channel];
-        const localMeta = { ...meta, outputId: scheduler?._resolveOutputId?.(null) ?? scheduler?.output?.id ?? null };
-        const reservation = scheduler?.evaluateAndReserve?.({ on: { timeMs: spec.timeMs, count: 1, bytes: 3 } }, localMeta, now());
-        if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); budgetNotice(); return admission('rejected', 'local-preview', spec, meta, reservation.reason); }
-        let submitted = false;
-        try {
-          if (!channel?.sendControlChange) return admission('rejected', 'local-preview', spec, meta, 'channel-unavailable');
-          channel.sendControlChange(spec.controller, spec.value, { time: spec.timeMs });
-          submitted = true;
-          if (reservation?.reservationId != null) scheduler._commitReservationMessage(reservation.reservationId, 'on', 3, localMeta, now());
-          ports.recordEvent(event, { ...meta, source: 'local-preview' });
-          return admission('accepted', 'local-preview', spec, meta);
-        } catch (error) { return admission(submitted ? 'accepted' : 'rejected', 'local-preview', spec, meta, error?.message || 'channel-unavailable'); }
-        finally { scheduler?._releaseReservation?.(reservation?.reservationId, true); }
-      }
+      if (localEnabled()) return admission('rejected', 'local-preview', spec, meta, 'midi-cc-not-a-local-instrument-parameter');
       if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
         if (ports.sendEvent(event)) return admission('accepted', sinkId, spec, meta);
         budgetNotice(); return admission('rejected', sinkId, spec, meta, 'output-rejected');

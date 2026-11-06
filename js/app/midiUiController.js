@@ -2543,6 +2543,7 @@ const createMidiUiController = ({
     const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index, { completedPasses, tick: timer?.getGameTicks?.() ?? timer?.tickIndex, tickMs: timer?.TIME_PER_FRAME_MS || 60 }, { roleTrackId: document?.getElementById('midiSoundPreviewRole')?.value || undefined, ...previewContext });
     const advance = () => auditionSteps.set(source.id, { key, index: index + 1, completedPasses, completionAt: plan.completionMs == null ? null : nowMs() + plan.completionMs });
     if (plan.advance || plan.notes.length) settleAuditionPasses(true);
+    if (plan.notes.some(note => !note.instrumentRef)) { localInteraction++; auditionPending = false; auditionAudio.stop?.(); setStatus('Choose a local instrument or use native defaults before testing this sound.'); renderLocalSummary(); return false; }
     if (!plan.notes.length) { if (plan.advance) { localInteraction += 1; auditionPending = false; auditionAudio.stop?.(); advance(); renderLocalSummary(); } setStatus(plan.reason); return false; }
     const interaction = ++localInteraction;
     auditionPending = true; renderLocalSummary();
@@ -2642,7 +2643,7 @@ const createMidiUiController = ({
       previewRole.value = Array.from(previewRole.children).some(option => option.value === selected) ? selected : '';
     }
     const localTrack = localInstrumentTrack(), localDefinition = localTrack?.instrumentRef?.definition;
-    setText(document?.getElementById('midiLocalInstrumentName'), localDefinition ? localDefinition.name + ' · revision ' + localDefinition.revision : 'Source preview');
+    setText(document?.getElementById('midiLocalInstrumentName'), localDefinition ? localDefinition.name + ' · revision ' + localDefinition.revision : 'Choose a local instrument');
     const clearLocal = document?.getElementById('midiLocalInstrumentClear'); if (clearLocal) clearLocal.hidden = !localDefinition;
     const chooseLocal = document?.getElementById('midiLocalInstrument'); if (chooseLocal) chooseLocal.disabled = !source;
     const convertLocal = document?.getElementById('midiLocalInstrumentConvert'); if (convertLocal) { convertLocal.hidden = current.tracks.every(track => !!track.instrumentRef); convertLocal.disabled = localMigrationPending; }
@@ -2979,6 +2980,7 @@ const createMidiUiController = ({
     bindById('midiMasterVolume', 'input', updateMasterVolume);
     bindById('midiMasterVolume', 'change', updateMasterVolume);
     bindById('midiLocalListenButton', 'click', async () => {
+      if (!localOwnershipState().stopping) { const current = ensureProject(), needed = new Set(current.sources.filter(source => source.enabled).map(source => source.trackId)); if (current.ensemble?.enabled) for (const role of current.ensemble.roles) needed.add(role.trackId); if (current.tracks.some(track => needed.has(track.id) && !track.mute && !track.instrumentRef)) { setStatus('Choose local instruments or use native defaults before listening to this project.'); return; } }
       if (localOwnershipState().stopping) { stopLocalPreview(); return; }
       const preview = ensureLocalPreview();
       const interaction = ++localInteraction;
@@ -2995,7 +2997,7 @@ const createMidiUiController = ({
     bindById('midiLocalInstrumentConvert', 'click', () => { void convertLocalInstrumentDefaults().catch(error => { if (!disposed) setStatus(error.message); }); });
     bindById('midiLocalInstrument', 'click', () => { void openLocalInstrumentLibrary().catch(error => { if (!disposed) setStatus(error.message); }); });
     bindById('midiLocalInstrumentClear', 'click', () => { const track = localInstrumentTrack(); if (track) dispatchProjectIntent({ type: 'track.update', trackId: track.id, patch: { instrumentRef: null, instrumentControls: null } }); });
-    bindById('midiSoundPreviewRole', 'change', renderSoundEditor);
+    bindById('midiSoundPreviewRole', 'change', () => { localInteraction++; auditionPending = false; auditionAudio?.stop?.(); renderSoundEditor(); renderLocalSummary(); });
     const presetSelect = document?.getElementById('midiGamePresetSelect');
     const presetMode = document?.getElementById('midiGamePresetMode');
     if (presetMode) presetMode.value = 'phrase';

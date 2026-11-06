@@ -3,12 +3,9 @@ import { createAudioRuntimeObservation } from './AudioRuntimeObservation.js';
 import { createAudioRuntimeTransition } from './AudioRuntimeTransition.js';
 import { createAudioOutputWatch } from './AudioOutputWatch.js';
 import { createLiveLaneSourceBuses } from './LiveLaneSourceBuses.js';
-import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
 import { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
-import { selectLocalAudioVoice } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
 import { createNativeOscillatorBackend } from './nativeOscillatorBackend.js';
-import { createTimedControlTimeline } from './TimedControlTimeline.js';
 import { createAudioObservationLeases } from './AudioObservationLeases.js';
 import { createAudioResourceLeases, releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createProcgenRetirementScope, afterProcgenRetirement } from '../procgen/ProcgenRetirement.js';
@@ -23,10 +20,7 @@ const retirementState = receipt => receipt ? { state: receipt.state, outcome: re
   failures: receipt.resources.filter(resource => ['failed', 'unknown'].includes(resource.status)).map(resource => ({ name: resource.name, status: resource.status, error: resource.error })) } : null;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const finite = (value, fallback) => Number.isFinite(value) ? value : fallback;
-const ATTACK_SECONDS = 0.008;
-const RELEASE_SECONDS = 0.04;
 const MAX_SCHEDULED_VOICES = 64;
-const MAX_CONTROL_EVENTS = 128;
 const MAX_AUDIO_SESSIONS = 4;
 const MAX_RENDER_VOICES = 64;
 const MAX_RELEASE_TAILS = 32;
@@ -36,18 +30,6 @@ const MAX_MASTER_VOLUME = 4;
 const MIX_MAKEUP_COMPENSATION = 0.647;
 const MIX_LOOKAHEAD_SECONDS = 0.006;
 let captureScopeSequence = 0;
-const instrumentProfile = (program, percussion, note, enabled = true) => {
-  if (!enabled) return { waveform: 'triangle', attack: ATTACK_SECONDS, decay: 0, sustain: 1, release: RELEASE_SECONDS, gain: 1 };
-  if (percussion) {
-    if (note === 36) return { waveform: 'sine', attack: 0.002, decay: 0.16, sustain: 0, release: 0.025, gain: 0.9, seconds: 0.22, frequency: 120, endFrequency: 45 };
-    return { waveform: 'square', noise: true, attack: 0.001, decay: note === 42 ? 0.055 : 0.12,
-      sustain: 0, release: 0.015, gain: note === 42 ? 0.3 : 0.6, seconds: note === 42 ? 0.09 : 0.18, frequency: note === 42 ? 2500 : 180 };
-  }
-  if (program === 38 || (program >= 32 && program <= 39)) return { waveform: 'sine', attack: 0.006, decay: 0.05, sustain: 0.82, release: 0.06, gain: 0.9 };
-  if (program === 29 || (program >= 24 && program <= 31)) return { waveform: 'square', attack: 0.004, decay: 0.09, sustain: 0.4, release: 0.04, gain: 0.48 };
-  if (program === 81 || (program >= 80 && program <= 87)) return { waveform: 'sawtooth', attack: 0.012, decay: 0.08, sustain: 0.65, release: 0.055, gain: 0.45 };
-  return { waveform: 'triangle', attack: ATTACK_SECONDS, decay: 0, sustain: 1, release: RELEASE_SECONDS, gain: 1 };
-};
 const createOutputCeiling = context => {
   const limiter = context.createWaveShaper();
   const curve = new Float32Array(4097);
@@ -127,8 +109,6 @@ class BrowserNotePreview {
     this._semanticVoiceOwners = new Map();
     this._instrumentBackends = new Set();
     this._preparedPreviews = new Set(); this._preparedRootSession = null; this._lastPreparedPreview = null;
-    this._previewPending = [];
-    this._previewTimer = null;
     this._voiceSequence = 0;
     this._onPlayback = onPlayback;
     this.capture = null;
@@ -137,7 +117,7 @@ class BrowserNotePreview {
     this._captureScope = 'audio-' + (++captureScopeSequence);
     this._audioResources = createAudioResourceLeases({ resourceBudget, ownerPrefix: this._captureScope });
     this._soundMaterialBudget = resourceBudget; this._soundMaterialProvider = null;
-    this._graphResourceLease = null; this._noiseResourceLease = null;
+    this._graphResourceLease = null;
     this._captureContext = null;
     this._captureAnalyser = null;
     this._captureSamples = null;
@@ -148,13 +128,12 @@ class BrowserNotePreview {
     this._sessionSequence = 0;
     this._defaultEnabled = false;
     this._defaultEnableRequests = 0;
-    this._noiseBuffer = null;
     this._onContextState = () => {
       if (this._disposed || !this._enabled || this._context?.state === 'running') return;
       this.stop();
       this._setStatus('interrupted', 'Browser audio was interrupted. Enable preview again.');
     };
-    this.output = this._createOutput();
+    this.outputIdentity = this._createOutputIdentity();
     this._performanceCoordinator = performanceCoordinator === undefined ? getBrowserPerformanceLease({ resourceBudget }) : performanceCoordinator;
     this._performanceToken = null; this._performanceStopReceipt = null; this._performanceContextClosing = null; this._performanceDisposalStopReceipt = null; this._performanceReleaseCompletion = null; this._performanceRolesKey = null;
     this._performanceStops = new Set();
@@ -195,32 +174,9 @@ class BrowserNotePreview {
     };
   }
 
-  _createOutput(owner = null) {
-    const optionsForOwner = options => ({ ...options, owner });
-    const ready = action => this._ownerReady(owner) ? action() : false;
-    const channels = {};
-    for (let number = 1; number <= 16; number += 1) {
-      channels[number] = Object.freeze({
-        sendNoteOn: (note, options) => ready(() => this._noteOn(number, note, optionsForOwner(options))),
-        sendProgramChange: (program, options) => ready(() => this._safeSend(() => this._program(number, program, options, owner))),
-        sendNoteOff: (note, options) => ready(() => this._noteOff(number, note, optionsForOwner(options))),
-        sendControlChange: (control, value, options) => ready(() => this._safeSend(() => this._control(number, control, value, options, owner))),
-        sendPitchBend: (value, options) => ready(() => this._safeSend(() => this._pitchBend(number, value, options, owner))),
-        sendPitchBendRange: (semitones, cents, options) => ready(() => this._safeSend(() => this._pitchBendRange(number, semitones, cents, options, owner))),
-        sendAllNotesOff: () => this._clearVoices(number, owner)
-      });
-    }
-    return Object.freeze({
-      id: 'browser-note-preview' + (owner == null ? '' : ':' + owner),
-      captureScope: this._captureScope + (owner == null ? '' : ':' + owner),
-      name: 'Browser audio preview' + (owner == null ? '' : ' (' + owner + ')'),
-      supportsPerNotePan: true, supportsPerNoteInstrument: true, supportsIndependentNoteGates: true,
-      isVoiceActive: token => this._isVoiceActive(token, owner),
-      canAllocateVoice: () => this._workloadVoiceCount(owner) < (this._workloadClass(owner) === 'cue' ? this._maxCueScheduledVoices : this._maxLiveScheduledVoices) ||
-        [...this._voices].some(voice => (voice.workloadClass || 'live') === this._workloadClass(owner) && this._voiceFinished(voice)),
-      supportsPlaybackMetadata: true, channels: Object.freeze(channels),
-      clear: () => this._clearVoices(null, owner)
-    });
+  _createOutputIdentity(owner = null) {
+    return Object.freeze({ id: 'browser-audio' + (owner == null ? '' : ':' + owner), captureScope: this._captureScope + (owner == null ? '' : ':' + owner),
+      name: 'Local instrument audio' + (owner == null ? '' : ' (' + owner + ')'), backend: 'semantic-local-instrument' });
   }
 
   _ownerReady(owner) { return this._ready() && !this._retirementFaults.has(owner) && (!this._effectRetirements.has(owner) || this._effectRetirements.get(owner).scope.getReceipt()?.outcome === 'complete') && (owner == null || this._sessions.get(owner)?.enabled === true) &&
@@ -286,7 +242,7 @@ class BrowserNotePreview {
     const getState = () => {
       const state = this.getState(); let activeVoices = 0, pendingNotes = 0;
       for (const voice of this._voices) if (voice.owner === id) activeVoices++;
-      for (const entry of this._previewPending) if (entry.spec.owner === id) pendingNotes++;
+      for (const entry of this._preparedPreviews) if (entry.owner === id && entry.player.state().phase === 'preparing') pendingNotes += entry.noteCount;
       return { ...state, preparedPreview: session.preparedPreview || null, owner: label, ownerId: id, sharedMix: true, activeVoices, pendingNotes, enabled: session.enabled && state.enabled && !this._retirementFaults.has(id),
         laneSources: this._laneSourceBuses.get(id)?.buses.diagnostics() || null, effectRetirement: retirementState(this._effectRetirements.get(id)?.scope.getReceipt()), retirement: retirementState(retirement.getReceipt()),
         status: session.disposed ? 'disposed' : this._retirementFaults.has(id) ? 'error' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
@@ -348,7 +304,7 @@ class BrowserNotePreview {
       return promise;
     };
     session.api = {
-      output: this._createOutput(id), getState, enable, stop, panic: stop,
+      outputIdentity: this._createOutputIdentity(id), getState, enable, stop, panic: stop,
       getAudioContext: () => this.getAudioContext(), getSoundMaterialProvider: () => this.getSoundMaterialProvider(),
       setCaptureContext: ({ worldId, graphRevision, routeRevision, scoreMapping = null } = {}) => {
         if (session.disposed) return false;
@@ -464,7 +420,7 @@ class BrowserNotePreview {
   getOperationalState() {
     return Object.freeze({ status: this._status, message: this._message, enabled: this._ready(), performanceLease: this._performanceCoordinator?.state() || null,
       contextState: this._context?.state || 'not-created', contextEpoch: this._contextEpoch, activeVoices: this._voices.size,
-      pendingNotes: this._previewPending.length, masterVolume: this._masterVolume });
+      pendingNotes: [...this._preparedPreviews].reduce((total, entry) => total + (entry.player.state().phase === 'preparing' ? entry.noteCount : 0), 0), masterVolume: this._masterVolume });
   }
 
   getState() {
@@ -487,7 +443,7 @@ class BrowserNotePreview {
       audition: this.getAuditionState(),
       voiceSteals: this._voiceSteals, voiceDrops: this._voiceDrops,
       mixCompression: !!this._compressor, mixLatencyMs: this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0, mixMakeupCompensation: this._compressor ? MIX_MAKEUP_COMPENSATION : 1, mixReductionDb: finite(this._compressor?.reduction, 0),
-      pendingNotes: this._previewPending.length,
+      pendingNotes: [...this._preparedPreviews].reduce((total, entry) => total + (entry.player.state().phase === 'preparing' ? entry.noteCount : 0), 0),
       masterVolume: this._masterVolume
     };
   }
@@ -794,11 +750,10 @@ class BrowserNotePreview {
       ...[...this._channels].map(([key, channel]) => ({ name: 'channel-' + key, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => this[field]?.disconnect() })),
       { name: 'graph-reservation', run: () => this._graphResourceLease?.release() },
-      { name: 'noise-reservation', run: () => this._noiseResourceLease?.release() },
       { name: 'closed-context-acknowledgment', run: () => { acknowledgment = this._reconcileClosedContext(context); return acknowledgment; } },
       { name: 'context-references', run: () => {
-        this._channels.clear(); this._noiseBuffer = null; this._master = null; this._limiter = null; this._compressor = null; this._compressorOutput = null;
-        this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._runtimeOutputWatch = null; this._graphResourceLease = null; this._noiseResourceLease = null; this._cueRouting = null; this._intervalAdmission = null;
+        this._channels.clear(); this._master = null; this._limiter = null; this._compressor = null; this._compressorOutput = null;
+        this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._runtimeOutputWatch = null; this._graphResourceLease = null; this._cueRouting = null; this._intervalAdmission = null;
         if (acknowledgment?.outcome === 'complete') this._retirementFaults.clear();
       } }
     ]);
@@ -925,7 +880,7 @@ class BrowserNotePreview {
       { name: 'output-availability-watch', run: () => this._runtimeOutputWatch?.dispose() },
       ...[...this._channels].map(([key, channel]) => ({ name: `channel-${key}`, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),
-      { name: 'buffers', run: () => { this._noiseBuffer = null; this._captureSamples = null; this._intervalAdmission = null; } },
+      { name: 'buffers', run: () => { this._captureSamples = null; this._intervalAdmission = null; } },
       { name: 'resource-reservations', run: () => this._audioResources.dispose() },
       { name: 'runtime-observation', run: () => this._runtimeObservation.dispose() },
       { name: 'runtime-transition', run: () => this._runtimeTransition.dispose() },
@@ -1061,7 +1016,7 @@ class BrowserNotePreview {
   _observe(stage, fields) {
     if (!this._captureEnabled()) return null;
     const session = fields.owner == null ? null : this._sessions.get(fields.owner);
-    const output = session?.api.output || this.output;
+    const output = session?.api.outputIdentity || this.outputIdentity;
     if (session) fields = { captureScope: output.captureScope, ...fields };
     return this._observers.emit(stage, { captureScope: this._captureScope, ...fields,
       backend: 'local-synth', outputId: output.id, outputScope: output.captureScope });
@@ -1073,7 +1028,7 @@ class BrowserNotePreview {
     const session = this._sessions.get(owner); if (!session || session.disposed) return false;
     if (replace) session.api.stop();
     if (this._preparedPreviews.size >= 8 || [...this._preparedPreviews].some(entry => entry.player.state().phase === 'retirement-unknown')) { this._setStatus('error', 'Finish or retire earlier prepared previews before starting another.'); return false; }
-    const generation = session.generation, graphGeneration = this._generation, entry = { owner, player: null };
+    const generation = session.generation, graphGeneration = this._generation, entry = { owner, player: null, noteCount: notes.length };
     const current = () => !this._disposed && !session.disposed && generation === session.generation && graphGeneration === this._generation;
     entry.player = createPreparedInstrumentPreview({ session: session.api, getContext: () => this._context, getMaterialProvider: () => this.getSoundMaterialProvider(), maxSeconds: this._maxNoteSeconds, current,
       onReceipt: receipt => { this._lastPreparedPreview = receipt; session.preparedPreview = receipt; if (receipt.phase === 'retired') this._preparedPreviews.delete(entry); this._observe('prepared-instrument-preview', { ...receipt, owner }); if (!receipt.voiceId) session.report(); } });
@@ -1082,77 +1037,12 @@ class BrowserNotePreview {
     catch (error) { const receipt = entry.player.dispose(); await receipt.completion; if (current()) this._setStatus('error', String(error?.message || 'The selected local instrument could not be prepared.').slice(0, 512)); return false; }
   }
 
-  /** Pinned instrumentRef phrases use the semantic backend; plain notes retain their explicit source preview. */
+  /** Every local phrase names its complete prepared instrument; MIDI encoding belongs to external outputs. */
   async preview(notes, { replace = true, durationMs = 220, stepMs = 160, owner = null } = {}) {
     if (this._disposed) return false;
-    const requested = Array.isArray(notes) ? notes : [notes];
-    if (requested.some(note => note && typeof note === 'object' && note.instrumentRef)) {
-      if (requested.some(note => !note || typeof note !== 'object' || !note.instrumentRef)) { this._setStatus('error', 'Every note in this prepared phrase must name its pinned local instrument.'); return false; }
-      return this._previewPreparedInstruments(requested, { replace, owner });
-    }
-    const session = owner == null ? null : this._sessions.get(owner);
-    if (owner != null && (!session || session.disposed)) return false;
-    if (replace) { if (session) session.api.stop(); else this.stop(); }
-    const generation = session ? session.generation : this._generation;
-    const specs = (Array.isArray(notes) ? notes : [notes]).slice(0, MAX_SCHEDULED_VOICES)
-      .map((entry, index) => typeof entry === 'number'
-        ? { note: entry, offsetMs: index * finite(stepMs, 160) }
-        : { ...entry });
-    for (const spec of specs) spec.owner = owner;
-    if (!specs.some(spec => this._validNote(spec.note))) return false;
-    if (!await (session ? session.api.enable() : this.enable()) || generation !== (session ? session.generation : this._generation)) return false;
-    const baseTime = this._nowMs();
-    for (const spec of specs) {
-      if (!this._validNote(spec.note)) continue;
-      const offset = finite(spec.offsetMs, 0);
-      if (offset < 0 || !Number.isFinite(baseTime + offset)) continue;
-      const requestId = this._observe('request', { ...spec.playback, ...(session ? { captureScope: session.api.output.captureScope, outputScope: session.api.output.captureScope } : {}), type: 'audition', owner, note: spec.note,
-        channel: spec.channel ?? 1, program: spec.program, intendedMs: baseTime + offset, eventType: 'audition' });
-      this._previewPending.push({ spec: { ...spec, capture: this._captureMetadata({ ...spec.playback, requestId, captureScope: session?.api.output.captureScope || this._captureScope, outputScope: session?.api.output.captureScope || this._captureScope, eventType: 'audition',
-        note: spec.note, channel: spec.channel ?? 1, program: spec.program, ensembleRole: spec.ensembleRole,
-        percussion: spec.percussion, intendedMs: baseTime + offset }, owner) }, time: baseTime + offset, durationMs });
-    }
-    this._previewPending.sort((a, b) => a.time - b.time);
-    if (this._previewPending.length > MAX_SCHEDULED_VOICES) this._previewPending.splice(0, this._previewPending.length - MAX_SCHEDULED_VOICES);
-    const played = this._drainPreviewQueue(this._generation, owner);
-    return played || this._previewPending.some(entry => entry.spec.owner === owner);
-  }
-
-  _drainPreviewQueue(generation = this._generation, reportOwner = undefined) {
-    if (this._previewTimer != null) clearTimeout(this._previewTimer);
-    this._previewTimer = null;
-    if (generation !== this._generation || !this._ready()) return false;
-    const now = this._nowMs(), horizon = this._maxNoteSeconds * 500;
-    let played = false;
-    while (this._previewPending.length && this._previewPending[0].time <= now + horizon) {
-      const { spec, time, durationMs } = this._previewPending.shift();
-      const output = spec.owner == null ? this.output : this._sessions.get(spec.owner)?.api.output;
-      if (!output) continue;
-      const channel = output.channels[clamp(Math.trunc(finite(spec.channel, 1)), 1, 16)];
-      const length = clamp(finite(spec.durationMs, durationMs), 30, this._maxNoteSeconds * 1000);
-      if (time + length <= now) { this._observe('drop', { ...spec.capture, owner: spec.owner, type: 'noteOn', reason: 'expired-audition' }); continue; }
-      if (Number.isFinite(spec.pitchBendRange)) channel.sendPitchBendRange(spec.pitchBendRange);
-      if (Number.isFinite(spec.pitchBend)) channel.sendPitchBend(spec.pitchBend, { time });
-      if (channel.sendNoteOn(spec.note, { rawAttack: finite(spec.velocity, 80), time, capture: spec.capture, playback: spec.playback, priority: spec.priority, laneIndex: spec.laneIndex, instrument: { program: spec.program, percussion: spec.percussion, role: spec.ensembleRole, legacy: !spec.ensembleRole && spec.percussion !== true },
-        ...(Number.isFinite(spec.pan) ? { pan: clamp(spec.pan / 127, -1, 1) } : {}) })) {
-        channel.sendNoteOff(spec.note, { time: time + length, capture: spec.capture });
-        if (reportOwner === undefined || spec.owner === reportOwner) played = true;
-      }
-    }
-    if (this._previewPending.length) {
-      const delay = Math.max(1, Math.min(0x7fffffff, this._previewPending[0].time - now - horizon));
-      this._previewTimer = setTimeout(() => this._drainPreviewQueue(generation), delay);
-    }
-    return played;
-  }
-
-  _validNote(note) { return Number.isInteger(note) && note >= 0 && note <= 127; }
-
-  _audioTime(options = {}) {
-    const current = this._context.currentTime;
-    const now = this._nowMs();
-    const ahead = (finite(options?.time, now) - now) / 1000;
-    return current + Math.max(0, ahead);
+    const requested = Array.isArray(notes) ? notes : [notes]; if (!requested.length) return false;
+    if (requested.some(note => !note || typeof note !== 'object' || !note.instrumentRef)) { this._setStatus('error', 'Choose a local instrument or use native defaults before testing this sound.'); return false; }
+    return this._previewPreparedInstruments(requested.map((note, index) => ({ ...note, durationMs: note.durationMs ?? durationMs, offsetMs: note.offsetMs ?? index * stepMs })), { replace, owner });
   }
 
   _ready() { return !this._disposed && !this._runtimeBlocked && this._enabled && this._context?.state === 'running' &&
@@ -1185,211 +1075,16 @@ class BrowserNotePreview {
       try { releaseAudioResourceAfterRetirement(resourceLease, native); } catch (retirementError) { this._retirementFaults.add(owner); error.retirement = retirementError.retirement || native; }
       throw error;
     }
-    channel = { owner, number, sourceInput, gain, pan, effectInput, effectDry, destination, effects: null, resourceLease, bendRange: 2, volume: 1, expression: 1, program: null,
-      controls: createTimedControlTimeline({ maxEvents: MAX_CONTROL_EVENTS }) };
+    channel = { owner, number, sourceInput, gain, pan, effectInput, effectDry, destination, effects: null, resourceLease };
     this._channels.set(key, channel);
     return channel;
-  }
-
-  _program(number, value, options, owner = null) {
-    if (!this._ready() || !Number.isInteger(value) || value < 0 || value > 127) return false;
-    const channel = this._channel(number, owner);
-    channel.controls.retainFrom(this._context.currentTime);
-    if (!channel.controls.insert(this._audioTime(options), 'program', value)) return false;
-    channel.program = channel.controls.at(this._context.currentTime).program;
-    for (const voice of this._voices) if (voice.owner === owner && voice.number === number && voice.implicitProgram) {
-      this._rescheduleFutureProgram(channel, voice);
-    }
-    return true;
-  }
-
-  _rescheduleFutureProgram(channel, voice) {
-    if (voice.start <= this._context.currentTime || voice.released || voice.number === 10) return;
-    const controlState = channel.controls.at(voice.start);
-    const program = controlState.program;
-    if (program === voice.programAtStart && controlState.timbre === voice.timbreAtStart) return;
-    const source = voice.sourceInstrument || {};
-    const profile = instrumentProfile(program, source.percussion === true, voice.note, source.legacy !== true);
-    if (controlState.timbre != null && !profile.noise) profile.waveform = controlState.timbre < 1 / 3 ? 'sine' : controlState.timbre > 2 / 3 ? 'sawtooth' : 'triangle';
-    if (profile.noise) return;
-    for (const key of ['attack', 'decay', 'sustain', 'release']) {
-      if (Number.isFinite(source.envelope?.[key])) profile[key] = clamp(source.envelope[key], 0, key === 'sustain' ? 1 : 2);
-    }
-    if (source.resumed === true) { profile.attack = 0; profile.decay = 0; }
-    voice.oscillator.type = profile.waveform;
-    voice.programAtStart = program;
-    voice.timbreAtStart = controlState.timbre;
-    voice.instrument = { ...source, program };
-    voice.peak = voice.velocity / 127 * profile.gain;
-    voice.attack = profile.attack; voice.decay = profile.decay; voice.sustain = profile.sustain; voice.release = profile.release;
-    voice.releaseAt = voice.end - voice.release;
-    scheduleNativeHeldEnvelope(voice);
-    this._observe('synth-revised', { ...voice.captureMeta, type: 'noteOn', voiceId: voice.id,
-      channel: voice.number, note: voice.note, program, waveform: profile.waveform, audioTime: voice.start });
-  }
-
-  _percussionNoise() {
-    if (this._noiseBuffer) return this._noiseBuffer;
-    const context = this._context;
-    if (!context.createBuffer || !context.createBufferSource) return null;
-    const length = Math.ceil((context.sampleRate || 48000) * 0.2);
-    const resourceLease = this._audioResources.reserveDecodedBuffer({ frames: length, channels: 1,
-      sampleRate: context.sampleRate || 48000, generation: this._generation });
-    let buffer;
-    try { buffer = context.createBuffer(1, length, context.sampleRate || 48000); }
-    catch (error) { resourceLease.release(); throw error; }
-    const samples = buffer.getChannelData(0);
-    let seed = 0x45b9;
-    for (let index = 0; index < length; index += 1) {
-      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-      samples[index] = seed / 2147483648 - 1;
-    }
-    this._noiseBuffer = buffer;
-    this._noiseResourceLease = resourceLease;
-    return buffer;
   }
 
   _voiceFinished(voice) { return nativeVoiceFinished.call(this, voice); }
 
   _renderVoiceCount(voices = this._voices) { return nativeRenderVoiceCount.call(this, voices); }
 
-  _isVoiceActive(token, owner = null) {
-    const voice = this._voicesByToken.get(this._tokenKey(token, owner)), now = this._context?.currentTime ?? 0;
-    return !!voice && !voice.stolen && voice.releaseAt > now &&
-      (voice.sustain > 0 || now < voice.start + voice.attack + voice.decay);
-  }
-
-  _noteOn(number, note, options = {}) {
-    if (!this._ready() || !this._validNote(note)) return false;
-    if (options?.rawAttack === 0) return this._noteOff(number, note, options);
-    const context = this._context;
-    const start = this._audioTime(options);
-    if (start - context.currentTime > this._maxNoteSeconds) return false;
-    for (const voice of this._voices) {
-      if (this._voiceFinished(voice)) this._destroyVoice(voice, 'inaudible-voice-reuse');
-    }
-    const incoming = { priority: finite(options.priority, 1), laneIndex: options.laneIndex ?? options.playback?.laneIndex ?? 0, owner: options.owner ?? null };
-    const drop = reason => {
-      this._voiceDrops += 1;
-      this._observe('drop', { ...options.capture, type: 'noteOn', note, channel: number, owner: options.owner, ...incoming, reason });
-      return false;
-    };
-    if (this._renderVoiceCount() >= this._maxScheduledVoices) return drop('scheduled-voice-cap');
-    let resourceLease;
-    try { resourceLease = this._audioResources.reserveNativeVoice(options.owner ?? null, this._generation); }
-    catch { return drop('audio-resource-budget'); }
-    let victim = null;
-    let voice;
-    let oscillator;
-    let gain;
-    try {
-      const channel = this._channel(number, options.owner);
-      const controlState = channel.controls.at(start);
-      const profile = instrumentProfile(options.instrument?.program ?? controlState.program, options.instrument?.percussion === true || number === 10, note, options.instrument?.legacy !== true);
-      if (controlState.timbre != null && !profile.noise) profile.waveform = controlState.timbre < 1 / 3 ? 'sine' : controlState.timbre > 2 / 3 ? 'sawtooth' : 'triangle';
-      for (const key of ['attack', 'decay', 'sustain', 'release']) {
-        const value = options.instrument?.envelope?.[key];
-        if (Number.isFinite(value)) profile[key] = clamp(value, 0, key === 'sustain' ? 1 : 2);
-      }
-      const resumed = options.instrument?.resumed === true;
-      if (resumed) { profile.attack = 0; profile.decay = 0; }
-      const end = start + Math.min(this._maxNoteSeconds, profile.seconds || this._maxNoteSeconds);
-      profile.release = Math.min(profile.release, end - start);
-      const reservation = { start, end, releaseAt: end - profile.release };
-      let admission = this._inspectVoiceInterval(options.owner, reservation);
-      if (!admission.accepted) {
-        victim = selectLocalAudioVoice([...this._voices].filter(value => !value.stolen && !value.requestRelease && !value.nativeNodesOwnedByBackend &&
-          value.semanticKey == null && value.semanticEpoch == null &&
-          value.oscillator && value.start <= start && value.releaseAt > start && (value.workloadClass || 'live') === this._workloadClass(options.owner)), incoming);
-        if (victim) {
-          const releaseAt = Math.max(victim.start, Math.min(Math.max(context.currentTime, start - RELEASE_SECONDS), victim.end - victim.release));
-          admission = this._inspectVoiceInterval(options.owner, { ...reservation,
-            overrides: new Map([[victim, { releaseAt, end: Math.min(victim.end, releaseAt + victim.release) }]]) });
-        }
-        if (!admission.accepted) { resourceLease.release(); return drop(admission.reason || 'local-voice-priority'); }
-      }
-      const noise = profile.noise && this._percussionNoise();
-      oscillator = noise ? context.createBufferSource() : context.createOscillator();
-      if (noise) { oscillator.buffer = noise; oscillator.loop = true; }
-      gain = context.createGain();
-      voice = { oscillator, gain, resourceLease, number, owner: options.owner ?? null, workloadClass: this._workloadClass(options.owner), note, start, id: ++this._voiceSequence, playback: options.playback, startMs: this._nowMs() + (start - context.currentTime) * 1000, end, released: false, captureMeta: this._captureMetadata(options.capture, options.owner ?? null),
-        ...incoming, startedAt: start,
-        token: Number.isInteger(options.voiceToken) && options.voiceToken > 0 ? options.voiceToken : null,
-        implicitProgram: options.instrument?.program == null, programAtStart: controlState.program, timbreAtStart: controlState.timbre,
-        sourceInstrument: options.instrument || null,
-        peak: clamp(finite(options?.rawAttack, 80), 1, 127) / 127 * profile.gain, attack: profile.attack, decay: profile.decay,
-        sustain: profile.sustain, release: profile.release, instrument: options.instrument, velocity: clamp(finite(options?.rawAttack, 80), 1, 127) };
-      voice.releaseAt = voice.end - voice.release;
-      this._voices.add(voice);
-      if (voice.token != null) this._voicesByToken.set(this._tokenKey(voice.token, voice.owner), voice);
-      if (!noise) {
-        oscillator.type = profile.waveform;
-        oscillator.frequency.setValueAtTime(profile.frequency || 440 * (2 ** ((note - 69) / 12)), start);
-        if (profile.endFrequency) oscillator.frequency.linearRampToValueAtTime(profile.endFrequency, start + profile.decay);
-      }
-      this._scheduleBend(channel, voice);
-      scheduleNativeHeldEnvelope(voice);
-      oscillator.connect(gain);
-      if (Number.isFinite(options.pan) && context.createStereoPanner) {
-        voice.pan = context.createStereoPanner();
-        voice.pan.pan.setValueAtTime(clamp(options.pan, -1, 1), start);
-        gain.connect(voice.pan);
-        voice.pan.connect(channel.sourceInput || channel.gain);
-      } else {
-        gain.connect(channel.sourceInput || channel.gain);
-      }
-      oscillator.onended = () => this._destroyVoice(voice);
-      oscillator.start(start);
-      oscillator.stop(voice.end);
-      if (victim) { this._voiceSteals++; this._release(victim, Math.max(context.currentTime, start - RELEASE_SECONDS), true); }
-      const futureOff = channel.controls.from(start).find(event => event.kind === 'allNotesOff' && event.time < voice.end);
-      if (futureOff) this._release(voice, futureOff.time, false, 'scheduled-all-notes-off');
-      this._observe('synth-scheduled', { ...voice.captureMeta, type: 'noteOn', voiceId: voice.id, channel: number,
-        note, velocity: voice.velocity, program: options.instrument?.program, ensembleRole: options.instrument?.role,
-        percussion: options.instrument?.percussion, scheduledMs: voice.startMs, audioTime: start,
-        endAudioTime: voice.end, mixLatencyMs: this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0, durationMs: (voice.end - start) * 1000, waveform: noise ? 'noise' : oscillator.type });
-      if (this._captureEnabled() && !options.capture?.observedByScheduler) this._observe('api-dispatch', { ...voice.captureMeta, type: 'noteOn',
-        voiceId: voice.id, channel: number, note, velocity: voice.velocity, scheduledMs: voice.startMs, accepted: true });
-      this._emitPlayback(voice, 'start');
-      this._setStatus(this._status, this._message);
-      return true;
-    } catch (error) {
-      if (voice) this._destroyVoice(voice);
-      else {
-        resourceLease.release();
-        try { oscillator?.stop(); } catch { /* A partially constructed oscillator never started. */ }
-        oscillator?.disconnect();
-        gain?.disconnect();
-      }
-      if (error?.name === 'ResourceBudgetError') return drop('audio-resource-budget');
-      this._setStatus('error', 'Browser audio could not play this note.');
-      return false;
-    }
-  }
-
   _release(voice, time, force = false, reason = 'note-off') { return releaseNativeVoice.call(this, voice, time, force, reason); }
-
-  _noteOff(number, note, options = {}) {
-    if (!this._ready() || !this._validNote(note)) return false;
-    const time = this._audioTime(options);
-    const candidates = [...this._voices].filter(voice => voice.owner === (options.owner ?? null) && voice.number === number && voice.note === note && (!voice.released || (options.voiceToken != null && time < voice.releaseAt)) && voice.start <= time + 0.001 &&
-      (options.voiceToken == null || voice.token === options.voiceToken));
-    // A scheduled release belongs to one note-on, including repeated same-pitch phrases.
-    if (Number.isFinite(options?.time) || options.voiceToken != null) {
-      if (candidates.length) {
-        if (options.reason === 'local-voice-budget') this._voiceSteals += 1;
-        this._release(candidates[0], time, false, options.reason);
-      }
-    } else {
-      for (const voice of this._voices) {
-        if (voice.owner === (options.owner ?? null) && voice.number === number && voice.note === note) this._destroyVoice(voice, 'immediate-note-off');
-      }
-    }
-    if (this._captureEnabled() && !options.capture?.observedByScheduler && candidates.length) this._observe('api-dispatch', {
-      ...(options.capture || candidates[0].captureMeta), type: 'noteOff', voiceId: candidates[0].id, channel: number,
-      note, scheduledMs: finite(options.time, this._nowMs()), accepted: true });
-    return candidates.length > 0;
-  }
 
   _destroyVoice(voice, reason = 'source-ended') { return destroyNativeVoice.call(this, voice, reason); }
 
@@ -1408,114 +1103,17 @@ class BrowserNotePreview {
 
   _clearVoices(number = null, owner = undefined) {
     const owns = value => (owner === undefined || value.owner === owner) && (number == null || value.number === number);
-    const pending = this._previewPending.filter(entry => (owner === undefined || (entry.spec.owner ?? null) === owner) &&
-      (number == null || clamp(Math.trunc(finite(entry.spec.channel, 1)), 1, 16) === number));
-    const removed = new Set(pending);
-    this._previewPending = this._previewPending.filter(entry => !removed.has(entry));
     return createProcgenRetirementScope().retire([
       ...(number == null ? [...this._preparedPreviews].filter(entry => owner === undefined || entry.owner === owner).map((entry, index) => ({ name: 'prepared-preview-' + index, run: () => entry.player.dispose() })) : []),
-      ...(number == null ? [...this._instrumentBackends].filter(entry => owner === undefined || entry.owner === owner).map((entry, index) =>
-        ({ name: `backend-stop-${index}`, run: () => entry.backend.onOwnerStop?.() })) : []),
-      { name: 'preview-timer', run: () => { if (this._previewTimer != null) clearTimeout(this._previewTimer); this._previewTimer = null; } },
-      ...pending.map((entry, index) => ({ name: `pending-note-${index}`, run: () => this._observe('cancelled',
-        { ...entry.spec.capture, owner: entry.spec.owner, type: 'noteOn', reason: 'audition-stop' }) })),
-      ...[...this._voices].filter(owns).map(voice => ({ name: `voice-${voice.id}`, run: () => this._destroyVoice(voice, 'panic-or-stop') })),
-      ...[...this._channels.values()].filter(owns).map(channel => ({ name: `channel-state-${channel.number}`, run: () => {
-        channel.effects?.panic();
-        channel.gain.gain.cancelScheduledValues(0); channel.gain.gain.value = 1;
-        channel.volume = 1; channel.expression = 1; channel.program = null; channel.bendRange = 2; channel.controls.clear();
+      ...(number == null ? [...this._instrumentBackends].filter(entry => owner === undefined || entry.owner === owner).map((entry, index) => ({ name: 'backend-stop-' + index, run: () => entry.backend.onOwnerStop?.() })) : []),
+      ...[...this._voices].filter(owns).map(voice => ({ name: 'voice-' + voice.id, run: () => this._destroyVoice(voice, 'panic-or-stop') })),
+      ...[...this._channels.values()].filter(owns).map(channel => ({ name: 'mix-bus-' + channel.number, run: () => {
+        channel.effects?.panic(); channel.gain.gain.cancelScheduledValues(0); channel.gain.gain.value = 1;
         if (channel.pan) { channel.pan.pan.cancelScheduledValues(0); channel.pan.pan.value = 0; }
-      } })),
-      { name: 'remaining-preview', run: () => { if (this._previewPending.length && this._ready()) this._drainPreviewQueue(); } }
+      } }))
     ]);
   }
 
-  _control(number, control, value, options = {}, owner = null) {
-    if (!this._ready() || !Number.isFinite(control) || !Number.isFinite(value)) return false;
-    const channel = this._channel(number, owner);
-    const time = this._audioTime(options);
-    if (control === 120 || control === 123) {
-      if (!Number.isFinite(options?.time) || time <= this._context.currentTime) { this._clearVoices(number, owner); return true; }
-      channel.controls.retainFrom(this._context.currentTime);
-      if (!channel.controls.insert(time, 'allNotesOff', null)) return false;
-      for (const voice of this._voices) if (voice.owner === owner && voice.number === number &&
-          voice.start <= time && time < voice.end) this._release(voice, time, false, 'scheduled-all-notes-off');
-      return true;
-    }
-    const normalized = clamp(value, 0, 127) / 127;
-    if (![7, 10, 11, 74].includes(control)) return false;
-    channel.controls.retainFrom(this._context.currentTime);
-    if (!channel.controls.insert(time, control === 7 ? 'volume' : control === 11 ? 'expression' : control === 74 ? 'timbre' : 'pan',
-      control === 10 ? normalized * 2 - 1 : normalized)) return false;
-    if (control === 74) for (const voice of this._voices) if (voice.owner === owner && voice.number === number && voice.implicitProgram) this._rescheduleFutureProgram(channel, voice);
-    if (control === 10) this._scheduleChannelPan(channel);
-    if (control === 7 || control === 11) {
-      const effective = channel.controls.at(this._context.currentTime);
-      channel.volume = effective.volume; channel.expression = effective.expression;
-      this._scheduleChannelGain(channel);
-    }
-    return true;
-  }
-
-  _safeSend(action) {
-    try { return action(); } catch {
-      this._setStatus('error', 'Browser audio could not play this control.');
-      return false;
-    }
-  }
-
-  _scheduleChannelGain(channel) {
-    const now = this._context.currentTime, param = channel.gain.gain;
-    const state = channel.controls.at(now);
-    param.cancelScheduledValues(now);
-    param.setValueAtTime(state.volume * state.expression, now);
-    for (const event of channel.controls.from(now)) if (event.kind === 'volume' || event.kind === 'expression') {
-      state[event.kind] = event.value;
-      param.setValueAtTime(state.volume * state.expression, event.time);
-    }
-  }
-
-  _scheduleChannelPan(channel) {
-    if (!channel.pan) return;
-    const now = this._context.currentTime, param = channel.pan.pan;
-    const state = channel.controls.at(now);
-    param.cancelScheduledValues(now);
-    param.setValueAtTime(state.pan, now);
-    for (const event of channel.controls.from(now)) if (event.kind === 'pan') param.setValueAtTime(event.value, event.time);
-  }
-
-  _scheduleBend(channel, voice) {
-    const from = Math.max(this._context.currentTime, voice.start), param = voice.oscillator.detune;
-    const state = channel.controls.at(from);
-    param.cancelScheduledValues(from);
-    param.setValueAtTime(state.bend * state.bendRange * 100, from);
-    for (const event of channel.controls.from(from)) if (event.time < voice.end &&
-        (event.kind === 'bend' || event.kind === 'bendRange')) {
-      state[event.kind] = event.value;
-      param.setValueAtTime(state.bend * state.bendRange * 100, event.time);
-    }
-  }
-
-  _pitchBend(number, value, options = {}, owner = null) {
-    if (!this._ready() || !Number.isFinite(value)) return false;
-    const channel = this._channel(number, owner);
-    const time = this._audioTime(options);
-    const bend = clamp(value, -1, 1);
-    channel.controls.retainFrom(this._context.currentTime);
-    if (!channel.controls.insert(time, 'bend', bend)) return false;
-    for (const voice of this._voices) if (voice.owner === owner && voice.number === number && !voice.stolen) this._scheduleBend(channel, voice);
-    return true;
-  }
-
-  _pitchBendRange(number, semitones, cents = 0, options = {}, owner = null) {
-    if (!this._ready() || !Number.isFinite(semitones)) return false;
-    const channel = this._channel(number, owner);
-    channel.controls.retainFrom(this._context.currentTime);
-    if (!channel.controls.insert(this._audioTime(options), 'bendRange', clamp(semitones + finite(cents, 0) / 100, 0, 48))) return false;
-    channel.bendRange = channel.controls.at(this._context.currentTime).bendRange;
-    for (const voice of this._voices) if (voice.owner === owner && voice.number === number && !voice.stolen) this._scheduleBend(channel, voice);
-    return true;
-  }
 }
 
 const createBrowserNotePreview = options => new BrowserNotePreview(options);

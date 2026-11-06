@@ -7618,5 +7618,38 @@
       "Remove the obsolete unpinned local source-preview facade and migrate its remaining production consumers in this cutover phase.",
       "Consolidated runtime/audio/browser validation follows remaining development. No listening quality or timbre equivalence is claimed."
     ]
+  },
+  "continuation472": {
+    "date": "2026-11-06",
+    "agent": "rook",
+    "issues": [
+      973,
+      1111,
+      971,
+      1082
+    ],
+    "scope": "Finish the production native-audio cutover and remove the superseded local MIDI1/program/noise runtime.",
+    "implementation": [
+      "BrowserNotePreview no longer exposes MIDI output channels or reconstructs sounds from GM program/percussion/role. The old oscillator/noise profile, MIDI note gate/token scheduling path, future-note queue and channel controller/program/bend emulation are removed. Local phrase requests require complete pinned instrument references.",
+      "Ordinary sound activation guides legacy projects through explicit authored native-default conversion or instrument selection. A missing local patch is actionable and cannot silently invoke the old renderer. Changing a preview role retires the prior phrase. External MIDI retains its program/channel protocol owner.",
+      "Complementary ProcGen pattern notes carry their lane instrument references and authored controls. Runtime configuration advertises those local routes and updates when their actual instrument/control identities change. They share the same prepared native sink used by ordinary game events; the physical causal playback owner remains independent.",
+      "The removed local CC lowering now reports that MIDI CC is not a local instrument parameter. UI help distinguishes authored local macros from device-dependent external CC and preserves legacy strength/gate versus ADSR unit semantics.",
+      "Native measurement consumers now submit explicit owned backend begin/end commands with declared control-tone profiles. They no longer call the removed facade or label generic noise as percussion. Source fixtures distinguish native reject-at-capacity ownership from former MIDI scheduling/stealing, preserve lane/source/PCM/stop observations and version the resulting measurement schema.",
+      "The actual native context-settings journey prepares and admits a future semantic voice before rebuilding; source assertions retain the original context/rate/output ownership checks. These fixture source migrations have not been executed."
+    ],
+    "validation": {
+      "format": "passed",
+      "criticalTypes": "passed",
+      "functionalTests": "intentionally deferred until all remaining feature work is implemented per user instruction",
+      "nativeMeasurementScripts": "migrated source only; not executed",
+      "nativeBrowserFixture": "migrated source only; not executed",
+      "fullSuiteExecution": "not run",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Migrate remaining unit/browser fixtures that explicitly exercise the retired facade to the actual semantic contract during the consolidated source/validation pass; no backward-compatibility shim is retained.",
+      "Implement the remaining held macro and live source/effect continuation features, then execute one consolidated runtime/render/browser suite and assess failures together.",
+      "Native control-tone measurements are not shipped patch/kit listening qualification or evidence that every requested capacity was admitted. Existing historical receipts retain their original source/version."
+    ]
   }
 }

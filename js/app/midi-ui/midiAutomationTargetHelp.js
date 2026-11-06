@@ -4,14 +4,13 @@ const getMidiAutomationTargetInfo = (target, backend = 'none', timbreCc = 74) =>
   const cc = Number.isFinite(Number(timbreCc)) ? Math.max(0, Math.min(127, Math.round(Number(timbreCc)))) : 74;
   const local = backend === 'synth' || backend === 'both', external = backend === 'midi' || backend === 'both';
   if (target === 'timbre') {
-    const supported = { 7: 'channel volume', 10: 'channel pan', 11: 'channel expression', 120: 'channel voice clearing', 123: 'channel voice clearing' }[cc];
-    const effect = local ? supported ? 'Browser synth uses this controller for ' + supported + ', not tone brightness.' : 'Browser synth ignores CC' + cc + '; it does not change tone brightness.' :
-      external ? 'Sends CC' + cc + ' to the selected MIDI destination; its response depends on the device.' : 'Sends CC' + cc + ' on admitted notes. Browser synth ignores the default CC74; MIDI device response varies.';
-    return { label: 'Timbre CC' + cc + (local && !supported ? ' (ignored by synth)' : external ? ' (device-dependent)' : ''),
-      help: effect + (local && external ? ' MIDI device response is separate and device-dependent.' : '') };
+    const effect = local ? 'Local instruments use their authored parameters and macros; MIDI CC' + cc + ' is not a local tone or channel control.' :
+      external ? 'Sends CC' + cc + ' to the selected MIDI destination; its response depends on the device.' : 'Sends CC' + cc + ' to an admitted external MIDI destination; local instruments use authored parameters.';
+    return { label: 'Timbre CC' + cc + (local && !external ? ' (external MIDI only)' : external ? ' (device-dependent)' : ''),
+      help: effect + (local && external ? ' The selected external MIDI device response is separate and device-dependent.' : '') };
   }
   if (target === 'release') return { label: TARGET_LABELS.release, help: 'Scales MIDI note-off velocity, not envelope release time. ' +
-    (local ? 'Forward browser-synth playback ignores note-off velocity.' : external ? 'The selected MIDI device may respond to note-off velocity.' : 'Browser synth ignores forward note-off velocity; MIDI device response varies.') +
+    (local ? 'This local event-preview adapter does not map MIDI note-off velocity to an authored release articulation.' : external ? 'The selected MIDI device may respond to note-off velocity.' : 'Local event-preview release velocity is unsupported; external MIDI device response varies.') +
     ' Reverse playback can use it as note-on strength.' };
   const help = { note: 'Offsets admitted notes while keeping melodic pitches inside the selected scale and register.',
     velocity: 'Changes note-on strength within the configured velocity range.', pan: 'Changes admitted-note pan; local note routing preserves independent voices.',

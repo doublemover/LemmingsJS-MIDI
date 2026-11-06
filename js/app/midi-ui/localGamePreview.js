@@ -100,8 +100,6 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     const source = getConfig(), config = localConfig(source);
     router = new MidiEventRouter(config);
     router.setCapture(capture);
-    router.setOutput(audio.output);
-    router.setOutputs([audio.output]);
     configKey = JSON.stringify(config);
     sourceConfig = source;
     attachedView = view;

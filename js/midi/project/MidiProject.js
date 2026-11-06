@@ -1627,10 +1627,16 @@ function projectToMidiConfig(project, factoryConfig = {}) {
       config.sfx[source.sourceKey] = mapping;
     }
   }
+  if (clean.procgen?.lanes) config.localInstruments = clean.procgen.lanes.filter(lane => lane.mode === 'pattern' && lane.instrumentRef).map(lane => ({ trackId: 'procgen:' + lane.id, instrumentRef: lane.instrumentRef, instrumentControls: lane.instrumentControls }));
   return config;
 }
 
-const sameMidiRuntimeInputs = (left, right) => left.enabled === right.enabled &&
+const sameLocalPatternInstruments = (left, right) => {
+  const a = left.procgen?.lanes || [], b = right.procgen?.lanes || []; if (a === b) return true;
+  const selectedA = a.filter(lane => lane.mode === 'pattern' && lane.instrumentRef), selectedB = b.filter(lane => lane.mode === 'pattern' && lane.instrumentRef);
+  return selectedA.length === selectedB.length && selectedA.every((lane, index) => lane.id === selectedB[index].id && lane.instrumentRef === selectedB[index].instrumentRef && lane.instrumentControls === selectedB[index].instrumentControls);
+};
+const sameMidiRuntimeInputs = (left, right) => left.enabled === right.enabled && sameLocalPatternInstruments(left, right) &&
   ['global', 'transport', 'devices', 'tracks', 'clips', 'sources', 'automation', 'ensemble']
     .every(key => left[key] === right[key]);
 

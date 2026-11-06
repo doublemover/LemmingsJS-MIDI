@@ -14,6 +14,7 @@ let ownerSequence = 0;
 export function localInstrumentTracks(config) {
   const tracks = new Map();
   for (const mapping of [...Object.values(config?.sfx || {}), ...Object.values(config?.triggers || {})]) if (mapping?.instrumentRef && mapping.trackId) tracks.set(mapping.trackId, { id: mapping.trackId, instrumentRef: mapping.instrumentRef, instrumentControls: mapping.instrumentControls });
+  for (const entry of config?.localInstruments || []) if (entry?.instrumentRef && entry.trackId) tracks.set(entry.trackId, { id: entry.trackId, instrumentRef: entry.instrumentRef, instrumentControls: entry.instrumentControls });
   for (const role of config?.ensemble?.roles || []) if (role.track?.instrumentRef) tracks.set(role.track.id, { id: role.track.id, instrumentRef: role.track.instrumentRef, instrumentControls: role.track.instrumentControls });
   return [...tracks.values()];
 }

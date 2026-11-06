@@ -15,9 +15,12 @@ Prioritize shared feature dependencies: complete local semantic instrument deliv
 and default-sound/project migration (#973/#1111), then live authored performance
 controls (#971/#1018), live DSP continuation and effect-state restoration (#1138),
 and the remaining protocol, creative-tool and desktop integration features. The
-ordinary event editor now selects/saves pinned instruments and Test Sound/live
-routing use their actual prepared backends. Unpinned source previews still use the
-legacy facade; remove it as part of this cutover before calling #973 complete.
+ordinary event editor now selects/saves pinned instruments. Test Sound, live
+game events and complementary patterns use prepared semantic backends; the
+local MIDI1/program/noise facade is removed. Explicit native default conversion
+preserves event mapping semantics and external programs with approximation
+receipts. Continue with held performance controls and live DSP restoration;
+#973 still needs the consolidated backend/render/native qualification.
 Implementation details and unvalidated scope are recorded in the implementation
 ledger; recent feature commits do not imply rendered or browser qualification.
 
