@@ -130,6 +130,7 @@ const midiEventRouterPlanningMethods = {
   },
 
   _shouldSend(meta, spec, plan, now) {
+    if (this.scheduler.usesLocalInstrument?.(spec)) return true;
     const limits = this.mapping.config?.limits || {};
     const maxPerSecond = Math.min(Math.max(limits.maxEventsPerSecond ?? MAX_MIDI_MESSAGES_PER_SECOND, 1), MAX_MIDI_MESSAGES_PER_SECOND);
     const hardMaxPerSecond = Math.min(

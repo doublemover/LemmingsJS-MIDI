@@ -13,7 +13,7 @@ class MidiScheduler {
     this._disposed = false;
     this._cleanupDepth = 0;
     this._lifecycleVersion = 0;
-    this.output = null;
+    this.output = null; this._localInstrumentBinding = null;
     this._outputsById = new Map();
     this._additionalOutputs = new Set();
     this._outputLeases = new Map();
@@ -53,8 +53,17 @@ class MidiScheduler {
     this.setConfig(config);
   }
 
+  bindLocalInstrumentSink(sink) {
+    if (this._disposed || this._localInstrumentBinding || !sink || ['handles', 'submit', 'stop', 'dispose', 'activity'].some(name => typeof sink[name] !== 'function')) throw new TypeError('A local instrument sink needs one explicit live owner.');
+    const binding = { sink, released: false, retirement: null }; this._localInstrumentBinding = binding;
+    return Object.freeze({ release: () => { if (binding.released) return binding.retirement; binding.released = true; if (this._localInstrumentBinding === binding) this._localInstrumentBinding = null; binding.retirement = sink.dispose(); return binding.retirement; } });
+  }
+
+  usesLocalInstrument(spec) { return this._localInstrumentBinding?.sink.handles(spec) === true; }
+
   getOutputActivity() {
-    return Object.freeze({ schema: 'midi-scheduler-activity/v1', activeNotes: this._activeNotes.size, pendingNotes: this._pendingNoteOns.size,
+    const local = this._localInstrumentBinding?.sink.activity();
+    return Object.freeze({ schema: 'midi-scheduler-activity/v1', activeNotes: this._activeNotes.size + (local?.activeNotes || 0), pendingNotes: this._pendingNoteOns.size + (local?.pendingNotes || 0),
       disposed: this._disposed, scope: 'accepted-owned-voices-including-pending' });
   }
 }

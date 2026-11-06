@@ -4,6 +4,23 @@ Historical completed roadmap entries live in git history. This file is the
 current source of truth for future work and should stay focused on active
 product and tooling direction.
 
+## Active feature implementation — November 5, 2026
+
+Continue solo through the remaining issue features. Frontload production changes;
+keep functional tests, generated campaigns and native browser qualification for one
+consolidated pass after implementation. Formatting and necessary type checks may
+run during development. Commit and push progress; leave automatic CI alone.
+
+Prioritize shared feature dependencies: complete local semantic instrument delivery
+and default-sound/project migration (#973/#1111), then live authored performance
+controls (#971/#1018), live DSP continuation and effect-state restoration (#1138),
+and the remaining protocol, creative-tool and desktop integration features. The
+ordinary event editor now selects/saves pinned instruments and Test Sound/live
+routing use their actual prepared backends. Unpinned source previews still use the
+legacy facade; remove it as part of this cutover before calling #973 complete.
+Implementation details and unvalidated scope are recorded in the implementation
+ledger; recent feature commits do not imply rendered or browser qualification.
+
 ## Format
 
 Each milestone uses the same shape:

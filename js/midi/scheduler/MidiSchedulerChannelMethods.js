@@ -165,11 +165,11 @@ const midiSchedulerChannelMethods = {
   },
 
   hasAnyOutput() {
-    return !!this.output || this._outputsById.size > 0;
+    return !!this._localInstrumentBinding || !!this.output || this._outputsById.size > 0;
   },
 
   hasOutput(outputId = null) {
-    return !!this._resolveOutput(outputId);
+    return !!this._localInstrumentBinding || !!this._resolveOutput(outputId);
   },
 
   _registerOutput(output) {

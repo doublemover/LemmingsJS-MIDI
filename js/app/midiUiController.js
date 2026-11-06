@@ -2466,7 +2466,7 @@ const createMidiUiController = ({
     getLemmings()?.setLocalAudioStopHandler?.(stopLocalPreview);
     if (!localAudio) localAudio = createLocalAudioOwner('game');
     if (!localGamePreview) localGamePreview = createLocalGamePreview({
-      getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, onStateChange: renderLocalSummary
+      getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, resourceBudget, onStateChange: renderLocalSummary
     });
     localGamePreview.setCapture(outputCapture.getState().active ? outputCapture : null);
     localAudio.setCapture?.(outputCapture.getState().active ? outputCapture : null, captureContext);

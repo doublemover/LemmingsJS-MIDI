@@ -7557,5 +7557,38 @@
       "Complete ordinary live game routing through the same prepared semantic owner and remove its remaining local program/percussion facade. Plain source-preview notes still use that explicit old path in this intermediate commit.",
       "Validate the full feature together with remaining development at the final batch. No rendered/audio/browser or acceptance pass is claimed."
     ]
+  },
+  "continuation470": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "issues": [
+      973,
+      1111,
+      1066,
+      1067,
+      971
+    ],
+    "scope": "Route live game events to cached pinned local instruments before protocol lowering and share exact kit articulation semantics with Test Sound.",
+    "implementation": [
+      "A live local instrument owner reuses RoutedInstrumentBackend and LaneInstrumentPreparation for up to sixteen pinned tracks. Exact references and macro overrides flow through ordinary/ensemble mapping; the incoming source track cannot leak its patch into a different ensemble role.",
+      "MidiScheduler grants one explicit local instrument sink lease. Authored notes reach native semantic begin/end before MIDI encoding and bypass wire-byte reservations while retaining event/tick and shared audio/voice/resource limits. Existing external MIDI output remains a separate sink. Public activity includes local accepted voices.",
+      "Live game Listen waits for selected native instrument preparation; configuration changes synchronize prepared assignments. Missing revisions/assets or unsupported note interfaces report concrete reasons and cannot silently reconstruct the selected patch from its GM program. Stable execution and per-voice IDs preserve independent gates and same-pitch actors.",
+      "Both live events and standalone phrases resolve exact drum-kit note/articulation bindings through the existing DrumKitDefinition. Kit instances remain scoped to owner, track and lane, retaining actual composite strikes, unknown-note approximation receipts and native sampler choke behavior.",
+      "Stop, phrase cancellation, game replacement and disposal retire the local sink and its cached renderer owners. Session APIs expose the shared context/material provider explicitly; no private browser-audio field access or replacement synth singleton is introduced. Prepared phrase cleanup now joins nested renderer/material receipt completion."
+    ],
+    "validation": {
+      "format": "passed",
+      "criticalTypes": "passed",
+      "functionalTests": "intentionally deferred until remaining feature implementation is complete per user instruction",
+      "nativeExecution": "not run",
+      "fullSuiteExecution": "not run",
+      "newRegressionSources": "not expanded in this feature batch",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Unpinned legacy source previews still use their existing program/percussion facade; complete the explicit project/default-sound migration and remove that superseded path before closing973.",
+      "Continuous physical travel/timbre/macro interfaces remain engine-specific. Note-only event preview refuses unsupported physical interfaces instead of creating movement.",
+      "Run consolidated runtime/render/native-browser validation after remaining development. No audible or acceptance qualification is claimed by this implementation record."
+    ]
   }
 }

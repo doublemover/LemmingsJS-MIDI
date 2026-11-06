@@ -349,6 +349,7 @@ class BrowserNotePreview {
     };
     session.api = {
       output: this._createOutput(id), getState, enable, stop, panic: stop,
+      getAudioContext: () => this.getAudioContext(), getSoundMaterialProvider: () => this.getSoundMaterialProvider(),
       setCaptureContext: ({ worldId, graphRevision, routeRevision, scoreMapping = null } = {}) => {
         if (session.disposed) return false;
         const previous = session.captureContext;

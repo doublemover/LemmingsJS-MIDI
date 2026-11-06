@@ -23,6 +23,7 @@ const midiSchedulerSendMethods = {
     const releaseExternalShare = () => this._releaseReservationPart(externalReservationId,
       Math.max(1, (meta.reservationPartCount ?? 1) - (meta.reservationPartIndex ?? 0)));
     if (this._disposed || this._cleanupDepth || this._outputCallbackDepth) { releaseExternalShare(); return false; }
+    if (this.usesLocalInstrument(spec)) { releaseExternalShare(); return this._localInstrumentBinding.sink.submit(spec, meta, this.tickMs) === true; }
     const lifecycle = this._lifecycleVersion;
     const app = this.config?.runtime?.app || getAppContext();
     const perfEnabled = !!app &&
@@ -432,6 +433,7 @@ const midiSchedulerSendMethods = {
     if (key == null) return false;
     const phrase = this.gamePhrases.voices.get(key);
     let cancelled = this.gamePhrases.voices.delete(key);
+    if (releaseActive && this._localInstrumentBinding?.sink.cancelPhrase?.(key)) cancelled = true;
     if (cancelled && complete) phrase.onComplete?.();
     for (const [token, voice] of this._activeNotes) if (voice.phraseVoiceKey === key && (releaseActive || !voice.hasStarted)) {
       this._stopActiveNoteToken(token, 'phrase-cancelled'); cancelled = true;
@@ -456,6 +458,7 @@ const midiSchedulerSendMethods = {
   },
 
   isGamePhraseVoiceBusy(key) {
+    if (this._localInstrumentBinding?.sink.isPhraseBusy?.(key)) return true;
     const now = this._nowMs();
     for (const active of this._activeNotes.values()) {
       if (active.phraseVoiceKey === key && active.offTimeMs > now) return true;
@@ -471,6 +474,7 @@ const midiSchedulerSendMethods = {
       this._pruneRateEntries(this._nowMs());
       if (!preserveGamePhrases) this.gamePhrases.clear();
       const cleanup = { reason, wholeDevice, queuedRemoved: 0, releaseSubmitted: 0, uncertain: 0, effectiveBoundary: this._nowMs() };
+      try { const retired = this._localInstrumentBinding?.sink.stop(); if (retired && retired.outcome !== 'complete') cleanup.uncertain++; } catch { cleanup.uncertain++; }
       const scopes = new Map();
       for (const output of this._listOutputs()) if (output.supportsIndependentNoteGates) scopes.set(output, new Set());
       for (const [output, channels] of this._usedOutputChannels) if (output.supportsIndependentNoteGates) scopes.set(output, new Set(channels));
@@ -514,7 +518,7 @@ const midiSchedulerSendMethods = {
 
   clearQueue({ preserveGamePhrases = false } = {}) {
     if (!preserveGamePhrases) this.gamePhrases.clear();
-    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases });
+    if (this._localInstrumentBinding || this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff({ preserveGamePhrases });
     this._ratePlanned.length = 0;
     this._pruneRateEntries(this._nowMs());
   },
@@ -529,6 +533,7 @@ const midiSchedulerSendMethods = {
       }
     }
     this.allNotesOff();
+    const local = this._localInstrumentBinding; this._localInstrumentBinding = null; if (local && !local.released) { local.released = true; local.retirement = local.sink.dispose(); }
     this._usedOutputChannels.clear();
     this._submissionObservers.clear();
     this._outputLeases.clear();
