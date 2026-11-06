@@ -1,4 +1,10 @@
 export type AudioLatencyProfile = 'performance' | 'balanced' | 'robust';
+export interface AudioOutputWatchOptions {
+  readonly mediaDevices?: unknown;
+  readonly permissions?: unknown;
+  readonly watchPermission?: boolean;
+  readonly onChange: (reason: 'devices-changed' | 'speaker-permission-revoked') => void;
+}
 export type AudioPreferredRate = 44100 | 48000 | 96000;
 export interface AudioRuntimeConfigInput {
   readonly latencyProfile?: AudioLatencyProfile;

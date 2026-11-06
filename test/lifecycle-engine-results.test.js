@@ -16,12 +16,37 @@ const clockReport = () => {
     const test = suite.specs[index].tests[0];
     test.results[0].attachments.push({ name: 'native-physical-clock.json', contentType: 'application/json', body: Buffer.from(JSON.stringify(nativeClockReceipt(test.projectName, scenario))).toString('base64') });
   }
+  for (const suite of value.suites) {
+    const test = suite.specs.at(-1).tests[0], project = test.projectName;
+    const runtime = { schema: 'lemmings-native-runtime-transitions/v1', project, browser: 'native-test-version', available: true, reason: null,
+      cycles: [['balanced', 44100], ['performance', 48000], ['robust', 96000]].map(([latencyProfile, preferredSampleRate], index) => ({ config: { latencyProfile, preferredSampleRate },
+        before: { actualSampleRate: 48000, acousticMeasurement: false }, result: { status: 'rebuild-ready', requiresEnable: true, acousticReceipt: false }, wallMs: 1,
+        contextsBefore: index + 1, contextsAfter: index + 1, oldClosed: true, currentNull: true, enabled: false, activeVoices: 0 })),
+      deviceSignal: { controlled: true, beforeEpoch: 1, afterEpoch: 2, enabled: false, activeVoices: 0, sameContext: true, contexts: 1 },
+      final: { retirement: { state: 'retired', outcome: 'complete' }, contexts: ['interactive', 'balanced', 'interactive', 'playback'].map((latencyHint, index) => ({
+        requested: { latencyHint, ...(index ? { sampleRate: [44100, 48000, 96000][index - 1] } : {}) }, actualSampleRate: 48000, closed: true })),
+      observation: { config: { latencyProfile: 'robust', preferredSampleRate: 96000 }, actualSampleRate: 48000, acousticMeasurement: false }, outputWatch: { devicesListening: false, speakerPermission: 'retired' } } };
+    test.results[0].attachments.push({ name: 'native-runtime-transitions.json', contentType: 'application/json', body: Buffer.from(JSON.stringify(runtime)).toString('base64') });
+  }
   return value;
 };
 const change = (value, apply) => { const attachment = value.suites[1].specs[0].tests[0].results[0].attachments[0], receipt = JSON.parse(Buffer.from(attachment.body, 'base64')); apply(receipt.source); attachment.body = Buffer.from(JSON.stringify(receipt)).toString('base64'); };
 
 describe('native lifecycle engine qualification', () => {
-  it('requires all forty-eight journeys and native clock receipts matching their actual capabilities', () => { const result = qualifyLifecycleEngineResults(clockReport()); expect(result.passed).to.equal(48); expect(result.engines[2].source.audioContextAvailable).to.equal(true); });
+  it('requires all fifty-one journeys and native runtime/clock receipts matching their actual capabilities', () => { const result = qualifyLifecycleEngineResults(clockReport()); expect(result.passed).to.equal(51); expect(result.engines[2].source.audioContextAvailable).to.equal(true); });
+  for (const [name, mutate] of [
+    ['unretired old context', row => { row.cycles[0].oldClosed = false; }], ['implicit replacement', row => { row.cycles[0].contextsAfter++; }],
+    ['lost requested rate', row => { row.final.contexts[1].requested.sampleRate = 48000; }], ['acoustic overclaim', row => { row.cycles[0].result.acousticReceipt = true; }],
+    ['leaked device observer', row => { row.final.outputWatch.devicesListening = true; }], ['stale clock epoch', row => { row.deviceSignal.afterEpoch = row.deviceSignal.beforeEpoch; }]
+  ]) it('rejects a native runtime ' + name, () => {
+    const value = clockReport(), attachment = value.suites[0].specs.at(-1).tests[0].results[0].attachments.find(x => x.name === 'native-runtime-transitions.json');
+    const row = JSON.parse(Buffer.from(attachment.body, 'base64')); mutate(row); attachment.body = Buffer.from(JSON.stringify(row)).toString('base64');
+    expect(() => qualifyLifecycleEngineResults(value)).to.throw('native runtime');
+  });
+  it('requires a runtime receipt despite successful case counts and clock observations', () => {
+    const value = clockReport(); value.suites[0].specs.at(-1).tests[0].results[0].attachments = [];
+    expect(() => qualifyLifecycleEngineResults(value)).to.throw('native runtime receipt');
+  });
   for (const key of ['physicsHash', 'causalHash']) it('rejects a one-engine ' + key + ' divergence despite every case passing', () => {
     const value = clockReport(); change(value, source => { source[key] = 'd'.repeat(64); }); expect(() => qualifyLifecycleEngineResults(value)).to.throw('Cross-engine semantic mismatch');
   });
@@ -33,7 +58,10 @@ describe('native lifecycle engine qualification', () => {
   it('rejects passing case counts without native clock observations', () => { expect(() => qualifyLifecycleEngineResults(report())).to.throw('Missing or duplicate native clock'); });
   it('records native constructor absence without presenting unavailable scenarios as render measurements', () => {
     const value = clockReport(); change(value, source => { source.audioContextAvailable = false; });
-    for (const spec of value.suites[1].specs) for (const attachment of spec.tests[0].results[0].attachments) if (attachment.name === 'native-physical-clock.json') {
+    for (const spec of value.suites[1].specs) for (const attachment of spec.tests[0].results[0].attachments) if (attachment.name === 'native-runtime-transitions.json') {
+      attachment.body = Buffer.from(JSON.stringify({ schema: 'lemmings-native-runtime-transitions/v1', project: 'firefox-lifecycle', browser: 'native-test-version', available: false,
+        reason: 'native-AudioContext-absent', cycles: [], deviceSignal: null, final: null })).toString('base64');
+    } else if (attachment.name === 'native-physical-clock.json') {
       const row = JSON.parse(Buffer.from(attachment.body, 'base64'));
       attachment.body = Buffer.from(JSON.stringify({ schema: row.schema, project: row.project, browser: row.browser, scenario: row.scenario, viewport: row.viewport, acousticReceipt: false,
         availability: { available: false, reason: 'native-AudioContext-absent', contextType: 'undefined', legacyContextType: 'undefined', contextsOpened: 0, outputEnabled: false, viewport: row.viewport } })).toString('base64');

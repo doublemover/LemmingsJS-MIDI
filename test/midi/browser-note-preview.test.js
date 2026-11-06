@@ -299,6 +299,37 @@ describe('browser audio cross-context performance boundaries', () => {
 describe('main audio runtime replacement and route ownership', () => {
   const turn = async () => { for (let i = 0; i < 32; i++) await Promise.resolve(); };
   const runtimeContext = () => { const context = new FakeContext(); context.sinkId = ''; context.setSinkId = async id => { context.sinkId = id; context.emit('sinkchange'); }; return context; };
+  const availability = () => { const listeners = new Map(); return { listeners, addEventListener(type, listener) { listeners.set(type, listener); }, removeEventListener(type) { listeners.delete(type); }, emit(type) { listeners.get(type)?.(); } }; };
+  it('stops output and invalidates clocks on a device signal without any sink or context error event', async () => {
+    const mediaDevices = availability(), contexts = [], preview = new BrowserNotePreview({ mediaDevices, permissions: null, performanceCoordinator: null, createAudioContext: () => { const context = runtimeContext(); contexts.push(context); return context; } });
+    await preview.enable(); const epoch = preview.getState().contextEpoch; preview.output.channels[1].sendNoteOn(60, { rawAttack: 90, time: 10000 });
+    mediaDevices.emit('devicechange'); expect(preview.getState()).to.include({ enabled: false, activeVoices: 0, status: 'interrupted' }); expect(preview.getState().contextEpoch).to.be.greaterThan(epoch);
+    expect(contexts).to.have.length(1); expect(await preview.enable()).to.equal(true); expect(contexts).to.have.length(1);
+    expect((await preview.configureAudioRuntime({ latencyProfile: 'balanced' })).status).to.equal('rebuild-ready'); expect(mediaDevices.listeners.size).to.equal(0);
+    await preview.enable(); expect(mediaDevices.listeners.size).to.equal(1); await preview.dispose(); expect(mediaDevices.listeners.size).to.equal(0);
+  });
+  it('cancels a pending native selector on device change while retaining its ownership slot through settlement', async () => {
+    const mediaDevices = availability(), context = runtimeContext(), native = deferred(), preview = new BrowserNotePreview({ mediaDevices, permissions: null, performanceCoordinator: null, createAudioContext: () => context }); await preview.enable();
+    context.setSinkId = async id => { await native.promise; context.sinkId = id; };
+    const pending = preview.configureAudioRuntime({ sinkPreference: 'later-device' }); await turn(); mediaDevices.emit('devicechange');
+    expect(preview.getState().audioRuntimeTransition.pending).to.equal(true); expect(await preview.enable()).to.equal(false);
+    native.resolve(); expect((await pending).status).to.equal('canceled'); expect(preview.getAudioRuntimeConfig().sinkPreference).to.equal(''); expect(await preview.enable()).to.equal(false); await preview.dispose();
+  });
+  it('keeps the current browser chooser authoritative across an availability signal while stopping the old output', async () => {
+    const mediaDevices = availability(), selection = deferred(), context = runtimeContext(); mediaDevices.selectAudioOutput = () => selection.promise;
+    const preview = new BrowserNotePreview({ mediaDevices, permissions: null, performanceCoordinator: null, createAudioContext: () => context }); await preview.enable();
+    const pending = preview.chooseAudioOutput(); mediaDevices.emit('devicechange'); expect(preview.getState().enabled).to.equal(false); expect(preview.getState().audioRuntimeTransition.phase).to.equal('selecting');
+    selection.resolve({ deviceId: 'fresh-choice' }); expect((await pending).status).to.equal('configured'); expect(preview.getAudioRuntimeConfig().sinkPreference).to.equal('fresh-choice');
+    expect(preview.getState().enabled).to.equal(false); expect(await preview.enable()).to.equal(true); await preview.dispose();
+  });
+  it('does not confuse speaker permission changes with loss of the permitted default output', async () => {
+    const status = Object.assign(availability(), { state: 'granted' }), context = runtimeContext(), preview = new BrowserNotePreview({ mediaDevices: availability(), permissions: { query: async () => status }, performanceCoordinator: null, createAudioContext: () => context }); await preview.enable(); await turn();
+    status.state = 'denied'; status.emit('change'); expect(preview.getState().enabled).to.equal(true);
+    status.state = 'granted'; status.emit('change'); await preview.configureAudioRuntime({ sinkPreference: 'explicit-speaker' }); await preview.enable();
+    const epoch = preview.getState().contextEpoch; status.state = 'prompt'; status.emit('change'); expect(preview.getState().enabled).to.equal(false); expect(preview.getState().contextEpoch).to.be.greaterThan(epoch);
+    expect(preview.getAudioRuntimeConfig().sinkPreference).to.equal('explicit-speaker'); expect(await preview.enable()).to.equal(false);
+    status.state = 'granted'; status.emit('change'); expect(await preview.enable()).to.equal(true); await preview.dispose(); expect(status.listeners.size).to.equal(0);
+  });
   it('retires the old graph before a profile/rate commit and rebuilds only on explicit enable', async () => {
     const contexts = [], requests = []; let close;
     const preview = new BrowserNotePreview({ performanceCoordinator: null, createAudioContext: options => { const context = runtimeContext(); contexts.push(context); requests.push(options); return context; } });

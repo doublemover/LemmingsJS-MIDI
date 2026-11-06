@@ -66,6 +66,7 @@
     "js/app/midi-ui/OwnedSourceSeed.js",
     "js/app/midi-ui/AudioRuntimeConfig.js",
     "js/app/midi-ui/AudioLatencyBreakdown.js",
+    "js/app/midi-ui/AudioOutputWatch.js",
     "js/app/midi-ui/AudioRuntimeObservation.js",
     "js/app/midi-ui/AudioRuntimeTransition.js",
     "js/app/midi-ui/AudioRuntimeContracts.d.ts"

@@ -6966,5 +6966,51 @@
       "Declared effect latency is separate from measured processing cost, tail duration, authored echo delays and acoustic latency.",
       "1044 still needs default-device/unplug/permission-revocation engine cases and measured profile/CPU distributions; the new component readout does not close those."
     ]
+  },
+  "continuation454": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Own device/speaker-permission observations across context replacement, gate revoked explicit-output admission and require raw transactional runtime receipts in each native engine.",
+    "evidence": {
+      "path": "docs/validation/audio-availability-native-runtime-2026-11-05.json",
+      "bytes": 642182,
+      "sha256": "0a8e1e529bf60407f88d2e60d0d220b8f575942a039892b9d77a9e9342183d44"
+    },
+    "validation": {
+      "nodeCases": 649,
+      "desktopCases": 7,
+      "runtimeMatrixCases": 3,
+      "actualRuntimeEngines": 2,
+      "explicitConstructorAbsence": 1,
+      "nativeUnexpected": 0,
+      "nativeFlaky": 0,
+      "requiredEngineSelection": 51,
+      "selectionIsExecution": false,
+      "scopeCoverage": {
+        "lines": 95.47,
+        "branches": 82.56,
+        "functions": 83.13
+      },
+      "watchLinesAndFunctions": 100,
+      "watchBranches": 90,
+      "originalDeviceAndPermissionFailuresReproduced": true
+    },
+    "source": {
+      "browserPaths": 1293,
+      "browserDigest": "2339042e982ac30525800a03657313a817b983fe7b0336aae04c556f728fe00d",
+      "workerFiles": 306,
+      "workerDigest": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33",
+      "paths": 1605,
+      "byteExact": 1593,
+      "untouchedCheckoutNewlines": 12,
+      "inventory": "Exact453recursive base plus10hashed upserts"
+    },
+    "remaining": [
+      "Device signals can include input changes and may be suppressed/delayed. A browser that emits no observable signal cannot become an unplug receipt.",
+      "Aggregate permission cannot expose every per-device revocation. Native hardware/default-route and per-device revocation matrices remain separate.",
+      "Local Windows WebKit absence is not a native runtime success; current full51Linux-engine execution remains separate.",
+      "Transition wall observations are not DSP CPU/profile distributions or acoustic measurements. Those1044qualification gaps remain.",
+      "No source clock, timing deadline, coverage threshold or voice limit was relaxed; no full local suite was repeated."
+    ]
   }
 }

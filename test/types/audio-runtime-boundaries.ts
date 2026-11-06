@@ -2,6 +2,7 @@ import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions, audioRuntimeSi
 import { createAudioRuntimeObservation } from '../../js/app/midi-ui/AudioRuntimeObservation.js';
 import { createAudioRuntimeTransition } from '../../js/app/midi-ui/AudioRuntimeTransition.js';
 import { createAudioLatencyBreakdown } from '../../js/app/midi-ui/AudioLatencyBreakdown.js';
+import { createAudioOutputWatch } from '../../js/app/midi-ui/AudioOutputWatch.js';
 import type { AudioRuntimeSnapshot } from '../../js/app/midi-ui/AudioRuntimeContracts.js';
 const config = normalizeAudioRuntimeConfig({ latencyProfile: 'balanced', preferredSampleRate: 44100 });
 const request: AudioContextOptions = audioRuntimeContextOptions(config);
@@ -67,3 +68,9 @@ latency.dsp.effectLatencyMs = 0;
 // @ts-expect-error Digital estimates do not establish an acoustic measurement.
 const acoustic: true = latency.acousticMeasurement;
 void acoustic;
+const outputWatch = createAudioOutputWatch({ mediaDevices: navigator.mediaDevices, permissions: navigator.permissions, watchPermission: true, onChange: reason => { const change: 'devices-changed' | 'speaker-permission-revoked' = reason; void change; } });
+// @ts-expect-error An output watch requires an owned change callback.
+createAudioOutputWatch({});
+// @ts-expect-error Observer state is immutable.
+outputWatch.state().devicesListening = true;
+outputWatch.dispose();

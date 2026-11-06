@@ -1,7 +1,7 @@
 import { collectBrowserCases } from './BrowserTestCatalog.js';
 import { NATIVE_CLOCK_SCENARIOS, qualifyNativeClockReceipt } from './NativeClockResults.js';
 
-export const LIFECYCLE_ENGINE_CASES = Object.freeze({ 'chromium-semantic': 14, 'firefox-lifecycle': 17, 'webkit-lifecycle': 17 });
+export const LIFECYCLE_ENGINE_CASES = Object.freeze({ 'chromium-semantic': 15, 'firefox-lifecycle': 18, 'webkit-lifecycle': 18 });
 const sha256 = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const semanticReceipt = (report, project) => {
   const receipts = [];
@@ -42,6 +42,39 @@ const clockReceipts = (report, project) => {
   return receipts;
 };
 
+const runtimeReceipt = (report, project, available) => {
+  const receipts = [];
+  const visit = suite => {
+    for (const spec of suite.specs || []) for (const test of spec.tests || []) if (test.projectName === project)
+      for (const attachment of test.results?.at(-1)?.attachments || []) if (attachment.name === 'native-runtime-transitions.json') {
+        if (attachment.contentType !== 'application/json' || typeof attachment.body !== 'string' || attachment.body.length > 512 * 1024) throw new Error('Invalid native runtime attachment: ' + project);
+        receipts.push(JSON.parse(Buffer.from(attachment.body, 'base64').toString('utf8')));
+      }
+    for (const child of suite.suites || []) visit(child);
+  };
+  for (const suite of report.suites || []) visit(suite);
+  if (receipts.length !== 1) throw new Error('Expected exactly one native runtime receipt: ' + project);
+  const value = receipts[0];
+  if (value.schema !== 'lemmings-native-runtime-transitions/v1' || value.project !== project || typeof value.browser !== 'string' || !value.browser || value.available !== available || !Array.isArray(value.cycles)) throw new Error('Incomplete native runtime qualification: ' + project);
+  if (!available) {
+    if (value.reason !== 'native-AudioContext-absent' || value.cycles.length || value.final !== null || value.deviceSignal !== null) throw new Error('Contradictory native runtime absence: ' + project);
+    return value;
+  }
+  const expected = [['balanced', 44100], ['performance', 48000], ['robust', 96000]], final = value.final, signal = value.deviceSignal;
+  if (value.cycles.length !== 3 || expected.some(([profile, rate], index) => {
+    const cycle = value.cycles[index];
+    return cycle.config?.latencyProfile !== profile || cycle.config?.preferredSampleRate !== rate || cycle.result?.status !== 'rebuild-ready' || cycle.result.requiresEnable !== true || cycle.result.acousticReceipt !== false ||
+      cycle.contextsBefore !== index + 1 || cycle.contextsAfter !== cycle.contextsBefore || cycle.oldClosed !== true || cycle.currentNull !== true || cycle.enabled !== false || cycle.activeVoices !== 0 ||
+      !Number.isFinite(cycle.wallMs) || cycle.wallMs < 0 || !Number.isFinite(cycle.before?.actualSampleRate) || cycle.before.actualSampleRate <= 0 || cycle.before.acousticMeasurement !== false;
+  }) || final?.retirement?.state !== 'retired' || final.retirement.outcome !== 'complete' || !Array.isArray(final.contexts) || final.contexts.length !== 4 ||
+    final.contexts.some((context, index) => context.closed !== true || !Number.isFinite(context.actualSampleRate) || context.actualSampleRate <= 0 ||
+      context.requested?.latencyHint !== ['interactive', 'balanced', 'interactive', 'playback'][index] || (index ? context.requested.sampleRate !== [44100, 48000, 96000][index - 1] : Object.hasOwn(context.requested, 'sampleRate'))) ||
+    final.observation?.config?.latencyProfile !== 'robust' || final.observation.config.preferredSampleRate !== 96000 || final.observation.acousticMeasurement !== false || final.observation.actualSampleRate !== final.contexts[3].actualSampleRate || final.outputWatch?.devicesListening !== false || final.outputWatch.speakerPermission !== 'retired' ||
+    signal?.controlled !== true || signal.enabled !== false || signal.activeVoices !== 0 || signal.sameContext !== true || signal.contexts !== 1 ||
+    !Number.isSafeInteger(signal.beforeEpoch) || !Number.isSafeInteger(signal.afterEpoch) || signal.afterEpoch <= signal.beforeEpoch) throw new Error('Incomplete native runtime qualification: ' + project);
+  return value;
+};
+
 export function qualifyLifecycleEngineResults(report) {
   const engines = [];
   for (const [project, count] of Object.entries(LIFECYCLE_ENGINE_CASES)) {
@@ -50,6 +83,7 @@ export function qualifyLifecycleEngineResults(report) {
     engines.push({ project, passed: cases.length, ...semanticReceipt(report, project), nativeClock: clockReceipts(report, project) });
     const engine = engines.at(-1);
     if (engine.nativeClock.some(row => row.availability.available !== engine.source.audioContextAvailable)) throw new Error('Native clock capability contradicts engine semantics: ' + project);
+    engine.nativeRuntime = runtimeReceipt(report, project, engine.source.audioContextAvailable);
   }
   const reference = engines[0].source;
   for (const engine of engines.slice(1)) for (const key of ['initialHash', 'physicsHash', 'causalHash', 'facts', 'assets'])

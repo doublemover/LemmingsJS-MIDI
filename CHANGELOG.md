@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Invalidate main audio queues on device availability or explicit-output permission changes, and qualify transactional profile/rate replacement across the native browser engines.
+
 - Show separate simulation, presentation-hold, mix/effect and browser latency components, with context-bound correlation freshness and actionable desktop diagnostics.
 
 - Recover refused default audio routes through explicit context replacement, reject re-enable on a known wrong route, and preserve native failure/retirement evidence.

@@ -1,6 +1,7 @@
 import { normalizeAudioRuntimeConfig, audioRuntimeContextOptions, audioRuntimeSinkMatches } from './AudioRuntimeConfig.js';
 import { createAudioRuntimeObservation } from './AudioRuntimeObservation.js';
 import { createAudioRuntimeTransition } from './AudioRuntimeTransition.js';
+import { createAudioOutputWatch } from './AudioOutputWatch.js';
 import { createLiveLaneSourceBuses } from './LiveLaneSourceBuses.js';
 import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
@@ -74,7 +75,7 @@ const createMixCompressor = context => {
 class BrowserNotePreview {
   constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8,
     volume = 0.15, masterVolume = 0.7, resourceBudget = null, cueVoices = 0, cueCostUnits = cueVoices, maxInstrumentBackends = 20,
-    createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices, performanceCoordinator, runtimeConfig = {} } = {}) {
+    createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices, permissions = globalThis.navigator?.permissions, performanceCoordinator, runtimeConfig = {} } = {}) {
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
       ? (AudioContextType ? options => new AudioContextType(options) : null)
@@ -95,6 +96,7 @@ class BrowserNotePreview {
     this._maxCueScheduledVoices = cueCostUnits * 2;
     this._maxScheduledVoices = this._maxLiveScheduledVoices + this._maxCueScheduledVoices;
     this._cueRouting = null; this._createMediaElement = createMediaElement; this._mediaDevices = mediaDevices;
+    this._permissions = permissions; this._runtimeOutputWatch = null;
     this._intervalAdmission = null;
     this._foregroundAuditions = createForegroundAuditionOwner({ onChange: () => this._setStatus(this._status, this._message) });
     this._voiceSteals = 0;
@@ -492,6 +494,9 @@ class BrowserNotePreview {
   resetAudioLatencyStatistics() { return this._runtimeObservation.resetLatency(); }
   getAudioRuntimeConfig() { return this._runtimeConfig; }
   _hasConfiguredAudioOutput() {
+    if (this._runtimeConfig.sinkPreference && this._runtimeOutputWatch?.state().explicitPermissionRevoked) {
+      this.stop(); this._setStatus('interrupted', 'Main output permission was revoked. Choose an available output or use the default before enabling audio.'); return false;
+    }
     let sink; try { sink = this._context?.sinkId; } catch { /* Older/denied APIs keep an unknown observation. */ }
     const match = audioRuntimeSinkMatches(sink, this._runtimeConfig.sinkPreference);
     if (match !== false && (!this._runtimeConfig.sinkPreference || match === true)) return true;
@@ -501,7 +506,8 @@ class BrowserNotePreview {
   chooseAudioOutput() { return this._runtimeTransition.choose(); }
   getAudioRuntimeSettingsState() {
     return Object.freeze({ observation: this.getAudioRuntimeObservation(), transition: this._runtimeTransition.state(),
-      chooserAvailable: typeof this._mediaDevices?.selectAudioOutput === 'function', masterLookaheadMs: this._context ? this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0 : null });
+      chooserAvailable: typeof this._mediaDevices?.selectAudioOutput === 'function', masterLookaheadMs: this._context ? this._compressor ? MIX_LOOKAHEAD_SECONDS * 1000 : 0 : null,
+      outputWatch: this._runtimeOutputWatch?.state() || null });
   }
 
   _closeAudioContext(context) {
@@ -692,6 +698,17 @@ class BrowserNotePreview {
           this._compressor = compressor;
           this._compressorOutput = compressorOutput;
           this._graphResourceLease = resourceLease;
+          this._runtimeOutputWatch = createAudioOutputWatch({ mediaDevices: this._mediaDevices, permissions: this._permissions, watchPermission: typeof context.setSinkId === 'function',
+            onChange: reason => {
+              if (this._disposed || this._context !== context) return;
+              // Speaker permission concerns non-default devices. A grant does
+              // not confirm any particular selected device or the default route.
+              if (reason === 'speaker-permission-revoked' && !this._runtimeConfig.sinkPreference && this._runtimeTransition.state().phase !== 'selecting') return;
+              const choosing = reason === 'devices-changed' && this._runtimeTransition.state().phase === 'selecting';
+              if (!choosing) this._runtimeTransition.invalidate();
+              this._contextEpoch++; this.stop({ runtimeChange: choosing });
+              this._setStatus('interrupted', reason === 'speaker-permission-revoked' ? 'Main output permission changed. Review the output and enable browser audio again.' : 'Device availability changed. Review the main output and enable browser audio again.');
+            } });
         } catch (error) {
           this._intervalAdmission = null;
           resourceLease?.release();
@@ -768,6 +785,7 @@ class BrowserNotePreview {
       { name: 'cue-routing', run: () => this._cueRouting?.dispose() },
       ...[...this._laneSourceBuses.keys()].map(owner => ({ name: 'lane-sources-' + owner, run: () => this._retireLaneSources(owner) })),
       { name: 'context-listener', run: () => context.removeEventListener?.('statechange', this._onContextState) },
+      { name: 'output-availability-watch', run: () => this._runtimeOutputWatch?.dispose() },
       { name: 'context-route-listeners', run: () => { context.removeEventListener?.('sinkchange', this._onRuntimeRouteChange); context.removeEventListener?.('error', this._onRuntimeRouteError); } },
       ...[...this._channels].map(([key, channel]) => ({ name: 'channel-' + key, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => this[field]?.disconnect() })),
@@ -776,7 +794,7 @@ class BrowserNotePreview {
       { name: 'closed-context-acknowledgment', run: () => { acknowledgment = this._reconcileClosedContext(context); return acknowledgment; } },
       { name: 'context-references', run: () => {
         this._channels.clear(); this._noiseBuffer = null; this._master = null; this._limiter = null; this._compressor = null; this._compressorOutput = null;
-        this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._graphResourceLease = null; this._noiseResourceLease = null; this._cueRouting = null; this._intervalAdmission = null;
+        this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._runtimeOutputWatch = null; this._graphResourceLease = null; this._noiseResourceLease = null; this._cueRouting = null; this._intervalAdmission = null;
         if (acknowledgment?.outcome === 'complete') this._retirementFaults.clear();
       } }
     ]);
@@ -900,6 +918,7 @@ class BrowserNotePreview {
       { name: 'foreground-auditions', run: () => this._foregroundAuditions.dispose() },
       { name: 'sound-material', run: () => this._soundMaterialProvider?.dispose() },
       { name: 'context-listener', run: () => context?.removeEventListener?.('statechange', this._onContextState) },
+      { name: 'output-availability-watch', run: () => this._runtimeOutputWatch?.dispose() },
       ...[...this._channels].map(([key, channel]) => ({ name: `channel-${key}`, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),
       { name: 'buffers', run: () => { this._noiseBuffer = null; this._captureSamples = null; this._intervalAdmission = null; } },

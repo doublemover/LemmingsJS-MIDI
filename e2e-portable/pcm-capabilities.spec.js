@@ -94,3 +94,57 @@ test('main audio runtime reports actual requested profiles and rates and retires
   await testInfo.attach('native-main-audio-runtime.json', { contentType: 'application/json', body: JSON.stringify({ project: testInfo.project.name, browser: nativeBrowser.version(), available,
     reason: available ? null : 'native-AudioContext-absent', observations, scope: 'Actual context construction, user activation, runtime observations and retirement; no audio workload, CPU tradeoff, sink-switch or acoustic measurement.' }) });
 });
+
+test('main audio runtime changes profiles transactionally and retires availability observers', async ({ page, nativeBrowser }, testInfo) => {
+  await page.setViewportSize({ width: 1920, height: 1080 }); await page.goto('/e2e-portable/fixtures/pcm-evidence.html');
+  const available = await page.evaluate(() => typeof (globalThis.AudioContext || globalThis.webkitAudioContext) === 'function');
+  const receipt = { schema: 'lemmings-native-runtime-transitions/v1', project: testInfo.project.name, browser: nativeBrowser.version(), available,
+    reason: available ? null : 'native-AudioContext-absent', cycles: [], deviceSignal: null, final: null,
+    scope: 'Actual native profile/rate context replacement and explicit enable. Separately controlled EventTarget device-availability signal; no physical unplug, per-device permission, DSP CPU or acoustic measurement.' };
+  if (!available) { await testInfo.attach('native-runtime-transitions.json', { body: JSON.stringify(receipt), contentType: 'application/json' }); return; }
+  await page.evaluate(async () => {
+    const { BrowserNotePreview } = await import('/js/app/midi-ui/browserNotePreview.js'), Native = globalThis.AudioContext || globalThis.webkitAudioContext;
+    const contexts = [], devices = new globalThis.EventTarget();
+    const preview = new BrowserNotePreview({ performanceCoordinator: null, mediaDevices: devices, createAudioContext: options => { const context = new Native(options); contexts.push({ context, options }); return context; } });
+    const button = document.createElement('button'); button.textContent = 'Enable changed runtime'; button.onclick = () => { window.changedRuntimeEnable = preview.enable(); }; document.body.append(button);
+    window.changedRuntime = { contexts, devices, preview };
+  });
+  const enable = async () => {
+    await page.getByRole('button', { name: 'Enable changed runtime', exact: true }).click();
+    expect(await page.evaluate(() => window.changedRuntimeEnable)).toBe(true);
+  };
+  try {
+    await enable();
+    receipt.deviceSignal = await page.evaluate(() => {
+      const q = window.changedRuntime, context = q.preview.getAudioContext(), before = q.preview.getState();
+      q.preview.output.channels[1].sendNoteOn(60, { rawAttack: 80, time: performance.now() + 10000 }); q.devices.dispatchEvent(new Event('devicechange'));
+      const after = q.preview.getState(); return { controlled: true, beforeEpoch: before.contextEpoch, afterEpoch: after.contextEpoch,
+        enabled: after.enabled, activeVoices: after.activeVoices, sameContext: context === q.preview.getAudioContext(), contexts: q.contexts.length };
+    });
+    expect(receipt.deviceSignal).toMatchObject({ controlled: true, enabled: false, activeVoices: 0, sameContext: true, contexts: 1 });
+    expect(receipt.deviceSignal.afterEpoch).toBeGreaterThan(receipt.deviceSignal.beforeEpoch); await enable();
+    for (const config of [{ latencyProfile: 'balanced', preferredSampleRate: 44100 }, { latencyProfile: 'performance', preferredSampleRate: 48000 }, { latencyProfile: 'robust', preferredSampleRate: 96000 }]) {
+      const cycle = await page.evaluate(async next => {
+        const q = window.changedRuntime, old = q.preview.getAudioContext(), count = q.contexts.length, before = q.preview.getAudioRuntimeObservation();
+        q.preview.output.channels[1].sendNoteOn(60, { rawAttack: 80, time: performance.now() + 10000 });
+        const start = performance.now(), result = await q.preview.configureAudioRuntime(next), wallMs = performance.now() - start;
+        return { config: next, before, result, wallMs, contextsBefore: count, contextsAfter: q.contexts.length, oldClosed: old.state === 'closed', currentNull: q.preview.getAudioContext() === null,
+          activeVoices: q.preview.getState().activeVoices, enabled: q.preview.getState().enabled };
+      }, config);
+      receipt.cycles.push(cycle); expect(cycle.result).toMatchObject({ status: 'rebuild-ready', requiresEnable: true });
+      expect(cycle).toMatchObject({ oldClosed: true, currentNull: true, activeVoices: 0, enabled: false }); expect(cycle.contextsAfter).toBe(cycle.contextsBefore);
+      await enable();
+    }
+  } finally {
+    receipt.final = await page.evaluate(async () => {
+      const q = window.changedRuntime, observation = q.preview.getAudioRuntimeObservation(); await q.preview.dispose();
+      return { observation, retirement: q.preview.getState().retirement, contexts: q.contexts.map(({ context, options }) => ({ requested: options, actualSampleRate: context.sampleRate, closed: context.state === 'closed' })),
+        outputWatch: q.preview.getAudioRuntimeSettingsState().outputWatch };
+    });
+    await testInfo.attach('native-runtime-transitions.json', { body: JSON.stringify(receipt, null, 2), contentType: 'application/json' });
+  }
+  expect(receipt.final.contexts).toHaveLength(4); expect(receipt.final.contexts.every(context => context.closed && context.actualSampleRate > 0)).toBe(true);
+  expect(receipt.final.retirement).toMatchObject({ state: 'retired', outcome: 'complete' });
+  expect(receipt.final.outputWatch).toMatchObject({ devicesListening: false, speakerPermission: 'retired' });
+  expect(receipt.final.observation.config).toMatchObject({ latencyProfile: 'robust', preferredSampleRate: 96000 });
+});
