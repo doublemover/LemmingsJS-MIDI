@@ -408,6 +408,7 @@
         "js/midi/content/PatchForkProvenance.js",
         "js/midi/content/PatchNeighborhoodProvenance.js",
         "js/midi/content/PercussionRoleIntent.js",
+        "js/midi/content/PhysicalMappingRevision.js",
         "js/midi/content/PianoPerformanceIntent.js",
         "js/midi/content/PreparedBodyStrike.js",
         "js/midi/content/PreparedSurface.js",
@@ -473,8 +474,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 327,
-      "sha256": "4616166d5efc2a67a5ae5f49797e48e603f07e32f62f532ea08508f4a51f00fd"
+      "fileCount": 328,
+      "sha256": "2c7c5dc564ed2f3094ccc5f5c9096bb284a820bf4264993120c66e7627865841"
     },
     {
       "id": "lemmings-timing-worker-source",

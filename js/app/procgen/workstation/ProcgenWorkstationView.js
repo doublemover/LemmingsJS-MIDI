@@ -687,6 +687,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       nextFields.append(button('Select Soft triangle fallback', () => { Promise.resolve().then(() => handlers.selectNativeSound(lane.id, 'foundation.soft-triangle')).catch(error => handlers.status?.(error.message)); }, 'Explicit native oscillator fallback; keeps the world, performance recipe and hardware mapping unchanged'));
       const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; nextFields.append(matchingWorld);
       const savedDefinition = lane.instrumentRef?.definition, controlDefinition = getSupportedInstrumentDefinition(lane.instrumentRef);
+      if (controlDefinition) nextFields.append(button('Physical parameter mappings…', () => handlers.openPhysicalMappings?.(), 'Edit typed physical source quantities, exact scope, transforms and contribution ownership; no hidden notes'));
       if (lane.instrumentRef) {
         const name = typeof savedDefinition.name === 'string' ? savedDefinition.name : lane.instrumentRef.patchId;
         nextFields.append(node('p', `${name} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
@@ -1031,7 +1032,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     controlTree.reconcile(tabs, nextTabs, 'tabs:' + JSON.stringify([getDocumentIdentity(), !!pattern]));
     controlTree.reconcile(fields, nextFields, parameterScope);
-    if (harmonyFocus?.isConnected && state.tab === 'Harmony' && document.activeElement !== harmonyFocus) harmonyFocus.focus({ preventScroll: true });
+    if (harmonyFocus?.isConnected && state.tab === 'Harmony' && document.activeElement !== harmonyFocus) /** @type {HTMLElement} */ (harmonyFocus).focus({ preventScroll: true });
     for (const entry of curveEditors.values()) if (entry.laneId === state.laneId) { const curve = lane.ccAutomation.find(curve => curve.id === entry.curveId); if (curve) entry.control.update(curve); }
     for (const [id, entry] of parameterCache) if (!parameterSeen.has(id)) {
       entry.control.dispose(); parameterControls.splice(parameterControls.indexOf(entry.control), 1); parameterCache.delete(id);

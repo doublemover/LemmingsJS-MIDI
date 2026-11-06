@@ -385,6 +385,22 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !catalog.descriptors.length) throw problem('engine-identity-unbound', 'Sound compilation requires the executing immutable renderer catalog.');
+    if (input?.schema === 'lemmings-physical-mapping-revision-request/v1') {
+      if (Object.keys(input).some(key => !['schema', 'pack', 'reference', 'bindings'].includes(key))) throw problem('mapping-request-invalid', 'A mapping revision request contains unsupported fields.');
+      const { prepareSoundContentPack } = await import('../../midi/content/SoundContentPack.js');
+      const { preparePhysicalMappingRevision } = await import('../../midi/content/PhysicalMappingRevision.js'); guard(signal, current);
+      const prepared = await prepareSoundContentPack(input.pack, { engineDescriptors: catalog.descriptors, signal }); guard(signal, current);
+      const descriptor = catalog.descriptors.find(engine => engine.engineId === input.reference?.engineRequirement?.engineId);
+      if (!descriptor) throw problem('mapping-engine-unavailable', 'The mapping target engine is unavailable in this executing worker.');
+      const revised = await preparePhysicalMappingRevision({ prepared, reference: input.reference, descriptor, bindings: input.bindings, signal }); guard(signal, current);
+      const value = revised.state === 'unchanged' ? { state: revised.state, reference: revised.reference } :
+        { state: revised.state, pack: revised.prepared.pack, contentHash: revised.prepared.contentHash, reference: revised.reference,
+          parentReference: revised.parentReference, mappingOrder: revised.mappingOrder, qualification: revised.qualification };
+      const encoded = canonicalDataText(value, { maxBytes, maxNodes }); guard(signal, current);
+      const retainedBytes = encoded.bytes.byteLength * 4;
+      if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'The revised mapping exceeds its admitted representation bound.');
+      return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+    }
     const { compileSoundContent } = await import('../../midi/content/SoundContentCompiler.js'); guard(signal, current);
     const compiled = await compileSoundContent(input, { targets: catalog.descriptors.map(descriptor => ({ descriptor })), signal }); guard(signal, current);
     const value = { pack: compiled.prepared.pack, contentHash: compiled.prepared.contentHash, sourceHash: compiled.sourceHash, qualification: compiled.qualification };

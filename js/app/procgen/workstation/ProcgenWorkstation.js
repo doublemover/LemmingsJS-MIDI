@@ -194,7 +194,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let laneDisplayWorldEpoch = 0;
   const laneDisplaySource = (world = runtime()?.world, generation = world?.generation) => JSON.stringify([documentGeneration, laneDisplayWorldEpoch, world?.worldId ?? null, generation ?? null]);
   let lastHistoryGroup = null, inputGestureSerial = 0;
-  let documentGeneration = 1, projectRevision = 0, inputLease = null;
+  let documentGeneration = 1, projectRevision = 0, inputLease = null, inputLeaseCancel = null, mappingHistoryEpoch = 0;
+  let physicalMappingsView = null;
   let editRevision = 0, savedRevision = -1, lastSavedAt = null, lastStorageError = null;
   const pendingSaveGenerations = new Set(), saveOperations = new Map();
   let savePresentationSerial = 0;
@@ -243,12 +244,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const inputTarget = lease => {
     const lane = procgenLane(project.procgen.lanes, lease.laneId);
+    if (lease.kind === 'physical-mapping') {
+      const world = runtime()?.world;
+      return lane?.instrumentRef?.definitionHash === lease.definitionHash && world?.worldId === lease.worldId && world?.generation === lease.generation &&
+        lease.documentGeneration === documentGeneration ? { lane } : null;
+    }
     const pattern = lane?.patterns?.[lease.slot];
     return pattern && lease.index < pattern.length && pattern.steps?.[lease.index] ? { lane, pattern } : null;
   };
   const cancelInputEdits = reason => {
     noteEntries.clear();
-    if (inputLease) { inputLease = null; ports?.cancelLearn(); if (!disposed) view?.refreshLaneNavigation?.(); status(`MIDI Learn canceled: ${reason}.`); }
+    if (reason === 'history changed') mappingHistoryEpoch++;
+    if (inputLease) {
+      const previous = inputLease, cancel = inputLeaseCancel; inputLease = null; inputLeaseCancel = null;
+      if (previous.kind === 'physical-mapping') cancel?.(reason); else ports?.cancelLearn();
+      if (!disposed) view?.refreshLaneNavigation?.(); status((previous.kind === 'physical-mapping' ? 'Physical source Learn' : 'MIDI Learn') + ' canceled: ' + reason + '.');
+    }
   };
   const operationBoundary = () => { const world = runtime()?.world; return Object.freeze({ documentIdentity: String(documentGeneration), documentId, projectRevision, editRevision, worldId: world?.worldId ?? null, generation: world?.generation ?? null, tick: world?.tickIndex ?? null, storedRevision: documentRevision }); };
   const publishOperationReceipt = (operation, outcome, accepted = null, errorCode = null, captured = null) => {
@@ -350,7 +361,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const publishHeldMacros = () => { if (macroPublicationQueued || disposed) return; macroPublicationQueued = true; queueMicrotask(() => { macroPublicationQueued = false; if (!disposed) { physicalPlayback?.synchronizePerformance(); view?.macroState?.(); } }); };
   const macroGestures = createInstrumentMacroGestures({ resourceBudget, getLane: laneId => procgenLane(project.procgen.lanes, laneId), getDocumentEpoch: () => documentGeneration,
     commit: (laneId, instrumentControls, gestureId) => dispatch({ type: 'procgen/lane', laneId, patch: { instrumentControls } }, { historyGroup: 'macro:' + documentGeneration + ':' + gestureId }),
-    onState: () => { view?.macroState?.(); publishHeldMacros(); } });
+    onState: () => { view?.macroState?.(); physicalMappingsView?.invalidate(); publishHeldMacros(); } });
   const effectiveSoundLanes = lanes => macroGestures.lanes(soundTransactions.lanes(lanes));
   const sampleMacroPerformance = boundary => {
     const revision = macroGestures.revision(); if (revision === sampledMacroRevision) return;
@@ -2161,6 +2172,35 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean}} options */
     applyInstalledInstrument(candidate, { signal, hold = false, isCurrent } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, laneId: selected().id }); },
     getLaneRealizationState: laneId => physicalPlayback?.laneRealizationState(laneId) || null,
+    openPhysicalMappings() {
+      if (!resourceBudget || !physicalPlayback) throw new Error('The physical parameter owner is unavailable.');
+      return toolGate.open('Physical parameter mappings', () => Promise.all([import('../../midi-ui/PhysicalMappingEditorOwner.js'), import('../../midi-ui/PhysicalMappingEditorView.js')])
+        .then(([owner, surface]) => ({ ...owner, ...surface })), async ({ createPhysicalMappingEditorOwner, createPhysicalMappingEditorView }) => {
+        if (!physicalMappingsView) {
+          const owner = createPhysicalMappingEditorOwner({ window, resourceBudget, jobs: backgroundJobs,
+            getSource: () => { const lane = selected(), world = runtime()?.world; return {
+              available: !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !causalTake && !causalTakeStart && !causalTakeStop && !!world,
+              documentGeneration, historyEpoch: mappingHistoryEpoch, laneId: lane.id, laneName: lane.name, laneIndex: project.procgen.lanes.indexOf(lane),
+              worldId: world?.worldId, worldGeneration: world?.generation, reference: lane.instrumentRef, controls: lane.instrumentControls }; },
+            subscribePhysical: consume => { const bus = runtime()?.world?.soundEvents?.onBatch; if (!bus) throw new Error('The completed physical event stream is unavailable.');
+              const listener = batch => { try { consume(batch); } catch (error) { status('Physical mapping observation unavailable: ' + error.message); } };
+              bus.on(listener); return () => bus.off(listener); },
+            acquireInputLease: (target, cancel) => {
+              if (inputLease || disposed || worldBusy) throw new Error('Finish or cancel the current input edit before physical source Learn.');
+              const lease = { ...target, id: ++inputGestureSerial, kind: 'physical-mapping', documentGeneration,
+                inputEndpointEpoch: ports.getState().inputLiveness.connectionEpoch, armedAt: now(), policy: 'fixed-target;physical-observations-only' };
+              if (!inputTarget(lease)) throw new Error('The named mapping target is no longer current.');
+              inputLease = lease; inputLeaseCancel = cancel; view?.refreshLaneNavigation?.();
+              return Object.freeze({ isCurrent: () => inputLease === lease && !!inputTarget(lease),
+                release() { if (inputLease === lease) { inputLease = null; inputLeaseCancel = null; view?.refreshLaneNavigation?.(); } return true; } });
+            }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onState: () => physicalMappingsView?.invalidate() });
+          try { physicalMappingsView = createPhysicalMappingEditorView({ document, owner, resourceBudget, displayScheduler: view.displayScheduler,
+            readRuntimeValues: parameterId => physicalPlayback?.mappingParameterValues?.(selected().id, parameterId) || [], onStatus: status }); }
+          catch (error) { const receipt = owner.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
+        }
+        physicalMappingsView.open();
+      });
+    },
     getHarmonySnapshot: laneId => physicalPlayback?.harmonySnapshot(laneId) || null,
     closeHarmony: () => physicalPlayback?.closeHarmony(),
     revealHarmonyActor(voice) {
@@ -2650,7 +2690,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   pageLifecycle = createProcgenPageLifecycle({ document, window, suspend: ({ reason }) => {
     toolGate.cancel();
-    physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); quarryEchoView?.suspend(); crossExcitationView?.suspend(); travelColorationView?.suspend(); spectralFreezeView?.suspend(); sympatheticMapView?.suspend(); rectangularMembraneView?.suspend(); physicalJunctionView?.suspend();
+    physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); physicalMappingsView?.suspend(); quarryEchoView?.suspend(); crossExcitationView?.suspend(); travelColorationView?.suspend(); spectralFreezeView?.suspend(); sympatheticMapView?.suspend(); rectangularMembraneView?.suspend(); physicalJunctionView?.suspend();
     soundSeedLab?.suspend(); shapeFoundry?.suspend();
     void masterCapture?.suspend();
     causalAudioRender?.suspend();
@@ -2791,6 +2831,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'travel-colour-view', run: () => travelColorationView?.dispose() },
         { name: 'cross-excitation-view', run: () => crossExcitationView?.dispose() },
         { name: 'quarry-echo-view', run: () => quarryEchoView?.dispose() },
+        { name: 'physical-mapping-editor', run: () => physicalMappingsView?.dispose() },
         { name: 'sound-seed-lab', run: () => soundSeedLab?.dispose() },
         { name: 'shape-foundry', run: () => shapeFoundry?.dispose() },
         { name: 'master-capture', run: async () => { const seed = soundSeedLab?.dispose(); if (seed) { await seed.completion; if (seed.outcome !== 'complete') throw new Error('Sound-seed readers still own the capture source.'); } return masterCapture?.dispose(); } },

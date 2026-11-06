@@ -571,3 +571,14 @@ body.procgen-workstation {
 .studio-physical-harmony li { padding-block: 0.3rem; border-bottom: 1px solid currentColor; font: 0.75rem/1.5 ui-monospace, monospace; }
 .studio-physical-harmony label { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-block: 0.4rem; }
 .studio-physical-harmony input[type=number] { width: 7rem; }
+
+.studio-physical-mappings { width: 1080px; max-height: calc(100vh - 96px); overflow: auto; }
+.studio-physical-mappings > div { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-block: 12px; }
+.studio-physical-mappings > div > select { width: 100%; font: 12px/1.5 ui-monospace, monospace; }
+.studio-physical-mappings fieldset { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.studio-physical-mappings fieldset > label { display: flex; flex-direction: column; gap: 4px; }
+.studio-physical-mappings fieldset > p, .studio-physical-mappings fieldset > svg { grid-column: 1 / -1; margin-block: 4px; overflow-wrap: anywhere; }
+.studio-physical-mappings fieldset > svg { width: 320px; height: 120px; background: var(--studio-panel, #171d22); }
+.studio-physical-mappings button, .studio-physical-mappings input, .studio-physical-mappings select { min-height: 32px; }
+.studio-physical-mappings input[aria-invalid=true] { outline: 2px solid #edb254; }
+.studio-physical-mappings output { display: block; min-height: 1.5em; }

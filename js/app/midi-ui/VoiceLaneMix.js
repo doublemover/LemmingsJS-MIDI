@@ -25,7 +25,7 @@ export function createVoiceLaneMix({ preview, context, owner, generation, destin
     }
     const gainCurve = createSmoothedAudioParameter({ param: gain.gain, initialValue: value.gain, startTime: start });
     const panCurve = pan ? createSmoothedAudioParameter({ param: pan.pan, initialValue: value.pan, startTime: start }) : null;
-    return { input: source || gain, dispose, update(next, frame, nextLaneId = laneId) {
+    return { input: source || gain, get laneId() { return laneId; }, dispose, update(next, frame, nextLaneId = laneId) {
       const now = context.currentTime, time = Math.max(start, frame / context.sampleRate, now);
       if (disposed || !next || !validVoiceLaneMix(next) || !Number.isSafeInteger(frame) || frame < 0 || !panCurve && next.pan !== 0 || !gainCurve.canInsert(now) || panCurve && !panCurve.canInsert(now)) return { status: 'rejected', reason: 'lane-mix-admission' };
       try {

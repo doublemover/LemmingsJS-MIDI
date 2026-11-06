@@ -437,6 +437,20 @@ class BrowserNotePreview {
         }
         return Object.freeze(result);
       },
+      inspectSourceParameter: ({ parameterId, laneId, patchId, revision } = {}) => {
+        const result = [];
+        if (session.disposed || typeof parameterId !== 'string') return Object.freeze(result);
+        for (const voice of this._voices) {
+          const value = voice.performanceValues?.[parameterId];
+          if (voice.owner !== id || voice.kernelEnded || !voice.playback?.voiceId || !Number.isFinite(value) ||
+              (voice.audioLaneId ?? voice.laneMix?.laneId) !== laneId || patchId != null && (voice.patchId !== patchId || voice.patchRevision !== revision)) continue;
+          result.push(Object.freeze({ voiceId: voice.playback.voiceId, actorId: voice.performanceIdentity?.actorId ?? null,
+            patchId: voice.patchId, revision: voice.patchRevision, value, targetFrame: voice.performanceFrame ?? null,
+            evidence: 'host-accepted-parameter-model;render-acknowledgment-separate' }));
+          if (result.length === 16) break;
+        }
+        return Object.freeze(result);
+      },
       getEffectPerformanceState: () => this._channels.get(id + ':0')?.effects?.performanceSnapshot() || null,
       getEffectLatencyState: () => this._channels.get(id + ':0')?.effects?.latencyState() || Object.freeze({ latencyFrames: session.disposed ? null : 0, routes: 0, unresolved: session.disposed }),
       inspectEffectGraph: ({ requestHealth = false } = {}) => { const effects = this._channels.get(id + ':0')?.effects; if (requestHealth) effects?.requestInspection(); return effects?.state() || null; },

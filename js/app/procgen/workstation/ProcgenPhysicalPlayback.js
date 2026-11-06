@@ -413,6 +413,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       return harmony.snapshot();
     },
     closeHarmony: () => harmony.selectLane(null),
+    mappingParameterValues: (laneId, parameterId) => session?.inspectSourceParameter?.({ laneId, parameterId }) || Object.freeze([]),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     pendingInstrumentCount: () => laneInstruments?.pendingCount() || 0,
