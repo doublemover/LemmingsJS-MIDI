@@ -68,6 +68,27 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     const result = routes.allocateDedicated(getLanes().map(value => value.id), { grant: Number(active.value), protocol: protocol.value }); onAssignMany(result);
     const assigned = result.filter(value => value.status === 'assigned').length; message.textContent = assigned + ' lanes assigned; ' + (result.length - assigned) + ' remain local only. Channels are never wrapped.';
   }, routeControls);
+  const rememberRoute = button('Remember this lane route for reconnect', async () => {
+    const selectedLane = getLanes().find(value => value.id === lane.value), route = routes.resolve(selectedLane?.outputId, selectedLane?.id);
+    if (!route) throw new Error('Route this lane explicitly before remembering its destination');
+    const reconnectIntent = await routes.saveRouteIntent(route); onAssign(selectedLane.id, { ...route, reconnectIntent }); message.textContent = 'Saved destination fingerprint and group/channel intent. Reconnect always requires a new grant and explicit review.';
+  }, routeControls);
+  const reviewReconnect = button('Review saved routes on selected connection', async () => { reconnectPlan = await routes.previewReconnect(Number(active.value), getLanes()); reconnectPage = 0; message.textContent = 'Reconnect review reads current identity and routing capacity. It sends no MIDI.'; }, routeControls);
+  const applyReconnect = button('Apply reviewed reconnect routes', async () => {
+    await routes.applyReconnect(reconnectPlan, getLanes, onAssignMany); reconnectPlan = null;
+    message.textContent = 'Reviewed base routes restored. Re-activate saved device patches, profiles and expression mappings explicitly before performance.';
+  }, routeControls);
+  const previousReconnect = button('Previous reconnect review page', () => { reconnectPage--; }, routeControls), nextReconnect = button('Next reconnect review page', () => { reconnectPage++; }, routeControls);
+  const reconnectInfo = element(document, 'output'), reconnectRows = element(document, 'div'); reconnectInfo.setAttribute('role', 'status'); reconnectInfo.setAttribute('aria-live', 'polite'); routeControls.append(reconnectInfo, reconnectRows);
+  const paintReconnect = () => {
+    const rows = reconnectPlan?.rows || [], first = reconnectPage * 64;
+    reconnectInfo.textContent = reconnectPlan ? 'Explicit connection #' + reconnectPlan.grant + ' · fingerprint ' + reconnectPlan.deviceFingerprint.slice(0, 12) + ' · ' + rows.filter(row => row.status === 'ready').length + ' ready / ' + rows.length + ' saved routes · rows ' + (rows.length ? first + 1 : 0) + '–' + Math.min(first + 64, rows.length) : 'Saved destination intent never opens or activates a device automatically.';
+    reconnectRows.replaceChildren(); if (!rows.length) return;
+    const table = element(document, 'table'), header = element(document, 'tr'); for (const title of ['Lane', 'Group / channel', 'Reconnect review']) header.append(element(document, 'th', title)); table.append(header);
+    const names = new Map(getLanes().map(lane => [lane.id, lane.name || lane.id]));
+    for (const row of rows.slice(first, first + 64)) { const tr = element(document, 'tr'); for (const text of [names.get(row.laneId) || row.laneId, row.group == null ? '—' : (row.group + 1) + ' / ' + (row.channel + 1), row.status + (row.reason ? ' · ' + row.reason : row.reactivation.length ? ' · then review ' + row.reactivation.join(', ') : '')]) tr.append(element(document, 'td', text)); table.append(tr); }
+    reconnectRows.append(table);
+  };
   const exportTrace = button('Save native wire trace', () => {
     const blob = new Blob([JSON.stringify(routes.wireTrace(), null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), link = element(document, 'a'); link.href = url; link.download = 'lemmings-native-wire-trace.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
   }, routeControls);
@@ -181,6 +202,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   let profileSession = null, profileCi = null, profileUnsubscribe = null;
   let reportSession = null, reportCi = null, reportUnsubscribe = null, ciSession = null, ciUnsubscribe = null, inputTimer = null;
   const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category + (input.lastObservation.jrTiming ? ' · JR ' + input.lastObservation.jrTiming.status + ' · ' + input.lastObservation.jrTiming.reason : '') : ''); };
+  let reconnectPlan = null, reconnectPage = 0;
   let operationSerial = 0, busy = false, selectedGrant = null, inventoryEpoch = null, laneSignature = '';
   const percussionView = createNativeMidiPercussionView({ document, container: root, routes, getLane: () => getLanes().find(row => row.id === lane.value),
     getWireTarget: () => ({ grant: Number(active.value), group: Number(group.value), channel: Number(channel.value), protocol: protocol.value }), getProfileSession: ensureProfile, getProfileRecord: selectedProfile,
@@ -208,7 +230,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     const selected = state.grants.find(row => row.grant === (selectedGrant || Number(active.value)));
     revalidate.disabled ||= !selected || selected.virtual || routes.client.capabilities?.groupRetirementVersion !== 1 || !(selected.originalGroupMask & ~selected.groupMask);
     switchBackend.disabled ||= !connected || !!state.grants.length; revoke.disabled = !state.grants.length; assign.disabled ||= !writable; all.disabled ||= !writable; exportTrace.disabled ||= !state.traceRecords; exportInput.disabled ||= !state.ingress.receivedPackets; renderInput();
-    timingPolicy.disabled ||= !connected;
+    timingPolicy.disabled ||= !connected; rememberRoute.disabled ||= !routes.resolve(getLanes().find(value => value.id === lane.value)?.outputId, lane.value); reviewReconnect.disabled ||= !writable || !active.value; applyReconnect.disabled ||= !reconnectPlan?.rows.some(row => row.status === 'ready') || reconnectPlan.grant !== Number(active.value); previousReconnect.disabled ||= reconnectPage <= 0; nextReconnect.disabled ||= !reconnectPlan || (reconnectPage + 1) * 64 >= reconnectPlan.rows.length; paintReconnect();
     status.textContent = state.state + (connected ? ' · native UMP · ' + state.grants.length + ' owned connections · clock ' + state.clock.status + ' · epoch ' + (state.clock.epoch ?? 'unknown') + (Number.isFinite(state.clock.uncertaintyUs) ? ' · uncertainty ≤' + Math.ceil(state.clock.uncertaintyUs) + 'µs / ' + state.clock.maximumUncertaintyUs + 'µs · estimated drift ' + state.clock.driftPpm.toFixed(1) + 'ppm' : '') + (state.clock.reason ? ' · ' + state.clock.reason : '') : ' · local audio remains available');
     const capabilities = routes.client.capabilities;
     const ciReady = !!capabilities?.ciCodec && connected && state.grants.some(row => row.direction === 'input' && (row.permissions & 1)) && state.grants.some(row => row.direction === 'output' && (row.permissions & 1));
@@ -216,15 +238,15 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     options(ciInput, state.grants.filter(row => row.direction === 'input' && (row.permissions & 1)).map(row => [row.grant, row.endpoint?.name || 'Published control input']), 'Choose a SysEx input'); showCi();
     if (capabilities && backend.options.length !== capabilities.compiledApis.length + 1) options(backend, capabilities.compiledApis.map(api => [api.id, api.name]), 'Choose backend');
     if (capabilities && !backend.value) backend.value = String(capabilities.selectedApi);
-    if (state.inventory?.inventoryEpoch !== inventoryEpoch) { inventoryEpoch = state.inventory?.inventoryEpoch ?? null; options(endpoint, (state.inventory?.endpoints || []).map(row => [row.endpointToken, row.name + ' · ' + row.direction + (row.groupMask == null ? ' · group support unknown' : ' · groups ' + Array.from({ length: 16 }, (_, i) => row.groupMask & 1 << i ? i + 1 : null).filter(Boolean).join(','))]), 'Choose a native device'); }
-    options(active, state.grants.map(row => [row.grant, (row.endpoint?.name || 'Published ' + row.direction) + ' · ' + row.direction]), 'Choose an owned connection');
+    if (state.inventory?.inventoryEpoch !== inventoryEpoch) { inventoryEpoch = state.inventory?.inventoryEpoch ?? null; options(endpoint, (state.inventory?.endpoints || []).map(row => [row.endpointToken, row.name + ' · device #' + row.endpointToken + ' · ' + row.direction + (row.groupMask == null ? ' · group support unknown' : ' · groups ' + Array.from({ length: 16 }, (_, i) => row.groupMask & 1 << i ? i + 1 : null).filter(Boolean).join(','))]), 'Choose a native device'); }
+    options(active, state.grants.map(row => [row.grant, (row.endpoint?.name || 'Published ' + row.direction) + ' · connection #' + row.grant + ' · ' + row.direction]), 'Choose an owned connection');
     if (selectedGrant && state.grants.some(row => row.grant === selectedGrant)) active.value = String(selectedGrant);
     const lanes = getLanes(), signature = lanes.map(value => value.id + ':' + value.name).join('|');
     if (signature !== laneSignature) { laneSignature = signature; options(lane, lanes.map(value => [value.id, value.name || value.id]), 'Choose a lane'); if (!lane.value) lane.value = getSelectedLaneId(); }
     endpointView.render(); propertyView.render(); patchView.render(); parameterView.render(); percussionView.render(); articulationView.render(); pianoView.render(); organView.render(); scoreContextView.render(); captureView.render();
   }
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
-  bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; render(); });
+  bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; reconnectPlan = null; reconnectPage = 0; render(); });
   for (const picker of [lane, group, channel, protocol, ciInput, ciPeer]) bindEvent(picker, 'change', render);
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); scoreContextView.render(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
   return { render, dispose() { unsubscribe(); endpointView.dispose(); propertyView.dispose(); patchView.dispose(); parameterView.dispose(); percussionView.dispose(); articulationView.dispose(); pianoView.dispose(); organView.dispose(); scoreContextView.dispose(); captureView.dispose(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };

@@ -1035,6 +1035,7 @@ class Companion {
               ",\"direction\":" + quote(row.input ? "input" : "output") +
               ",\"groupMask\":" +
               (row.groups_known ? std::to_string(row.groups) : "null") +
+              ",\"reconnectKey\":" + (row.windows && row.windows_device.size() <= 2048 ? quote(row.windows_device) : "null") +
               ",\"wireFormat\":\"ump\",\"activeChannelProtocol\":\"unknown\","
               "\"sourcePrecision\":\"unknown\",\"identityScope\":\"current-"
               "native-inventory\"}";

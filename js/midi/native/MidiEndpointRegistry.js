@@ -1,3 +1,4 @@
+import { hashData } from '../../core/CanonicalData.js';
 import { createDeviceMutationOwner } from './DeviceMutation.js';
 
 const mask = block => block.active && block.groupCount > 0 && block.firstGroup + block.groupCount <= 16 ? ((1 << block.groupCount) - 1) << block.firstGroup : 0;
@@ -138,6 +139,12 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
     catch (error) { routes.quarantineDeviceState(outputGrant, error.message); throw error; }
   };
   const api = Object.freeze({
+    async reconnectFingerprint() {
+      if (!current() || !identity || !productInstanceId) throw new Error('A current unique Product Instance ID and Endpoint Identity are required for portable reconnect intent');
+      const before = revision, value = await hashData({ domain: 'lemmings-ump-output-reconnect/v1', identity, productInstanceId });
+      if (!current() || revision !== before) throw new Error('Endpoint identity changed during fingerprint preparation');
+      return Object.freeze({ deviceFingerprint: value, identitySource: 'ump-product-instance' });
+    },
     refreshMetadata(seed) { if (!current()) return; try { applyOsMetadata(seed); } catch (error) { reason = error.message; emit(); } },
     async discover() {
       if (routes.client.capabilities?.endpointDiscoveryOwner === 'os') return Object.freeze({ status: complete() ? 'ok' : 'incomplete', evidence: info?.source || 'os-managed', reason: complete() ? null : 'Windows endpoint metadata is incomplete; refresh native devices when its discovery completes' });

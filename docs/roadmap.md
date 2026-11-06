@@ -10783,3 +10783,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Share the combined source/effect cut workspace calculation between the causal render owner and worker. Reserve transfer, decoded copy, staged graph and retained original overlap before dispatch, including captured graph histories and source-only/native-convolution staging.
 - Carry exact sample-zone capacity into source estimates and label the experimental range option as source-plus-FX restoration. Keep native hidden-state reconstruction on its explicit preroll path.
 - Formatting only; functional validation remains deferred with the backlog implementation pass.
+
+
+### 2026-11-06 — Rook continuation511: remembered native routes and explicit reconnect review
+
+- Persist versioned destination fingerprint/group/channel/protocol/sharing intent separately from connection grants and live output IDs. Derive Windows fingerprints from the private OS endpoint key; other endpoints require a current Product Instance ID plus Endpoint Identity. Keep raw identifiers out of project exports and refuse name-only matching.
+- Add read-only selected-grant reconnect previews with capacity/protocol/group conflicts and paged coverage for all saved lanes. Require a fresh exact identity/metadata/stopped boundary at apply, preflight the complete candidate batch and publish project assignments before activating its routes.
+- Keep patch/profile/device mappings subject to their own fresh activation. A prior MPE allocation cannot silently become a normal manager-channel route. Remove retired live route records while retaining authored destination intent, and keep ambiguous same-name choices explicit through inventory/connection identifiers.
+- Add compact remember/review/apply controls and canonical project persistence. Formatting and critical/boundary typechecks pass; native compilation/linking is checked separately. No functional or device execution; continue live automation/state transport and the remaining backlog before consolidated validation.

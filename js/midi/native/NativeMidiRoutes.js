@@ -1,3 +1,5 @@
+import { hashData } from '../../core/CanonicalData.js';
+import { validateNativeRouteIntent } from './NativeRouteIntent.js';
 import { createNativeControllerPolicies } from './NativeControllerPolicies.js';
 import { encodeNativeSubmittedClip } from './NativeSubmittedClip.js';
 import { createOwnedResourceReservation } from '../../app/resources/OwnedResourceReservation.js';
@@ -37,7 +39,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
   const ingress = createNativeMidiIngress(), receivedContexts = new Map(), outputCapture = createNativeUmpCapture({ resourceBudget });
   const parameterCatalogs = new Map(), auxiliaryRoutes = new Map(), controllerChanges = new Map();
   const forgetControllerChanges = grant => { for (const key of controllerChanges.keys()) if (key.startsWith(grant + ':')) controllerChanges.delete(key); for (const [key, row] of groupInvalidations) if (row.grant === grant) groupInvalidations.delete(key); };
-  const groupInvalidations = new Map(), exportArtifacts = new Set(), nativeRetirements = new Map();
+  const groupInvalidations = new Map(), exportArtifacts = new Set(), nativeRetirements = new Map(), reconnectReviews = new WeakMap(), fingerprintCache = new WeakMap();
   const endpointRegistries = new Map(), patchCatalogs = new Map(), patchClaims = new Map(), propertyClients = new Map(), profileClaims = new Map(), profileSessions = new Map(), deviceInvalidations = new Map();
   const reportSessions = new Map(), performanceOwners = new Set(), observationHolds = new Map(), ciSessions = new Set(), grants = new Map(), routes = new Map(), listeners = new Set(), trace = [];
   let disposal = null, notificationPending = false, executionSequence = 0, revision = 0, traceWords = 0, omittedTrace = 0, disposed = false, inventory = null;
@@ -55,7 +57,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
   const unsubscribe = client.subscribe(event => {
     if (event.event === 'grant-retired') { nativeRetirements.set(event.grant, Object.freeze({ grant: event.grant, reason: event.reason, nativeCloseConfirmed: event.nativeCloseConfirmed === true, cleanupUnconfirmedNotes: event.cleanupUnconfirmedNotes ?? null, cleanupUnconfirmedControls: event.cleanupUnconfirmedControls ?? null, hostOwnership: 'retiring' })); while (nativeRetirements.size > 128) nativeRetirements.delete(nativeRetirements.keys().next().value);
       void Promise.allSettled([...performanceOwners].map(owner => owner.invalidateGrant?.(event.grant, event))).then(results => { const failed = results.filter(row => row.status === 'rejected'); const current = nativeRetirements.get(event.grant); if (current) nativeRetirements.set(event.grant, Object.freeze({ ...current, hostOwnership: failed.length ? 'unconfirmed' : 'retired', failure: failed.map(row => String(row.reason?.message || row.reason)).join('; ') || null })); notify(); });
-      if (outputCapture.state().capture?.grant === event.grant) outputCapture.stop({ reason: event.reason || 'captured-grant-retired', hostTimeMs: client.now() }); ingress.revoke(event.grant, event.reason); controllerPolicies.forget(event.grant); grants.delete(event.grant); forgetControllerChanges(event.grant); for (const session of ciSessions) if (session.state().outputGrant === event.grant) session.invalidate(event.reason || 'CI output grant retired'); notify(); }
+      if (outputCapture.state().capture?.grant === event.grant) outputCapture.stop({ reason: event.reason || 'captured-grant-retired', hostTimeMs: client.now() }); ingress.revoke(event.grant, event.reason); controllerPolicies.forget(event.grant); grants.delete(event.grant); for (const [id, route] of routes) if (route.grant === event.grant) { routes.delete(id); profileClaims.delete(id); patchClaims.delete(id); } forgetControllerChanges(event.grant); for (const session of ciSessions) if (session.state().outputGrant === event.grant) session.invalidate(event.reason || 'CI output grant retired'); notify(); }
     else if (event.event === 'state' && event.state === 'disconnected') { outputCapture.stop({ reason: 'native-connection-retired', hostTimeMs: client.now() }); ingress.clearGrants(); controllerPolicies.forget(); grants.clear(); controllerChanges.clear(); groupInvalidations.clear(); receivedContexts.clear(); inventory = null; notify(); }
     else if (event.event === 'clock-epoch-retired') { for (const owner of grants.values()) if (owner.direction === 'output') void api.invalidateDeviceState(owner.grant, event.reason || 'native-clock-epoch-retired').catch(error => api.quarantineDeviceState(owner.grant, error.message)); notify(); }
     else if (event.event === 'clock-updated') notify();
@@ -103,25 +105,34 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
         clockDomain: 'companion-steady-microseconds', claim: 'SDK-call-observation-not-receiver-wire-or-acoustic-proof' }) });
     }
   };
-  const bind = ({ laneId, grant, group, channel, protocol = 'midi2', sharing = 'dedicated' }) => {
+  const buildRoute = ({ laneId, grant, group, channel, protocol = 'midi2', sharing = 'dedicated' }, routing = routes, routeRevision = revision + 1) => {
     const owner = grants.get(grant);
     for (const registry of endpointRegistries.values()) if (registry.state().outputGrant === grant && !registry.allowsAddress({ group, protocol })) throw new Error('Endpoint protocol, function-block direction or active groups do not permit this route; refresh and configure the endpoint');
     if (unsupportedTiming(owner)) throw new Error('This endpoint requires JR timestamps that Windows MIDI Services does not permit applications to generate');
     if (deviceInvalidations.has(grant) || [...groupInvalidations.values()].some(row => row.grant === grant && row.groupMask & 1 << group)) throw new Error('Device scope retirement remains unconfirmed');
-    if (!owner || owner.direction !== 'output' || owner.connectionEpoch !== client.session || !Number.isInteger(group) || group < 0 || group > 15 || !(owner.groupMask & 1 << group) ||
+    if (disposed || !owner || owner.direction !== 'output' || owner.connectionEpoch !== client.session || !Number.isInteger(group) || group < 0 || group > 15 || !(owner.groupMask & 1 << group) ||
         !Number.isInteger(channel) || channel < 0 || channel > 15 || !['midi2', 'midi1-in-ump'].includes(protocol) || !['dedicated', 'shared-ensemble'].includes(sharing) || typeof laneId !== 'string' || !laneId) throw new Error('Choose a current output grant, group, channel and protocol');
-    if (routes.size >= 1024) throw new Error('Native route capacity; revoke unused connections');
     const outputId = 'native-midi:' + owner.logicalDestination + ':' + group + ':' + channel;
     for (const [id, claim] of profileClaims) if (id !== outputId && claim.grant === grant && claim.current() && claim.binding.addresses.some(address => address.group === group && address.channel === channel)) throw new Error('Channel is reserved by an active CI profile allocation');
     if (profileClaims.has(outputId) && [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop owned notes before replacing a profile route');
-    profileClaims.delete(outputId); patchClaims.delete(outputId);
-    const previous = routes.get(outputId);
+    if (routing.size >= 1024 && !routing.has(outputId)) throw new Error('Native route capacity; revoke unused connections');
+    const previous = routing.get(outputId);
     if (previous && previous.protocol !== protocol) throw new Error('An active native address cannot mix channel protocols');
     if (previous && previous.laneIds.some(id => id !== laneId) && (previous.sharing !== 'shared-ensemble' || sharing !== 'shared-ensemble')) throw new Error('Native channel belongs to another lane; choose sharing explicitly');
     const laneIds = Object.freeze([...new Set([...(previous?.laneIds || []), laneId])]);
-    const route = Object.freeze({ outputId, grant, connectionEpoch: owner.connectionEpoch, routeRevision: ++revision, logicalDestination: owner.logicalDestination, deviceRevision: owner.deviceRevision, group, channel, protocol, sharing, laneIds,
+    const route = Object.freeze({ outputId, grant, connectionEpoch: owner.connectionEpoch, routeRevision, logicalDestination: owner.logicalDestination, deviceRevision: owner.deviceRevision, group, channel, protocol, sharing, laneIds,
       groupRevisions: Object.freeze([[group, owner.groupRevisions[group]]]), receiverProtocol: 'unverified', transport: 'native-ump', independentSamePitchVoices: false });
-    routes.set(outputId, route); notify(); return route;
+    return route;
+  };
+  const bind = options => { const route = buildRoute(options); revision = route.routeRevision; profileClaims.delete(route.outputId); patchClaims.delete(route.outputId); routes.set(route.outputId, route); notify(); return route; };
+  const reconnectIdentity = async owner => {
+    if (disposed || !owner || owner.direction !== 'output' || grants.get(owner.grant) !== owner || owner.connectionEpoch !== client.session) throw new Error('A current explicitly granted output is required');
+    if (typeof owner.endpoint?.reconnectKey === 'string' && owner.endpoint.reconnectKey.length > 0 && owner.endpoint.reconnectKey.length <= 2048) {
+      let identity = fingerprintCache.get(owner); if (!identity) { identity = Object.freeze({ deviceFingerprint: await hashData({ domain: 'lemmings-native-os-output-reconnect/v1', key: owner.endpoint.reconnectKey, backend: client.capabilities?.selectedApi ?? null }), identitySource: 'os-endpoint-key' }); fingerprintCache.set(owner, identity); } return identity;
+    }
+    const registries = [...endpointRegistries.values()].filter(registry => registry.state().outputGrant === owner.grant && !registry.state().stale);
+    if (registries.length !== 1) throw new Error('This device needs current Endpoint Identity and Product Instance ID discovery before its route can be remembered; names alone are insufficient');
+    return registries[0].reconnectFingerprint();
   };
   const api = Object.freeze({
     client, input: ingress, outputCapture,
@@ -140,6 +151,48 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     async setTimingPolicy(policy) {
       if ([...grants.values()].some(owner => owner.direction === 'output' && [...performanceOwners].some(performance => performance.isQuiescent(owner.grant) !== true))) throw new Error('Stop native performance before changing its clock operating budget');
       client.setTimingPolicy(policy); return client.synchronizeClock();
+    },
+    async saveRouteIntent(route) {
+      if (!current(route)) throw new Error('Choose a current active native route before remembering it');
+      const owner = grants.get(route.grant), identity = await reconnectIdentity(owner);
+      if (!current(route) || grants.get(route.grant) !== owner) throw new Error('Native route changed while remembering its identity');
+      return validateNativeRouteIntent({ schema: 'lemmings-native-route-intent/v1', ...identity, deviceLabel: String(owner.endpoint?.name || owner.name || 'Native output').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 256), group: route.group, channel: route.channel, protocol: route.protocol, sharing: route.sharing, allocation: route.mpe ? 'ci-mpe-profile' : 'base-channel' });
+    },
+    async previewReconnect(grant, lanes) {
+      const owner = grants.get(grant); if (!owner || owner.direction !== 'output' || !Array.isArray(lanes) || lanes.length > 1024) throw new Error('Select an explicitly granted current output');
+      const identity = await reconnectIdentity(owner); if (grants.get(grant) !== owner) throw new Error('Output changed during reconnect review');
+      const staged = new Map(routes), rows = [];
+      for (const lane of lanes) {
+        if (!lane.nativeRouteIntent) continue;
+        const intent = validateNativeRouteIntent(lane.nativeRouteIntent);
+        if (intent.deviceFingerprint !== identity.deviceFingerprint || intent.identitySource !== identity.identitySource) { rows.push(Object.freeze({ laneId: lane.id, status: 'different-device', reason: 'Saved fingerprint does not match the explicitly selected output' })); continue; }
+        if (intent.allocation === 'ci-mpe-profile') { rows.push(Object.freeze({ laneId: lane.id, status: 'requires-profile-route', reason: 'Re-query and explicitly activate the current MPE Profile allocation; its old manager cannot be restored as an ordinary note channel' })); continue; }
+        try {
+          const route = buildRoute({ laneId: lane.id, grant, ...intent }, staged);
+          staged.set(route.outputId, route);
+          rows.push(Object.freeze({ laneId: lane.id, status: 'ready', group: intent.group, channel: intent.channel, protocol: intent.protocol, sharing: intent.sharing, reactivation: [lane.devicePatch ? 'patch' : null, lane.percussion ? 'percussion-profile' : null, lane.orchestral ? 'orchestral-profile' : null, lane.piano ? 'piano-profile' : null, lane.organ ? 'organ-profile' : null, lane.deviceParameters?.length ? 'device-mappings' : null].filter(Boolean) }));
+        } catch (error) { rows.push(Object.freeze({ laneId: lane.id, status: 'conflict', reason: error.message })); }
+      }
+      const plan = Object.freeze({ schema: 'lemmings-native-reconnect-review/v1', grant, connectionEpoch: client.session, deviceFingerprint: identity.deviceFingerprint, rows: Object.freeze(rows), policy: 'explicit-current-grant;no-automatic-open-or-output' });
+      reconnectReviews.set(plan, { owner, expiresMs: client.now() + 60000, lanes: new Map(lanes.filter(lane => lane.nativeRouteIntent).map(lane => [lane.id, { intent: JSON.stringify(lane.nativeRouteIntent), outputId: lane.outputId }])) }); return plan;
+    },
+    async applyReconnect(plan, getCurrentLanes, publishAssignments) {
+      const review = reconnectReviews.get(plan);
+      if (!review || grants.get(plan.grant) !== review.owner || client.session !== plan.connectionEpoch || client.now() > review.expiresMs || (typeof publishAssignments !== 'function' || typeof getCurrentLanes !== 'function')) throw new Error('Prepare a fresh reconnect review for this owned output');
+      await api.prepareOutput(plan.grant);
+      const identity = await reconnectIdentity(review.owner), indexed = new Map(getCurrentLanes().map(lane => [lane.id, lane]));
+      if (grants.get(plan.grant) !== review.owner || identity.deviceFingerprint !== plan.deviceFingerprint || client.now() > review.expiresMs || [...performanceOwners].some(owner => owner.isQuiescent(plan.grant) !== true)) throw new Error('Output identity, metadata or stopped boundary changed during reconnect review');
+      const staged = new Map(routes), assignments = []; let nextRevision = revision;
+      for (const row of plan.rows) if (row.status === 'ready') {
+        const lane = indexed.get(row.laneId), original = review.lanes.get(row.laneId);
+        if (!lane || lane.outputId !== original.outputId || JSON.stringify(lane.nativeRouteIntent) !== original.intent) throw new Error('A reviewed lane route changed before reconnect');
+        const intent = validateNativeRouteIntent(lane.nativeRouteIntent), route = buildRoute({ laneId: lane.id, grant: plan.grant, ...intent }, staged, ++nextRevision);
+        staged.set(route.outputId, route); assignments.push({ laneId: lane.id, status: 'assigned', route: Object.freeze({ ...route, reconnectIntent: intent }) });
+      }
+      if (!assignments.length) throw new Error('No saved routes can be restored on this selected output');
+      publishAssignments(Object.freeze(assignments)); reconnectReviews.delete(plan);
+      for (const row of assignments) { const route = staged.get(row.route.outputId); routes.set(route.outputId, route); profileClaims.delete(route.outputId); patchClaims.delete(route.outputId); }
+      revision = nextRevision; notify(); return Object.freeze(assignments);
     },
     registerPerformanceOwner(owner) { if (disposed || performanceOwners.size >= 8 || typeof owner?.isQuiescent !== 'function') throw new Error('Native performance owner capacity'); performanceOwners.add(owner); return () => performanceOwners.delete(owner); },
     allowsPerformance(grant) { return !disposed && !unsupportedTiming(grants.get(grant)) && !observationHolds.has(grant) && !deviceInvalidations.has(grant); },

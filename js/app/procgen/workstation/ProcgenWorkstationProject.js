@@ -1,3 +1,4 @@
+import { validateNativeRouteIntent } from '../../../midi/native/NativeRouteIntent.js';
 import { validateScoreContextPolicy } from '../../../midi/content/ScoreContext.js';
 import { validateOrganRotaryPolicy, validateOrganRotaryControls } from '../../../midi/content/OrganRotaryIntent.js';
 import { validatePianoPerformancePolicy, validatePianoPartControls } from '../../../midi/content/PianoPerformanceIntent.js';
@@ -105,6 +106,7 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
     instrumentControls: trusted && overrides.instrumentControls === trusted.instrumentControls ? trusted.instrumentControls : validateInstrumentControls(overrides.instrumentControls),
     mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,
     channel: Number.isInteger(overrides.channel) && overrides.channel >= 1 && overrides.channel <= 16 ? overrides.channel : role === 'drums' ? 10 : melodic[index % melodic.length],
+    ...(overrides.nativeRouteIntent == null ? {} : { nativeRouteIntent: trusted && overrides.nativeRouteIntent === trusted.nativeRouteIntent ? trusted.nativeRouteIntent : validateNativeRouteIntent(overrides.nativeRouteIntent) }),
     outputId: overrides.outputId == null ? null : String(overrides.outputId),
     bankMSB: overrides.bankMSB == null ? null : integer(overrides.bankMSB, 0, 0, 127),
     bankLSB: overrides.bankLSB == null ? null : integer(overrides.bankLSB, 0, 0, 127),
@@ -188,12 +190,12 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
   }
   if (action.type === 'procgen/nativeRoutes') {
     if (!Array.isArray(action.routes) || action.routes.length > 1024 || new Set(action.routes.map(row => row.laneId)).size !== action.routes.length || action.routes.some(row => typeof row.laneId !== 'string' || typeof row.outputId !== 'string' || !row.outputId.startsWith('native-midi:') || row.outputId.length > 512 || row.channel != null && (!Number.isInteger(row.channel) || row.channel < 1 || row.channel > 16))) throw new Error('Invalid native lane routes');
-    const assignments = new Map(action.routes.map(row => [row.laneId, row]));
+    const assignments = new Map(action.routes.map(row => [row.laneId, { ...row, nativeRouteIntent: row.nativeRouteIntent == null ? null : validateNativeRouteIntent(row.nativeRouteIntent) }]));
     for (const id of assignments.keys()) if (!procgenLaneIndex(lanes).has(id)) throw new Error('Native lane route target was removed');
     let changed = false;
-    const updated = lanes.map(lane => { const route = assignments.get(lane.id); if (!route || lane.outputId === route.outputId && (route.channel == null || lane.channel === route.channel)) return lane;
+    const updated = lanes.map(lane => { const route = assignments.get(lane.id); if (!route || lane.outputId === route.outputId && (route.channel == null || lane.channel === route.channel) && sameValue(lane.nativeRouteIntent || null, route.nativeRouteIntent)) return lane;
       if (!Number.isSafeInteger((lane.revision || 0) + 1)) throw new Error('Lane revision exhausted');
-      changed = true; return { ...lane, outputId: route.outputId, ...(route.channel == null ? {} : { channel: route.channel }), revision: (lane.revision || 0) + 1 };
+      changed = true; const next = { ...lane, outputId: route.outputId, ...(route.channel == null ? {} : { channel: route.channel }), revision: (lane.revision || 0) + 1 }; if (route.nativeRouteIntent) next.nativeRouteIntent = route.nativeRouteIntent; else delete next.nativeRouteIntent; return next;
     });
     if (!changed) return project; inheritProcgenLaneIndex(lanes, updated); return { ...project, procgen: { ...procgen, lanes: updated } };
   }
