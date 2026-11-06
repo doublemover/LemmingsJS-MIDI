@@ -6,6 +6,7 @@ export function createNativeMidiEndpointView({ document, container, routes, getO
   const field = (label, node) => { const wrapper = element('label'); wrapper.className = 'midi-field'; wrapper.append(element('span', label), node); node.setAttribute('aria-label', label); controls.append(wrapper); return node; };
   const input = field('Endpoint-control input connection', element('select')), protocol = field('Requested endpoint protocol', element('select'));
   for (const [value, label] of [[1, 'MIDI1 in UMP'], [2, 'MIDI2']]) { const option = element('option', label); option.value = String(value); protocol.append(option); }
+  const jr = field('Supply JR timestamps on a supported native backend', element('input')); jr.type = 'checkbox';
   const consent = field('Change the selected endpoint protocol at a stopped boundary', element('input')); consent.type = 'checkbox';
   const status = element('output'); status.className = 'midi-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   const blocks = element('div'); root.append(status, blocks, element('p', 'Device grants must explicitly allow endpoint control. Leave granted groups empty for a discovery-only connection. Function-block numbers identify group spans; they are not group numbers.')); container.append(root);
@@ -18,12 +19,15 @@ export function createNativeMidiEndpointView({ document, container, routes, getO
     if ([...input.options].some(row => row.value === previous)) input.value = previous;
     for (const button of buttons) button.disabled = busy;
     discover.disabled ||= !input.value || !native.grants.some(row => row.grant === getOutputGrant() && row.direction === 'output' && (row.permissions & 8)) || routes.client.capabilities?.umpStreamCodecVersion !== 1;
-    configure.disabled ||= !registry || state.stale || !state.info || !consent.checked; cancel.disabled = !(busy || state?.discoveryPending || state?.configurationPending || state?.mutation.busy);
+    const osManaged = routes.client.capabilities?.endpointDiscoveryOwner === 'os';
+    jr.disabled = osManaged || busy || !state?.info || !(state.info.jrCapabilities & 2); protocol.disabled = consent.disabled = osManaged || busy;
+    configure.disabled ||= osManaged || !registry || state.stale || !state.info || !consent.checked; cancel.disabled = !(busy || state?.discoveryPending || state?.configurationPending || state?.mutation.busy);
     const configured = state?.configuration;
     status.textContent = state ? (state.stale ? 'Endpoint metadata is stale' : state.complete ? 'Endpoint metadata complete' : 'Endpoint metadata incomplete') +
       ' · protocol ' + (configured ? configured.protocol === 2 ? 'MIDI2 active' : 'MIDI1 active' : 'unknown') + ' · supported ' +
       (state.info ? [state.info.supportedProtocols & 1 ? 'MIDI1' : null, state.info.supportedProtocols & 2 ? 'MIDI2' : null].filter(Boolean).join(' / ') : 'unknown') +
-      (configured?.jrReceives ? ' · receiver requires JR timestamps; native performance is held until a compatible configuration is selected' : '') +
+      (configured?.jrReceives ? state.nativeTimingReady ? ' · native JR timing active' : ' · receiver requires JR timestamps; activate a supported native timing policy before performance' : '') +
+      (osManaged ? ' · protocol discovery and negotiation are owned by Windows MIDI Services' : '') +
       (state.reason ? ' · ' + state.reason : '') : 'Read endpoint metadata on explicit native control grants. Enumeration alone never arms an output.';
     if (!state || displayedRevision === state.revision) return;
     displayedRevision = state.revision; blocks.replaceChildren();
@@ -53,11 +57,12 @@ export function createNativeMidiEndpointView({ document, container, routes, getO
   };
   const discover = button('Read endpoint and function blocks', async () => { const owner = ensure(), result = await owner.discover(); onStatus(result.reason || 'Endpoint metadata: ' + result.status); });
   const configure = button('Request selected protocol', async () => {
-    const confirmed = consent.checked, owner = ensure(), result = await owner.configure({ protocol: Number(protocol.value), extensions: 0, confirmed }); consent.checked = false;
+    const confirmed = consent.checked, owner = ensure(), result = await owner.configure({ protocol: Number(protocol.value), extensions: jr.checked ? 2 : 0, confirmed }); consent.checked = false;
     onStatus(result.reason || (result.status === 'ok' ? 'Endpoint notified the selected protocol. Reassign affected native lanes before continuing.' : 'Endpoint configuration: ' + result.status));
   });
   const cancel = button('Cancel endpoint operation', () => { registry?.cancel(); consent.checked = false; }, true);
   bind(input, 'change', () => { registry?.cancel(); consent.checked = false; render(); }); bind(protocol, 'change', () => { consent.checked = false; render(); }); bind(consent, 'change', render);
+  bind(jr, 'change', () => { consent.checked = false; render(); });
   bind(root, 'toggle', () => { if (root.open) render(); });
   render();
   return Object.freeze({ render, dispose() { if (disposed) return; disposed = true; operation++; unsubscribe?.(); registry?.cancel(); for (const remove of removers) remove(); root.remove(); } });

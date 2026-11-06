@@ -10618,3 +10618,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Prefer active Function Blocks to USB terminal blocks for route masks. Preserve original block numbers and their actual group spans/directions; invalidate endpoint grants on changed semantic metadata. Gate dedicated and MPE allocations through current endpoint evidence.
 - Map ChannelList entries through the CI peer's reported Function Block first group; refuse mismatched patch recall targets. Keep OS association evidence separate from manually paired streams. Add a compact endpoint/protocol/block panel and explicit stopped-boundary configuration controls.
 - Windows companion compile/link and formatting pass. Functional/device qualification remains deferred. Finer retirement within a granted endpoint, native JR realization, typed device mappings, remaining instrument-profile adapters and coordinated whole-graph restore remain production work before the final validation pass.
+
+
+### 2026-11-06 — Rook continuation490: native JR envelopes and driver observations
+
+- Add shared endpoint timing ownership, independent JR clocks, complete batch envelopes and monotonic timestamp repair, with original-source receipt counts kept separate from generated utility packets. Fence protocol changes across endpoint grants and require confirmed timing-policy adoption before resuming.
+- Record bounded SDK-call observations for original packets, JR utilities and owned-note cleanup, including native call intervals and unknown failed writes. Connect endpoint policy activation to lane, MPE and patch routing controls.
+- Respect Windows MIDI Services ownership: consume OS discovery, refuse application Stream Configuration/JR generation and known unsupported JR-required performance. Eligible other backends can explicitly select receiver JR support.
+- Formatting and native compilation/linking pass. No functional tests or device execution; qualification remains deferred. Continue with typed discovery-backed physical-expression controls, remaining instrument profiles, group-scoped retirement and coordinated whole-graph restore.

@@ -22,13 +22,39 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     if (event.event === 'grant-retired') { ingress.revoke(event.grant, event.reason); grants.delete(event.grant); for (const session of ciSessions) if (session.state().outputGrant === event.grant) session.invalidate(event.reason || 'CI output grant retired'); notify(); }
     else if (event.event === 'state' && event.state === 'disconnected') { ingress.clearGrants(); grants.clear(); inventory = null; notify(); }
     else if (event.event === 'ports-changed') { inventory = null; notify(); }
+    else if (event.event === 'native-driver-observation') acceptDriverObservation(event);
     else if (event.event === 'ingress') ingress.acceptColumns(event);
     else if (event.event === 'ingress-loss') ingress.markLoss(event);
     else if (event.event === 'receipt' && event.kind === 'heartbeat') ingress.poll();
   });
+  const unsupportedTiming = owner => client.capabilities?.nativeJrAllowed === false && !!(owner?.endpointMetadata?.activeExtensions & 2);
+  const acceptDriverObservation = row => {
+    const safe = value => Number.isSafeInteger(value) && value >= 0;
+    if (disposed || row.session !== client.session || !grants.has(row.grant)) return;
+    const count = row.accepted?.length;
+    if (!safe(row.firstSequence) || !safe(row.execution) || !safe(row.nativeBatchId) || !['batch-packet', 'jr-clock', 'jr-timestamp', 'owned-note-cleanup'].includes(row.kind) ||
+        !Array.isArray(row.accepted) || count < 1 || count > 64 || !Array.isArray(row.words) || row.words.length > 256 || row.words.some(word => !Number.isInteger(word) || word < 0 || word > 0xffffffff) ||
+        !Array.isArray(row.offsets) || row.offsets.length !== count + 1 || row.offsets[0] !== 0 || row.offsets[count] !== row.words.length ||
+        !['unconfirmed', 'beginMonoUs', 'endMonoUs'].every(key => Array.isArray(row[key]) && row[key].length === count)) return;
+    for (let index = 0; index < count; index++) {
+      const start = row.offsets[index], end = row.offsets[index + 1];
+      if (!safe(start) || !safe(end) || end <= start || end - start !== UMP_WORD_COUNTS[row.words[start] >>> 28] ||
+          ![0, 1].includes(row.accepted[index]) || ![0, 1].includes(row.unconfirmed[index]) || row.accepted[index] + row.unconfirmed[index] !== 1 ||
+          !safe(row.beginMonoUs[index]) || !safe(row.endMonoUs[index]) || row.endMonoUs[index] < row.beginMonoUs[index]) return;
+    }
+    for (let index = 0; index < count; index++) {
+      const words = row.words.slice(row.offsets[index], row.offsets[index + 1]), accepted = row.accepted[index] === 1;
+      api.recordSubmission({ words, receipt: { session: row.session, grant: row.grant, execution: row.execution, nativeBatchId: row.nativeBatchId,
+        kind: accepted ? 'driver-submitted' : 'uncertain-driver-call', acceptedWords: accepted ? words.length : 0, acceptedPackets: accepted ? 1 : 0,
+        failedPacketUnconfirmed: !accepted, failureWordOffset: 0, beginMonoUs: row.beginMonoUs[index], endMonoUs: row.endMonoUs[index] },
+      provenance: Object.freeze({ schema: 'lemmings-native-driver-observation/v1', kind: row.kind, nativeBatchId: row.nativeBatchId, driverSequence: row.firstSequence + index,
+        clockDomain: 'companion-steady-microseconds', claim: 'SDK-call-observation-not-receiver-wire-or-acoustic-proof' }) });
+    }
+  };
   const bind = ({ laneId, grant, group, channel, protocol = 'midi2', sharing = 'dedicated' }) => {
     const owner = grants.get(grant);
     for (const registry of endpointRegistries.values()) if (registry.state().outputGrant === grant && !registry.allowsAddress({ group, protocol })) throw new Error('Endpoint protocol, function-block direction or active groups do not permit this route; refresh and configure the endpoint');
+    if (unsupportedTiming(owner)) throw new Error('This endpoint requires JR timestamps that Windows MIDI Services does not permit applications to generate');
     if (deviceInvalidations.has(grant)) throw new Error('Device state retirement remains unconfirmed');
     if (!owner || owner.direction !== 'output' || owner.connectionEpoch !== client.session || !Number.isInteger(group) || group < 0 || group > 15 || !(owner.groupMask & 1 << group) ||
         !Number.isInteger(channel) || channel < 0 || channel > 15 || !['midi2', 'midi1-in-ump'].includes(protocol) || !['dedicated', 'shared-ensemble'].includes(sharing) || typeof laneId !== 'string' || !laneId) throw new Error('Choose a current output grant, group, channel and protocol');
@@ -48,7 +74,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
   const api = Object.freeze({
     client, input: ingress,
     registerPerformanceOwner(owner) { if (disposed || performanceOwners.size >= 8 || typeof owner?.isQuiescent !== 'function') throw new Error('Native performance owner capacity'); performanceOwners.add(owner); return () => performanceOwners.delete(owner); },
-    allowsPerformance(grant) { return !disposed && !observationHolds.has(grant) && !deviceInvalidations.has(grant); },
+    allowsPerformance(grant) { return !disposed && !unsupportedTiming(grants.get(grant)) && !observationHolds.has(grant) && !deviceInvalidations.has(grant); },
     allowsOrdinaryInput() { return !disposed && observationHolds.size === 0; },
     holdForObservation(grant) { if (canObserveInput() !== true) throw new Error('Disconnect the ordinary MIDI input before reading isolated device state'); if (disposed || !grants.has(grant) || observationHolds.has(grant) || deviceInvalidations.has(grant) || [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop native performance and wait for owned notes before reading device state'); const token = Object.freeze({ grant, connectionEpoch: client.session }); observationHolds.set(grant, token); return token; },
     releaseObservation(token) { if (observationHolds.get(token?.grant) !== token) return false; observationHolds.delete(token.grant); return true; },
@@ -123,6 +149,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       grants.set(receipt.grant, descriptor(receipt, endpoint)); notify(); return grants.get(receipt.grant);
     },
     async publish(options) { if (disposed) throw new Error('Native routing owner retired'); const receipt = await client.publish(options); if (disposed) throw new Error('Native route owner retired'); if (receipt.direction === 'input') ingress.register(receipt); grants.set(receipt.grant, descriptor(receipt)); notify(); return grants.get(receipt.grant); },
+    async prepareOutput(grant) { if (unsupportedTiming(grants.get(grant))) throw new Error('Windows MIDI Services cannot supply this endpoint’s required JR timestamps'); if (!api.isGrantActive(grant)) throw new Error('Choose a current native output'); for (const registry of endpointRegistries.values()) if (registry.state().outputGrant === grant) await registry.prepareOutput(); },
     bind,
     bindDevicePatch({ laneId, catalog, receipt }) {
       if (![...patchCatalogs.values()].some(peers => [...peers.values()].includes(catalog)) || !catalog.isReceiptCurrent(receipt)) throw new Error('Recall and confirm the patch on this current device first');

@@ -277,3 +277,10 @@ JR-required receiver configuration currently holds performance admission; the
 panel's explicit protocol request selects a configuration without JR. Native
 compilation and formatting pass; no functional/device/interoperability pass is
 claimed before the final consolidated run.
+
+
+### Native JR timing and SDK submission observations
+
+Eligible native backends can adopt a confirmed receiver JR policy at a stopped endpoint boundary. The companion owns independent 200 ms JR clocks, 32 µs modulo timestamps and monotonic ordering repair on its existing steady-clock deadline queue. Stream changes fence every companion-owned grant on the endpoint until matching notification and timing-policy adoption; unconfirmed changes require reopening. SDK-call traces include original packets, JR envelopes, owned-note cleanup, acceptance uncertainty and native call intervals. These observations prove neither receiver delivery nor acoustic timing.
+
+Windows MIDI Services owns endpoint discovery/protocol negotiation and [explicitly forbids applications from requesting or supplying JR timestamps](https://microsoft.github.io/MIDI/kb/midi2-implementation-details/). The Windows adapter consumes OS-declared metadata, refuses application protocol requests/JR generation, and refuses performance on known JR-required endpoints. No Windows JR support or native timestamped-send qualification is claimed. Other native backends retain companion deadline scheduling; JR/device/timing qualification is deferred.

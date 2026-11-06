@@ -46,12 +46,14 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   for (let value = 0; value < 16; value++) { const a = element(document, 'option', String(value + 1)); a.value = String(value); group.append(a); const b = a.cloneNode(true); channel.append(b); }
   for (const [value, label] of [['midi2', 'MIDI2 · receiver support unverified'], ['midi1-in-ump', 'MIDI1 in UMP · reduced expression']]) { const option = element(document, 'option', label); option.value = value; protocol.append(option); }
   for (const [value, label] of [['dedicated', 'Dedicated lane channel'], ['shared-ensemble', 'Share ensemble channel explicitly']]) { const option = element(document, 'option', label); option.value = value; sharing.append(option); }
-  const assign = button('Route this lane', () => {
+  const assign = button('Route this lane', async () => {
+    await routes.prepareOutput(Number(active.value));
     if (!getLanes().some(value => value.id === lane.value)) throw new Error('Choose a current lane');
     const route = routes.bind({ laneId: lane.value, grant: Number(active.value), group: Number(group.value), channel: Number(channel.value), protocol: protocol.value, sharing: sharing.value });
     onAssign(lane.value, route); message.textContent = 'Lane routed to group ' + (route.group + 1) + ', channel ' + (route.channel + 1) + '.';
   }, routeControls);
-  const all = button('Allocate dedicated channels to all lanes', () => {
+  const all = button('Allocate dedicated channels to all lanes', async () => {
+    await routes.prepareOutput(Number(active.value));
     const result = routes.allocateDedicated(getLanes().map(value => value.id), { grant: Number(active.value), protocol: protocol.value }); onAssignMany(result);
     const assigned = result.filter(value => value.status === 'assigned').length; message.textContent = assigned + ' lanes assigned; ' + (result.length - assigned) + ' remain local only. Channels are never wrapped.';
   }, routeControls);
@@ -121,6 +123,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const mpeAssign = button('Use accepted MPE allocation for this lane', async () => {
     const session = await ensureProfile(), row = selectedProfile(); if (!row || row.group !== session.state().group) throw new Error('Select an enabled MPE profile in this group');
     if (!getLanes().some(value => value.id === lane.value)) throw new Error('Choose a current lane');
+    await routes.prepareOutput(session.state().outputGrant);
     const route = routes.bindMpe({ laneId: lane.value, session, profile: row.profile, scope: row.scope, protocol: protocol.value, pressureForm: mpePressure.value, thirdAxisForm: mpeThird.value });
     onAssign(lane.value, route); message.textContent = 'CI MPE uses manager group ' + (route.mpe.manager.group + 1) + ', channel ' + (route.mpe.manager.channel + 1) + ' and ' + route.mpe.members.length +
       ' independent members. Lane gain controls the cohort on its manager. Program recall stays a separate device change; shared same-pitch voices use separate members.'; showProfiles();

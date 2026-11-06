@@ -14,7 +14,7 @@ namespace win_midi = winrt::Microsoft::Windows::Devices::Midi2;
 struct WindowsEndpointInfo {
   std::string device, name, manufacturer, transport;
   std::string metadata_json{}, metadata_shape{};
-  bool groups_known{};
+  bool groups_known{}, jr_required{};
   std::uint16_t input_groups{}, output_groups{};
 };
 inline std::vector<WindowsEndpointInfo> windows_endpoints() {
@@ -88,6 +88,7 @@ inline std::vector<WindowsEndpointInfo> windows_endpoints() {
       ",\"staticFunctionBlocks\":" + (info_known ? (declared.HasStaticFunctionBlocks ? "true" : "false") : "null") +
       ",\"activeProtocol\":" + (config_known && (protocol == 1 || protocol == 2) ? std::to_string(protocol) : "null") +
       ",\"activeExtensions\":" + (config_known ? std::to_string(extensions) : "null");
+    info.jr_required = config_known && (extensions & 2);
     info.metadata_shape = base + ",\"functionBlocks\":" + shapes + "}";
     info.metadata_json = base + ",\"functionBlocks\":" + records + "}";
 

@@ -99,6 +99,7 @@ export class NativeMidiBridgeClient {
     } while (cursor !== null);
     return Object.freeze({ inventoryEpoch, endpoints: Object.freeze(endpoints.map(row => Object.freeze({ ...row, connectionEpoch: this.#session }))) });
   }
+  setJrMode(grant, enabled) { return this.#request('jrMode', { grant, enabled }); }
   encodeStream(grant, { operation, parameters = [] }) { return this.#request('streamEncode', { grant, operation, parameters }); }
   decodeStream(grant, words) { return this.#request('streamDecode', { grant, words }); }
   encodeCi(grant, { group, operation, sourceMuid, destinationMuid = 0x0fffffff, scope = 127, parameters = [] }) { return this.#request('ciEncode', { grant, group, operation, sourceMuid, destinationMuid, scope, parameters }); }

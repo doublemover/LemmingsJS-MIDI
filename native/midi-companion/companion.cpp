@@ -3,6 +3,7 @@
 #include "MidiCiCodec.hpp"
 #include "UmpStreamCodec.hpp"
 #include "NativeBatch.hpp"
+#include "NativeJrTiming.hpp"
 #include "NativeIo.hpp"
 #include "Protocol.hpp"
 #include "WindowsUmpEndpoint.hpp"
@@ -66,7 +67,7 @@ template <class Variant> std::string identifier(const Variant &input) {
 }
 struct Endpoint {
   std::uint32_t token{}, association{};
-  bool input{}, windows{}, groups_known{};
+  bool input{}, windows{}, groups_known{}, jr_required{};
   std::uint16_t groups{};
   std::string identity, name, device_name, port_name, windows_device;
   std::string endpoint_metadata, metadata_shape;
@@ -81,7 +82,7 @@ struct Framer {
 };
 struct Grant {
   std::uint32_t id{}, session{}, endpoint{};
-  bool input{}, retiring{}, virtual_port{};
+  bool input{}, retiring{}, virtual_port{}, jr_required{};
   std::uint16_t groups{};
   std::uint32_t flags{};
   std::string name;
@@ -91,6 +92,8 @@ struct Grant {
 #if defined(LIBREMIDI_WINMIDI)
   std::unique_ptr<WindowsUmpEndpoint> windows;
 #endif
+  std::shared_ptr<NativeJrTiming> timing;
+  std::uint64_t timing_key{};
   Framer framer;
   std::array<std::uint32_t, 256> channels{};
   std::map<NoteKey, OwnedNote> notes;
@@ -147,6 +150,133 @@ class Companion {
     emit("{\"event\":\"receipt\",\"requestId\":" + std::to_string(request) +
          ",\"session\":" + std::to_string(session) + ",\"kind\":" +
          quote(kind) + (fields.empty() ? "" : "," + fields) + "}");
+  }
+  std::map<std::uint64_t, std::shared_ptr<NativeJrTiming>> jr_states_;
+  std::uint64_t egress_sequence_{};
+  struct EgressReport {
+    std::uint32_t session{}, grant{}, execution{}, batch{};
+    std::string kind;
+    std::uint64_t first_sequence{};
+    std::array<std::uint32_t, 256> words{};
+    std::array<std::size_t, 65> offsets{};
+    std::array<std::uint32_t, 64> accepted{}, unconfirmed{};
+    std::array<std::uint64_t, 64> began{}, ended{};
+    std::size_t words_used{}, packets{};
+  } egress_;
+  void flush_egress() {
+    if (!egress_.packets) return;
+    const auto column = [&](const auto &values, std::size_t count) {
+      std::string json = "["; for (std::size_t at = 0; at < count; ++at) {
+        if (at) json += ','; json += std::to_string(values[at]);
+      } return json + "]";
+    };
+    emit("{\"event\":\"native-driver-observation\",\"session\":" +
+      std::to_string(egress_.session) + ",\"grant\":" + std::to_string(egress_.grant) +
+      ",\"execution\":" + std::to_string(egress_.execution) +
+      ",\"nativeBatchId\":" + std::to_string(egress_.batch) +
+      ",\"kind\":" + quote(egress_.kind) + ",\"firstSequence\":" +
+      std::to_string(egress_.first_sequence) + ",\"words\":" +
+      words_json(std::span<const std::uint32_t>{egress_.words.data(), egress_.words_used}) +
+      ",\"offsets\":" + column(egress_.offsets, egress_.packets + 1) +
+      ",\"accepted\":" + column(egress_.accepted, egress_.packets) +
+      ",\"unconfirmed\":" + column(egress_.unconfirmed, egress_.packets) +
+      ",\"beginMonoUs\":" + column(egress_.began, egress_.packets) +
+      ",\"endMonoUs\":" + column(egress_.ended, egress_.packets) + "}");
+    egress_.packets = egress_.words_used = 0;
+  }
+  stdx::error observed_write(Grant &owner, std::span<const std::uint32_t> words,
+                            std::uint32_t execution, std::uint32_t batch,
+                            const char *kind) {
+    if (egress_.packets && (egress_.session != owner.session ||
+        egress_.grant != owner.id || egress_.execution != execution ||
+        egress_.batch != batch || egress_.kind != kind ||
+        egress_.packets == 64 || egress_.words_used + words.size() > 256))
+      flush_egress();
+    if (!egress_.packets) {
+      egress_.session = owner.session; egress_.grant = owner.id;
+      egress_.execution = execution; egress_.batch = batch;
+      egress_.kind = kind; egress_.first_sequence = egress_sequence_;
+      egress_.offsets[0] = 0;
+    }
+    const auto index = egress_.packets++, began = now_us();
+    stdx::error result;
+    try { result = owner.write(words.data(), words.size()); }
+    catch (...) { result = std::errc::io_error; }
+    const bool success = !result.is_set() && !owner.fence->fault.load();
+    for (const auto word : words) egress_.words[egress_.words_used++] = word;
+    egress_.offsets[egress_.packets] = egress_.words_used;
+    egress_.accepted[index] = success ? 1 : 0;
+    egress_.unconfirmed[index] = success ? 0 : 1;
+    egress_.began[index] = began; egress_.ended[index] = now_us();
+    if (egress_sequence_ >= maximum_safe_integer)
+      throw std::runtime_error("native-driver-trace-identity-exhausted");
+    ++egress_sequence_;
+    return success ? result : stdx::error{std::errc::io_error};
+  }
+  bool timing_prefix(Grant &owner, std::uint64_t target, std::uint32_t execution,
+                     std::uint32_t batch, NativeJrEnvelope &envelope,
+                     bool emergency = false) {
+    if (!owner.timing || !owner.timing->enabled) return true;
+    auto &timing = *owner.timing;
+    if (timing.failed && !emergency) return false;
+    const auto began = now_us(); envelope = jr_envelope(timing, target, began);
+    bool success = true;
+    for (std::size_t at = 0; at < envelope.count; ++at) {
+      if (!emergency && (!owner.fence->live.load() ||
+          owner.fence->cancellation_requested(execution) ||
+          owner.cancelled.contains(execution))) return false;
+      const auto word = envelope.words[at];
+      const bool accepted = !observed_write(owner, {&word, 1}, execution, batch,
+        (word & 0x00f00000) == 0x00100000 ? "jr-clock" : "jr-timestamp").is_set();
+      if (accepted) { ++envelope.accepted; if ((word & 0x00f00000) == 0x00100000) timing.last_clock_us = began; }
+      else { success = false; timing.failed = true; envelope.failed_unconfirmed = true; if (!emergency) break; }
+    }
+    if (success) { timing.last_stamp_tick = envelope.represented_tick; timing.stamp_valid = true; }
+    return success;
+  }
+  void jr_clocks(std::uint64_t at) {
+    for (const auto &[key, timing] : jr_states_) {
+      if (!timing->enabled || timing->failed || (timing->last_clock_us && at - timing->last_clock_us < 200000)) continue;
+      const auto found = std::find_if(grants_.begin(), grants_.end(), [&](const auto &row) {
+        return !row.second.input && !row.second.retiring &&
+          row.second.timing == timing && row.second.fence->live.load() &&
+          !row.second.fence->fault.load();
+      });
+      if (found == grants_.end()) continue;
+      auto &owner = found->second; const auto instant = now_us(); const auto word = jr_clock_word(instant);
+      if (observed_write(owner, {&word, 1}, 0, 0, "jr-clock").is_set()) { timing->failed = true; owner.fence->fault = true; }
+      else timing->last_clock_us = instant;
+    }
+    flush_egress();
+  }
+  void set_jr_mode(std::uint32_t request, std::uint32_t session, Tokens &input) {
+    const auto id = static_cast<std::uint32_t>(input.number()); const auto mode = input.number(1);
+    input.finish(); auto &owner = grant(session, id);
+    if (mode && api_ == libremidi::API::WINDOWS_MIDI_SERVICES) throw std::runtime_error("windows-midi-services-forbids-application-jr-generation");
+    if (owner.input || !(owner.flags & endpoint_control) || !owner.timing)
+      throw std::runtime_error("jr-policy-requires-endpoint-control-output");
+    auto &timing = *owner.timing;
+    if (timing.failed) throw std::runtime_error("jr-clock-failed-reopen-endpoint");
+    if (timing.enabled != (mode != 0)) {
+      for (const auto &[grant_id, peer] : grants_) if (!peer.retiring && peer.timing == owner.timing) {
+        if (!peer.notes.empty() || batches_.has_grant(grant_id))
+          throw std::runtime_error("stop-all-owned-endpoint-scopes-before-jr-policy-change");
+      }
+      timing.enabled = mode != 0; timing.stamp_valid = false;
+      if (timing.enabled) {
+        const auto instant = now_us(); const auto word = jr_clock_word(instant);
+        if (observed_write(owner, {&word, 1}, 0, request, "jr-clock").is_set()) {
+          timing.failed = true; owner.fence->fault = true;
+          throw std::runtime_error("jr-initial-clock-submission-unconfirmed");
+        }
+        timing.last_clock_us = instant;
+      }
+    }
+    if (timing.control_grant == id && timing.control_session == session) timing.control_confirmed = true;
+    flush_egress();
+    reply(request, session, "jr-policy", "\"grant\":" + std::to_string(id) +
+      ",\"enabled\":" + (timing.enabled ? "true" : "false") +
+      ",\"clockDomain\":\"companion-steady-microseconds\",\"tickUs\":32");
   }
   void error(std::uint32_t request, std::uint32_t session,
              std::string_view reason) {
@@ -215,7 +345,7 @@ class Companion {
                 input ? "Native input / control" : "Native output / control";
             row.identity =
                 field(device.device) + (input ? ":input" : ":output");
-            row.groups_known = device.groups_known;
+            row.groups_known = device.groups_known; row.jr_required = device.jr_required;
             row.endpoint_metadata = device.metadata_json; row.metadata_shape = device.metadata_shape;
             row.groups = input ? device.input_groups : device.output_groups;
             next.push_back(std::move(row));
@@ -317,8 +447,9 @@ class Companion {
       const auto count = at->first.protocol == 4 ? 2u : 1u;
       for (std::uint32_t index = 0; index < note.active; ++index) {
         try {
-          if (owner.write(words.data(), count).is_set())
-            ++unknown;
+          NativeJrEnvelope envelope{};
+          const bool timing = timing_prefix(owner, now_us(), note.execution, 0, envelope, true);
+          if (observed_write(owner, {words.data(), count}, note.execution, 0, "owned-note-cleanup").is_set() || !timing) ++unknown;
         } catch (...) {
           ++unknown;
         }
@@ -330,6 +461,7 @@ class Companion {
       else
         ++at;
     }
+    flush_egress();
     return unknown;
   }
   std::pair<bool, std::uint64_t> retire_grant(std::uint32_t id,
@@ -341,6 +473,7 @@ class Companion {
       return {false, found->second.cleanup_unknown};
     auto &owner = found->second;
     owner.retiring = true;
+    if (owner.timing && owner.timing->control_grant == id && owner.timing->control_session == owner.session) { if (!owner.timing->control_confirmed) owner.timing->failed = true; owner.timing->control_execution = owner.timing->control_grant = owner.timing->control_session = 0; }
     owner.fence->live.store(false, std::memory_order_release);
     cancel_batches([&](const auto &batch) { return batch.grant == id; },
                    reason);
@@ -368,8 +501,10 @@ class Companion {
          ",\"reason\":" + quote(reason) +
          ",\"cleanupUnconfirmedNotes\":" + std::to_string(unknown) +
          ",\"nativeCloseConfirmed\":" + (closed ? "true" : "false") + "}");
-    if (closed)
-      grants_.erase(found);
+    if (closed) {
+      const auto timing_key = owner.timing_key; grants_.erase(found);
+      if (timing_key && std::none_of(grants_.begin(), grants_.end(), [&](const auto &row) { return row.second.timing_key == timing_key; })) jr_states_.erase(timing_key);
+    }
     return {closed, unknown};
   }
   void retire_session(std::uint32_t session, std::string_view reason) {
@@ -408,6 +543,8 @@ class Companion {
     value.virtual_port = !endpoint;
     value.groups = groups;
     value.flags = flags;
+    value.jr_required = endpoint && endpoint->jr_required;
+    if (!input) { value.timing_key = endpoint ? endpoint->token : (1ULL << 32) | value.id; auto &timing = jr_states_[value.timing_key]; if (!timing) timing = std::make_shared<NativeJrTiming>(); value.timing = timing; }
     value.name = std::move(name);
     value.fence = std::make_shared<IngressFence>();
     value.fence->session = session;
@@ -505,6 +642,17 @@ class Companion {
           static_cast<std::uint32_t>(input.number(0xffffffffu, 16)));
     input.finish();
     auto &owner = grant(session, batch.grant);
+    if (owner.jr_required && batch.priority != Priority::release) throw std::runtime_error("windows-endpoint-requires-platform-unsupported-jr");
+    bool stream_configuration = false;
+    if (owner.timing && owner.timing->control_execution && batch.priority != Priority::release && (owner.timing->control_session != session || owner.timing->control_grant != owner.id || owner.timing->control_execution != batch.execution)) throw std::runtime_error("endpoint-protocol-change-in-progress");
+    if (owner.timing && owner.timing->failed) throw std::runtime_error("native-jr-clock-unavailable");
+    for (std::size_t offset = 0; offset < batch.words.size();) {
+      const auto word = batch.words[offset], type = word >> 28, utility = (word >> 20) & 15;
+      stream_configuration = stream_configuration || (type == 15 && ((word >> 16) & 1023) == 5);
+      if (type == 0 && (utility == 1 || utility == 2) && ((owner.timing && owner.timing->enabled) || api_ == libremidi::API::WINDOWS_MIDI_SERVICES)) throw std::invalid_argument("application-jr-words-conflict-with-native-or-os-clock-owner");
+      if (type == 15 && ((word >> 16) & 1023) == 5 && api_ == libremidi::API::WINDOWS_MIDI_SERVICES) throw std::invalid_argument("windows-midi-services-owns-stream-protocol-negotiation");
+      offset += ump::word_counts[type];
+    }
     if (owner.input)
       throw std::invalid_argument("input-grant-not-writable");
     if (owner.cancelled.contains(batch.execution) ||
@@ -519,6 +667,10 @@ class Companion {
     const auto validated = ump::validate_batch(batch.words);
     if (validated.error.code)
       throw std::invalid_argument(validated.error.code);
+    if (stream_configuration) {
+      if (!owner.timing || validated.packets.size() != 1) throw std::invalid_argument("stream-configuration-must-be-isolated");
+      for (const auto &[other_id, other] : grants_) if (other.timing == owner.timing && (!other.notes.empty() || batches_.has_grant(other_id))) throw std::runtime_error("endpoint-has-other-owned-voices-or-queued-work");
+    }
     auto channels = owner.channels;
     for (const auto &packet : validated.packets) {
       const auto words = std::span<const std::uint32_t>{batch.words}.subspan(
@@ -563,6 +715,7 @@ class Companion {
       ++owner.notes.at(key).pending;
     pending_note_ons_ += batch.note_ons.size();
     owner.channels = channels;
+    if (stream_configuration) { owner.timing->control_session = session; owner.timing->control_grant = owner.id; owner.timing->control_execution = batch.execution; owner.timing->control_confirmed = false; owner.timing->control_deadline_us = now + 5000000; }
     batch.ordinal = ++batch_ordinal_;
     const auto id = batch.grant, execution = batch.execution;
     batches_.insert(std::move(batch));
@@ -599,7 +752,8 @@ class Companion {
       Companion &self;
       Grant &owner;
       const PendingBatch &batch;
-      bool entered_driver{};
+      bool entered_driver{}, prefixed{};
+      NativeJrEnvelope envelope{};
       const char *refused{};
       stdx::error send_ump(const std::uint32_t *words, std::size_t count) {
         entered_driver = false;
@@ -610,8 +764,14 @@ class Companion {
           refused = "owner-retired-or-cancelled";
           return std::errc::operation_canceled;
         }
+        if (!prefixed) {
+          prefixed = true;
+          if (!self.timing_prefix(owner, batch.deadline, batch.execution, batch.request, envelope)) {
+            refused = "native-jr-envelope-failed-or-cancelled"; return std::errc::io_error;
+          }
+        }
         entered_driver = true;
-        const auto result = owner.write(words, count);
+        const auto result = self.observed_write(owner, {words, count}, batch.execution, batch.request, "batch-packet");
         if (!result.is_set() && !owner.fence->fault.load())
           self.account_packet(owner, {words, count});
         if (!result.is_set() && owner.fence->fault.load())
@@ -637,11 +797,18 @@ class Companion {
                      true);
     }
     release_pending(batch);
+    flush_egress();
+    const auto jr = owner.timing && owner.timing->enabled ?
+      std::string{",\"jrTiming\":{\"clockDomain\":\"companion-steady-microseconds\",\"tickUs\":32,\"requestedTick\":"} + std::to_string(sender.envelope.requested_tick) +
+      ",\"representedTick\":" + std::to_string(sender.envelope.represented_tick) + ",\"monotonicRepair\":" + (sender.envelope.repaired ? "true" : "false") +
+      ",\"envelopeWords\":" + std::to_string(sender.envelope.count) + ",\"envelopeAcceptedWords\":" + std::to_string(sender.envelope.accepted) +
+      ",\"envelopeUnconfirmed\":" + (sender.envelope.failed_unconfirmed ? "true" : "false") + "}" : std::string{};
     reply(
         batch.request, batch.session,
         result.reason ? (result.accepted_packets ? "partial" : "rejected")
                       : "driver-submitted",
         "\"grant\":" + std::to_string(batch.grant) +
+            ",\"nativeBatchId\":" + std::to_string(batch.request) + jr +
             ",\"execution\":" + std::to_string(batch.execution) +
             ",\"acceptedPackets\":" + std::to_string(result.accepted_packets) +
             ",\"acceptedWords\":" + std::to_string(result.accepted_words) +
@@ -653,7 +820,7 @@ class Companion {
             (result.reason
                  ? quote(sender.refused ? sender.refused : result.reason)
                  : "null"));
-    if (result.reason && !sender.refused)
+    if (result.reason && (!sender.refused || sender.envelope.failed_unconfirmed))
       retire_grant(batch.grant, "native-submission-uncertain");
   }
 
@@ -842,6 +1009,8 @@ class Companion {
         }
         reply(request, session, operation == "K" ? "ci-encoded" : "ci-decoded",
               operation == "K" ? encode_ci(input) : decode_ci(input));
+      } else if (operation == "J") {
+        set_jr_mode(request, session, input);
       } else if (operation == "R" || operation == "T") {
         const auto id = static_cast<std::uint32_t>(input.number());
         auto &owner = grant(session, id);
@@ -904,10 +1073,16 @@ class Companion {
         for (auto &channel : owner.channels)
           if (channel == execution)
             channel = 0;
+        bool protocol_confirmed = true;
+        if (owner.timing && owner.timing->control_execution == execution && owner.timing->control_grant == id && owner.timing->control_session == session) {
+          protocol_confirmed = owner.timing->control_confirmed; if (!protocol_confirmed) owner.timing->failed = true;
+          owner.timing->control_execution = owner.timing->control_grant = owner.timing->control_session = 0;
+        }
         owner.fence->finish_cancel(execution);
         reply(request, session, "cancelled-execution",
               "\"grant\":" + std::to_string(id) +
                   ",\"execution\":" + std::to_string(execution) +
+                  ",\"protocolStateConfirmed\":" + (protocol_confirmed ? "true" : "false") +
                   ",\"cleanupUnconfirmedNotes\":" + std::to_string(unknown));
         if (unknown)
           retire_grant(id, "execution-cleanup-uncertain");
@@ -964,8 +1139,10 @@ public:
          ",\"selectedApi\":" + std::to_string(static_cast<int>(api_)) +
          ",\"libremidiRevision\":\"" LIBREMIDI_REVISION
          "\",\"ciCodec\":\"ni-midi2:" NI_MIDI2_REVISION
-         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,"
+         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,\"jrEncoderVersion\":1,"
          "\"clockDomain\":\"companion-steady-microseconds\","
+         "\"nativeJrAllowed\":" + std::string(api_ == libremidi::API::WINDOWS_MIDI_SERVICES ? "false" : "true") +
+         ",\"endpointDiscoveryOwner\":\"" + std::string(api_ == libremidi::API::WINDOWS_MIDI_SERVICES ? "os" : "companion") + "\"," +
          "\"maximumWordsPerBatch\":4096,\"maximumPendingBatches\":128,"
          "\"queueHorizonUs\":2000000,\"transportBytesPerSecond\":null,"
          "\"qualification\":\"awaiting-consolidated-validation\"}");
@@ -981,10 +1158,11 @@ public:
             expired.push_back(session);
         for (const auto id : expired)
           retire_session(id, "application-heartbeat-expired");
+        for (const auto &[key, timing] : jr_states_) if (timing->control_execution && now >= timing->control_deadline_us) timing->failed = true;
         std::vector<std::uint32_t> failed;
         for (const auto &[id, owner] : grants_)
           if (!owner.retiring &&
-              (!owner.fence->live.load() || owner.fence->fault.load()))
+              (!owner.fence->live.load() || owner.fence->fault.load() || (owner.timing && owner.timing->failed)))
             failed.push_back(id);
         for (const auto id : failed)
           retire_grant(id, "native-port-fault");
@@ -1010,7 +1188,9 @@ public:
             break;
           submit(std::move(*batch));
         }
+        jr_clocks(now_us());
         receive();
+        flush_egress();
         const auto until = batches_.next_deadline(now_us() + 2000);
         std::unique_lock lock(sleep_mutex);
         const auto current = now_us();

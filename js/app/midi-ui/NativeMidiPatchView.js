@@ -71,7 +71,8 @@ export function createNativeMidiPatchView({ document, container, routes, getCiSe
     confirm.checked = false; if (owner !== catalog || disposed) return; currentReceipt = result.status === 'ok' ? result : null;
     onStatus(result.reason || (result.status === 'ok' ? 'Selected ChannelList entry reports the requested bank/program under your declared mapping. Bind the patch to this lane; review and rebind MPE first if applicable. Audible sound remains unverified.' : 'Hardware patch: ' + result.status));
   });
-  const bindPatch = button('Bind acknowledged hardware patch to this lane', () => {
+  const bindPatch = button('Bind acknowledged hardware patch to this lane', async () => {
+    await routes.prepareOutput(currentReceipt.outputGrant);
     const laneId = getLaneId(), route = routes.bindDevicePatch({ laneId, catalog, receipt: currentReceipt }); onBindPatch(laneId, currentReceipt.intent, route);
     onStatus('Current hardware patch bound to this native lane. Reopening the project will require a fresh device selection and recall.');
   });

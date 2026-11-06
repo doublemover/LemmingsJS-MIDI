@@ -133,6 +133,7 @@ public:
     return queue_.empty() ? fallback
                           : std::min(fallback, queue_.front().deadline);
   }
+  bool has_grant(std::uint32_t id) const { return std::any_of(queue_.begin(), queue_.end(), [&](const auto &batch) { return batch.grant == id; }); }
   std::size_t pending_words() const { return words_; }
   std::size_t pending_batches() const { return queue_.size(); }
 };

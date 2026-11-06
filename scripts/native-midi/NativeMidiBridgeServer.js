@@ -72,6 +72,7 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     }
     case 'close': if (!client.grants.has(uint(row.grant))) throw new Error('Endpoint grant required'); return call(client, requestId, 'X', [row.grant], { priority: true });
     case 'cancel': if (!client.grants.has(uint(row.grant)) || !uint(row.execution)) throw new Error('Owned execution required'); return call(client, requestId, 'C', [row.grant, row.execution], { priority: true });
+    case 'jrMode': { const grant = client.grants.get(uint(row.grant)); if (!grant || grant.direction !== 'output' || !(grant.permissions & 8) || typeof row.enabled !== 'boolean') throw new Error('Explicit endpoint-control output required for JR policy'); return call(client, requestId, 'J', [row.grant, Number(row.enabled)]); }
     case 'streamEncode': {
       const grant = client.grants.get(uint(row.grant));
       if (!grant || grant.direction !== 'output' || !(grant.permissions & 8) || !['endpoint-discovery', 'function-block-discovery', 'stream-configuration'].includes(row.operation) ||

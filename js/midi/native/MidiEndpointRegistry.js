@@ -8,6 +8,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
       input.endpointAssociationToken && output.endpointAssociationToken && input.endpointAssociationToken !== output.endpointAssociationToken ||
       !Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000) throw new Error('Choose endpoint-control input/output grants on the same native endpoint');
   const blocks = new Map(), names = new Map(), listeners = new Set(), receive = [];
+  let timingReady = false, preparingTiming = null;
   let disposed = false, stale = false, epoch = 1, revision = 0, info = null, configuration = null, identity = null, endpointName = null, productInstanceId = null;
   let queueBytes = 0, receiving = false, receiveTail = Promise.resolve(), disposal = null, discovery = null, pendingConfiguration = null, sendTail = Promise.resolve(), lastDiscoveryMs = -Infinity, reason = null;
   const ownership = Object.freeze({ state: () => Object.freeze({ epoch, inputGrant, outputGrant, connectionEpoch: initial.connectionEpoch }) });
@@ -48,6 +49,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
   const setConfiguration = (protocol, extensions, source) => {
     if (![1, 2].includes(protocol) || !Number.isInteger(extensions) || extensions < 0 || extensions > 3 || info && !(info.supportedProtocols & protocol)) throw new Error('Unsupported or malformed active Stream configuration');
     const changed = configuration && (configuration.protocol !== protocol || configuration.extensions !== extensions);
+    timingReady = false;
     configuration = Object.freeze({ protocol, extensions, jrSends: !!(extensions & 1), jrReceives: !!(extensions & 2), source, observedHostMs: now() });
     if (pendingConfiguration) finishConfiguration({ status: pendingConfiguration.protocol === protocol && pendingConfiguration.extensions === extensions ? 'ok' : 'refused',
       receiverState: 'stream-configuration-notified', configuration, reason: pendingConfiguration.protocol === protocol && pendingConfiguration.extensions === extensions ? null : 'Endpoint selected a different Stream configuration' });
@@ -122,11 +124,12 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
   };
   const fence = async wireExecution => {
     if (routes.client.session !== initial.connectionEpoch || !routes.isGrantActive(outputGrant)) return;
-    try { const receipt = await routes.client.cancelExecution(outputGrant, wireExecution); if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Endpoint control cancellation is unconfirmed'); }
+    try { const receipt = await routes.client.cancelExecution(outputGrant, wireExecution); if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes || receipt.protocolStateConfirmed === false) throw new Error('Endpoint control cancellation is unconfirmed'); }
     catch (error) { routes.quarantineDeviceState(outputGrant, error.message); throw error; }
   };
   const api = Object.freeze({
     async discover() {
+      if (routes.client.capabilities?.endpointDiscoveryOwner === 'os') return Object.freeze({ status: complete() ? 'ok' : 'incomplete', evidence: info?.source || 'os-managed', reason: complete() ? null : 'Windows endpoint metadata is incomplete; refresh native devices when its discovery completes' });
       if (!current() || discovery || now() - lastDiscoveryMs < 2000 || routes.client.capabilities?.umpStreamCodecVersion !== 1) return Object.freeze({ status: 'rejected', reason: 'Endpoint discovery is stale, busy or rate limited' });
       lastDiscoveryMs = now(); const wireExecution = routes.allocateExecutionEpoch(); let resolve;
       const completion = new Promise(done => { resolve = done; }), task = { resolve, timer: null }; discovery = task;
@@ -136,18 +139,29 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
       const result = await completion; await fence(wireExecution); return result;
     },
     async configure({ protocol, extensions = 0, confirmed = false }) {
+      if (routes.client.capabilities?.endpointDiscoveryOwner === 'os') return Object.freeze({ status: 'unsupported', reason: 'Windows MIDI Services owns endpoint protocol and JR negotiation' });
       if (!current() || discovery || pendingConfiguration || ![1, 2].includes(protocol) || !Number.isInteger(extensions) || extensions < 0 || extensions > 3 ||
-          !info || !(info.supportedProtocols & protocol) || extensions !== 0 || extensions & ~info.jrCapabilities) return Object.freeze({ status: 'unsupported', reason: 'Discover supported endpoint protocol and JR capabilities first' });
+          !info || !(info.supportedProtocols & protocol) || ![0, 2].includes(extensions) || extensions && routes.client.capabilities?.nativeJrAllowed !== true || extensions & ~info.jrCapabilities) return Object.freeze({ status: 'unsupported', reason: 'Discover supported endpoint protocol and JR capabilities first' });
       const wireExecution = routes.allocateExecutionEpoch();
       return mutation.run({ requested: { kind: 'stream-configuration', protocol, extensions }, confirmed, isCurrent: current,
         send: async owns => {
           let resolve; const completion = new Promise(done => { resolve = done; }), task = { resolve, protocol, extensions, timer: null }; pendingConfiguration = task;
           task.timer = setTimeout(() => { if (pendingConfiguration === task) finishConfiguration({ status: 'timeout', reason: 'No Stream Configuration Notification confirmed the request', receiverState: 'unknown' }); }, timeoutMs);
-          try { await send('stream-configuration', [protocol, extensions], wireExecution, owns); return await completion; }
-          catch (error) { if (pendingConfiguration === task) finishConfiguration({ status: 'incomplete', reason: error.message, receiverState: 'unknown' }); return await completion; }
+          try { await send('stream-configuration', [protocol, extensions], wireExecution, owns); const outcome = await completion; if (outcome.status === 'ok') await api.prepareOutput(); return outcome; }
+          catch (error) { if (pendingConfiguration === task) finishConfiguration({ status: 'incomplete', reason: error.message, receiverState: 'unknown' }); return Object.freeze({ status: 'incomplete', reason: error.message, receiverState: 'unknown' }); }
           finally { await fence(wireExecution); }
         }
       });
+    },
+    prepareOutput() {
+      if (!current()) return Promise.reject(new Error('Endpoint metadata scope is stale'));
+      if (!configuration) return Promise.resolve();
+      if (routes.client.capabilities?.nativeJrAllowed !== true && !configuration.jrReceives) { timingReady = true; return Promise.resolve(); }
+      if (timingReady) return Promise.resolve(); if (preparingTiming) return preparingTiming;
+      if (routes.client.capabilities?.nativeJrAllowed !== true || routes.client.capabilities?.jrEncoderVersion !== 1) return Promise.reject(new Error('This backend cannot supply the endpoint’s required JR timestamps'));
+      const selected = configuration;
+      preparingTiming = routes.client.setJrMode(outputGrant, selected.jrReceives).then(receipt => { if (!current() || selected !== configuration || receipt.kind !== 'jr-policy' || receipt.enabled !== selected.jrReceives) throw new Error('JR timing policy was not activated for the current endpoint'); timingReady = true; emit(); }).finally(() => { preparingTiming = null; });
+      return preparingTiming;
     },
     resolvePropertyChannel(functionBlock, propertyChannel) {
       const block = blocks.get(functionBlock);
@@ -157,7 +171,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
         evidence: info.source, endpointAssociation: input.endpointAssociationToken && input.endpointAssociationToken === output.endpointAssociationToken ? 'OS-associated-endpoint' : 'user-selected-input-output-pair' });
     },
     allowsAddress({ group, protocol }) {
-      if (!current() || configuration?.jrReceives) return false; const requested = protocol === 'midi2' ? 2 : 1;
+      if (!current() || configuration?.jrReceives && !timingReady) return false; const requested = protocol === 'midi2' ? 2 : 1;
       if (info && !(info.supportedProtocols & requested)) return false;
       const destinations = [...blocks.values()].filter(block => block.active && block.direction & 1 && mask(block) & 1 << group);
       if (info && blocks.size === info.functionBlockCount && !destinations.length) return false;
@@ -166,7 +180,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
     },
     state: () => Object.freeze({ disposed, stale: !current(), epoch, revision, inputGrant, outputGrant, connectionEpoch: initial.connectionEpoch, info, configuration, identity, endpointName,
       productInstanceId: productInstanceId == null ? null : 'observed-private-identifier-not-exported', functionBlocks: Object.freeze([...blocks.values()].sort((a, b) => a.number - b.number)), complete: !!complete(),
-      discoveryPending: !!discovery, configurationPending: !!pendingConfiguration, reason, mutation: mutation.state(), queuedPackets: receive.length, queueBytes }),
+      nativeTimingReady: timingReady, discoveryPending: !!discovery, configurationPending: !!pendingConfiguration, reason, mutation: mutation.state(), queuedPackets: receive.length, queueBytes }),
     subscribe(listener) { if (disposed || listeners.size >= 8 || typeof listener !== 'function') throw new Error('Endpoint registry observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
     cancel() { finishDiscovery({ status: 'cancelled', reason: 'Endpoint discovery cancelled' }); finishConfiguration({ status: 'cancelled', reason: 'Stream request cancelled', receiverState: 'unknown' }); mutation.cancel(); },
     dispose() { if (disposal) return disposal; api.cancel(); disposed = true; epoch++; unsubscribe(); receive.length = queueBytes = 0; disposal = Promise.allSettled([sendTail, receiveTail, mutation.dispose()]).then(() => { listeners.clear(); blocks.clear(); names.clear(); productInstanceId = null; }); return disposal; }
