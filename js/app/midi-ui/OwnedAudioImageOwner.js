@@ -88,3 +88,17 @@ export async function openOwnedAudioImage({ bytes = null, sha256 = null, checkpo
       release() { if (released) return retirement.getReceipt(); released = true; value = null; metadata = null; references = null; sourceCuts.length = 0; return retirement.retire([{ name: 'opened-audio-image', run: () => releaseJob(job) }]); } });
   } catch (error) { value = null; const receipt = retirement.retire([{ name: 'failed-opened-image', run: () => releaseJob(job) }]); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
 }
+
+export async function inspectOwnedAudioImage({ bytes = null, sha256 = null, checkpoint = null, ...options } = {}) {
+  current(options);
+  if (checkpoint !== null && bytes !== null || checkpoint === null && (!(bytes instanceof Uint8Array) || bytes.byteLength > MAX_IMAGE || !/^[a-f0-9]{64}$/.test(sha256 || ''))) fail('Inspect one digest-bound image or retained canonical checkpoint.');
+  const inputBytes = checkpoint ? canonicalDataText(checkpoint, { maxBytes: 28 * 1048576, maxNodes: 128 }).bytes.length : bytes.byteLength;
+  const { job, retirement } = await computeImage(checkpoint ? { mode: 'inspect-checkpoint', image: checkpoint, materials: [] } : { mode: 'inspect', bytes, sha256, materials: [] }, inputBytes + 262144, options);
+  let value = job.value, released = false;
+  try {
+    if (!value.inspection || !Array.isArray(value.sources) || value.sources.length > 16) fail('The image inspection omitted its source reference inventory.');
+    freezeData(value);
+    return Object.freeze({ metadata: () => released ? null : value.inspection, references: () => { if (released) fail('The audio image inspection retired.'); return value.sources; },
+      release() { if (released) return retirement.getReceipt(); released = true; value = null; return retirement.retire([{ name: 'audio-image-inspection', run: () => releaseJob(job) }]); } });
+  } catch (error) { const receipt = retirement.retire([{ name: 'failed-image-inspection', run: () => releaseJob(job) }]); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
+}

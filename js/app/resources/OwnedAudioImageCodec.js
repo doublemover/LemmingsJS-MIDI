@@ -31,7 +31,7 @@ async function fromBase64(text, length, options) {
 const same = (a, b) => canonicalDataText(a, { maxBytes: MAX_METADATA, maxNodes: 262144 }).text === canonicalDataText(b, { maxBytes: MAX_METADATA, maxNodes: 262144 }).text;
 const check = options => { options.signal?.throwIfAborted(); if (options.current?.() === false) fail('The audio image request changed.'); };
 
-async function validateImage(value, options) {
+async function validateImage(value, options, restoreComponents = true) {
   check(options); const metadata = value?.metadata, sources = value?.sources, rack = value?.rack;
   if (!keys(value, ['schema', 'applicationBuildId', 'metadata', 'sources', 'rack']) || value.schema !== OWNED_AUDIO_IMAGE_SCHEMA || value.applicationBuildId !== options.applicationBuildId ||
       metadata?.schema !== 'lemmings-owned-audio-cut/v1' || !natural(metadata.audioFrame) || ![44100, 48000, 96000].includes(metadata.sampleRate) || !natural(metadata.graphRevision) || metadata.graphRevision > 0xffffffff ||
@@ -46,14 +46,14 @@ async function validateImage(value, options) {
     if (!reference || !descriptor || await hashData(reference.definition, { maxBytes: 65536, maxNodes: 8192 }) !== reference.definitionHash) fail('The image needs the exact immutable patch and executing engine artifact.');
     const declared = metadata.sources.find(row => row.sourceId === source.sourceId);
     if (!declared || source.metadata?.audioFrame !== metadata.audioFrame || source.metadata.cut?.sampleRate !== metadata.sampleRate || source.metadata.cut.graphRevision !== metadata.graphRevision || declared.sourceFrame !== source.metadata.cut.frame || !same(declared.runtime, source.metadata.runtime)) fail('A source image differs from the aggregate completed boundary.');
-    const prepared = await prepareOwnedSourceCut({ definition: reference.definition, descriptor, metadata: source.metadata, bytes: source.bytes, pcm: source.pcm ?? null }, options); check(options);
+    const prepared = restoreComponents ? await prepareOwnedSourceCut({ definition: reference.definition, descriptor, metadata: source.metadata, bytes: source.bytes, pcm: source.pcm ?? null }, options) : { metadata: source.metadata, bytes: source.bytes }; check(options);
     validatedSources.push({ sourceId: source.sourceId, reference, metadata: prepared.metadata, bytes: prepared.bytes }); await options.yieldControl();
   }
   let validatedRack = null;
   if (rack !== null) {
     if (!keys(rack, ['metadata', 'definition', 'graphMetadata', 'components']) || !same(metadata.rack, rack.metadata) || rack.metadata?.audioFrame !== metadata.audioFrame || rack.graphMetadata?.audioFrame !== metadata.audioFrame || rack.graphMetadata.sampleRate !== metadata.sampleRate || !Array.isArray(rack.components) || rack.components.length > 512) fail('The complete rack and its processors must share the source cut.');
     for (const row of rack.components) { stateBytes += row?.bytes?.byteLength || 0; if (stateBytes > MAX_STATE) fail('Source and effect state together exceed sixteen MiB.'); }
-    const prepared = await prepareOwnedEffectCut({ definition: rack.definition, metadata: rack.graphMetadata, components: rack.components }, options); check(options);
+    const prepared = restoreComponents ? await prepareOwnedEffectCut({ definition: rack.definition, metadata: rack.graphMetadata, components: rack.components }, options) : { definition: rack.definition, metadata: rack.graphMetadata, components: rack.components }; check(options);
     validatedRack = { metadata: rack.metadata, definition: prepared.definition, graphMetadata: prepared.metadata, components: prepared.components };
   } else if (metadata.rack !== null) fail('A declared rack cannot be omitted from the image.');
   return { schema: OWNED_AUDIO_IMAGE_SCHEMA, applicationBuildId: value.applicationBuildId, metadata, sources: validatedSources, rack: validatedRack };
@@ -82,12 +82,13 @@ export async function encodeOwnedAudioImage(input, options) {
 
 export async function decodeOwnedAudioImage(input, options) {
   check(options);
-  if (input?.mode === 'decode-checkpoint') {
+  if (['decode-checkpoint', 'inspect-checkpoint'].includes(input?.mode)) {
     const image = input.image; if (!keys(input, ['mode', 'image', 'materials']) || !keys(image, ['schema', 'applicationBuildId', 'sha256', 'bytes', 'encoding', 'data', 'audioFrame', 'sampleRate', 'graphRevision']) || image.schema !== 'lemmings-owned-audio-checkpoint-image/v1' || image.applicationBuildId !== options.applicationBuildId || image.encoding !== 'base64') fail('The retained checkpoint image schema or build differs.');
-    const bytes = await fromBase64(image.data, image.bytes, options), decoded = await decodeOwnedAudioImage({ mode: 'decode', bytes, sha256: image.sha256, materials: input.materials }, options);
-    if (decoded.metadata.audioFrame !== image.audioFrame || decoded.metadata.sampleRate !== image.sampleRate || decoded.metadata.graphRevision !== image.graphRevision) fail('The checkpoint envelope differs from its decoded state boundary.'); return decoded;
+    const bytes = await fromBase64(image.data, image.bytes, options), decoded = await decodeOwnedAudioImage({ mode: input.mode === 'inspect-checkpoint' ? 'inspect' : 'decode', bytes, sha256: image.sha256, materials: input.materials }, options);
+    const boundary = decoded.metadata || decoded.inspection;
+    if (boundary.audioFrame !== image.audioFrame || boundary.sampleRate !== image.sampleRate || boundary.graphRevision !== image.graphRevision) fail('The checkpoint envelope differs from its decoded state boundary.'); return decoded;
   }
-  if (!keys(input, ['mode', 'bytes', 'sha256', 'materials']) || input.mode !== 'decode' || !(input.bytes instanceof Uint8Array) || input.bytes.length < PREFIX || input.bytes.length > OWNED_AUDIO_IMAGE_MAX_BYTES || !/^[a-f0-9]{64}$/.test(input.sha256 || '') || !Array.isArray(input.materials) || input.materials.length > 16 || new Set(input.materials.map(row => row?.sourceId)).size !== input.materials.length || input.materials.some(row => !keys(row, ['sourceId', 'pcm']) || typeof row.sourceId !== 'string')) fail('Open one bounded digest-bound image with its explicit material inventory.');
+  if (!keys(input, ['mode', 'bytes', 'sha256', 'materials']) || !['decode', 'inspect'].includes(input.mode) || input.mode === 'inspect' && input.materials?.length !== 0 || !(input.bytes instanceof Uint8Array) || input.bytes.length < PREFIX || input.bytes.length > OWNED_AUDIO_IMAGE_MAX_BYTES || !/^[a-f0-9]{64}$/.test(input.sha256 || '') || !Array.isArray(input.materials) || input.materials.length > 16 || new Set(input.materials.map(row => row?.sourceId)).size !== input.materials.length || input.materials.some(row => !keys(row, ['sourceId', 'pcm']) || typeof row.sourceId !== 'string')) fail('Open one bounded digest-bound image with its explicit material inventory.');
   const bytes = input.bytes, view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (magic.some((value, index) => bytes[index] !== value) || await digest(bytes) !== input.sha256) fail('The audio image magic or immutable digest differs.'); check(options);
   const length = view.getUint32(8, true), count = view.getUint32(12, true); if (length > MAX_METADATA || PREFIX + length > bytes.length || count > 528) fail('The audio image component/header inventory is oversized.');
@@ -102,5 +103,7 @@ export async function decodeOwnedAudioImage(input, options) {
   const sources = header.sources.map(row => { if (!keys(row, ['sourceId', 'reference', 'metadata', 'componentId'])) fail('Unknown source image fields.'); return { sourceId: row.sourceId, reference: row.reference, metadata: row.metadata, bytes: take(row.componentId), pcm: input.materials.find(material => material.sourceId === row.sourceId)?.pcm ?? null }; });
   let rack = null; if (header.rack !== null) { if (!keys(header.rack, ['metadata', 'definition', 'graphMetadata', 'components']) || !Array.isArray(header.rack.components) || header.rack.components.length > 512) fail('Invalid rack component inventory.'); rack = { ...header.rack, components: header.rack.components.map(row => { const { componentId, ...metadata } = row; return { ...metadata, bytes: take(componentId) }; }) }; }
   if (used.size !== buffers.length) fail('The image contains an unowned state component.');
-  return validateImage({ schema: header.schema, applicationBuildId: header.applicationBuildId, metadata: header.metadata, sources, rack }, options);
+  const value = await validateImage({ schema: header.schema, applicationBuildId: header.applicationBuildId, metadata: header.metadata, sources, rack }, options, input.mode !== 'inspect');
+  if (input.mode === 'inspect') return { schema: OWNED_AUDIO_IMAGE_SCHEMA, applicationBuildId: value.applicationBuildId, inspection: { sha256: input.sha256, bytes: bytes.length, audioFrame: value.metadata.audioFrame, sampleRate: value.metadata.sampleRate, graphRevision: value.metadata.graphRevision, scope: value.metadata.scope, stage: 'component-integrity-and-pinned-reference-check;material-and-kernel-restoration-pending', acousticReceipt: false }, sources: value.sources.map(row => ({ sourceId: row.sourceId, reference: row.reference })) };
+  return value;
 }

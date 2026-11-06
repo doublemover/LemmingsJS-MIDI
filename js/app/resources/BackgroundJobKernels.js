@@ -328,7 +328,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'owned-audio-image') {
     const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current); const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     const footprint = metadata.bytes * 3 + metadata.nodes * 128;
-    if (catalog.state !== 'bound-application-engines' || estimatedPeakBytes < footprint + 96 * 1048576 || !['encode', 'decode', 'decode-checkpoint'].includes(input?.mode)) throw problem('invalid-audio-image-contract', 'A portable audio image needs the complete admitted input and exact executing engine inventory.');
+    if (catalog.state !== 'bound-application-engines' || estimatedPeakBytes < footprint + 96 * 1048576 || !['encode', 'decode', 'decode-checkpoint', 'inspect', 'inspect-checkpoint'].includes(input?.mode)) throw problem('invalid-audio-image-contract', 'A portable audio image needs the complete admitted input and exact executing engine inventory.');
     const { encodeOwnedAudioImage, decodeOwnedAudioImage } = await import('./OwnedAudioImageCodec.js'); guard(signal, current);
     const codecOptions = { applicationBuildId: catalog.executionIdentity.buildId, descriptors: catalog.descriptors, signal, current, yieldControl, maxWorkingBytes: estimatedPeakBytes - footprint };
     const value = await (input.mode === 'encode' ? encodeOwnedAudioImage : decodeOwnedAudioImage)(input, codecOptions); guard(signal, current);

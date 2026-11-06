@@ -978,7 +978,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     cancelGeneration: (generation, epoch) => cancelGenerationWithReceipt(generation, epoch).count,
     setDisplayContext: display.setContext, observeDisplaySamples: display.observe, getDisplaySamples: display.inspect,
     setRendererPublication: (gain01, frame) => { if (!ready || !node || sourceCutOwner.fenced() || sourceRestoreOwner.pending()) throw new Error('Prepare an idle current renderer publication owner.'); return publications.get(node).owner.schedule(gain01, frame); },
-    ownsSourceVoice: voice => !!voice && voices.get(keyFor(voice.semanticEpoch, voice.voiceId)) === voice, prepareContinuation, restoreSourceState, detachSourceState: sourceCutOwner.detach, onOwnerStop, renderDiagnostics, inspectSourceState, dispose }, {
+    sourceContentReference: () => !disposed && patch?.sourceReference || null, ownsSourceVoice: voice => !!voice && voices.get(keyFor(voice.semanticEpoch, voice.voiceId)) === voice, prepareContinuation, restoreSourceState, detachSourceState: sourceCutOwner.detach, onOwnerStop, renderDiagnostics, inspectSourceState, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epochSettled,
     isVoiceSettled: (voiceId, epoch) => faultRetirement?.outcome !== 'partial' && !voices.has(keyFor(epoch, voiceId)),

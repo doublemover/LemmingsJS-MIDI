@@ -347,12 +347,12 @@ class BrowserNotePreview {
       outputIdentity: this._createOutputIdentity(id), getState, enable, stop, panic: stop, instrumentSources,
       detachAudioState: (options = {}) => detachAudioState(options), restoreAudioState: (options = {}) => restoreAudioState(options),
       prepareAudioContinuation: async options => { const { prepareOwnedAudioContinuation } = await import('./OwnedAudioContinuation.js'); return prepareOwnedAudioContinuation({ resourceBudget: this._soundMaterialBudget, ...options }); },
-      encodeAudioImage: async options => { const { encodeOwnedAudioImage } = await import('./OwnedAudioImageOwner.js'); return encodeOwnedAudioImage({ resourceBudget: this._soundMaterialBudget, ...options }); },
-      openAudioImage: async options => { const { openOwnedAudioImage } = await import('./OwnedAudioImageOwner.js'); return openOwnedAudioImage({ resourceBudget: this._soundMaterialBudget, ...options }); },
+      encodeAudioImage: async options => { const { encodeMaterializedAudioImage } = await import('./OwnedAudioImageMaterials.js'); return encodeMaterializedAudioImage({ resourceBudget: this._soundMaterialBudget, materialProvider: this.getSoundMaterialProvider(), resources: this._audioResources, ...options }); },
+      openAudioImage: async options => { const { openMaterializedAudioImage } = await import('./OwnedAudioImageMaterials.js'); return openMaterializedAudioImage({ resourceBudget: this._soundMaterialBudget, materialProvider: this.getSoundMaterialProvider(), resources: this._audioResources, ...options }); },
       prepareAudioImageContinuation: async options => {
-        const cut = await session.api.openAudioImage(options);
-        try { return await session.api.prepareAudioContinuation({ ...options, cut, sources: cut.references().map(row => ({ ...row, pcm: options.materials?.find(material => material.sourceId === row.sourceId)?.pcm ?? null })) }); }
-        finally { const receipt = cut.release(); await receipt?.completion; if (receipt?.outcome && receipt.outcome !== 'complete') throw Object.assign(new Error('Opened audio image retirement remains unresolved.'), { retirement: receipt }); }
+        const { prepareMaterializedAudioImage } = await import('./OwnedAudioImageMaterials.js');
+        return prepareMaterializedAudioImage({ resourceBudget: this._soundMaterialBudget, materialProvider: this.getSoundMaterialProvider(), resources: this._audioResources, ...options },
+          (cut, sources) => session.api.prepareAudioContinuation({ ...options, cut, sources }));
       },
       getAudioContext: () => this.getAudioContext(), getSoundMaterialProvider: () => this.getSoundMaterialProvider(),
       setCaptureContext: ({ worldId, graphRevision, routeRevision, scoreMapping = null } = {}) => {
