@@ -319,7 +319,9 @@
         "js/app/resources/BackgroundJsonInspector.js",
         "js/app/resources/BackgroundSnapshotPages.js",
         "js/app/resources/BackgroundTaskYield.js",
+        "js/app/resources/BackgroundValueInspector.js",
         "js/app/resources/BackgroundWorkerAdmission.js",
+        "js/app/resources/CanonicalSnapshotKernel.js",
         "js/app/resources/CausalSourceKernels.js",
         "js/app/resources/CircuitWorkshopBuilder.js",
         "js/app/resources/FiniteFmExcitation.js",
@@ -452,8 +454,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 306,
-      "sha256": "ff70c37b97747edf8b034fd271fc6d4835ed758b59bbd3824eac3aa7649caf33"
+      "fileCount": 308,
+      "sha256": "faa29153ba01e6719371b4dc35d1e8fdf8ad9f50a2cab93ffb6f96969540b512"
     },
     {
       "id": "lemmings-timing-worker-source",

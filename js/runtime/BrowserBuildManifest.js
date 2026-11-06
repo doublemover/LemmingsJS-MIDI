@@ -1,5 +1,6 @@
 import { computeInstrumentArtifacts } from './InstrumentArtifactManifest.js';
 
+export const MAX_BROWSER_BUILD_FILES = 8192;
 export const BROWSER_BUILD_SCHEMA = 'lemmings-browser-build/v1';
 export const BROWSER_ENTRY_ROUTES = Object.freeze(['index.html', 'editor.html', 'procgen.html', 'procgen-survey.html']);
 const requiredEntryRoutes = ['index.html', 'editor.html', 'procgen.html'];
@@ -40,7 +41,7 @@ export const renderBrowserBuildIdentity = (template, identity) => {
 
 export const verifyBrowserBuildManifest = async (manifest, { expectedBuildId = null, template = null } = {}) => {
   if (!manifest || manifest.schema !== BROWSER_BUILD_SCHEMA || !hashPattern.test(manifest.buildId) ||
-      expectedBuildId != null && manifest.buildId !== expectedBuildId || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length > 8192 ||
+      expectedBuildId != null && manifest.buildId !== expectedBuildId || !Array.isArray(manifest.files) || !manifest.files.length || manifest.files.length > MAX_BROWSER_BUILD_FILES ||
       !Array.isArray(manifest.recipe) || ![3, 4, recipePaths.length].includes(manifest.recipe.length) ||
       !Array.isArray(manifest.routes) || manifest.routes.length < requiredEntryRoutes.length || manifest.routes.length > BROWSER_ENTRY_ROUTES.length ||
       new Set(manifest.routes).size !== manifest.routes.length || manifest.routes.some(route => !BROWSER_ENTRY_ROUTES.includes(route)) ||

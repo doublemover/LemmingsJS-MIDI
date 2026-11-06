@@ -334,7 +334,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     pendingInstrumentCount: () => laneInstruments?.pendingCount() || 0,
-    operationalState: () => Object.freeze({ prepared, routingUnavailable, accepted, degraded, rejected, pendingAdmissions, leaseFailures }),
+    operationalState: () => Object.freeze({ prepared, routingUnavailable, accepted, degraded, rejected, pendingAdmissions, leaseFailures, audioEnabled: !!session?.getState().enabled, clock: clock.diagnostics() }),
     latencyState,
     diagnostics: ({ requestHealth = false, requestSourceDiagnostics = false, includeSourceTraces = false } = {}) => Object.freeze({ prepared, routingUnavailable, enabled: externalEnabled() || !!session?.getState().enabled, audioEnabled: !!session?.getState().enabled, externalOutputs: Object.freeze(additionalOutputs.map(output => output.diagnostics?.() || null)), accepted, degraded, rejected, pendingAdmissions,
       sourceRender: requestSourceDiagnostics ? (backend || nativeBackend)?.renderDiagnostics?.({ includeTraces: includeSourceTraces }) || null : null,

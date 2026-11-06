@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add per-browser audio profile CPU and observation-cost measurements, admit complete immutable replay inventories, and isolate canonical snapshot workers from DSP imports.
+
 - Invalidate main audio queues on device availability or explicit-output permission changes, and qualify transactional profile/rate replacement across the native browser engines.
 
 - Show separate simulation, presentation-hold, mix/effect and browser latency components, with context-bound correlation freshness and actionable desktop diagnostics.

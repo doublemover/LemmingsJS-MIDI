@@ -1,3 +1,4 @@
+import { runCanonicalSnapshotKernel } from './CanonicalSnapshotKernel.js';
 import { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS, CAUSAL_SOURCE_JOB_KINDS } from './BackgroundJobKinds.js';
 import { createBackgroundSnapshotReceiver, encodeBackgroundSnapshotPages, backgroundSnapshotTransfers } from './BackgroundSnapshotPages.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
@@ -35,7 +36,7 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
       if (request.type === 'input-page') { const receipt = receiver.push(request.packet); respond({ type: 'input-ack', sequence: receipt.sequence }); return; }
       if (request.type !== 'input-end') throw new Error('Invalid background snapshot message.');
       let input = receiver.finish(request.sequence); receiver = null; phase = 'computing';
-      const compute = kernel || (CAUSAL_SOURCE_JOB_KINDS.includes(source.kind) ? (await import('./CausalSourceKernels.js')).runCausalSourceKernel :
+      const compute = kernel || (source.kind === 'snapshot-canonical-data' ? runCanonicalSnapshotKernel : CAUSAL_SOURCE_JOB_KINDS.includes(source.kind) ? (await import('./CausalSourceKernels.js')).runCausalSourceKernel :
         (await import('./BackgroundJobKernels.js')).runBackgroundJobKernel);
       if (phase !== 'computing') return;
       const result = await compute(source.kind, input, { ...source.limits, onProgress: progress => { if (phase === 'computing') respond({ type: 'progress', progress }); } });

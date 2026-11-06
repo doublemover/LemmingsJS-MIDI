@@ -26,7 +26,10 @@ for (const file of ['test.yml', 'maintenance-full.yml']) {
       expect(script).to.match(/^node scripts\/check-browser-categories\.js && /);
       expect(script).to.include(' && node scripts/check-browser-results.js');
       const receiptUpload = steps.find(step => step.with?.name === 'workstation-browser-receipts');
-      expect(receiptUpload.if).to.equal('always()'); expect(receiptUpload.with.path).to.include('browser-category-selection.json').and.include('workstation-results.json');
+      const producer = steps.find(step => step.run === workstation);
+      expect(receiptUpload.if).to.equal(file === 'test.yml' ? 'always() && steps.' + producer.id + '.outcome != \'skipped\' && steps.' + producer.id + '.outcome != \'\'' : 'always()');
+      expect(receiptUpload.with['if-no-files-found']).to.equal('error');
+      expect(receiptUpload.with.path).to.include('browser-category-selection.json').and.include('workstation-results.json');
       expect(runs.some(run => run.includes('git checkout origin/master -- tools'))).to.equal(false);
       const browser = steps.findIndex(step => step.run === 'npm run test-e2e:boundaries');
       const start = steps.findIndex(step => step.name === 'Start HTTPS server');

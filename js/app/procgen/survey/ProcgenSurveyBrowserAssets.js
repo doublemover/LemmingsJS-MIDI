@@ -15,6 +15,7 @@ import { readBrowserBuildResponse, awaitBrowserBuildOperation } from '../../../r
 import { loadActiveBrowserSurveyBuild, requireIsolatedBrowserSurveyExecution, requireSurveySourceBuild } from './ProcgenSurveyExecution.js';
 import { cloneJournalData } from '../workstation/CausalJournalCanonical.js';
 import { createResourceBudget } from '../../resources/ResourceBudget.js';
+import { MAX_BROWSER_BUILD_FILES } from '../../../runtime/BrowserBuildManifest.js';
 import { surveySourceImports } from './SurveySourceImports.js';
 
 const repoUrl = new URL('../../../../', import.meta.url);
@@ -42,7 +43,7 @@ const verifiedBrowserFiles = async (rawManifest, fetchRef, externalSignal, { res
   if (![1, 2].includes(manifest?.schemaVersion) || !(manifest.schemaVersion === 2 ? /^[a-f0-9]{64}$/ : /^[a-f0-9]{40}$/).test(manifest.engineCommit || '') ||
       !manifest.codeHashes || !manifest.assetHashes || !/^[a-f0-9]{64}$/.test(manifest.codeDigest || '')) throw new Error('Replay requires the complete original source manifest');
   const code = Object.entries(manifest.codeHashes), assets = Object.entries(manifest.assetHashes), declared = [...code.map(entry => [...entry, true]), ...assets.map(entry => [...entry, false])];
-  if (!code.length || declared.length > MAX_SOURCE_FILES) throw new Error('Replay source file limit exceeded');
+  if (!code.length || declared.length > (manifest.schemaVersion === 2 ? MAX_BROWSER_BUILD_FILES : MAX_SOURCE_FILES)) throw new Error('Replay source file limit exceeded');
   for (const [name, expected, isCode] of declared) { sourcePath(name, isCode); if (!/^[a-f0-9]{64}$/.test(expected)) throw new Error(`Missing SHA-256 identity: ${name}`); }
   const entries = verifyCode ? declared : declared.filter(entry => !entry[2]);
   for (const required of ['js/app/procgen/survey/ProcgenSurveyBrowserAssets.js', 'js/app/procgen/survey/ProcgenSurveyCore.js', 'js/steelSpritesData.js'])

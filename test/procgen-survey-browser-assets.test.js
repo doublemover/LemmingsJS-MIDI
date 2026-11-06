@@ -28,6 +28,19 @@ describe('verified selected browser survey asset contracts', function() {
     expect(Object.keys(sourceManifest.codeHashes).some(name => name.endsWith('.d.ts') || name.endsWith('/PhysicalPlaybackContracts.js'))).to.equal(false);
     [controlled, generated] = scenes.map(scene => normalizeSurveyScenario({ ...scene, engineCommit: sourceManifest.engineCommit, assetHashes: sourceManifest.assetHashes }));
   });
+  it('admits a full generation above the legacy file limit and still enforces both inventory bounds before fetching', async () => {
+    const legacy = copy(sourceManifest), identity = 'a'.repeat(64);
+    for (let index = Object.keys(legacy.codeHashes).length; index < 1025; index++) legacy.codeHashes['js/replay-extra-' + index + '.js'] = identity;
+    legacy.codeDigest = await hexSha256(new TextEncoder().encode(JSON.stringify(legacy.codeHashes)));
+    let reads = 0;
+    await rejects(() => verifiedBrowserFiles(legacy, () => { reads++; }), 'source file limit'); expect(reads).to.equal(0);
+    const generation = { ...legacy, schemaVersion: 2, engineCommit: identity, sourceKind: 'immutable-browser-generation' };
+    const verified = await verifiedBrowserFiles(generation, fileFetch, null, { artifactPolicy: 'saved-assets-only' });
+    try { expect(verified.verification.declaredCodeFiles).to.equal(1025); expect(verified.verification.codeFiles).to.equal(0); }
+    finally { await verified.release().completion; }
+    for (let index = 1025; index < 8193; index++) generation.codeHashes['js/replay-extra-' + index + '.js'] = identity;
+    await rejects(() => verifiedBrowserFiles(generation, () => { reads++; }), 'source file limit'); expect(reads).to.equal(0);
+  });
   it('decodes real masks and preserves headless controlled physical and logical hashes', async () => {
     const browser = await createBrowserSurveyTrial({ scenario: controlled, sourceManifest, fetchFile: fileFetch });
     const node = await createNodeSurveyTrial({ scenario: controlled });

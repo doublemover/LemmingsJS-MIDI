@@ -25,7 +25,7 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
       const processingHostDurationMs = performance.now() - processingStarted;
       if (batches.length >= 512) throw new Error('Native clock source prefix exceeded its bound.');
       batches.push({ batchId: batch.batchId, worldId: batch.worldId, phase: preparingSource ? 'muted-preparation' : 'producing', processingHostDurationMs, tick: batch.tick, generation: batch.generation, position, sourceTimeMs: batch.sourceTimeMs, tickDurationMs: batch.tickDurationMs,
-        anchors: playback.diagnostics().clock.anchor, facts: batch.facts.filter(fact => fact.kind === 'MotionCommitted' && fact.positionAfter?.x >= 37 && fact.positionAfter?.x <= 48) });
+        anchors: playback.operationalState().clock.anchor, facts: batch.facts.filter(fact => fact.kind === 'MotionCommitted' && fact.positionAfter?.x >= 37 && fact.positionAfter?.x <= 48) });
     } catch (error) { failure ||= error; }
   };
   world.soundEvents.onBatch.on(onBatch);
@@ -56,7 +56,7 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
     if (world.tickIndex >= 128) throw new Error('Ordinary source did not reach the pre-gate boundary.');
     preparedSourceTick = world.tickIndex; preparingSource = false;
     sourcePreparation = Object.freeze({ kind: 'muted-committed-prefix', firstTick: batches[0]?.tick, lastTick: preparedSourceTick, processedBatches: batches.length,
-      emittedIntents: intents.length, hasAudioContext: audio.getAudioContext() != null, audioEnabled: audio.getState().enabled, clockAnchored: playback.diagnostics().clock.anchor != null });
+      emittedIntents: intents.length, hasAudioContext: audio.getAudioContext() != null, audioEnabled: audio.getState().enabled, clockAnchored: playback.operationalState().clock.anchor != null });
     if (!sourcePreparation.processedBatches || sourcePreparation.emittedIntents || sourcePreparation.hasAudioContext || sourcePreparation.audioEnabled || sourcePreparation.clockAnchored) throw new Error('Native source preparation must remain muted and unanchored before the first gate.');
     if (!await audio.enable()) throw new Error('Private native audio owner was not enabled: ' + JSON.stringify(audio.getState()));
     const context = audio.getAudioContext();
@@ -91,8 +91,8 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
     };
     window.__nativeClockEndProbe = (oscillator, row) => { if (oscillator.context === context) row.renderFrameAtAcknowledgment = window.Atomics.load(observation, 0); };
     const started = performance.now();
-    while (!playback.diagnostics().audioEnabled && performance.now() - started < 2000) await new Promise(resolve => setTimeout(resolve, 0));
-    if (!playback.diagnostics().audioEnabled) throw new Error('Physical native owner did not arm.');
+    while (!playback.operationalState().audioEnabled && performance.now() - started < 2000) await new Promise(resolve => setTimeout(resolve, 0));
+    if (!playback.operationalState().audioEnabled) throw new Error('Physical native owner did not arm.');
     return true;
   };
   return {
@@ -100,7 +100,14 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
     async produce() {
       const started = performance.now();
       producing = true;
-      for (let count = 0; count < 16 && intents.filter(intent => intent.kind === 'begin').length < copies * 8; count++) { step(); await new Promise(resolve => setTimeout(resolve, 0)); }
+      let sliceStarted = performance.now();
+      for (let count = 0; count < 16 && intents.filter(intent => intent.kind === 'begin').length < copies * 8; count++) {
+        step();
+        if (performance.now() - sliceStarted >= 8) {
+          await new Promise(resolve => { const channel = new window.MessageChannel(); channel.port1.onmessage = () => { channel.port1.close(); channel.port2.close(); resolve(); }; channel.port2.postMessage(null); });
+          sliceStarted = performance.now();
+        }
+      }
       if (intents.filter(intent => intent.kind === 'begin').length !== copies * 8 || probes.some(probe => !probe.start)) throw new Error('Native source onsets were not all admitted at their original times.');
       return { firstTargetSeconds: Math.min(...probes.map(probe => probe.start.targetSeconds)), lastTargetSeconds: Math.max(...probes.map(probe => probe.start.targetSeconds)),
         submittedSeconds: audio.getAudioContext().currentTime, producerHostDurationMs: performance.now() - started, onsets: probes.length, currentTick: world.tickIndex };
@@ -137,9 +144,9 @@ export async function createPhysicalAudioClockFixture({ sourceRoot, presentation
         retirement: { state: receipt.state, outcome: receipt.outcome }, snapshot: await snapshot() };
     },
     async unrelatedOwner() {
-      const before = playback.diagnostics().clock, context = audio.getAudioContext();
+      const before = playback.operationalState().clock, context = audio.getAudioContext();
       other = audio.createSession('independent-clock-owner'); if (!await other.enable()) throw new Error('Unrelated native owner did not enable.');
-      await other.stop(); const after = playback.diagnostics().clock;
+      await other.stop(); const after = playback.operationalState().clock;
       await waitContext(Math.max(...probes.map(probe => probe.start.targetSeconds)) + 0.18);
       return { sameContext: audio.getAudioContext() === context, before, after, other: other.getState(), snapshot: await snapshot() };
     },

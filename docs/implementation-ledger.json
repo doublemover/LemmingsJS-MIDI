@@ -7012,5 +7012,37 @@
       "Transition wall observations are not DSP CPU/profile distributions or acoustic measurements. Those1044qualification gaps remain.",
       "No source clock, timing deadline, coverage threshold or voice limit was relaxed; no full local suite was repeated."
     ]
+  },
+  "continuation455": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Measure actual native audio profile CPU/read costs and repair five independently retained CI failures without retiming sources or relaxing stream/ownership limits.",
+    "validation": {
+      "nodeCases": 219,
+      "additionalProvenanceCases": 3,
+      "desktopAndCavityCases": 5,
+      "types": "critical-and-strict-boundaries-pass",
+      "format": "passed",
+      "lint": "passed",
+      "provenance": "10-components-377-files",
+      "fullLocalNodeSuiteRepeated": false,
+      "nativeEngineMatrix": "in-progress; no complete-current-source claim",
+      "profilePilot": "six measured profiles on two available native engines; one explicit Windows WebKit constructor absence; final source/capability-bound publication pending",
+      "desktopSourceNote": "Five browser journeys ran before removal of one trailing blank line and the corresponding required worker hash refresh; source semantics are unchanged. Fresh whole-source CI remains required."
+    },
+    "source": {
+      "browserPaths": 1295,
+      "browserDigest": "b27c181f4e9a69c52232775fa72d39675454c77b91f142886d4822bbf9121264",
+      "workerFiles": 308,
+      "workerDigest": "faa29153ba01e6719371b4dc35d1e8fdf8ad9f50a2cab93ffb6f96969540b512",
+      "inputPaths": 1614,
+      "byteExact": 1602,
+      "untouchedNewlineMappings": 12
+    },
+    "remaining": [
+      "Current-source full CI and native engine/profile qualification are pending.",
+      "The retained cavity dynamic import error is avoided for canonical snapshots by an isolated eager kernel; three actual cavity render journeys pass. The trace did not identify a definitive underlying network/browser cause for the broad DSP graph.",
+      "Four concrete cue cleanup fault regressions are frontloaded separately; cue owner cleanup changes are the next development batch."
+    ]
   }
 }
