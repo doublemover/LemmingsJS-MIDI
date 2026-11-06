@@ -1,6 +1,7 @@
 import { createGraftTakeComparisonOwner } from './GraftTakeComparisonOwner.js';
 import { createCapturedBodyComparisonOwner } from './CapturedBodyComparisonOwner.js';
 import { createPreparedWavePrelisten } from './PreparedWavePrelisten.js';
+import { createCausalTakeSeekOwner } from './CausalTakeSeekOwner.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { validateSoundContentReference } from '../../midi/content/SoundContentReference.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
@@ -66,6 +67,9 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const groovePadding = node('input'); groovePadding.type = 'checkbox'; groovePadding.checked = true; label('Extend a full take by its declared groove delay', groovePadding);
   fields.append(node('p', 'Start/end seconds refer to the output timeline. Physical source times stay in the take. Changing timing uses a new static effect realization; captured FX commands require captured causal groove.'));
   const restore = select('Range reconstruction', [['forward-preroll', 'Forward captured history'], ['owned-state-cut', 'Restore owned source + FX at range start (experimental)']]);
+  const seekPosition = number('Take seek cursor · seconds', 0, 120), seekWindow = number('Seek preview window · seconds', 1, 3), seekSlider = node('input'); seekSlider.type = 'range'; seekSlider.min = '0'; seekSlider.max = '120'; seekSlider.step = '0.001'; seekSlider.value = '0'; seekSlider.setAttribute('aria-label', 'Take seek cursor'); label('Captured take cursor', seekSlider);
+  const seekOnRelease = node('input'); seekOnRelease.type = 'checkbox'; seekOnRelease.setAttribute('aria-label', 'Prelisten when releasing the take seek cursor'); label('Prelisten on cursor release · isolated short window', seekOnRelease);
+  const seekInfo = node('output', 'Take seek is private. Stop or completion returns to the existing live performance.'); seekInfo.setAttribute('aria-label', 'Take seek reconstruction status'); fields.append(seekInfo);
   const status = node('output', 'Idle'); status.setAttribute('role', 'status'); const details = node('p'), deliveryStatus = node('output'); deliveryStatus.setAttribute('aria-label', 'Rendered file delivery');
   const file = node('select'); file.setAttribute('aria-label', 'Prepared rendered file');
   const say = text => { if (!disposed) { deliveryStatus.textContent = text; try { onStatus(text); } catch { /* Status does not own a prepared render. */ } } };
@@ -76,6 +80,25 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const chosenEntry = () => { const bundle = preparedBundle(); return bundle && bundle === displayedBundle ? bundle.files.find(entry => entry.id === file.value) || null : null; };
   const chosen = () => chosenEntry()?.artifact || null;
   const prelisten = createPreparedWavePrelisten({ audio, resourceBudget, onState: () => surface.invalidate() });
+  const seekOwner = audio ? createCausalTakeSeekOwner({ audio, journal, resourceBudget, jobs, getMaterialProvider, onState: () => surface.invalidate(), onReveal: () => { if (!disposed && !dialog.open) dialog.showModal(); } }) : null;
+  const requestSeek = async () => {
+    if (!seekOwner || !source || source.unavailable || loading || rendering() || picker || delivery) throw new Error('Choose a complete saved take and available isolated audio before seeking.');
+    const saved = sourceModel.value === 'saved-instrument', model = CAUSAL_RENDER_SOURCES.find(model => model.id === sourceModel.value), selected = source, serial = loadSerial, selectedModel = sourceModel.value;
+    if (saved ? !instrumentReference || !instrumentSupported : !model) throw new Error('Choose an available render source before seeking.');
+    const sampleRate = Number(rate.value), startSeconds = Math.round(Number(seekPosition.value) * sampleRate) / sampleRate, seconds = Number(seekWindow.value), endSeconds = Math.min(120, source.seconds, startSeconds + seconds);
+    if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 3 || !Number.isFinite(startSeconds) || startSeconds < 0 || endSeconds <= startSeconds) throw new Error('Choose a cursor inside the captured range and a preview window up to three seconds.');
+    const effects = prepareCausalEffectSelection({ preset: effect.value, send01: Number(effectSend.value), includeReturn: false, rack: effect.value === 'saved-owner' ? getSavedRack() : null, sampleRate });
+    const receipt = await seekOwner.seek({ definition: saved ? instrumentReference.definition : model.definition, materialReference: saved ? instrumentReference : null, takeId: source.takeId, takeRevision: source.revision, sampleRate, startSeconds, endSeconds,
+      timeTransformMode: timingMode.value, restorationMode: restore.value, ...effects, isCurrent: () => !disposed && serial === loadSerial && source === selected && sourceModel.value === selectedModel });
+    if (receipt.status === 'superseded' || receipt.status === 'canceled') return receipt;
+    say('Private seek prepared at ' + receipt.startSeconds.toFixed(3) + ' s using ' + receipt.restoration.mode + '. Original physical events and the live world are unchanged.'); return receipt;
+  };
+  const auditionSeek = button('Prelisten from take cursor', run(requestSeek)), stopSeek = button('Stop take seek preview', run(async () => { const receipt = seekOwner?.stop(); await receipt?.completion; if (receipt && receipt.outcome !== 'complete') throw new Error('Take seek retirement remains unresolved.'); }));
+  const useSeekRange = button('Use cursor as render start', () => { if (!source || source.unavailable || rendering() || loading) return; first.value = seekPosition.value; if (Number(last.value) <= Number(first.value)) last.value = String(Math.min(source.seconds, Number(first.value) + Number(seekWindow.value))); say('Render start set explicitly. Private seek did not restore or change the live world.'); paint(); });
+  listen(seekSlider, 'input', () => { seekPosition.value = seekSlider.value; });
+  listen(seekSlider, 'change', () => { seekPosition.value = seekSlider.value; if (seekOnRelease.checked) void run(requestSeek)(); });
+  listen(seekPosition, 'change', () => { seekSlider.value = seekPosition.value; if (seekOnRelease.checked) void run(requestSeek)(); });
+  listen(seekSlider, 'pointercancel', () => seekOwner?.stop());
   const listenPrepared = button('Prelisten selected WAV from start', run(async () => {
     const selected = chosenEntry(), bundle = preparedBundle(); if (!selected || rendering() || loading || picker || delivery) return;
     const previous = prelisten.stop(); await previous.completion; if (previous.outcome !== 'complete') throw new Error('The preceding WAV preview retains unresolved ownership.');
@@ -152,7 +175,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const cancelSave = button('Cancel file save', () => delivery?.abort());
   const discard = button('Discard prepared WAVs', run(() => { if (rendering() || loading || picker || delivery) return; const receipt = preparedBundle()?.discard();
     say(receipt?.outcome === 'partial' ? 'Prepared file retirement is unresolved.' : 'Prepared WAVs discarded; the original take is unchanged.'); }));
-  const close = () => { loadSerial++; readController?.abort(); owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); delivery?.abort(); dialog.close(); };
+  const close = () => { loadSerial++; readController?.abort(); owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); seekOwner?.stop(); delivery?.abort(); dialog.close(); };
   button('Close', close); listen(dialog, 'cancel', event => { event.preventDefault(); close(); });
   function paint() {
     if (disposed || !owner || !comparisonOwner || !bodyComparisonOwner) return;
@@ -163,6 +186,9 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     status.textContent = loading ? 'Reading take' : preparing && !rendered.active && !comparison.active ? 'Preparing render' : preview.active ? 'PRELISTEN · ' + preview.phase : `${current.phase}${current.progress ? ` · ${current.progress.completedUnits.toLocaleString()} / ${current.progress.totalUnits.toLocaleString()} frames` : ''}`;
     listenPrepared.disabled = !audio || busy || loading || picker || !!delivery || !artifact?.retained || !!preview.unresolvedRetirement || chosenEntry()?.manifest.frames > chosenEntry()?.manifest.sampleRate * 16;
     stopPrelisten.disabled = !preview.active; showPrelisten.disabled = !onPrelisten;
+    const seek = seekOwner?.state(), seekReady = !!seekOwner && !['stopping', 'retirement-unknown'].includes(seek.phase) && !!source && !source.unavailable && !loading && !rendering() && !picker && !delivery && !(sourceModel.value === 'saved-instrument' && !instrumentSupported);
+    auditionSeek.disabled = !seekReady; stopSeek.disabled = !seek?.active && !seek?.playing && !seek?.retainedCandidates; useSeekRange.disabled = !seekReady; seekPosition.disabled = seekSlider.disabled = seekWindow.disabled = seekOnRelease.disabled = !seekReady;
+    seekInfo.textContent = seek?.error || (seek?.last ? 'Private seek · ' + seek.phase + ' · ' + seek.last.startSeconds.toFixed(3) + ' s · ' + seek.last.restoration.mode + ' · ' + seek.last.sampleRate + ' Hz. Captured history is reconstructed before this window; exact PCM equivalence remains separately qualified.' : 'Private seek · ' + (seek?.phase || 'audio unavailable') + '. Stop or completion returns to the existing live performance; Use cursor changes only the explicit render range.');
     instrumentInfo.textContent = instrumentError || (instrumentReference ? 'Saved instrument ' + instrumentReference.patchId + ' @' + instrumentReference.revision + ' · ' + instrumentReference.assetHashes.length + ' local source references. ' + (!instrumentSupported ? 'Its offline renderer is unavailable in this browser or source profile.' : sourceModel.value === 'saved-instrument' ? 'The next render uses its saved defaults and available recorded physical controls.' : 'Select Saved instrument to use this revision; the current source choice uses its own default controls.') : 'Open this dialog with a saved lane instrument to use its exact revision.');
     details.textContent = current.error || source?.unavailable || (bundle?.manifest.schema === 'lemmings-captured-body-comparison/v1' ? `${bundle.files.length} recorded body revisions · same captured phrase and sine source · RMS-matched PRELISTEN. Raw WAV files retain original gain. Published defaults replace captured gestures; listening acceptance is unverified.` : bundle?.manifest.schema === 'lemmings-graft-take-comparison/v1' ? `Four readouts of ${bundle.manifest.takeId} @${bundle.manifest.takeRevision} · ${bundle.manifest.frames.toLocaleString()} common stereo frames at ${bundle.manifest.sampleRate} Hz. Fixed authored gain; no loudness normalization. Original: ${originalComparisonReference?.patchId || 'explicit pinned reference'}. Listening qualification pending.` : bundle ? `Prepared ${bundle.manifest.engineRequirement.engineId} from ${bundle.manifest.takeId} · ${bundle.manifest.frames.toLocaleString()} stereo frames at ${bundle.manifest.sampleRate} Hz · ${bundle.manifest.tail.mode} · ${bundle.files.length} file(s). Master protection is excluded.${bundle.manifest.timing?.groove ? ' Groove offset max ' + bundle.manifest.timing.groove.maximumOutputDisplacementMs.toFixed(2) + ' ms; RMS ' + bundle.manifest.timing.groove.rmsOutputDisplacementMs.toFixed(2) + ' ms; output padding ' + Number(bundle.manifest.timing.outputPaddingSeconds || 0).toFixed(3) + ' s.' : ''}` :
       'Choose a range and prepare. Rendering does not enable live audio or audition the result.');
@@ -189,13 +215,13 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   owner = createCausalTakeAudioRenderer({ journal, resourceBudget, jobs, getMaterialProvider, onState: () => surface.invalidate() });
   comparisonOwner = createGraftTakeComparisonOwner({ journal, resourceBudget, jobs, getMaterialProvider, onState: () => surface.invalidate() });
   bodyComparisonOwner = createCapturedBodyComparisonOwner({ journal, resourceBudget, jobs, onState: () => surface.invalidate() });
-  listen(sourceModel, 'change', paint); listen(effect, 'change', paint);
+  for (const control of [sourceModel, effect, effectSend, rate, restore, timingMode]) listen(control, 'change', () => { seekOwner?.stop(); paint(); });
   listen(file, 'change', () => { prelisten.stop(); paint(); }); listen(tail, 'change', paint);
   dialog.append(title, description, sourceText, limits, fields, instrumentInfo, status, details, file, deliveryStatus, actions);
   (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
   return Object.freeze({ async open({ takeId, instrumentRef = null } = {}) {
     if (disposed) return; if (readFaults.size) throw new Error('Take metadata reader retirement remains unresolved.');
-    owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); captureInstrument(instrumentRef);
+    owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); seekOwner?.stop(); captureInstrument(instrumentRef);
     const serial = ++loadSerial; readController?.abort(); const controller = readController = new AbortController();
     loading = true; source = null; if (!dialog.open) dialog.showModal(); paint();
     let work; work = (async () => {
@@ -208,20 +234,20 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
           seconds == null ? 'This take lacks an exact captured source-clock boundary. Qualified history reconstruction is required.' : seconds <= 0 ? 'This take has no source-clock duration to render.' :
             !Array.isArray(manifest.boundaryState?.voices) || manifest.boundaryState.voices.length ? 'This take begins with unknown or held voices. Qualified onset/state history is required.' : null;
         source = Object.freeze({ takeId: manifest.takeId, takeName: manifest.takeName, revision: manifest.revision, hash: manifest.canonicalHash, seconds, unavailable });
-        first.value = '0'; last.value = String(Math.min(10, seconds ?? 1)); first.max = last.max = String(Math.min(120, seconds ?? 120));
+        first.value = '0'; seekPosition.value = seekSlider.value = '0'; last.value = String(Math.min(10, seconds ?? 1)); first.max = last.max = seekPosition.max = seekSlider.max = String(Math.min(120, seconds ?? 120));
       } finally { try { retireCausalRead(loan); } catch (error) { readFaults.add({ loan, error }); throw error; } }
     })(); reads.add(work);
     try { await work; } catch (error) { if (!disposed && serial === loadSerial && !controller.signal.aborted) say(error.message); }
     finally { reads.delete(work); if (serial === loadSerial) { loading = false; paint(); } }
-  }, state: () => Object.freeze({ render: owner.state(), preparing, comparison: comparisonOwner.state(), prelisten: prelisten.state(), comparisonVisible: !!displayComparison, comparisonKind: displayComparison, bodyComparison: bodyComparisonOwner.state(), originalComparison: originalComparisonReference ? { patchId: originalComparisonReference.patchId, revision: originalComparisonReference.revision, definitionHash: originalComparisonReference.definitionHash } : null, selectedTake: source, sourceModel: sourceModel.value, effectPreset: effect.value, delivery: lastDelivery, pickingFile: picker, writing: !!delivery, unresolvedMetadata: readFaults.size, instrument: instrumentReference ? { patchId: instrumentReference.patchId, revision: instrumentReference.revision, engineId: instrumentReference.engineRequirement.engineId, supported: instrumentSupported } : null }),
-  suspend() { readController?.abort(); owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); delivery?.abort(); },
+  }, state: () => Object.freeze({ render: owner.state(), preparing, comparison: comparisonOwner.state(), prelisten: prelisten.state(), seek: seekOwner?.state() || null, comparisonVisible: !!displayComparison, comparisonKind: displayComparison, bodyComparison: bodyComparisonOwner.state(), originalComparison: originalComparisonReference ? { patchId: originalComparisonReference.patchId, revision: originalComparisonReference.revision, definitionHash: originalComparisonReference.definitionHash } : null, selectedTake: source, sourceModel: sourceModel.value, effectPreset: effect.value, delivery: lastDelivery, pickingFile: picker, writing: !!delivery, unresolvedMetadata: readFaults.size, instrument: instrumentReference ? { patchId: instrumentReference.patchId, revision: instrumentReference.revision, engineId: instrumentReference.engineRequirement.engineId, supported: instrumentSupported } : null }),
+  suspend() { readController?.abort(); owner.cancel(); comparisonOwner.cancel(); bodyComparisonOwner.cancel(); prelisten.stop(); seekOwner?.stop(); delivery?.abort(); },
   dispose() {
     if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; loadSerial++; readController?.abort(); delivery?.abort();
     const pendingDelivery = deliveryTask, cueRetirement = prelisten.dispose();
     const retireRender = async renderer => { await cueRetirement.completion; if (cueRetirement.outcome !== 'complete') throw new Error('Rendered sources remain pinned behind unresolved PRELISTEN retirement.'); return renderer.dispose(); };
     return retirement.retire([{ name: 'render-owner', run: () => retireRender(owner) }, { name: 'graft-comparison-owner', run: () => retireRender(comparisonOwner) }, { name: 'body-comparison-owner', run: () => retireRender(bodyComparisonOwner) }, { name: 'accepted-metadata', run: () => Promise.allSettled([...reads]) },
       { name: 'metadata-reader-faults', run: async () => { await Promise.allSettled([...reads]); if (readFaults.size) throw new Error('Take metadata reader retirement remains unresolved.'); } },
-      { name: 'render-wav-prelisten', run: () => prelisten.dispose() },
+      { name: 'render-wav-prelisten', run: () => prelisten.dispose() }, { name: 'take-seek-prelisten', run: () => seekOwner?.dispose() },
       { name: 'accepted-delivery', run: () => pendingDelivery?.catch(() => {}) }, { name: 'render-surface', run: () => surface.dispose() },
       { name: 'render-display-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
       ...listeners.splice(0).map((remove, index) => ({ name: 'render-view-listener-' + index, run: remove })),
