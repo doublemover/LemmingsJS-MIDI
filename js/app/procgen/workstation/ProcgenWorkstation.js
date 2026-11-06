@@ -1735,10 +1735,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (restarted === false) throw new Error('World preparation was canceled.');
       lease.reportPhase('committing');
       acceptWorldSettings(candidateSettings);
+      if (fresh) {
+        documentGeneration++; savedName = 'Untitled session'; documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null;
+        undo.length = 0; redo.length = 0; lastHistoryGroup = null; physicalHistory.clear(); trimHistory();
+      }
       engine.reset(); transport.stop(); pendingResume = false;
-      if (fresh) { ports.configure({ recording: false }); documentGeneration++; view?.recording?.(false, recordingViewState(ports.getState())); }
+      if (fresh) ports.configure({ recording: false });
       bindRuntime();
-      if (fresh) { savedName = 'Untitled session'; documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; storageStatus(); }
+      if (fresh) { view?.recording?.(false, recordingViewState(ports.getState())); storageStatus(); }
       if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); completed = true; return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;

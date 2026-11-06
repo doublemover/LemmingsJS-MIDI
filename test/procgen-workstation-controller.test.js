@@ -1305,6 +1305,25 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.dispose();
   });
 
+  it('starts a fresh document with independent history and does not undo into the previous document', async () => {
+    const f = setup({ physicalOnly: true });
+    try {
+      f.studio.bindRuntime(); const laneId = f.studio.getProject().procgen.lanes[0].id; f.studio.dispatch({ type: 'procgen/lane', laneId, patch: { gain: 0.25 } });
+      expect(f.studio.handlers.historyState().undo).to.be.greaterThan(0); expect(await f.studio.handlers.new()).to.equal(true);
+      const world = f.runtime.world, project = f.studio.getProject(); expect(f.studio.handlers.historyState()).to.include({ undo: 0, redo: 0 });
+      expect(await f.studio.handlers.undo()).to.equal(false); expect(f.runtime.world).to.equal(world); expect(f.studio.getProject()).to.equal(project); expect(f.studio.getDocumentState()).to.include({ id: null, revision: 0, dirty: true });
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('adopts fresh document identity and clears prior history before a post-commit recording presentation failure', async () => {
+    const storage = { async saveDocument(id, revision) { return { id, revision: revision + 1 }; }, close() {} }, f = setup({ storageOverride: storage, physicalOnly: true });
+    try {
+      f.studio.bindRuntime(); expect(await f.studio.handlers.save()).to.equal(true); expect(f.studio.getDocumentState().id).to.be.a('string');
+      const world = f.runtime.world, laneId = f.studio.getProject().procgen.lanes[0].id; f.studio.dispatch({ type: 'procgen/lane', laneId, patch: { gain: 0.25 } });
+      f.view.recording = () => { if (f.runtime.world !== world) throw new Error('Recording presentation unavailable'); };
+      expect(await f.studio.handlers.new()).to.equal(false); expect(f.runtime.world).not.to.equal(world); expect(f.studio.capture().name).to.equal('Untitled session');
+      expect(f.studio.getDocumentState()).to.include({ id: null, revision: 0, dirty: true }); expect(f.studio.handlers.historyState()).to.include({ undo: 0, redo: 0 }); expect(f.studio.transport.getState().playing).to.equal(false);
+    } finally { await f.studio.dispose().completion; }
+  });
   it('does not rename or resume a new document when an older save completes late', async () => {
     const f = setup(); f.studio.bindRuntime();
     const originalSave = f.storage.save.bind(f.storage);

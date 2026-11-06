@@ -6,7 +6,8 @@ import { collectRuntimeSourceClosure } from './RuntimeSourceClosure.js';
 import { shrinkModelTrace } from '../test/support/model-trace.js';
 
 export async function runModelTraceCampaign({ schema, failurePrefix, entry, sourceEntries, fixtures = [], defaultSteps = 32, maximumSteps = 128,
-  generate, replay, summarize, scope } = {}) {
+  generate, replay, summarize, scope, maxSourceFiles = 512 } = {}) {
+  if (!Number.isSafeInteger(maxSourceFiles) || maxSourceFiles < 512 || maxSourceFiles > 4096) throw new RangeError('Invalid model source inventory bound.');
   const root = fileURLToPath(new URL('../', import.meta.url)), options = {};
   for (const argument of process.argv.slice(2)) { const match = /^--(seed|runs|steps|max-ms|max-heap-mib|out-dir|replay|name)=(.+)$/.exec(argument); if (!match || options[match[1]]) throw new Error('Unknown/repeated lifecycle-model option.'); options[match[1]] = match[2]; }
   const integer = (key, fallback, low, high) => { const value = options[key] == null ? fallback : Number(options[key]); if (!Number.isSafeInteger(value) || value < low || value > high) throw new Error('Invalid lifecycle-model ' + key); return value; };
@@ -20,7 +21,7 @@ export async function runModelTraceCampaign({ schema, failurePrefix, entry, sour
     if (performance.now() > deadline) throw Object.assign(new Error('Declared model wall budget exhausted.'), { code: 'model-wall-budget' });
     if (peakMeasuredHeapBytes > maximumHeapBytes) throw Object.assign(new Error('Declared observed Node heap budget exhausted.'), { code: 'model-heap-budget' });
   };
-  const closure = await collectRuntimeSourceClosure({ rootDir: root, entries: sourceEntries, maxFiles: 512, maxBytes: 16 * 1048576 });
+  const closure = await collectRuntimeSourceClosure({ rootDir: root, entries: sourceEntries, maxFiles: maxSourceFiles, maxBytes: 16 * 1048576 });
   if (closure.dependencies.length) throw new Error('Model requires a complete owned source closure: ' + closure.dependencies.join(', '));
   const source = [...closure.files], known = new Set(source.map(row => row.path));
   for (const filename of [entry, 'scripts/ModelTraceCampaign.js', 'scripts/RuntimeSourceClosure.js', 'test/support/model-trace.js', ...fixtures]) if (!known.has(filename)) {

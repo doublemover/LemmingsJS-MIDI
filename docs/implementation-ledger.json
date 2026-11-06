@@ -7370,5 +7370,37 @@
       "Run the consolidated final validation and assess the authored native camera/meter/captured-readout journeys.",
       "No claim of human desktop assistive-technology qualification or a general continuous physical-to-musical correlation."
     ]
+  },
+  "continuation464": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "issues": [
+      1048,
+      1120
+    ],
+    "scope": "Isolate fresh document history and commit canonical identity before optional presentation, with a coupled asynchronous controller reference.",
+    "implementation": [
+      "Fresh New clears Undo/Redo/physical history and adopts untitled document metadata at the accepted world-commit frontier, before recording/render presentation callbacks can fail. Refused preparation retains the prior document/history.",
+      "A bounded independent reference mixes gain edits, Undo/Redo, play/pause/seek, finalizing saves, successful/refused/post-commit-presentation-error New, late success/failure acknowledgments and disposal.",
+      "Controlled view/storage/runtime adapters drive the actual production controller and owned paged background service. Save payloads are checked at capture; every transition compares canonical seed/gain, world coherence, dirty/name/identity/revision, history ownership and transport.",
+      "The campaign records bounded seed traces, observations and shrinking through the shared runner. Its larger controller source inventory is an explicit consumer bound; existing campaigns retain their previous bound."
+    ],
+    "validation": {
+      "format": "passed",
+      "functionalTests": "intentionally deferred with remaining backlog implementation per user instruction",
+      "newSources": [
+        "test/support/workstation-controller-model.js",
+        "test/workstation-controller-model.test.js",
+        "scripts/profile-workstation-controller-model.mjs"
+      ],
+      "newRegressionCases": "authored; not executed",
+      "nativeExecution": "not run",
+      "fullSuiteExecution": "not run",
+      "ci": "not inspected or managed"
+    },
+    "remaining": [
+      "Consolidated final validation of the authored model and fresh-document regression cases.",
+      "Extend the coupled corpus through imports, named operation read/quiescence phases, MIDI Thru/UMP/Active Sensing and native-device retirement; controlled owner adapters are not native-device qualification."
+    ]
   }
 }
