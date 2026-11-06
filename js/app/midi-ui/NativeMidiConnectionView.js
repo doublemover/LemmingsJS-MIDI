@@ -30,6 +30,9 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const disconnect = button('Disconnect companion', () => routes.disconnect(), controls, true);
   const backend = select('Native backend'), switchBackend = button('Select backend', async () => { await routes.client.selectBackend(Number(backend.value)); await routes.enumerate(); });
   const endpoint = select('Native device'), refresh = button('Refresh native devices', () => routes.enumerate());
+  const uncertaintyBudget = input('Clock uncertainty budget (µs)', '25000', 'number'), nativeLookahead = input('Maximum native output lookahead (ms)', '1950', 'number');
+  uncertaintyBudget.min = '100'; uncertaintyBudget.max = '25000'; uncertaintyBudget.step = '100'; nativeLookahead.min = '25'; nativeLookahead.max = '1950'; nativeLookahead.step = '1';
+  const timingPolicy = button('Apply timing budget with performance stopped', async () => { await routes.setTimingPolicy({ maximumUncertaintyUs: Number(uncertaintyBudget.value), maximumLookaheadMs: Number(nativeLookahead.value) }); message.textContent = 'Timing budget applied and clock recalibrated. Rebind affected native lanes before the next performance.'; });
   const groups = input('Granted groups (1–16, comma-separated)', '1');
   const sysex = checkbox('Allow SysEx / CI data'), timing = checkbox('Allow timing'), sensing = checkbox('Allow active sensing'), control = checkbox('Allow endpoint control');
   const groupMask = () => {
@@ -205,7 +208,8 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     const selected = state.grants.find(row => row.grant === (selectedGrant || Number(active.value)));
     revalidate.disabled ||= !selected || selected.virtual || routes.client.capabilities?.groupRetirementVersion !== 1 || !(selected.originalGroupMask & ~selected.groupMask);
     switchBackend.disabled ||= !connected || !!state.grants.length; revoke.disabled = !state.grants.length; assign.disabled ||= !writable; all.disabled ||= !writable; exportTrace.disabled ||= !state.traceRecords; exportInput.disabled ||= !state.ingress.receivedPackets; renderInput();
-    status.textContent = state.state + (connected ? ' · native UMP · ' + state.grants.length + ' owned connections · clock ' + state.clock.status : ' · local audio remains available');
+    timingPolicy.disabled ||= !connected;
+    status.textContent = state.state + (connected ? ' · native UMP · ' + state.grants.length + ' owned connections · clock ' + state.clock.status + ' · epoch ' + (state.clock.epoch ?? 'unknown') + (Number.isFinite(state.clock.uncertaintyUs) ? ' · uncertainty ≤' + Math.ceil(state.clock.uncertaintyUs) + 'µs / ' + state.clock.maximumUncertaintyUs + 'µs · estimated drift ' + state.clock.driftPpm.toFixed(1) + 'ppm' : '') + (state.clock.reason ? ' · ' + state.clock.reason : '') : ' · local audio remains available');
     const capabilities = routes.client.capabilities;
     const ciReady = !!capabilities?.ciCodec && connected && state.grants.some(row => row.direction === 'input' && (row.permissions & 1)) && state.grants.some(row => row.direction === 'output' && (row.permissions & 1));
     ciDiscover.disabled ||= !ciReady; ciInformation.disabled ||= !ciSession; ciProcess.disabled ||= !ciSession; ciClose.disabled ||= !ciSession; readState.disabled ||= !ciReady || capabilities?.ciMessageReportCodecVersion !== 1; cancelState.disabled = !reportSession?.state().busy; showReport(); profileRead.disabled ||= !ciReady || capabilities?.ciProfileCodecVersion !== 1; showProfiles();

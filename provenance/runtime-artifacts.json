@@ -549,6 +549,7 @@
         "js/midi/native/MidiMessageReportSession.js",
         "js/midi/native/MidiMessageReportValues.js",
         "js/midi/native/MpeProfileAdapter.js",
+        "js/midi/native/NativeClockMapping.js",
         "js/midi/native/NativeControllerPolicies.js",
         "js/midi/native/NativeMidiBatchQueue.js",
         "js/midi/native/NativeMidiBridgeClient.js",
@@ -589,8 +590,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 73,
-      "sha256": "591754e3235403549f29099254c8f8d42f96f9cd8709a3fc7a3644942c773e82"
+      "fileCount": 74,
+      "sha256": "f5dae6530c1b2a2615edcdc7f5239177ca940079c32544c5c7152813d3f755fc"
     }
   ]
 }

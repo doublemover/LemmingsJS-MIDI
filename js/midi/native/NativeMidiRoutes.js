@@ -57,6 +57,8 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       void Promise.allSettled([...performanceOwners].map(owner => owner.invalidateGrant?.(event.grant, event))).then(results => { const failed = results.filter(row => row.status === 'rejected'); const current = nativeRetirements.get(event.grant); if (current) nativeRetirements.set(event.grant, Object.freeze({ ...current, hostOwnership: failed.length ? 'unconfirmed' : 'retired', failure: failed.map(row => String(row.reason?.message || row.reason)).join('; ') || null })); notify(); });
       if (outputCapture.state().capture?.grant === event.grant) outputCapture.stop({ reason: event.reason || 'captured-grant-retired', hostTimeMs: client.now() }); ingress.revoke(event.grant, event.reason); controllerPolicies.forget(event.grant); grants.delete(event.grant); forgetControllerChanges(event.grant); for (const session of ciSessions) if (session.state().outputGrant === event.grant) session.invalidate(event.reason || 'CI output grant retired'); notify(); }
     else if (event.event === 'state' && event.state === 'disconnected') { outputCapture.stop({ reason: 'native-connection-retired', hostTimeMs: client.now() }); ingress.clearGrants(); controllerPolicies.forget(); grants.clear(); controllerChanges.clear(); groupInvalidations.clear(); receivedContexts.clear(); inventory = null; notify(); }
+    else if (event.event === 'clock-epoch-retired') { for (const owner of grants.values()) if (owner.direction === 'output') void api.invalidateDeviceState(owner.grant, event.reason || 'native-clock-epoch-retired').catch(error => api.quarantineDeviceState(owner.grant, error.message)); notify(); }
+    else if (event.event === 'clock-updated') notify();
     else if (event.event === 'ports-changed') { inventory = null; notify(); }
     else if (event.event === 'grant-groups-retired' || event.event === 'receipt' && event.kind === 'revalidated-groups') updateGrantGroups(event);
     else if (event.event === 'native-driver-observation') acceptDriverObservation(event);
@@ -135,6 +137,10 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       } finally { try { if (!published) reservation?.release(); } finally { lease.release(); } }
     },
     stopOutputCapture() { const grant = outputCapture.state().capture?.grant; return outputCapture.stop({ reason: 'explicit-stop', hostTimeMs: client.now(), finalOwnedNotes: grant != null && [...performanceOwners].every(owner => owner.isQuiescent(grant) === true) ? 'empty-at-quiescent-boundary' : 'unknown-at-capture-stop' }); },
+    async setTimingPolicy(policy) {
+      if ([...grants.values()].some(owner => owner.direction === 'output' && [...performanceOwners].some(performance => performance.isQuiescent(owner.grant) !== true))) throw new Error('Stop native performance before changing its clock operating budget');
+      client.setTimingPolicy(policy); return client.synchronizeClock();
+    },
     registerPerformanceOwner(owner) { if (disposed || performanceOwners.size >= 8 || typeof owner?.isQuiescent !== 'function') throw new Error('Native performance owner capacity'); performanceOwners.add(owner); return () => performanceOwners.delete(owner); },
     allowsPerformance(grant) { return !disposed && !unsupportedTiming(grants.get(grant)) && !observationHolds.has(grant) && !deviceInvalidations.has(grant); },
     allowsOrdinaryInput() { return !disposed && observationHolds.size === 0; },

@@ -10768,3 +10768,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Capture a complete owned effect graph: fractional-delay and alignment rings, nonlinear/ADAA/resampling history, envelopes, spectral analysis, shared network/membrane fields and finite-exciter queues, host controls, gain ramps, output frame and taps. Restore only into a fresh unpublished graph and quarantine a failed staged component.
 - Preserve captured effect command cursors, lifecycle ramps/retirement and both retained graph revisions through a history cut. Bind these to the source kernel, future intent cursor, command sequences and lane-routing masks at one actual output frame in the existing causal render restoration path.
 - Admit combined snapshot/clone overlap before allocation; replace source/effects together only after successful staging, preserve immutable asset sharing and clear temporary transfers. Native convolution remains explicit complete-history preroll, not an exact node checkpoint. Live multi-node capture and seek publication remain separate production work; PCM equivalence qualification stays deferred. Formatting and critical/boundary typechecks only; no functional tests.
+
+
+### 2026-11-06 — Rook continuation509: affine native clocks and bounded output lookahead
+
+- Replace best-offset-only correlation with a bounded low-roundtrip affine clock estimate, drift/rate uncertainty, mapping revisions and validity epochs. Preserve the source physical target and exact projection in submission provenance; SDK acceptance remains separate from receiver/acoustic timing.
+- Retire owned native performance on clock expiry, invalid observations, regression or domain discontinuity; normal fitted revisions never move a deadline already submitted. Preserve independent bridge, musical-clock and controller health semantics.
+- Add explicit stopped-performance uncertainty/lookahead budgets and compact epoch/drift/uncertainty status. Hold browser batches outside the selected native lookahead while keeping cancellation active; the companion remains the sole SDK deadline authority.
+- Release actor controller contributions at their actual source end rather than a later one-shot note-tail deadline. Formatting only; drift, suspension and timing distribution qualification remain deferred with all functional tests.

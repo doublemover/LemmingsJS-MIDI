@@ -366,13 +366,14 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       const tail = options?.mode === 'one-shot' ? options.tailSeconds : 0;
       if (!Number.isFinite(tail) || tail < 0 || tail > 1.9) return reject('native-release-tail-outside-horizon');
       const releaseTarget = Math.max(Math.round(now() * 1000), targetMicroseconds + Math.round(tail * 1000000));
+      const controlTarget = Math.max(Math.round(now() * 1000), targetMicroseconds);
       const releaseWords = entry.route.piano ? pianoNoteWords(entry.route, entry.route.piano, entry.intent, entry.note, entry.pitch, true) : entry.route.orchestral ? orchestralRelease(entry.route.orchestral, { ...entry.route, note: entry.note }, entry.intent.orchestralArticulation) : noteWords(entry.route, 'noteOff', entry.note, entry.percussion?.releaseVelocity01 ?? 0);
       let pianoUpdate = null;
-      if (entry.pianoPart) { entry.pianoPart.contributors.delete(voiceId); pianoUpdate = pianoWords(entry.pianoPart, laneFor(entry.laneId) || { pianoControls: { sustain01: 0, sostenuto01: 0, unaCorda01: 0 } }, releaseTarget, { force: !entry.pianoPart.contributors.size, sampleSource: true }); }
+      if (entry.pianoPart) { entry.pianoPart.contributors.delete(voiceId); pianoUpdate = pianoWords(entry.pianoPart, laneFor(entry.laneId) || { pianoControls: { sustain01: 0, sostenuto01: 0, unaCorda01: 0 } }, controlTarget, { force: !entry.pianoPart.contributors.size, sampleSource: true }); }
       const deviceUpdate = entry.wireOwner.deviceControllers.removeVoice(voiceId); entry.deviceUpdate = null;
       entry.ending = true; const queued = send(entry, causeIntent || entry.intent, admission, releaseWords, releaseTarget, 0, true);
-      if (pianoUpdate?.words.length) { entry.pianoUpdate = pianoUpdate; send(entry, causeIntent || entry.intent, null, pianoUpdate.words, releaseTarget, Object.values(pianoUpdate.values).every(value => value === 0) ? 0 : 1); }
-      if (deviceUpdate.words.length) { entry.deviceUpdate = deviceUpdate; entry.parameterObservations = deviceUpdate.observations; send(entry, causeIntent || entry.intent, null, deviceUpdate.words, releaseTarget, deviceUpdate.releaseOnly ? 0 : 1); }
+      if (pianoUpdate?.words.length) { entry.pianoUpdate = pianoUpdate; send(entry, causeIntent || entry.intent, null, pianoUpdate.words, controlTarget, Object.values(pianoUpdate.values).every(value => value === 0) ? 0 : 1); }
+      if (deviceUpdate.words.length) { entry.deviceUpdate = deviceUpdate; entry.parameterObservations = deviceUpdate.observations; send(entry, causeIntent || entry.intent, null, deviceUpdate.words, controlTarget, deviceUpdate.releaseOnly ? 0 : 1); }
       if (queued.status !== 'accepted') { entry.ending = false; return queued; }
       return Object.freeze({ status: 'accepted', stage: 'accepted' });
     },

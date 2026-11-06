@@ -1,3 +1,4 @@
+import { createNativeClockMapping } from './NativeClockMapping.js';
 import { NATIVE_MIDI_BRIDGE_PROTOCOL, encodeNativeMidiBatch } from './NativeMidiBridgeProtocol.js';
 
 const bridgeUrl = value => {
@@ -10,9 +11,10 @@ const bridgeUrl = value => {
 const beforeSubmission = reason => Object.assign(new Error(reason), { notSubmitted: true });
 export class NativeMidiBridgeClient {
   #socket = null; #requests = new Map(); #listeners = new Set(); #sequence = 0; #session = 0; #timer = null;
-  #samples = []; #grants = new Map(); #state = 'disconnected'; #capabilities = null; #connect = null; #lastClock = 0;
+  #clock; #grants = new Map(); #state = 'disconnected'; #capabilities = null; #connect = null; #lastClock = 0;
   constructor({ url = (globalThis.location?.protocol === 'https:' ? 'wss:' : 'ws:') + '//127.0.0.1:8765/midi', WebSocketImpl = globalThis.WebSocket, now = () => performance.now() } = {}) {
     this.url = bridgeUrl(url); this.WebSocketImpl = WebSocketImpl; this.now = now;
+    this.#clock = createNativeClockMapping({ now, onRetire: row => { if (this.#session) this.#emit({ event: 'clock-epoch-retired', session: this.#session, ...row }); } });
   }
   setUrl(url) { if (this.#socket) throw new Error('Disconnect before changing the bridge address'); this.url = bridgeUrl(url); }
   get state() { return this.#state; }
@@ -83,14 +85,12 @@ export class NativeMidiBridgeClient {
   async synchronizeClock() {
     const session = this.#session, before = this.now(), row = await this.#request('clock'), after = this.now();
     if (session !== this.#session) throw new Error('Clock session retired');
-    if (row.kind !== 'clock' || row.domain !== 'companion-steady-microseconds' || !Number.isSafeInteger(row.nativeMonoUs) || row.nativeMonoUs < 0 || after < before) throw new Error('Native monotonic clock unavailable');
-    const sample = Object.freeze({ offsetUs: row.nativeMonoUs - (before + after) * 500, uncertaintyUs: (after - before) * 500, observedMs: after });
-    this.#samples.push(sample); this.#samples = this.#samples.filter(item => after - item.observedMs <= 5000).slice(-8); this.#lastClock = after; return sample;
+    if (row.kind !== 'clock' || row.domain !== 'companion-steady-microseconds' || !Number.isSafeInteger(row.nativeMonoUs) || row.nativeMonoUs < 0 || after < before) { this.#clock.invalidate('invalid-native-clock-observation'); throw new Error('Native monotonic clock unavailable'); }
+    const mapping = this.#clock.observe({ beforeMs: before, afterMs: after, nativeMonoUs: row.nativeMonoUs });
+    this.#lastClock = after; this.#emit({ event: 'clock-updated', mapping }); return mapping;
   }
-  clockStatus() {
-    const now = this.now(), sample = this.#samples.filter(item => now - item.observedMs <= 5000).sort((a, b) => a.uncertaintyUs - b.uncertaintyUs)[0];
-    return sample ? Object.freeze({ status: sample.uncertaintyUs <= 25000 ? 'synchronized' : 'uncertain', ...sample, domain: 'companion-steady-microseconds' }) : Object.freeze({ status: 'unavailable' });
-  }
+  clockStatus() { return this.#clock.status(); }
+  setTimingPolicy(policy) { return this.#clock.setPolicy(policy); }
   async enumerate() {
     const endpoints = []; let cursor = 0, inventoryEpoch = null;
     do {
@@ -125,14 +125,15 @@ export class NativeMidiBridgeClient {
     if (!this.#grants.has(grant) || this.#grants.get(grant).direction !== 'output') return Promise.reject(beforeSubmission('Native output grant required'));
     if (leasePolicyIds.length && this.#capabilities?.controllerCleanupVersion !== 1) return Promise.reject(beforeSubmission('Native controller cleanup support is required'));
     const clock = this.clockStatus(); if (clock.status !== 'synchronized') return Promise.reject(beforeSubmission('Native clock is stale or uncertain'));
-    const now = this.now(); if (!Number.isFinite(targetTimeMs) || targetTimeMs > now + 1950 || priority !== 0 && targetTimeMs < now - 50) return Promise.reject(beforeSubmission('Native target outside scheduling horizon'));
-    const deadlineUs = Math.round(targetTimeMs * 1000 + clock.offsetUs);
+    const now = this.now(); if (!Number.isFinite(targetTimeMs) || targetTimeMs > now + clock.maximumLookaheadMs || priority !== 0 && targetTimeMs < now - 50) return Promise.reject(beforeSubmission('Native target outside scheduling horizon'));
+    let projected; try { projected = this.#clock.project(targetTimeMs); } catch (error) { return Promise.reject(beforeSubmission(error.message)); }
+    const deadlineUs = projected.deadlineUs; provenance = { ...provenance, timestampMapping: { sourceDomain: 'performance-ms', destinationDomain: clock.domain, epoch: clock.epoch, revision: clock.revision, rate: clock.rate, offsetUs: clock.offsetUs, uncertaintyUs: clock.uncertaintyUs, validUntilMs: clock.validUntilMs, sourceTargetMs: targetTimeMs, deadlineUs, policy: 'native-owned-deadline-queue;SDK-call-receipt-is-not-acoustic-timing' } };
     return this.#request('send', {}, { priority: priority === 0, binary: { grant, execution, deadlineUs, priority, words, provenance, leasePolicyIds }, onReceipt });
   }
   #retire(reason) {
     const socket = this.#socket; if (!socket && !this.#connect) return; this.#socket = null; clearInterval(this.#timer); this.#timer = null;
     for (const request of this.#requests.values()) { clearTimeout(request.timeout); request.reject(new Error(reason)); } this.#requests.clear();
-    this.#connect?.reject(new Error(reason)); this.#connect = null; this.#session = 0; this.#samples = []; this.#grants.clear(); this.#capabilities = null;
+    this.#connect?.reject(new Error(reason)); this.#connect = null; this.#session = 0; this.#clock.clear(); this.#grants.clear(); this.#capabilities = null;
     if (socket && socket.readyState < 2) socket.close(1000, 'Application session retired'); this.#setState('disconnected', reason);
   }
   disconnect() { if (this.#session) this.#request('disconnect', {}, { priority: true }).catch(() => {}); this.#retire('explicit-disconnect'); }
