@@ -59,7 +59,7 @@ export function createMembraneStrikeTransport({ profile, node, context, nodeId, 
     return true;
   };
   return Object.freeze({ enqueue, consume, lastDriveFrame: () => lastDriveFrame,
-    tokenFloor: () => Math.max(0, ...pending.keys()),
+    pendingTokens: () => [...pending.keys()], tokenFloor: () => Math.max(0, ...pending.keys()),
     snapshot(audioFrame) {
       if (blocked) throw failure('body-strike-quarantined', 'Unresolved finite strikes cannot form an exact cut.');
       return validateMembraneStrikeContinuation({ schema: 'lemmings-membrane-strike-cut/v1', audioFrame, pending: [...pending.values()], applied, ended, rejected, lastDriveFrame }, profile, audioFrame);

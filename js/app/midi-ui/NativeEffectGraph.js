@@ -55,7 +55,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   if (prepared.outcome !== 'complete') throw Object.assign(failure('effect-preparation-retirement', 'Effect metadata preparation retirement is unresolved.'), { cause: preparationError, retirement: prepared });
   if (preparationError) throw preparationError;
   const scope = createProcgenRetirementScope({ deadlineMs: offline ? 180000 + initializationTimeoutMs : initializationTimeoutMs + 1000 }), nodes = [], processors = [], impulses = [], instances = new Map(), nodeOutputs = new Map(), inputs = new Map(), outputs = new Map(), sidechainInputs = new Map();
-  let stateOwner = null;
+  let stateOwner = null, stagedHostState = null;
   let disposed = false, controlSequence = 0, initializationConfirmed = false, offlineCompletionConfirmed = false, sidechainsActivated = false, lastInspectionTime = -Infinity, refreshSourcePresence = () => {};
   const audible = new Set([...plan.outputs, ...offlineReturnNodeIds]);
   for (let changed = true; changed;) { changed = false; for (const edge of plan.edges) if (audible.has(edge.to.nodeId) && !audible.has(edge.from.nodeId)) { audible.add(edge.from.nodeId); changed = true; } }
@@ -407,9 +407,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     restoreHost: (state, sourceFrame, activationFrame) => {
       const bodies = processors.filter(entry => entry.strikes);
       if (state?.schema !== 'lemmings-native-effect-host-cut/v1' || state.audioFrame !== sourceFrame || !Array.isArray(state.bodies) || state.bodies.length !== bodies.length || new Set(state.bodies.map(row => row.nodeId)).size !== bodies.length) throw failure('effect-host-cut-inventory', 'The finite body host inventory differs from its exact graph.');
-      for (const entry of bodies) { const row = state.bodies.find(row => row.nodeId === entry.nodeId); if (!row) throw failure('effect-host-cut-inventory', 'A finite body host is missing.'); entry.strikes.restore(row.state, sourceFrame, activationFrame); }
+      for (const entry of bodies) { const row = state.bodies.find(row => row.nodeId === entry.nodeId); if (!row) throw failure('effect-host-cut-inventory', 'A finite body host is missing.'); entry.strikes.restore(row.state, sourceFrame, activationFrame); } stagedHostState = null;
     }, retire: dispose });
-  return Object.freeze({ plan, hash, update, detachState: stateOwner.capture, stageState: stateOwner.stage, captureControlState, restoreControlState, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+  return Object.freeze({ plan, hash, update, detachState: stateOwner.capture, stageState: async (ticket, options) => { const staged = await stateOwner.stage(ticket, options); stagedHostState = ticket.metadata().hostState; return staged; }, captureControlState, restoreControlState, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     reconcileSourcePresence: () => { checkPublication(); refreshSourcePresence(); },
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
     isBodyQuarantined: nodeId => processors.find(processor => processor.nodeId === nodeId && ['rectangular-membrane', 'sympathetic-network', 'paired-modal-body', 'resonator-blend-body'].includes(processor.kind))?.health?.muted === true,
@@ -421,7 +421,8 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (!processor || processor.health?.muted) throw failure('stale-prepared-body', 'The exact finite-strike body is unavailable.');
       return processor.strikes.enqueue(command);
     },
-    bodyStrikeTokenFloor: nodeId => processors.find(entry => entry.nodeId === nodeId)?.strikes?.tokenFloor() || 0,
+    bodyPendingStrikeTokens: nodeId => stagedHostState?.bodies.find(row => row.nodeId === nodeId)?.state.pending.map(record => record.command.token) || processors.find(entry => entry.nodeId === nodeId)?.strikes?.pendingTokens() || [],
+    bodyStrikeTokenFloor: nodeId => Math.max(0, ...(stagedHostState?.bodies.find(row => row.nodeId === nodeId)?.state.pending.map(record => record.command.token) || []), processors.find(entry => entry.nodeId === nodeId)?.strikes?.tokenFloor() || 0),
     lastBodyDriveFrame: () => Math.max(0, ...processors.map(entry => entry.strikes?.lastDriveFrame() || 0)),
     panicBody(nodeId) {
       stateOwner.assertMutable();

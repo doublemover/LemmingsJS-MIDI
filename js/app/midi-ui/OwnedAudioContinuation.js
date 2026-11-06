@@ -26,12 +26,12 @@ const releaseTickets = async (entry, ticket) => {
   if (receipt?.outcome && receipt.outcome !== 'complete') throw Object.assign(failure('prepared-audio-retirement-unresolved'), { retirement: receipt });
 };
 
-export async function captureOwnedAudioContinuation({ context, sources, rack = null, graphRevision, semanticBoundary = null, signal, timeoutMs = 30000, assertCoverage = () => {} } = {}) {
+export async function captureOwnedAudioContinuation({ context, sources, rack = null, graphRevision, semanticBoundary = null, captureBindings = null, signal, timeoutMs = 30000, assertCoverage = () => {} } = {}) {
   sourceInventory(sources, 'detachSourceState');
   if (context?.state !== 'running' || !Number.isSafeInteger(graphRevision) || graphRevision < 0 || graphRevision > 0xffffffff ||
-      !sources.length && !rack || rack && typeof rack.detachState !== 'function' || typeof assertCoverage !== 'function') throw failure('running-owned-audio-cone-required');
+      !sources.length && !rack || rack && typeof rack.detachState !== 'function' || typeof assertCoverage !== 'function' || captureBindings !== null && typeof captureBindings !== 'function') throw failure('running-owned-audio-cone-required');
   const controller = new AbortController(), unlink = linkAbort(signal, controller), target = deferred(), effectsDetached = deferred(), grids = new Map();
-  const operations = [], expected = sources.length + (rack ? 1 : 0); let audioFrame = null;
+  const operations = [], expected = sources.length + (rack ? 1 : 0); let audioFrame = null, bindingState = null;
   const select = id => incoming => {
     controller.signal.throwIfAborted(); assertCoverage();
     if (grids.has(id)) throw failure('duplicate-producer-cut-offer');
@@ -46,7 +46,7 @@ export async function captureOwnedAudioContinuation({ context, sources, rack = n
   try {
     assertCoverage(); controller.signal.throwIfAborted();
     if (rack) {
-      const promise = observeFailure(Promise.resolve().then(() => rack.detachState({ signal: controller.signal, timeoutMs, selectTargetAudioFrame: select('rack') })).then(cut => { effectsDetached.resolve(); return cut; }));
+      const promise = observeFailure(Promise.resolve().then(() => rack.detachState({ signal: controller.signal, timeoutMs, selectTargetAudioFrame: select('rack'), beforeProducerRetire: frontier => { assertCoverage(); bindingState = captureBindings ? cloneData(captureBindings(frontier), { maxBytes: 2 * 1048576, maxNodes: 131072 }) : null; } })).then(cut => { effectsDetached.resolve(); return cut; }));
       operations.push({ kind: 'rack', promise });
     } else effectsDetached.resolve();
     for (const source of sources) operations.push({ kind: 'source', sourceId: source.sourceId,
@@ -60,7 +60,8 @@ export async function captureOwnedAudioContinuation({ context, sources, rack = n
       controller.signal.throwIfAborted(); await retireSources(sources); assertCoverage();
       for (const row of ownedSources) if (row.cut.metadata().audioFrame !== audioFrame || row.cut.metadata().cut.sampleRate !== context.sampleRate || row.cut.metadata().cut.graphRevision !== graphRevision) throw failure('source-cut-common-frontier-differs');
       if (rackResult && rackResult.metadata().audioFrame !== audioFrame) throw failure('rack-cut-common-frontier-differs');
-      let metadata = cloneData({ schema: 'lemmings-owned-audio-cut/v1', audioFrame, sampleRate: context.sampleRate, graphRevision, semanticBoundary,
+      if (!rack && captureBindings) bindingState = cloneData(captureBindings({ audioFrame, sampleRate: context.sampleRate, graphHash: null, hostState: null, controlState: null }), { maxBytes: 2 * 1048576, maxNodes: 131072 });
+      let metadata = cloneData({ schema: 'lemmings-owned-audio-cut/v1', audioFrame, sampleRate: context.sampleRate, graphRevision, semanticBoundary, bindings: bindingState,
         sources: ownedSources.map(row => ({ sourceId: row.sourceId, runtime: row.cut.metadata().runtime, sourceFrame: row.cut.metadata().cut.frame })),
         rack: rackResult?.metadata() || null, scope: 'owned-source-and-creative-rack;shared-master-protection-excluded', validation: 'common-frame-cut-awaiting-worker-validation',
         semanticCoverage: semanticBoundary === null ? 'separate-semantic-checkpoint-required' : 'caller-declared-semantic-boundary;not-physics-hash-proof', qualification: 'awaiting-consolidated-validation' }, { maxBytes: 2 * 1048576, maxNodes: 131072 });
@@ -102,12 +103,12 @@ export async function prepareOwnedAudioContinuation({ cut, sources, jobs, resour
   } catch (error) { try { await releaseTickets(entry, ticket); } catch (retirementError) { error.retirementError = retirementError; } throw error; }
 }
 
-export async function restoreOwnedAudioContinuation({ continuation, context, sources, stageRack = null, signal, isCurrent = () => true, beforeArm = () => {}, timeoutMs = 30000 } = {}) {
+export async function restoreOwnedAudioContinuation({ continuation, context, sources, stageRack = null, signal, isCurrent = () => true, beforeArm = () => {}, restoreBindings = null, timeoutMs = 30000 } = {}) {
   sourceInventory(sources, 'restoreSourceState');
   const entry = tickets.get(continuation);
   if (!entry || entry.released || entry.busy || context?.state !== 'running' || context.sampleRate !== entry.metadata.sampleRate ||
       sources.length !== entry.sources.length || sources.some(row => !entry.sources.some(input => input.sourceId === row.sourceId)) ||
-      entry.rack && typeof stageRack !== 'function' || typeof beforeArm !== 'function' || typeof isCurrent !== 'function' || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 60000) throw failure('fresh-matching-audio-destinations-required');
+      entry.rack && typeof stageRack !== 'function' || typeof beforeArm !== 'function' || entry.metadata.bindings !== null && entry.metadata.bindings !== undefined && typeof restoreBindings !== 'function' || restoreBindings !== null && typeof restoreBindings !== 'function' || typeof isCurrent !== 'function' || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 60000) throw failure('fresh-matching-audio-destinations-required');
   entry.busy = true;
   const controller = new AbortController(), unlink = linkAbort(signal, controller), planned = deferred(), ready = deferred(), effectsActive = deferred(), grids = new Map(), armed = new Set();
   let rack = null, audioFrame = null, failed = false;
@@ -120,8 +121,10 @@ export async function restoreOwnedAudioContinuation({ continuation, context, sou
     if (armed.has(id)) throw failure('duplicate-source-activation-barrier'); armed.add(id);
     if (armed.size === Math.max(1, entry.sources.length)) void (async () => {
       try {
-        check(); await beforeArm(Object.freeze({ audioFrame, sourceAudioFrame: entry.metadata.audioFrame, sampleRate: context.sampleRate,
-          ownerRouteRevision: rack?.ownerRouteRevision ?? null, sourceOwnerRouteRevision: entry.rack?.state.sourceOwnerRouteRevision ?? null }));
+        check(); const frontier = Object.freeze({ audioFrame, sourceAudioFrame: entry.metadata.audioFrame, sampleRate: context.sampleRate,
+          ownerRouteRevision: rack?.ownerRouteRevision ?? null, sourceOwnerRouteRevision: entry.rack?.state.sourceOwnerRouteRevision ?? null });
+        if (entry.metadata.bindings != null) await restoreBindings(entry.metadata.bindings, frontier);
+        await beforeArm(frontier);
         check();
         if (audioFrame < Math.ceil((context.currentTime + 0.02) * context.sampleRate)) throw failure('audio-activation-frontier-missed');
         const activation = rack ? rack.activate(audioFrame) : Promise.resolve(null);

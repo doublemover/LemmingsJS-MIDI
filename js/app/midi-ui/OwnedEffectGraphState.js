@@ -58,8 +58,8 @@ export function createOwnedEffectGraphState({ context, resources, owner, generat
   const capture = (options = {}) => {
     let op;
     try {
-      op = start('capture', options); op.targetAudioFrame = options.targetAudioFrame ?? null; op.selectTargetAudioFrame = options.selectTargetAudioFrame ?? null; op.onTargetAudioFrame = options.onTargetAudioFrame ?? null;
-      if (op.selectTargetAudioFrame !== null && typeof op.selectTargetAudioFrame !== 'function' || op.onTargetAudioFrame !== null && typeof op.onTargetAudioFrame !== 'function') throw fail('invalid-effect-cut-negotiator');
+      op = start('capture', options); op.targetAudioFrame = options.targetAudioFrame ?? null; op.selectTargetAudioFrame = options.selectTargetAudioFrame ?? null; op.onTargetAudioFrame = options.onTargetAudioFrame ?? null; op.beforeProducerRetire = options.beforeProducerRetire ?? null;
+      if (op.selectTargetAudioFrame !== null && typeof op.selectTargetAudioFrame !== 'function' || op.onTargetAudioFrame !== null && typeof op.onTargetAudioFrame !== 'function' || op.beforeProducerRetire !== null && typeof op.beforeProducerRetire !== 'function') throw fail('invalid-effect-cut-negotiator');
       if (op.targetAudioFrame !== null && !natural(op.targetAudioFrame)) throw fail('invalid-effect-cut-frame');
       for (const row of op.rows.values()) row.processor.node.port.postMessage({ type: 'effect-state-offer', effectStateProtocol: PROTOCOL, requestId: op.id });
       if (!op.rows.size) beginCapture(op);
@@ -98,6 +98,7 @@ export function createOwnedEffectGraphState({ context, resources, owner, generat
       const metadata = freezeData(bounded({ schema: 'lemmings-live-effect-cut/v1', graphHash: hash, sampleRate: context.sampleRate, audioFrame: op.targetAudioFrame,
         controlState: op.controlCut.value(), hostState: captureHost(op.targetAudioFrame), validation: 'captured-awaiting-independent-validation',
         sourceCoverage: 'separate-common-frame-source-cut-required', nativeHiddenState: false, portableNodeReferences: false }));
+      op.beforeProducerRetire?.(Object.freeze({ audioFrame: op.targetAudioFrame, sampleRate: context.sampleRate, graphHash: hash, hostState: metadata.hostState, controlState: metadata.controlState }));
       let components = [...op.rows.values()].map(row => row.component), image = metadata;
       op.retiring = true; const receipt = retire(); await receipt?.completion;
       if (receipt?.outcome !== 'complete') throw Object.assign(fail('effect-cut-producer-retirement-unresolved'), { retirement: receipt });

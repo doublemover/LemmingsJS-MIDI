@@ -157,6 +157,37 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     if (!surface || surface.surfaceMap.boundTopologyRevision !== previousTerrainRevision) throw new Error('The named surface map is missing or differs from the observed terrain revision.');
     return preparedBodies().bind({ ...options, preparationKinds: [...new Set(surface.preparations.map(preparation => preparation.kind))], lossMaskIds: surface.preparations.filter(preparation => preparation.kind === 'mode-loss').map(preparation => preparation.lossMaskId), surfaceRevision: surface.revision, surfaceMap: surface.surfaceMap, executionEpoch, worldId: previousWorldId, generation: previousGeneration });
   };
+  const capturePreparedBodyContinuation = ({ audioFrame, sampleRate, hostState = null }) => {
+    const preparedBodies = surfaceBodies?.snapshot({ audioFrame, sampleRate }) || null, finiteSources = bodyBackend?.snapshot({ audioFrame, sampleRate }) || null;
+    if (finiteSources?.pending.length) {
+      const actual = new Map((hostState?.bodies || []).map(row => [row.nodeId, new Set(row.state.pending.map(record => record.command.token))]));
+      for (const record of finiteSources.pending) if (!actual.get(record.body.nodeId)?.delete(record.token)) throw new Error('The finite source has no matching exciter in the common body image.');
+      if ([...actual.values()].some(tokens => tokens.size)) throw new Error('The body image contains finite exciters without captured semantic ownership.');
+    }
+    return preparedBodies || finiteSources?.pending.length || finiteSources?.gates.length ? { schema: 'lemmings-physical-body-continuation/v1', preparedBodies, finiteSources } : null;
+  };
+  const prepareRestorationExecution = ({ worldId = null, generation = null, fromExecutionEpoch = null } = {}) => {
+    if (disposed || executionEpoch !== null || previousGeneration !== null || typeof worldId !== 'string' || !worldId || !Number.isSafeInteger(generation) || generation < 0 || !Number.isSafeInteger(executionSerial + 2)) throw new Error('Prepare a continuation execution only in a fresh physical playback owner.');
+    executionSerial++; let epoch = worldId + ':' + generation + ':' + executionSerial;
+    if (epoch === fromExecutionEpoch) epoch = worldId + ':' + generation + ':' + (++executionSerial);
+    executionEpoch = /** @type {import('./AudioClockContracts.js').ExecutionEpoch} */ (epoch); previousWorldId = worldId; previousGeneration = generation; effectClockAnchor = null;
+    clock.invalidate(); anchoredEpoch = null; anchoredBpm = null;
+    return Object.freeze({ executionEpoch: epoch, worldId, generation });
+  };
+  const restorePreparedBodyContinuation = async (state, { audioFrame = null, sampleRate = null, isCurrent = () => true } = {}) => {
+    if (state === null) return null;
+    if (state?.schema !== 'lemmings-physical-body-continuation/v1' || !executionEpoch || state.preparedBodies &&
+        (state.preparedBodies.worldId !== previousWorldId || state.preparedBodies.generation !== previousGeneration) || (state.finiteSources?.executions.length || 0) > 1) throw new Error('The body continuation requires its matching fresh physical execution.');
+    const restored = await preparedBodies().restore(state.preparedBodies, { executionEpoch, audioFrame, sampleRate, isCurrent });
+    const executionBindings = [];
+    for (const source of state.finiteSources?.executions || []) {
+      if (source.generation !== previousGeneration) throw new Error('A finite source belongs to another semantic generation.');
+      const binding = dispatcher.prepareRestoredExecution('physical-shared-body', { executionEpoch, generation: previousGeneration });
+      executionBindings.push({ fromExecutionEpoch: source.executionEpoch, execution: binding.execution });
+    }
+    const finite = state.finiteSources ? bodyBackend.restore(state.finiteSources, { bodyInstances: restored.bodyInstances, executionBindings, audioFrame, sampleRate, isCurrent }) : null;
+    return Object.freeze({ preparedBodies: restored, finiteSources: finite, outputRequested: false });
+  };
   const setEffectBypass = (mode, expected) => { const state = session?.getEffectPerformanceState?.(), result = session?.setEffectBypass?.(mode, expected); if (result) captureEffect('bypass', state, { mode }); return result; };
   const travelEffects = createTravelEffectMotion({ resourceBudget, update: updateEffectGraph,
     bypass: setEffectBypass, toFrame: clock.toTargetFrame, onReceipt });
@@ -335,7 +366,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))
     ]);
   };
-  return { engine, processBatch, stop, dispose,
+  return { engine, processBatch, stop, dispose, capturePreparedBodyContinuation, prepareRestorationExecution, restorePreparedBodyContinuation,
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
     isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, synchronizePerformance,
     performanceView: laneId => Object.freeze({ status: lastPerformancePublication?.status || 'unavailable', acousticReceipt: false, outcomes: Object.freeze((lastPerformancePublication?.outcomes || []).filter(outcome => outcome.laneId === laneId)) }), travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: externalEnabled() || permitted() && !!session?.getState().enabled }),

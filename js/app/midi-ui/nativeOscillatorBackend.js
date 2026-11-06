@@ -138,7 +138,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (!validVoiceTransition(intent?.voiceTransition)) return failure('invalid-voice-transition', intent);
     if (disposed) return failure('disposed', intent);
     if (!prepared) return failure('patch-unprepared', intent);
-    if (!preview._ownerReady(owner)) return failure('audio-not-ready', intent);
+    if (!preview._ownerReady(owner) || preview._ownerTransferPending?.(owner)) return failure('audio-not-ready', intent);
     if (intent?.version !== 1 || intent.kind !== 'begin' || typeof intent.voiceId !== 'string' || !intent.voiceId || intent.voiceId.length > 512 ||
         !Number.isSafeInteger(intent.generation) || intent.generation < 0 || !Number.isFinite(intent.velocity01) || intent.velocity01 < 0 || intent.velocity01 > 1 ||
         (intent.sourceEventIds != null && (!Array.isArray(intent.sourceEventIds) || intent.sourceEventIds.length > 8192 ||
@@ -399,7 +399,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     { name: 'leases', run: () => leases.clear() }, { name: 'patch', run: () => { prepared = null; } }
   ]);
   return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updatePerformance, updateLaneMix, end, renewExecutionLease, cancelGeneration,
-    cancelGenerationWithReceipt, renderDiagnostics, dispose }, {
+    cancelGenerationWithReceipt, sourceCaptureStatus: () => Object.freeze({ mode: 'unsupported-native-hidden-state', quiescent: voices.size === 0 }), renderDiagnostics, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epoch => !preview._retirementFaults?.has(owner) && ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
     isVoiceSettled: (voiceId, epoch) => !preview._retirementFaults?.has(owner) && !voices.has(keyFor(epoch, voiceId)),

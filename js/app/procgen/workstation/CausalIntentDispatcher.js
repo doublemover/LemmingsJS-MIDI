@@ -191,7 +191,14 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         typeof sink?.backend.observeDisplaySamples !== 'function') throw new Error('The display sink has no active owned execution.');
     return sink.backend.observeDisplaySamples(listener, { ...options, execution: current.execution });
   };
-  return { dispatch, cancelGeneration, renewExecutionLease, observeDisplaySamples, diagnostics, acknowledge: admissions.acknowledge, cancelPendingAdmissions: admissions.sweep, dispose };
+  const prepareRestoredExecution = (sinkId, { executionEpoch: epoch, generation } = {}) => {
+    const sink = sinks.find(sink => sink.id === sinkId);
+    if (disposed || !sink || typeof sink.backend.registerExecution !== 'function' || executions.has(sinkId) || typeof epoch !== 'string' || !epoch || !Number.isSafeInteger(generation) || generation < 0) throw new Error('Restoration requires a fresh named sink execution.');
+    const current = executionFor(sink, epoch, generation);
+    if (!current.execution) throw new Error(current.reason || 'The restored sink did not register its execution.');
+    return Object.freeze({ execution: current.execution, executionEpoch: epoch, generation });
+  };
+  return { prepareRestoredExecution, dispatch, cancelGeneration, renewExecutionLease, observeDisplaySamples, diagnostics, acknowledge: admissions.acknowledge, cancelPendingAdmissions: admissions.sweep, dispose };
 };
 
 export { createCausalIntentDispatcher, createStrictLiveFramePolicy };

@@ -179,6 +179,8 @@ class BrowserNotePreview {
       name: 'Local instrument audio' + (owner == null ? '' : ' (' + owner + ')'), backend: 'semantic-local-instrument' });
   }
 
+  _ownerTransferPending(owner) { return !!this._sessions.get(owner)?.audioOperation; }
+
   _ownerReady(owner) { return this._ready() && !this._retirementFaults.has(owner) && (!this._effectRetirements.has(owner) || this._effectRetirements.get(owner).scope.getReceipt()?.outcome === 'complete') && (owner == null || this._sessions.get(owner)?.enabled === true) &&
     (this._workloadClass(owner) !== 'cue' || this._cueRouting?.state().state === 'playing-route'); }
 
@@ -317,11 +319,11 @@ class BrowserNotePreview {
     };
     const detachAudioState = options => runContinuation('capturing', options, async operation => {
       const { captureOwnedAudioContinuation } = await import('./OwnedAudioContinuation.js');
-      const sources = instrumentSources(), allowed = new Set(sources.map(row => row.backend)), effects = this._channels.get(id + ':0')?.effects, rackState = effects?.state();
+      const registered = instrumentSources(), sources = registered.filter(row => typeof row.backend.detachSourceState === 'function'), excluded = registered.filter(row => !sources.includes(row)), allowed = new Set(registered.map(row => row.backend)), effects = this._channels.get(id + ':0')?.effects, rackState = effects?.state();
       if (rackState && (rackState.preparing || rackState.retiringGraphs || ['staged', 'armed', 'capturing'].includes(rackState.continuation?.phase))) throw new Error('Capture requires a stable rack after retained graph transitions have finished.');
       const assertCoverage = () => {
         operation.signal.throwIfAborted(); if (!operation.isCurrent() || operation.context.state !== 'running') throw new Error('The audio continuation owner changed.');
-        if (instrumentSources().some(row => !allowed.has(row.backend)) || [...this._preparedPreviews].some(entry => entry.owner === id) ||
+        if (excluded.some(row => row.backend.sourceCaptureStatus?.().quiescent !== true) || instrumentSources().some(row => !allowed.has(row.backend)) || [...this._preparedPreviews].some(entry => entry.owner === id) ||
             [...this._voices].some(voice => voice.owner === id && !sources.some(source => source.backend.ownsSourceVoice?.(voice)))) throw new Error('This owner has a native, preview or uncaptured source outside the owned DSP cone.');
       };
       assertCoverage();
@@ -330,7 +332,8 @@ class BrowserNotePreview {
     const restoreAudioState = options => runContinuation('restoring', options, async operation => {
       if (workloadClass !== 'cue' && options.route !== 'owner-live') throw new Error('Use the isolated cue owner for scrub restoration, or explicitly select owner-live routing.');
       const { restoreOwnedAudioContinuation } = await import('./OwnedAudioContinuation.js');
-      const destinations = instrumentSources(), selected = options.sources;
+      const registered = instrumentSources(), destinations = registered.filter(row => typeof row.backend.restoreSourceState === 'function'), selected = options.sources;
+      if (registered.some(row => !destinations.includes(row) && row.backend.sourceCaptureStatus?.().quiescent !== true)) throw new Error('The restore owner has a native or unsupported source that is not quiescent.');
       if (!Array.isArray(selected) || selected.length !== destinations.length || new Set(selected.map(row => row.backend)).size !== destinations.length ||
           destinations.some(row => !selected.some(input => input.backend === row.backend)) || [...this._voices].some(voice => voice.owner === id)) throw new Error('Restoration requires the complete fresh prepared source inventory for this owner.');
       return restoreOwnedAudioContinuation({ ...options, ...operation, stageRack: (continuation, rackState, stageOptions) =>

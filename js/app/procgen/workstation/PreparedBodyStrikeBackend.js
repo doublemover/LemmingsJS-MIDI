@@ -1,3 +1,4 @@
+import { cloneData } from '../../../core/CanonicalData.js';
 import { planPreparedBodyStrike } from '../../../midi/content/PreparedBodyStrike.js';
 import { createAudioIntervalAdmission } from '../../midi-ui/AudioIntervalAdmission.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -40,6 +41,62 @@ export function createPreparedBodyStrikeBackend({ owner, resolveBody, inventory,
     execution.retirement = createProcgenRetirementScope({ deadlineMs: 15000 }).retire([{ name: 'finite-body-source-children', run: () => promise }]); settle(); return execution.retirement;
   };
   return Object.freeze({
+    snapshot({ audioFrame, sampleRate }) {
+      settle();
+      if (disposed || !Number.isSafeInteger(audioFrame) || audioFrame < 0 || ![44100, 48000, 96000].includes(sampleRate)) throw new Error('Finite sources require a current shared audio frontier.');
+      return cloneData({ schema: 'lemmings-finite-body-source-cut/v1', audioFrame, sampleRate, sequence,
+        executions: [...executions].map(execution => ({ executionEpoch: execution.executionEpoch, generation: execution.generation, closed: execution.closed })),
+        pending: [...pending].filter(([, record]) => record.end > audioFrame).map(([token, record]) => ({ token, body: record.body, plan: record.plan, batchId: record.batchId, start: record.start, end: record.end, renderCost: record.renderCost,
+          executionEpoch: record.execution.executionEpoch, generation: record.execution.generation })),
+        gates: [...gates].map(([key, gate]) => ({ key, bodyInstanceId: gate.bodyInstanceId, executionEpoch: gate.execution.executionEpoch, generation: gate.execution.generation }))
+      }, { maxBytes: 2 * 1048576, maxNodes: 131072 });
+    },
+    restore(raw, { bodyInstances, executionBindings, audioFrame, sampleRate, isCurrent = () => true } = {}) {
+      if (disposed || pending.size || gates.size || sequence || !Array.isArray(bodyInstances) || !Array.isArray(executionBindings)) throw new Error('Restore finite sources only into fresh prepared execution owners.');
+      const state = cloneData(raw, { maxBytes: 2 * 1048576, maxNodes: 131072 }), natural = value => Number.isSafeInteger(value) && value >= 0, text = value => typeof value === 'string' && value.length > 0 && value.length <= 2048;
+      if (state.schema !== 'lemmings-finite-body-source-cut/v1' || !natural(state.audioFrame) || !natural(audioFrame) || state.sampleRate !== sampleRate ||
+          ![44100, 48000, 96000].includes(sampleRate) || !natural(state.sequence) || !Array.isArray(state.executions) || state.executions.length > 16 ||
+          !Array.isArray(state.pending) || state.pending.length > 544 || !Array.isArray(state.gates) || state.gates.length > 512 ||
+          executionBindings.length !== state.executions.length || executions.size !== state.executions.length) throw new Error('Invalid finite-source continuation inventory.');
+      const byOld = new Map(), newEpochs = new Set(), replacementBodies = new Map(bodyInstances.map(body => [body.fromBodyInstanceId, body])), targets = inventory(), nextPending = new Map(), nextGates = new Map();
+      for (const saved of state.executions) {
+        const binding = executionBindings.find(binding => binding.fromExecutionEpoch === saved.executionEpoch), execution = binding?.execution;
+        if (!text(saved.executionEpoch) || !natural(saved.generation) || typeof saved.closed !== 'boolean' || !execution || !valid(execution) || execution.generation !== saved.generation ||
+            execution.executionEpoch === saved.executionEpoch || newEpochs.has(execution.executionEpoch) || byOld.has(saved.executionEpoch)) throw new Error('Every finite-source epoch needs a distinct current opaque execution binding.');
+        byOld.set(saved.executionEpoch, execution); newEpochs.add(execution.executionEpoch);
+      }
+      const shift = audioFrame - state.audioFrame;
+      for (const saved of state.pending) {
+        const execution = byOld.get(saved.executionEpoch), identity = replacementBodies.get(saved.body?.bodyInstanceId), target = identity && targets.find(target => targetKey(target) === targetKey(identity));
+        const plan = saved.plan, command = plan?.command, source = plan?.source, pulse = target?.pulses?.[command?.pulseIndex], start = saved.start + shift, end = saved.end + shift;
+        if (!execution || execution.generation !== saved.generation || !identity || !target || target.quarantined || !target.pendingStrikeTokens?.includes(saved.token) ||
+            !natural(saved.token) || saved.token < 1 || saved.token > state.sequence || nextPending.has(saved.token) || !command || command.token !== saved.token || command.frame !== saved.start ||
+            !pulse || !Number.isInteger(command.pulseIndex) || ![command.x01, command.y01, command.amplitude01].every(value => Number.isFinite(value) && value >= 0 && value <= 1) ||
+            !natural(saved.start) || saved.end !== saved.start + pulse.frames || saved.end !== plan.endFrame || saved.end <= state.audioFrame || !natural(start) || !natural(end) ||
+            !source || source.bodyInstanceId !== saved.body.bodyInstanceId || source.generation !== saved.generation || source.worldId !== identity.worldId || source.generation !== identity.generation ||
+            source.surfaceId !== identity.surfaceId || source.surfaceRevision !== identity.surfaceRevision || source.mapId !== identity.surfaceMap.id || source.mapRevision !== identity.surfaceMap.revision ||
+            !natural(source.actorId) || ['intentId', 'voiceId', 'onsetId', 'contactInstanceId'].some(key => !text(source[key])) || source.pitchPolicy !== 'fixed-prepared-body' ||
+            !Array.isArray(source.sourceEventIds) || !source.sourceEventIds.length || source.sourceEventIds.length > 16 || source.sourceEventIds.some(id => !text(id)) || !text(saved.batchId) || saved.renderCost !== 1) throw new Error('A continuing finite exciter differs from its staged body, source identity or exact remaining pulse.');
+        const body = Object.freeze({ ...identity, pulses: target.pulses, sampleRate, pendingStrikeTokens: target.pendingStrikeTokens, strikeTokenFloor: target.strikeTokenFloor || 0 });
+        nextPending.set(saved.token, { body, plan: cloneData({ command: { ...command, frame: start }, endFrame: end, source: { ...source, bodyInstanceId: identity.bodyInstanceId } }),
+          execution, batchId: saved.batchId, start, end, renderCost: 1 });
+      }
+      for (const saved of state.gates) {
+        const execution = byOld.get(saved.executionEpoch); let key; try { key = JSON.parse(saved.key); } catch { throw new Error('Invalid finite-source semantic gate.'); }
+        if (!execution || execution.generation !== saved.generation || !Array.isArray(key) || key.length !== 3 || key[0] !== saved.executionEpoch || key[1] !== saved.generation || !text(key[2]) || !/^[a-f0-9]{64}$/.test(saved.bodyInstanceId)) throw new Error('Invalid continued finite-source semantic gate.');
+        const mappedKey = gateKey(key[2], execution);
+        if (nextGates.has(mappedKey)) throw new Error('Aliased finite-source semantic gate.');
+        nextGates.set(mappedKey, { execution, bodyInstanceId: replacementBodies.get(saved.bodyInstanceId)?.bodyInstanceId || saved.bodyInstanceId });
+      }
+      if (!isCurrent() || disposed) throw new Error('Finite source restoration was superseded.');
+      storage.resize(nextPending.size ? 12 * 1048576 : 32768);
+      for (const [token, record] of nextPending) pending.set(token, record);
+      for (const [key, gate] of nextGates) gates.set(key, gate);
+      sequence = state.sequence;
+      for (const saved of state.executions) byOld.get(saved.executionEpoch).closed = saved.closed;
+      settle();
+      return Object.freeze({ pendingExciters: pending.size, semanticGates: gates.size, commandRetransmissions: 0, freshExecutions: byOld.size });
+    },
     registerExecution({ executionEpoch, generation }) {
       settle(); if (disposed || executions.size >= 16 || typeof executionEpoch !== 'string' || !executionEpoch || !Number.isSafeInteger(generation) || generation < 0) return { status: 'rejected', reason: 'body-execution-unavailable' };
       const execution = { executionEpoch, generation, closed: false }; executions.add(execution); return { status: 'accepted', execution };
