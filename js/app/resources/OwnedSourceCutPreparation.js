@@ -10,10 +10,10 @@ const natural = (value, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(v
 const equal = (left, right) => canonicalDataText(left, { maxBytes: 1048576, maxNodes: 100000 }).text === canonicalDataText(right, { maxBytes: 1048576, maxNodes: 100000 }).text;
 export async function prepareOwnedSourceCut({ definition, descriptor, metadata, bytes, pcm = null }, { signal, yieldControl = () => Promise.resolve(), maxWorkingBytes = 128 * 1048576 } = {}) {
   const profile = getOwnedSourceProfile(descriptor?.engineId), patch = validateInstrumentPatchV2(definition, descriptor), cut = metadata?.cut, host = metadata?.host;
-  if (metadata?.schema !== 'lemmings-live-source-cut/v1' || metadata.sourceClock !== 'frozen-at-detached-block-boundary' || metadata.effects !== 'not-included-source-cut-only' || !cut || !host ||
+  if (metadata?.schema !== 'lemmings-live-source-cut/v1' || metadata.sourceClock !== 'frozen-at-detached-block-boundary' || metadata.effects !== 'not-included-source-cut-only' || !cut || !host || host.frameDomain !== 'source-continuation-frame' ||
       ![44100, 48000, 96000].includes(cut.sampleRate) || !natural(cut.frame) || !natural(cut.maxVoices, profile.voices) || cut.maxVoices < 1 || !natural(cut.graphRevision, 0xffffffff) ||
       cut.engineArtifactHash !== descriptor.artifactHash || cut.patchDefinitionHash !== await hashData(definition) || host.engineId !== profile.id || host.patchId !== patch.id || host.patchRevision !== patch.revision ||
-      !['engineId', 'engineVersion', 'buildId', 'runtimeABI', 'stateTransferProtocol'].every(key => host.runtime?.[key] === profile.runtime[key]) || !equal(metadata.runtime, { engineArtifactHash: cut.engineArtifactHash, patchDefinitionHash: cut.patchDefinitionHash, graphRevision: cut.graphRevision }) ||
+      !['engineId', 'engineVersion', 'buildId', 'runtimeABI', 'stateTransferProtocol', 'stateRestoreProtocol'].every(key => host.runtime?.[key] === profile.runtime[key]) || !equal(metadata.runtime, { engineArtifactHash: cut.engineArtifactHash, patchDefinitionHash: cut.patchDefinitionHash, graphRevision: cut.graphRevision }) ||
       !(bytes instanceof Uint8Array) || !(bytes.buffer instanceof ArrayBuffer) || bytes.byteOffset || bytes.byteLength !== bytes.buffer.byteLength || bytes.length !== cut.bytes || bytes.length > 16 * 1048576)
     fail('exact pinned engine, patch, rate, graph and source cut are required');
   signal?.throwIfAborted();
@@ -35,6 +35,7 @@ export async function prepareOwnedSourceCut({ definition, descriptor, metadata, 
   const observed = new Set();
   for (const command of host.inFlight) { const packet = commands.get(command.sequence); if (!packet || observed.has(command.sequence) || command.opcode !== packet[3] || command.frame !== packet[1] || !Array.isArray(command.data) || command.data.length !== kernel.width || command.data.some((value, index) => value !== packet[index])) fail('producer future commands differ from the render cut'); observed.add(command.sequence); }
   if (observed.size !== commands.size) fail('future source commands lack producer ownership');
+  for (const sequence of commands.keys()) if (sequence > host.commandSequence) fail('future source sequence exceeds the producer frontier');
   const slots = new Set(), voices = new Set(), performance = profile.extended ? compileInstrumentPerformance(patch, profile.parameters) : null;
   for (const voice of host.voices) {
     const slot = voice.slot, at = slot * 28, pending = pendingOnsets.get(slot), token = kernel.active[slot] ? kernel.voice[at + 2] : pending?.[5], epoch = kernel.active[slot] ? kernel.voice[at] : pending?.[0], generation = kernel.active[slot] ? kernel.voice[at + 1] : pending?.[17];
@@ -44,14 +45,15 @@ export async function prepareOwnedSourceCut({ definition, descriptor, metadata, 
     if (![voice.start, voice.releaseAt, voice.end, voice.releaseSeconds, voice.baseFrequency, voice.velocityGain, voice.expressionPan, voice.mixPan].every(Number.isFinite) || voice.start < 0 || voice.releaseAt < voice.start || voice.end < voice.releaseAt || voice.releaseSeconds < 0 || voice.releaseSeconds > 4 || voice.velocityGain < 0 || voice.velocityGain > 1 || Math.abs(voice.expressionPan) > 1 || Math.abs(voice.mixPan) > 1 || !natural(voice.performanceFrame) || !natural(voice.physicalFrame)) fail('invalid held producer state');
     if (performance) {
       const initial = performance.resolve(voice.onsetPerformance?.controls, Math.round(voice.start * cut.sampleRate), voice.performanceIdentity);
-      if (!equal(initial.values, voice.onsetPerformance?.values) || !equal(initial.continuousBase, voice.onsetPerformance?.continuousBase) || !Array.isArray(voice.physicalCauses) || voice.physicalCauses.length > 3) fail('onset performance identity differs');
+      if (voice.renderCost !== profile.cost(initial.values) || !equal(initial.values, voice.sourceParameters) || !equal(initial.values, voice.onsetPerformance?.values) || !equal(initial.continuousBase, voice.onsetPerformance?.continuousBase) || !Array.isArray(voice.physicalCauses) || voice.physicalCauses.length > 3) fail('onset performance identity differs');
       const causes = voice.physicalCauses.map(retainInstrumentCause), held = performance.resolveHeld(initial, voice.currentPerformanceControls, voice.performanceIdentity, causes, cut.frame);
       if (!equal(held.values, voice.performanceValues) || !equal(held.continuousBase, voice.continuousBase)) fail('held performance composition differs');
-    } else if (voice.onsetPerformance !== null || voice.currentPerformanceControls !== null) fail('source has no authored performance adapter');
+    } else if (voice.renderCost !== profile.cost(patch.parameters) || voice.onsetPerformance !== null || voice.currentPerformanceControls !== null) fail('source has no authored performance adapter');
     await yieldControl(); signal?.throwIfAborted();
   }
   for (let slot = 0; slot < cut.maxVoices; slot++) if ((kernel.active[slot] || pendingOnsets.has(slot)) && !slots.has(slot)) fail('a rendered voice has no semantic continuation binding');
   let checksum = 2166136261;
   for (let start = 0; start < bytes.length; start += 65536) { for (let index = start, end = Math.min(bytes.length, start + 65536); index < end; index++) checksum = Math.imul(checksum ^ bytes[index], 16777619); await yieldControl(); signal?.throwIfAborted(); }
-  return { schema: 'lemmings-prepared-source-cut/v1', bytes, metadata, transportChecksum32: checksum >>> 0, validation: 'worker-restored-exact-pinned-kernel', stateAbi: restored.abi, sourceFrame: restored.frame };
+  const preparedMetadata = { ...metadata, host: { ...host, voices: host.voices.map(voice => ({ ...voice, renderReleaseStarted: !!kernel.active[voice.slot] && kernel.voice[voice.slot * 28 + 18] > 0 })) } };
+  return { schema: 'lemmings-prepared-source-cut/v1', bytes, metadata: preparedMetadata, transportChecksum32: checksum >>> 0, validation: 'worker-restored-exact-pinned-kernel', stateAbi: restored.abi, sourceFrame: restored.frame };
 }

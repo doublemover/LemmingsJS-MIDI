@@ -165,6 +165,18 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
     ...(typeof backend.updatePhysical === 'function' ? { updatePhysical: (...args) => call('updatePhysical', args, 3) } : {}),
     renewExecutionLease: (...args) => call('renewExecutionLease', args, 1, args[0]),
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count || 0,
+    ...(typeof backend.restoreSourceState === 'function' ? { restoreSourceState(options = {}) {
+      const bindings = [], entries = [], seen = new Set();
+      if (!Array.isArray(options.bindings) || options.bindings.length > 64) return Promise.resolve(rejected('invalid-source-execution-bindings'));
+      for (const binding of options.bindings) {
+        const result = resolve(binding?.execution);
+        if (result.error || !result.entry || typeof binding.fromExecutionEpoch !== 'string' || seen.has(binding.fromExecutionEpoch)) return Promise.resolve(rejected(result.error || 'invalid-source-execution-bindings'));
+        seen.add(binding.fromExecutionEpoch); entries.push(result.entry); bindings.push(Object.freeze({ fromExecutionEpoch: binding.fromExecutionEpoch, epoch: result.epoch, generation: result.entry.handle.generation, publicEpoch: result.entry.handle.executionEpoch }));
+      }
+      const priorCurrent = options.isCurrent;
+      return backend.restoreSourceState({ ...options, bindings: Object.freeze(bindings), isCurrent: () => { sync(); return !disposed && entries.every(entry => entry.state === 'active') && (!priorCurrent || priorCurrent()); } });
+    } } : {}),
+    ...(typeof backend.prepareContinuation === 'function' ? { prepareContinuation: (...args) => backend.prepareContinuation(...args) } : {}),
     ...(typeof backend.detachSourceState === 'function' ? { detachSourceState: options => backend.detachSourceState(options) } : {}),
     ...(typeof backend.inspectSourceState === 'function' ? { inspectSourceState: () => backend.inspectSourceState() } : {}),
     renderDiagnostics: options => Object.freeze({ ...backend.renderDiagnostics(options), executions: diagnostics() }),

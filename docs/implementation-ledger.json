@@ -7789,5 +7789,39 @@
       "Connect coordinated source/effect cuts to canonical take checkpoints and seek/clone UI ownership.",
       "Run the consolidated runtime/audio/browser qualification batch after remaining features are implemented."
     ]
+  },
+  "continuation477": {
+    "date": "2026-11-06",
+    "agent": "rook",
+    "issues": [
+      1138,
+      1018,
+      987,
+      1089
+    ],
+    "scope": "Connect staged source continuations to fresh opaque sink executions, owned voice admission and the actual live worklet protocol.",
+    "implementation": [
+      "Prepared sources expose prepareContinuation, restoreSourceState and source-only exact-snapshot capability with explicit rate/schema/size/qualification boundaries. PCM continuation preparation owns verified private inputs through the worker operation and retires temporary material copies before returning the opaque ticket.",
+      "Restoration accepts fresh current opaque execution handles. It preserves captured generations, numeric source tokens, voice IDs, original onset controls/variation, current held controls, physical causes, source traversal/contact frontiers and future queued commands. It reconstructs execution leases and command credits without resubmitting saved future events or issuing a new note-on.",
+      "Every restored voice acquires shared semantic identity, source-cost/interval admission and owned host storage before activation. Restored metadata stays charged until confirmed renderer retirement. The shared voice finalizer is reused and no longer captures the complete original intent closure. Worklet voice completion follows the kernel acknowledgement rather than a native-envelope approximation.",
+      "Source and audio frame domains are converted only at declared command/receipt/telemetry boundaries. The saved source clock remains intact inside the kernel. Host voice age, release progress and future controls are rebased to the new audio context; historical controls predating that context do not gain an invented display acknowledgement.",
+      "Activation uses the actually observed render-block origin and size, requires the exact selected block and returns the actual source/audio offset. Staging, cancellation, owner replacement, epoch invalidation or missing activation retire the new renderer without publishing it. Buffer/result tickets remain owned until transfer return or confirmed processor retirement.",
+      "Source lane identities and future lane-mix commands are rebound to the new registry. Actor correlations and semantic provenance survive; display subscriptions use the new owner. Actual render release progress prevents restoring a gate as renewable after its release already began."
+    ],
+    "validation": {
+      "format": "passed",
+      "criticalTypes": "passed",
+      "functionalTests": "intentionally deferred until all remaining features are implemented per user instruction",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Integrate coordinated source plus held effect cuts with the canonical semantic checkpoint/journal cursor and take seek/clone publication. The new source API alone does not claim whole-graph restoration.",
+      "Finish remaining native transport/serialization, creative-tool and desktop integration feature gaps before consolidated runtime/browser/audio testing.",
+      "Qualify actual phase/PCM equivalence, smoothing, source/graph boundaries and memory/latency in that final batch."
+    ],
+    "runtimeSourceUpdates": {
+      "workerFiles": 313,
+      "hash": "50e23728e7f2b521d5b4d959af2b282374dcd3c3bf74d28cd9c5caa7a9e443e2"
+    }
   }
 }

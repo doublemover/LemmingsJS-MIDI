@@ -442,13 +442,13 @@ class OwnedSineProcessor extends ProcessorBase {
       else this.port.postMessage({ type: 'protocol-error', protocol: PROTOCOL });
       this.flushReceipts();
     };
-    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, retirementProtocol: 1, stateTransferProtocol: 1, stateChunkBytes: OWNED_STATE_CHUNK_BYTES, maxStateBytes: 16 * 1048576, ...this.runtimeIdentity(),
+    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, retirementProtocol: 1, stateTransferProtocol: 1, stateRestoreProtocol: 1, stateChunkBytes: OWNED_STATE_CHUNK_BYTES, maxStateBytes: 16 * 1048576, ...this.runtimeIdentity(),
       laneTapProtocol: this.laneTaps ? LIVE_LANE_TAP_PROTOCOL : null, maxLaneTaps: this.laneTaps ? LIVE_LANE_TAP_LIMIT : 0,
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
   }
   createKernel(rate, voices) { return new OwnedSineKernel(rate, voices); }
-  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v8-held-macros-source-cut' }; }
+  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v8-held-macros-source-restore' }; }
   flushDisplay() {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;
@@ -474,6 +474,7 @@ class OwnedSineProcessor extends ProcessorBase {
     if (this.stateRestore) {
       const restore = this.stateRestore;
       if (restore.phase === 'armed' && globalThis.currentFrame >= restore.startAfterFrame) {
+        if (globalThis.currentFrame !== restore.startAfterFrame) { restore.phase = 'prepared'; this.port.postMessage({ type: 'source-restore-error', stateTransferProtocol: 1, requestId: restore.requestId, reason: 'source-activation-frame-missed' }); for (const output of outputs) for (const channel of output) channel.fill(0); return true; }
         this.sourceFrameOffset = this.kernel.lastFrame - globalThis.currentFrame; this.stateRestore = null;
         this.port.postMessage({ type: 'source-state-activated', stateTransferProtocol: 1, requestId: restore.requestId, sourceFrame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, sourceFrameOffset: this.sourceFrameOffset });
       } else {
@@ -484,7 +485,7 @@ class OwnedSineProcessor extends ProcessorBase {
             while (restore.cursor < end) restore.checksum = Math.imul(restore.checksum ^ restore.bytes[restore.cursor++], 16777619);
             if (restore.cursor === restore.bytes.length) { if ((restore.checksum >>> 0) !== restore.expectedChecksum) throw new Error('Source transfer checksum differs.'); restore.phase = 'restoring'; restore.iterator = this.kernel.restorePreparedChunks(restore.bytes, restore.identity); }
           } else if (restore.phase === 'restoring') {
-            const step = restore.iterator.next(); if (step.done) { const bytes = restore.bytes; restore.bytes = restore.iterator = null; restore.phase = 'prepared'; this.port.postMessage({ type: 'source-state-staged', stateTransferProtocol: 1, requestId: restore.requestId, cut: step.value, bytes }, [bytes.buffer]); }
+            const step = restore.iterator.next(); if (step.done) { const bytes = restore.bytes; restore.bytes = restore.iterator = null; restore.phase = 'prepared'; this.port.postMessage({ type: 'source-state-staged', stateTransferProtocol: 1, requestId: restore.requestId, cut: step.value, bytes, blockFrame: globalThis.currentFrame, blockFrames: outputs[0]?.[0]?.length || 0 }, [bytes.buffer]); }
           }
         } catch {
           const bytes = restore.bytes; this.stateRestore = { phase: 'failed', requestId: restore.requestId };
