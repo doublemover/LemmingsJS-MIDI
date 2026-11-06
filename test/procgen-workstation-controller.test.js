@@ -15,6 +15,12 @@ import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/R
 import { createTestBackgroundJobs } from './helpers/background-worker.js';
 
 describe('ProcGen workstation orchestration', () => {
+  it('routes a synchronous output label only to the current view and stops presenting after disposal', async () => {
+    const f = setup(), labels = []; f.view.presentOutputLabel = label => { labels.push(label); return true; };
+    expect(f.physicalOwner.presentOutputLabel('Activate MIDI output')).to.equal(true); expect(labels).to.deep.equal(['Activate MIDI output']);
+    const owner = f.physicalOwner; await f.studio.dispose().completion;
+    expect(f.physicalOwner).to.equal(null); expect(owner.presentOutputLabel('late')).to.equal(false); expect(labels).to.have.length(1);
+  });
   it('reads current simulation, physical presentation and shared-mix components without constructing another audio owner', async () => {
     let ownerCreations = 0;
     const audio = { createSession() { ownerCreations++; return { getState: () => ({ enabled: false }), stop() {}, dispose() {}, getEffectLatencyState: () => ({ latencyFrames: 0, routes: 0, unresolved: false }) }; },

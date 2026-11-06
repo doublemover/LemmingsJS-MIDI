@@ -1,0 +1,448 @@
+{
+  "schema": "owned-output-presentation/v1",
+  "date": "2026-11-05",
+  "agent": "rook",
+  "source": {
+    "parent": "fd8af338aa03df3f53bcc8ab82865bbe7fbdbb76",
+    "browserPaths": 1296,
+    "browserClosureDigest": "44181a097b08d9d35501ad20581d4bf2e5cfba300f1bd36e9aecef622dfaac5c",
+    "workerFiles": 308,
+    "workerDigest": "0b226c0f0ebbf75d7bc9fe9730a0ca4028ccfdf7aa33e6fb7cf30e00432beb95",
+    "inputInventory": {
+      "encoding": "sha256-bound-base-plus-upserts/v1",
+      "baseReceipt": {
+        "path": "docs/validation/specialized-worker-loading-and-render-readiness-2026-11-05.json",
+        "bytes": 262633,
+        "sha256": "a145d71abb6e23fb442511ff9eb71ac8b58c546f9607fc0a927136c52ca867ba"
+      },
+      "baseField": "source.inputInventory",
+      "upsert": [
+        {
+          "path": "e2e/procgen-midi-parameter-evidence.spec.js",
+          "bytes": 7680,
+          "sha256": "fc002dc222e4bdc50974e5ba1951d30eae06fc3474c9ebc2428110a355bf5909"
+        },
+        {
+          "path": "e2e/procgen-workstation-performance-lease.spec.js",
+          "bytes": 9779,
+          "sha256": "31f969bd147d827e5e73d7798c5b21880a9195945cb9fbf308ae8700a86abf5b"
+        },
+        {
+          "path": "js/app/procgen/ProcgenUiController.js",
+          "bytes": 48559,
+          "sha256": "ed1a4b8b8324b77ff6cb08e14a9236d9d1f7d19d7ce3a8d563c8e2c9ab92aad1"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenOperationalView.js",
+          "bytes": 10188,
+          "sha256": "eb2caedee2834891c54596f71e30b74db051b9ea755c5cd36c75f153b3e163a1"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "bytes": 262641,
+          "sha256": "08281dc359f5022cfedcd4aa31be9345bf102e9f4a138c96efb583a3fcde3d23"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+          "bytes": 166110,
+          "sha256": "6b0c61fbe80150cecb05ab7def8dd1ad1375f38634e1dbd12ee0667567e8027d"
+        },
+        {
+          "path": "test/procgen-operational-view.test.js",
+          "bytes": 7947,
+          "sha256": "f1d857832f9a561f50731001f060c85b0fe6b48f232c417a7dc29a56650c00df"
+        },
+        {
+          "path": "test/procgen-ui.test.js",
+          "bytes": 51164,
+          "sha256": "3345489d10149be323c80a67f064042b6aa7d0a93de510bdd0d28c02e4dc61bb"
+        },
+        {
+          "path": "test/procgen-workstation-controller.test.js",
+          "bytes": 124415,
+          "sha256": "7ca8c68c2ccd793ee143f1fa313b68c0c7ed11f780153b52d4e1b32d3e593933"
+        }
+      ],
+      "removed": [],
+      "pathCount": 1654
+    },
+    "stagedByteAudit": {
+      "paths": 1654,
+      "byteExact": 1642,
+      "untouchedNewlineInputs": [
+        {
+          "path": "css/procgen-world-inspector.css",
+          "workingBytes": 1576,
+          "workingSha256": "117e4d4b077871be05cb761e35322ff1e5b29c234e65588c4568a647f3b2c684",
+          "indexBytes": 1574,
+          "indexSha256": "b293d64556310dd7514e9fa6a4edbc3bbef2b75873c009e99ee5511adcc28cc3"
+        },
+        {
+          "path": "js/app/procgen/ActorEffectVisualProfile.js",
+          "workingBytes": 2855,
+          "workingSha256": "61f52aeeae3efbaab0d8fb95b3ba44d75ab7802d06ada8037a09142434768eb6",
+          "indexBytes": 2827,
+          "indexSha256": "7868ef9bb397d135ca873d0639c9dd6e0a9dfeb79ac41cfd57a6bd3c1092e85d"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectPass.js",
+          "workingBytes": 6019,
+          "workingSha256": "16441a79bd4480932b27ceef9c3d4679276a03126c0e6a1542474ca41df3827e",
+          "indexBytes": 5957,
+          "indexSha256": "cc47893b214d16c1c6237e0331664f8bb940d68f67e4fa08d3ffff07c882a902"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectSource.js",
+          "workingBytes": 1517,
+          "workingSha256": "57a697d8a5d542ddc5daf0ffff0b625f8babe6cc78d9c09582c882ca40cfb9ae",
+          "indexBytes": 1516,
+          "indexSha256": "777a7fd07293f47b7d1df39f41a6e590201d29b088189bab9bd4cf7dba1ba274"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationHost.js",
+          "workingBytes": 9542,
+          "workingSha256": "9d04bf0ac26ede44a694bace0059ba543c3f5df89596d336591b6dfa0c5bac35",
+          "indexBytes": 9441,
+          "indexSha256": "f9a7eb990b4b5fd8939c6619853dc3718cf3b5bbde136c2e259bf73b7668f0c4"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationSnapshot.js",
+          "workingBytes": 11674,
+          "workingSha256": "1e1920ba079a31720bdf7709fa0262262f5eb3ca697505a0c95d713de5ca2e05",
+          "indexBytes": 11543,
+          "indexSha256": "3a9ee413244f7b65bcd7ac003a9e1bdce4724d36e737e27ba7f99acd6d74ddcb"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenCausalJournal.js",
+          "workingBytes": 43603,
+          "workingSha256": "be474b5fcdd7c1a30d6cab05c6aafb343c639becfd2f710b48fdb8246f4775bc",
+          "indexBytes": 43072,
+          "indexSha256": "298d81f7271b179c3141644c0c8757c588ca2faccd4a19ef5347725dbab4e84c"
+        },
+        {
+          "path": "js/app/procgenAssetManager.js",
+          "workingBytes": 6329,
+          "workingSha256": "87ece444038074ededfe1d9e98deeca4be7dacf324d9391b40ea91b29bc0e9b6",
+          "indexBytes": 6127,
+          "indexSha256": "63180bec0443b8a399de2b51b10ff82c5cf86421883ca6a2a79c9ced5867ebc6"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCache.js",
+          "workingBytes": 5902,
+          "workingSha256": "b14828c6cb18a5bf2525abe342c2af7a3fa2d34e3c9a9a636f5ce4a11bbabf5f",
+          "indexBytes": 5751,
+          "indexSha256": "4c77eb850770782b7326f873c303ee9ba8efbe7197dadd0eb9ddfdfbadccc50d"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCore.js",
+          "workingBytes": 5699,
+          "workingSha256": "9f625f7ad2ef7511f66ba9a5c727142f7f0280c24a7b4fc559e0bb6a4c14bafd",
+          "indexBytes": 5582,
+          "indexSha256": "748233dbc3a567c793c6616f68fd4748334e3f4af529b8c67de0e6cfccd5c260"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderStorage.js",
+          "workingBytes": 25667,
+          "workingSha256": "521e7f98c594dcd2aee33ca7d51d02e3257b6bd1c5e13856a7a19627e2cee90e",
+          "indexBytes": 25148,
+          "indexSha256": "2de574ca65a70ede60b7cba120ef88a58eaa0ea8d3a9d4392c517ab2d2309a1e"
+        },
+        {
+          "path": "js/editor/EditorAssetCache.js",
+          "workingBytes": 12316,
+          "workingSha256": "5b5d8eebe2141654b0eddf00f9848ddc8393c410b0e6ffd0692bf0425561a3cd",
+          "indexBytes": 12065,
+          "indexSha256": "78da502737d925d32394ae10c90599bdc6fd1580cbd2a2a3d425ce6939f989ea"
+        }
+      ],
+      "mismatches": []
+    }
+  },
+  "observedFailure": {
+    "run": 42144726789,
+    "job": 127653318196,
+    "source": "d64334f14b073a2d9fda064586d214d0be70ea30",
+    "artifact": {
+      "id": 13471961974,
+      "path": ".tmp/rook459-midi-readiness-failure.zip",
+      "bytes": 28814708,
+      "sha256": "166cab794af804208ff27d3b1b0fa735332c2e99b32906be287ca0427a1f916b"
+    },
+    "trace": {
+      "path": ".tmp/rook459-midi-activation.trace",
+      "bytes": 233377,
+      "sha256": "be72d2aeea31aa6fa34b82fc89783b99ee7093db5ccde03b19385bbaacfe7b13"
+    },
+    "case": "endpoint reuse and a stale pre-route input never imply a receiver reset or dispatch the old request to the new route",
+    "boundary": "Failure in ready(): after explicit discovery and selection, the activation click leaves aria-pressed false before the stale-route assertions run.",
+    "observations": [
+      "Before the click, the selected endpoint is pw-output-1, data-output-action is activate and the label is Activate MIDI output.",
+      "Across the same click, the operational renderer changes the label to Activate selected output and data-operational-action from output-toggle to activate.",
+      "The MIDI status remains selected; no starting/live/error state is observed.",
+      "The native click point is x1531.2/y37.59; the pre-click button box is x1467.796875/y23.59375/w126.8125/h28."
+    ],
+    "limit": "The trace establishes competing label writers and a failed activation. It does not conclusively identify the native event target at every pointer phase."
+  },
+  "implementation": [
+    "The legacy controller computes the current base action/aria state, then delegates label presentation before writing any fallback label.",
+    "The operational presenter reads the current readonly snapshot synchronously and uses the same label on its later scheduled redraw; Stop, Cancel discovery and Takeover remain base actions.",
+    "A WeakMap records the current borrower and the first DOM/attribute origin. Superseded renderers and disposers cannot change or move successor-owned controls; reverse restoration preserves sibling order.",
+    "Claim/release refreshes the current base presentation, stale-owner release is ignored, and the workstation refuses presentation after disposal."
+  ],
+  "validation": {
+    "functionalNode": {
+      "cases": 228,
+      "failures": 0,
+      "pending": 0,
+      "groups": [
+        {
+          "cases": 208,
+          "raw": {
+            "path": ".tmp/rook459-node.json",
+            "bytes": 187633,
+            "sha256": "5a18aff3834da495657fdc2ae322a13dfdf5012b88fa29d15dc5f8d1d559706d"
+          },
+          "derived": {
+            "path": ".tmp/rook459-node-functional.json",
+            "bytes": 159660,
+            "sha256": "ef214efee167a711aee2ece09409f8050fa923ef08c434dbecd5bd192e044e19"
+          },
+          "derivation": "Drop only the diagnostic preamble before the JSON reporter document; preserve the original raw file."
+        },
+        {
+          "cases": 20,
+          "raw": {
+            "path": ".tmp/rook459-midi-output.json",
+            "bytes": 19144,
+            "sha256": "b0cf2f3d8d670b639e3db0f53b8b85b6c6ca82a708194d4bfa1bd1f1f6a75586"
+          }
+        }
+      ],
+      "newRegressions": 6
+    },
+    "scopedCoverage": {
+      "invocationExitCode": 1,
+      "functionalFailures": 0,
+      "thresholdsUnchanged": true,
+      "raw": {
+        "path": ".tmp/rook459-node.log",
+        "bytes": 388,
+        "sha256": "0d9120c511e6c9b85d7f99b241b59a763447e43cae15e20a3d5827dbf0823446"
+      },
+      "summary": {
+        "path": ".tmp/rook459-coverage/coverage-summary.json",
+        "bytes": 1773,
+        "sha256": "999ec45a9bbe3637947314b7393ca7cb1057a2309f623bf0153ce248f93d0fe0"
+      },
+      "totals": {
+        "lines": {
+          "total": 4945,
+          "covered": 2796,
+          "skipped": 0,
+          "pct": 56.54
+        },
+        "statements": {
+          "total": 4945,
+          "covered": 2796,
+          "skipped": 0,
+          "pct": 56.54
+        },
+        "functions": {
+          "total": 507,
+          "covered": 339,
+          "skipped": 0,
+          "pct": 66.86
+        },
+        "branches": {
+          "total": 2509,
+          "covered": 1722,
+          "skipped": 0,
+          "pct": 68.63
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "files": [
+        {
+          "path": "js/app/procgen/ProcgenUiController.js",
+          "coverage": {
+            "lines": {
+              "total": 547,
+              "covered": 513,
+              "skipped": 0,
+              "pct": 93.78
+            },
+            "functions": {
+              "total": 100,
+              "covered": 72,
+              "skipped": 0,
+              "pct": 72
+            },
+            "statements": {
+              "total": 547,
+              "covered": 513,
+              "skipped": 0,
+              "pct": 93.78
+            },
+            "branches": {
+              "total": 476,
+              "covered": 356,
+              "skipped": 0,
+              "pct": 74.78
+            }
+          }
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenOperationalView.js",
+          "coverage": {
+            "lines": {
+              "total": 105,
+              "covered": 89,
+              "skipped": 0,
+              "pct": 84.76
+            },
+            "functions": {
+              "total": 12,
+              "covered": 10,
+              "skipped": 0,
+              "pct": 83.33
+            },
+            "statements": {
+              "total": 105,
+              "covered": 89,
+              "skipped": 0,
+              "pct": 84.76
+            },
+            "branches": {
+              "total": 91,
+              "covered": 77,
+              "skipped": 0,
+              "pct": 84.61
+            }
+          }
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "coverage": {
+            "lines": {
+              "total": 2776,
+              "covered": 2145,
+              "skipped": 0,
+              "pct": 77.26
+            },
+            "functions": {
+              "total": 391,
+              "covered": 257,
+              "skipped": 0,
+              "pct": 65.72
+            },
+            "statements": {
+              "total": 2776,
+              "covered": 2145,
+              "skipped": 0,
+              "pct": 77.26
+            },
+            "branches": {
+              "total": 1940,
+              "covered": 1287,
+              "skipped": 0,
+              "pct": 66.34
+            }
+          }
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+          "coverage": {
+            "lines": {
+              "total": 1517,
+              "covered": 49,
+              "skipped": 0,
+              "pct": 3.23
+            },
+            "functions": {
+              "total": 4,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 0
+            },
+            "statements": {
+              "total": 1517,
+              "covered": 49,
+              "skipped": 0,
+              "pct": 3.23
+            },
+            "branches": {
+              "total": 2,
+              "covered": 2,
+              "skipped": 0,
+              "pct": 100
+            }
+          }
+        }
+      ],
+      "limitations": [
+        "The focused test command also supplied one nonexistent optional test glob; Mocha warned and still executed the four real files. The actual MIDI output file was then run separately (20 passes).",
+        "The full workstation view is exercised through real Playwright, not instantiated by this Node subset; its 3.23% scoped Node coverage is not a whole-repository coverage result.",
+        "Four configured coverage thresholds refuse the scoped run; no thresholds, exclusions, tolerances or assertions were relaxed."
+      ]
+    },
+    "nativeDesktop": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "startTime": "2026-11-06T02:45:44.427Z",
+      "duration": 135420.617,
+      "expected": 22,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "raw": {
+        "path": ".tmp/rook459-native.json",
+        "bytes": 64001,
+        "sha256": "2c4139281d3f52826a0df82f4e62f2237b75c68834d8f5b5a2cf3c9c2dd93178"
+      },
+      "log": {
+        "path": ".tmp/rook459-native.log",
+        "bytes": 169,
+        "sha256": "a2b0398b5a46d4c2b040b6ef0ebe1d41af2febe58517f459d6c5d18a069b08f5"
+      },
+      "files": [
+        "e2e/procgen-midi-parameter-evidence.spec.js",
+        "e2e/procgen-operational-status.spec.js",
+        "e2e/procgen-workstation-performance-lease.spec.js"
+      ],
+      "scope": "All original MIDI parameter evidence assertions, operational discovery/permission/clock/Panic/readiness journeys, and real cross-tab performance-lease/takeover/capture cases."
+    },
+    "format": "passed",
+    "criticalAndBoundaryTypes": "passed",
+    "undefinedCalls": "passed",
+    "changedWhitespace": "passed",
+    "provenance": "passed",
+    "fullLocalSuiteRepeated": false
+  },
+  "priorHeadCi": {
+    "head": "fd8af338aa03df3f53bcc8ab82865bbe7fbdbb76",
+    "run": 42149669413,
+    "lifecycleJob": 127669545111,
+    "lifecycleStatus": "success",
+    "engineJourneys": 51,
+    "nativeProfiles": 9,
+    "nativeEngines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "actualRate": 48000,
+    "main": "workstation smoke still running at observation; full repository coverage not yet reached"
+  },
+  "limits": [
+    "This fixes and qualifies the presentation/ownership defect without retrying the failed click, lengthening timeouts or weakening route/receiver assertions. The exact historical pointer-event cause remains a trace limitation.",
+    "The 22 native cases are a local Windows Chromium desktop cohort; fresh whole-branch Linux/full-coverage CI follows publication.",
+    "No physical MIDI receiver state, acoustic delivery or actual desktop assistive-technology qualification is inferred."
+  ]
+}

@@ -2649,6 +2649,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const canWorldShortcut = action => !disposed && (action === 'restartLevel' ? !stageSession?.active() :
     action === 'nuke' || action === 'nukeInstant' ? !stageSession?.active() && !!runtime()?.world && !worldBusy && !causalTakeStart && !causalTakeStop : true);
   const releasePhysicalControls = legacy.setPhysicalControlOwner?.({
+    presentOutputLabel: label => !disposed && view?.presentOutputLabel?.(label) === true,
     getRecipeSpeed: () => transport.getState().gameSpeed, canActivateOutput: () => !stageSession?.active(), canShortcut: canWorldShortcut,
     getShareExportDescriptor, prepareShareExport, revealPreparedExport: () => view?.revealPreparedExport?.(),
     canRestart: () => !stageSession?.active() || stageSession.reject(), outputChanged: refreshSceneCue, operationalChanged: () => view?.refreshOperational?.(),

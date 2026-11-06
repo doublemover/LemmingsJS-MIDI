@@ -1,3 +1,5 @@
+const controlOwners = new WeakMap();
+
 export function createProcgenOperationalView({ document, readSnapshot, performAction, cancelOperation = () => false, onStatus = () => {} }) {
   const node = (tag, text, className) => { const element = document.createElement(tag); if (text) element.textContent = text; if (className) element.className = className; return element; };
   const element = node('section', null, 'studio-operational'); element.setAttribute('aria-label', 'World, music and output status');
@@ -8,8 +10,9 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
   const controls = node('div', null, 'studio-operational-actions'), borrowed = [];
   for (const id of ['procgenListen', 'procgenPanic']) {
     const control = document.getElementById(id); if (!control) continue;
-    borrowed.push({ control, parent: control.parentNode, next: control.nextSibling, description: control.getAttribute('aria-describedby'), title: control.title, disabled: control.disabled });
-    control.setAttribute('aria-describedby', [control.getAttribute('aria-describedby'), message.id].filter(Boolean).join(' ')); controls.append(control);
+    const previous = controlOwners.get(control), lease = { control, origin: previous?.origin || { parent: control.parentNode, next: control.nextSibling, description: control.getAttribute('aria-describedby'), title: control.title, disabled: control.disabled }, label: previous?.label ?? control.textContent };
+    borrowed.push(lease); controlOwners.set(control, lease);
+    control.setAttribute('aria-describedby', [lease.origin.description, message.id].filter(Boolean).join(' ')); controls.append(control);
   }
   const operations = node('div', null, 'studio-operation-list'); operations.setAttribute('aria-label', 'Current operations');
   controls.append(primary); element.append(atoms, message, controls, operations, details);
@@ -43,6 +46,15 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
     const title = node('dt', label), value = node('dd'); facts.append(title, value); rows.set(label, value);
   }
   const nativeAction = id => ['listen', 'activate', 'discover'].includes(id);
+  const listenLease = borrowed.find(value => value.control.id === 'procgenListen');
+  const ownedListen = () => listenLease && controlOwners.get(listenLease.control) === listenLease ? listenLease.control : null;
+  const presentOutput = current => {
+    const listen = ownedListen(); if (!listen) return false;
+    const action = current?.recoveryAction, native = action && nativeAction(action.id);
+    write(listen, native && !busy && !['stop', 'takeover'].includes(listen.dataset.outputAction) ? action.label : listenLease.label);
+    if (current) listen.disabled = current.nativeOutputActionAllowed === false;
+    listen.dataset.operationalAction = native ? action.id : 'output-toggle'; return true;
+  };
   const render = current => {
     if (disposed) return;
     if (!current) { write(message, snapshot?.blockedReason.severity === 'error' ? snapshot.blockedReason.message + ' Status refresh is unavailable.' : 'Operational status is unavailable. Use the dedicated controls.'); primary.hidden = true; return; }
@@ -50,11 +62,8 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
     renderOperations(current);
     write(world, current.simulation.label); write(music, current.transport.label); write(output, current.noteOutput.label); write(clock, current.clockAuthority.label);
     write(message, current.blockedReason.message); const action = current.recoveryAction;
-    const listen = borrowed.find(value => value.control.id === 'procgenListen')?.control;
-    if (nativeAction(action.id) && listen && !busy) write(listen, action.label);
-    primary.hidden = !action.enabled || nativeAction(action.id) && !!listen; primary.disabled = busy; primary.dataset.operationalAction = action.id; write(primary, action.label);
-    if (listen) listen.disabled = current.nativeOutputActionAllowed === false;
-    if (listen) listen.dataset.operationalAction = nativeAction(action.id) ? action.id : 'output-toggle';
+    presentOutput(current);
+    primary.hidden = !action.enabled || nativeAction(action.id) && !!listenLease; primary.disabled = busy; primary.dataset.operationalAction = action.id; write(primary, action.label);
     const requested = current.simulation.requestedSpeed, measured = current.simulation.achievedTicksPerSecond, duration = current.simulation.tickDurationMs;
     write(rows.get('World rate'), `${requested == null ? 'Requested rate unavailable' : 'Requested ' + requested + '×'}; ${measured == null ? 'no measured tick report' :
       'last reported ' + measured.toFixed(1) + ' ticks/s' + (duration == null ? '' : ' (' + (measured * duration / 1000).toFixed(1) + '×)')}. Display refresh is not a simulation measurement.`);
@@ -77,9 +86,15 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
     finally { busy = false; if (!disposed) render(readSnapshot()); }
   });
   return Object.freeze({ element, render,
+    presentOutputLabel(label) {
+      if (disposed || !ownedListen() || typeof label !== 'string' || label.length > 240) return false;
+      listenLease.label = label; return presentOutput(readSnapshot());
+    },
     dispose() {
       if (disposed) return; disposed = true;
-      for (const { control, parent, next, description, title, disabled } of borrowed) {
+      for (const lease of [...borrowed].reverse()) {
+        const { control, origin: { parent, next, description, title, disabled } } = lease;
+        if (controlOwners.get(control) !== lease) continue; controlOwners.delete(control);
         if (description == null) control.removeAttribute('aria-describedby'); else control.setAttribute('aria-describedby', description);
         control.title = title; control.disabled = disabled; delete control.dataset.operationalAction;
         if (parent) parent.insertBefore(control, next?.parentNode === parent ? next : null);

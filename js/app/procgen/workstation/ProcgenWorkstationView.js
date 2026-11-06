@@ -1458,6 +1458,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         ? `Last durable edit revision ${recovery.durableRevision}, world tick ${recovery.durableTick ?? 'unknown'}` : 'No recovery checkpoint yet');
     },
     launched,
+    presentOutputLabel: label => operationalView.presentOutputLabel(label),
     refreshOperational: () => { operationalSurface.invalidate(); laneMixSurface.invalidate(); },
     refreshLaneDisplays: () => laneMixSurface.invalidate(),
     transport(position) {

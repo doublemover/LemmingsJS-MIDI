@@ -7170,5 +7170,40 @@
       "The actual v2 cohort has two available Windows native engines and explicit WebKit constructor absence. Fresh current-source Linux WebKit/native/profile CI is pending.",
       "Profile CPU remains a small empirical whole-owned-browser-process cohort with coarse counters/observer overhead, not exclusive DSP, full-world capacity or acoustic latency."
     ]
+  },
+  "continuation459": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Give borrowed Listen one synchronous presenter and preserve successor control ownership across view replacement.",
+    "evidence": {
+      "path": "docs/validation/owned-output-presentation-desktop-2026-11-05.json",
+      "bytes": 16841,
+      "sha256": "dd1e4a2dfd115e63374c927729c553554c50643b9d5b362f6eacdcf36bc32245"
+    },
+    "validation": {
+      "functionalNodeCases": 228,
+      "nativeDesktopCases": 22,
+      "unexpected": 0,
+      "flaky": 0,
+      "skipped": 0,
+      "scopedCoverageExitCode": 1,
+      "coverageThresholds": "unchanged; focused subset refused four thresholds",
+      "formatTypesUndefinedWhitespaceProvenance": "passed",
+      "fullLocalSuiteRepeated": false
+    },
+    "source": {
+      "browserPaths": 1296,
+      "browserDigest": "44181a097b08d9d35501ad20581d4bf2e5cfba300f1bd36e9aecef622dfaac5c",
+      "workerFiles": 308,
+      "workerDigest": "0b226c0f0ebbf75d7bc9fe9730a0ca4028ccfdf7aa33e6fb7cf30e00432beb95",
+      "inputPaths": 1654,
+      "byteExact": 1642,
+      "untouchedNewlineMappings": 12
+    },
+    "remaining": [
+      "This fixes and qualifies the presentation/ownership defect without retrying the failed click, lengthening timeouts or weakening route/receiver assertions. The exact historical pointer-event cause remains a trace limitation.",
+      "The 22 native cases are a local Windows Chromium desktop cohort; fresh whole-branch Linux/full-coverage CI follows publication.",
+      "No physical MIDI receiver state, acoustic delivery or actual desktop assistive-technology qualification is inferred."
+    ]
   }
 }

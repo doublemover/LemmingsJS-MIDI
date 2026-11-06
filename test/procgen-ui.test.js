@@ -45,6 +45,17 @@ describe('compact procgen drawer', () => {
       } finally { f.ui.dispose(); }
     }
   });
+  it('delegates output labels before touching the borrowed button and keeps replacement ownership through a stale release', () => {
+    const f = fixture(), listen = f.el('procgenListen'), observed = [];
+    const owner = name => ({ presentOutputLabel(label) { observed.push({ name, before: listen.textContent, label }); listen.textContent = name + ': ' + label; return true; } });
+    try {
+      const releaseA = f.ui.setPhysicalControlOwner(owner('A')); expect(listen.textContent).to.equal('A: Listen locally');
+      const releaseB = f.ui.setPhysicalControlOwner(owner('B')); releaseA(); expect(listen.textContent).to.equal('B: Listen locally');
+      observed.length = 0; f.ui.local.setBackend('midi'); expect(observed.length).to.be.greaterThan(0); expect(observed.every(value => value.name === 'B' && value.before.startsWith('B: '))).to.equal(true);
+      expect(listen.textContent).to.equal('B: Discover MIDI outputs'); releaseB(); expect(listen.textContent).to.equal('Discover MIDI outputs');
+      f.ui.setPhysicalControlOwner({ presentOutputLabel: () => false }); f.ui.local.setBackend('synth'); expect(listen.textContent).to.equal('Listen locally');
+    } finally { f.ui.dispose(); }
+  });
   it('routes an immediate reviewed-output activation by current backend state rather than a delayed status-strip action', () => {
     const f = fixture(); let starts = 0, discoveries = 0;
     const state = { enabled: false, selectedBackend: 'midi', midiPermission: 'granted', selectedOutputId: 'reviewed', status: 'selected' };
