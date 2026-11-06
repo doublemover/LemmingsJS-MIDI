@@ -26,20 +26,27 @@ export async function prepareBufferedWarpHistory({ plan: raw, parentAssetHash, p
   const hashes = await Promise.all([hashData(configuration), digest(new Uint8Array(planes[0].buffer)), digest(new Uint8Array(planes[1].buffer))]); check();
   if (hashes[0] !== configurationHash || hashes[1] !== metadata.planeHashes[0] || hashes[2] !== metadata.planeHashes[1]) fail('The prepared PCM or configuration immutable hash changed.');
   const alive = () => { if (disposed || faulted) fail('The history owner is unavailable.'); };
-  const fill = sourceFrame => {
-    alive(); if (!Number.isFinite(sourceFrame) || sourceFrame < first || sourceFrame > end || !Number.isSafeInteger(windows + 1)) fail('History requires a bounded original-asset source coordinate.');
-    const preparedPosition = (sourceFrame - first) * plan.outputRate / plan.sourceRate, historyEnd = Math.round(preparedPosition + configuration.inputLatencyFrames), historyFirst = historyEnd - historyFrames;
-    for (let frame = 0; frame < historyFrames; frame++) { const at = historyFirst + frame; history[0][frame] = at >= 0 && at < frames ? planes[0][at] : 0; history[1][frame] = at >= 0 && at < frames ? planes[1][at] : 0; }
+  const loopFirst = plan.loop ? (plan.loop.firstSourceFrame - first) * plan.outputRate / plan.sourceRate : 0,
+    loopEnd = plan.loop ? (plan.loop.endSourceFrame - first) * plan.outputRate / plan.sourceRate : 0, loopFrames = loopEnd - loopFirst;
+  if (plan.loop && loopFrames < 2) fail('The selected loop needs at least two prepared PCM frames.');
+  const fill = (sourceFrame, loopIteration = 0) => {
+    alive(); if (!Number.isFinite(sourceFrame) || sourceFrame < first || sourceFrame > end || !integer(loopIteration, 0, Number.MAX_SAFE_INTEGER) || !Number.isSafeInteger(windows + 1)) fail('History requires a bounded original-asset source coordinate and explicit loop iteration.');
+    const preparedPosition = (sourceFrame - first) * plan.outputRate / plan.sourceRate + (plan.loop ? loopIteration * loopFrames : 0), historyEnd = Math.round(preparedPosition + configuration.inputLatencyFrames), historyFirst = historyEnd - historyFrames;
+    for (let frame = 0; frame < historyFrames; frame++) {
+      let at = historyFirst + frame;
+      if (plan.loop && at >= loopEnd) at = Math.min(Math.ceil(loopEnd) - 1, Math.max(Math.ceil(loopFirst), Math.round(loopFirst + (at - loopFirst) % loopFrames)));
+      history[0][frame] = at >= 0 && at < frames ? planes[0][at] : 0; history[1][frame] = at >= 0 && at < frames ? planes[1][at] : 0;
+    }
     windows++; return historyFirst;
   };
   return Object.freeze({ plan, configuration, configurationHash, metadata, footprintBytes, historyFrames,
-    copyHistory(sourceFrame, left, right, offset = 0) {
+    copyHistory(sourceFrame, left, right, offset = 0, loopIteration = 0) {
       alive(); if (!plane(left, offset, historyFrames) || !plane(right, offset, historyFrames) || !separate(left, right, offset, historyFrames)) fail('History copying requires separate bounded destination planes.');
-      const historyFirst = fill(sourceFrame); for (let frame = 0; frame < historyFrames; frame++) { left[offset + frame] = history[0][frame]; right[offset + frame] = history[1][frame]; } return historyFirst;
+      const historyFirst = fill(sourceFrame, loopIteration); for (let frame = 0; frame < historyFrames; frame++) { left[offset + frame] = history[0][frame]; right[offset + frame] = history[1][frame]; } return historyFirst;
     },
-    process(core, sourceFrame, rateRatio, pitchRatio, left, right, offset, count) {
+    process(core, sourceFrame, rateRatio, pitchRatio, left, right, offset, count, loopIteration = 0) {
       alive(); if (core?.configurationHash !== configurationHash || core.configuration !== configuration && core.configuration?.artifactHash !== configuration.artifactHash || typeof core.setPitch !== 'function' || typeof core.seek !== 'function' || typeof core.processBuffered !== 'function' || !acceptsWarpRate(rateRatio) || !acceptsWarpPitch(pitchRatio) || !plane(left, offset, count) || !plane(right, offset, count) || !separate(left, right, offset, count) || !integer(count, 1, configuration.bufferFrames) || !Number.isSafeInteger(renderedBlocks + 1)) fail('Use the bound core, positive matrix controls and separate admitted output planes.');
-      fill(sourceFrame);
+      fill(sourceFrame, loopIteration);
       try { core.setPitch(pitchRatio); core.seek(history[0], history[1], 0, historyFrames, rateRatio); core.processBuffered(left, right, offset, count); renderedBlocks++; }
       catch (error) { faulted = true; left.fill(0, offset, offset + count); right.fill(0, offset, offset + count); throw error; }
     },
