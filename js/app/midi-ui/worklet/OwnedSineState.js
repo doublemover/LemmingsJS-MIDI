@@ -1,14 +1,15 @@
 import { LIVE_LANE_ID_LIMIT } from '../OwnedSourceLayout.js';
-export const SINE_STATE_ABI = 'owned-sine-state-le-v3-lane-transfer';
+export const SINE_STATE_ABI = 'owned-sine-state-le-v4-held-gain';
 const WIDTH = 18, CAPACITY = 512, VOICES = 64, VOICE_WIDTH = 28, RECEIPTS = 2048, RECEIPT_WIDTH = 6;
 const QUEUE = 128, VOICE = QUEUE + CAPACITY * WIDTH * 8, ACTIVE = VOICE + VOICES * VOICE_WIDTH * 8;
 const MIX = ACTIVE + VOICES, COUNTERS = MIX + VOICES * 6 * 8, RECEIPT = COUNTERS + 8 * 4;
-export const SINE_STATE_BYTES = RECEIPT + RECEIPTS * RECEIPT_WIDTH * 8 + VOICES * 7 * 8;
+export const SINE_STATE_BYTES = RECEIPT + RECEIPTS * RECEIPT_WIDTH * 8 + VOICES * 9 * 8;
 const layoutFor = width => {
   if (![18, 24, 26, 33, 40, 48, 56, 73, 80, 82, 84].includes(width)) throw new Error('Unknown owned kernel state width.');
   const voice = QUEUE + CAPACITY * width * 8, active = voice + VOICES * VOICE_WIDTH * 8, mix = active + VOICES, counters = mix + VOICES * 6 * 8, receipt = counters + 8 * 4;
   const lanes = receipt + RECEIPTS * RECEIPT_WIDTH * 8, pending = lanes + VOICES * 5 * 8;
-  return { WIDTH: width, VOICE: voice, ACTIVE: active, MIX: mix, COUNTERS: counters, RECEIPT: receipt, LANES: lanes, PENDING: pending, bytes: pending + VOICES * 2 * 8 };
+  const gain = pending + VOICES * 2 * 8;
+  return { WIDTH: width, VOICE: voice, ACTIVE: active, MIX: mix, COUNTERS: counters, RECEIPT: receipt, LANES: lanes, PENDING: pending, GAIN: gain, bytes: gain + VOICES * 2 * 8 };
 };
 export const ownedKernelStateBytes = kernel => layoutFor(kernel.width).bytes;
 const fail = message => { throw Object.assign(new Error(message), { name: 'AudioRestoreError', code: 'incompatible-sine-state' }); };
@@ -29,6 +30,7 @@ const inspectKernel = kernel => {
   const { WIDTH } = layoutFor(kernel?.width);
   if (!kernel || !(kernel.queue instanceof Float64Array) || kernel.queue.length !== CAPACITY * WIDTH ||
       !(kernel.laneRoutes instanceof Float64Array) || kernel.laneRoutes.length !== VOICES * 5 || !(kernel.pendingLanes instanceof Float64Array) || kernel.pendingLanes.length !== VOICES * 2 ||
+      !(kernel.gainControl instanceof Float64Array) || kernel.gainControl.length !== VOICES * 2 ||
       !(kernel.mix instanceof Float64Array) || kernel.mix.length !== VOICES * 6 || !(kernel.voice instanceof Float64Array) || kernel.voice.length !== VOICES * VOICE_WIDTH || !(kernel.active instanceof Uint8Array) || kernel.active.length !== VOICES ||
       !(kernel.receipts instanceof Float64Array) || kernel.receipts.length !== RECEIPTS * RECEIPT_WIDTH || !(kernel.counters instanceof Uint32Array) || kernel.counters.length !== 8 ||
       !natural(kernel.queueLength, CAPACITY) || !natural(kernel.receiptCount, RECEIPTS) || !natural(kernel.lastPacket) || !natural(kernel.lastFrame) ||
@@ -36,9 +38,9 @@ const inspectKernel = kernel => {
     fail('DSP kernel storage differs from the snapshot ABI.');
 };
 const verify = (bytes, identity, { sampleRate, maxVoices, width }) => {
-  const { WIDTH, VOICE, ACTIVE, MIX, RECEIPT, LANES, PENDING, bytes: length } = layoutFor(width);
+  const { WIDTH, VOICE, ACTIVE, MIX, RECEIPT, LANES, PENDING, GAIN, bytes: length } = layoutFor(width);
   inspectIdentity(identity); const view = viewFor(bytes, length);
-  if (view.getUint32(0, true) !== 0x31534e4c || view.getUint32(4, true) !== 4 || view.getUint32(8, true) !== length ||
+  if (view.getUint32(0, true) !== 0x31534e4c || view.getUint32(4, true) !== 5 || view.getUint32(8, true) !== length ||
       view.getUint32(12, true) !== maxVoices || view.getFloat64(16, true) !== sampleRate || !natural(maxVoices, VOICES) || maxVoices < 1 ||
       !bounded(sampleRate, 8000, 384000) || view.getUint32(120, true) !== identity.graphRevision || view.getUint32(124, true) !== (width === 18 ? 0 : width))
     fail('DSP state ABI, rate, voice profile or graph identity is incompatible.');
@@ -51,6 +53,7 @@ const verify = (bytes, identity, { sampleRate, maxVoices, width }) => {
     const value = view.getFloat64(QUEUE + index * 8, true);
     if (!Number.isFinite(value) || index >= queued * WIDTH && value !== 0) fail('DSP command storage is noncanonical.');
   }
+  for (let slot = 0; slot < VOICES; slot++) if (!bounded(view.getFloat64(GAIN + slot * 16, true), 0, 1) || !natural(view.getFloat64(GAIN + slot * 16 + 8, true), sampleRate * 60)) fail('DSP held gain ramp is invalid.');
   const sequenceSet = new Set();
   for (let index = 0; index < queued; index++) {
     const at = QUEUE + index * WIDTH * 8, get = field => view.getFloat64(at + field * 8, true), opcode = get(3), slot = get(4), token = get(5);
@@ -98,11 +101,11 @@ const verify = (bytes, identity, { sampleRate, maxVoices, width }) => {
 };
 
 export function writeOwnedKernelState(kernel, destination, identity) {
-  const { WIDTH, VOICE, ACTIVE, MIX, COUNTERS, RECEIPT, LANES, PENDING, bytes: length } = layoutFor(kernel.width);
+  const { WIDTH, VOICE, ACTIVE, MIX, COUNTERS, RECEIPT, LANES, PENDING, GAIN, bytes: length } = layoutFor(kernel.width);
   inspectKernel(kernel); inspectIdentity(identity); const view = viewFor(destination, length);
-  if ([kernel.queue, kernel.voice, kernel.mix, kernel.laneRoutes, kernel.pendingLanes, kernel.active, kernel.counters, kernel.receipts].some(array => array.buffer === destination.buffer)) fail('DSP transfer storage aliases active kernel state.');
+  if ([kernel.queue, kernel.voice, kernel.gainControl, kernel.mix, kernel.laneRoutes, kernel.pendingLanes, kernel.active, kernel.counters, kernel.receipts].some(array => array.buffer === destination.buffer)) fail('DSP transfer storage aliases active kernel state.');
   destination.fill(0);
-  view.setUint32(0, 0x31534e4c, true); view.setUint32(4, 4, true); view.setUint32(8, length, true); view.setUint32(12, kernel.maxVoices, true);
+  view.setUint32(0, 0x31534e4c, true); view.setUint32(4, 5, true); view.setUint32(8, length, true); view.setUint32(12, kernel.maxVoices, true);
   view.setFloat64(16, kernel.sampleRate, true); view.setFloat64(24, kernel.lastFrame, true); view.setFloat64(32, kernel.lastPacket, true);
   view.setUint32(40, kernel.queueLength, true); view.setUint32(44, kernel.receiptCount, true); view.setUint32(48, kernel.nonfinite, true); view.setUint32(52, Number(kernel.panicPending), true);
   for (let field = 0; field < identityFields.length; field++) for (let index = 0; index < 32; index++) view.setUint8(56 + field * 32 + index, parseInt(identity[identityFields[field]].slice(index * 2, index * 2 + 2), 16));
@@ -112,6 +115,7 @@ export function writeOwnedKernelState(kernel, destination, identity) {
   for (let index = 0; index < kernel.mix.length; index++) view.setFloat64(MIX + index * 8, kernel.mix[index], true);
   for (let index = 0; index < kernel.laneRoutes.length; index++) view.setFloat64(LANES + index * 8, kernel.laneRoutes[index], true);
   for (let index = 0; index < kernel.pendingLanes.length; index++) view.setFloat64(PENDING + index * 8, kernel.pendingLanes[index], true);
+  for (let index = 0; index < kernel.gainControl.length; index++) view.setFloat64(GAIN + index * 8, kernel.gainControl[index], true);
   destination.set(kernel.active, ACTIVE); for (let index = 0; index < 8; index++) view.setUint32(COUNTERS + index * 4, kernel.counters[index], true);
   for (let index = 0; index < kernel.receiptCount * RECEIPT_WIDTH; index++) view.setFloat64(RECEIPT + index * 8, kernel.receipts[index], true);
   const cut = verify(destination, identity, kernel);
@@ -120,13 +124,14 @@ export function writeOwnedKernelState(kernel, destination, identity) {
 }
 
 export function restoreOwnedKernelState(kernel, source, identity) {
-  const { VOICE, ACTIVE, MIX, COUNTERS, RECEIPT, LANES, PENDING } = layoutFor(kernel.width);
+  const { VOICE, ACTIVE, MIX, COUNTERS, RECEIPT, LANES, PENDING, GAIN } = layoutFor(kernel.width);
   inspectKernel(kernel); const cut = verify(source, identity, kernel), { view } = cut;
   for (let index = 0; index < kernel.queue.length; index++) kernel.queue[index] = view.getFloat64(QUEUE + index * 8, true);
   for (let index = 0; index < kernel.voice.length; index++) kernel.voice[index] = view.getFloat64(VOICE + index * 8, true);
   for (let index = 0; index < kernel.mix.length; index++) kernel.mix[index] = view.getFloat64(MIX + index * 8, true);
   for (let index = 0; index < kernel.laneRoutes.length; index++) kernel.laneRoutes[index] = view.getFloat64(LANES + index * 8, true);
   for (let index = 0; index < kernel.pendingLanes.length; index++) kernel.pendingLanes[index] = view.getFloat64(PENDING + index * 8, true);
+  for (let index = 0; index < kernel.gainControl.length; index++) kernel.gainControl[index] = view.getFloat64(GAIN + index * 8, true);
   for (let index = 0; index < VOICES; index++) kernel.active[index] = view.getUint8(ACTIVE + index);
   for (let index = 0; index < 8; index++) kernel.counters[index] = view.getUint32(COUNTERS + index * 4, true);
   for (let index = 0; index < kernel.receipts.length; index++) kernel.receipts[index] = view.getFloat64(RECEIPT + index * 8, true);

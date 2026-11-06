@@ -13,7 +13,7 @@ export function createInstrumentMacroGestures({ getLane, getDocumentEpoch, commi
   let disposed = false, sequence = 0, revision = 0, publishing = false;
   const changed = () => { if (!Number.isSafeInteger(revision + 1)) fail('Gesture observation revision exhausted.'); revision++; try { onState(); } catch { /* Views cannot change controls. */ } };
   const source = (laneId, macroId) => { const lane = getLane(laneId), macro = getSupportedInstrumentDefinition(lane?.instrumentRef)?.macros?.find(value => value.id === macroId);
-    if (!lane || !macro || macro.mode !== 'onset-only') fail('Only admitted onset-sampled macros can use this performer adapter. Continuous or missing targets remain unsupported.');
+    if (!lane || !macro || !['onset-only', 'continuous'].includes(macro.mode)) fail('The selected patch has no admitted macro target.');
     return { lane, macro, value: lane.instrumentControls?.macros?.[macroId] ?? macro.default01, identity: lane.instrumentRef.packHash + ':' + lane.instrumentRef.definitionHash }; };
   const valid = entry => {
     if (disposed || entry.epoch !== getDocumentEpoch()) return false;
@@ -30,7 +30,7 @@ export function createInstrumentMacroGestures({ getLane, getDocumentEpoch, commi
   };
   const resolve = handle => { const entry = handles.get(handle); if (!entry || active.get(entry.key) !== entry || !valid(entry)) { if (entry) remove(entry); fail('The patch, baseline or document lease changed.'); } return entry; };
   const set = (handle, value) => { const entry = resolve(handle); if (!Number.isFinite(value) || value < 0 || value > 1) fail('A macro value must be normalized and finite.'); if (entry.value !== value) { entry.value = value; changed(); }
-    return Object.freeze({ gestureId: handle.gestureId, requested01: value, application: 'next-causal-onset', origin: entry.origin, physicalMutation: false }); };
+    return Object.freeze({ gestureId: handle.gestureId, requested01: value, application: entry.macro.mode === 'continuous' ? 'held-voices-and-next-onset' : 'next-causal-onset', origin: entry.origin, physicalMutation: false }); };
   const finish = (handle, { cancel = false } = {}) => {
     const entry = resolve(handle), next = entry.value; remove(entry);
     if (cancel || entry.momentary || next === entry.baseline) return Object.freeze({ state: 'returned', canonicalEdit: false, baseline01: entry.baseline });
@@ -83,13 +83,13 @@ export function createInstrumentMacroGestures({ getLane, getDocumentEpoch, commi
         binding.previous = value; changed(); if (!binding.pickedUp) continue;
         binding.handle ||= begin(binding.laneId, binding.macroId, { origin: 'controller' }); set(binding.handle, value); matched++;
       }
-      return Object.freeze({ matched, application: 'next-causal-onset', noteCreation: false });
+      return Object.freeze({ matched, application: 'declared-macro-rate', noteCreation: false });
     },
     disconnect(endpointId, endpointEpoch) { for (const [id, binding] of bindings) if (binding.endpointId === endpointId && (endpointEpoch == null || binding.endpointEpoch === endpointEpoch)) {
       if (binding.handle) { try { finish(binding.handle, { cancel: binding.type === 'pressure' }); } finally { bindings.delete(id); } } else bindings.delete(id);
     } changed(); },
     commitAll() { const outcomes = []; for (const entry of [...active.values()]) outcomes.push(finish(entry.handle)); return Object.freeze(outcomes); },
-    state(laneId, macroId) { const entry = active.get(key(laneId, macroId)), binding = bindings.get(key(laneId, macroId)); return Object.freeze({ preview01: entry?.value ?? null, requestedOnly: true, mode: 'next-causal-onset',
+    state(laneId, macroId) { const entry = active.get(key(laneId, macroId)), binding = bindings.get(key(laneId, macroId)); return Object.freeze({ preview01: entry?.value ?? null, requestedOnly: true, mode: (entry?.macro || getSupportedInstrumentDefinition(getLane(laneId)?.instrumentRef)?.macros?.find(macro => macro.id === macroId))?.mode === 'continuous' ? 'held-voices-and-next-onset' : 'next-causal-onset',
       pickup01: binding && !binding.pickedUp ? binding.previous : null, controllerBound: !!binding, gestureId: entry?.handle.gestureId ?? null }); },
     revision: () => revision, diagnostics: () => Object.freeze({ active: active.size, bindings: bindings.size, revision, resource: reservation.receipt(), disposed }),
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); cancelAll(); bindings.clear(); disposed = true; return retirement.retire([{ name: 'macro-gesture-inputs', run: () => reservation.release() }]); }

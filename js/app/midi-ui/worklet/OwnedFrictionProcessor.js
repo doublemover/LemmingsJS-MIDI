@@ -39,6 +39,6 @@ export class OwnedFrictionKernel extends OwnedSineKernel {
 }
 export class OwnedFrictionProcessor extends OwnedSineProcessor {
   createKernel(rate, voices) { return new OwnedFrictionKernel(rate, Math.min(voices, FRICTION_LAYOUT.voices)); }
-  runtimeIdentity() { return { engineId: 'worklet-friction', engineVersion: 1, runtimeABI: 'owned-friction-f64-command-v2', buildId: 'owned-friction-v2-sealed-outer-body', restoration: 'exactSnapshot' }; }
+  runtimeIdentity() { return { engineId: 'worklet-friction', engineVersion: 1, runtimeABI: 'owned-friction-f64-command-v2', buildId: 'owned-friction-v3-held-macros', restoration: 'exactSnapshot' }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-friction-v1', OwnedFrictionProcessor);

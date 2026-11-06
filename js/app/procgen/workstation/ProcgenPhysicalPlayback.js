@@ -51,7 +51,8 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
   let routed = null, routingUnavailable = null;
   try { if (nativeBackend?.inspectExecution) routed = createRoutedInstrumentBackend({ defaultBackend: nativeBackend, resourceBudget, getContext: () => audio.getAudioContext(),
     getGeneration: () => nativeBackend.executionIncarnation?.() ?? 0, defaultReleaseSeconds: nativeResolution.patch.parameters.releaseSeconds, defaultOneShotTailSeconds: 0.08,
-    getLaneMix: laneId => laneMix.mix(laneId), resolveSharedTopologyBody: intent => cavityBody?.resolveSharedTopologyBody(intent) || null, onTopologyBody: onReceipt,
+    getLaneMix: laneId => laneMix.mix(laneId),
+    getPerformanceControls: (laneId, sourceId, identity) => actorTimbreControls((typeof sourceId === 'number' ? getLanes()[sourceId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity), resolveSharedTopologyBody: intent => cavityBody?.resolveSharedTopologyBody(intent) || null, onTopologyBody: onReceipt,
     resolveLane: laneId => typeof laneId === 'number' ? getLanes()[laneId]?.id || String(laneId) : String(laneId),
     requiredInstrumentKey: (laneId, sourceId) => { const lane = typeof sourceId === 'number' ? getLanes()[sourceId] : getLanes().find(entry => entry.id === laneId), reference = lane?.instrumentRef;
       return reference ? reference.packHash + ':' + reference.definitionHash : null; } }); }
@@ -235,6 +236,11 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
       getCorrelation: sample => clock.correlateDisplay({ executionEpoch: sample.executionEpoch, contextEpoch: sample.contextEpoch }), maxVoices: 16, rateHz: 20 });
     if (release) { releaseDisplay = release; displayKey = key; }
   };
+  let lastPerformancePublication = null;
+  const synchronizePerformance = () => {
+    const context = audio?.getAudioContext?.(); if (!prepared || !permitted() || !session?.getState().enabled || !context) return { status: 'rejected', reason: 'performance-audio-unavailable' };
+    return lastPerformancePublication = routed?.synchronizePerformance(Math.ceil((context.currentTime + 0.005) * context.sampleRate)) || { status: 'rejected', reason: 'performance-renderer-unavailable' };
+  };
   const synchronizeLaneMix = () => {
     const lanes = getLanes();
     if (lanes !== declaredSourceLanes) {
@@ -286,7 +292,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
         else leaseFailures++;
       }
     }
-    synchronizeLaneMix();
+    synchronizeLaneMix(); synchronizePerformance();
     try { refreshDisplay(batch); } catch { displayErrors++; }
     try { return engine.processBatch(batch); } catch (error) { error.playbackRetirement = stop(); throw error; }
   };
@@ -327,7 +333,8 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
   };
   return { engine, processBatch, stop, dispose,
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
-    isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: externalEnabled() || permitted() && !!session?.getState().enabled }),
+    isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, synchronizePerformance,
+    performanceView: laneId => Object.freeze({ status: lastPerformancePublication?.status || 'unavailable', acousticReceipt: false, outcomes: Object.freeze((lastPerformancePublication?.outcomes || []).filter(outcome => outcome.laneId === laneId)) }), travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: externalEnabled() || permitted() && !!session?.getState().enabled }),
     bindPreparedSurface, preparedSurfaceDefinitions: () => getGraph().preparedSurfaces || [], preparedSurfaceBodies: () => { surfaceBodies?.prune(); return surfaceBodies?.state() || null; }, prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: Object.freeze(['new-notes-only']), unsupported: Object.freeze({ 'crossfade-held': 'No realized cross-renderer held-state transfer adapter is installed.' }) }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),

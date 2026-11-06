@@ -4,6 +4,7 @@ import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState }
 import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState } from './OwnedSineState.js';
 import { SINE_LAYOUT, LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL, LIVE_LANE_ID_LIMIT } from '../OwnedSourceLayout.js';
 const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
+const PERFORMANCE_GAIN = 65536;
 const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6, MIX = 7;
 const SCHEDULED = 1, APPLIED = 2, REJECTED = 3, ENDED = 4, CANCELLED = 5, FAULTED = 6;
 const DISPLAY_PROTOCOL = 1, DISPLAY_WIDTH = 20, DISPLAY_VOICES = 32, DISPLAY_STATE_WIDTH = 16;
@@ -19,7 +20,7 @@ class OwnedSineKernel {
     this.width = width; this.source = source;
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
     this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;
-    this.mix = new Float64Array(MAX_VOICES * 6);
+    this.mix = new Float64Array(MAX_VOICES * 6); this.gainControl = new Float64Array(MAX_VOICES * 2);
     this.pendingLanes = new Float64Array(MAX_VOICES * 2); this.laneRoutes = new Float64Array(MAX_VOICES * 5);
     this.voice = new Float64Array(MAX_VOICES * 28); this.active = new Uint8Array(MAX_VOICES);
     this.receipts = new Float64Array(2048 * RECEIPT_WIDTH); this.receiptCount = 0;
@@ -195,6 +196,7 @@ class OwnedSineKernel {
       voices[at] = epoch; voices[at + 1] = queue[17]; voices[at + 2] = token;
       voices[at + 3] = 0; voices[at + 4] = queue[10] === 0 ? 1 : 0;
       voices[at + 5] = queue[6]; voices[at + 6] = queue[6]; voices[at + 7] = queue[7];
+      this.gainControl[slot * 2] = queue[7]; this.gainControl[slot * 2 + 1] = 0;
       voices[at + 8] = queue[8]; voices[at + 9] = queue[8]; voices[at + 10] = queue[9]; voices[at + 11] = queue[9];
       voices[at + 12] = Math.round(queue[10]); voices[at + 13] = Math.round(queue[11]); voices[at + 14] = queue[12];
       voices[at + 15] = frame; voices[at + 16] = queue[16]; voices[at + 17] = Math.max(1, Math.round(queue[13]));
@@ -206,16 +208,17 @@ class OwnedSineKernel {
       this.counters[3]++; this.receipt(REJECTED, sequence, slot, token, frame, 6); return;
     } else if (opcode === UPDATE) {
       if (target < frame) { this.counters[2]++; this.receipt(REJECTED, sequence, slot, token, frame, 4); return; }
-      const mask = queue[15];
-      if (!Number.isInteger(mask) || mask < 0 || mask > (this.source?.maxUpdateMask ?? 7) || queue[14] < 0 || queue[14] > this.sampleRate * 60 ||
+      const mask = queue[15], sourceMask = mask & ~PERFORMANCE_GAIN;
+      if (!Number.isInteger(mask) || mask < 0 || mask > 0x1ffff || sourceMask > (this.source?.maxUpdateMask ?? 7) || (mask & PERFORMANCE_GAIN) && (queue[7] < 0 || queue[7] > 1) || queue[14] < 0 || queue[14] > this.sampleRate * 60 ||
           (mask & 1) && (queue[6] <= 0 || queue[6] >= this.sampleRate / 2 || this.source && !this.source.validFrequency(slot, queue[6])) ||
-          (mask & 2) && (queue[8] < 0 || queue[8] > 1) || (mask & 4) && (queue[9] < -1 || queue[9] > 1) || this.source && !this.source.validUpdate(slot, mask, queue)) {
+          (mask & 2) && (queue[8] < 0 || queue[8] > 1) || (mask & 4) && (queue[9] < -1 || queue[9] > 1) || this.source && !this.source.validUpdate(slot, sourceMask, queue)) {
         this.receipt(REJECTED, sequence, slot, token, frame, 1); return;
       }
       if (mask & 1) { voices[at + 6] = queue[6]; voices[at + 23] = Math.max(1, Math.round(queue[14])); }
       if (mask & 2) { voices[at + 9] = queue[8]; voices[at + 24] = Math.max(1, Math.round(queue[14])); }
       if (mask & 4) { voices[at + 11] = queue[9]; voices[at + 25] = Math.max(1, Math.round(queue[14])); }
-      this.source?.applyUpdate(slot, mask, queue);
+      if (mask & PERFORMANCE_GAIN) { this.gainControl[slot * 2] = queue[7]; this.gainControl[slot * 2 + 1] = Math.max(1, Math.round(queue[14])); }
+      this.source?.applyUpdate(slot, sourceMask, queue);
     } else if (opcode === MIX) {
       const route = slot * 5;
       if (queue[7] < 0 || queue[7] > 2 || queue[9] < -1 || queue[9] > 1 || queue[14] < 0 || queue[14] > this.sampleRate ||
@@ -310,6 +313,8 @@ class OwnedSineKernel {
         if (voices[at + 23] > 0) { voices[at + 5] += (voices[at + 6] - voices[at + 5]) / voices[at + 23]; voices[at + 23]--; }
         if (voices[at + 24] > 0) { voices[at + 8] += (voices[at + 9] - voices[at + 8]) / voices[at + 24]; voices[at + 24]--; }
         if (voices[at + 25] > 0) { voices[at + 10] += (voices[at + 11] - voices[at + 10]) / voices[at + 25]; voices[at + 25]--; }
+        const gainAt = slot * 2;
+        if (this.gainControl[gainAt + 1] > 0) { voices[at + 7] += (this.gainControl[gainAt] - voices[at + 7]) / this.gainControl[gainAt + 1]; this.gainControl[gainAt + 1]--; }
         const mix = slot * 6;
         for (let offset = 0; offset <= 3; offset += 3) if (this.mix[mix + offset + 2] > 0) { this.mix[mix + offset] += (this.mix[mix + offset + 1] - this.mix[mix + offset]) / this.mix[mix + offset + 2]; this.mix[mix + offset + 2]--; }
         const envelope = sourceEnvelope ? 1 : voices[at + 4], phase = voices[at + 3], sourceSample = this.source ? this.source.sample(slot, voices[at + 5], frame) : Math.sin(phase),
@@ -408,7 +413,7 @@ class OwnedSineProcessor extends ProcessorBase {
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
   }
   createKernel(rate, voices) { return new OwnedSineKernel(rate, voices); }
-  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v7-owned-retirement' }; }
+  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v8-held-macros' }; }
   flushDisplay() {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;

@@ -161,6 +161,7 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
     ...(typeof backend.updateCanonicalTravel === 'function' ? { updateCanonicalTravel: (...args) => call('updateCanonicalTravel', args, 3) } : {}),
     ...(typeof backend.updateSampleTravel === 'function' ? { updateSampleTravel: (...args) => call('updateSampleTravel', args, 3) } : {}),
     ...(typeof backend.updateSamplePosition === 'function' ? { updateSamplePosition: (...args) => call('updateSamplePosition', args, 3) } : {}),
+    ...(typeof backend.updatePerformance === 'function' ? { updatePerformance: (...args) => call('updatePerformance', args, 3) } : {}),
     ...(typeof backend.updatePhysical === 'function' ? { updatePhysical: (...args) => call('updatePhysical', args, 3) } : {}),
     renewExecutionLease: (...args) => call('renewExecutionLease', args, 1, args[0]),
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count || 0,

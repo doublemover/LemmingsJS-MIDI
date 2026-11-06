@@ -9,7 +9,7 @@ import { resolveCircularSpectrum } from '../../../midi/content/CircularSpectrum.
 import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState } from './OwnedSineState.js';
 import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, SEED_LAYER_LAYOUT, TEXTURE_LAYOUT, FRICTION_LAYOUT, WIND_LAYOUT } from '../OwnedSourceLayout.js';
 
-export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v3-lane-transfer';
+export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v4-held-gain';
 const HEADER = 256, MAX_BYTES = 16 * 1048576;
 const profiles = Object.freeze({
   [SEED_LAYER_LAYOUT.width]: { id: 'worklet-seed-layers', kind: 9, layout: SEED_LAYER_LAYOUT, arrays: ['state', 'cloudState', 'grains'], scalars: ['birthBucket', 'bucketBirths', 'leftSample', 'rightSample'] },

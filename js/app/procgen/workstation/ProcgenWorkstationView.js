@@ -592,7 +592,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', async () => { if (!current(owner.generation) || owner.loading) return; await handlers.reclaimRecovery(); if (current(owner.generation)) refresh.click(); }));
     projectList.showModal();
   };
-  const refreshMacroState = () => { for (const [key, control] of macroControls) { const [laneId, macroId] = JSON.parse(key), receipt = handlers.macroGestureState?.(laneId, macroId); if (receipt) control.setObservations({ pickupValue: receipt.pickup01 }); } };
+  const refreshMacroState = () => { for (const [key, control] of macroControls) { const [laneId, macroId] = JSON.parse(key), receipt = handlers.macroGestureState?.(laneId, macroId); if (receipt) { control.setObservations({ pickupValue: receipt.pickup01 }); const failed = receipt.delivery?.outcomes?.find(outcome => outcome.status !== 'accepted'); control.dataset.delivery = failed ? 'unavailable' : receipt.delivery?.outcomes?.length ? 'scheduled' : 'requested'; if (failed) control.title = 'Held macro was not scheduled: ' + failed.reason; } } };
   const showProjects = (entries, load, options = {}) => showProjectPage({ items: entries, nextCursor: null }, load, null, options);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
   const viewLease = () => Object.freeze({ revision: viewRevision, selectionKey: parameterScope, laneId: state.laneId, tab: state.tab, slot: state.slot, step: state.step, documentIdentity: getDocumentIdentity() });
@@ -655,14 +655,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         const control = parameter(lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, value => {
           const previous = begin(); handle = null; handlers.previewMacroGesture(previous, value); handlers.finishMacroGesture(previous);
         }, { id: 'macro:' + macro.id, name: macro.name, quantity: 'authored-performance-macro', unit: 'normalized', min: 0, max: 1, step: 0.01, fineStep: 0.001, defaultValue: macro.default01, detents: macro.bipolar ? [macro.default01] : [] },
-        { macroKey, momentary: mode.momentary || mode.pressure, readOnly: macro.mode !== 'onset-only', preview(value, meta) {
+        { macroKey, momentary: mode.momentary || mode.pressure, readOnly: !['onset-only', 'continuous'].includes(macro.mode), preview(value, meta) {
           if (meta.phase === 'cancel' || meta.phase === 'return') { cancel(); return; }
           try { const baseline = lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, pressure = mode.pressure && ['pen', 'touch'].includes(meta.pointerType) && meta.normalizedPressure != null
             ? meta.normalizedPressure * (macro.bipolar && value < baseline ? -1 : 1) : null;
           handlers.previewMacroGesture(begin(), value, pressure); } catch (error) { cancel(); handlers.status?.(error.message); }
         }, onCancel: cancel, onFinish: cancel });
         control.title = macro.perceptualDirection;
-        labeled(macro.name + ' · next onset', control, nextFields); nextFields.append(node('p', macro.perceptualDirection, 'studio-hint'));
+        labeled(macro.name + (macro.mode === 'continuous' ? ' · held voices' : ' · next onset'), control, nextFields); nextFields.append(node('p', macro.perceptualDirection, 'studio-hint'));
         labeled('Momentary ' + macro.name, input(mode.momentary, momentary => { macroModes.set(macroKey, { ...mode, momentary }); renderInspector(); }, { type: 'checkbox' }), nextFields);
         labeled('Pen/touch pressure ' + macro.name, input(mode.pressure, pressure => { macroModes.set(macroKey, { ...mode, pressure }); renderInspector(); }, { type: 'checkbox' }), nextFields);
         nextFields.append(button('Learn ' + macro.name + ' controller', () => { try { handlers.learnMacro(lane.id, macro.id); } catch (error) { handlers.status?.(error.message); } }, 'Observed MIDI controller with scoped pickup; pressure is normalized model input, not newtons'));

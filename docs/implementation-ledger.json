@@ -7651,5 +7651,32 @@
       "Implement the remaining held macro and live source/effect continuation features, then execute one consolidated runtime/render/browser suite and assess failures together.",
       "Native control-tone measurements are not shipped patch/kit listening qualification or evidence that every requested capacity was admitted. Existing historical receipts retain their original source/version."
     ]
+  },
+  "continuation473": {
+    "date": "2026-11-06",
+    "agent": "rook",
+    "issues": [
+      971,
+      1018,
+      1138
+    ],
+    "scope": "Implement held authored macro performance across native and worklet instruments, performer gestures and live local owners.",
+    "implementation": [
+      "Continuous macros use the same typed composition as the admitted onset: authored base, macros, original deterministic identity variation, original onset-only physical bindings, latest qualified continuous physical observations and final safety clamp. Init-only macro controls and identity settings remain pinned to the original voice.",
+      "Native gain has an independent smoothed node outside ADSR. Worklet gain has an independent sample-rate-aware render-kernel slew outside pressure, lane mix and source envelopes. Both support zero-to-nonzero changes. Authored pan and independent semantic expression pan add before the final clamp; neither silently discards the other.",
+      "Execution-scoped updatePerformance is routed to each held voice. Current lane controls apply only to its pinned prepared instrument; newer patch controls do not mutate retained old-patch tails. Physical performer and ordinary live game owners publish held changes without creating notes. Performer gesture updates coalesce in one microtask before delivery, including return/cancel/commit endpoints; no per-actor UI timer drives DSP.",
+      "Existing momentary, bipolar pressure, selected-controller pickup and one-gesture Undo support now admit declared continuous macros. UI labels distinguish held controls from next-onset controls and expose refusal without claiming render acknowledgement.",
+      "Four choir macros, four granular macros and three spectral macros become held controls in explicit new recipe revisions. Spectral release and transient/exciter/algorithm controls stay onset-only. Worklet runtime identities and snapshot ABIs change to include independent gain-ramp state."
+    ],
+    "validation": {
+      "format": "pending",
+      "criticalTypes": "pending",
+      "functionalTests": "deferred with the rest of feature development per user instruction",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Qualify actual target application, replay, smoothing and snapshot continuity in the consolidated runtime/render/browser batch.",
+      "Complete live DSP state transfer and effect continuation, then remaining protocol and creative-tool features."
+    ]
   }
 }

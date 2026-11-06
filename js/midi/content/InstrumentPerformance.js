@@ -98,7 +98,6 @@ export function validateInstrumentBindings(input, parameters) {
 export function compileInstrumentPerformance(patch, parameters) {
   const macros = validateInstrumentMacros(patch.macros || [], parameters);
   const variation = validateInstrumentVariation(patch.variation, parameters), bindings = validateInstrumentBindings(patch.causalBindings || [], parameters);
-  if (macros.some(macro => macro.mode !== 'onset-only')) fail('this renderer supports onset-sampled macros only');
   const base = Object.fromEntries(parameters.map(parameter => [parameter.id, parameter.default]));
   for (const [key, value] of Object.entries(patch.parameters)) {
     const parameter = parameters.find(entry => entry.id === key);
@@ -131,7 +130,20 @@ export function compileInstrumentPerformance(patch, parameters) {
       effectiveValue: values[delta.parameterId], clamped: requested[delta.parameterId] !== values[delta.parameterId] }))) };
   };
   const continuous = bindings.filter(binding => binding.mode === 'continuous'), onset = bindings.filter(binding => binding.mode === 'onset-only');
-  return Object.freeze({ continuousSourceKinds: Object.freeze([...new Set(continuous.map(binding => binding.sourceKind))]),
+  const heldMacros = macros.filter(macro => macro.mode === 'continuous'), heldIds = new Set(heldMacros.flatMap(macro => macro.targets.map(target => target.parameter)));
+  const plan = { continuousMacroIds: Object.freeze(heldMacros.map(macro => macro.id)), continuousParameterIds: Object.freeze([...heldIds].sort()),
+    continuousSourceKinds: Object.freeze([...new Set(continuous.map(binding => binding.sourceKind))]),
+    resolveHeld(onset, input, identity, causes, applyFrame) {
+      if (!object(onset?.controls) || !Array.isArray(causes)) fail('held controls require the admitted onset');
+      const requested = validateInstrumentControls(input), merged = { ...onset.controls.macros };
+      if (Object.keys(requested.macros).some(key => !macroIds.has(key))) fail('unknown held macro');
+      for (const macro of heldMacros) merged[macro.id] = requested.macros[macro.id] ?? macro.default01;
+      const next = plan.resolve({ ...onset.controls, macros: merged }, applyFrame, identity), physical = plan.resolveContinuous(next.continuousBase, causes, applyFrame);
+      const deltas = [...next.deltas.filter(delta => heldIds.has(delta.parameterId) && delta.origin !== 'physical'), ...physical.deltas];
+      return Object.freeze({ ...next, revision: 'typed-held-controls-v1', values: physical.values, deltas: Object.freeze(deltas.map(delta => Object.freeze({ ...delta, effectiveValue: physical.values[delta.parameterId] }))),
+        bindingOutcomes: physical.bindingOutcomes, smoothingMs: Math.max(physical.smoothingMs, ...heldMacros.map(macro => macro.smoothingMs), 0),
+        parameterIds: Object.freeze([...new Set([...heldIds, ...physical.deltas.map(delta => delta.parameterId)])].sort()) });
+    },
     resolveContinuous(baseline, causes, applyFrame) {
       if (!object(baseline) || !Array.isArray(causes) || causes.length > Object.keys(physicalInputs).length || !Number.isSafeInteger(applyFrame) || applyFrame < 0 ||
           new Set(causes.map(cause => cause?.sourceKind)).size !== causes.length || causes.some(cause => !Object.hasOwn(physicalInputs, cause?.sourceKind))) fail('invalid continuous control source');
@@ -151,12 +163,18 @@ export function compileInstrumentPerformance(patch, parameters) {
         const combined = target.composition === 'replace' ? requested : target.composition === 'add' ? previous + requested : previous * requested;
         values[target.parameter] = combined;
         deltas.push({ parameterId: target.parameter, unit: parameter.unit, normalizedAuthorValue: amount, requestedValue: combined,
-          origin: 'macro', macroId: macro.id, composition: target.composition, applyFrame, interpolation: 'onset-only', smoothingMs: 0 });
+          origin: 'macro', macroId: macro.id, composition: target.composition, applyFrame, interpolation: macro.mode === 'continuous' ? 'bounded-causal-slew' : 'onset-only', smoothingMs: macro.smoothingMs });
       }
       const variationReceipt = applyInstrumentVariation(variation, patch, values, controls, identity, deltas, applyFrame), causes = identity?.performanceCause ? [identity.performanceCause] : [];
       const bindingOutcomes = applyBindings(onset, causes, values, deltas, applyFrame), continuousBase = Object.freeze({ ...values });
       bindingOutcomes.push(...applyBindings(continuous, causes, values, deltas, applyFrame));
       return Object.freeze({ revision: 'typed-onset-controls-v3', ...finalize(values, deltas), continuousBase, controls,
         variation: variationReceipt, bindingOutcomes: Object.freeze(bindingOutcomes) });
-    } });
+    } };
+  return Object.freeze(plan);
+}
+
+export function captureInstrumentPerformanceIdentity(input) {
+  return Object.freeze({ worldId: input?.worldId, generation: input?.generation, actorId: input?.actorId, onsetId: input?.onsetId,
+    ...(input?.performanceCause ? { performanceCause: retainInstrumentCause(input.performanceCause) } : {}) });
 }

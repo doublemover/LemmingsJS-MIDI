@@ -4,7 +4,7 @@ import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentit
 import { validateEngineDescriptor } from '../../midi/content/InstrumentPatchV2.js';
 
 const parameter = (id, min, max, defaultValue, unit, discrete = false) => Object.freeze({ id, min, max, default: defaultValue,
-  unit, discrete, interpolation: 'linear', liveSafe: !['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'waveform'].includes(id), capability: null });
+  unit, discrete, interpolation: 'linear', liveSafe: !discrete && !['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds', 'waveform'].includes(id), capability: null });
 const envelope = (attack, decay, sustain, gain) => [parameter('attackSeconds', 0, 2, attack, 's'), parameter('decaySeconds', 0, 4, decay, 's'),
   parameter('sustain01', 0, 1, sustain, 'ratio'), parameter('releaseSeconds', 0.002, 4, 0.04, 's'),
   parameter('gain01', 0, 1, gain, 'amplitude-linear'), parameter('pan01', -1, 1, 0, 'normalized')];
@@ -96,7 +96,7 @@ const capabilities = id => Object.freeze({ samples: ['worklet-seed-layers', 'nat
   ...(id === 'worklet-wind' ? { sealedWindModel: true, sealedFeedbackBody: true, pressureDrivenWind: true, onsetTunedWind: true, experimentalRegisterPolicy: true, livePitchUpdates: false, exactSourceStateTransfer: true } : {}),
   ...(id === 'worklet-friction' ? { sealedFrictionModel: true, sealedFeedbackBody: true, canonicalFrictionTravel: true, onsetTunedFriction: true, livePitchUpdates: false, exactSourceStateTransfer: true } : {}),
   ...(id === 'worklet-texture' ? { proceduralTextures: true, canonicalTextureTravel: true, feedforwardTextureBody: true, exactSourceStateTransfer: true } : {}),
-  modulationGraph: false, macroPerformance: ['worklet-seed-layers', 'native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(id), continuousMacroPerformance: false,
+  modulationGraph: false, macroPerformance: ['worklet-seed-layers', 'native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(id), continuousMacroPerformance: ['worklet-seed-layers', 'native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(id),
   identityVariation: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
   continuousPhysicalBindings: ['worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
   causalBindings: ['worklet-seed-layers', 'native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-friction', 'worklet-wind'].includes(id) });

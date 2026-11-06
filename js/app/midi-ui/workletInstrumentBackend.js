@@ -23,7 +23,7 @@ import { createInstrumentExecutionLifecycle, isManagedExecutionEpoch } from './I
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { createAudioDisplayTelemetry } from './AudioDisplayTelemetry.js';
-import { compileInstrumentPerformance, retainInstrumentCause } from '../../midi/content/InstrumentPerformance.js';
+import { captureInstrumentPerformanceIdentity, compileInstrumentPerformance, retainInstrumentCause } from '../../midi/content/InstrumentPerformance.js';
 import { resolveOwnedSourceSeed } from './OwnedSourceSeed.js';
 import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 import { PROTOCOL, WIDTH as SINE_WIDTH, CAPACITY, MAX_VOICES as SINE_MAX_VOICES, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE, MIX,
@@ -43,7 +43,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const source = getOwnedSourceProfile(engineId), WIDTH = source.width, MAX_VOICES = source.voices, fields = source.fields, isExtended = source.extended;
   const isSampler = engineId === 'worklet-sample', isLayered = engineId === 'worklet-seed-layers';
   const performanceParameters = source.parameters, liveSourceIds = source.liveIds;
-  const expressionIds = new Set(['pressure01', 'pan01', 'pitchOffsetCents', ...liveSourceIds]);
+  const expressionIds = new Set(['pressure01', 'pan01', 'pitchOffsetCents', 'gain01', ...liveSourceIds]);
   const runtime = Object.freeze({ ...source.runtime, hostProtocolVersion: PROTOCOL, retirementProtocol: 1 });
   const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: isSampler, feedforwardSampleBody: isSampler, positionDrivenSamples: isSampler, canonicalTravelSamples: isSampler, releaseVelocity: isSampler, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended && !source.requiresPCMSet && !['worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), sealedWindModel: engineId === 'worklet-wind', pressureDrivenWind: engineId === 'worklet-wind', experimentalRegisterPolicy: engineId === 'worklet-wind', sealedFrictionModel: engineId === 'worklet-friction', canonicalFrictionTravel: engineId === 'worklet-friction', decomposedSeedLayers: isLayered, canonicalContactGrains: isLayered, livePitchUpdates: !['worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), proceduralTextures: engineId === 'worklet-texture', feedforwardTextureBody: engineId === 'worklet-texture', canonicalTextureTravel: engineId === 'worklet-texture', restoration: source.restoration, perVoicePitch: engineId !== 'worklet-texture',
     perVoiceDamping: source.damping, perVoiceTimbre: source.perVoiceTimbre, supportedParameterIds: Object.freeze(Object.keys(fields)) });
@@ -340,7 +340,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
       timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: candidateVoices, ...(isSampler ? { sampleZones: next.samplePatch.sampleMap.zones.length } : {}) }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate + (source.requiresPCMSet ? 131072 : 0), true) || null;
+        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: candidateVoices, ...(isSampler ? { sampleZones: next.samplePatch.sampleMap.zones.length } : {}) }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate + 1024 + (source.requiresPCMSet ? 131072 : 0), true) || null;
       await Promise.race([loadOwnedWorkletModule(candidateContext, source, preview._audioResources), interrupted]);
       if (!current()) return reject('preparation-cancelled');
       if (!ready) {
@@ -479,10 +479,10 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     } catch { return reject('unsupported-performance-controls', intent.voiceId); } }
     const parameters = performance?.values || patch.parameters;
     if (!source.acceptsParameters(parameters)) return reject('unsupported-source-parameter-layout', intent.voiceId);
-    const expression = intent.expression || {}, pressure = expression.pressure01 ?? 1, pan = expression.pan01 ?? parameters.pan01,
+    const expression = intent.expression || {}, pressure = expression.pressure01 ?? 1, pan = (expression.pan01 ?? 0) + parameters.pan01,
       offset = expression.pitchOffsetCents ?? 0;
     if (typeof expression !== 'object' || Array.isArray(expression) || Object.getPrototypeOf(expression) !== Object.prototype ||
-        !finite(pressure, 0, 1) || !finite(pan, -1, 1) || !finite(offset, -24000, 24000) ||
+        !finite(pressure, 0, 1) || !finite(expression.pan01 ?? 0, -1, 1) || !finite(offset, -24000, 24000) ||
         Object.keys(expression).some(id => !['pressure01', 'pan01', 'pitchOffsetCents'].includes(id))) return reject('unsupported-expression', intent.voiceId);
     const frequency = (intent.pitch.referenceHz ?? 440) * 2 ** ((intent.pitch.cents - 6900 + offset) / 1200);
     if (!finite(frequency, source.minHz, Math.min(source.maxHz ?? Infinity, context.sampleRate / 2 - 1)) || Math.abs(offset) > source.bendCents) return reject('pitch-out-of-range', intent.voiceId);
@@ -545,6 +545,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       baseFrequency: frequency / 2 ** (offset / 1200), mixPan: patch.pan01, patchRevision: patch.revision, patchId: patch.id,
       stringT60Seconds: parameters.stringT60Seconds, bodyT60Seconds: parameters.bodyT60Seconds, sourceParameters: parameters,
       sourceChannels: source.requiresPCMSet ? pcmDescriptor.banks.some(bank => bank.channels === 2) ? 2 : 1 : pcmDescriptor?.channels || 1,
+      onsetPerformance: performance, performanceIdentity: captureInstrumentPerformanceIdentity(intent), performanceFrame: targetFrame,
+      performanceValues: parameters, expressionPan: expression.pan01 ?? 0, panFrame: targetFrame, velocityGain: intent.velocity01 * patch.gain01,
       performancePlan: patch.performance, continuousBase: performance?.continuousBase, sourceValues: parameters,
       physicalCauses: isExtended ? new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []) : null, physicalFrame: targetFrame,
       startedAt: targetFrame / context.sampleRate, requestRelease: (time, force, reason) => {
@@ -591,7 +593,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (sampleSelection) return Object.freeze({ ...result, region: sampleSelection.region, rateRatio: sampleSelection.rateRatio, readDerivative: sampleSelection.readDerivative, sourceRenderer: 'owned-sample', ...(traversal ? { sampleTraversal: traversal.receipt } : {}), sourceBank: pcmDescriptor, articulation: sampleSelection.articulation });
     return isExtended ? Object.freeze({ ...result, sourceSeed: seedResolution.receipt, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}), ...(seedLayerMotion ? { seedLayerContact: seedLayerMotion.receipt } : {}) }) : result;
   };
-  const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
+  const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds, authored = false) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
     if (!ready || !voice || voice.released && voice.releaseAt <= context.currentTime || !preview._ownerReady(owner)) return reject('voice-not-active', voiceId);
     if (!expression || typeof expression !== 'object' || Array.isArray(expression) || Object.getPrototypeOf(expression) !== Object.prototype ||
@@ -606,9 +608,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       mask |= 1; values[6] = frequency;
     }
     if (expression.pressure01 != null) { if (!finite(expression.pressure01, 0, 1)) return reject('invalid-expression', voiceId); mask |= 2; values[8] = expression.pressure01; }
-    if (expression.pan01 != null) { if (!finite(expression.pan01, -1, 1)) return reject('invalid-expression', voiceId); mask |= 4; values[9] = Math.max(-1, Math.min(1, expression.pan01 + voice.mixPan)); }
+    if (expression.pan01 != null) { if (!finite(expression.pan01, -1, 1) || targetFrame < voice.panFrame) return reject('invalid-or-out-of-order-pan', voiceId); mask |= 4; values[9] = Math.max(-1, Math.min(1, expression.pan01 + (authored ? voice.expressionPan : voice.performanceValues.pan01) + voice.mixPan)); }
+    if (expression.gain01 != null) { if (!authored || !finite(expression.gain01, 0, 1)) return reject('invalid-authored-gain', voiceId); mask |= 65536; values[7] = voice.velocityGain * expression.gain01; }
     const sourceMask = source.writeUpdate(expression, voice, values); if (sourceMask == null) return reject('invalid-expression', voiceId); mask |= sourceMask;
-    values[15] = mask; return command(UPDATE, targetFrame, voice, values);
+    values[15] = mask; const result = command(UPDATE, targetFrame, voice, values);
+    if (result.status === 'accepted' && expression.pan01 != null) { if (!authored) voice.expressionPan = expression.pan01; voice.panFrame = targetFrame; }
+    return result;
   };
   const queueSamplePosition = (voiceId, segment, targetFrame, executionEpoch = 'live', canonicalTravel = false) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
@@ -673,8 +678,23 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     }
     if (!Object.keys(expression).length) return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, performance });
     const result = update(voiceId, expression, targetFrame, executionEpoch, performance.smoothingMs / 1000);
-    if (result.status === 'accepted') { voice.physicalCauses = causes; voice.physicalFrame = targetFrame; }
+    if (result.status === 'accepted') { voice.physicalCauses = causes; voice.physicalFrame = targetFrame; voice.performanceValues = performance.values; voice.sourceValues = performance.values; }
     return Object.freeze({ ...result, performance });
+  };
+  const updatePerformance = (voiceId, input, targetFrame, executionEpoch = 'live') => {
+    const voice = voices.get(keyFor(executionEpoch, voiceId));
+    if (!ready || !voice || !preview._ownerReady(owner) || voice.released && voice.releaseAt <= context.currentTime) return reject('voice-not-active', voiceId);
+    if (!Number.isSafeInteger(targetFrame) || targetFrame < Math.max(frameNow(), Math.round(voice.start * context.sampleRate), voice.performanceFrame) || targetFrame >= voice.releaseAt * context.sampleRate) return reject('stale-or-outside-gate-performance', voiceId);
+    if (!voice.performancePlan?.continuousMacroIds.length) return Object.freeze({ status: 'accepted', stage: 'unchanged', reason: 'no-held-macros', outputRequested: false });
+    let performance; try { performance = voice.performancePlan.resolveHeld(voice.onsetPerformance, input, voice.performanceIdentity, [...voice.physicalCauses.values()], targetFrame); } catch { return reject('invalid-held-performance', voiceId); }
+    const expression = {};
+    for (const id of performance.parameterIds) {
+      if (!['gain01', 'pan01', ...liveSourceIds].includes(id)) return reject('unsupported-held-target', voiceId);
+      if (performance.values[id] !== voice.performanceValues[id]) expression[id] = performance.values[id];
+    }
+    const result = Object.keys(expression).length ? update(voiceId, expression, targetFrame, executionEpoch, performance.smoothingMs / 1000, true) : Object.freeze({ status: 'accepted', stage: 'unchanged', outputRequested: false });
+    if (result.status === 'accepted') { voice.performanceValues = performance.values; voice.continuousBase = performance.continuousBase; voice.sourceValues = performance.values; voice.performanceFrame = targetFrame; }
+    return Object.freeze({ ...result, performance, acousticReceipt: false });
   };
   const updateLaneMix = (voiceId, mix, frame, epoch = 'live', laneId = undefined) => {
     const voice = voices.get(keyFor(epoch, voiceId));
@@ -798,7 +818,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (receipt.state === 'retired') settled(receipt); else receipt.completion.then(settled);
     return receipt;
   };
-  lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, updateLaneMix, updatePhysical, updateSamplePosition, updateSampleTravel, updateCanonicalTravel, end, renewExecutionLease, cancelGenerationWithReceipt,
+  lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, updatePerformance, updateLaneMix, updatePhysical, updateSamplePosition, updateSampleTravel, updateCanonicalTravel, end, renewExecutionLease, cancelGenerationWithReceipt,
     observeCommandOutcomes(listener) {
       if (disposed || typeof listener !== 'function' || commandObservers.size >= 8 || commandObserverSequence === Number.MAX_SAFE_INTEGER) throw new Error('Command observation is unavailable.');
       const observer = { id: ++commandObserverSequence, listener }; commandObservers.add(observer); let active = true;

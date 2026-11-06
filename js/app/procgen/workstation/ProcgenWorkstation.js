@@ -340,9 +340,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const router = () => runtime()?.view?.midiPreviewRouter;
   const selected = () => procgenLane(project.procgen.lanes, state.laneId) || project.procgen.lanes[0];
   let sampledMacroRevision = 0, sampledMacroPerformance = null, macroInputEndpoint = null;
+  let macroPublicationQueued = false;
+  const publishHeldMacros = () => { if (macroPublicationQueued || disposed) return; macroPublicationQueued = true; queueMicrotask(() => { macroPublicationQueued = false; if (!disposed) { physicalPlayback?.synchronizePerformance(); view?.macroState?.(); } }); };
   const macroGestures = createInstrumentMacroGestures({ resourceBudget, getLane: laneId => procgenLane(project.procgen.lanes, laneId), getDocumentEpoch: () => documentGeneration,
     commit: (laneId, instrumentControls, gestureId) => dispatch({ type: 'procgen/lane', laneId, patch: { instrumentControls } }, { historyGroup: 'macro:' + documentGeneration + ':' + gestureId }),
-    onState: () => view?.macroState?.() });
+    onState: () => { view?.macroState?.(); publishHeldMacros(); } });
   const effectiveSoundLanes = lanes => macroGestures.lanes(soundTransactions.lanes(lanes));
   const sampleMacroPerformance = boundary => {
     const revision = macroGestures.revision(); if (revision === sampledMacroRevision) return;
@@ -506,7 +508,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     project = publishedProject;
     if (document) getPointerGestureArbiter(document).revalidate();
     engine?.cancelPendingAdmissions();
-    projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix();
+    projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix(); publishHeldMacros();
     if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
     editRevision++; storageStatus(); refreshSceneCue();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
@@ -2171,7 +2173,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     beginMacroGesture: (laneId, macroId, options) => { if (worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop || soundTransactions.diagnostics().active) throw new Error('Finish the pending sound/world/take operation before a macro gesture.'); return macroGestures.begin(laneId, macroId, options); },
     previewMacroGesture: (handle, value, pressure = null) => pressure == null ? macroGestures.set(handle, value) : macroGestures.pressure(handle, pressure),
-    finishMacroGesture: (handle, options) => macroGestures.finish(handle, options), macroGestureState: (laneId, macroId) => macroGestures.state(laneId, macroId),
+    finishMacroGesture: (handle, options) => macroGestures.finish(handle, options), macroGestureState: (laneId, macroId) => Object.freeze({ ...macroGestures.state(laneId, macroId), delivery: physicalPlayback?.performanceView(laneId) || null }),
     commitPerformedMacros: () => macroGestures.commitAll(), returnPerformedMacros: () => macroGestures.cancelAll(),
     learnMacro(laneId, macroId) { const endpoint = ports.getState(), epoch = documentGeneration, reference = procgenLane(project.procgen.lanes, laneId)?.instrumentRef;
       if (!endpoint.inputId || !reference) throw new Error('Select a connected input and an admitted instrument first.');

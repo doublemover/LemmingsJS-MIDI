@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.artificial-choir",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "name": "Artificial choir",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -176,7 +176,7 @@
     },
     {
       "id": "choir.hollow-ooh",
-      "revision": 1,
+      "revision": 2,
       "extends": "choir.base",
       "name": "Hollow Ooh",
       "components": [
@@ -239,9 +239,9 @@
         {
           "id": "vowel",
           "name": "VOWEL",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Move among three original artificial vowel landmarks; Robot Choir selects stepped landmarks.",
           "targets": [
             {
@@ -263,9 +263,9 @@
         {
           "id": "breath",
           "name": "BREATH",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.1142857142857143,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Blend actor-seeded breath into the voiced excitation without creating another onset.",
           "targets": [
             {
@@ -287,9 +287,9 @@
         {
           "id": "size",
           "name": "SIZE",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.6315172029168968,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Scale formant frequencies and bandwidths without changing the carrier pitch.",
           "targets": [
             {
@@ -311,9 +311,9 @@
         {
           "id": "chorus",
           "name": "CHORUS",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.3333333333333333,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Spread a phase-owned detuned sibling inside the same logical voice.",
           "targets": [
             {
@@ -336,7 +336,7 @@
     },
     {
       "id": "choir.paper-aah",
-      "revision": 1,
+      "revision": 2,
       "extends": "choir.base",
       "name": "Paper Aah",
       "components": [
@@ -399,9 +399,9 @@
         {
           "id": "vowel",
           "name": "VOWEL",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Move among three original artificial vowel landmarks; Robot Choir selects stepped landmarks.",
           "targets": [
             {
@@ -423,9 +423,9 @@
         {
           "id": "breath",
           "name": "BREATH",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.28571428571428575,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Blend actor-seeded breath into the voiced excitation without creating another onset.",
           "targets": [
             {
@@ -447,9 +447,9 @@
         {
           "id": "size",
           "name": "SIZE",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Scale formant frequencies and bandwidths without changing the carrier pitch.",
           "targets": [
             {
@@ -471,9 +471,9 @@
         {
           "id": "chorus",
           "name": "CHORUS",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.25,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Spread a phase-owned detuned sibling inside the same logical voice.",
           "targets": [
             {
@@ -496,7 +496,7 @@
     },
     {
       "id": "choir.tiny-ee",
-      "revision": 1,
+      "revision": 2,
       "extends": "choir.base",
       "name": "Tiny Ee",
       "components": [
@@ -559,9 +559,9 @@
         {
           "id": "vowel",
           "name": "VOWEL",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 1,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Move among three original artificial vowel landmarks; Robot Choir selects stepped landmarks.",
           "targets": [
             {
@@ -583,9 +583,9 @@
         {
           "id": "breath",
           "name": "BREATH",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.17142857142857143,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Blend actor-seeded breath into the voiced excitation without creating another onset.",
           "targets": [
             {
@@ -607,9 +607,9 @@
         {
           "id": "size",
           "name": "SIZE",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.24271341358512086,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Scale formant frequencies and bandwidths without changing the carrier pitch.",
           "targets": [
             {
@@ -631,9 +631,9 @@
         {
           "id": "chorus",
           "name": "CHORUS",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.4166666666666667,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Spread a phase-owned detuned sibling inside the same logical voice.",
           "targets": [
             {
@@ -656,7 +656,7 @@
     },
     {
       "id": "choir.robot-choir",
-      "revision": 1,
+      "revision": 2,
       "extends": "choir.base",
       "name": "Robot Choir",
       "components": [
@@ -719,9 +719,9 @@
         {
           "id": "vowel",
           "name": "VOWEL",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Move among three original artificial vowel landmarks; Robot Choir selects stepped landmarks.",
           "targets": [
             {
@@ -743,9 +743,9 @@
         {
           "id": "breath",
           "name": "BREATH",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.07142857142857144,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Blend actor-seeded breath into the voiced excitation without creating another onset.",
           "targets": [
             {
@@ -767,9 +767,9 @@
         {
           "id": "size",
           "name": "SIZE",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.3827673731814885,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Scale formant frequencies and bandwidths without changing the carrier pitch.",
           "targets": [
             {
@@ -791,9 +791,9 @@
         {
           "id": "chorus",
           "name": "CHORUS",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.16666666666666666,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Spread a phase-owned detuned sibling inside the same logical voice.",
           "targets": [
             {

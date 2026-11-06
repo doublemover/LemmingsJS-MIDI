@@ -32,7 +32,7 @@ export function createLiveLocalInstrumentSink({ audio, resourceBudget = null, no
     native = session.createInstrumentBackend({ gateMode: 'owned' });
     const prepared = await native.prepare(defaultResolution); check(); if (prepared.status !== 'ready') throw failure(prepared.reason, 'Local instrument routing could not be prepared.');
     routed = createRoutedInstrumentBackend({ defaultBackend: native, resourceBudget, maxChildren: 17, maxVoices: 128, getContext: () => audio.getAudioContext(), getGeneration: () => native.executionIncarnation(),
-      resolveLane: laneId => String(laneId), requiredInstrumentKey: laneId => keyFor(tracks.find(track => track.id === laneId)?.instrumentRef) });
+      resolveLane: laneId => String(laneId), getPerformanceControls: laneId => tracks.find(track => track.id === laneId)?.instrumentControls || {}, requiredInstrumentKey: laneId => keyFor(tracks.find(track => track.id === laneId)?.instrumentRef) });
     instruments = createLaneInstrumentPreparation({ session, routed, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider(), onState: value => report({ status: value.state, trackId: value.laneId, reason: value.code }) });
   })();
   const prepare = async next => {
@@ -45,7 +45,7 @@ export function createLiveLocalInstrumentSink({ audio, resourceBudget = null, no
       context = audio.getAudioContext(); const results = await instruments.synchronize(tracks); check();
       const unavailable = results.filter(value => value.state !== 'ready');
       if (unavailable.length) throw failure(unavailable[0].code, 'A selected local instrument is unavailable: ' + unavailable.map(value => value.laneId + ' (' + value.code + ')').join(', '));
-      report({ status: 'ready' }); return true;
+      routed.synchronizePerformance(Math.ceil((context.currentTime + 0.005) * context.sampleRate)); report({ status: 'ready' }); return true;
     } finally { preparing--; }
   };
   const collect = () => {

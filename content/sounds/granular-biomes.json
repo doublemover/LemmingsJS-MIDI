@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.granular-biomes",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "name": "Synthetic granular biomes",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -98,7 +98,7 @@
   "recipes": [
     {
       "id": "biome.rain-glass",
-      "revision": 1,
+      "revision": 2,
       "name": "Rain Glass",
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -247,9 +247,9 @@
         {
           "id": "crowd",
           "name": "CROWD",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Sparse to dense grain children within one held cloud.",
           "targets": [
             {
@@ -271,9 +271,9 @@
         {
           "id": "scale",
           "name": "SCALE",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.041666666666666664,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Short grain flecks to overlapping source texture.",
           "targets": [
             {
@@ -295,9 +295,9 @@
         {
           "id": "scan",
           "name": "SCAN",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Earlier to later positions in the permitted source region.",
           "targets": [
             {
@@ -319,9 +319,9 @@
         {
           "id": "weather",
           "name": "WEATHER",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
           "targets": [
             {
@@ -414,7 +414,7 @@
     },
     {
       "id": "biome.gravel-choir",
-      "revision": 1,
+      "revision": 2,
       "name": "Gravel Choir",
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -563,9 +563,9 @@
         {
           "id": "crowd",
           "name": "CROWD",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Sparse to dense grain children within one held cloud.",
           "targets": [
             {
@@ -587,9 +587,9 @@
         {
           "id": "scale",
           "name": "SCALE",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.4166666666666667,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Short grain flecks to overlapping source texture.",
           "targets": [
             {
@@ -611,9 +611,9 @@
         {
           "id": "scan",
           "name": "SCAN",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Earlier to later positions in the permitted source region.",
           "targets": [
             {
@@ -635,9 +635,9 @@
         {
           "id": "weather",
           "name": "WEATHER",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
           "targets": [
             {
@@ -730,7 +730,7 @@
     },
     {
       "id": "biome.water-lens",
-      "revision": 1,
+      "revision": 2,
       "name": "Water Lens",
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -879,9 +879,9 @@
         {
           "id": "crowd",
           "name": "CROWD",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Sparse to dense grain children within one held cloud.",
           "targets": [
             {
@@ -903,9 +903,9 @@
         {
           "id": "scale",
           "name": "SCALE",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.8333333333333334,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Short grain flecks to overlapping source texture.",
           "targets": [
             {
@@ -927,9 +927,9 @@
         {
           "id": "scan",
           "name": "SCAN",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Earlier to later positions in the permitted source region.",
           "targets": [
             {
@@ -951,9 +951,9 @@
         {
           "id": "weather",
           "name": "WEATHER",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
           "targets": [
             {
@@ -1046,7 +1046,7 @@
     },
     {
       "id": "biome.rust-breath",
-      "revision": 1,
+      "revision": 2,
       "name": "Rust Breath",
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -1195,9 +1195,9 @@
         {
           "id": "crowd",
           "name": "CROWD",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Sparse to dense grain children within one held cloud.",
           "targets": [
             {
@@ -1219,9 +1219,9 @@
         {
           "id": "scale",
           "name": "SCALE",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.20833333333333334,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Short grain flecks to overlapping source texture.",
           "targets": [
             {
@@ -1243,9 +1243,9 @@
         {
           "id": "scan",
           "name": "SCAN",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Earlier to later positions in the permitted source region.",
           "targets": [
             {
@@ -1267,9 +1267,9 @@
         {
           "id": "weather",
           "name": "WEATHER",
-          "mode": "onset-only",
+          "mode": "continuous",
           "default01": 0.5,
-          "smoothingMs": 0,
+          "smoothingMs": 20,
           "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
           "targets": [
             {
