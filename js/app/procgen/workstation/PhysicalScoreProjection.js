@@ -1,3 +1,4 @@
+import { capturedScoreAxis, readCapturedAxisValue } from './AxisDescriptor.js';
 import { canonicalJournalText, journalError } from './CausalJournalCanonical.js';
 import { queryCausalCoverage } from './CausalCoverage.js';
 import { createCausalViewWorkspace } from './CausalViewWorkspace.js';
@@ -18,18 +19,6 @@ const glyphKind = fact => {
   if (fact.kind === 'CommandApplied' || fact.kind === 'CommandRejected') return 'intervention';
   return 'source-event';
 };
-const axisValue = (domain, fact, batch, intents) => {
-  if (domain === 'causal-order') return { status: 'known', value: fact.causalSequence, unit: 'causal-sequence' };
-  if (domain === 'physical-source-time') return Number.isFinite(batch.sourceTimeMs)
-    ? { status: 'known', value: batch.sourceTimeMs, unit: 'milliseconds', precision: fact.precision || 'tick' }
-    : { status: 'unknown', value: null, unit: 'milliseconds', reason: 'source-time-unavailable' };
-  const times = intents.filter(intent => Number.isFinite(intent.scoreTime?.beat)).map(intent => intent.scoreTime);
-  if (!times.length) return { status: 'unknown', value: null, unit: 'beats', reason: 'captured-score-time-unavailable' };
-  const first = times[0];
-  if (times.some(time => time.epoch !== first.epoch || time.beat !== first.beat)) return { status: 'unknown', value: null, unit: 'beats', reason: 'multiple-interpretation-times' };
-  return { status: 'known', value: first.beat, unit: 'beats', epoch: first.epoch || null, precision: first.precision || 'tick' };
-};
-
 const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFacts = 16384, maxGlyphs = 2048,
   maxStrands = 512, maxEvidence = 4096, maxBytes = 4194304, maxJoinRecords = 4096,
   maxCauseLinks = Math.min(1048576, maxSourceFacts * 32), resourceBudget = null, jobs } = {}) => {
@@ -169,7 +158,7 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
             evidenceStatus: evidenceByIntent.has(intent.intentId) ? 'observed-in-window' : 'unknown' }));
           const glyph = { glyphId: fact.eventId, kind: glyphKind(fact), strandId, source, actorId: fact.actorId ?? null,
             actionInstanceId: fact.actionInstanceId || null, spanId: fact.spanId || null, factKind: fact.kind || fact.type || 'unknown',
-            axis: axisValue(timeDomain, fact, batch, intents), fact, intents: joined,
+            axis: readCapturedAxisValue(timeDomain, source, intents), fact, intents: joined,
             interpretationCoverage: interpretationKnown ? 'captured-companion' : 'unknown' };
           if (resolution.mode === 'exact') glyphs.push(glyph);
           else {
@@ -178,7 +167,7 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
             if (!aggregate) {
               if (aggregates.size >= maxGlyphs) { continuation = { sequence: record.sequence, factOffset: factIndex }; selectedFacts--; sourceFacts--; break outer; }
               aggregate = { glyphId: `${takeId}:${takeRevision}:${key}`, kind: 'aggregate', sourceKind: glyph.kind, strandId,
-                eventCount: 0, firstSource: source, lastSource: source, firstAxis: glyph.axis, lastAxis: glyph.axis,
+                eventCount: 0, firstSource: source, lastSource: source, firstAxis: glyph.axis, lastAxis: glyph.axis, axisRange: { minimum: null, maximum: null, epoch: null, known: 0, ambiguous: false },
                 intentCount: 0, evidenceCount: 0, unknownEvidenceCount: 0, precisionCounts: {},
                 uncertainty: 'display-only-aggregation', expansion: { takeId, takeRevision, generation, coverageRange: { firstTick: record.tick, lastTick: record.tick },
                   actorOrRoleFilter: { actorIds: fact.actorId == null ? [] : [fact.actorId], roles }, glyphKinds: [glyph.kind],
@@ -187,6 +176,10 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
               aggregates.set(key, aggregate);
             }
             aggregate.eventCount++; aggregate.lastSource = source; aggregate.lastAxis = glyph.axis;
+            if (glyph.axis.status === 'known' && Number.isFinite(glyph.axis.value)) { const range = aggregate.axisRange;
+              if (range.known && range.epoch !== (glyph.axis.epoch || null)) range.ambiguous = true;
+              if (!range.known) range.epoch = glyph.axis.epoch || null; range.known++; range.minimum = Math.min(range.minimum ?? glyph.axis.value, glyph.axis.value); range.maximum = Math.max(range.maximum ?? glyph.axis.value, glyph.axis.value);
+            }
             aggregate.intentCount += joined.length;
             aggregate.evidenceCount += joined.reduce((sum, intent) => sum + intent.sinkEvidence.length, 0);
             aggregate.unknownEvidenceCount += joined.filter(intent => intent.evidenceStatus === 'unknown').length;
@@ -208,7 +201,7 @@ const createPhysicalScoreProjection = ({ journal, maxRecords = 4096, maxSourceFa
         if (!voices.has(voiceId)) voices.set(voiceId, { voiceId, actorStrandId: strand.strandId, generation });
       }
       const result = { schema: 'lemmings-physical-score', version: 1, takeId, takeRevision, requestId, generation, timeDomain, sourceCanonicalHash: manifest.canonicalHash,
-        requestedCoverage: range, sourceCoverage: manifest.coverage, unknownRegions, resolution, glyphs,
+        axis: capturedScoreAxis({ timeDomain, glyphs, takeId, takeRevision, generation }), requestedCoverage: range, sourceCoverage: manifest.coverage, unknownRegions, resolution, glyphs,
         actorStrands: [...strands.values()].map(strand => ({ ...strand, voiceIds: [...strand.voiceIds], roles: [...strand.roles] })),
         voiceStrands: [...voices.values()], clockSegments: { boundary: manifest.boundaryState?.timeline || null, observedWindow: timelines,
           coverage: 'captured-boundary-and-query-window' }, interventions, evidenceCoverage: { scope: 'query-window', observed: evidenceCount, unjoinable: missingEvidenceCount },

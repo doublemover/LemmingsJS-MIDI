@@ -1,9 +1,12 @@
+import { createAxisDescriptor, formatAxisDescriptor, axisTickMarks } from './AxisDescriptor.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { projectCausalHistory, explainCausalVisual } from './CausalVisualProjection.js';
 
 let nextOwner = 0;
 export function createCausalVisualView({ document, stage, actions, parent, resourceBudget = null, getDocumentIdentity, read, invalidate }) {
   const layer = document.createElement('div'); layer.className = 'studio-causal-layer'; layer.setAttribute('aria-label', 'Observed past physical causes'); stage.append(layer);
+  const rulerLayer = document.createElement('div'); rulerLayer.className = 'studio-world-axis'; rulerLayer.setAttribute('aria-label', 'World distance ruler'); layer.append(rulerLayer);
+  const rulerTicks = Array.from({ length: 5 }, () => { const tick = document.createElement('span'); rulerLayer.append(tick); return tick; });
   const summary = document.createElement('output'); summary.className = 'studio-causal-summary'; layer.append(summary);
   const historyButton = document.createElement('button'); historyButton.type = 'button'; historyButton.textContent = 'Cause history'; actions.append(historyButton);
   const dialog = document.createElement('dialog'); dialog.className = 'studio-dialog studio-causal-dialog'; dialog.setAttribute('aria-label', 'Physical cause explanation'); parent.append(dialog);
@@ -68,10 +71,19 @@ export function createCausalVisualView({ document, stage, actions, parent, resou
       if (disposed || unavailable) return;
       if (sourceIdentity !== getDocumentIdentity()) { reset(); sourceIdentity = getDocumentIdentity(); }
       const model = current(values), snapshot = renderer?.presentation?.getSnapshot?.(), stageRect = stage.getBoundingClientRect();
+      const accepted = !!snapshot && renderer.presentation.valid(snapshot);
       projectionRevision = model.projectionRevision;
       text(historyButton, `Cause history (${model.causes.length})`);
       const s = model.summary, message = `${model.causes.length} retained references · ${s.unrooted} unrooted intents · ${s.unlocated} unlocated · ${s.outside} outside view · ${s.pending} awaiting projection · ${s.sourceMismatch} wrong source · ${s.conflicts} conflicting · ${s.omitted} entry omissions · ${s.historyOmitted} evicted · ${s.expired} expired`;
-      text(summary, message); summary.title = message;
+      const axis = accepted ? createAxisDescriptor({ domain: 'world-distance', origin: snapshot.originX, extent: snapshot.viewWidth, authorityId: 'Accepted world viewport', generation: snapshot.generation, confidence: 'authoritative', revision: String(snapshot.projectionRevision) }) : null;
+      const ruler = axis ? formatAxisDescriptor(axis) : null;
+      text(summary, (ruler ? ruler.compact + ' · ' : '') + message); summary.title = (ruler ? ruler.details + '. ' : '') + message; summary.tabIndex = 0;
+      summary.dataset.axisDomain = axis?.domain || 'unavailable'; summary.setAttribute('aria-label', summary.title);
+      rulerLayer.hidden = !axis;
+      if (axis) {
+        rulerLayer.style.left = (snapshot.rect.left - stageRect.left - stage.clientLeft) + 'px'; rulerLayer.style.top = (snapshot.rect.top - stageRect.top - stage.clientTop) + 'px'; rulerLayer.style.width = snapshot.rect.width + 'px';
+        const ticks = axisTickMarks(axis); for (let index = 0; index < rulerTicks.length; index++) { const tick = rulerTicks[index], value = ticks[index]; tick.hidden = !value; if (!value) continue; text(tick, value.label); tick.dataset.axisValue = String(value.value); tick.style.left = value.fraction * 100 + '%'; }
+      }
       const retained = new Set();
       for (const mark of model.marks) {
         retained.add(mark.key); let button = buttons.get(mark.key);
@@ -95,7 +107,7 @@ export function createCausalVisualView({ document, stage, actions, parent, resou
         }
       }
       for (const [key, button] of buttons) if (!retained.has(key)) { if (button === document.activeElement) historyButton.focus({ preventScroll: true }); button.remove(); buttons.delete(key); }
-      layer.hidden = !snapshot || !renderer.presentation.valid(snapshot);
+      layer.hidden = !accepted;
       if (dialog.open && selection && !model.causes.some(cause => cause.key === selection.causeKey)) text(frozenStatus, 'This reference left the retained window. The frozen explanation stays available until closed.');
     },
     diagnostics: () => Object.freeze({ marks: buttons.size, projectionRevision, disposed, unavailable, reservation: reservation?.receipt() || null }),

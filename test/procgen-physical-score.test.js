@@ -123,10 +123,13 @@ describe('read-only PhysicalScore projection', function() {
     const { queryPhysicalScore, request } = await fixture();
     const physical = await queryPhysicalScore({ ...request, coverageRange: { firstTick: 3, lastTick: 3 } });
     expect(physical.glyphs[0].axis).to.include({ value: 60, unit: 'milliseconds' });
+    expect(physical.axis).to.include({ domain: 'simulation-time', unit: 'ms', origin: 60, confidence: 'captured', historical: true });
     const causal = await queryPhysicalScore({ ...request, timeDomain: 'causal-order', coverageRange: { firstTick: 3, lastTick: 3 } });
     expect(causal.glyphs[0].axis).to.include({ value: 6, unit: 'causal-sequence' });
+    expect(causal.axis).to.include({ domain: 'event-ordinal', unit: 'events', origin: 6, confidence: 'captured', historical: true });
     const musical = await queryPhysicalScore({ ...request, timeDomain: 'musical-score-time', coverageRange: { firstTick: 3, lastTick: 3 } });
     expect(musical.glyphs[0].axis).to.include({ value: 0.375, unit: 'beats', epoch: 'score:1' });
+    expect(musical.axis).to.include({ domain: 'musical-beat', unit: 'quarters', origin: 0.375, epoch: 'score:1', confidence: 'captured', historical: true });
     expect(musical.glyphs[1].axis).to.include({ status: 'unknown', reason: 'captured-score-time-unavailable' });
     expect(musical.glyphs[0].source.eventId).to.equal(physical.glyphs[0].source.eventId);
   });

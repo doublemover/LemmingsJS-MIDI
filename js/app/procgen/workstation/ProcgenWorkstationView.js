@@ -21,6 +21,7 @@ import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
 import { createParameterKnob } from '../../controls/ParameterKnob.js';
 import { getPointerGestureArbiter } from '../../controls/PointerGestureArbiter.js';
 import { PROCGEN_SOUND_COLLECTIONS, PROCGEN_ROLES, resolveProcgenSound } from './ProcgenSoundCollections.js';
+import { createAxisDescriptor, formatAxisDescriptor, describeCapturedCoordinateSample } from './AxisDescriptor.js';
 import { createProcgenLaneProjection } from './ProcgenLaneProjection.js';
 import { procgenStepNotes } from './ProcgenPatternEngine.js';
 import { createProcgenFullscreenSession } from './ProcgenFullscreenSession.js';
@@ -178,7 +179,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const currentCue = node('span', 'CURRENT · Physical world'), nextCue = node('span', 'NEXT · No candidate'), cueState = node('output'); cueState.setAttribute('aria-live', 'polite');
   const cueGo = button('GO · stop and load', () => handlers.stageGo?.()); cueGo.disabled = true;
   cueStrip.append(currentCue, nextCue, cueState, button('Choose NEXT', () => handlers.scenes?.()), cueGo, button('Play', () => handlers.stagePlay?.()), button('Pause', () => handlers.stagePause?.()), button('Stop', () => handlers.stopOutput?.()), button('Panic', () => handlers.panicOutput?.()), button('Exit stage', () => handlers.stageExit?.())); shell.before(cueStrip);
-  let projection, stroke = null, layoutKey = null, queuedBeat = null;
+  let projection, stroke = null, layoutKey = null, queuedBeat = null, scoreAxisSelection = null;
   const currentLaneIndex = () => ({ get: id => procgenLane(getProject().procgen.lanes, id) });
   let attachedRenderer = null, disposed = false, superseded = false, stageActive = false;
   const operationalView = createProcgenOperationalView({ document, readSnapshot: () => handlers.operationalState?.() || null,
@@ -783,13 +784,17 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         }
         if (take.physicalScore) {
           const score = take.physicalScore, scoreList = node('div', null, 'studio-physical-score');
+          if (score.axis) { const axis = formatAxisDescriptor(score.axis), ruler = node('p', axis.compact, 'studio-axis-ruler'); ruler.dataset.axisDomain = score.axis.domain; ruler.tabIndex = 0; ruler.title = axis.details; ruler.setAttribute('aria-label', axis.details); scoreList.append(ruler); }
           scoreList.append(node('p', `${score.counts.glyphs} source glyphs · ${score.counts.physicalBatches} captured batches · ${score.unknownRegions.length} uncertain regions · inspection paused`, 'studio-hint'));
+          const coordinatePreview = node('output', 'Choose a recorded cause to compare its captured coordinates.', 'studio-axis-conversion'); coordinatePreview.setAttribute('role', 'status'); coordinatePreview.setAttribute('aria-live', 'polite'); coordinatePreview.setAttribute('aria-label', 'Recorded coordinate correspondence'); scoreList.append(coordinatePreview);
+          const showCoordinates = glyph => { const sample = describeCapturedCoordinateSample(glyph); coordinatePreview.textContent = sample.text; coordinatePreview.dataset.sourceEventId = sample.sourceEventId || ''; coordinatePreview.dataset.conversionMethod = sample.method; };
+          if (scoreAxisSelection?.documentIdentity === getDocumentIdentity() && scoreAxisSelection.takeId === score.takeId && scoreAxisSelection.revision === score.takeRevision) { const glyph = score.glyphs.find(value => value.glyphId === scoreAxisSelection.eventId); if (glyph) showCoordinates(glyph); }
           for (const glyph of score.glyphs) {
-            const axis = glyph.axis.status === 'known' ? `${glyph.axis.value} ${glyph.axis.unit}` : `${glyph.axis.unit} unavailable`;
+            const axis = glyph.axis.status === 'known' ? `${glyph.axis.value} ${glyph.axis.unit}${glyph.axis.epoch ? ' · epoch ' + glyph.axis.epoch : ''}` : `${glyph.axis.unit} unavailable`;
             const outcomes = glyph.intents.flatMap(intent => intent.sinkEvidence);
             const evidence = outcomes.length ? outcomes.map(outcome => outcome.status).join(', ') : 'output unknown';
             scoreList.append(button(`Tick ${glyph.source.tick} · ${glyph.factKind} · actor ${glyph.actorId ?? 'world'} · ${axis} · ${glyph.intents.length} intents · ${evidence}`,
-              () => handlers.inspectPhysicalScoreCause?.({ sourceSequence: glyph.source.sequence, eventId: glyph.glyphId }),
+              () => { scoreAxisSelection = { documentIdentity: getDocumentIdentity(), takeId: score.takeId, revision: score.takeRevision, eventId: glyph.glyphId }; showCoordinates(glyph); return handlers.inspectPhysicalScoreCause?.({ sourceSequence: glyph.source.sequence, eventId: glyph.glyphId }); },
               'Inspect the exact recorded causal parent of this source fact'));
           }
           if (score.continuation) scoreList.append(button('More source glyphs', () => handlers.readPhysicalScore?.({ timeDomain: state.scoreTimeDomain, more: true })));
@@ -1292,7 +1297,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     controlTree.update(bpm, String(Math.round((position.clockSource === 'external' ? position.bpm : position.baseBpm ?? position.bpm) * 100) / 100), { identity: getDocumentIdentity() });
     const meter = quarterMeterPosition(position.beat, getProject().transport?.timeSignature);
     const text = meter ? `${meter.bar} : ${meter.beat}` : '—'; if (clockStatus.textContent !== text) clockStatus.textContent = text;
-    clockStatus.title = meter ? `${meter.beats}/${meter.unit} · bar : denominator-note beat · ${position.beat} quarters` : 'Musical position unavailable';
+    const quarters = meter ? meter.beats * 4 / meter.unit : null;
+    const axis = meter && Number.isFinite(quarters) && quarters > 0 ? createAxisDescriptor({ domain: 'musical-beat', origin: (meter.bar - 1) * quarters, extent: quarters, authorityId: position.clockSource === 'external' ? 'Selected MIDI input · ' + (position.clockStatus || 'unobserved') : 'Internal musical transport', confidence: position.clockSource === 'external' && position.clockStatus !== 'locked' ? 'unavailable' : 'authoritative', paused: !position.playing, reason: position.clockSource === 'external' && position.clockStatus !== 'locked' ? 'Selected MIDI clock phase is ' + (position.clockStatus || 'unobserved') + '.' : null }) : null;
+    clockStatus.dataset.axisDomain = 'musical-beat'; clockStatus.tabIndex = 0;
+    clockStatus.title = axis ? `${meter.beats}/${meter.unit} · bar : denominator-note beat · ${position.beat} quarters · ` + formatAxisDescriptor(axis).details : 'Musical position unavailable';
+    clockStatus.setAttribute('aria-description', clockStatus.title);
     clockHealth.textContent = position.clockSource === 'external' ? `MIDI clock · ${position.clockStatus}` : 'Internal clock';
     for (const [control, value] of [[linked, position.linked], [speedMode, position.speedMode], [clock, position.clockSource]]) controlTree.update(control, value, { identity: getDocumentIdentity() });
   };
@@ -1464,7 +1473,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     transport(position) {
       state.beat = position.beat;
       operationalSurface.invalidate(); transportSurface.publish(Object.freeze({ documentIdentity: getDocumentIdentity(), beat: position.beat, bpm: position.bpm, baseBpm: position.baseBpm, gameSpeed: position.gameSpeed, clockSource: position.clockSource,
-        clockStatus: position.clockStatus, linked: position.linked, speedMode: position.speedMode })); frame(position.beat);
+        clockStatus: position.clockStatus, playing: position.playing, linked: position.linked, speedMode: position.speedMode })); frame(position.beat);
     },
     recording(value, midiState = null) {
       validateExportRouteChoice();

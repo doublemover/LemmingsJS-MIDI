@@ -543,3 +543,11 @@ body.procgen-workstation {
 .studio-project-picker-body { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 16px; }
 .studio-project-items { max-height: 300px; overflow: auto; overscroll-behavior: contain; }
 .studio-project-picker .studio-replacement-review { margin-inline: auto; }
+
+.studio-world-axis { position:absolute; height:15px; color:#d8e7e3; background:#17242ba6; font:10px/15px ui-monospace,Consolas,monospace; pointer-events:none; }
+.studio-world-axis > span { position:absolute; padding:0 3px; border-left:1px solid #9fb8bf; transform:translateX(-50%); white-space:nowrap; }
+.studio-world-axis > span:first-child { transform:none; }
+.studio-world-axis > span:last-child { transform:translateX(-100%); }
+.studio-causal-summary { top:18px; }
+.studio-axis-ruler { padding:4px 0; border-bottom:1px solid var(--material-line,#9babb4); font:11px/1.5 ui-monospace,Consolas,monospace; }
+.studio-axis-conversion { display:block; margin:6px 0; font-size:11px; line-height:1.5; }

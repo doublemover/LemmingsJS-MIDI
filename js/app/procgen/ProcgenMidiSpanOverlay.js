@@ -1,13 +1,15 @@
+import { createAxisDescriptor } from './workstation/AxisDescriptor.js';
 import { getPointerGestureArbiter } from '../controls/PointerGestureArbiter.js';
 import { createMidiSpan, SPAN_COLORS } from '../midi-ui/midiAutomationSpanEditor.js';
 import { projectMidiAutomationSpan, selectMidiSpanDisplayEntries } from '../midi-ui/midiAutomationSpanProjection.js';
 const getLaneHeight = renderer => renderer.world.laneHeight || 96;
 const getSpanAxis = (renderer, domain, project) => {
   const width = renderer.canvas.width / Math.min(2, renderer.window.devicePixelRatio || 1);
-  if (domain === 'distance') return { start: renderer.originX, length: renderer.viewWidth, width };
+  const generation = Number.isSafeInteger(renderer.world.generation) ? renderer.world.generation : null;
+  if (domain === 'distance') return { start: renderer.originX, length: renderer.viewWidth, width, descriptor: createAxisDescriptor({ domain: 'world-distance', origin: renderer.originX, extent: renderer.viewWidth, authorityId: 'Observed world viewport', generation, confidence: 'authoritative' }) };
   const tick = renderer.world.tickIndex - (renderer.world.generationStartTick || 0);
   const beat = Math.max(0, tick) * 0.06 * project.transport.bpmBase / 60;
-  return { start: Math.floor(beat / 16) * 16, length: 16, width, beat };
+  return { start: Math.floor(beat / 16) * 16, length: 16, width, beat, descriptor: createAxisDescriptor({ domain: 'musical-beat', origin: Math.floor(beat / 16) * 16, extent: 16, authorityId: 'Simulation-derived span preview', generation, confidence: 'estimated' }) };
 };
 const getMidiSpanRectangles = (renderer, project, entries = project.automation, projection = null, selectedIds = []) => {
   const dpr = Math.min(2, renderer.window.devicePixelRatio || 1), height = projection?.height ?? renderer.canvas.height / dpr - (renderer.overviewBandHeight || 0);
@@ -188,7 +190,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
         const labelY = Math.max(rect.y, current.hud?.sprites ? 16 * Math.max(1, Math.floor(Math.min(3, rect.axis.width / 540))) + 2 : 0), labelX = rect.x + Math.max(0, rect.w - 280);
         if (labelY + 18 <= rect.y + rect.h && rect.w >= 34) {
           context.globalAlpha = 1; context.fillStyle = '#07140fe6'; context.fillRect(labelX, labelY, Math.min(rect.w, 280), 17);
-          context.fillStyle = color; context.font = '11px system-ui'; context.fillText(entry.name + ' · ' + entry.span.domain + (rect.repeating ? ' repeats every ' + entry.span.duration : entry.span.loop ? ' loop' : '') + ' · P' + entry.span.priority + (rect.axis.beat != null ? ' · Transport preview' : ''), labelX + 4, labelY + 12, Math.min(rect.w, 280) - 8);
+          context.fillStyle = color; context.font = '11px system-ui'; context.fillText(entry.name + ' · ' + entry.span.domain + (rect.repeating ? ' repeats every ' + entry.span.duration : entry.span.loop ? ' loop' : '') + ' · P' + entry.span.priority + (rect.axis.beat != null ? ' · Simulation-derived preview' : ' · World px'), labelX + 4, labelY + 12, Math.min(rect.w, 280) - 8);
           if (editing && !rect.repeating && selectedId === entry.id) context.fillText('↔', rect.x + rect.w - 15, labelY + 12);
         }
         if (labelY + 34 <= rect.y + rect.h && rect.w >= 34) {
