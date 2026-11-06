@@ -394,6 +394,7 @@
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
         "js/midi/content/OrchestralArticulationIntent.js",
+        "js/midi/content/OrganRotaryIntent.js",
         "js/midi/content/OriginalShapeMeshes.js",
         "js/midi/content/OwnedPcmFormat.js",
         "js/midi/content/OwnedStretchCoreIdentity.js",
@@ -462,8 +463,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 316,
-      "sha256": "8dd66a7c6a52f19a6320c242ae430a1531c4cdcf2d76ecaa52ef6896802558f8"
+      "fileCount": 317,
+      "sha256": "585e23d468bbfc232fde782ce3472a3047aba7b5a8828d8b30a7200783fced24"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -514,6 +515,7 @@
         "js/app/midi-ui/NativeMidiArticulationView.js",
         "js/app/midi-ui/NativeMidiConnectionView.js",
         "js/app/midi-ui/NativeMidiEndpointView.js",
+        "js/app/midi-ui/NativeMidiOrganView.js",
         "js/app/midi-ui/NativeMidiParameterView.js",
         "js/app/midi-ui/NativeMidiPatchView.js",
         "js/app/midi-ui/NativeMidiPercussionView.js",
@@ -521,6 +523,7 @@
         "js/app/midi-ui/NativeMidiPropertyView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
         "js/midi/content/OrchestralArticulationIntent.js",
+        "js/midi/content/OrganRotaryIntent.js",
         "js/midi/content/PercussionRoleIntent.js",
         "js/midi/content/PianoPerformanceIntent.js",
         "js/midi/native/DeviceMutation.js",
@@ -541,6 +544,8 @@
         "js/midi/native/NativeMidiIngress.js",
         "js/midi/native/NativeMidiRoutes.js",
         "js/midi/native/OrchestralProfileAdapter.js",
+        "js/midi/native/OrganRotaryPart.js",
+        "js/midi/native/OrganRotaryProfileAdapter.js",
         "js/midi/native/PianoProfileAdapter.js",
         "js/midi/native/ProfileSession.js",
         "js/midi/native/PropertyChunkTransfer.js",
@@ -566,8 +571,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 54,
-      "sha256": "97ecf148cda0a07dd4b601d7bebd602404773d7e52461df6b3857498410271b6"
+      "fileCount": 58,
+      "sha256": "a1be009d92fc5980eb367b926b6fba1063df555938a4e995f9994bcb30906cc5"
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { createNativeMidiOrganView } from './NativeMidiOrganView.js';
 import { createNativeMidiPianoView } from './NativeMidiPianoView.js';
 import { createNativeMidiArticulationView } from './NativeMidiArticulationView.js';
 import { createNativeMidiPercussionView } from './NativeMidiPercussionView.js';
@@ -7,7 +8,7 @@ import { createNativeMidiPatchView } from './NativeMidiPatchView.js';
 import { createNativeMidiPropertyView } from './NativeMidiPropertyView.js';
 
 const element = (document, tag, text, className) => { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; };
-export function createNativeMidiConnectionView({ document, container, routes, getLanes, getSelectedLaneId, onAssign, onAssignMany, onRequestPatch, onBindPatch, onSaveParameterMappings, onSavePercussion, onSaveArticulation, onSavePiano, onSavePianoControls, onStatus = () => {} }) {
+export function createNativeMidiConnectionView({ document, container, routes, getLanes, getSelectedLaneId, onAssign, onAssignMany, onRequestPatch, onBindPatch, onSaveParameterMappings, onSavePercussion, onSaveArticulation, onSavePiano, onSavePianoControls, onSaveOrgan, onSaveOrganControls, onStatus = () => {} }) {
   if (!container) return { render() {}, dispose() {} };
   const root = element(document, 'details', '', 'midi-preset-panel native-midi-connection'); root.id = 'midiNativeConnection';
   root.append(element(document, 'summary', 'Native MIDI / DAW'));
@@ -184,6 +185,9 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const pianoView = createNativeMidiPianoView({ document, container: root, routes, getLane: () => getLanes().find(row => row.id === lane.value),
     getWireTarget: () => ({ grant: Number(active.value), group: Number(group.value), channel: Number(channel.value), protocol: protocol.value }), getProfileSession: ensureProfile, getProfileRecord: selectedProfile,
     onSave: onSavePiano, onSaveControls: onSavePianoControls, onAssign, onStatus });
+  const organView = createNativeMidiOrganView({ document, container: root, routes, getLane: () => getLanes().find(row => row.id === lane.value),
+    getWireTarget: () => ({ grant: Number(active.value), group: Number(group.value), channel: Number(channel.value), protocol: protocol.value }), getProfileSession: ensureProfile, getProfileState: () => profileSession?.state(),
+    onSave: onSaveOrgan, onSaveControls: onSaveOrganControls, onAssign, onStatus });
   const options = (node, rows, placeholder) => {
     const previous = node.value; node.replaceChildren(); const empty = element(document, 'option', placeholder); empty.value = ''; node.append(empty);
     for (const [value, label] of rows) { const option = element(document, 'option', label); option.value = String(value); node.append(option); } node.value = [...node.options].some(option => option.value === previous) ? previous : '';
@@ -206,11 +210,11 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     if (selectedGrant && state.grants.some(row => row.grant === selectedGrant)) active.value = String(selectedGrant);
     const lanes = getLanes(), signature = lanes.map(value => value.id + ':' + value.name).join('|');
     if (signature !== laneSignature) { laneSignature = signature; options(lane, lanes.map(value => [value.id, value.name || value.id]), 'Choose a lane'); if (!lane.value) lane.value = getSelectedLaneId(); }
-    endpointView.render(); propertyView.render(); patchView.render(); parameterView.render(); percussionView.render(); articulationView.render(); pianoView.render();
+    endpointView.render(); propertyView.render(); patchView.render(); parameterView.render(); percussionView.render(); articulationView.render(); pianoView.render(); organView.render();
   }
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
   bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; render(); });
   for (const picker of [lane, group, channel, protocol, ciInput, ciPeer]) bindEvent(picker, 'change', render);
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
-  return { render, dispose() { unsubscribe(); endpointView.dispose(); propertyView.dispose(); patchView.dispose(); parameterView.dispose(); percussionView.dispose(); articulationView.dispose(); pianoView.dispose(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
+  return { render, dispose() { unsubscribe(); endpointView.dispose(); propertyView.dispose(); patchView.dispose(); parameterView.dispose(); percussionView.dispose(); articulationView.dispose(); pianoView.dispose(); organView.dispose(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
 }

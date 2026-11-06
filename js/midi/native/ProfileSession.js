@@ -1,3 +1,4 @@
+import { decodeDrawbarFeatures, DRAWBAR_PROFILE_IDS } from './OrganRotaryProfileAdapter.js';
 import { decodePianoFeatures } from './PianoProfileAdapter.js';
 import { decodeOrchestralFeatures } from './OrchestralProfileAdapter.js';
 import { decodeDrumFeatures } from './DrumProfileAdapter.js';
@@ -7,6 +8,8 @@ import { createDeviceMutationOwner } from './DeviceMutation.js';
 export const profileIdKey = id => Array.isArray(id) && id.length === 5 && id.every(byte => Number.isInteger(byte) && byte >= 0 && byte <= 127) ? id.map(byte => byte.toString(16).padStart(2, '0')).join('') : null;
 const validScope = scope => Number.isInteger(scope) && (scope >= 0 && scope < 16 || scope === 126 || scope === 127);
 const specifications = Object.freeze({
+  ...Object.fromEntries(DRAWBAR_PROFILE_IDS.map(id => [id, Object.freeze({ name: 'Drawbar Organ · single channel', revision: 'M2-121 v1.0.2', channelStructure: 'single-channel', minimumChannels: 1, url: 'https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-121-UM_v1-0-2_Drawbar-Organ-Profile.pdf' })])),
+  '7e22000101': Object.freeze({ name: 'Rotary Speaker', revision: 'M2-122 v1.0.2', channelStructure: 'single-channel', minimumChannels: 1, url: 'https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-122-UM_v1-0-2_Rotary-Speaker-Profile.pdf' }),
   '7e20000101': Object.freeze({ name: 'Piano Profile', revision: 'M2-126 v1.0 · 2026-07-08', channelStructure: 'single-channel', minimumChannels: 1, url: 'https://midi.org/midi-ci-profile-for-piano' }),
   '7e21010101': Object.freeze({ name: 'Note On Orchestral Articulation', revision: 'M2-123 v1.0', channelStructure: 'single-channel', minimumChannels: 1, url: 'https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-123-UM_v1-0_Note-On_Orchestral_Articulation_Profile.pdf' }),
   '7e20030101': Object.freeze({ name: 'Default Drum Note Map', revision: 'M2-125 v1.0', channelStructure: 'single-channel', minimumChannels: 1, url: 'https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-125-UM_v1-0_Default-Drum-Note-Map-Profile.pdf' }),
@@ -100,7 +103,7 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
       }
       if (message.subtype === 41) {
         const matches = pending && pending.operation === 'profile-details' && message.destinationMuid === identity.localMuid && pending.group === group && pending.scope === message.scope && profileIdKey(pending.profile) === profileIdKey(message.profile) && pending.target === message.target;
-        const known = records.get(key(group, message.scope, message.profile)), drumNotification = known?.enabled && (['7e20030101', '7e2003017f', '7e21010101'].includes(known.id) && message.target === 1 || known.id === '7e20000101' && message.target === 64);
+        const known = records.get(key(group, message.scope, message.profile)), drumNotification = known?.enabled && (['7e20030101', '7e2003017f', '7e21010101', ...DRAWBAR_PROFILE_IDS].includes(known.id) && message.target === 1 || known.id === '7e20000101' && message.target === 64);
         if (!matches && !drumNotification) return;
         const data = message.profileData;
         if (!Array.isArray(data) || data.length > 1024) throw new Error('Profile details data capacity');
@@ -112,8 +115,8 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
         }
         const previous = records.get(key(group, message.scope, message.profile));
         const record = retain(group, message.scope, message.profile, { detailsTarget: message.target, detailsData: Object.freeze([...data]), ...(allocation ? { allocation, channels: allocation.current, enabled: allocation.current > 0 } : {}), ...(profileIdKey(message.profile) === '7e31000101' && message.target === 1 ? { mpeFeatures: decodeMpeFeatures(data) } : {}),
-          ...(['7e20030101', '7e2003017f'].includes(profileIdKey(message.profile)) && message.target === 1 ? { drumFeatures: decodeDrumFeatures(data) } : {}), ...(profileIdKey(message.profile) === '7e21010101' && message.target === 1 ? { orchestralFeatures: decodeOrchestralFeatures(data) } : {}), ...(profileIdKey(message.profile) === '7e20000101' && message.target === 64 ? { pianoFeatures: decodePianoFeatures(data) } : {}), freshness: 'current' });
-        if (previous?.enabled && (allocation && previous.channels != null && previous.channels !== allocation.current || previous.mpeFeatures && JSON.stringify(previous.mpeFeatures) !== JSON.stringify(record.mpeFeatures) || previous.drumFeatures && JSON.stringify(previous.drumFeatures) !== JSON.stringify(record.drumFeatures) || previous.orchestralFeatures && JSON.stringify(previous.orchestralFeatures) !== JSON.stringify(record.orchestralFeatures) || previous.pianoFeatures && JSON.stringify(previous.pianoFeatures) !== JSON.stringify(record.pianoFeatures))) changed('profile-details-changed');
+          ...(['7e20030101', '7e2003017f'].includes(profileIdKey(message.profile)) && message.target === 1 ? { drumFeatures: decodeDrumFeatures(data) } : {}), ...(profileIdKey(message.profile) === '7e21010101' && message.target === 1 ? { orchestralFeatures: decodeOrchestralFeatures(data) } : {}), ...(profileIdKey(message.profile) === '7e20000101' && message.target === 64 ? { pianoFeatures: decodePianoFeatures(data) } : {}), ...(DRAWBAR_PROFILE_IDS.includes(profileIdKey(message.profile)) && message.target === 1 ? { organFeatures: decodeDrawbarFeatures(data) } : {}), freshness: 'current' });
+        if (previous?.enabled && (allocation && previous.channels != null && previous.channels !== allocation.current || previous.mpeFeatures && JSON.stringify(previous.mpeFeatures) !== JSON.stringify(record.mpeFeatures) || previous.drumFeatures && JSON.stringify(previous.drumFeatures) !== JSON.stringify(record.drumFeatures) || previous.orchestralFeatures && JSON.stringify(previous.orchestralFeatures) !== JSON.stringify(record.orchestralFeatures) || previous.pianoFeatures && JSON.stringify(previous.pianoFeatures) !== JSON.stringify(record.pianoFeatures) || previous.organFeatures && JSON.stringify(previous.organFeatures) !== JSON.stringify(record.organFeatures))) changed('profile-details-changed');
         if (matches) finish({ status: 'ok', record, receiverState: 'reported' }); else emit(); return;
       }
       if (![36, 37, 38, 39, 47].includes(message.subtype)) return;
@@ -129,7 +132,7 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
       const channels = [36, 37].includes(message.subtype) ? message.channels : null;
       const record = retain(group, message.scope, message.profile, { supported: message.subtype !== 39, enabled, channels,
         freshness: 'current', origin: own ? 'matching-receiver-report' : 'changed-externally', requested: own ? { enabled: pending.operation === 'profile-on', channels: pending.channels } : null,
-        allocation: null, detailsData: null, mpeFeatures: null, drumFeatures: null, orchestralFeatures: null, pianoFeatures: null });
+        allocation: null, detailsData: null, mpeFeatures: null, drumFeatures: null, orchestralFeatures: null, pianoFeatures: null, organFeatures: null });
       if (own && [36, 37].includes(message.subtype)) {
         const matches = enabled === (pending.operation === 'profile-on');
         finish({ status: matches ? 'ok' : 'refused', record, receiverState: 'reported', acceptedChannels: enabled ? channels : 0,
@@ -145,7 +148,7 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
   return Object.freeze({
     invalidateEvidence(reason) {
       if (active) { evidenceReadyAt = Math.max(evidenceReadyAt, now() + timeoutMs); finish({ status: 'cancelled', reason, receiverState: 'unknown' }); }
-      for (const [address, record] of records) records.set(address, Object.freeze({ ...record, freshness: 'stale', enabled: null, channels: null, allocation: null, mpeFeatures: null, drumFeatures: null, orchestralFeatures: null, pianoFeatures: null, mpeChannelResponse: null, revision: ++revision, reason }));
+      for (const [address, record] of records) records.set(address, Object.freeze({ ...record, freshness: 'stale', enabled: null, channels: null, allocation: null, mpeFeatures: null, drumFeatures: null, orchestralFeatures: null, pianoFeatures: null, organFeatures: null, mpeChannelResponse: null, revision: ++revision, reason }));
       emit();
     },
     inquire(scope = 127) {
@@ -169,7 +172,7 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
       return current() && record?.freshness === 'current' && record.enabled === true && record.specification && Number.isInteger(record.channels) ?
         Object.freeze({ ...record, transportProtocol: 'not-implied-by-profile', perNoteControllerResponse: 'not-implied-by-profile' }) : null;
     },
-    isProfileBindingCurrent(binding) { const record = records.get(key(binding.group, binding.scope, binding.profile)); return !!(current() && record?.enabled === true && record.freshness === 'current' && record.channels === binding.channels && record.id === binding.id && JSON.stringify(record.drumFeatures) === JSON.stringify(binding.drumFeatures) && JSON.stringify(record.orchestralFeatures) === JSON.stringify(binding.orchestralFeatures) && JSON.stringify(record.pianoFeatures) === JSON.stringify(binding.pianoFeatures)); },
+    isProfileBindingCurrent(binding) { const record = records.get(key(binding.group, binding.scope, binding.profile)); return !!(current() && record?.enabled === true && record.freshness === 'current' && record.channels === binding.channels && record.id === binding.id && JSON.stringify(record.drumFeatures) === JSON.stringify(binding.drumFeatures) && JSON.stringify(record.orchestralFeatures) === JSON.stringify(binding.orchestralFeatures) && JSON.stringify(record.pianoFeatures) === JSON.stringify(binding.pianoFeatures) && JSON.stringify(record.organFeatures) === JSON.stringify(binding.organFeatures)); },
     isBindingCurrent(binding) { const record = records.get(key(binding.group, binding.scope, MPE_PROFILE_ID)); const features = record?.mpeFeatures; return !!(current() && record?.enabled === true && record.freshness === 'current' && record.channels === binding.channels && (record.mpeChannelResponse || 'unknown') === binding.channelResponse && features && ['responseNotifications', 'pitchBend', 'pressure', 'thirdAxis'].every(key => features[key] === binding.features[key])); },
     state: () => Object.freeze({ disposed, stale, inputGrant: identity.inputGrant, outputGrant: identity.outputGrant, peerMuid, connectionEpoch: identity.connectionEpoch, ciEpoch: identity.epoch, group: identity.group, revision,
       busy: !!active || settling.size > 0 || mutation.state().busy, pending: active ? Object.freeze({ operation: active.operation, scope: active.scope, profile: active.profile }) : null,

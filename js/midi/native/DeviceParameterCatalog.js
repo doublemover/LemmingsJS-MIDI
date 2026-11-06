@@ -89,6 +89,7 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
       if (!Array.isArray(record.data) || record.data.length > 256) throw new Error('ChannelList capacity');
       return Object.freeze(record.data.flatMap(row => (row.links || []).filter(link => link.resource === 'ChCtrlList' && link.role !== 'cluster' && typeof link.resId === 'string').map(link => Object.freeze({ propertyChannel: row.channel, resId: link.resId, title: row.title }))).slice(0, 256));
     },
+    recognizesController({ group, channel, bank, index }) { return ready() && parameters.some(parameter => { const target = address(parameter); return parameter.ctrlType === 'rpn' && parameter.ctrlIndex[0] === bank && parameter.ctrlIndex[1] === index && ['absolute', 'both'].includes(parameter.recognize) && target?.group === group && target.channel === channel; }); },
     intent(stableId, mapping) {
       const parameter = parameterFor(stableId); if (!ready() || !parameter) throw new Error('Refresh this device controller before saving its mapping');
       return validateDeviceParameterMappings([{ ...mapping, schema: 'lemmings-device-parameter-intent/v1', stableId, signature: parameter.signature,

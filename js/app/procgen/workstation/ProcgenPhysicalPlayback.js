@@ -205,7 +205,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
     getOrchestralPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.orchestral || null,
     getPercussionPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.percussion || null,
     getPhysicalControlKinds: laneId => causalLanePhysicalControlKinds(typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId)),
-    deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(), audioAdmissions = new Map();
+    deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch); for (const output of additionalOutputs) output.flushSourceControls?.(batch); const admissions = new Map(), audioAdmissions = new Map();
       for (const receipt of receipts) {
         if (receipt.sinkId === 'physical-browser-audio') audioAdmissions.set(receipt.intentId, receipt.status);
         if (!admissions.has(receipt.intentId) || ['accepted', 'degraded'].includes(receipt.status)) admissions.set(receipt.intentId, receipt.status);
