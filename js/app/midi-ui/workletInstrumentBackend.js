@@ -722,7 +722,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (targetFrame < voice.physicalFrame) return reject('out-of-order-physical-control', voiceId);
     const causes = new Map(voice.physicalCauses); causes.set(cause.sourceKind, cause);
     let performance;
-    try { performance = voice.performancePlan.resolveContinuous(voice.continuousBase, [...causes.values()], targetFrame); } catch { return reject('invalid-physical-control', voiceId); }
+    try { performance = voice.performancePlan.resolveContinuous(voice.continuousBase, [...causes.values()], targetFrame, voice.performanceIdentity); } catch { return reject('invalid-physical-control', voiceId); }
     if (!performance.bindingOutcomes.some(outcome => outcome.state === 'applied' && outcome.sourceEventId === cause.eventId))
       return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-qualified-control-measurement', performance });
     const expression = {};

@@ -51,6 +51,33 @@ export function validateInstrumentControls(input = {}) {
 const physicalInputs = Object.freeze({ TerrainWorkCommitted: Object.freeze({ attemptedCells: 'cells', changedSolidCells: 'cells', changedAppearanceCells: 'cells' }),
   MotionCommitted: Object.freeze({ displacementPixels: 'world-pixel', positionXWorldPixels: 'world-pixel', positionYWorldPixels: 'world-pixel', displacementXWorldPixels: 'world-pixel', displacementYWorldPixels: 'world-pixel' }), ContactResolved: Object.freeze({ stepHeightPixels: 'world-pixel' }) });
 export const INSTRUMENT_PHYSICAL_SOURCE_KINDS = Object.freeze(Object.keys(physicalInputs));
+export const INSTRUMENT_PHYSICAL_QUANTITIES = Object.freeze(Object.entries(physicalInputs).flatMap(([sourceKind, fields]) => Object.entries(fields).map(([payloadField, unit]) =>
+  Object.freeze({ id: sourceKind + '.' + payloadField, sourceKind, payloadField, unit, evidence: 'completed-world-fact',
+    group: sourceKind === 'TerrainWorkCommitted' ? 'action' : sourceKind === 'ContactResolved' ? 'contact' : 'actor',
+    scope: 'causal-voice-owner', coordinate: payloadField.startsWith('position') ? 'world-coordinate' : payloadField.startsWith('displacement') ? 'observed-displacement;not-route-distance' : 'completed-physical-quantity' }))));
+
+const validateBindingScope = raw => {
+  if (raw === undefined) return undefined;
+  if (!object(raw) || !['voice-owner', 'actor'].includes(raw.kind) || Object.keys(raw).some(key => !(raw.kind === 'actor' ? ['kind', 'worldId', 'generation', 'actorId'] : ['kind']).includes(key)) ||
+      raw.kind === 'actor' && (typeof raw.worldId !== 'string' || !raw.worldId || raw.worldId.length > 160 ||
+        !Number.isSafeInteger(raw.generation) || raw.generation < 0 || !Number.isSafeInteger(raw.actorId) || raw.actorId < 0)) fail('invalid physical mapping scope');
+  return Object.freeze({ ...raw });
+};
+export function evaluateInstrumentBinding(binding, sourceValue, output = null) {
+  if (!finite(sourceValue, -1000000000, 1000000000)) fail('invalid physical mapping input');
+  const normalizedInput = clamp((sourceValue - binding.inputMin) / (binding.inputMax - binding.inputMin), 0, 1), deadZone = binding.deadZone01 || 0;
+  let transformedInput = normalizedInput;
+  if (deadZone) {
+    const distance = normalizedInput - 0.5;
+    transformedInput = Math.abs(distance) <= deadZone ? 0.5 : 0.5 + Math.sign(distance) * (Math.abs(distance) - deadZone) / (0.5 - deadZone) * 0.5;
+  }
+  const mappedValue = binding.curve === 'step' ? transformedInput < 0.5 ? binding.outputMin : binding.outputMax : binding.curve === 'logarithmic' ?
+    binding.outputMin * (binding.outputMax / binding.outputMin) ** transformedInput : binding.outputMin + (binding.outputMax - binding.outputMin) * transformedInput;
+  const result = output || {};
+  result.normalizedInput = normalizedInput; result.transformedInput = transformedInput; result.mappedValue = mappedValue;
+  result.inputClamped = sourceValue < binding.inputMin || sourceValue > binding.inputMax;
+  return output ? result : Object.freeze(result);
+}
 
 export function captureInstrumentCause(fact) {
   if (!Object.hasOwn(physicalInputs, fact?.kind)) return null;
@@ -88,11 +115,14 @@ export function validateInstrumentBindings(input, parameters) {
         !finite(binding.smoothingMs, 0, 60000) || (binding.mode === 'onset-only' ? binding.smoothingMs !== 0 : parameter.causalLiveSafe !== true) ||
         binding.outputUnit !== (binding.composition === 'scale' ? 'ratio' : parameter.unit) || !finite(binding.outputMin, -1000000, 1000000) || !finite(binding.outputMax, -1000000, 1000000) ||
         binding.outputMin === binding.outputMax || binding.curve === 'logarithmic' && Math.min(binding.outputMin, binding.outputMax) <= 0 ||
+        binding.enabled !== undefined && typeof binding.enabled !== 'boolean' || binding.deadZone01 !== undefined && !finite(binding.deadZone01, 0, 0.49) ||
         binding.composition === 'replace' && (!finite(binding.outputMin, parameter.min, parameter.max) || !finite(binding.outputMax, parameter.min, parameter.max))) fail('invalid typed completed-fact binding');
     ids.add(binding.id);
     return Object.freeze({ id: binding.id, sourceKind: binding.sourceKind, payloadField: binding.payloadField, target: binding.target, unit: binding.unit,
       inputMin: binding.inputMin, inputMax: binding.inputMax, outputMin: binding.outputMin, outputMax: binding.outputMax, outputUnit: binding.outputUnit,
-      curve: binding.curve, composition: binding.composition, mode: binding.mode, smoothingMs: binding.smoothingMs });
+      curve: binding.curve, composition: binding.composition, mode: binding.mode, smoothingMs: binding.smoothingMs,
+      ...(binding.enabled === undefined ? {} : { enabled: binding.enabled }), ...(binding.deadZone01 === undefined ? {} : { deadZone01: binding.deadZone01 }),
+      ...(binding.sourceScope === undefined ? {} : { sourceScope: validateBindingScope(binding.sourceScope) }) });
   }).sort(order));
 }
 
@@ -108,16 +138,21 @@ export function compileInstrumentPerformance(patch, parameters) {
   const mappings = macros.flatMap(macro => macro.targets.map(target => ({ macro, target })));
   // Replacements establish the authored value before stable-ID additions/scales.
   mappings.sort((a, b) => Number(b.target.composition === 'replace') - Number(a.target.composition === 'replace') || order(a.macro, b.macro));
-  const applyBindings = (selected, causes, values, deltas, applyFrame) => {
+  const transformedBinding = { normalizedInput: 0, transformedInput: 0, mappedValue: 0, inputClamped: false };
+  const applyBindings = (selected, causes, values, deltas, applyFrame, identity = null) => {
     const outcomes = [];
     for (const binding of selected) {
+      if (binding.enabled === false) { outcomes.push(Object.freeze({ id: binding.id, state: 'disabled' })); continue; }
+      const scope = binding.sourceScope;
+      if (scope?.kind === 'actor' && (!identity || scope.worldId !== identity.worldId || scope.generation !== identity.generation || scope.actorId !== identity.actorId)) {
+        outcomes.push(Object.freeze({ id: binding.id, state: identity ? 'outside-named-actor-scope' : 'actor-scope-unavailable' })); continue;
+      }
       const cause = causes.find(item => item?.sourceKind === binding.sourceKind && item.evidence === 'completed-world-fact'), source = cause?.values?.[binding.payloadField];
       if (!source || source.unit !== binding.unit || !finite(source.value, -1000000000, 1000000000)) { outcomes.push(Object.freeze({ id: binding.id, state: 'no-qualified-source' })); continue; }
-      const normalized = clamp((source.value - binding.inputMin) / (binding.inputMax - binding.inputMin), 0, 1);
-      const mapped = binding.curve === 'step' ? normalized < 0.5 ? binding.outputMin : binding.outputMax : binding.curve === 'logarithmic' ?
-        binding.outputMin * (binding.outputMax / binding.outputMin) ** normalized : binding.outputMin + (binding.outputMax - binding.outputMin) * normalized;
+      const transformed = evaluateInstrumentBinding(binding, source.value, transformedBinding), mapped = transformed.mappedValue;
       const previous = values[binding.target], requested = binding.composition === 'replace' ? mapped : binding.composition === 'add' ? previous + mapped : previous * mapped;
-      values[binding.target] = requested; outcomes.push(Object.freeze({ id: binding.id, state: 'applied', sourceEventId: cause.eventId, sourceValue: source.value, sourceUnit: source.unit }));
+      values[binding.target] = requested; outcomes.push(Object.freeze({ id: binding.id, state: 'applied', sourceEventId: cause.eventId, sourceValue: source.value, sourceUnit: source.unit,
+        normalizedInput: transformed.normalizedInput, transformedInput: transformed.transformedInput, mappedContribution: mapped, inputClamped: transformed.inputClamped }));
       deltas.push({ parameterId: binding.target, unit: schema.get(binding.target).unit, requestedValue: requested, origin: 'physical', bindingId: binding.id,
         composition: binding.composition, applyFrame, interpolation: binding.mode === 'continuous' ? 'bounded-causal-slew' : 'onset-only', smoothingMs: binding.smoothingMs });
     }
@@ -133,22 +168,22 @@ export function compileInstrumentPerformance(patch, parameters) {
   const continuous = bindings.filter(binding => binding.mode === 'continuous'), onset = bindings.filter(binding => binding.mode === 'onset-only');
   const heldMacros = macros.filter(macro => macro.mode === 'continuous'), heldIds = new Set(heldMacros.flatMap(macro => macro.targets.map(target => target.parameter)));
   const plan = { continuousMacroIds: Object.freeze(heldMacros.map(macro => macro.id)), continuousParameterIds: Object.freeze([...heldIds].sort()),
-    continuousSourceKinds: Object.freeze([...new Set(continuous.map(binding => binding.sourceKind))]),
+    continuousSourceKinds: Object.freeze([...new Set(continuous.filter(binding => binding.enabled !== false).map(binding => binding.sourceKind))]),
     resolveHeld(onset, input, identity, causes, applyFrame) {
       if (!object(onset?.controls) || !Array.isArray(causes)) fail('held controls require the admitted onset');
       const requested = validateInstrumentControls(input), merged = { ...onset.controls.macros };
       if (Object.keys(requested.macros).some(key => !macroIds.has(key))) fail('unknown held macro');
       for (const macro of heldMacros) merged[macro.id] = requested.macros[macro.id] ?? macro.default01;
-      const next = plan.resolve({ ...onset.controls, macros: merged }, applyFrame, identity), physical = plan.resolveContinuous(next.continuousBase, causes, applyFrame);
+      const next = plan.resolve({ ...onset.controls, macros: merged }, applyFrame, identity), physical = plan.resolveContinuous(next.continuousBase, causes, applyFrame, identity);
       const deltas = [...next.deltas.filter(delta => heldIds.has(delta.parameterId) && delta.origin !== 'physical'), ...physical.deltas];
       return Object.freeze({ ...next, revision: 'typed-held-controls-v1', values: physical.values, deltas: Object.freeze(deltas.map(delta => Object.freeze({ ...delta, effectiveValue: physical.values[delta.parameterId] }))),
         bindingOutcomes: physical.bindingOutcomes, smoothingMs: Math.max(physical.smoothingMs, ...heldMacros.map(macro => macro.smoothingMs), 0),
         parameterIds: Object.freeze([...new Set([...heldIds, ...physical.deltas.map(delta => delta.parameterId)])].sort()) });
     },
-    resolveContinuous(baseline, causes, applyFrame) {
+    resolveContinuous(baseline, causes, applyFrame, identity = null) {
       if (!object(baseline) || !Array.isArray(causes) || causes.length > Object.keys(physicalInputs).length || !Number.isSafeInteger(applyFrame) || applyFrame < 0 ||
           new Set(causes.map(cause => cause?.sourceKind)).size !== causes.length || causes.some(cause => !Object.hasOwn(physicalInputs, cause?.sourceKind))) fail('invalid continuous control source');
-      const values = { ...baseline }, deltas = [], bindingOutcomes = applyBindings(continuous, causes, values, deltas, applyFrame);
+      const values = { ...baseline }, deltas = [], bindingOutcomes = applyBindings(continuous, causes, values, deltas, applyFrame, identity);
       const result = finalize(values, deltas);
       return Object.freeze({ revision: 'typed-continuous-bindings-v1', ...result, bindingOutcomes: Object.freeze(bindingOutcomes),
         smoothingMs: deltas.reduce((maximum, delta) => Math.max(maximum, delta.smoothingMs), 0) });
@@ -167,8 +202,8 @@ export function compileInstrumentPerformance(patch, parameters) {
           origin: 'macro', macroId: macro.id, composition: target.composition, applyFrame, interpolation: macro.mode === 'continuous' ? 'bounded-causal-slew' : 'onset-only', smoothingMs: macro.smoothingMs });
       }
       const variationReceipt = applyInstrumentVariation(variation, patch, values, controls, identity, deltas, applyFrame), causes = identity?.performanceCause ? [identity.performanceCause] : [];
-      const bindingOutcomes = applyBindings(onset, causes, values, deltas, applyFrame), continuousBase = Object.freeze({ ...values });
-      bindingOutcomes.push(...applyBindings(continuous, causes, values, deltas, applyFrame));
+      const bindingOutcomes = applyBindings(onset, causes, values, deltas, applyFrame, identity), continuousBase = Object.freeze({ ...values });
+      bindingOutcomes.push(...applyBindings(continuous, causes, values, deltas, applyFrame, identity));
       return Object.freeze({ revision: 'typed-onset-controls-v3', ...finalize(values, deltas), continuousBase, controls,
         variation: variationReceipt, bindingOutcomes: Object.freeze(bindingOutcomes) });
     } };

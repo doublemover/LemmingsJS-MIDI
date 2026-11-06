@@ -226,7 +226,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
           sourceControls.observedPhysicalUpdates++; sourceControls.observedKinds.add(cause.sourceKind);
           if (performancePlan?.continuousSourceKinds.includes(cause.sourceKind)) {
             voice.physicalCauses.set(cause.sourceKind, cause);
-            const performance = performancePlan.resolveContinuous(voice.continuousBase, [...voice.physicalCauses.values()], frame), expression = {};
+            const performance = performancePlan.resolveContinuous(voice.continuousBase, [...voice.physicalCauses.values()], frame, voice.begin), expression = {};
             for (const id of owned.liveIds) if (performance.values[id] !== voice.sourceValues[id]) expression[id] = performance.values[id];
             const sourceMask = owned.writeUpdate(expression, voice, values);
             if (sourceMask === null) throw failure('invalid-physical-control', 'Physical control exceeds the new source domain.');

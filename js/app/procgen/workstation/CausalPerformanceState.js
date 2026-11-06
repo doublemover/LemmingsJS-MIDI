@@ -9,7 +9,7 @@ import { procgenLane, procgenLaneIndex } from './ProcgenProjectIndex.js';
 import { INSTRUMENT_PHYSICAL_SOURCE_KINDS, validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
 import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
 
-export const causalLanePhysicalControlKinds = entry => [...new Set([...(getSupportedInstrumentDefinition(entry?.instrumentRef)?.causalBindings || []).filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind),
+export const causalLanePhysicalControlKinds = entry => [...new Set([...(getSupportedInstrumentDefinition(entry?.instrumentRef)?.causalBindings || []).filter(binding => binding.mode === 'continuous' && binding.enabled !== false).map(binding => binding.sourceKind),
   ...(entry?.organ?.profiles !== 'organ' && entry?.organ?.rotarySource === 'cohort-circulation' ? ['MotionCommitted'] : []), ...(entry?.deviceParameters || []).flatMap(mapping => ['positionYWorldPixels', 'displacementPixels'].includes(mapping.source) ? ['MotionCommitted'] : mapping.source === 'changedSolidCells' ? ['TerrainWorkCommitted'] : [])])];
 
 const plain = value => value && Object.getPrototypeOf(value) === Object.prototype;
