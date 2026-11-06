@@ -101,6 +101,14 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
       recovery: live.size >= capacity ? 'retire-executions-and-await-settlement' : null });
   };
   const api = Object.freeze({ ...backend, registerExecution, retireExecution,
+    captureExecutionBindings() { sync(); if (disposed) throw new Error('The execution owner has retired.'); return Object.freeze([...live.values()].map(entry => Object.freeze({ epoch: entry.epoch, executionEpoch: entry.handle.executionEpoch, generation: entry.handle.generation, state: entry.state }))); },
+    ...(typeof backend.stageRoutingContinuation === 'function' ? { stageRoutingContinuation(options = {}) {
+      if (!Array.isArray(options.bindings) || options.bindings.length > 64) throw new Error('Routing restoration requires fresh opaque root executions.');
+      const bindings = options.bindings.map(binding => { const result = resolve(binding?.execution); if (result.error || !result.entry || typeof binding.fromExecutionEpoch !== 'string') throw new Error(result.error || 'Invalid routing root binding.');
+        return Object.freeze({ fromExecutionEpoch: binding.fromExecutionEpoch, epoch: result.epoch, generation: result.entry.handle.generation, execution: binding.execution }); });
+      if (new Set(bindings.map(binding => binding.epoch)).size !== bindings.length || new Set(bindings.map(binding => binding.fromExecutionEpoch)).size !== bindings.length) throw new Error('Routing roots must bind one-to-one.');
+      return backend.stageRoutingContinuation({ ...options, bindings });
+    } } : {}),
     ...(typeof backend.observeCommandOutcomes === 'function' ? { observeCommandOutcomes(listener, { execution } = {}) {
       const resolved = resolve(execution);
       if (resolved.error || !resolved.entry || typeof listener !== 'function') throw new TypeError('Command observation requires the active owned execution handle.');
