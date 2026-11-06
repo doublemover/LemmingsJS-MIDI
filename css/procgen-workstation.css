@@ -561,3 +561,13 @@ body.procgen-workstation {
 .native-midi-connection button { min-height: 32px; white-space: normal; }
 .native-midi-connection .midi-help { font-size: 12px; line-height: 1.5; }
 .native-midi-connection .midi-status { display: block; padding: 8px; border-left: 3px solid #657586; }
+
+
+.studio-physical-harmony { display: grid; gap: 0.65rem; min-width: 0; }
+.studio-physical-harmony .studio-harmony-plot { max-height: 26rem; overflow: auto; }
+.studio-physical-harmony svg { display: block; width: 100%; color: var(--studio-text, #ddd); background: var(--studio-panel, #171d22); }
+.studio-physical-harmony svg text { font: 11px ui-monospace, monospace; fill: currentColor; }
+.studio-physical-harmony ol { max-height: 20rem; overflow: auto; padding-inline-start: 1.5rem; overflow-wrap: anywhere; }
+.studio-physical-harmony li { padding-block: 0.3rem; border-bottom: 1px solid currentColor; font: 0.75rem/1.5 ui-monospace, monospace; }
+.studio-physical-harmony label { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-block: 0.4rem; }
+.studio-physical-harmony input[type=number] { width: 7rem; }

@@ -125,7 +125,10 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     if (!Object.hasOwn(record, 'definitionRevision')) record.definitionRevision = instrumentEpochs.get(record.instrument.id) ?? null;
     const kinds = restoring ? record.physicalSourceKinds || [] : getPhysicalControlKinds(record.laneId);
     if (!validControlKinds(kinds)) throw new Error('Invalid held physical control sources.');
-    if (!restoring && onsetPlans.has(voiceId)) { const onset = onsetPlans.get(voiceId); record.basePitchCents = onset.baseCents; record.onsetPitch = onset.pitch; record.tonalState = onset.tonalState; record.rootedSourceEventIds = record.rootedSourceEventIds || onset.sourceEventIds; record.tonalOffset = 0; }
+    if (!restoring && onsetPlans.has(voiceId)) {
+      const onset = onsetPlans.get(voiceId); record.inspectionPitch = onset.pitch; record.inspectionSourceEventIds = Object.freeze(onset.sourceEventIds.slice(0, 8)); record.inspectionCauseCoverage = onset.sourceEventIds.length <= 8 ? 'complete' : 'capped';
+      if (onset.tonalState) { record.basePitchCents = onset.baseCents; record.onsetPitch = onset.pitch; record.tonalState = onset.tonalState; record.rootedSourceEventIds = record.rootedSourceEventIds || onset.sourceEventIds; record.tonalOffset = 0; }
+    }
     record.physicalSourceKinds = Object.freeze([...kinds].sort()); active.set(voiceId, record);
     if (!kinds.length && !record.instrument.actionVoicePolicy?.expressionMappings.length && !record.instrument.contactTravel) return;
     let records = byActor.get(record.actorId);
@@ -150,7 +153,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const baseCents = basePitchFor(instrument, fact);
     const tonal = kind === 'begin' && (instrument.formationId || instrument.harmonicFields) ? tones.resolve(instrument, fact?.actorId, baseCents) : null;
     const pitch = tonal?.pitch || { cents: baseCents, referenceHz: 440 };
-    if (kind === 'begin' && tonal) onsetPlans.set(voiceId, { baseCents, pitch, tonalState: tonal.state, sourceEventIds: fact?.sourceEventIds || (fact?.eventId ? [fact.eventId] : []) });
+    if (kind === 'begin') onsetPlans.set(voiceId, { baseCents, pitch, tonalState: tonal?.state, sourceEventIds: fact?.sourceEventIds || (fact?.eventId ? [fact.eventId] : []) });
     const tonalOffset = !fact?.tonalExpression ? active.get(voiceId)?.tonalOffset || 0 : 0;
     const onsetControls = kind === 'begin' ? getOnsetControls(fact?.laneId, { worldId: batch.worldId, generation: voiceGeneration, actorId: fact?.actorId ?? null }) : null;
     const velocity01 = Number.isFinite(fact?.velocity01) ? fact.velocity01 : Math.min(1, instrument.velocity01 * (Number.isFinite(fact?.velocityScale) ? fact.velocityScale : 1));
@@ -631,16 +634,20 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     graph = graphSource = graphFingerprint = liveIds = indexed = snapshotCache = latestPhysicalAnalysis = probabilityAnalysis = null;
     latestBodyPreparations = null; bodyPreparations = tones = swarm = cargo = activity = motifs = encounters = physical = rhythmic = actionAdmission = travel = null;
     disposed = true; try { resourceOwner.dispose(); } catch (error) { disposalError = error; throw error; } return true; };
-  const activeVoiceView = ({ limit = 64, instrumentIds = null } = {}) => {
-    resourceOwner.check(); getCurrentGraph();
+  const activeVoiceView = ({ limit = 64, instrumentIds = null, includePitch = false } = {}) => {
+    resourceOwner.check(); if (!includePitch) getCurrentGraph();
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 4096 || instrumentIds !== null && (!Array.isArray(instrumentIds) || instrumentIds.length > 512 || instrumentIds.some(id => typeof id !== 'string' || !id || id.length > 128))) throw new TypeError('Voice inspection requires bounded identities and count.');
     const selected = instrumentIds && new Set(instrumentIds), result = [];
     for (const record of active.values()) { if (selected && !selected.has(record.instrument.id)) continue;
-      result.push(Object.freeze({ voiceId: record.voiceId, instrumentId: record.instrument.id, generation: record.generation, actorId: record.actorId, laneId: record.laneId })); if (result.length === limit) break;
+      result.push(Object.freeze({ voiceId: record.voiceId, instrumentId: record.instrument.id, generation: record.generation, actorId: record.actorId, laneId: record.laneId,
+        ...(includePitch ? { pitch: record.inspectionPitch || record.onsetPitch || null,
+          tonalState: record.tonalState || null, pitchOffsetCents: (record.lastExpression?.pitchOffsetCents || 0) + (record.tonalOffset || 0),
+          role: record.instrument.role, sourceEventIds: record.rootedSourceEventIds || record.inspectionSourceEventIds || null,
+          causeCoverage: record.rootedSourceEventIds ? record.rootedSourceEventIds.length <= 8 ? 'complete' : 'capped' : record.inspectionCauseCoverage || 'unavailable' } : {}) })); if (result.length === limit) break;
     }
     return Object.freeze(result);
   };
-  return { processBatch, snapshot, bodyPreparations: () => latestBodyPreparations, activeVoiceView, restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, routePeriods: () => physical.routePeriods(), probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
+  return { processBatch, snapshot, bodyPreparations: () => latestBodyPreparations, activeVoiceView, recentIntentView: () => Object.freeze(trace.slice()), restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, routePeriods: () => physical.routePeriods(), probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
     resourceOwner.check(); snapshotCache = null;
     if (!discardUnknownHeldState || active.size || suppressed.size) throw new Error('Rearming requires explicit discard of unknown held state at an empty boundary.');
     bodyPreparations.reset({ worldId: cursor.worldId, generation: cursor.generation, tick: cursor.tick, sequence: cursor.lastSequence }); latestBodyPreparations = null; recoveryRequired = false; return Object.freeze({ status: 'rearmed', resumesHeldVoices: false, sourceBoundary: Object.freeze({ ...cursor }) });

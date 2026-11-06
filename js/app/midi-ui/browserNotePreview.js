@@ -426,6 +426,17 @@ class BrowserNotePreview {
       panicPreparedBody: (nodeId, expected) => { const effects = this._channels.get(id + ':0')?.effects; if (!effects) throw new Error('The prepared body owner is unavailable.'); return effects.panicPreparedBody(nodeId, expected); },
       setEffectBypass: (mode, expected) => this._channels.get(id + ':0')?.effects?.bypass(mode, expected) || null,
       isSourceVoiceAvailable: member => this._laneSourceBuses.get(id)?.buses.hasVoice(member) || false,
+      inspectSourceVoiceStates: () => {
+        const now = this._context?.currentTime ?? 0, result = [];
+        for (const voice of this._voices) if (voice.owner === id && voice.playback?.voiceId && !voice.kernelEnded) {
+          result.push(Object.freeze({ voiceId: voice.playback.voiceId, generation: voice.semanticGeneration,
+            state: now < voice.start ? 'scheduled' : now >= voice.end ? 'completion-unconfirmed' : voice.released && Number.isFinite(voice.releaseAt) && now >= voice.releaseAt ? 'release' : voice.released ? 'release-scheduled' : 'held',
+            patchId: voice.patchId || null, patchRevision: voice.patchRevision ?? null,
+            evidence: Number.isSafeInteger(voice.slotToken) ? 'owned-host-source-state;kernel-acknowledgments-separate' : 'modeled-native-source-lifetime' }));
+          if (result.length >= 2048) break;
+        }
+        return Object.freeze(result);
+      },
       getEffectPerformanceState: () => this._channels.get(id + ':0')?.effects?.performanceSnapshot() || null,
       getEffectLatencyState: () => this._channels.get(id + ':0')?.effects?.latencyState() || Object.freeze({ latencyFrames: session.disposed ? null : 0, routes: 0, unresolved: session.disposed }),
       inspectEffectGraph: ({ requestHealth = false } = {}) => { const effects = this._channels.get(id + ':0')?.effects; if (requestHealth) effects?.requestInspection(); return effects?.state() || null; },

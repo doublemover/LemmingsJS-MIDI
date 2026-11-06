@@ -1,6 +1,7 @@
 import { actorTimbreControls, EMPTY_ACTOR_TIMBRE_LOCKS } from '../../../midi/content/InstrumentActorLocks.js';
 import { meterQuarterLength } from '../../../midi/project/MidiMusicalPosition.js';
 import { INSTRUMENT_SWITCH_MODES } from '../../../midi/content/InstrumentSwitchPolicy.js';
+import { createHarmonySnapshotOwner } from './HarmonySnapshot.js';
 import { createSceneMorphMechanism } from './SceneMorphMechanism.js';
 import { createSceneCavityBody } from './SceneCavityBody.js';
 import { createCavitySourceAdmission } from './CavitySourceAdmission.js';
@@ -47,6 +48,9 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
+  const harmony = createHarmonySnapshotOwner({ resourceBudget, getGraph,
+    resolveLane: laneId => typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId,
+    inspectRenderVoices: () => session?.inspectSourceVoiceStates?.() || [] });
   session?.configureLaneSources?.(getLanes().map(lane => lane.id));
   const nativeBackend = session?.createInstrumentBackend?.({ gateMode: 'owned' }) || null;
   let cavityBody = null;
@@ -261,6 +265,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
         if (receipt.sinkId === 'physical-browser-audio') audioAdmissions.set(receipt.intentId, receipt.status);
         if (!admissions.has(receipt.intentId) || ['accepted', 'degraded'].includes(receipt.status)) admissions.set(receipt.intentId, receipt.status);
       }
+      if (harmony.enabled()) { try { harmony.observe(intents, receipts); } catch { try { harmony.selectLane(null); } catch {} } }
       sceneMorph?.consume(intents, audioAdmissions); travelEffects.consume(intents, executionEpoch);
       for (const command of bodyCommands) { if (surfaceBodies) surfaceBodies.consume(command, executionEpoch); else onReceipt({ status: 'rejected', stage: 'prepared-body-control', commandId: command.commandId, sourceEventIds: command.sourceEventIds, reason: 'prepared-surface-not-bound', acousticReceipt: false }); }
       for (const intent of intents) if (intent.kind === 'begin') { const lane = typeof intent.laneId === 'number' ? getLanes()[intent.laneId] : getLanes().find(lane => lane.id === intent.laneId); if (lane) laneMix.record(lane.id, now(), admissions.get(intent.intentId) || 'unavailable'); } return receipts; } });
@@ -387,6 +392,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
       { name: 'playback-stop', run: stop }, { name: 'scene-morph-owner', run: () => sceneMorph?.dispose() }, { name: 'scene-cavity-owner', run: () => cavityBody?.dispose() }, { name: 'cavity-state-subscription', run: () => unsubscribeCavityState?.() }, { name: 'cavity-source-buffer', run: () => cavityBackend?.disposeCavityBuffer() }, { name: 'surface-body-binding-storage', run: () => surfaceBodies?.dispose() }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
       { name: 'causal-observer-storage', run: () => engine.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() },
+      { name: 'harmony-observation', run: () => harmony.dispose() },
       { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() },
       ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))
@@ -402,6 +408,11 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneRealization: laneId => laneInstruments?.synchronizeRealization(laneId) || Promise.resolve(null),
     laneRealizationState: laneId => laneInstruments?.realizationState(laneId) || null,
+    harmonySnapshot(laneId) {
+      if (harmony.selectedLane() !== laneId) { harmony.selectLane(laneId, engine.activeVoiceView({ limit: 4096, includePitch: true })); harmony.observe(engine.recentIntentView()); }
+      return harmony.snapshot();
+    },
+    closeHarmony: () => harmony.selectLane(null),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     pendingInstrumentCount: () => laneInstruments?.pendingCount() || 0,

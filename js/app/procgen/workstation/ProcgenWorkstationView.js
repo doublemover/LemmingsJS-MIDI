@@ -193,6 +193,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const operationalSurface = displayScheduler.register({ id: 'workstation-operational', element: operationalView.element, intervalMs: 100,
     write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); audioSettings.render(); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); refreshProjectStatus(); } }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
+  let harmonyView = null, harmonyFactory = null, harmonyPreparing = null, harmonyError = null;
   const owner = {};
   let motionControl = null, motionStatus = null, motionPolicy = null, motionUnsubscribe = null;
   if (!['system', 'reduce', 'freeze'].includes(state.motionMode)) state.motionMode = 'system';
@@ -267,7 +268,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         selectedEntity: entity ? { id: entity.id, kind: entity.kind, worldId: snapshot.worldId, generation: snapshot.generation } : null,
         dirtyBuffer: [...curveEditors.values()].filter(value => value.laneId === lane.id).map(value => ({ curveId: value.curveId, ...value.control.inspect() })) };
     }, isSuspended: () => stageActive,
-    onOpen: () => render(), onClose: () => cancelPresentationGestures('dock-closed'), onModeChange: () => cancelPresentationGestures('workspace-mode'),
+    onOpen: () => render(), onClose: () => { handlers.closeHarmony?.(); cancelPresentationGestures('dock-closed'); }, onModeChange: () => cancelPresentationGestures('workspace-mode'),
     onLayout: reflowGeometry, onPreferences: () => handlers.preferences?.(), onStatus: text => { setStatus(text); } });
   on(inspector, 'focusin', () => dock.update());
   on(inspector, 'input', () => dock.update());
@@ -610,6 +611,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const changeStep = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/step', laneId: selected().id, slot: state.slot, index: state.step, patch }); };
   const changePhysicalInstrument = (id, patch) => {
     const graph = getProject().procgen.physicalGraph;
+    if (!graph.instruments.some(instrument => instrument.id === id)) { handlers.status?.('This physical instrument definition was removed.'); return; }
     try {
       dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1,
         instruments: graph.instruments.map(instrument => instrument.id === id ? { ...instrument, ...patch } : instrument) } });
@@ -617,6 +619,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   function renderInspector() {
     if (disposed) return;
+    const harmonyFocus = state.tab === 'Harmony' && harmonyView?.element.contains(document.activeElement) ? document.activeElement : null;
+    if (state.tab !== 'Harmony' || !dock.visible()) handlers.closeHarmony?.();
     if (!dock.visible()) { viewRevision++; parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]); return; }
     const nextFields = node('div'), nextTabs = node('div'); macroControls.clear(); parameterSeen = new Set(); viewRevision++;
     if (state.tab !== 'MIDI') { midiRouteView?.dispose(); midiRouteView = null; }
@@ -627,7 +631,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const step = pattern?.steps[state.step];
     if (!pattern && ['Step', 'Chord'].includes(state.tab)) state.tab = 'Lane';
     parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]);
-    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'] : ['Lane', 'Physical', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); handlers.preferences?.(); }); el.id = 'procgen-dock-tab-' + tab; el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', String(state.tab === tab)); el.setAttribute('aria-controls', dock.panelId(tab)); el.tabIndex = state.tab === tab ? 0 : -1; nextTabs.append(el); }
+    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'Harmony', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'] : ['Lane', 'Physical', 'Harmony', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); handlers.preferences?.(); }); el.id = 'procgen-dock-tab-' + tab; el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', String(state.tab === tab)); el.setAttribute('aria-controls', dock.panelId(tab)); el.tabIndex = state.tab === tab ? 0 : -1; nextTabs.append(el); }
     fields.setAttribute('aria-labelledby', 'procgen-dock-tab-' + state.tab);
     nextFields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
@@ -902,6 +906,32 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       const searchChanged = event => { state.physicalSearch = event.currentTarget.value; render({ partial: true }); };
       controlTree.bind(search, { change: searchChanged, input: searchChanged });
       nextFields.append(search, list); renderPhysicalList();
+    } else if (state.tab === 'Harmony') {
+      if (harmonyFactory && !harmonyView && !harmonyError) {
+        try { harmonyView = harmonyFactory({ document, resourceBudget,
+          readSnapshot: () => handlers.getHarmonySnapshot?.(selected().id) || null, getGraph: () => getProject().procgen.physicalGraph,
+          getLaneIndex: () => getProject().procgen.lanes.findIndex(value => value.id === selected().id),
+          makePitchInput: (id, value, commit) => { const element = input(value, commit, { min: -24000, max: 24000, step: 0.01 });
+            element.dataset.fieldKey = 'Harmony:pitch:' + id; element.id = 'studio-field-' + encodeURIComponent(parameterScope + ':Harmony:pitch:' + id); return element; },
+          updatePitchInput: (element, value) => controlTree.update(element, String(value), { identity: getDocumentIdentity() }),
+          onSelectActor: voice => handlers.revealHarmonyActor?.(voice), onPitch: (id, pitchCents) => changePhysicalInstrument(id, { pitchCents }),
+          onFieldBypass: (id, bypass) => {
+            const graph = getProject().procgen.physicalGraph, field = graph.harmonicFields.find(value => value.id === id);
+            if (!field || field.bypass === bypass) return;
+            try { dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1,
+              harmonicFields: graph.harmonicFields.map(value => value.id === id ? { ...value, revision: value.revision + 1, bypass } : value) } }); }
+            catch (error) { handlers.status?.(error.message); }
+          }, onEdit: () => handlers.openPhysicalScene?.() }); }
+        catch (error) { harmonyError = error.message; }
+      }
+      if (harmonyView) { nextFields.append(harmonyView.element); harmonyView.render(); }
+      else {
+        nextFields.append(node('p', harmonyError || 'Preparing the physical harmony view…', 'studio-hint'));
+        if (harmonyError) nextFields.append(button('Retry harmony view', () => { harmonyError = null; renderInspector(); }));
+        else if (!harmonyPreparing) harmonyPreparing = import('./PhysicalHarmonyView.js').then(module => {
+          harmonyFactory = module.createPhysicalHarmonyView; harmonyPreparing = null; if (!disposed && state.tab === 'Harmony') renderInspector();
+        }).catch(error => { harmonyError = error.message; harmonyPreparing = null; if (!disposed && state.tab === 'Harmony') renderInspector(); });
+      }
     } else if (state.tab === 'Step' || state.tab === 'Chord') {
       labeled('Trigger', input(step.enabled, enabled => changeStep({ enabled }), { type: 'checkbox' }), nextFields);
       labeled('Scale degree', input(step.degree, degree => changeStep({ degree }), { min: -56, max: 56 }), nextFields);
@@ -1001,6 +1031,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     controlTree.reconcile(tabs, nextTabs, 'tabs:' + JSON.stringify([getDocumentIdentity(), !!pattern]));
     controlTree.reconcile(fields, nextFields, parameterScope);
+    if (harmonyFocus?.isConnected && state.tab === 'Harmony' && document.activeElement !== harmonyFocus) harmonyFocus.focus({ preventScroll: true });
     for (const entry of curveEditors.values()) if (entry.laneId === state.laneId) { const curve = lane.ccAutomation.find(curve => curve.id === entry.curveId); if (curve) entry.control.update(curve); }
     for (const [id, entry] of parameterCache) if (!parameterSeen.has(id)) {
       entry.control.dispose(); parameterControls.splice(parameterControls.indexOf(entry.control), 1); parameterCache.delete(id);
@@ -1306,6 +1337,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   function paintLaneDisplays() {
     if (disposed || !projection) return;
+    if (state.tab === 'Harmony' && dock.visible() && harmonyView?.element.isConnected) harmonyView.render();
     const values = readLaneDisplayValues();
     controlTree.update(displayPage, laneDisplayPages.get(state.laneId) || 'identity', { identity: getDocumentIdentity() });
     for (const value of values) {
@@ -1551,6 +1583,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'lane-mix-controls', run: () => { for (const control of [...laneMixControls.values(), ...lanePanControls.values()]) control.dispose(); laneMixControls.clear(); lanePanControls.clear(); retainedLaneDrafts.clear(); } },
         { name: 'lane-displays', run: () => { for (const display of laneDisplays.values()) display.dispose(); laneDisplays.clear(); laneDisplayPages.clear(); laneDisplayDialog.close(); laneDisplayDialog.remove(); } },
         { name: 'causal-visual-view', run: () => causalView.dispose() },
+        { name: 'physical-harmony-view', run: () => { handlers.closeHarmony?.(); return harmonyView?.dispose(); } },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },
         { name: 'renderer', run: detachRenderer }, ...listeners.map((unlisten, index) => ({ name: 'view-listener-' + index, run: unlisten })),

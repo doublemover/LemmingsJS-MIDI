@@ -20,14 +20,15 @@ export function createTonalInterpretation() {
     if (instrument.formationId) {
       formation = formations.pitch(instrument.formationId, actorId); if (formation.status !== 'complete') return formation; pitch = formation.pitch;
     }
+    const originalContinuousPitch = freeze({ ...pitch });
     if (instrument.harmonicFields) {
       field = fields.pitch(actorId, pitch.cents); if (field.status !== 'complete') return { status: 'unknown', reason: 'field-evidence-unavailable' };
       if (field.pitch) pitch = field.pitch;
     }
     const definition = instrument.formationId ? formations.definition(instrument.formationId) : null;
-    return { status: 'complete', pitch: freeze(pitch), state: freeze({ fieldId: field?.pitch?.fieldId ?? null, fieldRevision: field?.pitch?.fieldRevision ?? null,
+    return { status: 'complete', pitch: freeze(pitch), state: freeze({ originalContinuousPitch, quantizedPitch: freeze({ ...pitch }), fieldId: field?.pitch?.fieldId ?? null, fieldRevision: field?.pitch?.fieldRevision ?? null,
       heldPolicy: field?.view?.field?.heldPolicy ?? (definition ? 'retune-held' : 'retain-onset'), deletionPolicy: field?.view?.field?.deletionPolicy ?? 'retain',
-      slewSeconds: field?.view?.field?.slewSeconds ?? definition?.slewSeconds ?? 0, formationId: instrument.formationId ?? null, edit: field?.view?.edit ?? null,
+      slewSeconds: field?.view?.field?.slewSeconds ?? definition?.slewSeconds ?? 0, formationId: instrument.formationId ?? null, formationRevision: definition?.revision ?? null, edit: field?.view?.edit ?? null,
       reason: field?.pitch ? field.view.edit ? 'applied-field-edit' : 'observed-field-position' : formation?.reason ?? 'authored-pitch' }) };
   };
   const cause = record => {

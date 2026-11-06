@@ -2161,6 +2161,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean}} options */
     applyInstalledInstrument(candidate, { signal, hold = false, isCurrent } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, laneId: selected().id }); },
     getLaneRealizationState: laneId => physicalPlayback?.laneRealizationState(laneId) || null,
+    getHarmonySnapshot: laneId => physicalPlayback?.harmonySnapshot(laneId) || null,
+    closeHarmony: () => physicalPlayback?.closeHarmony(),
+    revealHarmonyActor(voice) {
+      runtime()?.lanes?.renderer?.render?.(true);
+      if (worldInspector?.select(voice.generation + ':actor:' + voice.actorId)) { worldInspector.reveal(); state.tab = 'Selection'; view?.openInspector?.(); }
+      else status('That causal actor is outside the current presented selection. Its voice and cause IDs remain in the harmony list.');
+    },
     async setLaneQualityPolicy(laneId, soundQualityPolicy) {
       dispatch({ type: 'procgen/lane', laneId, patch: { soundQualityPolicy } });
       try {
