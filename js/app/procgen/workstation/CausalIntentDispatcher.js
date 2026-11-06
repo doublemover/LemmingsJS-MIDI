@@ -83,7 +83,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
       let timing = null, timingError = null;
       try {
         if (intent?.version !== 1 || intent.generation !== batch.generation || intent.worldId != null && batch.worldId != null && intent.worldId !== batch.worldId) throw Object.assign(new Error('Invalid physical intent'), { code: 'invalid-intent' });
-        if (!timingLease && intent?.timeTransformPolicy?.mode !== 'literal' && intent?.timeTransformPolicy?.strength01 > 0) timingLease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-groove-owner', kind: 'bounded-groove-lifecycle-and-decision-metadata-estimate', category: 'audio', bytes: 48 * 1048576 });
+        if (!timingLease && intent?.timeTransformPolicy?.mode !== 'literal' && (intent?.timeTransformPolicy?.strength01 > 0 || intent?.timeTransformPolicy?.mode === 'buffered' && intent?.timeTransformPolicy?.causalLatencyMs > 0)) timingLease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-groove-owner', kind: 'bounded-groove-lifecycle-and-decision-metadata-estimate', category: 'audio', bytes: 48 * 1048576 });
         timing = timingOwner.apply(intent, intent?.timeTransformPolicy, { tempoBpm: getTempoBpm(intent, batch), executionEpoch: epoch || 'unavailable' });
       } catch (error) { timingError = error.code || 'time-transform-unavailable'; }
 

@@ -651,14 +651,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
             changeLane({ timeTransform: validateTimeTransform({ ...current, ...patch, revision: current.revision + 1 }) });
           } catch (error) { handlers.status?.(error.message); }
         };
-        labeled('Timing', select([['literal', 'Literal physical timing'], ['attract', 'Pulse attraction'], ['swingField', 'Swing field'], ['ratioFold', 'Ratio pulse grid']],
-          groove.mode, mode => changeGroove({ mode, ...(mode !== 'literal' && groove.strength01 === 0 ? { strength01: 0.5 } : {}) }), 'Physical groove timing'), grooveDetails);
-        labeled('Strength', parameter(groove.strength01, strength01 => changeGroove({ strength01 }), { id: 'groove:strength', name: 'Groove strength', quantity: 'normalized', unit: 'normalized',
+        labeled('Timing', select([['literal', 'Literal physical timing'], ['buffered', 'Literal spacing · explicit live buffer'], ['attract', 'Pulse attraction'], ['swingField', 'Swing field'], ['ratioFold', 'Ratio pulse grid']],
+          groove.mode, mode => changeGroove({ mode, ...(mode === 'buffered' ? { strength01: 0, maxDisplacementMs: 0 } : mode !== 'literal' && groove.strength01 === 0 ? { strength01: 0.5 } : {}) }), 'Physical groove timing'), grooveDetails);
+        if (groove.mode !== 'buffered') labeled('Strength', parameter(groove.strength01, strength01 => changeGroove({ strength01 }), { id: 'groove:strength', name: 'Groove strength', quantity: 'normalized', unit: 'normalized',
           min: 0, max: 1, step: 0.01, fineStep: 0.001, defaultValue: 0 }, { readOnly: groove.mode === 'literal' }), grooveDetails);
-        labeled('Pulse grid', select([1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1, 2, 4, 8, 16].map(beats => [String(beats), beats + ' quarter-note beats']),
+        if (groove.mode !== 'buffered') labeled('Pulse grid', select([1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1, 2, 4, 8, 16].map(beats => [String(beats), beats + ' quarter-note beats']),
           String(groove.gridBeats), value => changeGroove({ gridBeats: Number(value) }), 'Groove pulse grid'), grooveDetails);
         for (const [key, name, min, max, step, unit] of [
-          ['maxDisplacementMs', 'Maximum attraction', 0, 2000, 1, 'ms'], ['causalLatencyMs', 'Added live buffer', 0, 2000, 1, 'ms'],
+          ...(groove.mode === 'buffered' ? [] : [['maxDisplacementMs', 'Maximum attraction', 0, 2000, 1, 'ms']]), ['causalLatencyMs', 'Added live buffer', 0, 2000, 1, 'ms'],
           ...(groove.mode === 'swingField' ? [['swingRatio', 'Swing ratio', 0.5, 0.75, 0.01, 'ratio']] : []),
           ...(groove.mode === 'ratioFold' ? [['ratioNumerator', 'Ratio numerator', 1, 16, 1, 'integer'], ['ratioDenominator', 'Ratio denominator', 1, 16, 1, 'integer']] : [])
         ]) labeled(name, parameter(groove[key], value => changeGroove({ [key]: value }), { id: 'groove:' + key, name, quantity: 'authored-event-timing', unit, min, max, step, fineStep: step, defaultValue: min }, { readOnly: groove.mode === 'literal' }), grooveDetails);

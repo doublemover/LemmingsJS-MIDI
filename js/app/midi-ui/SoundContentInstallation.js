@@ -1,5 +1,5 @@
 import { prepareGraftComparison } from '../../midi/content/GraftComparison.js';
-import { seedLayerControlFixture, TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXTURE, WIND_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
+import { streamingWarpControlFixture, seedLayerControlFixture, TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXTURE, WIND_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { createOwnedSampleControlFixture } from './OwnedSampleControlFixture.js';
 import { planSoundSourceComparison } from './SoundSourceComparison.js';
@@ -42,8 +42,8 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     let lease;
     try { lease = borrowSoundContentStage(stage); } catch (error) { return Promise.reject(error); }
     const patch = lease.prepared.patches.find(entry => entry.identity === patchIdentity);
-    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(patch.definition.engineId) ||
-        patch.definition.sampleRefs.length && !['worklet-granular', 'native-sample', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
+    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind', 'worklet-warp'].includes(patch.definition.engineId) ||
+        patch.definition.sampleRefs.length && !['worklet-warp', 'worklet-granular', 'native-sample', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
     }
     if (!Number.isFinite(sampleHoldSeconds) || sampleHoldSeconds < 0.2 || sampleHoldSeconds > 8 || sampleHoldSeconds !== 0.2 && patch.definition.engineId !== 'worklet-sample') {
@@ -109,10 +109,11 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           graftReadout = graftComparison ? await prepareGraftComparison(patch.definition, graftComparison) : null; check();
           definitions.register(graftReadout?.definition ?? patch.definition, descriptor);
           resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: operation.material?.availableHashes || lease.metadata.assetHashes });
+          if (patch.definition.engineId === 'worklet-warp') resolution = { ...resolution, reference: { definitionHash: patch.definitionHash } };
           if (patch.definition.engineId === 'native-sample') {
             if (!operation.session.createSampleInstrumentBackend) throw failure('sample-adapter-unavailable', 'This audio session cannot prepare mapped samples.');
             operation.backend = await operation.session.createSampleInstrumentBackend({ gateMode: 'owned' });
-          } else operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
+          } else operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind', 'worklet-warp'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
         }
         const prepared = await interruptible(operation.backend.prepare(resolution, operation.material?.assets || []), signal); check();
         if (prepared.status !== 'ready') throw failure('preparation-rejected', 'Audition renderer rejected the effective patch: ' + prepared.reason);
@@ -124,6 +125,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         const context = operation.context = audio.getAudioContext(), rate = context?.sampleRate;
         if (context?.state !== 'running' || !Number.isFinite(rate) || rate < 8000 || rate > 384000) throw failure('audio-unavailable', 'Audition audio clock is unavailable.');
         if (!sourceMode && ['native-fm', 'native-modal'].includes(patch.definition.engineId)) auditionFixture = nativeSourceControlFixture(resolution.patch);
+        if (patch.definition.engineId === 'worklet-warp') auditionFixture = streamingWarpControlFixture(patch.definition);
         if (patch.definition.engineId === 'worklet-seed-layers') auditionFixture = seedLayerControlFixture(patch.definition);
         if (patch.definition.engineId === 'worklet-wind') auditionFixture = WIND_CONTROL_FIXTURE;
         if (patch.definition.engineId === 'worklet-friction') auditionFixture = FRICTION_CONTROL_FIXTURE;
@@ -131,7 +133,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         if (patch.definition.engineId === 'worklet-sample') auditionFixture = createOwnedSampleControlFixture(prepareOwnedSamplePlan(resolution.patch, prepared.sourceBank, rate), sampleGesture ?? patch.definition.sampleMap.neutralArticulationId, { holdSeconds: sampleHoldSeconds }).fixture;
         const registered = operation.backend.registerExecution({ executionEpoch: 'sound-audition:' + number, generation: number });
         if (registered.status !== 'accepted') throw failure('audition-admission', 'Audition execution could not be registered.'); operation.execution = registered.execution;
-        const requiresApplication = !sourceMode && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null, sourceEndedFrame = null;
+        const requiresApplication = !sourceMode && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind', 'worklet-warp'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null, sourceEndedFrame = null;
         if (requiresApplication) {
           if (typeof operation.backend.observeCommandOutcomes !== 'function') throw failure('application-evidence-unavailable', 'This renderer cannot provide owned command-application receipts.');
           operation.stopObservation = operation.backend.observeCommandOutcomes(value => {
@@ -142,7 +144,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
               command.appliedFrame = value.appliedFrame;
           }, { execution: operation.execution });
         }
-        const base = Math.ceil(context.currentTime * rate) + Math.ceil(0.15 * rate), releaseSeconds = comparison?.releaseSeconds ?? patch.definition.parameters.releaseSeconds ?? 0.04;
+        const base = Math.ceil(context.currentTime * rate) + Math.max(Math.ceil(0.15 * rate), (prepared.preparationLeadFrames || 0) + 1024), releaseSeconds = comparison?.releaseSeconds ?? patch.definition.parameters.releaseSeconds ?? 0.04;
         const fixtureEndSeconds = Math.max(...auditionFixture.events.map(event => event.seconds));
         const sample = ['native-sample', 'worklet-sample'].includes(patch.definition.engineId);
         const endFrame = base + Math.ceil((fixtureEndSeconds + (sample ? Math.max(4, releaseSeconds) : releaseSeconds) + 0.15) * rate), outcomes = [];

@@ -362,6 +362,9 @@ class BrowserNotePreview {
       },
       createWorkletInstrumentBackend: async options => {
         const generation = session.generation;
+        if (options?.engineId === 'worklet-warp') { const { createBufferedWarpInstrumentBackend } = await import('./BufferedWarpInstrumentBackend.js');
+          if (session.disposed || this._disposed || generation !== session.generation) throw new Error('Audio backend selection was cancelled.');
+          return this._registerInstrumentBackend(createBufferedWarpInstrumentBackend(this, id, options), id); }
         const { createWorkletInstrumentBackend } = await import('./workletInstrumentBackend.js');
         if (session.disposed || this._disposed || generation !== session.generation) throw new Error('Audio backend selection was cancelled.');
         return this._registerInstrumentBackend(createWorkletInstrumentBackend(this, id, options), id);

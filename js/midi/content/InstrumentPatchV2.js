@@ -9,6 +9,7 @@ import { validateInstrumentMacros, validateInstrumentBindings } from './Instrume
 import { validateInstrumentVariation } from './InstrumentIdentityVariation.js';
 import { validateSampleInstrumentMap, OWNED_SAMPLE_MAP_PROFILE, NATIVE_SAMPLE_MAP_PROFILE } from './SampleInstrumentMap.js';
 import { validateSeedLayerProfile } from './SeedLayerProfile.js';
+import { validateBufferedWarpPlan } from './BufferedWarpPlan.js';
 import { canonicalDataText, cloneData } from '../../core/CanonicalData.js';
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -130,6 +131,9 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     rendererProfile: engine.capabilities.advancedSampleMaps === true ? OWNED_SAMPLE_MAP_PROFILE : NATIVE_SAMPLE_MAP_PROFILE });
   if (input.seedLayers != null && input.engineId !== 'worklet-seed-layers' || input.engineId === 'worklet-seed-layers' && input.seedLayers == null) throw new Error('Decomposed seed layers require their explicit owned composite engine.');
   const seedLayers = input.seedLayers == null ? null : validateSeedLayerProfile(input.seedLayers, sampleRefs);
+  if (input.warpPlan != null && input.engineId !== 'worklet-warp' || input.engineId === 'worklet-warp' && input.warpPlan == null) throw new Error('Streaming warp material requires its explicit owned engine and immutable frame plan.');
+  const warpPlan = input.warpPlan == null ? null : validateBufferedWarpPlan(input.warpPlan);
+  if (warpPlan && (sampleRefs.length !== 1 || sampleRefs[0].sha256 !== warpPlan.assetHash || !sampleRefs[0].required || input.voicePolicy.maxVoices !== 1 || warpPlan.sourceFrameRegion[1] - warpPlan.sourceFrameRegion[0] > warpPlan.sourceRate * 8)) throw new Error('Streaming warp requires one exact sample, bounded region and one independently owned voice.');
   const macros = validateInstrumentMacros(input.macros, engine.parameters);
   if (engine.capabilities.continuousMacroPerformance === false && macros.some(macro => macro.mode === 'continuous')) throw new Error('Continuous macros are unavailable on this engine.');
   if (macros.some(macro => macro.targets.some(target => schema.get(target.parameter).capability && !engine.capabilities[schema.get(target.parameter).capability]))) throw new Error('Unsupported macro target capability.');
@@ -149,7 +153,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     !integer(Number(key), 0, 127) || !integer(value, 0, 127)))) throw new Error('Invalid MIDI fallback.');
   return freeze({ schemaVersion: 2, id: input.id, revision: input.revision, name: input.name, author: input.author,
     tags: input.tags, engineId: input.engineId, engineVersion: input.engineVersion, parameters,
-    modulations, sampleRefs, ...(sampleMap ? { sampleMap } : {}), ...(seedLayers ? { seedLayers } : {}), voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal, ...(input.voicePolicy.switchPolicy == null ? {} : { switchPolicy: validateInstrumentSwitchPolicy(input.voicePolicy.switchPolicy) }) },
+    modulations, sampleRefs, ...(sampleMap ? { sampleMap } : {}), ...(seedLayers ? { seedLayers } : {}), ...(warpPlan ? { warpPlan } : {}), voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal, ...(input.voicePolicy.switchPolicy == null ? {} : { switchPolicy: validateInstrumentSwitchPolicy(input.voicePolicy.switchPolicy) }) },
     mix: { gain01: input.mix.gain01, pan01: input.mix.pan01 }, macros, causalBindings, ...(variation ? { variation } : {}),
     midiFallback: midiFallback && { bankMSB: midiFallback.bankMSB, bankLSB: midiFallback.bankLSB,
       program: midiFallback.program, percussionMap: midiFallback.percussionMap || {} } });

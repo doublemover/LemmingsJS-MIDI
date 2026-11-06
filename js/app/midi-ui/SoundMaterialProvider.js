@@ -177,8 +177,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
         }
         const dataOnlyHashes = [];
         for (const hash of closure) if (!playbackHashes.has(hash)) { await verifyDataDependency(files.get(hash), stage, operation); operation.check(); dataOnlyHashes.push(hash); }
-        const sourcePcm = ['worklet-granular', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId); let sourcePcmBytes = 0;
-        if (['worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) && decodeProfile != null && decodeProfile !== 'source-pcm') throw failure('material-adapter-unavailable', 'Owned sample maps require their canonical source-PCM decoder profile.');
+        const sourcePcm = ['worklet-warp', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId); let sourcePcmBytes = 0;
+        if (['worklet-warp', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) && decodeProfile != null && decodeProfile !== 'source-pcm') throw failure('material-adapter-unavailable', 'Owned sample maps require their canonical source-PCM decoder profile.');
         for (const ref of new Map(refs.map(ref => [ref.sha256, ref])).values()) {
           const file = prepared.pack.files.find(entry => entry.sha256 === ref.sha256);
           if (!file || file.bytes !== ref.bytes || file.kind !== 'sample') throw failure('asset-missing', 'The exact WAV source inventory is unavailable.');

@@ -9,6 +9,14 @@ export const SOUND_CONTENT_CONTROL_FIXTURE = freezeData({ schema: 'lemmings-cont
     { kind: 'end', seconds: 1 }
   ] });
 
+export function streamingWarpControlFixture(patch) {
+  const plan = patch?.warpPlan;
+  if (patch?.engineId !== 'worklet-warp' || !plan?.rootPitch || !Number.isFinite(plan.rateRatio)) throw new TypeError('A WarpVoice control audition needs its exact prepared source plan.');
+  const hold = Math.max(1 / plan.outputRate, Math.min(3, (plan.sourceFrameRegion[1] - plan.sourceFrameRegion[0]) / plan.sourceRate / plan.rateRatio / 2));
+  return freezeData({ schema: 'lemmings-control-audition/v1', id: 'streaming-warp-owned-root-gate-v1', source: 'authored-control-fixture', physicalTakeEvidence: false,
+    events: [{ kind: 'begin', seconds: 0, pitchCents: plan.rootPitch.cents + 1200 * Math.log2(plan.rootPitch.referenceHz / 440), velocity01: 0.65, expression: { pressure01: 1, pan01: 0 } }, { kind: 'end', seconds: hold }] });
+}
+
 export function nativeSourceControlFixture(patch) {
   const limit = patch?.parameters?.maxBendCents;
   if (!['native-fm', 'native-modal'].includes(patch?.engineId) || !Number.isFinite(limit) || limit < 0 || limit > 1200) throw new TypeError('Native source audition requires its resolved bend profile.');

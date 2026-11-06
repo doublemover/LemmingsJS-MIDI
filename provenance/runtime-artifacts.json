@@ -365,6 +365,7 @@
         "js/app/resources/SoundSeedDerivedAudio.js",
         "js/app/resources/SoundSeedWindowAnalysis.js",
         "js/app/resources/StreamingWarpMaterial.js",
+        "js/app/resources/StreamingWarpPatchMaterial.js",
         "js/app/resources/StretchCoreImageAbi.js",
         "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
@@ -479,8 +480,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 331,
-      "sha256": "2a90dcd95f5d9683d4399444bc38871aab398a06031e4d77e02c159c1a95c4ac"
+      "fileCount": 332,
+      "sha256": "39768a9f0dfc4f6a71a7a738376cf9ff458aceb97001445a6f5f3929d8214268"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -606,7 +607,7 @@
         "scripts/native-midi/NativeMidiProcess.js"
       ],
       "fileCount": 76,
-      "sha256": "9c7308fd535feea17ae822c4592d32666631c0482df15e33ed2fa12d24f5b854"
+      "sha256": "52ac5aa0facd3ac133e1b8cc4a311676babb027d1949915566ac348a98f4044c"
     },
     {
       "id": "lemmings-authoritative-simulation-worker",
@@ -924,6 +925,7 @@
         "js/app/resources/SoundSeedDerivedAudio.js",
         "js/app/resources/SoundSeedWindowAnalysis.js",
         "js/app/resources/StreamingWarpMaterial.js",
+        "js/app/resources/StreamingWarpPatchMaterial.js",
         "js/app/resources/StretchCoreImageAbi.js",
         "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
@@ -1174,8 +1176,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 554,
-      "sha256": "1557959645eb89f3e2a7de5a272ae32d0b0bc242faa29ecffc3560b3014d6dea"
+      "fileCount": 555,
+      "sha256": "94829ddef0b7b0fd76f5874732977518c4c8a305a2b24b28fe8860ad9626ce81"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1193,6 +1195,8 @@
         "js/app/export/ExportArtifact.js",
         "js/app/export/NativeExportDeliveryOwner.js",
         "js/app/midi-ui/AudioAssetRef.js",
+        "js/app/midi-ui/AudioResourceLeases.js",
+        "js/app/midi-ui/BufferedWarpInstrumentBackend.js",
         "js/app/midi-ui/BufferedWarpVoiceOwner.js",
         "js/app/midi-ui/CapturedEffectHistory.js",
         "js/app/midi-ui/CapturedEffectHistoryDriver.js",
@@ -1203,6 +1207,7 @@
         "js/app/midi-ui/CausalRenderTiming.js",
         "js/app/midi-ui/EffectRenderPlan.js",
         "js/app/midi-ui/EffectSourceBindings.js",
+        "js/app/midi-ui/InstrumentExecutionLifecycle.js",
         "js/app/midi-ui/MembraneStrikeContinuation.js",
         "js/app/midi-ui/NativeFmSource.js",
         "js/app/midi-ui/NativeInstrumentSchema.js",
@@ -1212,6 +1217,7 @@
         "js/app/midi-ui/OwnedArticulationPolicy.js",
         "js/app/midi-ui/OwnedAudioWav.js",
         "js/app/midi-ui/OwnedEffectGraphKernel.js",
+        "js/app/midi-ui/OwnedPcmBank.js",
         "js/app/midi-ui/OwnedSampleControlFixture.js",
         "js/app/midi-ui/OwnedSamplePlan.js",
         "js/app/midi-ui/OwnedSoundSeedSource.js",
@@ -1223,10 +1229,13 @@
         "js/app/midi-ui/OwnedSourceProfiles.js",
         "js/app/midi-ui/OwnedSourceSeed.js",
         "js/app/midi-ui/OwnedStretchMaterial.js",
+        "js/app/midi-ui/RendererPublicationOwner.js",
         "js/app/midi-ui/SeedLayerPlan.js",
+        "js/app/midi-ui/SmoothedAudioParameter.js",
         "js/app/midi-ui/StreamingWarpAudition.js",
         "js/app/midi-ui/StreamingWarpMaterialOwner.js",
         "js/app/midi-ui/StretchImageMaterial.js",
+        "js/app/midi-ui/VoiceLaneMix.js",
         "js/app/midi-ui/WarpSegmentQueue.js",
         "js/app/midi-ui/WaveSourceProfile.js",
         "js/app/midi-ui/worklet/AllpassNotchProcessor.js",
@@ -1407,6 +1416,7 @@
         "js/app/resources/SoundSeedDerivedAudio.js",
         "js/app/resources/SoundSeedWindowAnalysis.js",
         "js/app/resources/StreamingWarpMaterial.js",
+        "js/app/resources/StreamingWarpPatchMaterial.js",
         "js/app/resources/StretchCoreImageAbi.js",
         "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
@@ -1518,8 +1528,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 328,
-      "sha256": "c0731b34004b17bb27528a7506e47036cdaacc3a0e323f76e907e4ded76156a3"
+      "fileCount": 336,
+      "sha256": "03a61e2f47a168ce4a558cf74126e115c73afb527c8d598aab503cc790908403"
     }
   ]
 }

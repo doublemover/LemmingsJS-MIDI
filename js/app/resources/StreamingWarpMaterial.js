@@ -13,6 +13,7 @@ export async function prepareStreamingWarpMaterial(input, { applicationBuildId, 
   check();
   if (typeof document !== 'undefined' || typeof globalThis.registerProcessor === 'function' || !/^[a-f0-9]{64}$/.test(applicationBuildId || '') || input?.applicationBuildId !== applicationBuildId ||
       !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < 256 * 1048576) fail('Prepare streaming material only in its admitted immutable worker with complete heap/PCM overlap.');
+  if (input?.mode === 'instrument-patch') { const { prepareStreamingWarpPatchMaterial } = await import('./StreamingWarpPatchMaterial.js'); return prepareStreamingWarpPatchMaterial(input, { applicationBuildId, estimatedPeakBytes, signal, current, yieldControl, onProgress }); }
   const source = inspectSeedDerivedInput(input, ['wasmBytes', 'options', 'applicationBuildId']), options = cloneData(input.options, { maxBytes: 8192, maxNodes: 512 });
   if (!options || Object.keys(options).some(key => !['outputRate', 'rateRatio', 'pitchRatio', 'rootPitch', 'loop', 'randomSeed'].includes(key)) ||
       ![44100, 48000, 96000].includes(options.outputRate) || !(input.wasmBytes instanceof Uint8Array)) fail('Select explicit prepared-rate, traversal, pitch, region-loop and seed controls.');

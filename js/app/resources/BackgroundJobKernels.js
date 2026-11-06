@@ -73,7 +73,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const value = await prepareStreamingWarpMaterial(input, { applicationBuildId: execution.buildId, estimatedPeakBytes, signal, current, yieldControl, onProgress }); guard(signal, current);
     const retainedBytes = value.image.heapBytes.byteLength + value.image.moduleBytes.byteLength + value.image.metadata.compiledModuleEstimateBytes + value.pcm.planes.reduce((sum, plane) => sum + plane.byteLength, 0) + 1048576;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'The shared streaming material exceeds its retained image/PCM reservation.');
-    return { value, inputBytes: input.pcm.byteLength + input.originBytes.byteLength + input.wasmBytes.byteLength + 16384, nodes: 256, retainedBytes };
+    return { value, inputBytes: (input.mode === 'instrument-patch' ? input.pcm.descriptor.bytes : input.pcm.byteLength + input.originBytes.byteLength) + input.wasmBytes.byteLength + 16384, nodes: 256, retainedBytes };
   }
   if (kind === 'qualify-original-shape-refinement') {
     const execution = getActiveExecutionIdentity('browser-background-jobs');

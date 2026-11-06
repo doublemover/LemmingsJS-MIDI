@@ -5,7 +5,7 @@ class BufferedWarpPcmProcessor extends AudioWorkletProcessor {
   constructor() {
     super(); this.capacity = 16; this.left = Array.from({ length: 16 }, () => new Float32Array(128)); this.right = Array.from({ length: 16 }, () => new Float32Array(128));
     this.starts = new Float64Array(16); this.lengths = new Uint16Array(16); this.head = 0; this.size = 0; this.source = null; this.identity = null;
-    this.gate = null; this.gateRenderedStart = null; this.gateRenderedEnd = null;
+    this.gate = null; this.gateRenderedStart = null; this.gateRenderedEnd = null; this.gateRenderedRelease = null;
     this.firstFrame = null; this.receivedThrough = null; this.renderedThrough = null; this.endFrame = null; this.failure = null; this.retired = false; this.sourceStopped = false;
     this.port.onmessage = event => {
       const message = event.data;
@@ -23,10 +23,10 @@ class BufferedWarpPcmProcessor extends AudioWorkletProcessor {
     };
   }
   controlGate(message) {
-    const report = extra => ({ status: 'accepted', observedFrame: currentFrame, appliedFrame: null, renderedStartOutputFrame: this.gateRenderedStart, renderedEndOutputFrame: this.gateRenderedEnd, gateFinished: this.gateRenderedEnd !== null, sourceEndOutputFrame: this.endFrame, sourceFinished: this.endFrame !== null && currentFrame >= this.endFrame, evidence: 'processor-command-admission;rendered-frontier-observed-separately', ...extra });
+    const report = extra => ({ status: 'accepted', observedFrame: currentFrame, appliedFrame: null, renderedStartOutputFrame: this.gateRenderedStart, renderedEndOutputFrame: this.gateRenderedEnd, renderedReleaseStartOutputFrame: this.gateRenderedRelease, gateFinished: this.gateRenderedEnd !== null, sourceEndOutputFrame: this.endFrame, sourceFinished: this.endFrame !== null && currentFrame >= this.endFrame, evidence: 'processor-command-admission;rendered-frontier-observed-separately', ...extra });
     if (message.type === 'reset-source') {
       if (this.failure || !(this.gateRenderedEnd !== null || this.endFrame !== null && currentFrame >= this.endFrame)) return { status: 'rejected', reason: this.failure || 'source-output-not-settled', appliedFrame: null };
-      this.size = 0; this.head = 0; this.firstFrame = this.receivedThrough = this.renderedThrough = this.endFrame = null; this.gate = null; this.gateRenderedStart = this.gateRenderedEnd = null; this.sourceStopped = false; return report({ priorSourceOutputSettled: true });
+      this.size = 0; this.head = 0; this.firstFrame = this.receivedThrough = this.renderedThrough = this.endFrame = null; this.gate = null; this.gateRenderedStart = this.gateRenderedEnd = this.gateRenderedRelease = null; this.sourceStopped = false; return report({ priorSourceOutputSettled: true });
     }
     if (message.type === 'gate-inspect') return report({ sourceIdentity: this.gate?.identity || null, requestedEndOutputFrame: this.gate?.endFrame ?? null, releaseFrames: this.gate?.releaseFrames ?? null });
     const value = message.sourceIdentity;
@@ -75,6 +75,7 @@ class BufferedWarpPcmProcessor extends AudioWorkletProcessor {
     const count = channels[0].length;
     for (let index = 0; index < count; index++) {
       const frame = currentFrame + index, gate = this.gate;
+      if (gate && frame >= gate.endFrame) this.gateRenderedRelease ??= frame;
       if (gate && (frame >= gate.endFrame + gate.releaseFrames || gate.endFrame <= gate.startFrame && frame >= gate.endFrame)) { this.gateRenderedEnd ??= frame; this.size = 0; continue; }
       if (this.endFrame !== null && frame >= this.endFrame) { if (gate) this.gateRenderedEnd ??= frame; this.size = 0; continue; }
       if (!this.size) { if (this.firstFrame !== null && frame >= this.firstFrame) this.failure = 'pcm-underrun'; continue; }

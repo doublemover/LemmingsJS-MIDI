@@ -5,6 +5,7 @@ import { createSealedBodyGraftRecipe } from '../../midi/content/SealedBodyGraftR
 import { createTextureBodyGraftRecipe } from '../../midi/content/TextureBodyGraftRecipe.js';
 import { inspectOwnedSoundSeedHeader, inspectOwnedSoundSeedOrigin } from './OwnedSoundSeedSource.js';
 import { createSoundSeedRecipe } from '../../midi/content/SoundSeedRecipe.js';
+import { createSoundSeedWarpRecipe } from '../../midi/content/SoundSeedWarpRecipe.js';
 import { createSoundSeedGraftRecipe } from '../../midi/content/SoundSeedGraftRecipe.js';
 import { createSoundSeedModalRecipe } from '../../midi/content/SoundSeedModalRecipe.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
@@ -44,7 +45,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
     operation.promise = Promise.resolve().then(() => work(operation, check)).catch(failure => { error = String(failure.message).slice(0, 512); phase = unknown.size ? 'ownership-unknown' : current ? 'previous-patch-retained' : 'no-patch'; throw failure; })
       .finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
   };
-  const prepare = (candidate, { transform, pitch, modalFit = null, decomposition = null, layerComponents = null, graftBody = 'tin', textureKind = 'sand-drag', traversalBinding = null, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
+  const prepare = (candidate, { transform, pitch, warpPlan = null, modalFit = null, decomposition = null, layerComponents = null, graftBody = 'tin', textureKind = 'sand-drag', traversalBinding = null, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
     const layered = ['hammer-cloud', 'bowed-scrap', 'hollow-tool'].includes(transform);
     if (layered && (!Array.isArray(layerComponents) || layerComponents.length !== 3 || layerComponents.some(entry => !entry?.metadata?.().assetReady))) throw fail('Prepare the complete current decomposition before compiling a layered seed.');
     const motionTarget = ['bowed-scrap', 'motion-body-graft', 'texture-body-graft', 'sealed-friction-body-graft'].includes(transform) ? targetIdentity() : null;
@@ -81,7 +82,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
         material = { manifest: result.manifest, assetHash: result.assetHash, byteLength: result.bytes.length, blob: new Blob([result.bytes], { type: 'audio/wav' }) };
         job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) throw fail('Finite FM worker retirement remains unresolved.'); job = null; check();
       }
-      const recipe = await (layered ? createSoundSeedLayerRecipe : transform === 'finite-fm-body-graft' ? createFiniteFmBodyGraftRecipe : ['sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform) ? createSealedBodyGraftRecipe : transform === 'texture-body-graft' ? createTextureBodyGraftRecipe : ['feedforward-graft', 'motion-body-graft'].includes(transform) ? createSoundSeedGraftRecipe : transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: material.manifest, assetHash: material.assetHash, byteLength: material.byteLength, transform, pitch, modalFit, decomposition, layerMaterials, graftBody, textureKind, traversalBinding }); check();
+      const recipe = await (transform === 'streaming-warp' ? createSoundSeedWarpRecipe : layered ? createSoundSeedLayerRecipe : transform === 'finite-fm-body-graft' ? createFiniteFmBodyGraftRecipe : ['sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform) ? createSealedBodyGraftRecipe : transform === 'texture-body-graft' ? createTextureBodyGraftRecipe : ['feedforward-graft', 'motion-body-graft'].includes(transform) ? createSoundSeedGraftRecipe : transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: material.manifest, assetHash: material.assetHash, byteLength: material.byteLength, transform, pitch, warpPlan, modalFit, decomposition, layerMaterials, graftBody, textureKind, traversalBinding }); check();
       const inputBytes = canonicalDataText(recipe.source, { maxBytes: 1048576, maxNodes: 32768 }).bytes.length;
       job = await jobs.compute({ kind: 'compile-sound-content', ownerId: 'sound-seed-instrument', ownerEpoch: operation.ordinal, sourceRevision: recipe.contractHash,
         inputBytes, maxBytes: 4 * 1048576, estimatedPeakBytes: 64 * 1048576, budgetAdapter: resourceBudget, signal: operation.controller.signal,

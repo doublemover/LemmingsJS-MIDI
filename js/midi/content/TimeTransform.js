@@ -4,7 +4,7 @@ const fail = (code, message) => { throw Object.assign(new Error(message), { name
 const natural = value => Number.isSafeInteger(value) && value >= 0;
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
-const MODES = ['literal', 'attract', 'swingField', 'ratioFold'];
+const MODES = ['literal', 'buffered', 'attract', 'swingField', 'ratioFold'];
 export const TIME_TRANSFORM_SCHEMA = 'lemmings-time-transform/v1';
 export function validateTimeTransform(raw) {
   if (raw == null) return null;
@@ -60,7 +60,7 @@ export function createTimeTransformOwner({ mode = 'live', maxVoices = 4096, maxA
     const cached = cache.get(intent.intentId); if (cached) return cached;
     const actor = actorKey(intent, executionEpoch);
     const key = voiceKey(intent, executionEpoch), held = voices.get(key), policy = held ? held.policy : validate(rawPolicy), time = intent.scoreTime;
-    const identity = !held && (!policy || policy.mode === 'literal' || policy.strength01 === 0 || !covers(policy, intent));
+    const identity = !held && (!policy || policy.mode === 'literal' || (policy.mode === 'buffered' ? policy.causalLatencyMs === 0 : policy.strength01 === 0) || !covers(policy, intent));
     if (identity && !actors.has(actor)) { count++; return Object.freeze({ scoreTime: time, receipt: null }); }
     if (!time || !text(time.epoch) || !finite(time.beat, 0, 1e12) || !finite(tempoBpm, 0.001, 1000000)) fail('time-transform-score-clock', 'A current declared score clock and tempo are required.');
     const originalMs = sourceMilliseconds(time), previous = actors.get(actor);
@@ -74,7 +74,7 @@ export function createTimeTransformOwner({ mode = 'live', maxVoices = 4096, maxA
       desiredMs += held.desiredOffsetMs; scheduledMs += held.outputOffsetMs; latencyMs = held.causalLatencyMs;
       reason = 'preserved-onset-time-offset';
     } else if (active) {
-      const wanted = (anchor(time.beat, policy) - time.beat) * millisecondsPerBeat * policy.strength01;
+      const wanted = policy.mode === 'buffered' ? 0 : (anchor(time.beat, policy) - time.beat) * millisecondsPerBeat * policy.strength01;
       const displacement = Math.max(-policy.maxDisplacementMs, Math.min(policy.maxDisplacementMs, wanted));
       desiredMs = Math.max(0, originalMs + displacement); latencyMs = mode === 'live' ? policy.causalLatencyMs : 0;
       scheduledMs = desiredMs + latencyMs;
