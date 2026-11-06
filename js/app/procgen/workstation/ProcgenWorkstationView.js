@@ -4,6 +4,7 @@ import { createProcgenOperationalView } from './ProcgenOperationalView.js';
 import { createAudioRuntimeSettingsView } from '../../midi-ui/AudioRuntimeSettingsView.js';
 import { createLaneDisplaySnapshot, LANE_DISPLAY_PAGES } from './LaneDisplaySnapshot.js';
 import { createLaneDisplayView } from './LaneDisplayView.js';
+import { createCausalPhysicalHistoryView } from './CausalPhysicalHistoryView.js';
 import { createCausalVisualView } from './CausalVisualView.js';
 import { describeCausalReperformance } from './CausalRuntimeIdentity.js';
 import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
@@ -195,6 +196,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const operationalSurface = displayScheduler.register({ id: 'workstation-operational', element: operationalView.element, intervalMs: 100,
     write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); audioSettings.render(); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); refreshProjectStatus(); } }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
+  let physicalHistoryView = null, physicalHistoryViewError = null, simulationPreview = null, simulationPreviewError = null;
   let harmonyView = null, harmonyFactory = null, harmonyPreparing = null, harmonyError = null;
   const owner = {};
   let motionControl = null, motionStatus = null, motionPolicy = null, motionUnsubscribe = null;
@@ -805,11 +807,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           const options = () => ({ throughSequence: state.branchSequenceDraft === '' || state.branchSequenceDraft == null ? null : Number(state.branchSequenceDraft),
             takeName: (state.takeNameDraft || 'Untitled take').slice(0, 110) + ' branch' });
           if (!branch?.active) {
+            const seek = button('Seek paused physical history', () => handlers.seekCausalHistory?.({ ...options(), viewport: { firstLane: getProject().procgen.lanes.findIndex(lane => lane.id === state.laneId) < 0 ? 0 : getProject().procgen.lanes.findIndex(lane => lane.id === state.laneId) } })); seek.disabled = !!branch?.busy; branchControls.append(seek);
+            if (branch?.inspection) { const closeHistory = button('Return from history', () => handlers.closeCausalHistory?.()); closeHistory.disabled = !!branch.busy; branchControls.append(closeHistory); }
             const compare = button('Compare in isolated world', () => handlers.compareCausalTake?.(options())); compare.disabled = !!branch?.busy;
             const prepare = button('Prepare physical branch', () => handlers.prepareCausalBranch?.(options())); prepare.disabled = !!branch?.busy; branchControls.append(compare, prepare);
           } else {
             const step = button('Step branch 32 ticks', () => handlers.advanceCausalBranch?.({ ticks: 32 })); step.disabled = !branch.canStep;
-            const finish = button('Save and close branch', () => handlers.finishCausalBranch?.()); finish.disabled = !!branch.busy; branchControls.append(step, finish);
+            const finish = button('Save and close branch', () => handlers.finishCausalBranch?.()); finish.disabled = !!branch.busy;
+            const publish = button('Use branch as live world · paused', () => handlers.publishCausalBranch?.(), 'Adopt this physical checkpoint with undo history; audio resumes semantically only after explicit Play'); publish.disabled = !branch.canStep; branchControls.append(step, finish, publish);
             const feedback = button(branch.active.inspection?.physicalLayers ? 'Disarm branch feedback' : 'Regenerate physical feedback', () => branch.active.inspection?.physicalLayers ? handlers.disarmCausalBranchFeedback?.() : handlers.armCausalBranchFeedback?.()); feedback.disabled = !branch.canStep; branchControls.append(feedback);
             if (branch.active.playbackAdmission) {
               const interpretation = button(branch.active.interpretationPlaying ? 'Pause branch interpretation' : 'Enable branch interpretation', () => handlers.setCausalBranchPlayback?.(!branch.active.interpretationPlaying));
@@ -817,6 +822,16 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
             }
             if (branch.phase === 'recovery-required') branchControls.append(button('Discard unsaved branch tail', () => handlers.finishCausalBranch?.({ discard: true })));
           }
+          if (branch?.inspection || branch?.active) {
+            const viewport = handlers.causalHistoryProjection?.()?.viewport;
+            const firstLane = input(state.historyLaneDraft ?? viewport?.firstLane ?? 0, value => { state.historyLaneDraft = value; }, { type: 'number', min: 0, step: 1 }); labeled('History lane index', firstLane, branchControls);
+            const origin = input(state.historyOriginDraft ?? viewport?.x ?? 0, value => { state.historyOriginDraft = value; }, { type: 'number', min: 0, step: 1 }); labeled('History viewport x', origin, branchControls);
+            const refreshViewport = button('Show history viewport', () => handlers.projectCausalHistory?.({ firstLane: Number(state.historyLaneDraft ?? viewport?.firstLane ?? 0), x: Number(state.historyOriginDraft ?? viewport?.x ?? 0) })); refreshViewport.disabled = !!branch.busy; branchControls.append(refreshViewport);
+            if (!physicalHistoryView && !physicalHistoryViewError) { try { physicalHistoryView = createCausalPhysicalHistoryView({ document, resourceBudget }); } catch (error) { physicalHistoryViewError = error.message; } }
+            if (physicalHistoryView) { physicalHistoryView.render(handlers.causalHistoryProjection?.()); branchControls.append(physicalHistoryView.element); }
+            if (physicalHistoryViewError) branchControls.append(node('p', physicalHistoryViewError, 'studio-hint'));
+          }
+          if (take.publication) branchControls.append(node('p', 'Live world from branch ' + take.publication.takeId + ' at tick ' + take.publication.tick + '. Physical ancestry retained; output uses a fresh execution and semantic audio resume.', 'studio-hint'));
           if (branch?.busy) branchControls.append(button('Cancel comparison / step', () => handlers.cancelCausalWorkbench?.()));
           branchControls.append(node('p', branch?.active ? `${branch.active.takeId} · ${branch.phase} · tick ${branch.active.tick} · ${branch.active.completedBatches} new physical batches · output off` :
             `${branch?.phase || 'idle'} · isolated current-runtime comparison · current project unchanged · output off`, 'studio-hint'));
@@ -852,6 +867,24 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           controls.append(scoreList);
         }
         nextFields.append(controls);
+      }
+      const simulation = handlers.simulationWorkbenchState?.();
+      if (simulation) {
+        const worker = node('fieldset', null, 'studio-worker-simulation'); worker.append(node('legend', 'Isolated worker simulation'));
+        worker.append(node('p', 'Prepare the current physical world in a worker. The live world stays paused; this candidate keeps its prepared mapping. Audio, MIDI and recording stay off.', 'studio-hint'));
+        if (!simulation.active) {
+          const prepare = button('Prepare worker world · paused', () => handlers.startSimulationWorkbench?.()); prepare.disabled = simulation.busy || take?.recording || take?.starting || take?.recovering; worker.append(prepare);
+        } else {
+          const step = button('Step worker 32 ticks', () => handlers.advanceSimulationWorkbench?.()), run = button('Run worker · output off', () => handlers.resumeSimulationWorkbench?.()), pause = button('Pause worker and inspect', () => handlers.pauseSimulationWorkbench?.()), close = button('Close worker · return to paused live world', () => handlers.closeSimulationWorkbench?.());
+          step.disabled = simulation.busy || !simulation.worker?.paused; run.disabled = simulation.busy || !simulation.worker?.paused; pause.disabled = simulation.busy || simulation.worker?.paused; close.disabled = simulation.busy; worker.append(step, run, pause, close);
+          if (!simulationPreview && !simulationPreviewError) { try { simulationPreview = createCausalPhysicalHistoryView({ document, resourceBudget, label: 'Paused worker collision overview' }); } catch (error) { simulationPreviewError = error.message; } }
+          if (simulationPreview) { simulationPreview.render(handlers.simulationWorkbenchProjection?.()); worker.append(simulationPreview.element); }
+          if (simulationPreviewError) worker.append(node('p', simulationPreviewError, 'studio-hint'));
+        }
+        worker.append(node('p', simulation.phase + ' · tick ' + (simulation.worker?.tick ?? '—') + ' · ' + (simulation.counts?.batches ?? 0) + ' complete batches observed · ' + (simulation.counts?.intents ?? 0) + ' intents · output off', 'studio-hint'));
+        if (simulation.failure) worker.append(node('p', simulation.failure.message, 'studio-hint'));
+        if (simulation.busy) worker.append(button('Cancel worker preparation', () => handlers.cancelSimulationWorkbench?.()));
+        nextFields.append(worker);
       }
       const graph = getProject().procgen.physicalGraph;
       const search = node('input'); search.type = 'search'; search.placeholder = 'Find a physical instrument';
@@ -1603,6 +1636,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'lane-displays', run: () => { for (const display of laneDisplays.values()) display.dispose(); laneDisplays.clear(); laneDisplayPages.clear(); laneDisplayDialog.close(); laneDisplayDialog.remove(); } },
         { name: 'physical-context-help', run: () => physicalHelp?.dispose() },
         { name: 'causal-visual-view', run: () => causalView.dispose() },
+        { name: 'physical-history-view', run: () => physicalHistoryView?.dispose() },
+        { name: 'worker-simulation-preview', run: () => simulationPreview?.dispose() },
         { name: 'physical-harmony-view', run: () => { handlers.closeHarmony?.(); return harmonyView?.dispose(); } },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },

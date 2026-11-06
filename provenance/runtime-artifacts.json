@@ -762,6 +762,7 @@
         "js/app/procgen/ProcgenObjectPresentation.js",
         "js/app/procgen/ProcgenOpenBankBasins.js",
         "js/app/procgen/ProcgenPackTerrain.js",
+        "js/app/procgen/ProcgenPausedProjection.js",
         "js/app/procgen/ProcgenPolicyConfig.js",
         "js/app/procgen/ProcgenPopulationPolicy.js",
         "js/app/procgen/ProcgenRecipeTerrain.js",
@@ -1178,8 +1179,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 556,
-      "sha256": "6e4524be556df5057e34ce02222163580cf99b70538b9606eced9d4349b4c84f"
+      "fileCount": 557,
+      "sha256": "1723aa18f12ee74b447dfec97df24a08bd7fbfc5fa05771666d4ceb199d1400b"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",

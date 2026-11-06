@@ -130,6 +130,12 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
         if (request.type === 'resume') { value = host.resume(); lastTime = null; elapsed = 0; schedule(); }
         else if (request.type === 'advance') { if (!host.state().paused) throw simulationFailure('step-needs-pause', 'Manual stepping requires a paused host.'); const packet = await host.advance({ steps: request.steps, timestamp: now(), signal: controller.signal }); value = { state: host.state(), sequence: packet.sequence }; }
         else if (request.type === 'command') value = host.submit(request.command);
+        else if (request.type === 'project') {
+          if (pumping) await pumping;
+          const projection = await host.project(request.viewport, { signal: controller.signal });
+          try { const value = projection.read(); send('projection', { requestId: request.requestId, value }, [value.cells.buffer]); } finally { projection.release(); }
+          return;
+        }
         else if (request.type === 'checkpoint') { if (pumping) await pumping; await sendCheckpoint(request.requestId); return; }
         else throw simulationFailure('host-command-unsupported', 'Unsupported authoritative simulation command.');
         send('response', { requestId: request.requestId, value });

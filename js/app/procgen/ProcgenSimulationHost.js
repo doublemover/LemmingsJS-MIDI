@@ -1,3 +1,4 @@
+import { freezeData } from '../../core/CanonicalData.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 import { encodeBackgroundSnapshotPages, backgroundSnapshotTransfers, createBackgroundSnapshotReceiver } from '../resources/BackgroundSnapshotPages.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
@@ -21,7 +22,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
     reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'simulation-worker:' + manifest.ownerId,
       generation: manifest.ownerEpoch, kind: 'worker-world-semantic-state-and-transfer-overlap', category: 'candidate', bytes: 384 * 1048576 });
   activeHosts++;
-  const scope = createProcgenRetirementScope({ deadlineMs: 15000 }), requests = new Map(), controller = new AbortController();
+  const scope = createProcgenRetirementScope({ deadlineMs: 15000 }), requests = new Map(), projections = new Set(), controller = new AbortController();
   let worker = null, consumer = null, retired = false, confirmed = false, disposed = false, failure = null, latestState = null, requestSerial = 0,
     inputAck = null, checkpointReceiver = null, checkpointRequestId = null, inputProducer = null, terminateError = null, portsTransferred = false, readyResolve, readyReject, retiredResolve;
   const ready = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; }); ready.catch(() => {});
@@ -49,8 +50,19 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
     const requestId = ++requestSerial;
     return new Promise((resolve, reject) => {
       const timer = timers.setTimeout(() => { requests.delete(requestId); const error = simulationFailure('request-timeout', 'The authoritative request did not complete; the generation must be reviewed paused.'); reject(error); fail(error); }, type === 'checkpoint' ? 180000 : 30000);
-      requests.set(requestId, { resolve, reject, timer }); try { send(type, { ...fields, requestId }); } catch (error) { timers.clearTimeout(timer); requests.delete(requestId); reject(error); fail(error); }
+      requests.set(requestId, { resolve, reject, timer, kind: type }); try { send(type, { ...fields, requestId }); } catch (error) { timers.clearTimeout(timer); requests.delete(requestId); reject(error); fail(error); }
     });
+  };
+  const project = async (viewport = {}) => {
+    check();
+    if (!latestState?.paused || projections.size >= 2 || !viewport || Object.getPrototypeOf(viewport) !== Object.prototype || Object.keys(viewport).some(key => !['x', 'firstLane', 'laneCount', 'width', 'pixelWidth', 'pixelHeight'].includes(key)) || Object.values(viewport).some(value => !Number.isSafeInteger(value) || value < 0)) throw simulationFailure('projection-admission', 'Request one bounded viewport of a paused authoritative host, with at most two retained readers.');
+    if (viewport.firstLane != null && viewport.firstLane >= latestState.laneCount || viewport.laneCount != null && (viewport.laneCount < 1 || viewport.laneCount > 4) || viewport.width != null && (viewport.width < 64 || viewport.width > 8192) || viewport.pixelWidth != null && (viewport.pixelWidth < 64 || viewport.pixelWidth > 1024) || viewport.pixelHeight != null && (viewport.pixelHeight < 64 || viewport.pixelHeight > 512) || (viewport.pixelWidth ?? 512) * (viewport.pixelHeight ?? 256) > 262144) throw simulationFailure('projection-capacity', 'Choose an existing lane and a bounded collision viewport.');
+    const storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'simulation-projection:' + manifest.ownerId, kind: 'immutable-worker-viewport-reader', category: 'checkpoint', bytes: 4 * 1048576 });
+    let value = null, released = false;
+    const projection = Object.freeze({ read: () => { if (released) throw simulationFailure('projection-retired', 'The immutable viewport reader retired.'); return value; }, release() { if (released) return false; storage.release(); released = true; value = null; projections.delete(projection); return true; } });
+    projections.add(projection);
+    try { value = await request('project', { viewport }); check(); if (released) throw simulationFailure('projection-retired', 'The viewport owner retired during preparation.'); return projection; }
+    catch (error) { projection.release(); throw error; }
   };
   const receive = event => {
     const message = event.data;
@@ -68,6 +80,14 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       }
       const pending = requests.get(message.requestId);
       if (!pending) throw simulationFailure('response-stale', 'The worker response no longer has a current request owner.');
+      if (message.type === 'projection') {
+        const value = message.value, view = value?.viewport;
+        if (pending.kind !== 'project' || value?.schema !== 'lemmings-paused-world-projection/v1' || !(value.cells instanceof Uint8Array) || value.cells.byteOffset || value.cells.byteLength !== value.cells.buffer.byteLength ||
+            !Number.isSafeInteger(view?.pixelWidth) || !Number.isSafeInteger(view?.pixelHeight) || view.pixelWidth < 64 || view.pixelWidth > 1024 || view.pixelHeight < 64 || view.pixelHeight > 512 || value.cells.length !== view.pixelWidth * view.pixelHeight || value.cells.length > 262144 || !Array.isArray(value.actors) || value.actors.length > 4096 ||
+            value.worldId !== latestState?.worldId || value.generation !== latestState.generation || value.tick !== latestState.tick || value.paused !== true || !latestState.paused) throw simulationFailure('projection-invalid', 'The immutable viewport differs from its paused authoritative completed boundary.');
+        freezeData(value.actors); freezeData(value.viewport); Object.freeze(value);
+        requests.delete(message.requestId); timers.clearTimeout(pending.timer); pending.resolve(value); return;
+      }
       if (message.type === 'response') { requests.delete(message.requestId); timers.clearTimeout(pending.timer); if (message.value?.phase) publish(message.value); else if (message.value?.state) publish(message.value.state); pending.resolve(message.value); return; }
       if (message.type === 'checkpoint-start') {
         if (checkpointReceiver || message.sequence !== 0) throw simulationFailure('checkpoint-overlap', 'Only one checkpoint receiver may own its streamed pages.');
@@ -98,6 +118,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       { name: 'worker-producer', run: () => producerRetirement },
       { name: 'required-main-consumer', run: () => consumerRetirement },
       { name: 'worker-listeners', run: async () => { await Promise.allSettled([producerRetirement]); signal?.removeEventListener('abort', abort); worker?.removeEventListener('message', receive); checkpointReceiver?.dispose(); checkpointReceiver = null; } },
+      { name: 'retained-projections', run: () => { for (const projection of [...projections]) projection.release(); } },
       { name: 'worker-budget', run: async () => {
         await Promise.all([producerRetirement, consumerRetirement]);
         if (!terminationConfirmed) throw terminateError || simulationFailure('retirement-unknown', 'The worker may still own its authoritative world.');
@@ -122,8 +143,8 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       check(); input = null; send('input-end', { sequence });
     })(); await inputProducer; await timeout(ready, 180000, 'The authoritative world did not finish preparation.'); check();
     return Object.freeze({ mode: 'worker', identity: Object.freeze({ ...manifest }), state: () => latestState, pause: () => request('pause'), resume: () => request('resume'),
-      advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
-      diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null,
+      project, advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
+      diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null, retainedProjections: projections.size,
         buildId: execution.buildId, defaultEnabled: false, performanceQualification: 'required-before-default', reservation: reservation.receipt() }), dispose });
   } catch (error) { const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
 }

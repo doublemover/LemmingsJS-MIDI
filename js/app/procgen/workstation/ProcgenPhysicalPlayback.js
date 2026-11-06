@@ -189,8 +189,8 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   };
   const prepareRestorationExecution = ({ worldId = null, generation = null, fromExecutionEpoch = null } = {}) => {
     if (disposed || executionEpoch !== null || previousGeneration !== null || typeof worldId !== 'string' || !worldId || !Number.isSafeInteger(generation) || generation < 0 || !Number.isSafeInteger(executionSerial + 2)) throw new Error('Prepare a continuation execution only in a fresh physical playback owner.');
-    executionSerial++; let epoch = worldId + ':' + generation + ':' + executionSerial;
-    if (epoch === fromExecutionEpoch) epoch = worldId + ':' + generation + ':' + (++executionSerial);
+    executionSerial++; let epoch = documentEpoch + ':' + worldId + ':' + generation + ':' + executionSerial;
+    if (epoch === fromExecutionEpoch) epoch = documentEpoch + ':' + worldId + ':' + generation + ':' + (++executionSerial);
     executionEpoch = /** @type {import('./AudioClockContracts.js').ExecutionEpoch} */ (epoch); previousWorldId = worldId; previousGeneration = generation; effectClockAnchor = null;
     clock.invalidate(); anchoredEpoch = null; anchoredBpm = null;
     return Object.freeze({ executionEpoch: epoch, worldId, generation });
@@ -319,7 +319,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     sourceTempoBpm = bpm;
     if (!permitted() && session?.getState().enabled) stop();
     armEnabled = true;
-    const nextEpoch = /** @type {import('./AudioClockContracts.js').ExecutionEpoch} */ (`${batch.worldId}:${batch.generation}:${executionSerial}`);
+    const nextEpoch = /** @type {import('./AudioClockContracts.js').ExecutionEpoch} */ (`${documentEpoch}:${batch.worldId}:${batch.generation}:${executionSerial}`);
     if (previousGeneration !== null && previousGeneration !== batch.generation) {
       dispatcher.cancelGeneration(previousGeneration, executionEpoch);
       clock.invalidate(); anchoredEpoch = null;

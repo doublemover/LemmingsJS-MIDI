@@ -5,7 +5,7 @@ export interface SimulationManifest {
 }
 export interface SimulationState {
   readonly phase: string; readonly paused: boolean; readonly worldId: string; readonly generation: number;
-  readonly tick: number; readonly sequence: number; readonly documentRevision: number; readonly tickDurationMs: number;
+  readonly laneCount: number; readonly laneHeight: number; readonly worldWidth: number; readonly tick: number; readonly sequence: number; readonly documentRevision: number; readonly tickDurationMs: number;
   readonly failure?: Readonly<{ code: string; message: string }> | null;
 }
 export interface SimulationRetirement {
@@ -20,6 +20,7 @@ export interface SimulationPacket {
 export interface SimulationHost {
   readonly mode: 'worker'; readonly identity: Readonly<{ ownerId: string; ownerEpoch: number; documentRevision: number }>; state(): SimulationState | null;
   pause(): Promise<unknown>; resume(): Promise<unknown>; advance(steps: number): Promise<unknown>;
+  project(viewport?: { x?: number; firstLane?: number; laneCount?: number; width?: number; pixelWidth?: number; pixelHeight?: number }): Promise<{ read(): Readonly<Record<string, unknown>>; release(): boolean }>;
   submit(command: unknown): Promise<unknown>; checkpoint(): Promise<unknown>;
   diagnostics(): Readonly<Record<string, unknown>>; dispose(): SimulationRetirement;
 }

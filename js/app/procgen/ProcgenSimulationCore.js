@@ -1,3 +1,4 @@
+import { captureProcgenPausedProjection } from './ProcgenPausedProjection.js';
 import { captureProcgenCheckpointCooperative } from './workstation/ProcgenCheckpoint.js';
 import { simulationFailure, simulationInteger } from './ProcgenSimulationProtocol.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
@@ -12,10 +13,10 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
   const scope = createProcgenRetirementScope(), producers = createProcgenRetirementScope(), storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'authoritative-simulation',
     kind: 'command-receipts-and-causal-admission', category: 'live', bytes: 8 * 1048576 });
   const commands = new Map(); let commandFrontier = 0, sequence = 0, paused = true, disposed = false, failed = null, pending = null, capturing = false,
-    collecting = null, listenerError = null, latest = null, ticks = 0, deadlineMisses = 0, maximumStepMs = 0, maximumConsumerMs = 0, deliveryAgeMs = 0;
-  const state = () => Object.freeze({ mode: 'authoritative', phase: disposed ? 'retiring' : failed ? 'failed-paused' : capturing ? 'checkpointing' : pending ? 'causal-backpressure' : paused ? 'paused' : 'running',
+    projecting = false, collecting = null, listenerError = null, latest = null, ticks = 0, deadlineMisses = 0, maximumStepMs = 0, maximumConsumerMs = 0, deliveryAgeMs = 0;
+  const state = () => Object.freeze({ mode: 'authoritative', phase: disposed ? 'retiring' : failed ? 'failed-paused' : projecting ? 'projecting' : capturing ? 'checkpointing' : pending ? 'causal-backpressure' : paused ? 'paused' : 'running',
     paused, failure: failed ? Object.freeze({ code: failed.code || 'simulation-failed', message: failed.message }) : null,
-    worldId: world.worldId, generation: world.generation, tick: world.tickIndex, sequence, documentRevision, commandFrontier, tickDurationMs: 60 / world.timer.speedFactor,
+    worldId: world.worldId, laneCount: world.laneCount, laneHeight: world.laneHeight, worldWidth: world.width, generation: world.generation, tick: world.tickIndex, sequence, documentRevision, commandFrontier, tickDurationMs: 60 / world.timer.speedFactor,
     commandReceipts: commands.size, pendingCausalBatches: pending ? 1 : 0, ticks, deadlineMisses, maximumStepMs, maximumConsumerMs, deliveryAgeMs,
     evidence: 'completed-authoritative-ticks;output-consumer-acceptance-is-not-acoustic-evidence' });
   const publish = () => { try { onState(state()); } catch {} };
@@ -82,6 +83,12 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
       applyPerformance(value); documentRevision = revision; publish(); return state(); },
     setTransport(value) { check(); if (!paused || !value || !Number.isFinite(value.bpm) || value.bpm <= 0 || value.bpm > 1000000 || typeof value.playing !== 'boolean') throw simulationFailure('transport-boundary', 'Change the host transport at a paused completed boundary.'); bpm = value.bpm; playing = value.playing; return state(); },
     latestSnapshot: () => latest,
+    async project(viewport = {}, { signal, isCurrent = () => true } = {}) {
+      check(); if (!paused) throw simulationFailure('projection-needs-pause', 'Pause at a completed tick before requesting its immutable collision/actor viewport.');
+      projecting = true; capturing = true; publish();
+      try { return await captureProcgenPausedProjection(world, { ...viewport, resourceBudget, signal, isCurrent: () => !disposed && !failed && isCurrent() }); }
+      finally { projecting = false; capturing = false; publish(); }
+    },
     async checkpoint({ signal, isCurrent = () => true, onSlice } = {}) {
       check(); if (!paused) throw simulationFailure('checkpoint-needs-pause', 'Pause at a completed tick before capturing an authoritative continuation.');
       capturing = true; publish(); const tick = world.tickIndex, generation = world.generation;

@@ -9,7 +9,7 @@ export interface WorkstationUiState {
   inputId: string | null; clockOutputId: string | null; thru: boolean; recording: boolean; lastMidi: string;
   dockVersion?: number; dockHeight?: number; workspaceMode?: 'perform' | 'inspect' | 'overview';
   laneQuery?: string; laneNavigation?: unknown; motionMode?: 'system' | 'reduce' | 'freeze';
-  presentationTransition?: boolean; takeNameDraft?: string; takeMarkerDraft?: string; branchSequenceDraft?: string;
+  presentationTransition?: boolean; takeNameDraft?: string; takeMarkerDraft?: string; branchSequenceDraft?: string; historyLaneDraft?: string | number; historyOriginDraft?: string | number;
 }
 export interface WorkstationWindow extends Window {
   ResizeObserver?: typeof ResizeObserver;

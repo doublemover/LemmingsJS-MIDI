@@ -1,3 +1,6 @@
+import { captureProcgenPausedProjection } from '../ProcgenPausedProjection.js';
+import { captureProcgenCheckpointCooperative } from './ProcgenCheckpoint.js';
+import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createPhysicalFeedbackController } from './physical/PhysicalFeedback.js';
 import { createCausalTakeRecorder } from './CausalTake.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
@@ -5,7 +8,7 @@ import { cloneJournalData, journalError } from './CausalJournalCanonical.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId, throughSequence, takeId, takeName,
-  executionEpoch, mode = 'compatibility', signal, onProgress = () => {}, maxAdvanceTicks = 256, yieldEveryTicks = 32,
+  executionEpoch, mode = 'compatibility', resourceBudget = null, signal, onProgress = () => {}, maxAdvanceTicks = 256, yieldEveryTicks = 32,
   yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) => {
   if (!journal || typeof journal.branch !== 'function' || !reperformance || typeof reperformance.reperform !== 'function' ||
       !Number.isSafeInteger(maxAdvanceTicks) || maxAdvanceTicks < 1 || maxAdvanceTicks > 4096 ||
@@ -64,7 +67,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     check();
     const boundaryMarker = recorder.mark({ type: 'physical-branch-boundary', qualification }, { tick: world.tickIndex, generation: world.generation });
     if (boundaryMarker.status !== 'accepted') throw journalError('branch-admission', 'The branch boundary marker was not admitted.');
-    let phase = 'paused', failure = null, disposed = false, stopPromise = null, disposePromise = null, completedBatches = 0, lastIntents = [];
+    let phase = 'paused', failure = null, disposed = false, stopPromise = null, disposePromise = null, completedBatches = 0, lastIntents = [], capturing = false;
     const feedback = createPhysicalFeedbackController({ world, getGraph: currentGraph, recordInput: (input, boundary) => recorder.recordInput(input, boundary), onFailure: error => { failure = { code: 'feedback-publication', reason: error.message, tick: world.tickIndex }; } });
     const sourceBoundary = () => ({ tick: world.tickIndex, generation: world.generation });
     const status = () => cloneJournalData({ schema: 'lemmings-physical-branch', version: 1, takeId, parentTakeId,
@@ -73,7 +76,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       inspection: { paused: phase !== 'advancing', hardware: false, thru: false, physicalLayers: feedback.diagnostics().armed, feedback: feedback.diagnostics() } });
     const writable = () => {
       const recording = recorder.status();
-      if (disposed || world._disposed || phase !== 'paused' || world._failedTick || failure || recording.state !== 'recording' || recording.failure || recording.coverage?.status !== 'complete') throw journalError('branch-state', 'The physical branch is not at a writable paused boundary.');
+      if (disposed || world._disposed || capturing || phase !== 'paused' || world._failedTick || failure || recording.state !== 'recording' || recording.failure || recording.coverage?.status !== 'complete') throw journalError('branch-state', 'The physical branch is not at a writable paused boundary.');
     };
     const onBatch = batch => {
       if (disposed || world._disposed || phase !== 'advancing') return;
@@ -139,7 +142,24 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       writable(); const next = validateCausalInstrumentGraph(graph), receipt = recorder.recordMapping(next, sourceBoundary());
       if (receipt.status === 'accepted') { session.configureMapping(next); currentGraph(); boundary(); } return receipt;
     };
+    const captureContinuation = async ({ signal: captureSignal, isCurrent = () => true } = {}) => {
+      writable(); capturing = true;
+      let reservation = null, value = null, released = false;
+      try {
+        reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'physical-branch-publication:' + takeId, kind: 'paused-branch-continuation', category: 'checkpoint', bytes: 128 * 1048576 });
+        const current = () => !disposed && !world._disposed && phase === 'paused' && capturing && !signal?.aborted && isCurrent();
+        const options = { signal: captureSignal, isCurrent: current };
+        const checkpoint = await captureProcgenCheckpointCooperative(world, { ...options, maxGraphBytes: 16 * 1048576 }), semantic = await session.engine.snapshotCooperative(options);
+        captureSignal?.throwIfAborted(); if (!current()) throw journalError('cancelled', 'The paused physical branch publication changed.');
+        value = { world: checkpoint, engine: semantic, timeline: replayState().scoreTimeline ? session.clock.snapshot() : null, replay: replayState(),
+          authoring: cloneJournalData({ graph: currentGraph(), instances: world.physicalAuthoring?.instances || [], junctions: world.physicalJunctions?.definitions || [] }, { maxBytes: 4 * 1048576, maxNodes: 262144 }),
+          ancestry: cloneJournalData({ takeId, parentTakeId, qualification, branchTick: world.tickIndex, branchGeneration: world.generation, completedBatches, outputState: 'paused-semantic-continuation;DSP-state-not-attached' }) };
+        return Object.freeze({ read: () => { if (released) throw new Error('The branch publication snapshot retired.'); return value; }, release() { if (released) return false; released = true; value = null; capturing = false; return reservation.release(); } });
+      } catch (error) { capturing = false; reservation?.release(); throw error; }
+    };
+    const project = options => { writable(); return captureProcgenPausedProjection(world, { ...options, resourceBudget }); };
     const stop = ({ reason = 'physical-branch-stop' } = {}) => {
+      if (capturing) throw journalError('branch-state', 'Finish the admitted branch publication before stopping.');
       if (stopPromise) return stopPromise;
       if (phase === 'advancing') throw journalError('branch-state', 'Stop at a completed physical branch boundary.');
       feedback.disarm(); feedback.dispose();
@@ -174,7 +194,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
         disposed = true; phase = 'disposed';
       })().catch(error => { if (!recorder.canReplaceDocument()) disposePromise = null; throw error; }); return disposePromise;
     };
-    return { receipt: qualification, branch: { status, advance, armFeedback: ({ epoch } = {}) => { writable(); return feedback.arm({ mode: 'regenerate', epoch: epoch || `branch:${executionEpoch}:${world.generation}:${world.tickIndex}` }); }, disarmFeedback: () => { writable(); return feedback.disarm(); }, enqueueIntervention, setTempo, setSpeed, setPlayback, setMapping,
+    return { receipt: qualification, branch: { status, advance, project, captureContinuation, armFeedback: ({ epoch } = {}) => { writable(); return feedback.arm({ mode: 'regenerate', epoch: epoch || `branch:${executionEpoch}:${world.generation}:${world.tickIndex}` }); }, disarmFeedback: () => { writable(); return feedback.disarm(); }, enqueueIntervention, setTempo, setSpeed, setPlayback, setMapping,
       mark: marker => { writable(); return recorder.mark(marker, sourceBoundary()); }, flush: recorder.flush,
       checkpoint: () => { writable(); return recorder.checkpoint({ value: session.snapshot(), ...sourceBoundary() }); },
       stop, dispose } };
