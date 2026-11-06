@@ -195,7 +195,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     const previous = node.value; node.replaceChildren(); const empty = element(document, 'option', placeholder); empty.value = ''; node.append(empty);
     for (const [value, label] of rows) { const option = element(document, 'option', label); option.value = String(value); node.append(option); } node.value = [...node.options].some(option => option.value === previous) ? previous : '';
   };
-  const captureView = createNativeMidiCaptureView({ document, container: root, routes, getGrant: () => Number(active.value), onStatus });
+  const captureView = createNativeMidiCaptureView({ document, container: root, routes, getGrant: () => Number(active.value), getGroup: () => Number(group.value), onStatus });
   const scoreContextView = createNativeMidiScoreContextView({ document, container: root, routes, getLane: () => getLanes().find(row => row.id === lane.value), getReceiveScope: () => ({ grant: Number(ciInput.value), group: Number(group.value) }), onSave: onSaveScoreContext, onStatus });
   function render() {
     if (!root.open) return;

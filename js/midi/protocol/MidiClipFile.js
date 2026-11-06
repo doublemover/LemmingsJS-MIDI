@@ -3,7 +3,7 @@ import { createUmpPayloadCollector } from './UmpPayloadCollector.js';
 
 /** @typedef {{ticks: Float64Array, offsets: Uint32Array, words: Uint32Array}} ClipColumns */
 /** @typedef {{ppq: number, configurationEndTick: number, endTick: number, configuration?: ClipColumns, sequence: ClipColumns}} ClipSnapshot */
-/** @typedef {{maxBytes?: number, maximumEvents?: number, estimatedPeakBytes?: number, signal?: AbortSignal, current?: () => boolean, yieldControl?: () => Promise<unknown>, onProgress?: (progress: {phase: string, completedUnits: number}) => void}} ClipControls */
+/** @typedef {{maxBytes?: number, maximumEvents?: number, estimatedPeakBytes?: number, coalesceEqualClockstamps?: boolean, signal?: AbortSignal, current?: () => boolean, yieldControl?: () => Promise<unknown>, onProgress?: (progress: {phase: string, completedUnits: number}) => void}} ClipControls */
 
 export const MIDI_CLIP_FILE_SCHEMA = 'lemmings-midi-clip-file/v1';
 export const MIDI_CLIP_MAX_DELTA = 0xfffff;
@@ -21,11 +21,11 @@ const check = controls => {
 };
 const controlsFor = (options = {}) => {
   const controls = { maxBytes: MAX_BYTES, maximumEvents: MAX_EVENTS, estimatedPeakBytes: 128 * 1048576,
-    yieldControl: () => new Promise(resolve => setTimeout(resolve, 0)), onProgress: () => {}, ...options };
+    coalesceEqualClockstamps: false, yieldControl: () => new Promise(resolve => setTimeout(resolve, 0)), onProgress: () => {}, ...options };
   if (!Number.isSafeInteger(controls.maxBytes) || controls.maxBytes < 56 || controls.maxBytes > MAX_BYTES ||
       !Number.isSafeInteger(controls.maximumEvents) || controls.maximumEvents < 0 || controls.maximumEvents > MAX_EVENTS ||
       !Number.isSafeInteger(controls.estimatedPeakBytes) || controls.estimatedPeakBytes < 4096 || controls.estimatedPeakBytes > 512 * 1048576 ||
-      typeof controls.yieldControl !== 'function' || typeof controls.onProgress !== 'function') throw fail('invalid-limits', 'Invalid MIDI Clip resource limits.');
+      typeof controls.coalesceEqualClockstamps !== 'boolean' || typeof controls.yieldControl !== 'function' || typeof controls.onProgress !== 'function') throw fail('invalid-limits', 'Invalid MIDI Clip resource limits.');
   check(controls); return controls;
 };
 const pulse = async (controls, phase, completedUnits) => {
@@ -101,7 +101,7 @@ export async function encodeMidiClipFile(input, options = {}) {
     for (let index = 0; index < columns.ticks.length; index++) {
       const at = columns.ticks[index]; if (!tick(at) || at < previous) throw fail('invalid-timeline', 'Clip event ticks must be nonnegative, safe and ordered.');
       const packet = packetAt(columns, index); validator.accept(packet, section, at);
-      if (!packet.known) unknownPackets++; bytes += 4 + packet.wordCount * 4; measureGap(at - previous); previous = at;
+      if (!packet.known) unknownPackets++; bytes += (controls.coalesceEqualClockstamps && index > 0 && at === previous ? 0 : 4) + packet.wordCount * 4; measureGap(at - previous); previous = at;
       if (++units % 1024 === 0) await pulse(controls, 'validating-midi-clip', units);
     }
     const end = section === 'configuration' ? snapshot.configurationEndTick : snapshot.endTick;
@@ -123,7 +123,7 @@ export async function encodeMidiClipFile(input, options = {}) {
     const columns = snapshot[section]; let previous = 0;
     for (let index = 0; index < columns.ticks.length; index++) {
       const delta = columns.ticks[index] - previous;
-      if (delta > MIDI_CLIP_MAX_DELTA) await longGap(delta); else write(DCS | delta);
+      if (!(controls.coalesceEqualClockstamps && index > 0 && delta === 0)) { if (delta > MIDI_CLIP_MAX_DELTA) await longGap(delta); else write(DCS | delta); }
       previous = columns.ticks[index];
       for (let at = columns.offsets[index]; at < columns.offsets[index + 1]; at++) write(columns.words[at]);
       if (++units % 1024 === 0) await pulse(controls, 'writing-midi-clip', units);

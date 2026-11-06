@@ -10728,3 +10728,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Store up to65536 packets in compact fixed typed columns under an owned16MiB reservation. Admit pages before allocation, stop visibly at capacity, and create one cancellable exclusive snapshot lease with export-copy headroom.
 - Add native record/stop/discard and exact binary observation export controls. Keep unknown/open note boundaries explicit, stop on routing/session retirement, and never append future releases or equate SDK acceptance with receiver/acoustic proof.
 - Exact observation artifacts use the documented application capture format, not a mislabeled standards Clip. Standards accepted-output projection and legal metadata timing follow next. Formatting only; no functional tests.
+
+
+### 2026-11-06 — Rook continuation504: explicit accepted-output MIDI Clip projection
+
+- Add standard Clip preparation directly from the bounded native SDK capture, with explicit submitted-source, native call-time, one-grant/group and metadata choices. Keep raw SDK observations, authored intent and derived standard files separate.
+- Preserve accepted channel words, high-resolution values and supported score context. Exclude transport/control-plane/other-scope data with counts; retain omitted original tempo/meter values in the digest-bound attribution sidecar. Never include unconfirmed writes as accepted output or manufacture note releases.
+- Offer an explicitly derived fixed-seconds projection with tempo/meter omission, or strict single-group original-context projection at qualified clock/bar boundaries. Measure actual piecewise render-time quantization error, preserve source ordering, pin multipart text to one event time and coalesce its equal-time clockstamps.
+- Require explicit incomplete-range and baseline-dependent relative replay selections. Prepare reviewable files under bounded cancellable workspace/artifact leases; provide separate Clip and attribution saves. Formatting and critical/boundary type checks pass; functional/independent-reader qualification remains deferred.
