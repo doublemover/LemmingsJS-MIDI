@@ -32,9 +32,9 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     if (client.session && peer.ready) peer.request('D', client.session, [], { priority: true }).catch(() => {});
     if (client.ws.readyState === WebSocket.OPEN) client.ws.close(1008, reason); else client.ws.terminate();
   };
-  const failure = (client, requestId, error) => send(client, { event: 'receipt', requestId, session: client.session, kind: 'error', reason: String(error.message || error).slice(0, 180) });
+  const failure = (client, requestId, error) => send(client, { event: 'receipt', requestId, session: client.session, kind: 'error', failedPacketUnconfirmed: error.notSubmitted !== true, reason: String(error.message || error).slice(0, 180) });
   const call = async (client, requestId, operation, fields, { priority = false, provenance } = {}) => {
-    if (client.pending >= (priority ? 64 : 56)) throw new Error('Browser native request capacity'); ++client.pending;
+    if (client.pending >= (priority ? 64 : 56)) throw Object.assign(new Error('Browser native request capacity'), { notSubmitted: true }); ++client.pending;
     try {
       const row = await peer.request(operation, client.session, fields, { priority, onQueued: receipt => send(client, { ...receipt, requestId, provenance }) });
       if (row.kind === 'opened') client.grants.set(row.grant, Object.freeze({ direction: row.direction, groupMask: row.groupMask, permissions: row.permissions }));

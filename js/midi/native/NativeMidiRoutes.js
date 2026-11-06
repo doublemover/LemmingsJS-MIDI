@@ -63,9 +63,9 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       clock: client.clockStatus(), traceRecords: trace.length, traceWords, omittedTrace }); },
     recordSubmission({ words, receipt, provenance }) {
       const retained = Object.freeze({ connectionEpoch: receipt.session, grant: receipt.grant, execution: receipt.execution, receipt: Object.freeze({ ...receipt }), provenance,
-        words: Object.freeze(words.slice(0, receipt.acceptedWords || 0)), unconfirmedPacket: receipt.failedPacketUnconfirmed ? Object.freeze(words.slice(receipt.failureWordOffset, receipt.failureWordOffset + UMP_WORD_COUNTS[words[receipt.failureWordOffset] >>> 28])) : null });
-      traceWords += retained.words.length + (retained.unconfirmedPacket?.length || 0); trace.push(retained);
-      while (trace.length > 4096 || traceWords > 65536) { const oldest = trace.shift(); traceWords -= oldest.words.length + (oldest.unconfirmedPacket?.length || 0); omittedTrace++; }
+        words: Object.freeze(words.slice(0, receipt.acceptedWords || 0)), unconfirmedWords: receipt.submissionExtent === 'unobserved-batch' ? Object.freeze([...words]) : null, unconfirmedPacket: receipt.failedPacketUnconfirmed && receipt.submissionExtent !== 'unobserved-batch' ? Object.freeze(words.slice(receipt.failureWordOffset, receipt.failureWordOffset + UMP_WORD_COUNTS[words[receipt.failureWordOffset] >>> 28])) : null });
+      traceWords += retained.words.length + (retained.unconfirmedPacket?.length || 0) + (retained.unconfirmedWords?.length || 0); trace.push(retained);
+      while (trace.length > 4096 || traceWords > 65536) { const oldest = trace.shift(); traceWords -= oldest.words.length + (oldest.unconfirmedPacket?.length || 0) + (oldest.unconfirmedWords?.length || 0); omittedTrace++; }
       try { onTrace(retained); } catch {} return retained;
     },
     wireTrace() { return Object.freeze({ schema: 'lemmings-native-wire-trace/v1', claim: 'native-driver-submitted-prefix-not-receiver-or-acoustic', omittedRecords: omittedTrace, records: Object.freeze([...trace]) }); },

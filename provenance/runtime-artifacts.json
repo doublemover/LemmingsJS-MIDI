@@ -510,6 +510,7 @@
       "files": [
         "js/app/midi-ui/NativeMidiConnectionView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
+        "js/midi/native/NativeMidiBatchQueue.js",
         "js/midi/native/NativeMidiBridgeClient.js",
         "js/midi/native/NativeMidiBridgeProtocol.js",
         "js/midi/native/NativeMidiRoutes.js",
@@ -529,8 +530,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 20,
-      "sha256": "82811cffcc4c763b899675d8963ee33d5341ec0f6da892c0cf9a1b45c918e699"
+      "fileCount": 21,
+      "sha256": "a6df3f6775a3c00bd92ccf60ce3b2bf19d3e8afaf2a1cb6249fb2c59bbc79d20"
     }
   ]
 }

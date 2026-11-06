@@ -7,6 +7,7 @@ const bridgeUrl = value => {
   return address.href;
 };
 
+const beforeSubmission = reason => Object.assign(new Error(reason), { notSubmitted: true });
 export class NativeMidiBridgeClient {
   #socket = null; #requests = new Map(); #listeners = new Set(); #sequence = 0; #session = 0; #timer = null;
   #samples = []; #grants = new Map(); #state = 'disconnected'; #capabilities = null; #connect = null; #lastClock = 0;
@@ -66,11 +67,11 @@ export class NativeMidiBridgeClient {
     try { await connected; await this.synchronizeClock(); return this; } finally { clearTimeout(timeout); }
   }
   #request(action, fields = {}, { pairing = false, priority = false, binary = null, onReceipt } = {}) {
-    if (!this.#socket || this.#socket.readyState !== 1 || !pairing && !this.#session || this.#sequence >= 0xffffffff || this.#requests.size >= (priority ? 64 : 56) || this.#socket.bufferedAmount > (priority ? 1048576 : 983040)) return Promise.reject(new Error('Native bridge unavailable or at capacity'));
+    if (!this.#socket || this.#socket.readyState !== 1 || !pairing && !this.#session || this.#sequence >= 0xffffffff || this.#requests.size >= (priority ? 64 : 56) || this.#socket.bufferedAmount > (priority ? 1048576 : 983040)) return Promise.reject(beforeSubmission('Native bridge unavailable or at capacity'));
     const requestId = ++this.#sequence;
     let payload;
     try { payload = binary ? encodeNativeMidiBatch({ ...binary, session: this.#session, requestId }) : JSON.stringify({ protocol: NATIVE_MIDI_BRIDGE_PROTOCOL, session: this.#session, requestId, action, ...fields }); }
-    catch (error) { return Promise.reject(error); }
+    catch (error) { error.notSubmitted = true; return Promise.reject(error); }
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => this.#retire('native-receipt-timeout'), 10000);
       this.#requests.set(requestId, { resolve, reject, timeout, onReceipt });
@@ -104,9 +105,9 @@ export class NativeMidiBridgeClient {
   closeGrant(grant) { return this.#request('close', { grant }, { priority: true }); }
   cancelExecution(grant, execution) { return this.#request('cancel', { grant, execution }, { priority: true }); }
   sendBatch({ grant, execution, targetTimeMs, priority = 1, words, provenance = {}, onReceipt }) {
-    if (!this.#grants.has(grant) || this.#grants.get(grant).direction !== 'output') return Promise.reject(new Error('Native output grant required'));
-    const clock = this.clockStatus(); if (clock.status !== 'synchronized') return Promise.reject(new Error('Native clock is stale or uncertain'));
-    const now = this.now(); if (!Number.isFinite(targetTimeMs) || targetTimeMs > now + 1950 || priority !== 0 && targetTimeMs < now - 50) return Promise.reject(new Error('Native target outside scheduling horizon'));
+    if (!this.#grants.has(grant) || this.#grants.get(grant).direction !== 'output') return Promise.reject(beforeSubmission('Native output grant required'));
+    const clock = this.clockStatus(); if (clock.status !== 'synchronized') return Promise.reject(beforeSubmission('Native clock is stale or uncertain'));
+    const now = this.now(); if (!Number.isFinite(targetTimeMs) || targetTimeMs > now + 1950 || priority !== 0 && targetTimeMs < now - 50) return Promise.reject(beforeSubmission('Native target outside scheduling horizon'));
     const deadlineUs = Math.round(targetTimeMs * 1000 + clock.offsetUs);
     return this.#request('send', {}, { priority: priority === 0, binary: { grant, execution, deadlineUs, priority, words, provenance }, onReceipt });
   }

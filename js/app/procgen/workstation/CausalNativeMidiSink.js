@@ -1,3 +1,4 @@
+import { createNativeMidiBatchQueue } from '../../../midi/native/NativeMidiBatchQueue.js';
 import { encodeIntent } from '../../../midi/protocol/UmpPacketCodec.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
@@ -10,7 +11,8 @@ const noteWords = (route, status, note, velocity, pitch = note) => route.protoco
   encodeIntent({ group: route.group, channel: route.channel, status, note, velocity: { value: Math.round(velocity * 65535), bits: 16 },
     ...(status === 'noteOn' && pitch !== note ? { attributeType: 3, attributeData: Math.min(65535, Math.round(pitch * 512)) } : {}) }) :
   midi1(route, status === 'noteOn' ? 9 : 8, note, status === 'noteOn' ? Math.max(1, Math.round(velocity * 127)) : Math.round(velocity * 127));
-export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = () => {}, maxVoices = 256, delayMs = 24 } = {}) {
+export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = () => {}, maxVoices = 1024, delayMs = 24 } = {}) {
+  const batches = createNativeMidiBatchQueue({ client: routes.client });
   const executions = new Map(), wireVoices = new Map(), channelVoices = new Map(), retirement = createProcgenRetirementScope();
   let disposed = false, anchor = null, latestReceipt = null, laneSource = null, laneIds = new Map(), soloCount = 0;
   const enabled = () => !disposed && routes.enabled();
@@ -33,20 +35,23 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
   };
   const send = (entry, intent, admission, words, targetMicroseconds, priority = 1, terminal = false, onset = false) => {
     const provenance = causal(intent);
-    const pending = routes.client.sendBatch({ grant: entry.route.grant, execution: entry.state.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
+    const submission = batches.enqueue({ grant: entry.route.grant, execution: entry.state.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
       onReceipt: receipt => { if (receipt.kind === 'queued') report(entry, intent, admission, receipt, words); } });
-    pending.then(receipt => {
+    if (submission.status !== 'accepted') { report(entry, intent, admission, { kind: 'rejected', reason: submission.reason, acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: false }, words); return reject(submission.reason); }
+    submission.completion.then(receipt => {
       report(entry, intent, admission, receipt, words);
-      if (receipt.kind !== 'driver-submitted') { entry.uncertain = !onset || !!receipt.acceptedWords || !!receipt.failedPacketUnconfirmed; if (!entry.uncertain) removeVoice(entry); }
+      if (receipt.kind !== 'driver-submitted') { if (entry.setupRequested) entry.state.programs.delete(channelKey(entry.route)); entry.uncertain = !onset || !!receipt.acceptedWords || !!receipt.failedPacketUnconfirmed; if (!entry.uncertain) removeVoice(entry); }
       else if (terminal) removeVoice(entry);
     }, error => {
       entry.uncertain = true; report(entry, intent, admission, { kind: 'error', reason: error.message, failedPacketUnconfirmed: true }, words);
     });
+    return Object.freeze({ status: 'accepted', stage: submission.stage });
   };
   const retireExecution = execution => {
     const state = executions.get(execution); if (!state) return createProcgenRetirementScope().retire(); if (state.retirement) return state.retirement.getReceipt();
     state.closed = true; state.retirement = createProcgenRetirementScope();
     const receipt = state.retirement.retire([...state.grants].map(grant => ({ name: 'native-grant-' + grant, run: async () => {
+      batches.cancelExecution(grant, state.wireExecution);
       const receipt = await routes.client.cancelExecution(grant, state.wireExecution);
       if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Native owned-note cleanup is unconfirmed');
       for (const entry of state.voices.values()) if (entry.route.grant === grant) removeVoice(entry);
@@ -73,7 +78,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (!Number.isFinite(pitch) || pitch < 0 || pitch >= 128 || !unit(intent.velocity01)) return reject('native-pitch-or-velocity-unrepresentable');
       const wireKey = keyFor(route, note);
       if (wireVoices.has(wireKey)) return reject('native-same-pitch-voice-overlap');
-      const entry = { state, route, intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false };
+      const entry = { state, route, intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false, setupRequested: false };
       if (route.protocol === 'midi1-in-ump' && pitch !== note) entry.losses.push(Object.freeze({ kind: 'midi1-pitch-quantization', requested: pitch, represented: note }));
       entry.losses.push(Object.freeze({ kind: 'receiver-protocol-unverified', requested: route.protocol }));
       const words = [], program = JSON.stringify([lane.externalProgram, lane.bankMSB, lane.bankLSB]), address = channelKey(route);
@@ -82,11 +87,12 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         if (route.protocol === 'midi2') words.push(...encodeIntent({ group: route.group, channel: route.channel, status: 'programChange', program: lane.externalProgram,
           bankValid: lane.bankMSB != null || lane.bankLSB != null, bankMSB: lane.bankMSB ?? 0, bankLSB: lane.bankLSB ?? 0 }));
         else { if (lane.bankMSB != null) words.push(...midi1(route, 11, 0, lane.bankMSB)); if (lane.bankLSB != null) words.push(...midi1(route, 11, 32, lane.bankLSB)); words.push(...midi1(route, 12, lane.externalProgram)); }
-        state.programs.set(address, program);
+        entry.setupRequested = true;
       }
       words.push(...noteWords(route, 'noteOn', note, intent.velocity01, pitch));
       if (unit(intent.expression?.pressure01)) words.push(...(route.protocol === 'midi2' ? encodeIntent({ group: route.group, channel: route.channel, status: 'polyPressure', note, controllerValue: { value: Math.round(intent.expression.pressure01 * 0xffffffff), bits: 32 } }) : midi1(route, 10, note, Math.round(intent.expression.pressure01 * 127))));
-      state.voices.set(intent.voiceId, entry); wireVoices.set(wireKey, entry); channelVoices.set(address, (channelVoices.get(address) || 0) + 1); state.grants.add(route.grant); send(entry, intent, admission, words, targetMicroseconds, 1, false, true);
+      state.voices.set(intent.voiceId, entry); wireVoices.set(wireKey, entry); channelVoices.set(address, (channelVoices.get(address) || 0) + 1); state.grants.add(route.grant);
+      const queued = send(entry, intent, admission, words, targetMicroseconds, 1, false, true); if (queued.status !== 'accepted') { removeVoice(entry); return queued; } if (entry.setupRequested) state.programs.set(address, program);
       return Object.freeze({ status: 'degraded', stage: 'accepted', losses: Object.freeze(entry.losses), outputId: route.outputId, channel: route.channel + 1, group: route.group });
     },
     update(voiceId, expression, targetMicroseconds, execution, slewSeconds, causeIntent, admission) {
@@ -100,7 +106,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         } else if (name === 'pitchOffsetCents' && value === entry.baseOffset) continue;
         else losses.push(Object.freeze({ kind: 'native-expression-unavailable', field: name, requested: value }));
       }
-      if (words.length) send(entry, causeIntent || entry.intent, admission, words, targetMicroseconds);
+      if (words.length) { const queued = send(entry, causeIntent || entry.intent, admission, words, targetMicroseconds); if (queued.status !== 'accepted') return queued; }
       return Object.freeze({ status: losses.length ? 'degraded' : 'accepted', stage: words.length ? 'accepted' : 'semantic-observation', outputRequested: !!words.length, losses: Object.freeze(losses) });
     },
     updatePhysical: () => Object.freeze({ status: 'degraded', stage: 'semantic-observation', outputRequested: false, reason: 'physical-audio-control-unrepresented-in-native-midi' }),
@@ -117,7 +123,8 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (!enabled() || entry.uncertain) return reject('native-release-unconfirmed');
       const tail = options?.mode === 'one-shot' ? options.tailSeconds : 0;
       if (!Number.isFinite(tail) || tail < 0 || tail > 1.9) return reject('native-release-tail-outside-horizon');
-      entry.ending = true; send(entry, causeIntent || entry.intent, admission, noteWords(entry.route, 'noteOff', entry.note, 0), Math.max(Math.round(now() * 1000), targetMicroseconds + Math.round(tail * 1000000)), 0, true);
+      entry.ending = true; const queued = send(entry, causeIntent || entry.intent, admission, noteWords(entry.route, 'noteOff', entry.note, 0), Math.max(Math.round(now() * 1000), targetMicroseconds + Math.round(tail * 1000000)), 0, true);
+      if (queued.status !== 'accepted') { entry.ending = false; return queued; }
       return Object.freeze({ status: 'accepted', stage: 'accepted' });
     },
     cancelGenerationWithReceipt(generation, execution) { const state = executions.get(execution); return state && state.generation !== generation ? reject('foreign-native-generation') : retireExecution(execution); },
@@ -136,7 +143,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         const lane = laneFor(entry.laneId); if (!entry.ending && (unavailable(lane) || lane.outputId !== entry.route.outputId)) backend.end(entry.voiceId, {}, Math.round(now() * 1000), execution, entry.intent);
       }
     },
-    diagnostics: () => Object.freeze({ disposed, enabled: enabled(), executions: executions.size, latestReceipt, clock: routes.client.clockStatus() }),
-    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; return retirement.retire([...executions].map(([execution, state]) => ({ name: state.epoch, run: () => retireExecution(execution) }))); }
+    diagnostics: () => Object.freeze({ disposed, enabled: enabled(), executions: executions.size, latestReceipt, queue: batches.state(), clock: routes.client.clockStatus() }),
+    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; batches.dispose(); return retirement.retire([...executions].map(([execution, state]) => ({ name: state.epoch, run: () => retireExecution(execution) }))); }
   };
 }

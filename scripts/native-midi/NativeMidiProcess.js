@@ -38,10 +38,10 @@ export class NativeMidiProcess extends EventEmitter {
   }
   request(operation, session, fields = [], { priority = false, onQueued } = {}) {
     if (!this.ready || this.#closed || !/^[SHPLAOVBCXDQ]$/.test(operation) || !Number.isSafeInteger(session) || session < 0 || session > 0xffffffff ||
-        this.#sequence >= 0xffffffff || this.#pending.size >= (priority ? 512 : 480)) return Promise.reject(new Error('Native peer unavailable or at capacity'));
-    if (fields.some(value => typeof value !== 'string' && !Number.isSafeInteger(value) || String(value).includes('\n') || String(value).includes('\r') || String(value).includes('\0'))) return Promise.reject(new Error('Invalid native command field'));
+        this.#sequence >= 0xffffffff || this.#pending.size >= (priority ? 512 : 480)) return Promise.reject(Object.assign(new Error('Native peer unavailable or at capacity'), { notSubmitted: true }));
+    if (fields.some(value => typeof value !== 'string' && !Number.isSafeInteger(value) || String(value).includes('\n') || String(value).includes('\r') || String(value).includes('\0'))) return Promise.reject(Object.assign(new Error('Invalid native command field'), { notSubmitted: true }));
     const requestId = ++this.#sequence, line = [operation, requestId, session, ...fields].join(' ') + '\n';
-    if (Buffer.byteLength(line) > 65537 || this.#child.stdin.writableLength + Buffer.byteLength(line) > (priority ? 1048576 : 983040)) return Promise.reject(new Error('Native input pressure'));
+    if (Buffer.byteLength(line) > 65537 || this.#child.stdin.writableLength + Buffer.byteLength(line) > (priority ? 1048576 : 983040)) return Promise.reject(Object.assign(new Error('Native input pressure'), { notSubmitted: true }));
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => this.#fail('native-request-timeout'), 10000); timeout.unref?.();
       this.#pending.set(requestId, { session, resolve, reject, timeout, onQueued });

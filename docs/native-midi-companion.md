@@ -92,3 +92,15 @@ Closing and unpublishing preserve native-close and owned-note cleanup uncertaint
 Save native wire trace exports actual acknowledged prefixes and separately
 unconfirmed packets with original causal identities. Browser, device and DAW
 functional validation is still deferred; no listening or hardware claim is made.
+
+Completed-tick traffic is now grouped by session, grant, execution, source batch,
+priority and target time before entering the bridge. Complete packet ranges map
+each shared driver receipt back to its original intent. Setup/onset transactions
+remain ordered, and cancellation removes unsent owned groups before requesting
+native execution cleanup. In-flight groups retain their source ownership until
+their receipts settle. Releases have reserved group/word capacity.
+
+The browser queue bounds retained words, batches, jobs and metadata estimates.
+Native physical admission allows 1024 owned voices; real receiver polyphony is
+still unverified. This batching implementation awaits the consolidated functional
+and throughput run. It is not a measured latency or sustained-throughput claim.
