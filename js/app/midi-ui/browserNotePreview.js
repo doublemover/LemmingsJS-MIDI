@@ -59,7 +59,10 @@ const createMixCompressor = context => {
 class BrowserNotePreview {
   constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8,
     volume = 0.15, masterVolume = 0.7, resourceBudget = null, cueVoices = 0, cueCostUnits = cueVoices, maxInstrumentBackends = 20,
-    createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices, permissions = globalThis.navigator?.permissions, performanceCoordinator, runtimeConfig = {} } = {}) {
+    createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices, permissions = globalThis.navigator?.permissions, performanceCoordinator, runtimeConfig = {},
+    getQualifiedSoundRealization = () => null } = {}) {
+    if (typeof getQualifiedSoundRealization !== 'function') throw new TypeError('Runtime sound qualification must be supplied by the executing host, never imported content.');
+    this._getQualifiedSoundRealization = getQualifiedSoundRealization;
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
     this._createContext = createAudioContext === undefined
       ? (AudioContextType ? options => new AudioContextType(options) : null)
@@ -488,6 +491,10 @@ class BrowserNotePreview {
   }
 
   getAudioContext() { return this._context; }
+  getQualifiedSoundRealization(request) {
+    if (!this._ready() || request?.contextEpoch !== this._contextEpoch || request.sampleRate !== this._context?.sampleRate) return null;
+    return this._getQualifiedSoundRealization(Object.freeze({ ...request, contextEpoch: this._contextEpoch, sampleRate: this._context.sampleRate }));
+  }
 
   getAudioRuntimeObservation() { return this._runtimeObservation.read(this._context, this._contextEpoch, this._runtimeConfig); }
   resetAudioLatencyStatistics() { return this._runtimeObservation.resetLatency(); }

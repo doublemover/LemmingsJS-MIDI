@@ -1,4 +1,6 @@
 import { sharedContentJobsFor } from '../resources/SharedContentJobs.js';
+import { cloneData, freezeData } from '../../core/CanonicalData.js';
+import { validateSoundContentReference } from '../../midi/content/SoundContentReference.js';
 import { verifyDrumKitDecodedSources } from '../../midi/content/DrumKitDefinition.js';
 import { getProceduralSoundMaterial } from '../../midi/content/ProceduralSoundMaterial.js';
 import { createAudioAssetLoader } from './AudioAssetLoader.js';
@@ -18,7 +20,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
   registry ||= createSoundContentRegistry({ resourceBudget: budget });
   const resources = createAudioResourceLeases({ resourceBudget: budget, ownerPrefix: 'sound-material-' + (++nextProvider) });
   const metadata = resources.reserve({ kind: 'wave-metadata-cache', bytes: maxEntries * 1024 });
-  const formats = new Map(), sources = new Map(), pending = new Set(), loans = new Set(), encodedLoans = new Set(), faults = new Set();
+  const formats = new Map(), sources = new Map(), pending = new Set(), loans = new Set(), encodedLoans = new Set(), realizationLoans = new Set(), faults = new Set();
   const retirement = createProcgenRetirementScope(); let disposed = false, sequence = 0;
   const generateSource = async (file, signal) => {
     const original = getProceduralSoundMaterial(file); if (!original) return null;
@@ -237,8 +239,36 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
     })(); pending.add(operation);
     try { return await operation.completion; } finally { pending.delete(operation); }
   };
-  return Object.freeze({ acquire, acquireImpulse, borrowEncoded: (file, { signal } = {}) => borrowBlob(file, null, signal),
-    diagnostics: () => Object.freeze({ pending: pending.size, loans: loans.size, encodedLoans: encodedLoans.size, formats: formats.size, faults: faults.size, loader: loader.diagnostics(), resources: resources.diagnostics(), disposed }),
+  const borrowRealizations = async (raw, { engineDescriptors = [], signal } = {}) => {
+    const reference = validateSoundContentReference(raw);
+    if (!reference || disposed || faults.size || realizationLoans.size >= 32) throw failure('realization-inventory-unavailable', 'The verified realization inventory is unavailable or busy.');
+    const storage = resources.reserve({ kind: 'verified-realization-inventory', estimateBytes: 2 * 1048576, consumerOwned: true });
+    let source = null, data = null, loan = null;
+    try {
+      source = await registry.loadPack(reference.packHash, { engineDescriptors, signal }); signal?.throwIfAborted();
+      if (disposed) throw failure('owner-retired', 'The material owner retired while reading profiles.');
+      const prepared = source?.prepared, group = prepared?.pack.compilation?.realizationGroups?.find(row => row.profiles.some(profile => profile.definitionHash === reference.definitionHash));
+      if (!group) { source?.release(); storage.release(); return null; }
+      const references = group.profiles.map(profile => {
+        const patch = prepared.patches.find(entry => entry.identity === profile.patchIdentity && entry.definitionHash === profile.definitionHash);
+        if (!patch?.definition || patch.state !== 'definition-admitted') throw failure('realization-definition-unavailable', 'An authored alternative has no executing patch definition.');
+        return { profileId: profile.id, reference: { schema: 'lemmings-sound-reference/v1', packHash: reference.packHash, patchId: patch.definition.id,
+          revision: patch.definition.revision, definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement,
+          assetHashes: [...patch.dependencies].sort(), definition: patch.archivedDefinition } };
+      });
+      data = freezeData(cloneData({ group, references }, { maxBytes: 2 * 1048576, maxNodes: 131072 }));
+      source.release(); source = null;
+      const retirement = createProcgenRetirementScope();
+      loan = Object.freeze({ get value() { if (!data || disposed || retirement.getReceipt()) throw failure('owner-retired', 'The realization inventory loan retired.'); return data; },
+        release() { const receipt = retirement.retire([{ name: 'realization-inventory', run: () => { data = null; storage.release(); realizationLoans.delete(loan); } }]); if (receipt.outcome !== 'complete') faults.add(receipt); return receipt; } });
+      realizationLoans.add(loan); return loan;
+    } catch (error) {
+      try { source?.release(); storage.release(); } catch (retirementError) { storage.retainUnknown(retirementError); error.retirementError = retirementError; }
+      throw error;
+    }
+  };
+  return Object.freeze({ acquire, acquireImpulse, borrowRealizations, borrowEncoded: (file, { signal } = {}) => borrowBlob(file, null, signal),
+    diagnostics: () => Object.freeze({ pending: pending.size, loans: loans.size, encodedLoans: encodedLoans.size, realizationLoans: realizationLoans.size, formats: formats.size, faults: faults.size, loader: loader.diagnostics(), resources: resources.diagnostics(), disposed }),
     dispose() {
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
       for (const operation of pending) operation.controller.abort(failure('owner-retired', 'Sound material owner retired.'));
@@ -249,6 +279,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
           return createProcgenRetirementScope().retire([...loans].map((loan, index) => ({ name: 'material-' + index, run: () => loan.release() })));
         } }]) },
         { name: 'decoded-cache', run: async () => { await readers.completion; cache = loader.dispose(); await cache.completion; return cache; } },
+        { name: 'realization-inventories', run: () => createProcgenRetirementScope().retire([...realizationLoans].map((loan, index) => ({ name: 'profiles-' + index, run: () => loan.release() }))) },
         { name: 'stored-material', run: async () => { await readers.completion; if (ownRegistry) return registry.close(); } },
         { name: 'material-reservations', run: async () => {
           await readers.completion;

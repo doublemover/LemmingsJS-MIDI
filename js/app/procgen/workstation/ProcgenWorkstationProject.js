@@ -91,12 +91,14 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
   const instrumentRef = trusted && overrides.instrumentRef === trusted.instrumentRef ? trusted.instrumentRef : validateSoundContentReference(overrides.instrumentRef);
   if (instrumentRef && overrides.instrumentPatchId != null && overrides.instrumentPatchId !== instrumentRef.patchId) throw new Error('Lane sound identity differs from its pinned renderer definition.');
   if (overrides.soundChangePolicy != null && !INSTRUMENT_SWITCH_MODES.includes(overrides.soundChangePolicy)) throw new Error('Unsupported patch transition policy.');
+  if (overrides.soundQualityPolicy != null && !['manual', 'adaptive'].includes(overrides.soundQualityPolicy)) throw new Error('Unsupported sound realization policy.');
   if (overrides.soundChangeBoundary != null && !INSTRUMENT_SWITCH_BOUNDARIES.includes(overrides.soundChangeBoundary) || overrides.soundChangeFadeSeconds != null && (!Number.isFinite(overrides.soundChangeFadeSeconds) || overrides.soundChangeFadeSeconds < 0.005 || overrides.soundChangeFadeSeconds > 0.2)) throw new Error('Unsupported patch switch boundary or fade.');
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
   return { id: string(overrides.id, `lane-${index + 1}`), revision: integer(overrides.revision, 0, 0, Number.MAX_SAFE_INTEGER), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id, worldThemeId,
     instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
     linkedThemePresetId: overrides.linkedThemePresetId === null ? null : string(overrides.linkedThemePresetId, family), soundChangePolicy: overrides.soundChangePolicy ?? getSupportedInstrumentDefinition(instrumentRef)?.voicePolicy?.switchPolicy?.mode ?? 'new-notes-only',
     ...(overrides.soundChangeBoundary == null ? {} : { soundChangeBoundary: overrides.soundChangeBoundary }), ...(overrides.soundChangeFadeSeconds == null ? {} : { soundChangeFadeSeconds: overrides.soundChangeFadeSeconds }),
+    ...(overrides.soundQualityPolicy == null ? {} : { soundQualityPolicy: overrides.soundQualityPolicy }),
     externalProgram: overrides.externalProgram === null ? null : integer(overrides.externalProgram, sound.program, 0, 127), externalPercussion: overrides.externalPercussion == null ? sound.percussion : overrides.externalPercussion === true,
     ...(overrides.timeTransform == null ? {} : { timeTransform: trusted && overrides.timeTransform === trusted.timeTransform ? trusted.timeTransform : validateTimeTransform(overrides.timeTransform) }),
     ...(overrides.scoreContext == null ? {} : { scoreContext: trusted && overrides.scoreContext === trusted.scoreContext ? trusted.scoreContext : validateScoreContextPolicy(overrides.scoreContext) }),

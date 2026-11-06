@@ -130,7 +130,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       } catch (error) { return Object.freeze({ ...outcome, switchStatus: 'degraded', switchReason: error.code || 'incoming-switch-overlap-rejected' }); }
     }
     if (sharedBody) try { onTopologyBody?.(Object.freeze({ status: outcome?.status || 'rejected', stage: 'shared-topology-body-excitation', intentId: intent.intentId, sourceEventIds: intent.sourceEventIds, generation: intent.generation, voiceId: intent.voiceId, targetFrame, topologyBody: Object.freeze({ ...sharedBody }), acousticReceipt: false })); } catch {}
-    return outcome;
+    return child.realization && outcome?.status === 'accepted' ? Object.freeze({ ...outcome, soundRealization: child.realization }) : outcome;
   };
   const callPart = (voice, part, method, value, frame, rampSeconds) => {
     const renderer = part.child.backend;
@@ -232,7 +232,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       maxLanes, maxChildren, maxVoices, metadata: metadata.receipt(), collectedVoices: collected, routeRevision, displayObservers: displayObservers.size, displayFailures: [...displayObservers].reduce((sum, observer) => sum + observer.failures, 0),
       unknownRetirement: [...children.values()].filter(child => child.retirement?.outcome === 'partial').length,
       renderers: Object.freeze([...children.values()].map(child => Object.freeze({ key: child.key, assignedLanes: child.assignedLanes, retirement: child.retirement?.outcome || null,
-        diagnostics: child.backend.renderDiagnostics(options) }))) }); },
+        soundRealization: child.realization || null, diagnostics: child.backend.renderDiagnostics(options) }))) }); },
     dispose: () => { disposed = true; let sources; return retirement.retire([
       { name: 'owned-renderers', run: () => sources = createProcgenRetirementScope().retire([
         ...[...displayObservers].map((observer, index) => ({ name: 'display-' + index, run: observer.release })),
@@ -256,7 +256,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   });
   return Object.freeze({ backend: lifecycle.api,
     canAssign(key) { collect(); const child = children.get(key); return !disposed && (child ? !child.retirementScope : children.size < maxChildren); },
-    assign(lane, key, renderer, { releaseSeconds = null, oneShotTailSeconds = null, bodyId = null, macroIds = [], instrumentKey = key } = {}) {
+    assign(lane, key, renderer, { releaseSeconds = null, oneShotTailSeconds = null, bodyId = null, macroIds = [], instrumentKey = key, realization = null } = {}) {
       if (!validLane(lane) || typeof key !== 'string' || !key || key.length > 256 || key === 'default' || disposed || !renderer?.inspectExecution) throw new TypeError('Invalid lane instrument assignment.');
       if (typeof instrumentKey !== 'string' || !instrumentKey || instrumentKey.length > 256) throw new TypeError('Invalid pinned renderer identity.');
       if ([releaseSeconds, oneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid authored release policy.');
@@ -269,6 +269,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
         if (displayContext) { try { renderer.setDisplayContext?.(displayContext); } catch { /* Presentation cannot prevent prepared sound assignment. */ } }
       }
       const previous = assignments.get(lane);
+      child.realization = realization;
       if (previous !== child) { if (previous && !previous.blocked) previous.assignedLanes--; child.assignedLanes++; routeRevision++; } assignments.set(lane, child); assignmentVersions.set(lane, ++assignmentSerial); return Object.freeze({ laneId: lane, key, revision: assignmentSerial });
     },
     hasPendingSwitch(lane) { collect(); return switches.has(lane); },

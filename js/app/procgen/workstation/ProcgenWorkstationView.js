@@ -673,6 +673,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       labeled('Patch switch boundary', select([['immediate', 'Immediate'], ['next-beat', 'Next quarter-note beat'], ['next-bar', 'Next bar']], lane.soundChangeBoundary || 'immediate', soundChangeBoundary => changeLane({ soundChangeBoundary }), 'Patch switch boundary'), nextFields);
       labeled('Patch switch fade', select([['0.005', '5 ms'], ['0.02', '20 ms'], ['0.05', '50 ms'], ['0.1', '100 ms'], ['0.2', '200 ms']], String(lane.soundChangeFadeSeconds ?? 0.02), value => changeLane({ soundChangeFadeSeconds: Number(value) }), 'Patch switch fade'), nextFields);
       nextFields.append(node('p', 'Held switches reserve both renderers before changing sound. If overlap is unavailable, keep the old patch or choose New notes only. Use PRELISTEN for an isolated audition.', 'studio-hint'));
+      if (lane.instrumentRef) {
+        labeled('Sound quality policy', select([['manual', 'Keep requested realization'], ['adaptive', 'Allow qualified runtime adaptation']], lane.soundQualityPolicy || 'manual',
+          value => Promise.resolve(handlers.setLaneQualityPolicy?.(lane.id, value)).catch(error => handlers.status?.(error.message)), 'Sound quality policy'), nextFields);
+        const realization = handlers.getLaneRealizationState?.(lane.id);
+        nextFields.append(node('p', realization ? 'Requested ' + realization.requestedProfileId + ' · prepared ' + (realization.preparedProfileId || 'none') + ' · effective ' + (realization.effectiveProfileId || 'unavailable') + '. Held notes retain their original profile.' :
+          'The saved patch is the requested realization. Automatic changes need an authored alternative, exact device/rate qualification and measured pressure; missing telemetry never triggers an upgrade.', 'studio-hint'));
+      }
       nextFields.append(button('Select Soft triangle fallback', () => { Promise.resolve().then(() => handlers.selectNativeSound(lane.id, 'foundation.soft-triangle')).catch(error => handlers.status?.(error.message)); }, 'Explicit native oscillator fallback; keeps the world, performance recipe and hardware mapping unchanged'));
       const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; nextFields.append(matchingWorld);
       const savedDefinition = lane.instrumentRef?.definition, controlDefinition = getSupportedInstrumentDefinition(lane.instrumentRef);

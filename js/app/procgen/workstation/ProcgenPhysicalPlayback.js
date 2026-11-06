@@ -61,7 +61,8 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   catch { routingUnavailable = 'audio-routing-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Audio admission cannot stop the world. */ } }
   const backend = routingUnavailable ? null : routed?.backend || nativeBackend;
   let laneInstruments = null;
-  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, getCatalog: getInstrumentCatalog, onState: onInstrumentState, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider(),
+  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, getCatalog: getInstrumentCatalog, onState: onInstrumentState, onRealizationReceipt: onReceipt,
+    qualifyAutomaticRealization: request => audio.getQualifiedSoundRealization?.(request) || null, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider(),
     getLane: laneId => getLanes().find(lane => lane.id === laneId), getSwitchFrame: policy => {
       const context = audio.getAudioContext(), anchor = clock.getAnchor();
       if (!context || context.state !== 'running') throw new Error('Enable live audio before switching held notes.');
@@ -81,7 +82,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   /** @type {import('./AudioClockContracts.js').ExecutionEpoch | null} */
   let executionEpoch = null;
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
-  let sourceTempoBpm = null;
+  let sourceTempoBpm = null, qualitySampledAt = null, qualityContextEpoch = null, qualitySeries = null;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, pendingAdmissions = 0, leaseFailures = 0;
   let surfaceBodies = null, sceneMorph = null;
   const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectClockAnchor = null;
@@ -347,6 +348,12 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       }
     }
     synchronizeLaneMix(); synchronizePerformance();
+    const runtimeObservation = laneInstruments?.needsRealizationObservation() ? audio?.getAudioRuntimeObservation?.() : null, statistics = runtimeObservation?.playbackStats;
+    if (statistics?.metrics && (statistics.sampledAtHostMs !== qualitySampledAt || runtimeObservation.contextEpoch !== qualityContextEpoch || runtimeObservation.series !== qualitySeries) &&
+        ['observed-no-browser-timestamp', 'unchanged-no-browser-timestamp'].includes(statistics.freshness)) {
+      qualitySampledAt = statistics.sampledAtHostMs; qualityContextEpoch = runtimeObservation.contextEpoch; qualitySeries = runtimeObservation.series; laneInstruments.observeRealizationPressure({
+        contextEpoch: runtimeObservation.contextEpoch, audioFrame: clock.currentFrame(), sampleRate: runtimeObservation.actualSampleRate,
+        underrunEvents: statistics.metrics.underrunEvents, deadlineUtilization01: null }); }
     try { refreshDisplay(batch); } catch { displayErrors++; }
     try { return engine.processBatch(batch); } catch (error) { error.playbackRetirement = stop(); throw error; }
   };
@@ -393,6 +400,8 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: INSTRUMENT_SWITCH_MODES,
       boundaries: Object.freeze(['immediate', 'next-beat', 'next-bar']), heldFidelity: 'new-realizations;no-phase-or-sample-cursor-transfer', overlap: 'admitted-before-outgoing-release', fallback: 'new-notes-only' }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
+    synchronizeLaneRealization: laneId => laneInstruments?.synchronizeRealization(laneId) || Promise.resolve(null),
+    laneRealizationState: laneId => laneInstruments?.realizationState(laneId) || null,
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     pendingInstrumentCount: () => laneInstruments?.pendingCount() || 0,

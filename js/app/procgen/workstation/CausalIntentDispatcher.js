@@ -1,4 +1,5 @@
 import { createTimeTransformOwner } from '../../../midi/content/TimeTransform.js';
+import { retainSoundRealizationDecision } from '../../../midi/content/SoundRealizationDecision.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { retainSampleSelectionReceipt } from '../../../midi/content/SampleInstrumentMap.js';
@@ -153,11 +154,12 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         const losses = durationLoss || outcome?.losses?.length ? Object.freeze([...(durationLoss ? [durationLoss] : []), ...(outcome?.losses || [])].map(loss => Object.freeze({ ...loss }))) : null;
         const status = ['accepted', 'rejected', 'degraded', 'deferred'].includes(outcome?.status) ? outcome.status : 'rejected';
         const selectedSource = intent.kind === 'begin' && status === 'accepted' ? retainSampleSelectionReceipt(outcome) : null;
+        const soundRealization = intent.kind === 'begin' && status === 'accepted' ? retainSoundRealizationDecision(outcome.soundRealization) : null;
         const stillCurrent = () => !disposed && sourceWorld === (batch.worldId ?? null) && sourceGeneration === batch.generation && executionEpoch() === epoch && (!sink.enabled || sink.enabled() === true) &&
           Object.entries(route).every(([name, value]) => routeIdentity(sink, intent, batch)[name] === value);
         admitted = admissions.open({ ...base, status, stage: status === 'rejected' ? 'none' : outcome.stage || 'accepted',
           reason: status === 'accepted' ? null : outcome?.reason || 'invalid-sink-receipt', targetFrame: frame,
-          sourceTargetFrame, repair, ...(losses ? { losses } : {}), ...(typeof outcome?.outputId === 'string' ? { outputId: outcome.outputId } : {}),
+          sourceTargetFrame, repair, ...(soundRealization ? { soundRealization } : {}), ...(losses ? { losses } : {}), ...(typeof outcome?.outputId === 'string' ? { outputId: outcome.outputId } : {}),
           ...(Number.isInteger(outcome?.channel) ? { channel: outcome.channel } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.bodyStrike ? { bodyStrike: outcome.bodyStrike } : {}), ...(outcome?.circularTravel ? { circularTravel: outcome.circularTravel } : {}), ...(outcome?.frictionTravel ? { frictionTravel: outcome.frictionTravel } : {}), ...(outcome?.textureTravel ? { textureTravel: outcome.textureTravel } : {}), ...(outcome?.sampleTraversal ? { sampleTraversal: outcome.sampleTraversal } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }, outcome, stillCurrent, reservation, () => !latePolicy || intent.kind === 'end' || latePolicy({ intent, targetFrame: frame, sink, batch })?.status === 'accepted');
         receipts.push(admitted); for (const acknowledgement of acknowledgements) admissionContext.acknowledge(acknowledgement);
       }

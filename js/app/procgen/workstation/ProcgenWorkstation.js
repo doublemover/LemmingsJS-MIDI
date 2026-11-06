@@ -2160,6 +2160,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean}} options */
     applyInstalledInstrument(candidate, { signal, hold = false, isCurrent } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, laneId: selected().id }); },
+    getLaneRealizationState: laneId => physicalPlayback?.laneRealizationState(laneId) || null,
+    async setLaneQualityPolicy(laneId, soundQualityPolicy) {
+      dispatch({ type: 'procgen/lane', laneId, patch: { soundQualityPolicy } });
+      try {
+        const state = await physicalPlayback?.synchronizeLaneRealization(laneId);
+        status(state ? 'Requested profile ' + state.requestedProfileId + '; effective ' + state.effectiveProfileId + '. Automatic transitions require exact runtime qualification.' : 'This sound has no available authored alternatives. Its requested profile remains active.');
+        view?.render(); return state;
+      } catch (error) { status('The quality request was saved; its current renderer remains active. ' + error.message); throw error; }
+    },
     canvasToolAuthorityChanged() { legacy.refreshCanvasToolAuthority?.(); },
     selectNativeSound(laneId, patchId) {
       if (!resourceBudget || !window.fetch) return Promise.reject(new Error('Native sound source ownership is unavailable. Keep the previous sound.'));
