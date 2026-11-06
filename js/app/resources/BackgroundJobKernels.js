@@ -1,38 +1,8 @@
 import { inspectValue, shared } from './BackgroundValueInspector.js';
 import { runCanonicalSnapshotKernel } from './CanonicalSnapshotKernel.js';
-import { buildCircuitWorkshop } from './CircuitWorkshopBuilder.js';
 import { OWNED_STRETCH_CORE } from '../../midi/content/OwnedStretchCoreIdentity.js';
-import { bakeFiniteFmExcitation } from './FiniteFmExcitation.js';
-import { deriveResonatorEndpoint } from '../../midi/content/ResonatorEndpointAdapters.js';
-import { renderResonatorMorphReference } from './ResonatorMorphReference.js';
-import { analyzeResonatorMorph } from '../../midi/content/ResonatorMorph.js';
-import { compileSceneTerrainLayout } from '../procgen/SceneTerrainLayout.js';
-import { createShapeBodyEdgeField } from './ShapeBodyEdgeField.js';
-import { composeSeedComponents } from './SeedComponentComposition.js';
-import { fitSoundSeedModes } from './SeedModalFit.js';
-import { solveShapeBody } from './ShapeBodySolver.js';
-import { solveOriginalShapeRefinement } from './ShapeBodyRefinement.js';
-import { renderShapeBodyCalibration } from './ShapeBodyCalibration.js';
 import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
-import { createShapeBodyRecipe } from '../../midi/content/ShapeBodyRecipe.js';
-import { decomposeSoundSeed } from './SeedDecomposition.js';
-import { analyzeSoundSeedWindow } from './SoundSeedWindowAnalysis.js';
-import { encodeProcgenRecoveryPage, decodeProcgenRecoveryPage } from '../procgen/workstation/ProcgenRecoveryPageCodec.js';
-import { analyzeImpulseResponse } from './ImpulseResponseAnalysis.js';
-import { decodeWaveSource } from './WaveSourceDecode.js';
-import { checksumProcgenRecovery } from '../procgen/workstation/ProcgenRecoveryChecksum.js';
-import { decodeGroundAssetSnapshot } from './GroundAssetDecode.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
-import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js';
-import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
-import { inspectCausalArchiveEntry } from '../procgen/workstation/CausalArchiveEntry.js';
-import { getProceduralSoundById } from '../../midi/content/ProceduralSoundMaterial.js';
-import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
-import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
-import { encodeRecordedMidi } from '../procgen/workstation/RecordedMidiEncoding.js';
-import { encodeRecordedUmpClip } from '../procgen/workstation/RecordedUmpClipExport.js';
-import { encodePhysicalTakeMidi } from '../procgen/workstation/PhysicalTakeMidiProjection.js';
-import { encodeMidiClipFile, decodeMidiClipFile } from '../../midi/protocol/MidiClipFile.js';
 import { yieldBackgroundTask } from './BackgroundTaskYield.js';
 
 export { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
@@ -50,10 +20,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
   if (kind === 'encode-physical-take-midi') {
+    const { encodePhysicalTakeMidi } = await import('../procgen/workstation/PhysicalTakeMidiProjection.js'); guard(signal, current);
     const value = await encodePhysicalTakeMidi(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
     return { value, inputBytes: new TextEncoder().encode(JSON.stringify(input)).byteLength, nodes: 64, retainedBytes: value.bytes.byteLength * 2 + 65536 };
   }
   if (kind === 'encode-recorded-ump-clip') {
+    const { encodeRecordedUmpClip } = await import('../procgen/workstation/RecordedUmpClipExport.js'); guard(signal, current);
     const value = await encodeRecordedUmpClip(input, { signal, current, estimatedPeakBytes, maxBytes, crypto, onProgress, yieldControl }); guard(signal, current);
     const snapshot = input.snapshot;
     return { value, inputBytes: snapshot.beats.byteLength + snapshot.offsets.byteLength + snapshot.words.byteLength + snapshot.routes.byteLength + snapshot.sourceIndices.byteLength +
@@ -62,11 +34,13 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     nodes: 64, retainedBytes: (value.bytes.byteLength + value.manifestBytes.byteLength) * 2 + 65536 };
   }
   if (kind === 'inspect-midi-clip') {
+    const { decodeMidiClipFile } = await import('../../midi/protocol/MidiClipFile.js'); guard(signal, current);
     const value = await decodeMidiClipFile(input?.bytes, { signal, current, maxBytes, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
     return { value: { report: value.report, ppq: value.ppq, endTick: value.endTick }, inputBytes: input.bytes.byteLength, nodes: 32, retainedBytes: 65536 };
   }
   if (kind === 'encode-midi-clip' || kind === 'decode-midi-clip') {
     const controls = { signal, current, maxBytes, estimatedPeakBytes, onProgress, yieldControl };
+    const { encodeMidiClipFile, decodeMidiClipFile } = await import('../../midi/protocol/MidiClipFile.js'); guard(signal, current);
     const value = kind === 'encode-midi-clip' ? await encodeMidiClipFile(input, controls) : await decodeMidiClipFile(input?.bytes, controls); guard(signal, current);
     const columnsBytes = columns => columns.ticks.byteLength + columns.offsets.byteLength + columns.words.byteLength;
     const outputBytes = kind === 'encode-midi-clip' ? value.bytes.byteLength : columnsBytes(value.configuration) + columnsBytes(value.sequence);
@@ -74,6 +48,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       nodes: 32, retainedBytes: outputBytes * 2 + 65536 };
   }
   if (kind === 'encode-recorded-midi') {
+    const { encodeRecordedMidi } = await import('../procgen/workstation/RecordedMidiEncoding.js'); guard(signal, current);
     const value = await encodeRecordedMidi(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
     return { value, inputBytes: input.snapshot.count * 25 + (input.snapshot.outputEpochs?.byteLength ?? 0) + new TextEncoder().encode(JSON.stringify({ outputIds: input.snapshot.outputIds, window: input.window, options: input.options })).byteLength, nodes: 32 + input.snapshot.outputIds.length,
       retainedBytes: value.bytes.byteLength * 2 + 65536 };
@@ -95,6 +70,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const execution = getActiveExecutionIdentity('browser-background-jobs');
     if (execution.activeExecution !== 'bound' || input?.comparisonBuildHash !== execution.buildId || Object.keys(input).some(key => !['shapeId', 'profileId', 'comparisonBuildHash', 'expectedCoarseAssetHash'].includes(key)) || estimatedPeakBytes < 128 * 1048576) throw problem('engine-identity-unbound', 'Refinement comparison requires its actual bound worker and two complete admitted solves.');
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 4096), maxNodes: 128 });
+    const { solveOriginalShapeRefinement } = await import('./ShapeBodyRefinement.js'); guard(signal, current);
     const result = await solveOriginalShapeRefinement({ ...input, solverBuildHash: execution.buildId }, { signal, current, yieldControl, onProgress, estimatedPeakBytes }); guard(signal, current);
     const retainedBytes = canonicalDataText(result.receipt, { maxBytes: 262144, maxNodes: 16384 }).bytes.length * 8;
     return { value: result.receipt, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes };
@@ -104,10 +80,16 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (execution.activeExecution !== 'bound' || input?.solverBuildHash !== execution.buildId || estimatedPeakBytes < 128 * 1048576 || Object.keys(input).some(key => !['source', 'solverBuildHash', 'modeCount', 'sampleRate', 'seconds', 'fieldKind', 'lossKind'].includes(key))) throw problem('engine-identity-unbound', 'Foundry content requires the actual worker build and its complete solve/calibration/compilation reservation.');
     if (!['edge', 'surface'].includes(input.fieldKind ?? 'edge') || !['diagonal', 'point'].includes(input.lossKind ?? 'diagonal')) throw problem('invalid-shape-preparation', 'Choose an explicit supported bar observation and loss model before solving.');
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: 16384 }), options = { signal, current, estimatedPeakBytes, yieldControl, onProgress };
+    const { solveShapeBody } = await import('./ShapeBodySolver.js'); guard(signal, current);
+    const { renderShapeBodyCalibration } = await import('./ShapeBodyCalibration.js'); guard(signal, current);
     const asset = await solveShapeBody({ source: input.source, solverBuildHash: execution.buildId }, options), calibration = await renderShapeBodyCalibration({ asset, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds }, options); guard(signal, current);
+    const { createShapeBodyEdgeField } = await import('./ShapeBodyEdgeField.js'); guard(signal, current);
     const sharedBody = await createShapeBodyEdgeField(asset, { ...options, sampleRate: input.sampleRate, fieldKind: input.fieldKind ?? 'edge', lossKind: input.lossKind ?? 'diagonal' }); guard(signal, current);
+    const { createShapeBodyRecipe } = await import('../../midi/content/ShapeBodyRecipe.js'); guard(signal, current);
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const recipe = await createShapeBodyRecipe({ asset, calibration, edgeField: sharedBody }), catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity.buildId !== execution.buildId) throw problem('engine-identity-unbound', 'The foundry compiler differs from its executing worker.');
+    const { compileSoundContent } = await import('../../midi/content/SoundContentCompiler.js'); guard(signal, current);
     const compiled = await compileSoundContent(recipe.source, { targets: catalog.descriptors.map(descriptor => ({ descriptor })), signal }); guard(signal, current);
     const value = { prepared: compiled.prepared, contents: recipe.contents, receipt: recipe.receipt, sharedBody, overview: { id: asset.id, assetHash: asset.assetHash, meshHash: asset.meshHash, sourceHash: asset.sourceHash, solver: asset.solver, validation: asset.validation, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds,
       sites: asset.source.excitationSites, pickupSites: asset.source.pickupSites, tier: { modeIndices: calibration.files[0].manifest.modeIndices, retainedSalience01: calibration.files[0].manifest.tier.retainedSalience01 } } };
@@ -119,12 +101,15 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const execution = getActiveExecutionIdentity('browser-background-jobs');
     if (execution.activeExecution !== 'bound' || kind === 'solve-shape-body' && input?.solverBuildHash !== execution.buildId) throw problem('engine-identity-unbound', 'Foundry jobs require their actual immutable worker build; a requested solver hash cannot attest execution.');
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 3 * 1048576), maxNodes: 150000 });
+    const { solveShapeBody } = await import('./ShapeBodySolver.js'); guard(signal, current);
+    const { renderShapeBodyCalibration } = await import('./ShapeBodyCalibration.js'); guard(signal, current);
     const value = await (kind === 'solve-shape-body' ? solveShapeBody : renderShapeBodyCalibration)(input, { signal, current, estimatedPeakBytes, yieldControl, onProgress }); guard(signal, current);
     const retainedBytes = kind === 'solve-shape-body' ? canonicalDataText(value, { maxBytes: 2 * 1048576, maxNodes: 131072 }).bytes.length * 4 + 65536 : value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 1048576);
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Foundry output exceeds its complete retained reservation.');
     return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes };
   }
   if (kind === 'analyze-native-impulse') {
+    const { analyzeImpulseResponse } = await import('./ImpulseResponseAnalysis.js'); guard(signal, current);
     const value = await analyzeImpulseResponse(input, { signal, current, yieldControl, crypto, estimatedPeakBytes }); guard(signal, current);
     const metadata = canonicalDataText({ ...input, planes: undefined }, { maxBytes: 65536, maxNodes: 4096, domain: 'Impulse analysis source metadata' });
     const inputBytes = value.bytes + metadata.bytes.byteLength; if (inputBytes > maxBytes) throw problem('input-capacity', 'Impulse source exceeds its job byte bound.');
@@ -133,23 +118,27 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'derive-resonator-endpoint') {
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 4 * 1048576 + 65536), maxNodes: Math.min(maxNodes, 131072), domain: 'Derived resonator endpoint source' });
     if (estimatedPeakBytes < metadata.bytes.length * 32 + 32 * 1048576) throw problem('workspace-capacity', 'Complete endpoint/source verification workspace is not admitted.');
+    const { deriveResonatorEndpoint } = await import('../../midi/content/ResonatorEndpointAdapters.js'); guard(signal, current);
     const value = await deriveResonatorEndpoint(input, { signal, current, yieldControl }); guard(signal, current); const encoded = canonicalDataText(value, { maxBytes: 131072, maxNodes: 16384 });
     return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: encoded.bytes.length * 32 + 131072 };
   }
   if (kind === 'render-resonator-morph-reference') {
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: Math.min(maxNodes, 32768), domain: 'Paired modal body reference' });
+    const { renderResonatorMorphReference } = await import('./ResonatorMorphReference.js'); guard(signal, current);
     const value = await renderResonatorMorphReference(input, { signal, current, yieldControl, onProgress, estimatedPeakBytes }); guard(signal, current);
     return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: value.bytes.byteLength + canonicalDataText(value.manifest).bytes.length * 32 + 131072 };
   }
   if (kind === 'analyze-resonator-morph') {
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: Math.min(maxNodes, 32768), domain: 'Resonator correspondence source' });
     if (estimatedPeakBytes < metadata.bytes.length * 32 + 262144) throw problem('workspace-capacity', 'The modal correspondence workspace is not admitted.');
+    const { analyzeResonatorMorph } = await import('../../midi/content/ResonatorMorph.js'); guard(signal, current);
     const value = await analyzeResonatorMorph(input, { signal, current, yieldControl, onProgress }); guard(signal, current);
     const encoded = canonicalDataText(value, { maxBytes: 262144, maxNodes: 32768 });
     return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: encoded.bytes.length * 32 + 131072 };
   }
   if (kind === 'compile-scene-terrain') {
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 131072), maxNodes: Math.min(maxNodes, 16384), domain: 'Authored scene terrain' });
+    const { compileSceneTerrainLayout } = await import('../procgen/SceneTerrainLayout.js'); guard(signal, current);
     const value = await compileSceneTerrainLayout(input, { signal, current, crypto, estimatedPeakBytes, yieldControl, onProgress }); guard(signal, current);
     return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: value.bytes + metadata.bytes.length * 32 + 131072 };
   }
@@ -157,6 +146,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null, componentInputs: input?.componentInputs?.map(value => ({ ...value, pcm: null, originBytes: null })) }, { maxBytes: 65536, maxNodes: 8192 });
     const bytes = (input?.pcm?.byteLength || 0) + (input?.originBytes?.byteLength || 0) + metadata.bytes.length + (input?.componentInputs || []).reduce((sum, value) => sum + (value?.pcm?.byteLength || 0) + (value?.originBytes?.byteLength || 0), 0);
     if (bytes > maxBytes) throw problem('input-capacity', 'The component windows exceed their admitted composition workspace.');
+    const { composeSeedComponents } = await import('./SeedComponentComposition.js'); guard(signal, current);
     const result = await composeSeedComponents(input, { signal, current, estimatedPeakBytes, yieldControl, onProgress }); return { ...result, inputBytes: bytes };
   }
   if (kind === 'warp-sound-seed') {
@@ -171,20 +161,29 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null }, { maxBytes: 65536, maxNodes: 8192 });
     const bytes = (input?.pcm?.byteLength || 0) + (input?.originBytes?.byteLength || 0) + metadata.bytes.length;
     if (bytes > maxBytes) throw problem('input-capacity', 'The selected seed window exceeds its admitted source workspace.');
+    const { fitSoundSeedModes } = await import('./SeedModalFit.js'); guard(signal, current);
+    const { decomposeSoundSeed } = await import('./SeedDecomposition.js'); guard(signal, current);
+    const { analyzeSoundSeedWindow } = await import('./SoundSeedWindowAnalysis.js'); guard(signal, current);
     return (kind === 'fit-sound-seed-modes' ? fitSoundSeedModes : kind === 'decompose-sound-seed' ? decomposeSoundSeed : analyzeSoundSeedWindow)(input, { signal, current, estimatedPeakBytes, yieldControl, onProgress });
   }
   if (kind === 'bake-finite-fm-exciter') {
     const metadata = canonicalDataText(input, { maxBytes: 262144, maxNodes: 32768 });
     if (metadata.bytes.length > maxBytes) throw problem('input-capacity', 'Finite FM ancestry exceeds its admitted input.');
+    const { bakeFiniteFmExcitation } = await import('./FiniteFmExcitation.js'); guard(signal, current);
     const value = await bakeFiniteFmExcitation(input, { signal, current, yieldControl, estimatedPeakBytes }); guard(signal, current);
     return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: value.bytes.byteLength + value.waveform.minMax.byteLength + canonicalDataText(value.manifest, { maxBytes: 262144, maxNodes: 32768 }).bytes.length * 16 + 131072 };
   }
-  if (kind === 'decode-wave-source') return decodeWaveSource(input, { signal, current, maxBytes, estimatedPeakBytes, crypto, yieldControl });
+  if (kind === 'decode-wave-source') {
+    const { decodeWaveSource } = await import('./WaveSourceDecode.js'); guard(signal, current);
+    return decodeWaveSource(input, { signal, current, maxBytes, estimatedPeakBytes, crypto, yieldControl });
+  }
   if (kind === 'generate-procedural-sound') {
     if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid original procedural sound request.');
+    const { getProceduralSoundById } = await import('../../midi/content/ProceduralSoundMaterial.js'); guard(signal, current);
     const expected = getProceduralSoundById(input.id);
     if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Procedural source needs its worker startup and copy reservation.');
     const { generateProceduralSoundSource } = await import('../../midi/content/ProceduralSoundSources.js'); guard(signal, current);
+    const { inspectWaveContainer } = await import('../midi-ui/AudioAssetRef.js'); guard(signal, current);
     const bytes = generateProceduralSoundSource(expected), format = inspectWaveContainer(bytes, { maxChannels: expected.kind === 'impulse-response' ? 4 : 2 });
     const digest = await crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
     const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -197,6 +196,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
         !(input.bytes instanceof Uint8Array) || shared(input.bytes) || input.bytes.byteLength > maxBytes || input.bytes.byteLength * 8 + 1048576 > estimatedPeakBytes)
       throw problem('invalid-contract', 'WAV inspection requires immutable bytes and their expected hash.');
     if (input.assetKind != null && !['sample', 'impulse-response'].includes(input.assetKind)) throw problem('invalid-contract', 'Unknown native WAV asset kind.');
+    const { inspectWaveContainer } = await import('../midi-ui/AudioAssetRef.js'); guard(signal, current);
     const format = inspectWaveContainer(input.bytes, { contentHash: input.contentHash, maxBytes, maxChannels: input.assetKind === 'impulse-response' ? 4 : 2 });
     const digest = await crypto.subtle.digest('SHA-256', input.bytes); guard(signal, current);
     const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
@@ -214,13 +214,17 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   }
   if (kind === 'prepare-owned-source-bank') {
     if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid fixed source bank request.');
+    const { getOwnedSourceBankIdentity } = await import('../midi-ui/OwnedSourceBank.js'); guard(signal, current);
     const expected = getOwnedSourceBankIdentity(input.id);
     if (estimatedPeakBytes < (input.id === 'sample-read-v1' ? 24 : 16) * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Fixed bank preparation needs its worker startup and copy reservation.');
     const { computeOwnedSourceBank } = await import('./OwnedSourceBankComputation.js'); guard(signal, current);
     const value = await computeOwnedSourceBank(input.id, { signal, current, crypto, yieldControl });
     return { value, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
   }
-  if (kind === 'asset-decode') return decodeGroundAssetSnapshot(input, { signal, current, maxBytes, estimatedPeakBytes, maxDecodedBytes, crypto, onProgress, yieldControl });
+  if (kind === 'asset-decode') {
+    const { decodeGroundAssetSnapshot } = await import('./GroundAssetDecode.js'); guard(signal, current);
+    return decodeGroundAssetSnapshot(input, { signal, current, maxBytes, estimatedPeakBytes, maxDecodedBytes, crypto, onProgress, yieldControl });
+  }
   if (expectedInputHash != null || kind === 'asset-hash') {
     if (shared(input)) throw problem('shared-live-input', 'Background hash input cannot refer to shared live memory.');
     if (typeof input !== 'string' && !(input instanceof ArrayBuffer) && !ArrayBuffer.isView(input)) throw problem('invalid-data', 'Hash jobs require immutable byte or text input.');
@@ -241,6 +245,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const metadata = await inspectText(input, options); guard(signal, current);
     let value = JSON.parse(input); guard(signal, current);
     if (kind === 'inspect-causal-archive-entry') {
+      const { inspectCausalArchiveEntry } = await import('../procgen/workstation/CausalArchiveEntry.js'); guard(signal, current);
       value = await inspectCausalArchiveEntry(value, { signal, parse: async text => {
         await inspectText(text, options); guard(signal, current); const parsed = JSON.parse(text); guard(signal, current); return parsed;
       }, hash: async text => {
@@ -269,8 +274,10 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   }
   if (kind === 'build-circuit-workshop') {
     if (!input || Object.keys(input).some(key => !['variant', 'applicationBuildId'].includes(key)) || typeof input.variant !== 'string' || !/^[a-f0-9]{64}$/.test(input.applicationBuildId || '') || estimatedPeakBytes < 128 * 1048576) throw problem('invalid-contract', 'Original kit preparation needs its exact application, named variant and complete worker overlap.');
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity?.buildId !== input.applicationBuildId) throw problem('engine-identity-unbound', 'The original kit producer differs from the requested application build.');
+    const { buildCircuitWorkshop } = await import('./CircuitWorkshopBuilder.js'); guard(signal, current);
     const value = await buildCircuitWorkshop({ variant: input.variant }, { descriptors: catalog.descriptors, applicationBuildId: catalog.executionIdentity.buildId, estimatedPeakBytes, signal, current, yieldControl, onProgress }); guard(signal, current);
     const representation = canonicalDataText({ pack: value.pack, kit: value.kit, contentHash: value.contentHash, kitHash: value.kitHash, contractHash: value.contractHash, qualification: value.qualification }, { maxBytes: 4 * 1048576, maxNodes: 131072 }).bytes.length,
       retainedBytes = value.assets.reduce((sum, asset) => sum + asset.bytes.byteLength, 0) * 2 + representation * 8 + 1048576;
@@ -279,7 +286,9 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   }
   if (kind === 'encode-recovery-page' || kind === 'decode-recovery-page') {
     let value;
-    try { value = kind === 'encode-recovery-page' ? await encodeProcgenRecoveryPage(input, { maxBytes, signal }) : await decodeProcgenRecoveryPage(input, { maxBytes, signal }); }
+    try {
+      const { encodeProcgenRecoveryPage, decodeProcgenRecoveryPage } = await import('../procgen/workstation/ProcgenRecoveryPageCodec.js'); guard(signal, current);
+      value = kind === 'encode-recovery-page' ? await encodeProcgenRecoveryPage(input, { maxBytes, signal }) : await decodeProcgenRecoveryPage(input, { maxBytes, signal }); }
     catch (error) { signal?.throwIfAborted(); throw problem('invalid-data', error.message); }
     guard(signal, current);
     const output = kind === 'decode-recovery-page' ? await inspectValue(value, options) : null;
@@ -290,6 +299,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'encode-native-render') {
     if (!input || Object.keys(input).some(key => !['mode', 'manifest', 'planes', 'firstFrame', 'endFrame', 'stemLaneIds'].includes(key)) ||
         metadata.bytes * 4 + 16 * 1048576 > estimatedPeakBytes) throw problem('invalid-contract', 'Native encoding requires its admitted PCM and representation overlap.');
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const catalog = await getNativeInstrumentCatalog(), requirement = input.manifest?.engineRequirement;
     const descriptor = catalog.descriptors.find(engine => engine.engineId === requirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !(['native-oscillator', 'native-fm', 'native-modal', 'native-sample'].includes(descriptor.engineId) || input.mode === 'causal-take' && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers'].includes(descriptor.engineId)) ||
@@ -309,6 +319,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'render-sound-controls') {
     if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'sampleRate', 'source', 'pcm', 'sampleGesture'].includes(key)) || estimatedPeakBytes < 32 * 1048576)
       throw problem('invalid-contract', 'Sound control rendering requires its bounded fixed-job contract.');
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
       throw problem('engine-identity-unbound', 'Sound control rendering requires its exact executing source artifact.');
@@ -320,6 +331,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (kind === 'render-scene-rehearsal') {
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     if (catalog.state !== 'bound-application-engines') throw problem('engine-identity-unbound', 'Scene rehearsal requires the exact executing audio and world artifacts.');
     const footprint = (metadata.bytes - metadata.binaryBytes) * 12 + metadata.nodes * 192 + metadata.binaryBytes * 2;
@@ -333,6 +345,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (['render-causal-sine-take', 'render-causal-source-pcm'].includes(kind)) {
     if (!input || Object.keys(input).some(key => !['revoice', 'definition', 'engineRequirement', 'sampleRate', 'startSeconds', 'endSeconds', 'tail', 'stemLaneIds', 'pcm', 'restorationMode', 'effectGraph', 'effectReturnNodeIds', 'capturedEffects', 'effectReplayHash'].includes(key)) || estimatedPeakBytes < 8 * 1048576)
       throw problem('invalid-contract', 'Causal audio rendering requires a bounded semantic-source request.');
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
       throw problem('engine-identity-unbound', 'Causal audio rendering requires its exact executing source artifact.');
@@ -346,8 +359,10 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (kind === 'compile-sound-content') {
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !catalog.descriptors.length) throw problem('engine-identity-unbound', 'Sound compilation requires the executing immutable renderer catalog.');
+    const { compileSoundContent } = await import('../../midi/content/SoundContentCompiler.js'); guard(signal, current);
     const compiled = await compileSoundContent(input, { targets: catalog.descriptors.map(descriptor => ({ descriptor })), signal }); guard(signal, current);
     const value = { pack: compiled.prepared.pack, contentHash: compiled.prepared.contentHash, sourceHash: compiled.sourceHash, qualification: compiled.qualification };
     const encoded = canonicalDataText(value, { maxBytes, maxNodes }); guard(signal, current);
@@ -355,7 +370,10 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Compiled sound data exceeds its admitted representation bound.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
-  if (kind === 'recovery-checksum') return { value: await checksumProcgenRecovery(input, { signal, yieldTask: yieldControl }), inputBytes: metadata.bytes, nodes: metadata.nodes };
+  if (kind === 'recovery-checksum') {
+    const { checksumProcgenRecovery } = await import('../procgen/workstation/ProcgenRecoveryChecksum.js'); guard(signal, current);
+    return { value: await checksumProcgenRecovery(input, { signal, yieldTask: yieldControl }), inputBytes: metadata.bytes, nodes: metadata.nodes };
+  }
   const value = kind === 'encode-canonical-json' ? canonicalDataText(input, { maxBytes, maxNodes }).text : JSON.stringify(input); guard(signal, current);
   if (typeof value !== 'string' || encodedLength(value) > maxBytes) throw problem('output-capacity', 'Encoded background result exceeds its byte bound.');
   return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };

@@ -51,3 +51,51 @@ test('native worker result retirement cannot publish an unowned computed result'
   expect(result.control).toMatchObject({ marker: 'native-result-frontier', values: 8192, method: 'dedicated-worker', retainedBeforeRelease: 1, bytesAfterRelease: 0 });
   expect(result.source).toEqual({ sameWorld: true, sameProject: true, sameDocument: true, sameCheckpoint: true, playing: false });
 });
+
+for (const workload of ['simple-data', 'terrain']) test('native background module loading is scoped to ' + workload, { tag: ['@boundary', '@workstation-background-resource'] }, async ({ page }, info) => {
+  const requests = []; let overflow = false;
+  const observe = request => { const target = new URL(request.url()); if (!target.pathname.startsWith('/js/')) return; if (requests.length >= 4096) overflow = true; else requests.push(target.pathname.slice(1)); };
+  page.context().on('request', observe);
+  try {
+    await page.goto('/e2e-portable/fixtures/pcm-evidence.html');
+    const result = await page.evaluate(async workload => {
+      const { createBackgroundWorkerAdmission } = await import('/js/app/resources/BackgroundWorkerAdmission.js');
+      const { createBackgroundJobService } = await import('/js/app/resources/BackgroundJobService.js');
+      const admission = createBackgroundWorkerAdmission({ maxWorkers: 1 }), jobs = createBackgroundJobService({ admission, Worker: window.Worker }), rows = [];
+      const terrain = { schema: 'lemmings-scene-terrain/v1', id: 'score.cold-modules', revision: 1, width: 128, laneHeight: 96,
+        lanes: [{ laneId: 0, regions: [{ kind: 'solid', x1: 0, x2: 128, y1: 88, y2: 96, color: 0xff526f74 }] }] };
+      const probes = workload === 'terrain' ? [{ kind: 'compile-scene-terrain', input: terrain }] : [
+        { kind: 'parse-json', input: '{"marker":"native-cold-data","values":[1,2,3]}' },
+        { kind: 'encode-preference-pages', input: [{ value: { name: '音楽', number: 7 }, maxBytes: 1024 }] },
+        { kind: 'encode-canonical-json', input: { z: 2, a: 1 } }
+      ];
+      try {
+        for (const [index, probe] of probes.entries()) {
+          const output = await jobs.compute({ kind: probe.kind, ownerId: 'cold-native-' + index, ownerEpoch: 1, sourceRevision: 'cold:1',
+            inputBytes: new TextEncoder().encode(JSON.stringify(probe.input)).byteLength, estimatedPeakBytes: 16 * 1048576, prepareInput: () => probe.input });
+          try { rows.push({ kind: probe.kind, value: workload === 'terrain' ? { schema: output.value.schema, bytes: output.value.bytes, storageBytes: output.value.storage.byteLength, storageHash: output.value.storageHash } : output.value,
+            method: output.receipt.method, executionIdentity: output.receipt.executionIdentity }); } finally { output.release(); }
+        }
+      } finally { jobs.dispose(); admission.dispose(); }
+      return { rows, admission: admission.diagnostics(), viewport: { width: window.innerWidth, height: window.innerHeight }, evidence: 'actual-dedicated-workers-raw-source;not-bound-exact-replay-or-timing-benchmark' };
+    }, workload);
+    expect(overflow).toBe(false); expect(result.viewport.width).toBeGreaterThanOrEqual(1920); expect(result.viewport.height).toBeGreaterThanOrEqual(1080);
+    expect(result.rows.every(row => row.method === 'dedicated-worker')).toBe(true);
+    expect(result.admission).toMatchObject({ activeWorkers: 0, retainedResults: 0, queuedJobs: 0, failedOrUnknown: 0 });
+    expect(result.admission.memory.accountedBytes).toBe(0);
+    const files = [...new Set(requests)].sort();
+    expect(files).toContain('js/app/resources/BackgroundJobWorker.js'); expect(files).toContain('js/app/resources/BackgroundJobKernels.js');
+    for (const file of ['js/app/resources/CircuitWorkshopBuilder.js', 'js/app/resources/ShapeBodySolver.js', 'js/app/resources/ShapeBodyRefinement.js',
+      'js/app/resources/FiniteFmExcitation.js', 'js/app/resources/SeedDecomposition.js']) expect(files, file).not.toContain(file);
+    if (workload === 'simple-data') {
+      expect(result.rows[0].value).toEqual({ marker: 'native-cold-data', values: [1, 2, 3] });
+      expect(result.rows[1].value.map(JSON.parse)).toEqual([{ name: '音楽', number: 7 }]);
+      expect(JSON.parse(result.rows[2].value)).toEqual({ a: 1, z: 2 }); expect(files).not.toContain('js/app/procgen/SceneTerrainLayout.js');
+    } else {
+      expect(files).toContain('js/app/procgen/SceneTerrainLayout.js');
+      expect(result.rows[0].value).toMatchObject({ schema: 'lemmings-compiled-scene-terrain/v1' });
+      expect(result.rows[0].value.bytes).toBeGreaterThan(0); expect(result.rows[0].value.storageBytes).toBe(result.rows[0].value.bytes); expect(result.rows[0].value.storageHash).toMatch(/^[a-f0-9]{64}$/);
+    }
+    await info.attach('native-background-module-loading-' + workload, { body: JSON.stringify({ ...result, requests, uniqueFiles: files }), contentType: 'application/json' });
+  } finally { page.context().removeListener('request', observe); }
+});

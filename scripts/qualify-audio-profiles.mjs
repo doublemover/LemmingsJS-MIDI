@@ -13,9 +13,30 @@ const harnessFiles = ['scripts/qualify-audio-profiles.mjs', 'scripts/BrowserProc
 const harness = () => Promise.all(harnessFiles.map(async name => { const bytes = await fs.readFile(path.join(root, name)); return { path: name, bytes: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') }; }));
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+export async function waitForNativeProfileWarmup({ read, firstTargetSeconds, voices, nowMs = () => performance.now(), wait = pause, deadlineMs = 5000, pollMs = 10 } = {}) {
+  if (typeof read !== 'function' || typeof nowMs !== 'function' || typeof wait !== 'function' || !Number.isFinite(firstTargetSeconds) || firstTargetSeconds < 0 ||
+      !Number.isInteger(voices) || voices < 1 || voices > 64 || !Number.isFinite(deadlineMs) || deadlineMs < 1 || deadlineMs > 5000 || !Number.isFinite(pollMs) || pollMs < 1 || pollMs > 100)
+    throw new TypeError('Invalid native profile warmup.');
+  const startedMs = nowMs(), frontierSeconds = firstTargetSeconds + 0.5; let first = null, last = null, polls = 0;
+  if (!Number.isFinite(startedMs)) throw new TypeError('Invalid profile warmup host clock.');
+  const receipt = status => Object.freeze({ status, firstTargetSeconds, frontierSeconds, renderedWarmupSeconds: 0.5, deadlineMs, pollMs, elapsedMs: nowMs() - startedMs, polls, first, last });
+  const fail = message => { throw Object.assign(new Error(message), { warmup: receipt('failed') }); };
+  while (true) {
+    const observed = await read(), hostMs = nowMs(); polls++;
+    const previous = last; last = Object.freeze({ hostMs, audioSeconds: observed?.audioSeconds, contextState: observed?.contextState, activeVoices: observed?.activeVoices }); first ||= last;
+    if (!Number.isFinite(hostMs) || hostMs < startedMs || !Number.isFinite(last.audioSeconds) || previous && last.audioSeconds < previous.audioSeconds) fail('Native profile clock is unavailable or regressed.');
+    if (last.contextState !== 'running' || last.activeVoices !== voices) fail('Native profile workload stopped before measurement.');
+    if (polls > Math.ceil(deadlineMs / pollMs) + 2) fail('Profile warmup host clock did not advance.');
+    if (hostMs - startedMs > deadlineMs) fail('Native render warmup deadline exceeded.');
+    if (last.audioSeconds >= frontierSeconds) return receipt('passed');
+    if (hostMs - startedMs >= deadlineMs) fail('Native render warmup deadline exceeded.');
+    await wait(Math.min(pollMs, deadlineMs - (hostMs - startedMs)));
+  }
+}
+
 export function qualifyAudioProfileReport(report) {
   const parameters = report?.parameters;
-  if (report?.schema !== 'lemmings-native-audio-profiles/v1' || !parameters || !Number.isInteger(parameters.samples) || parameters.samples < 3 || parameters.samples > 8 ||
+  if (report?.schema !== 'lemmings-native-audio-profiles/v2' || !parameters || !Number.isInteger(parameters.samples) || parameters.samples < 3 || parameters.samples > 8 ||
       !Number.isInteger(parameters.sampleMs) || parameters.sampleMs < 1000 || parameters.sampleMs > 5000 || !Number.isInteger(parameters.voices) || parameters.voices < 1 || parameters.voices > 64 ||
       !Array.isArray(parameters.engines) || !parameters.engines.length || parameters.engines.length > 3 || new Set(parameters.engines).size !== parameters.engines.length || parameters.engines.some(engine => !Object.hasOwn(engines, engine)) ||
       !Array.isArray(report.engines) || report.engines.length !== parameters.engines.length ||
@@ -29,11 +50,15 @@ export function qualifyAudioProfileReport(report) {
     }
     if (entry.profiles.length !== 3 || entry.final?.retirement?.state !== 'retired' || entry.final.retirement.outcome !== 'complete' || !Array.isArray(entry.final.contexts) || entry.final.contexts.length !== 3 || entry.final.contexts.some(context => context.closed !== true)) throw new Error('Unretired audio profile context.');
     for (const [index, profile] of entry.profiles.entries()) {
+      if (profile.warmup?.status !== 'passed' || !Number.isFinite(profile.firstTargetSeconds) || profile.firstTargetSeconds < 0 ||
+          profile.warmup.firstTargetSeconds !== profile.firstTargetSeconds || profile.warmup.frontierSeconds !== profile.firstTargetSeconds + 0.5 || profile.warmup.renderedWarmupSeconds !== 0.5 ||
+          !(Number.isFinite(profile.warmup.elapsedMs) && profile.warmup.elapsedMs >= 0 && profile.warmup.elapsedMs <= profile.warmup.deadlineMs && Number.isFinite(profile.warmup.deadlineMs) && profile.warmup.deadlineMs >= 1 && profile.warmup.deadlineMs <= 5000) ||
+          profile.warmup.last?.contextState !== 'running' || profile.warmup.last.activeVoices !== report.parameters.voices || !(profile.warmup.last.audioSeconds >= profile.warmup.frontierSeconds)) throw new Error('Unready measured audio workload: ' + entry.engine + '/' + profile.name);
       if (profile.name !== ['performance', 'balanced', 'robust'][index] || profile.requested.latencyHint !== ['interactive', 'balanced', 'playback'][index] || profile.requested.sampleRate !== 48000 ||
           profile.observation?.config?.latencyProfile !== profile.name || profile.observation.config.preferredSampleRate !== 48000 || !Number.isFinite(profile.actualSampleRate) || !(profile.actualSampleRate > 0) || profile.actualSampleRate !== profile.observation.actualSampleRate || entry.final.contexts[index].actualSampleRate !== profile.actualSampleRate || profile.observation.acousticMeasurement !== false || profile.observation.estimatesAreAdditive !== false ||
           !Array.isArray(profile.samples) || profile.samples.length !== report.parameters.samples || !profile.samples.every(sample => sample.cpu?.populationStable === true && Number.isFinite(sample.cpu.coreEquivalent) && sample.cpu.coreEquivalent >= 0 &&
             sample.cpu.matchedProcesses > 0 && sample.before.activeVoices === report.parameters.voices && sample.after.activeVoices === report.parameters.voices &&
-            sample.before.contextState === 'running' && sample.after.contextState === 'running' && Number.isFinite(sample.before.audioSeconds) && Number.isFinite(sample.after.audioSeconds) && sample.after.audioSeconds > sample.before.audioSeconds)) throw new Error('Incomplete measured audio profile: ' + entry.engine + '/' + profile.name);
+            sample.before.contextState === 'running' && sample.after.contextState === 'running' && Number.isFinite(sample.before.audioSeconds) && sample.before.audioSeconds >= profile.warmup.last.audioSeconds && Number.isFinite(sample.after.audioSeconds) && sample.after.audioSeconds > sample.before.audioSeconds)) throw new Error('Incomplete measured audio profile: ' + entry.engine + '/' + profile.name);
       for (const sample of profile.samples) {
         const measured = compareBrowserProcessCpu(sample.processCounters?.before, sample.processCounters?.after);
         if (sample.processCounters.before.rootPid !== entry.processRootPid || sample.processCounters.before.platform !== report.platform ||
@@ -94,9 +119,8 @@ async function measureEngine(engine, baseURL, parameters, publish) {
             expression: { pressure01: 1, pan01: p.voices === 1 ? 0 : index / (p.voices - 1) * 1.6 - 0.8 } };
           if (p.backend.begin(intent, frame, execution).status !== 'accepted') throw new Error('Profile voice did not admit: ' + index);
         }
-        return { requested: p.contexts.at(-1).options, actualSampleRate: rate, startupAdmissionLeadMs: 250, engineId: 'native-oscillator', engineVersion: 1, voices: p.voices };
+        return { requested: p.contexts.at(-1).options, actualSampleRate: rate, startupAdmissionLeadMs: 250, firstTargetSeconds: frame / rate, engineId: 'native-oscillator', engineVersion: 1, voices: p.voices };
       });
-      await pause(600);
       const read = () => page.evaluate(() => {
         const p = globalThis.profileProbe, context = p.preview.getAudioContext();
         if (p.leaseUntilSeconds - context.currentTime < 60) {
@@ -108,11 +132,19 @@ async function measureEngine(engine, baseURL, parameters, publish) {
         const observationReadWallMs = (performance.now() - started) / 32;
         return { audioSeconds: context.currentTime, contextState: context.state, activeVoices: p.backend.renderDiagnostics().activeVoices, observationReadWallMs, observation: p.preview.getAudioRuntimeObservation() };
       });
-      const profile = { name, ...start, samples: [], rejectedIntervals: [], observation: null, distributions: null }; result.profiles.push(profile);
+      const profile = { name, ...start, samples: [], rejectedIntervals: [], observation: null, distributions: null, warmup: null }; result.profiles.push(profile);
+      try {
+        profile.warmup = await waitForNativeProfileWarmup({ firstTargetSeconds: profile.firstTargetSeconds, voices: parameters.voices,
+          read: () => page.evaluate(() => { const p = globalThis.profileProbe, context = p.preview.getAudioContext();
+            return { audioSeconds: context.currentTime, contextState: context.state, activeVoices: p.backend.renderDiagnostics().activeVoices }; }) });
+      } catch (error) { profile.warmup = error.warmup || { status: 'failed' }; throw error; }
       for (let attempt = 0; attempt < parameters.samples * 2 && profile.samples.length < parameters.samples; attempt++) {
         const before = await read(), cpuBefore = await observer.sample(rootPid); await pause(parameters.sampleMs);
         const cpuAfter = await observer.sample(rootPid), after = await read(), cpu = compareBrowserProcessCpu(cpuBefore, cpuAfter);
         const sample = { cpu, before, after, processCounters: { before: cpuBefore, after: cpuAfter } }; profile.observation = after.observation;
+        if (before.contextState !== 'running' || after.contextState !== 'running' || before.activeVoices !== parameters.voices || after.activeVoices !== parameters.voices || !(after.audioSeconds > before.audioSeconds)) {
+          profile.rejectedIntervals.push({ ...sample, refusal: 'native-workload-stopped-or-render-clock-frozen' }); throw new Error('Native workload stopped or render clock froze during profile measurement: ' + engine + '/' + name);
+        }
         if (cpu.populationStable) profile.samples.push(sample); else profile.rejectedIntervals.push(sample);
       }
       if (profile.samples.length !== parameters.samples) throw new Error('Browser CPU process population did not stabilize.');
@@ -136,7 +168,7 @@ async function measureEngine(engine, baseURL, parameters, publish) {
 export async function runAudioProfileQualification({ out = '.tmp/audio-profile-qualification.json', name = 'rook', samples = 3, sampleMs = 1000, voices = 64, selectedEngines = ['chromium', 'firefox', 'webkit'], capabilities = null } = {}) {
   if (!/^[a-z][a-z0-9-]{0,31}$/.test(name) || !Number.isInteger(samples) || samples < 3 || samples > 8 || !Number.isInteger(sampleMs) || sampleMs < 1000 || sampleMs > 5000 ||
       !Number.isInteger(voices) || voices < 1 || voices > 64 || !Array.isArray(selectedEngines) || !selectedEngines.length || selectedEngines.length > 3 || new Set(selectedEngines).size !== selectedEngines.length || selectedEngines.some(engine => !Object.hasOwn(engines, engine))) throw new TypeError('Invalid bounded audio profile parameters.');
-  const report = { schema: 'lemmings-native-audio-profiles/v1', status: 'failed', agent: name, timestamp: new Date().toISOString(), platform: process.platform, node: process.version,
+  const report = { schema: 'lemmings-native-audio-profiles/v2', status: 'failed', agent: name, timestamp: new Date().toISOString(), platform: process.platform, node: process.version,
     configuredAudioBackend: process.env.LEMMINGS_LIFECYCLE_AUDIO_BACKEND || 'system-default-unqualified', parameters: { samples, sampleMs, voices, engines: selectedEngines }, source: null, engines: [],
     limits: ['Whole observed browser process CPU includes rendering, IPC and diagnostics; it is not exclusive DSP CPU or GPU/host total.', 'Only stable process-population intervals enter distributions. Sampling duration is reported as uncertainty; zero/coarse timer samples are not sub-resolution precision.',
       'The fixed native semantic workload and 250ms startup admission lead do not establish physical-world capacity or interactive queue latency.', 'Browser base/output/playback estimates remain separate; no microphone, loopback, hardware hotplug or acoustic total is measured.', 'Three default samples are a small empirical cohort; profile hints may be ignored and no cross-host performance ordering is guaranteed.'] };
@@ -158,7 +190,7 @@ export async function runAudioProfileQualification({ out = '.tmp/audio-profile-q
     report.status = 'passed';
   } catch (error) { report.error = String(error?.stack || error).replace(/wss?:\/\/\S+/g, '[owned-browser-endpoint]').slice(0, 8192); }
   const destination = path.resolve(root, out); await fs.mkdir(path.dirname(destination), { recursive: true }); await fs.writeFile(destination, JSON.stringify(report, null, 2) + '\n');
-  console.log('Audio profiles: ' + report.status); return report;
+  console.log('Audio profiles: ' + report.status); if (report.error) console.error(report.error.split('\n')[0]); return report;
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {

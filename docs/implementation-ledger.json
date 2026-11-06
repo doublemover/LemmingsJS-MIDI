@@ -7119,5 +7119,56 @@
       "The full 51-engine/profile cohort on the preceding source is separate; fresh whole-current-source CI remains required.",
       "Remaining cue branches include optional/native unsupported APIs, track-capacity refusal and broader failure/device combinations; repository coverage thresholds are unchanged."
     ]
+  },
+  "continuation458": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Defer specialized worker modules to their jobs and prime profile measurement from native render progress without retiming sources.",
+    "evidence": {
+      "path": "docs/validation/specialized-worker-loading-and-render-readiness-2026-11-05.json",
+      "bytes": 262633,
+      "sha256": "a145d71abb6e23fb442511ff9eb71ac8b58c546f9607fc0a927136c52ca867ba"
+    },
+    "validation": {
+      "functionalNodeCases": 313,
+      "scopedNodeInvocationExitCode": 1,
+      "scopedCoverageRefusal": [
+        "ERROR: Coverage for lines (48.62%) does not meet global threshold (71%)",
+        "ERROR: Coverage for branches (79.86%) does not meet global threshold (81%)",
+        "ERROR: Coverage for statements (48.62%) does not meet global threshold (71%)"
+      ],
+      "nativeWorkerCases": 6,
+      "profileV2Contexts": 6,
+      "profileV2Samples": 18,
+      "profileV2Status": "passed",
+      "actualWindowsNativeEngines": 2,
+      "explicitWebkitAbsence": true,
+      "staticColdFilesBefore": 134,
+      "staticColdFilesAfter": 17,
+      "actualColdUniqueRequests": {
+        "simple": 17,
+        "terrain": 18
+      },
+      "typesDependenciesUndefinedFormatProvenance": "passed",
+      "repositoryThresholds": "unchanged",
+      "fullLocalSuiteRepeated": false
+    },
+    "source": {
+      "browserPaths": 1296,
+      "browserDigest": "e9a574bf15d41466437dbc0744a2629d50040650940fca66848d37f982dfb3e6",
+      "workerFiles": 308,
+      "workerDigest": "0b226c0f0ebbf75d7bc9fe9730a0ca4028ccfdf7aa33e6fb7cf30e00432beb95",
+      "inputPaths": 1651,
+      "byteExact": 1639,
+      "untouchedNewlineMappings": 12
+    },
+    "remaining": [
+      "The Node subset leaves bound native-worker and runner paths unmeasured; the scoped coverage gate refused, while full-repository CI remains required. Do not treat functional passes as a complete coverage pass.",
+      "Actual fresh-page request observations are raw-source/dedicated-worker scope evidence, not bound exact replay, physical-device isolation or a timing benchmark.",
+      "The AST comparison excludes module-load timing and associated ownership checks; it does not prove every possible module-evaluation side effect. All54literal binding pairs are separately unchanged.",
+      "All six native worker journeys and the complete literal closure contract pass; broader mixed 8/128/1024-lane admission/fairness/capacity remains under1234.",
+      "The actual v2 cohort has two available Windows native engines and explicit WebKit constructor absence. Fresh current-source Linux WebKit/native/profile CI is pending.",
+      "Profile CPU remains a small empirical whole-owned-browser-process cohort with coarse counters/observer overhead, not exclusive DSP, full-world capacity or acoustic latency."
+    ]
   }
 }
