@@ -1,3 +1,4 @@
+import { validateDevicePatchIntent } from '../../../midi/native/DevicePatchIntent.js';
 import { validatePerformanceSceneOrigin } from './PerformanceSceneRecipe.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { validateFragmentLibrary, validateFragmentInstances } from './PhysicalScoreFragment.js';
@@ -86,7 +87,7 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
     instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
     linkedThemePresetId: overrides.linkedThemePresetId === null ? null : string(overrides.linkedThemePresetId, family), soundChangePolicy: overrides.soundChangePolicy ?? 'new-notes-only',
     externalProgram: overrides.externalProgram === null ? null : integer(overrides.externalProgram, sound.program, 0, 127), externalPercussion: overrides.externalPercussion == null ? sound.percussion : overrides.externalPercussion === true,
-    instrumentRef,
+    instrumentRef, ...(overrides.devicePatch == null ? {} : { devicePatch: trusted && overrides.devicePatch === trusted.devicePatch ? trusted.devicePatch : validateDevicePatchIntent(overrides.devicePatch) }),
     instrumentControls: trusted && overrides.instrumentControls === trusted.instrumentControls ? trusted.instrumentControls : validateInstrumentControls(overrides.instrumentControls),
     mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,
     channel: Number.isInteger(overrides.channel) && overrides.channel >= 1 && overrides.channel <= 16 ? overrides.channel : role === 'drums' ? 10 : melodic[index % melodic.length],

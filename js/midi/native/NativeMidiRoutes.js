@@ -1,3 +1,4 @@
+import { createDevicePatchCatalog } from './DevicePatchCatalog.js';
 import { createPropertyClient } from './PropertyClient.js';
 import { createMpeProfileBinding } from './MpeProfileAdapter.js';
 import { createProfileSession } from './ProfileSession.js';
@@ -9,11 +10,11 @@ import { NativeMidiBridgeClient } from './NativeMidiBridgeClient.js';
 
 export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), onTrace = () => {}, canObserveInput = () => true } = {}) {
   const ingress = createNativeMidiIngress();
-  const propertyClients = new Map(), profileClaims = new Map(), profileSessions = new Map(), deviceInvalidations = new Map();
+  const patchCatalogs = new Map(), patchClaims = new Map(), propertyClients = new Map(), profileClaims = new Map(), profileSessions = new Map(), deviceInvalidations = new Map();
   const reportSessions = new Map(), performanceOwners = new Set(), observationHolds = new Map(), ciSessions = new Set(), grants = new Map(), routes = new Map(), listeners = new Set(), trace = [];
   let disposal = null, notificationPending = false, executionSequence = 0, revision = 0, traceWords = 0, omittedTrace = 0, disposed = false, inventory = null;
   const notify = () => { revision++; if (notificationPending) return; notificationPending = true; queueMicrotask(() => { notificationPending = false; if (disposed) return; for (const listener of listeners) { try { listener(); } catch {} } }); };
-  const current = route => route && (!profileClaims.has(route.outputId) || profileClaims.get(route.outputId).current()) && grants.has(route.grant) && route.connectionEpoch === client.session && route.deviceRevision === grants.get(route.grant)?.deviceRevision && client.state === 'connected';
+  const current = route => route && (!patchClaims.has(route.outputId) || patchClaims.get(route.outputId).current()) && (!profileClaims.has(route.outputId) || profileClaims.get(route.outputId).current()) && grants.has(route.grant) && route.connectionEpoch === client.session && route.deviceRevision === grants.get(route.grant)?.deviceRevision && client.state === 'connected';
   const descriptor = (receipt, endpoint = null) => Object.freeze({ ...receipt, deviceRevision: 0, logicalDestination: globalThis.crypto.randomUUID(), endpoint, connectionEpoch: client.session });
   const unsubscribeInput = ingress.subscribe(event => { for (const listener of listeners) { try { listener(event); } catch {} } });
   const unsubscribe = client.subscribe(event => {
@@ -33,7 +34,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     const outputId = 'native-midi:' + owner.logicalDestination + ':' + group + ':' + channel;
     for (const [id, claim] of profileClaims) if (id !== outputId && claim.grant === grant && claim.current() && claim.binding.addresses.some(address => address.group === group && address.channel === channel)) throw new Error('Channel is reserved by an active CI MPE allocation');
     if (profileClaims.has(outputId) && [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop owned notes before replacing a profile route');
-    profileClaims.delete(outputId);
+    profileClaims.delete(outputId); patchClaims.delete(outputId);
     const previous = routes.get(outputId);
     if (previous && previous.protocol !== protocol) throw new Error('An active native address cannot mix channel protocols');
     if (previous && previous.laneIds.some(id => id !== laneId) && (previous.sharing !== 'shared-ensemble' || sharing !== 'shared-ensemble')) throw new Error('Native channel belongs to another lane; choose sharing explicitly');
@@ -55,6 +56,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       const owner = grants.get(grant); if (!owner) return;
       grants.set(grant, Object.freeze({ ...owner, deviceRevision: owner.deviceRevision + 1, deviceStateReason: reason }));
       for (const report of reportSessions.values()) report.invalidateOutput(grant, reason);
+      if (reason.includes('program-recall') || reason.includes('property-set')) for (const peers of profileSessions.values()) for (const profile of peers.values()) if (profile.state().outputGrant === grant) profile.invalidateEvidence(reason);
       notify();
       const completion = Promise.allSettled([...performanceOwners].map(owner => owner.invalidateGrant?.(grant))).then(settled => {
         const failures = settled.filter(row => row.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(row => row.reason), 'Owned native notes could not be confirmed retired');
@@ -67,6 +69,12 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       for (const session of ciSessions) { const state = session.state(); if (state.inputGrant === options.inputGrant && state.status !== 'disposed') { if (state.outputGrant === options.outputGrant && state.group === options.group) return session; throw new Error('Close the existing CI session before changing its input scope'); } }
       if (ciSessions.size >= 8) throw new Error('MIDI-CI session capacity');
       const session = createMidiCiSession({ routes: api, ...options }); ciSessions.add(session); return session;
+    },
+    createDevicePatchCatalog(ci, peerMuid) {
+      if (disposed || !ciSessions.has(ci)) throw new Error('An owned CI session is required');
+      const peers = patchCatalogs.get(ci) || new Map(); if (peers.has(peerMuid)) return peers.get(peerMuid);
+      if ([...patchCatalogs.values()].reduce((count, peers) => count + peers.size, 0) >= 8) throw new Error('Device patch catalog capacity');
+      const catalog = createDevicePatchCatalog({ routes: api, ci, peerMuid, properties: api.createPropertyClient(ci, peerMuid) }); peers.set(peerMuid, catalog); patchCatalogs.set(ci, peers); return catalog;
     },
     createPropertyClient(ci, peerMuid) {
       if (disposed || !ciSessions.has(ci)) throw new Error('An owned CI session is required');
@@ -84,7 +92,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       const session = createProfileSession({ routes: api, ci, peerMuid }); scopes.set(peerMuid, session); profileSessions.set(ci, scopes); return session;
     },
     createMessageReportSession(ci) { if (disposed || !ciSessions.has(ci)) throw new Error('An owned CI session is required'); if (reportSessions.has(ci)) return reportSessions.get(ci); if (reportSessions.size >= 8) throw new Error('Device report session capacity'); const report = createMidiMessageReportSession({ routes: api, ci }); reportSessions.set(ci, report); return report; },
-    async closeCiSession(session) { if (!ciSessions.has(session)) return; const properties = await Promise.allSettled([...(propertyClients.get(session)?.values() || [])].map(client => client.dispose())); propertyClients.delete(session); await Promise.allSettled([...(profileSessions.get(session)?.values() || [])].map(profile => profile.dispose())); profileSessions.delete(session); reportSessions.get(session)?.dispose(); reportSessions.delete(session); await session.dispose(); ciSessions.delete(session); const failures = properties.filter(row => row.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(row => row.reason), 'Property subscription retirement is unconfirmed'); },
+    async closeCiSession(session) { if (!ciSessions.has(session)) return; await Promise.allSettled([...(patchCatalogs.get(session)?.values() || [])].map(catalog => catalog.dispose())); patchCatalogs.delete(session); const properties = await Promise.allSettled([...(propertyClients.get(session)?.values() || [])].map(client => client.dispose())); propertyClients.delete(session); await Promise.allSettled([...(profileSessions.get(session)?.values() || [])].map(profile => profile.dispose())); profileSessions.delete(session); reportSessions.get(session)?.dispose(); reportSessions.delete(session); await session.dispose(); ciSessions.delete(session); const failures = properties.filter(row => row.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(row => row.reason), 'Property subscription retirement is unconfirmed'); },
 
     allocateExecutionEpoch() { if (disposed || executionSequence >= 0xffffffff) throw new Error('Native execution identity exhausted'); return ++executionSequence; },
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
@@ -101,6 +109,17 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     },
     async publish(options) { if (disposed) throw new Error('Native routing owner retired'); const receipt = await client.publish(options); if (disposed) throw new Error('Native route owner retired'); if (receipt.direction === 'input') ingress.register(receipt); grants.set(receipt.grant, descriptor(receipt)); notify(); return grants.get(receipt.grant); },
     bind,
+    bindDevicePatch({ laneId, catalog, receipt }) {
+      if (![...patchCatalogs.values()].some(peers => [...peers.values()].includes(catalog)) || !catalog.isReceiptCurrent(receipt)) throw new Error('Recall and confirm the patch on this current device first');
+      const grant = receipt.outputGrant, target = receipt.target, owner = grants.get(grant);
+      if (!owner || [...performanceOwners].some(owner => owner.isQuiescent(grant) !== true)) throw new Error('Stop owned notes before binding a hardware patch');
+      const outputId = 'native-midi:' + owner.logicalDestination + ':' + target.group + ':' + target.channel, previous = routes.get(outputId);
+      if (previous?.mpe && !current(previous)) throw new Error('Patch recalled; review and rebind the accepted MPE profile before assigning this patch');
+      if (previous?.mpe && (!previous.laneIds.includes(laneId) || previous.protocol !== target.protocol)) throw new Error('Choose the explicitly bound MPE lane and protocol');
+      const base = previous?.mpe ? previous : bind({ laneId, grant, group: target.group, channel: target.channel, protocol: target.protocol });
+      const route = Object.freeze({ ...base, routeRevision: ++revision, patchBinding: Object.freeze({ intent: receipt.intent, receiverState: receipt.receiverState, target, reported: receipt.reported }) });
+      patchClaims.set(outputId, { current: () => catalog.isReceiptCurrent(receipt) }); routes.set(outputId, route); notify(); return route;
+    },
     bindMpe({ laneId, session, profile, scope, protocol = 'midi2', pressureForm = 'classic', thirdAxisForm = 'classic' }) {
       if (![...profileSessions.values()].some(peers => [...peers.values()].includes(session))) throw new Error('Choose an owned profile session');
       const record = session.binding(profile, scope), grant = session.state().outputGrant, owner = grants.get(grant);
@@ -139,9 +158,9 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       try { onTrace(retained); } catch {} return retained;
     },
     wireTrace() { return Object.freeze({ schema: 'lemmings-native-wire-trace/v1', claim: 'native-driver-submitted-prefix-not-receiver-or-acoustic', omittedRecords: omittedTrace, records: Object.freeze([...trace]) }); },
-    async closeGrant(grant) { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or owned-note cleanup is unconfirmed'); grants.delete(grant); for (const [id, route] of routes) if (route.grant === grant) { routes.delete(id); profileClaims.delete(id); } notify(); return receipt; },
+    async closeGrant(grant) { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or owned-note cleanup is unconfirmed'); grants.delete(grant); for (const [id, route] of routes) if (route.grant === grant) { routes.delete(id); profileClaims.delete(id); patchClaims.delete(id); } notify(); return receipt; },
     disconnect() { client.disconnect(); ingress.clearGrants(); grants.clear(); inventory = null; notify(); },
-    dispose() { if (disposal) return disposal; disposed = true; unsubscribe(); unsubscribeInput(); for (const scopes of profileSessions.values()) for (const profile of scopes.values()) profile.dispose(); profileSessions.clear(); for (const report of reportSessions.values()) report.dispose(); reportSessions.clear(); ingress.dispose(); disposal = (async () => { const properties = await Promise.allSettled([...propertyClients.values()].flatMap(peers => [...peers.values()]).map(client => client.dispose())); propertyClients.clear(); const ci = await Promise.allSettled([...ciSessions].map(session => session.dispose())); const devices = await Promise.allSettled([...grants.keys()].map(async grant => { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or cleanup remains unconfirmed'); })); client.disconnect(); const failures = [...properties, ...ci, ...devices].filter(result => result.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Native MIDI retirement has ' + failures.length + ' unconfirmed resources'); ciSessions.clear(); grants.clear(); routes.clear(); profileClaims.clear(); listeners.clear(); trace.length = traceWords = 0; })(); return disposal; }
+    dispose() { if (disposal) return disposal; disposed = true; unsubscribe(); unsubscribeInput(); for (const scopes of profileSessions.values()) for (const profile of scopes.values()) profile.dispose(); profileSessions.clear(); for (const report of reportSessions.values()) report.dispose(); reportSessions.clear(); ingress.dispose(); disposal = (async () => { const patches = await Promise.allSettled([...patchCatalogs.values()].flatMap(peers => [...peers.values()]).map(catalog => catalog.dispose())); patchCatalogs.clear(); const properties = await Promise.allSettled([...propertyClients.values()].flatMap(peers => [...peers.values()]).map(client => client.dispose())); propertyClients.clear(); const ci = await Promise.allSettled([...ciSessions].map(session => session.dispose())); const devices = await Promise.allSettled([...grants.keys()].map(async grant => { const receipt = await client.closeGrant(grant); if (receipt.nativeCloseConfirmed !== true || receipt.cleanupUnconfirmedNotes) throw new Error('Native closure or cleanup remains unconfirmed'); })); client.disconnect(); const failures = [...patches, ...properties, ...ci, ...devices].filter(result => result.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Native MIDI retirement has ' + failures.length + ' unconfirmed resources'); ciSessions.clear(); grants.clear(); routes.clear(); profileClaims.clear(); patchClaims.clear(); listeners.clear(); trace.length = traceWords = 0; })(); return disposal; }
   });
   return api;
 }

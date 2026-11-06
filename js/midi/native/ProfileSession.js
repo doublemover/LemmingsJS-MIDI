@@ -11,7 +11,7 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
   const peer = ci.getPeer(peerMuid);
   if (!peer || peer.version !== 2 || !(peer.categories & 4) || routes.client.capabilities?.ciProfileCodecVersion !== 1 || !Number.isFinite(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000) throw new Error('Discover a current Profile Configuration peer using a companion with profile decoding');
   const settling = new Set(), identity = ci.state(), records = new Map(), listeners = new Set(), mutation = createDeviceMutationOwner({ routes, ci, now });
-  let stale = false, disposed = false, active = null, revision = 0, latest = null, retainedBytes = 0;
+  let evidenceReadyAt = 0, stale = false, disposed = false, active = null, revision = 0, latest = null, retainedBytes = 0;
   const current = () => !disposed && !stale && ci.state().epoch === identity.epoch && !!ci.getPeer(peerMuid);
   const emit = () => { for (const listener of listeners) { try { listener(); } catch {} } };
   const key = (group, scope, id) => [group, scope, profileIdKey(id)].join(':');
@@ -37,7 +37,7 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
     records.set(address, record); retainedBytes = nextBytes; return record;
   };
   const request = (operation, { scope, profile = null, target = null, channels = null, isCurrent = () => true }) => {
-    if (!current() || active) return Promise.resolve(Object.freeze({ status: 'rejected', reason: 'Profile session is stale or busy' }));
+    if (!current() || active || now() < evidenceReadyAt) return Promise.resolve(Object.freeze({ status: 'rejected', reason: 'Profile session is stale or busy' }));
     let resolve; const completion = new Promise(done => { resolve = done; });
     const entry = { operation, wireExecution: operation === 'profile-on' || operation === 'profile-off' ? routes.allocateExecutionEpoch() : null, scope, profile, target, channels, resolve, staged: new Map(), group: identity.group, isCurrent };
     active = entry; entry.timer = setTimeout(() => { if (active === entry) finish({ status: 'timeout', reason: 'No complete matching profile response; receiver state remains unknown' }); }, timeoutMs);
@@ -133,6 +133,11 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
   const unsubscribe = ci.subscribeProtocol(receive), unsubscribeCi = ci.subscribe(() => { if (!current()) invalidate('Device peer or CI epoch changed'); }), unsubscribeMutation = mutation.subscribe(emit);
   const expiryTimer = setInterval(() => { if (!current()) invalidate('Device profile evidence expired'); }, 1000); expiryTimer.unref?.();
   return Object.freeze({
+    invalidateEvidence(reason) {
+      if (active) { evidenceReadyAt = Math.max(evidenceReadyAt, now() + timeoutMs); finish({ status: 'cancelled', reason, receiverState: 'unknown' }); }
+      for (const [address, record] of records) records.set(address, Object.freeze({ ...record, freshness: 'stale', enabled: null, channels: null, allocation: null, mpeFeatures: null, mpeChannelResponse: null, revision: ++revision, reason }));
+      emit();
+    },
     inquire(scope = 127) {
       if (!validScope(scope) || mutation.state().busy) return Promise.resolve(Object.freeze({ status: 'rejected', reason: 'Choose a current idle profile scope' }));
       return request('profile-inquiry', { scope });

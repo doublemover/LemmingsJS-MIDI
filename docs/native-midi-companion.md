@@ -220,3 +220,30 @@ validates PE frames with NI views while the application owns JSON and transactio
 policy. Device/peer conformance, compression fixtures, musical deadline and memory
 qualification remain deferred to the consolidated validation pass. This is not a
 claim that a hardware patch or parameter has been independently verified.
+
+
+The hardware-sound browser now uses [ProgramList v1.01](https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-107-UM_v1-01_Property_Exchange_ProgramList_Resource.pdf)
+and [Foundational Resources v1.1.1](https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-105-UM_v1-1-1_Property_Exchange_Foundational_Resources.pdf).
+It first reads ChannelList and follows only the selected channel's advertised
+ProgramList collection IDs. Bounded pages, category/tag search and bank/program
+identities keep duplicate names distinct. A project can save a content-digested
+patch intent with device identity, collection and exact zero-based bank/program.
+No MUID, live handle or permission is persisted; the local instrument stays the
+preview approximation.
+
+Recall is a separate explicit stopped-boundary device mutation. The user selects
+the exact current native group/channel and declares its relationship to the
+chosen ChannelList entry. That mapping is user-supplied; it is not independent
+function-block metadata. Setup is validated as one native batch and the wire
+trace retains the actual driver prefix. Readback must report the same bank/program
+on the selected PE channel. Partial submission, unsupported readback, mismatch,
+cancellation and uncertain cleanup remain visible.
+
+Binding a recalled patch is another explicit lane action. Imported or reopened
+patch intent cannot authorize hardware, and native attacks refuse an unconfirmed
+current binding. Once bound, the sink uses the selected patch without replaying
+bank/program setup at every new execution. Device revisions, peer loss and
+external program observations invalidate old authorization. Patch/property writes
+invalidate prior profile semantics; MPE must be reviewed and rebound after recall.
+The browser UI shows the accepted/reporting boundary separately from audible
+sound. Independent endpoint mapping and hardware/peer qualification remain open.

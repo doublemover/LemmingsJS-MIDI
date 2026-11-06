@@ -509,9 +509,12 @@
       ],
       "files": [
         "js/app/midi-ui/NativeMidiConnectionView.js",
+        "js/app/midi-ui/NativeMidiPatchView.js",
         "js/app/midi-ui/NativeMidiPropertyView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
         "js/midi/native/DeviceMutation.js",
+        "js/midi/native/DevicePatchCatalog.js",
+        "js/midi/native/DevicePatchIntent.js",
         "js/midi/native/DeviceStateObservation.js",
         "js/midi/native/MidiCiSession.js",
         "js/midi/native/MidiMessageReportSession.js",
@@ -543,8 +546,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 34,
-      "sha256": "c30e51b90ff988120f9c9c0cd4d8702733b30c226deb988eee8a2e72b09dc8fb"
+      "fileCount": 37,
+      "sha256": "220aafc3fd20e3fd712c8ce3c54968115023f574ff97962f139ba64e22585ff4"
     }
   ]
 }

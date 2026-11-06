@@ -1,7 +1,8 @@
+import { createNativeMidiPatchView } from './NativeMidiPatchView.js';
 import { createNativeMidiPropertyView } from './NativeMidiPropertyView.js';
 
 const element = (document, tag, text, className) => { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; };
-export function createNativeMidiConnectionView({ document, container, routes, getLanes, getSelectedLaneId, onAssign, onAssignMany, onStatus = () => {} }) {
+export function createNativeMidiConnectionView({ document, container, routes, getLanes, getSelectedLaneId, onAssign, onAssignMany, onRequestPatch, onBindPatch, onStatus = () => {} }) {
   if (!container) return { render() {}, dispose() {} };
   const root = element(document, 'details', '', 'midi-preset-panel native-midi-connection'); root.id = 'midiNativeConnection';
   root.append(element(document, 'summary', 'Native MIDI / DAW'));
@@ -156,6 +157,8 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const profileStatus = element(document, 'output', '', 'midi-status'); profileStatus.setAttribute('role', 'status'); profileStatus.setAttribute('aria-live', 'polite');
   root.append(controls, routeControls, status, inputStatus, ciStatus, profileStatus, reportStatus, reportValues, message, details); container.append(root);
   const propertyView = createNativeMidiPropertyView({ document, container: root, routes, getCiSession: ensureCi, getPeerMuid: () => ciPeer.value ? Number(ciPeer.value) : null, onStatus });
+  const patchView = createNativeMidiPatchView({ document, container: root, routes, getCiSession: ensureCi, getPeerMuid: () => ciPeer.value ? Number(ciPeer.value) : null, getLaneId: () => lane.value,
+    getWireTarget: () => ({ grant: Number(active.value), group: Number(group.value), channel: Number(channel.value), protocol: protocol.value }), onRequestPatch, onBindPatch, onStatus });
   let profileSession = null, profileCi = null, profileUnsubscribe = null;
   let reportSession = null, reportCi = null, reportUnsubscribe = null, ciSession = null, ciUnsubscribe = null, inputTimer = null;
   const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category : ''); };
@@ -166,6 +169,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   };
   function render() {
     if (!root.open) return;
+    propertyView.render(); patchView.render();
     const state = routes.state(), connected = !!state.connectionEpoch, writable = state.grants.some(row => row.direction === 'output');
     for (const node of buttons) node.disabled = busy;
     connect.disabled ||= connected; disconnect.disabled = !connected; refresh.disabled ||= !connected; open.disabled ||= !connected || !state.inventory; publish.disabled ||= !connected; publishInput.disabled ||= !connected;
@@ -186,5 +190,5 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
   bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; });
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
-  return { render, dispose() { unsubscribe(); propertyView.dispose(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
+  return { render, dispose() { unsubscribe(); propertyView.dispose(); patchView.dispose(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
 }

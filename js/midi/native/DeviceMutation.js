@@ -20,10 +20,10 @@ export function createDeviceMutationOwner({ routes, ci, now = () => performance.
       active = transaction; emit();
       const current = () => !disposed && !transaction.cancelled && active === transaction && ci.state().epoch === scope.epoch && routes.client.session === scope.connectionEpoch && isCurrent();
       try {
-        await routes.invalidateDeviceState(scope.outputGrant, 'explicit-device-mutation');
+        await routes.invalidateDeviceState(scope.outputGrant, 'explicit-device-mutation:' + (requested.kind || 'profile'));
         if (!current()) { finish(transaction, { status: 'cancelled', receiverState: 'unknown', reason: 'Device mutation scope changed' }); return completion; }
         const result = await send(current);
-        await routes.invalidateDeviceState(scope.outputGrant, transaction.cancelled ? 'cancelled-device-mutation' : 'settled-device-mutation');
+        await routes.invalidateDeviceState(scope.outputGrant, (transaction.cancelled ? 'cancelled-device-mutation:' : 'settled-device-mutation:') + (requested.kind || 'profile'));
         if (active === transaction) finish(transaction, current() ? result : { status: 'cancelled', receiverState: 'unknown', reason: 'Device mutation scope changed after submission' });
       } catch (error) { finish(transaction, { status: 'incomplete', receiverState: 'unknown', reason: error.message }); }
       return completion;

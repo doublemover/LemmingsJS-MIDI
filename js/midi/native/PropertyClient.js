@@ -159,6 +159,7 @@ export function createPropertyClient({ routes, ci, peerMuid, now = () => perform
     const header = transfer.header, status = header.status;
     if (!Number.isInteger(status) || status < 100 || status > 599) throw new Error('Property reply status is missing or invalid');
     if (status < 200 || status >= 300) { finish(entry, result(status === 404 || status === 405 ? 'unsupported' : status === 343 ? 'busy' : 'rejected', header.message || 'Device property status ' + status, { header })); return; }
+    if (status !== 200) { finish(entry, result('pending', 'Device accepted the transaction without guaranteeing its result', { header, receiverState: 'unknown' })); return; }
     if (entry.deviceRevision !== deviceRevision() || !entry.isCurrent()) { finish(entry, result('cancelled', 'Property reply belongs to an old device revision')); return; }
     if (header.mutualEncoding != null && header.mutualEncoding !== entry.header.mutualEncoding || header.mediaType != null && header.mediaType !== (entry.header.mediaType || 'application/json')) throw new Error('Property response changed negotiated encoding or media type');
     const decoded = transfer.bytes.length ? await decodePropertyData(transfer.bytes, { encoding: entry.header.mutualEncoding || 'ASCII', mediaType: entry.header.mediaType || 'application/json', signal: entry.controller.signal }) : null;

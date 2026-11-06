@@ -1,3 +1,4 @@
+import { sameDevicePatchIntent } from '../../../midi/native/DevicePatchIntent.js';
 import { createNativeMidiBatchQueue } from '../../../midi/native/NativeMidiBatchQueue.js';
 import { mpeAxisWords, mpeManagerGainWords, mpeManagerSetup, mpePitchWords } from '../../../midi/native/MpeProfileAdapter.js';
 import { encodeIntent } from '../../../midi/protocol/UmpPacketCodec.js';
@@ -103,6 +104,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     begin(intent, targetMicroseconds, execution, admission) {
       const state = executions.get(execution), lane = laneFor(intent.laneId); let route = routes.resolve(lane?.outputId, lane?.id);
       if (!enabled() || !state || state.closed || intent.generation !== state.generation || !route) return reject('native-route-unavailable');
+      if (lane.devicePatch && (!sameDevicePatchIntent(lane.devicePatch, route.patchBinding?.intent) || lane.externalProgram !== lane.devicePatch.bankPC[2] || lane.bankMSB !== lane.devicePatch.bankPC[0] || lane.bankLSB !== lane.devicePatch.bankPC[1])) return reject('explicit-current-device-patch-recall-required');
       const silence = unavailable(lane); if (silence) return reject(silence);
       if (!routes.allowsPerformance(route.grant)) return reject('native-device-observation-active');
       if (!Number.isSafeInteger(targetMicroseconds) || routes.client.clockStatus().status !== 'synchronized') return reject('native-clock-unavailable');
@@ -119,9 +121,10 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (!state.grantExecutions.has(route.grant)) state.grantExecutions.set(route.grant, routes.allocateExecutionEpoch());
       const entry = { state, route, wireExecution: state.grantExecutions.get(route.grant), intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false, setupRequested: false };
       if (!route.mpe && route.protocol === 'midi1-in-ump' && pitch !== note) entry.losses.push(Object.freeze({ kind: 'midi1-pitch-quantization', requested: pitch, represented: note }));
+      if (lane.devicePatch) entry.losses.push(Object.freeze({ kind: 'device-patch-reported-under-user-declared-address-mapping', requested: lane.devicePatch.title }));
       entry.losses.push(Object.freeze({ kind: 'receiver-protocol-unverified', requested: route.protocol }));
       const words = [], program = JSON.stringify([lane.externalProgram, lane.bankMSB, lane.bankLSB]), address = channelKey(route);
-      if (!route.mpe && state.programs.get(address) !== program && lane.externalProgram != null) {
+      if (!route.mpe && !lane.devicePatch && state.programs.get(address) !== program && lane.externalProgram != null) {
         if (channelVoices.has(address)) return reject('native-program-change-would-affect-held-voices');
         if (route.protocol === 'midi2') words.push(...encodeIntent({ group: route.group, channel: route.channel, status: 'programChange', program: lane.externalProgram,
           bankValid: lane.bankMSB != null || lane.bankLSB != null, bankMSB: lane.bankMSB ?? 0, bankLSB: lane.bankLSB ?? 0 }));
@@ -138,7 +141,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
             if (axisWords) words.push(...axisWords); else if (intent.expression?.[axis] != null) entry.losses.push(Object.freeze({ kind: 'ci-mpe-axis-unsupported', field: axis, requested: value }));
           }
         } catch (error) { return reject(error.message); }
-        if (lane.externalProgram != null) entry.losses.push(Object.freeze({ kind: 'profile-patch-requires-separate-device-mutation', requestedProgram: lane.externalProgram }));
+        if (lane.externalProgram != null && !lane.devicePatch) entry.losses.push(Object.freeze({ kind: 'profile-patch-requires-separate-device-mutation', requestedProgram: lane.externalProgram }));
         words.push(...noteWords(route, 'noteOn', note, intent.velocity01, note));
       } else words.push(...noteWords(route, 'noteOn', note, intent.velocity01, pitch));
       if (!route.mpe && unit(intent.expression?.pressure01)) words.push(...(route.protocol === 'midi2' ? encodeIntent({ group: route.group, channel: route.channel, status: 'polyPressure', note, controllerValue: { value: Math.round(intent.expression.pressure01 * 0xffffffff), bits: 32 } }) : midi1(route, 10, note, Math.round(intent.expression.pressure01 * 127))));
