@@ -47,6 +47,7 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
             ['encode-native-render', 'render-causal-sine-take', 'render-shape-body-calibration'].includes(source.kind) && Array.isArray(result.value?.files) && result.value.files.length <= 25 ? result.value.files.map(file => file.bytes.buffer) :
               source.kind === 'build-shape-body-content' && Array.isArray(result.value?.contents) && result.value.contents.length <= 8 ? result.value.contents.map(file => file.bytes.buffer) : [];
       if (source.kind === 'prepare-owned-effect-cut' && Array.isArray(result.value?.components) && result.value.components.length <= 512) for (const component of result.value.components) if (component.bytes instanceof Uint8Array) transfers.push(component.bytes.buffer);
+      if (source.kind === 'prepare-streaming-warp-material' && result.value?.image) transfers.push(result.value.image.heapBytes.buffer, result.value.image.moduleBytes.buffer, ...result.value.pcm.planes.map(plane => plane.buffer));
       if (source.kind === 'prepare-stretch-core-image' && result.value?.moduleBytes instanceof Uint8Array && result.value?.heapBytes instanceof Uint8Array) transfers.push(result.value.moduleBytes.buffer, result.value.heapBytes.buffer);
       if (source.kind === 'encode-recorded-ump-clip' && result.value?.bytes instanceof Uint8Array && result.value?.manifestBytes instanceof Uint8Array) transfers.push(result.value.bytes.buffer, result.value.manifestBytes.buffer);
       if (source.kind === 'decode-midi-clip') for (const columns of [result.value?.configuration, result.value?.sequence]) {
@@ -59,7 +60,7 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
       }
       const ownedTransferBuffers = new Set(transfers);
       if (ownedTransferBuffers.size !== transfers.length || ownedTransferBuffers.size > 32) ownedTransferBuffers.clear();
-      const resultLimits = { allowOwnedWasmModule: source.kind === 'prepare-stretch-core-image', maxBytes: Math.min(256 * 1048576, Math.floor(source.limits.estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes: source.limits.estimatedPeakBytes };
+      const resultLimits = { allowOwnedWasmModule: ['prepare-stretch-core-image', 'prepare-streaming-warp-material'].includes(source.kind), maxBytes: Math.min(256 * 1048576, Math.floor(source.limits.estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes: source.limits.estimatedPeakBytes };
       phase = 'sending'; await sendOutput({ type: 'output-start', sequence: 0, metadata: { inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes: result.retainedBytes ?? null }, executionIdentity: identity() });
       let sequence = 0;
       for await (const packet of encodeBackgroundSnapshotPages(result.value, { ...resultLimits, ownedTransferBuffers, isCurrent: () => phase === 'sending' })) { sequence = packet.sequence; await sendOutput({ type: 'output-page', sequence, packet }, backgroundSnapshotTransfers(packet)); }

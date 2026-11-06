@@ -78,13 +78,18 @@ export async function prepareBufferedWarpVoiceOwner({ context, destination, mate
     worker.onerror = event => { event.preventDefault?.(); failed(fail('The streaming processing worker crashed.')); }; worker.onmessageerror = () => failed(fail('The streaming worker response could not be decoded.'));
     producer = (async () => {
       await transmit('prepare-start', 0, { requiredIdentity: execution, port: channel.port2 }, [channel.port2]); let sequence = 0;
-      for await (const packet of encodeBackgroundSnapshotPages(material, { maxBytes: 32 * 1048576, maxNodes: 1000000, estimatedPeakBytes: 192 * 1048576, signal: controller.signal,
-        isCurrent: () => !disposed && !fault && isCurrent() })) { sequence = packet.sequence; await transmit('prepare-page', sequence, { packet }, backgroundSnapshotTransfers(packet)); }
+      const ownedTransferBuffers = new Set();
+      if (material.image?.fork) {
+        const image = material.image.fork({ estimatedPeakBytes: 128 * 1048576 }); material = { ...material, image };
+        ownedTransferBuffers.add(image.heapBytes.buffer); ownedTransferBuffers.add(image.moduleBytes.buffer);
+      }
+      for await (const packet of encodeBackgroundSnapshotPages(material, { maxBytes: 64 * 1048576, maxNodes: 1000000, estimatedPeakBytes: 256 * 1048576, signal: controller.signal,
+        ownedTransferBuffers, allowOwnedWasmModule: true, isCurrent: () => !disposed && !fault && isCurrent() })) { sequence = packet.sequence; await transmit('prepare-page', sequence, { packet }, backgroundSnapshotTransfers(packet)); }
       changed(); material = null; send('prepare-end', { sequence });
     })(); await producer; await wait(ready, 180000, 'The streaming source did not finish preparation.'); changed();
     fence = setInterval(() => { try { changed(); } catch (error) { failed(error); } }, 50); report();
     return Object.freeze({ state, configuration: metadata.configuration, preparationLeadFrames: plan.algorithm.requiredPreparationLeadFrames,
-      async begin({ identity: sourceIdentity, onsetOutputFrame, segment }) { const value = await request('bind', { identity: sourceIdentity, onsetOutputFrame, segment }); bound = true; report(); return value; },
+      async begin({ identity: sourceIdentity, onsetOutputFrame, segment, endOutputFrame }) { const value = await request('bind', { identity: sourceIdentity, onsetOutputFrame, segment, ...(endOutputFrame == null ? {} : { endOutputFrame }) }); bound = true; report(); return value; },
       schedule: (segment, sourceIdentity) => request('schedule', { segment, identity: sourceIdentity }),
       cancelFrom: (outputFrame, sourceIdentity) => request('cancel-from', { outputFrame, identity: sourceIdentity }), inspect: () => request('inspect'), dispose });
   } catch (error) { const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }

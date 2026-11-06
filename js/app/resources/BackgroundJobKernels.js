@@ -66,6 +66,15 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       return { value, inputBytes: input.wasmBytes.byteLength + 4096, nodes: 16, retainedBytes: image.heapBytes.byteLength + image.moduleBytes.byteLength + image.metadata.compiledModuleEstimateBytes + metadataBytes * 8 + 65536 };
     } finally { core?.dispose(); }
   }
+  if (kind === 'prepare-streaming-warp-material') {
+    const execution = getActiveExecutionIdentity('browser-background-jobs');
+    if (execution.activeExecution !== 'bound' || input?.applicationBuildId !== execution.buildId || estimatedPeakBytes < 256 * 1048576) throw problem('invalid-streaming-material-contract', 'Streaming warp preparation needs its immutable producing worker and complete admitted overlap.');
+    const { prepareStreamingWarpMaterial } = await import('./StreamingWarpMaterial.js'); guard(signal, current);
+    const value = await prepareStreamingWarpMaterial(input, { applicationBuildId: execution.buildId, estimatedPeakBytes, signal, current, yieldControl, onProgress }); guard(signal, current);
+    const retainedBytes = value.image.heapBytes.byteLength + value.image.moduleBytes.byteLength + value.image.metadata.compiledModuleEstimateBytes + value.pcm.planes.reduce((sum, plane) => sum + plane.byteLength, 0) + 1048576;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'The shared streaming material exceeds its retained image/PCM reservation.');
+    return { value, inputBytes: input.pcm.byteLength + input.originBytes.byteLength + input.wasmBytes.byteLength + 16384, nodes: 256, retainedBytes };
+  }
   if (kind === 'qualify-original-shape-refinement') {
     const execution = getActiveExecutionIdentity('browser-background-jobs');
     if (execution.activeExecution !== 'bound' || input?.comparisonBuildHash !== execution.buildId || Object.keys(input).some(key => !['shapeId', 'profileId', 'comparisonBuildHash', 'expectedCoarseAssetHash'].includes(key)) || estimatedPeakBytes < 128 * 1048576) throw problem('engine-identity-unbound', 'Refinement comparison requires its actual bound worker and two complete admitted solves.');

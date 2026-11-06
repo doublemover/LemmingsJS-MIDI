@@ -6,12 +6,14 @@ import { validateBufferedWarpPlan } from '../../midi/content/BufferedWarpPlan.js
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 import { createResourceBudget } from './ResourceBudget.js';
 import { createOwnedResourceReservation } from './OwnedResourceReservation.js';
+import { sealStretchImageMaterial } from '../midi-ui/StretchImageMaterial.js';
+import { instantiateStretchInitialImage } from './RestoredStretchCore.js';
 
 export const BUFFERED_WARP_WORKER_PROTOCOL = 'lemmings-buffered-warp-worker/v1';
 const failure = message => Object.assign(new Error(message), { code: 'streaming-warp-unavailable' });
 export function createBufferedWarpVoiceWorkerEndpoint({ postMessage, close, timers = globalThis } = {}) {
   const budget = createResourceBudget(), controller = new AbortController();
-  let identity = null, phase = 'new', receiver = null, workspace = null, core = null, history = null, voice = null, port = null,
+  let identity = null, phase = 'new', receiver = null, workspace = null, core = null, image = null, history = null, voice = null, port = null,
     prepareWork = null, processing = null, timer = null, clockPending = null, pcmPending = null, stopPending = null, sequence = 0, inputSequence = 0, retiring = null;
   const envelope = (type, fields = {}) => ({ protocol: BUFFERED_WARP_WORKER_PROTOCOL, ...identity, type, ...fields });
   const send = (type, fields = {}) => postMessage(envelope(type, fields));
@@ -52,7 +54,7 @@ export function createBufferedWarpVoiceWorkerEndpoint({ postMessage, close, time
       if (prepareWork) await Promise.allSettled([prepareWork]);
       if (port) await waitFor('stop', () => port.postMessage(envelope('stop')));
       if (processing) await processing;
-      voice?.dispose({ producerRetired: true }); history?.dispose(); core?.dispose(); receiver?.dispose(); port?.close(); workspace?.release();
+      voice?.dispose({ producerRetired: true }); history?.dispose(); core?.dispose(); image?.dispose(); receiver?.dispose(); port?.close(); workspace?.release();
       phase = 'closed'; send('retired', { outcome: 'complete' }); close();
     })().catch(error => { phase = 'closed'; send('retired', { outcome: 'unknown', message: String(error.message).slice(0, 512) }); close(); }); return retiring;
   };
@@ -72,7 +74,7 @@ export function createBufferedWarpVoiceWorkerEndpoint({ postMessage, close, time
           else fail(failure('The PCM consumer acknowledgment does not own its pending source request.'));
         }; port.onmessageerror = () => fail(failure('The PCM consumer response could not be decoded.')); port.start();
         workspace = createOwnedResourceReservation({ budget, owner: 'streaming-warp-worker', generation: identity.ownerEpoch, kind: 'core-source-copy-preparation-and-streaming-overlap', category: 'candidate', bytes: 256 * 1048576 });
-        receiver = createBackgroundSnapshotReceiver({ maxBytes: 32 * 1048576, maxNodes: 1000000, estimatedPeakBytes: 192 * 1048576 }); phase = 'receiving'; send('input-ack', { sequence: 0 }); return;
+        receiver = createBackgroundSnapshotReceiver({ maxBytes: 64 * 1048576, maxNodes: 1000000, estimatedPeakBytes: 256 * 1048576, allowOwnedBinary: true, allowOwnedWasmModule: true }); phase = 'receiving'; send('input-ack', { sequence: 0 }); return;
       }
       if (!valid(request) || request.protocol !== BUFFERED_WARP_WORKER_PROTOCOL) throw failure('The warp request belongs to a different source execution.');
       if (request.type === 'dispose') return retire();
@@ -82,8 +84,13 @@ export function createBufferedWarpVoiceWorkerEndpoint({ postMessage, close, time
         let input = receiver.finish(request.sequence); receiver = null; phase = 'preparing';
         prepareWork = (async () => {
           const plan = validateBufferedWarpPlan(input.plan), blockFrames = plan.outputRate === 96000 ? 4096 : 2048;
-          core = await prepareOwnedStretchCore(input.wasmBytes, { sampleRate: plan.outputRate, blockFrames, intervalFrames: blockFrames / 4,
-            randomSeed: input.randomSeed ?? 1, captureInitialImage: plan.algorithm.artifactHashes.length > 1, estimatedPeakBytes: 256 * 1048576, signal: controller.signal }); controller.signal.throwIfAborted();
+          if (input.image) {
+            const applicationBuildId = getActiveExecutionIdentity('browser-background-jobs').buildId;
+            image = await sealStretchImageMaterial(input.image, { applicationBuildId, sampleRate: plan.outputRate, estimatedPeakBytes: 256 * 1048576, signal: controller.signal }); controller.signal.throwIfAborted();
+            core = instantiateStretchInitialImage(image, { applicationBuildId, estimatedPeakBytes: 128 * 1048576 }); image.dispose(); image = null;
+          } else core = await prepareOwnedStretchCore(input.wasmBytes, { sampleRate: plan.outputRate, blockFrames, intervalFrames: blockFrames / 4,
+            randomSeed: input.randomSeed ?? 1, captureInitialImage: plan.algorithm.artifactHashes.length > 1, estimatedPeakBytes: 256 * 1048576, signal: controller.signal });
+          controller.signal.throwIfAborted();
           history = await prepareBufferedWarpHistory({ plan, parentAssetHash: plan.assetHash, pcm: input.pcm, configuration: core.configuration,
             configurationHash: core.configurationHash, estimatedPeakBytes: 128 * 1048576, signal: controller.signal }); controller.signal.throwIfAborted(); input = null;
           phase = 'ready'; send('material-ready', { configuration: core.configuration, configurationHash: core.configurationHash, executionIdentity: getActiveExecutionIdentity('browser-background-jobs') });
@@ -96,6 +103,11 @@ export function createBufferedWarpVoiceWorkerEndpoint({ postMessage, close, time
         voice = createBufferedWarpVoice({ core, history, ...request.identity, onsetOutputFrame: request.onsetOutputFrame,
           preparedAtOutputFrame: clock.currentFrame, resourceBudget: budget, publish });
         const admission = voice.schedule(request.segment, request.identity); if (admission.status !== 'accepted') throw failure('The canonical onset identity was refused.');
+        if (request.endOutputFrame != null) {
+          if (!Number.isSafeInteger(request.endOutputFrame) || request.endOutputFrame <= request.onsetOutputFrame) throw failure('A declared finite gate must end after its fixed onset.');
+          const end = voice.schedule({ outputFrame: request.endOutputFrame, active: false }, { ...request.identity, sequence: request.identity.sequence + 1 });
+          if (end.status !== 'accepted') throw failure('The finite gate could not be admitted atomically with its onset.');
+        }
         phase = 'bound'; send('response', { requestId: request.requestId, value: { admission, preparation: voice.preparation, clock } }); schedule(); return;
       }
       if (request.type === 'schedule' && phase === 'bound') { const value = voice.schedule(request.segment, request.identity); send('response', { requestId: request.requestId, value }); return; }

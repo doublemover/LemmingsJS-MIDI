@@ -1,5 +1,7 @@
 import { createSeedLayerContactBinding } from '../../midi/content/SeedLayerMotion.js';
 import { createOwnedStretchMaterial } from './OwnedStretchMaterial.js';
+import { createStreamingWarpMaterialOwner } from './StreamingWarpMaterialOwner.js';
+import { createStreamingWarpAudition } from './StreamingWarpAudition.js';
 import { createSealedFrictionBodyTravelBinding } from '../../midi/content/SealedBodyGraftRecipe.js';
 import { createResonatorMorphView } from './ResonatorMorphView.js';
 import { createTextureBodyTravelBinding } from '../../midi/content/TextureBodyGraftRecipe.js';
@@ -16,6 +18,7 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 export function createSoundSeedLabView({ document, window, audio, getPlayback = () => null, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], coreMaterial: suppliedCoreMaterial = null, onStatus = () => {} } = {}) {
   const listeners = [], modeListeners = [], fitOfferButtons = [], retirement = createProcgenRetirementScope();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
+  let streamingMaterial, streamingAudition, streamingFingerprint = null;
   let analysis, instrument, derived, warp, coreMaterial, warpDraft = -1, warpRevision = 0, preparedWarpRevision = -1, warpParentSelection = null, composition, compositionDraft = -1, compositionRevision = 0, preparedCompositionRevision = -1, modal, rebuild, surface, offeredSource = null, offeredSerial = 0, rebuildPlan = null, branchDrawn = null, modalSelection = null, modalRevision = 0, preparedModalRevision = -1, modalDraft = -1, modalDrawn = null, modalParentSelection = null, editableModes = [], selectedModes = new Set(), derivedSelection = null, derivedDraft = -1, derivedDrawn = null, disposed = false, active = null, draft = 0, candidateDraft = -1, recipeDraft = 0, compiledDraft = -1, drawn = null, sourceSelection = 0;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
   const listen = (element, event, handler) => { element.addEventListener(event, handler); listeners.push(() => element.removeEventListener(event, handler)); };
@@ -80,11 +83,12 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   };
   const button = (text, action) => { const element = node('button', text); element.type = 'button'; listen(element, 'click', action); actions.append(element); return element; };
   const derivedCandidate = selection => selection === 'warped-seed' ? warp.component(selection) : selection === 'component-composition' ? composition.component(selection) : selection ? derived.component(selection) : analysis.candidate();
+  const streamingKey = () => JSON.stringify([draft, chosenCandidate()?.metadata().assetHash || null, warpRate.value, warpPitch.value, warpOutputRate.value, pitch.value, rootPitch.value]);
   const compositionCurrent = () => compositionDraft === draft && preparedCompositionRevision === compositionRevision;
   const warpCurrent = () => { const value = warp?.state().analysis, parent = derivedCandidate(warpParentSelection); return warpDraft === draft && preparedWarpRevision === warpRevision && !!value && parent?.metadata().assetReady && value.parentAssetHash === parent.metadata().assetHash && (warpParentSelection !== 'component-composition' || compositionCurrent()) && (!warpParentSelection || warpParentSelection === 'component-composition' || derivedDraft === draft); };
   const chosenCandidate = () => modalSelection ? modal.component(modalSelection) : derivedCandidate(derivedSelection);
   const invalidateModal = () => { modalRevision++; compiledDraft = -1; rebuildPlan = null; rebuild.stop(); modal.cancel(); instrument.stop(); refresh(); };
-  const invalidateTrim = () => { rebuildPlan = null; rebuild.stop(); modalSelection = null; modalDraft = -1; modal.cancel(); warp.cancel(); warpDraft = -1; derivedSelection = null; derivedDraft = -1; derived.cancel(); composition.cancel(); compositionDraft = -1; draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
+  const invalidateTrim = () => { streamingAudition?.stop(); streamingMaterial?.clear(); streamingFingerprint = null; rebuildPlan = null; rebuild.stop(); modalSelection = null; modalDraft = -1; modal.cancel(); warp.cancel(); warpDraft = -1; derivedSelection = null; derivedDraft = -1; derived.cancel(); composition.cancel(); compositionDraft = -1; draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
   const invalidateRecipe = () => { rebuildPlan = null; rebuild.stop(); recipeDraft++; compiledDraft = -1; instrument.stop(); refresh(); };
   const refreshTravelButton = button('Refresh committed travel mappings', () => { refreshTravelChoices(); invalidateRecipe(); });
   listen(transform, 'change', refreshTravelChoices);
@@ -110,6 +114,21 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   const graftReadout = select('Graft control comparison', [['full', 'Full prepared graft'], ['exciter-only', 'Exciter readout · same input and gain'], ['body-only', 'Body readout · same excitation and tail']]);
   const compareGraft = button('Audition selected graft readout', run(() => instrument.audition({ graftComparison: graftReadout.value === 'full' ? null : graftReadout.value })));
   const audition = button('Audition seed controls', run(() => instrument.audition({ repeatCount: Number(auditionMode.value) }))), save = button('Save playable seed locally', run(() => instrument.install())), apply = button('Apply to selected lane', run(() => instrument.apply()));
+  const streamingInfo = node('output', 'Streaming WarpVoice has no prepared material. Finite baking above remains a separate source transformation.'); fields.append(streamingInfo);
+  const prepareStreaming = button('Prepare streaming WarpVoice', run(async () => {
+    const candidate = chosenCandidate(), key = streamingKey();
+    if (candidateDraft !== draft || !candidate?.metadata().assetReady || pitch.value !== 'pitched' || !rootPitch.value.trim() || !Number.isFinite(Number(rootPitch.value))) throw new Error('Freeze the current source and declare its root pitch before preparing streaming material.');
+    const stopped = streamingAudition.stop(); await stopped.completion; if (stopped.outcome !== 'complete') throw new Error('The previous streaming preview has unresolved output ownership.');
+    await streamingMaterial.prepare(candidate, { outputRate: Number(warpOutputRate.value), rateRatio: Number(warpRate.value), pitchRatio: Number(warpPitch.value),
+      rootPitch: { cents: Number(rootPitch.value), referenceHz: 440 }, loop: null }); streamingFingerprint = key;
+    say('Streaming material prepared with a reusable verified core image. Preview explicitly through Prelisten; no new frozen WAV or project edit was made.');
+  }));
+  const previewStreaming = button('Preview streaming WarpVoice · up to 3 seconds', run(async () => {
+    if (streamingFingerprint !== streamingKey()) throw new Error('Prepare streaming material for the current source and controls.');
+    const key = streamingKey(), receipt = await streamingAudition.play({ seconds: 3, isCurrent: () => key === streamingKey() }); say('Explicit one-voice streaming preview queued at frame ' + receipt.startOutputFrame + '. This is a hypothetical source audition; acoustic hearing is unverified.');
+  }));
+  const stopStreaming = button('Stop streaming WarpVoice', () => { streamingMaterial.cancel(); streamingAudition.stop(); refresh(); });
+  for (const input of [warpRate, warpPitch, warpOutputRate, pitch, rootPitch]) listen(input, 'change', () => { streamingMaterial?.cancel(); streamingAudition?.stop(); refresh(); });
   const useCrossings = button('Use suggested edge crossings', () => {
     const candidate = chosenCandidate(); if (active || !candidate?.metadata().assetReady || candidateDraft !== draft) return;
     candidate.withWaveform(wave => {
@@ -209,7 +228,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   }));
   const auditionBranch = button('Audition derived branch', run(() => rebuild.audition())), saveBranch = button('Save derived branch locally', run(() => rebuild.install())), applyBranch = button('Apply derived branch to selected lane', run(() => rebuild.apply()));
   const discardBranch = button('Discard candidate branch', run(() => rebuild.clear()));
-  const close = () => { sourceSelection++; analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); root.hidden = true; };
+  const close = () => { sourceSelection++; streamingMaterial.cancel(); streamingAudition.stop(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); root.hidden = true; };
   button('Close seed dock', close);
   function resetRange() {
     const source = analysis.state().source; first.value = '0'; end.value = String(Math.min(source.sourceFrames, Math.floor(source.sampleRate * 1.5), Math.floor(15 * 1048576 / 8)));
@@ -253,6 +272,12 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
     const busy = !!active || w.active || w.unknownRetirement || branch.active || branch.unknownRetirement || m.active || m.unknownRetirement || c.active || c.unknownRetirement || d.active || d.unknownRetirement || a.active || a.selectingSource || i.active || a.unknownRetirement || i.unknownRetirement;
     bakeWarp.disabled = busy || core.unknownRetirement || !validAsset || !!modalSelection || derivedSelection === 'warped-seed'; useWarp.disabled = busy || !warpCurrent(); for (const input of [warpRate, warpPitch, warpOutputRate]) input.disabled = busy;
     warpInfo.textContent = w.active ? w.phase : w.error || core.error || (w.analysis ? (warpCurrent() ? '' : 'STALE CONTROLS · ') + 'Finite material · ' + w.analysis.recipe.options.rateRatio + '× traversal / ' + w.analysis.recipe.options.pitchRatio + '× pitch · original ' + w.analysis.recipe.preparedMaterial.originalRate + ' Hz → prepared ' + w.analysis.recipe.options.outputRate + ' Hz · ' + w.analysis.recipe.bodyFrames + ' body frames + ' + w.analysis.recipe.tailFrames + ' algorithm tail frames. Source onset/spectra/device/listening qualification pending; no live warp voice is applied.' : 'Prepare a frozen original or component for an experimental finite bake. The previous live instrument stays unchanged.');
+    const stream = streamingMaterial.state(), streamAudio = streamingAudition.state(), streamCurrent = streamingFingerprint === streamingKey() && stream.phase === 'ready';
+    prepareStreaming.disabled = busy || !validAsset || pitch.value !== 'pitched'; previewStreaming.disabled = busy || !streamCurrent; stopStreaming.disabled = !stream.active && !streamAudio.active;
+    streamingInfo.textContent = stream.error || (stream.active ? 'Preparing streaming image and selected PCM in the admitted worker.' : stream.plan ?
+      (streamCurrent ? '' : 'STALE SOURCE/CONTROLS · ') + 'Streaming · ' + stream.plan.rateRatio + '× traversal / ' + stream.plan.pitchRatio + '× pitch · original ' + stream.plan.sourceRate + ' Hz → prepared ' + stream.plan.outputRate +
+      ' Hz · algorithm latency ' + stream.plan.algorithm.inputLatencyFrames + ' input + ' + stream.plan.algorithm.outputLatencyFrames + ' output frames; fixed onset preparation lead ' + stream.plan.algorithm.requiredPreparationLeadFrames + ' frames. ' + streamAudio.phase +
+      '. Explicit hypothetical Prelisten; physical mapping, device cost and listening quality are not qualified.' : 'No streaming material prepared. Use the current output sample rate and explicit Prelisten; preparing sends no notes.');
     prepare.disabled = busy || !a.source; compile.disabled = busy || !validAsset; audition.disabled = busy || !validPatch; save.disabled = busy || !validPatch || !i.audibleAuditionReady;
     apply.disabled = busy || !validPatch || !i.audibleAuditionReady || !i.durable || i.targetCurrent === false; download.disabled = !meta?.assetReady; nested.disabled = busy || !validAsset || !!derivedSelection || !!modalSelection; decompose.disabled = busy || !validAsset; recombined.disabled = busy || derivedDraft !== draft || !d.analysis; compare.disabled = busy || !validPatch || ['hammer-cloud', 'bowed-scrap', 'hollow-tool', 'modal-body', 'finite-fm-body-graft', 'texture-body-graft', 'sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform.value); useCrossings.disabled = busy || !validAsset || !!derivedSelection; original.disabled = busy || !derivedSelection; rootPitch.disabled = pitch.value !== 'pitched';
     printComposition.disabled = busy || derivedDraft !== draft || !d.analysis; useComposition.disabled = busy || !compositionCurrent() || !c.analysis;
@@ -297,7 +322,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   for (const input of [transform, pitch, rootPitch, graftBody, textureKind, travelMapping, travelScale]) listen(input, 'change', invalidateRecipe);
   listen(transform, 'change', refreshTravelChoices);
   for (const input of [zoom, viewFirst]) listen(input, 'change', refresh);
-  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); } });
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { streamingMaterial.cancel(); streamingAudition.stop(); morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); } });
   const morphPane = createResonatorMorphView({ document, window, audio, getPlayback, resourceBudget, jobs });
   for (const index of [0, 1]) { const offer = node('button', 'Offer reviewed fit to MORPH ' + (index ? 'B' : 'A')); offer.type = 'button'; offer.disabled = true; fitOfferButtons.push(offer); listen(offer, 'click', () => { if (disposed || active) return; const fit = modal.state().analysis; if (!fit || modalDraft !== draft || preparedModalRevision !== modalRevision) { say('Prepare the current reviewed fit before offering an endpoint.'); return; } const ids = [...selectedModes]; active = Promise.resolve().then(() => morphPane.offerEndpointSource(index, 'fitted', fit, ids.length ? { modeIds: ids } : {})).then(() => say('Fitted endpoint offered with unknown interaction signatures. Author and review explicit couplings in MORPH.')).catch(error => say(error.message)).finally(() => { active = null; refresh(); }); refresh(); }); bodyPage.append(offer); }
 
@@ -306,6 +331,8 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   surface = scheduler.register({ id: 'sound-seed-lab', element: root, intervalMs: 100, write: paint, onError: message => say(String(message)) });
   analysis = createSoundSeedAnalysisOwner({ resourceBudget, jobs, onState: refresh });
   coreMaterial = suppliedCoreMaterial || createOwnedStretchMaterial({ resourceBudget, onState: refresh });
+  streamingMaterial = createStreamingWarpMaterialOwner({ resourceBudget, jobs, coreMaterial, onState: refresh });
+  streamingAudition = createStreamingWarpAudition({ audio, materials: streamingMaterial, onState: refresh, onReveal: () => { root.hidden = false; refresh(); } });
   warp = createSoundSeedDerivedOwner({ resourceBudget, jobs, kind: 'warp', coreMaterial, onState: refresh });
   derived = createSoundSeedDerivedOwner({ resourceBudget, jobs, onState: refresh });
   composition = createSoundSeedDerivedOwner({ resourceBudget, jobs, kind: 'composition', onState: refresh });
@@ -315,21 +342,22 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   rebuild = createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, coreMaterial, indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, onApply, onState: refresh,
     getTargetIdentity: () => ({ target: getTargetIdentity(), draft, recipeDraft, modalRevision, offeredSerial }), onReveal: () => { if (!disposed) { root.hidden = false; refresh(); } } });
   async function loadSource(source) {
-    if (disposed) return; const selection = ++sourceSelection; root.hidden = false; analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop();
+    if (disposed) return; const selection = ++sourceSelection; root.hidden = false; streamingMaterial.cancel(); streamingMaterial.clear(); streamingFingerprint = null; const stopped = streamingAudition.stop(); await stopped.completion; if (stopped.outcome !== 'complete') throw new Error('The previous streaming preview has unresolved output ownership.'); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop();
     await instrument.clear(); await rebuild.clear(); rebuildPlan = null; await modal.clear(); await warp.clear(); warpDraft = -1; warpParentSelection = null; modalSelection = null; modalDraft = -1; await composition.clear(); compositionDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1; if (selection !== sourceSelection || disposed) return;
     await analysis.selectSource(source); if (selection !== sourceSelection || disposed) return; resetRange(); root.scrollIntoView?.({ block: 'nearest' }); first.focus(); say('Choose an exact parent-frame range. The original source is retained by its capture or render owner.');
   }
   return Object.freeze({ async offerMorphSource(index, kind, sourceFile, options = {}) { if (disposed || active) throw new Error('Finish the current seed operation before offering a resonator source.'); root.hidden = false; await (typeof sourceFile?.text === 'function' ? morphPane.offerEndpointFile(index, kind, sourceFile, options) : morphPane.offerEndpointSource(index, kind, sourceFile, options)); refresh(); return morphPane.state(); }, async open(source) {
     if (disposed) return; refreshTravelChoices(); if (analysis.candidate()?.metadata().assetReady) { offeredSource = source; offeredSerial++; rebuild.stop(); rebuildPlan = null; root.hidden = false; rebuildPage.open = true; refresh(); say('New source offered. The current frozen material is unchanged.'); return; }
     await active?.catch(() => {}); await loadSource(source);
-  }, state: () => Object.freeze({ morph: morphPane.state(), analysis: analysis.state(), derived: derived.state(), warp: warp.state(), warpSource: coreMaterial.state(), warpCurrent: warpCurrent(), composition: composition.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
-  suspend() { morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); },
+  }, state: () => Object.freeze({ morph: morphPane.state(), analysis: analysis.state(), derived: derived.state(), warp: warp.state(), warpSource: coreMaterial.state(), streaming: streamingMaterial.state(), streamingAudition: streamingAudition.state(), warpCurrent: warpCurrent(), composition: composition.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
+  suspend() { streamingMaterial.cancel(); streamingAudition.stop(); morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); },
   dispose() {
-    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sourceSelection++; analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop();
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sourceSelection++; streamingMaterial.cancel(); streamingAudition.stop(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop();
     const retire = async owner => { const receipt = owner.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Seed material retains unresolved producers or readers.'); };
     const stopped = Promise.resolve(active).catch(() => {}), instrumentFinished = stopped.then(() => retire(instrument)), rebuildFinished = instrumentFinished.then(() => retire(rebuild)), modalFinished = rebuildFinished.then(() => retire(modal)), compositionFinished = modalFinished.then(() => retire(warp)).then(() => retire(composition)), derivedFinished = compositionFinished.then(() => retire(derived)), analysisFinished = derivedFinished.then(() => retire(analysis));
-    return retirement.retire([{ name: 'seed-instrument', run: () => instrumentFinished }, { name: 'seed-rebuild', run: () => rebuildFinished }, { name: 'seed-modal', run: () => modalFinished }, { name: 'seed-composition', run: () => compositionFinished }, { name: 'seed-derived', run: () => derivedFinished }, { name: 'seed-analysis', run: () => analysisFinished },
-      { name: 'seed-warp-source', run: async () => { await stopped; await retire(coreMaterial); } }, { name: 'seed-morph-review', run: async () => { const receipt = morphPane.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Morph review retains unresolved producers or readers.'); } }, { name: 'seed-display', run: () => surface.dispose() }, { name: 'seed-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
+    const streamingFinished = stopped.then(async () => { await retire(streamingAudition); await retire(streamingMaterial); });
+    return retirement.retire([{ name: 'seed-streaming-warp', run: () => streamingFinished }, { name: 'seed-instrument', run: () => instrumentFinished }, { name: 'seed-rebuild', run: () => rebuildFinished }, { name: 'seed-modal', run: () => modalFinished }, { name: 'seed-composition', run: () => compositionFinished }, { name: 'seed-derived', run: () => derivedFinished }, { name: 'seed-analysis', run: () => analysisFinished },
+      { name: 'seed-warp-source', run: async () => { await Promise.all([stopped, streamingFinished]); await retire(coreMaterial); } }, { name: 'seed-morph-review', run: async () => { const receipt = morphPane.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Morph review retains unresolved producers or readers.'); } }, { name: 'seed-display', run: () => surface.dispose() }, { name: 'seed-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
       ...[...listeners.splice(0), ...modeListeners.splice(0)].map((remove, index) => ({ name: 'seed-listener-' + index, run: remove })), { name: 'seed-dock', run: () => root.remove() }]);
   } });
 }
