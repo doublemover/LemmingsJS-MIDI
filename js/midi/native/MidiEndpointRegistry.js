@@ -15,7 +15,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
   const mutation = createDeviceMutationOwner({ routes, ci: ownership, now });
   const current = () => !disposed && !stale && routes.client.session === initial.connectionEpoch && routes.isGrantActive(inputGrant) && routes.isGrantActive(outputGrant) && routes.input.scope(inputGrant)?.ingressEpoch === ingress.ingressEpoch;
   const emit = () => { for (const listener of listeners) { try { listener(); } catch {} } };
-  const invalidateRoutes = why => { void routes.invalidateDeviceState(outputGrant, why).catch(error => { reason = error.message; emit(); }); };
+  const invalidateRoutes = (why, groups = null) => { if (groups === 0) return; void (groups ? routes.invalidateDeviceGroups(outputGrant, groups, why) : routes.invalidateDeviceState(outputGrant, why)).catch(error => { reason = error.message; emit(); }); };
   const finishDiscovery = outcome => { if (!discovery) return; const task = discovery; discovery = null; clearTimeout(task.timer); task.resolve(Object.freeze(outcome)); emit(); };
   const finishConfiguration = outcome => { if (!pendingConfiguration) return; const task = pendingConfiguration; pendingConfiguration = null; clearTimeout(task.timer); task.resolve(Object.freeze(outcome)); emit(); };
   const lose = why => {
@@ -40,10 +40,11 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
         !Number.isInteger(value.jrCapabilities) || value.jrCapabilities < 0 || value.jrCapabilities > 3) throw new Error('Malformed endpoint capability metadata');
     const next = Object.freeze({ umpMajor: value.umpMajor, umpMinor: value.umpMinor, functionBlockCount: value.functionBlockCount, staticFunctionBlocks: value.staticFunctionBlocks,
       supportedProtocols: value.supportedProtocols, jrCapabilities: value.jrCapabilities, source, observedHostMs: now() });
-    const changed = info && JSON.stringify([info.umpMajor, info.umpMinor, info.functionBlockCount, info.staticFunctionBlocks, info.supportedProtocols, info.jrCapabilities]) !==
-      JSON.stringify([next.umpMajor, next.umpMinor, next.functionBlockCount, next.staticFunctionBlocks, next.supportedProtocols, next.jrCapabilities]);
+    const changed = info && JSON.stringify([info.umpMajor, info.umpMinor, info.staticFunctionBlocks, info.supportedProtocols, info.jrCapabilities]) !==
+      JSON.stringify([next.umpMajor, next.umpMinor, next.staticFunctionBlocks, next.supportedProtocols, next.jrCapabilities]);
     info = next;
-    for (const number of blocks.keys()) if (number >= next.functionBlockCount) { blocks.delete(number); names.delete(number); }
+    let removedGroups = 0; for (const number of blocks.keys()) if (number >= next.functionBlockCount) { removedGroups |= mask(blocks.get(number)); blocks.delete(number); names.delete(number); }
+    if (removedGroups && !changed) invalidateRoutes('function-blocks-removed', removedGroups);
     if (changed) invalidateRoutes('endpoint-capabilities-changed'); onMetadata();
   };
   const setConfiguration = (protocol, extensions, source) => {
@@ -78,7 +79,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
       const block = validateBlock(message), previous = blocks.get(block.number);
       if (info && block.number >= info.functionBlockCount) throw new Error('Function-block number exceeds endpoint declaration');
       if (info?.staticFunctionBlocks && !block.active) throw new Error('Static endpoint reported an inactive function block');
-      blocks.set(block.number, block); if (previous && semanticBlock(previous) !== semanticBlock(block)) invalidateRoutes('function-block-layout-changed'); onMetadata();
+      blocks.set(block.number, block); if (previous && semanticBlock(previous) !== semanticBlock(block)) invalidateRoutes('function-block-layout-changed', mask(previous) | mask(block)); onMetadata();
     }
   };
   const drain = async () => {

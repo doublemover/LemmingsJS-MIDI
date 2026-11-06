@@ -10696,3 +10696,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Track negotiated incoming JR Clock/Timestamp state per native input grant, preserving 16-bit wire values, sender epochs, wrap, simultaneous-message context and receive order. Retire context on ingress loss, clock expiry, regression or configuration replacement.
 - Attach bounded sender-time reconstruction and native arrival estimates to packet/payload traces without replacing backend timestamps, score time or physical onsets. Explicitly retain unknown one-way delay and absolute uncertainty; out-of-window/unconfigured timestamps remain unknown.
 - Consume current endpoint configuration as read-only evidence and expose JR status in input diagnostics. Windows negotiation remains OS-owned. Formatting only; no functional/device execution. Continue group-scoped retirement and remaining production work.
+
+
+### 2026-11-06 — Rook continuation500: group-scoped browser performance retirement
+
+- Split native performance executions by group, with a separate indivisible execution for each cross-group MPE allocation. Preserve matching source releases and independent piano/organ owners under each scope.
+- Add per-group route revision fences and retire only executions dependent on changed function-block spans. Keep unaffected groups, programs, MPE managers and profile parts active. A changed span requires explicit route reactivation after cleanup.
+- Scope Stream function-block changes/removals to the union of old/new groups; retain endpoint-wide retirement for protocol/global capability changes. This supplies browser ownership; native OS metadata narrowing and explicit group revalidation follow next.
+- Formatting only; functional qualification remains deferred.

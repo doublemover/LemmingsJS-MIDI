@@ -21,25 +21,33 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
   if (!['primary', 'auxiliary'].includes(mode)) throw new Error('Invalid native sink role');
   const batches = createNativeMidiBatchQueue({ client: routes.client });
   const invalidatingGrants = new Map();
-  const invalidateGrant = grant => {
-    if (invalidatingGrants.has(grant)) return invalidatingGrants.get(grant);
+  const invalidateGroups = (grant, groupMask = 65535) => {
+    const scopeKey = grant + ':' + groupMask; if (invalidatingGrants.has(scopeKey)) return invalidatingGrants.get(scopeKey);
     const completion = (async () => {
-      const results = await Promise.allSettled([...executions.values()].filter(state => state.grants.has(grant)).map(async state => {
-        const wireExecution = state.grantExecutions.get(grant); batches.cancelExecution(grant, wireExecution);
-        const receipt = await routes.client.cancelExecution(grant, wireExecution);
-        if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Native device-change cleanup remains unconfirmed');
-        for (const entry of state.voices.values()) if (entry.route.grant === grant) removeVoice(entry);
-        state.grants.delete(grant); state.grantExecutions.delete(grant); for (const [key, part] of state.organParts) if (part.route.grant === grant) { part.owner.dispose(); state.organParts.delete(key); } for (const [key, part] of state.pianoParts) if (part.route.grant === grant) state.pianoParts.delete(key);
-        for (const key of state.programs.keys()) if (key.startsWith(grant + ':')) state.programs.delete(key);
-        for (const key of state.mpeSetups) if (key.startsWith(grant + ':')) { state.mpeSetups.delete(key); state.mpeGains.delete(key); }
+      const results = await Promise.allSettled([...executions.values()].map(async state => {
+        const owned = [...state.grantExecutions].filter(([, row]) => row.grant === grant && row.groupMask & groupMask); if (!owned.length) return;
+        const ids = new Set(owned.map(([, row]) => row.execution)), retiredMask = owned.reduce((mask, [, row]) => mask | row.groupMask, 0);
+        for (const [, row] of owned) batches.cancelExecution(grant, row.execution);
+        await Promise.all(owned.map(async ([, row]) => {
+          const receipt = await routes.client.cancelExecution(grant, row.execution);
+          if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls) throw new Error('Native group-change cleanup remains unconfirmed');
+        }));
+        for (const entry of state.voices.values()) if (entry.route.grant === grant && ids.has(entry.wireExecution)) removeVoice(entry);
+        for (const [key] of owned) state.grantExecutions.delete(key);
+        if (![...state.grantExecutions.values()].some(row => row.grant === grant)) state.grants.delete(grant);
+        for (const [key, part] of state.organParts) if (part.route.grant === grant && ids.has(part.wireExecution)) { part.owner.dispose(); state.organParts.delete(key); }
+        for (const [key, part] of state.pianoParts) if (part.route.grant === grant && ids.has(part.wireExecution)) state.pianoParts.delete(key);
+        for (const key of state.programs.keys()) { const [owner, group] = key.split(':').map(Number); if (owner === grant && retiredMask & 1 << group) state.programs.delete(key); }
+        for (const [, row] of owned) for (const key of row.mpeKeys) { state.mpeSetups.delete(key); state.mpeGains.delete(key); }
       }));
-      const failures = results.filter(row => row.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(row => row.reason), 'Native device-change retirement failed');
-    })(); invalidatingGrants.set(grant, completion); completion.then(() => invalidatingGrants.delete(grant), () => {}); return completion;
+      const failures = results.filter(row => row.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(row => row.reason), 'Native group-change retirement failed');
+    })(); invalidatingGrants.set(scopeKey, completion); completion.then(() => invalidatingGrants.delete(scopeKey), () => {}); return completion;
   };
+  const invalidateGrant = grant => invalidateGroups(grant);
   const executions = new Map(), wireVoices = new Map(), channelVoices = new Map(), retirement = createProcgenRetirementScope();
   let disposed = false, anchor = null, latestReceipt = null, laneSource = null, laneIds = new Map(), soloCount = 0;
   let ownerFailure = null, removeOwner = null;
-  try { removeOwner = routes.registerPerformanceOwner({ invalidateGrant, organPerformanceState: laneId => [...executions.values()].filter(state => !state.closed).flatMap(state => [...state.organParts.values()].filter(part => part.laneId === laneId).map(part => part.owner.state())),
+  try { removeOwner = routes.registerPerformanceOwner({ invalidateGrant, invalidateGroups, organPerformanceState: laneId => [...executions.values()].filter(state => !state.closed).flatMap(state => [...state.organParts.values()].filter(part => part.laneId === laneId).map(part => part.owner.state())),
     hasOrganPart: laneId => [...executions.values()].some(state => !state.closed && [...state.organParts.values()].some(part => part.laneId === laneId)),
     restoreOrganRegistration: laneId => { const parts = [...executions.values()].filter(state => !state.closed).flatMap(state => [...state.organParts.values()].filter(part => part.laneId === laneId)); if (parts.length !== 1) throw new Error('Choose one stopped organ part'); return parts[0].owner.restore(); }, pianoPerformanceState: laneId => [...executions.values()].filter(state => !state.closed).flatMap(state => [...state.pianoParts.values()].filter(part => part.laneId === laneId).map(part => Object.freeze({ laneId, grant: part.route.grant, outputId: part.route.outputId, routeRevision: part.route.routeRevision, contributors: part.contributors.size, pending: part.pending, fault: part.fault, submitted: Object.freeze({ ...part.submitted }), observed: Object.freeze({ ...part.observed }), queued: Object.freeze({ ...part.queued }) }))), isQuiescent: grant => !batches.hasPendingGrant(grant) && ![...executions.values()].some(state => [...state.voices.values()].some(entry => entry.route.grant === grant) || [...state.pianoParts.values()].some(part => part.route.grant === grant && (part.pending || Object.values(part.queued).some(value => value > 0))) || [...state.organParts.values()].some(part => part.route.grant === grant && part.owner.pendingCount())) }); } catch (error) { ownerFailure = error.message; }
   const enabled = () => !disposed && !ownerFailure && routes.enabled();
@@ -147,11 +155,11 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
   const retireExecution = execution => {
     const state = executions.get(execution); if (!state) return createProcgenRetirementScope().retire(); if (state.retirement) return state.retirement.getReceipt();
     state.closed = true; state.retirement = createProcgenRetirementScope();
-    const receipt = state.retirement.retire([...state.grants].map(grant => ({ name: 'native-grant-' + grant, run: async () => {
-      batches.cancelExecution(grant, state.grantExecutions.get(grant));
-      const receipt = await routes.client.cancelExecution(grant, state.grantExecutions.get(grant));
+    const receipt = state.retirement.retire([...state.grantExecutions.values()].map(owner => ({ name: 'native-grant-' + owner.grant + '-execution-' + owner.execution, run: async () => {
+      const grant = owner.grant; batches.cancelExecution(grant, owner.execution);
+      const receipt = await routes.client.cancelExecution(grant, owner.execution);
       if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Native owned-note cleanup is unconfirmed');
-      for (const entry of state.voices.values()) if (entry.route.grant === grant) removeVoice(entry);
+      for (const entry of state.voices.values()) if (entry.route.grant === grant && entry.wireExecution === owner.execution) removeVoice(entry);
     } }))); 
     receipt.completion.then(done => { if (done.outcome === 'complete') { for (const part of state.organParts.values()) part.owner.dispose(); state.organParts.clear(); executions.delete(execution); if (!executions.size) anchor = null; } });
     return receipt;
@@ -190,8 +198,9 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       }
       const wireKey = keyFor(route, note);
       if (!route.organ?.controlOnly && wireVoices.has(wireKey)) return reject('native-same-pitch-voice-overlap');
-      if (!state.grantExecutions.has(route.grant)) state.grantExecutions.set(route.grant, routes.allocateExecutionEpoch());
-      const entry = { state, route, wireExecution: state.grantExecutions.get(route.grant), intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false, setupRequested: false, parameterState: new Map(), parameterObservations: [], percussion, choked: false, controlOnly: route.organ?.controlOnly === true, auxiliary: mode === 'auxiliary', lastTarget: targetMicroseconds };
+      const ownerKey = route.grant + ':' + (route.mpe ? 'mpe:' + route.routeRevision : 'group:' + route.group);
+      let wireOwner = state.grantExecutions.get(ownerKey); if (!wireOwner) { wireOwner = { grant: route.grant, execution: routes.allocateExecutionEpoch(), groupMask: route.mpe ? route.mpe.addresses.reduce((mask, row) => mask | 1 << row.group, 0) : 1 << route.group, mpeKeys: new Set() }; state.grantExecutions.set(ownerKey, wireOwner); }
+      const entry = { state, route, wireExecution: wireOwner.execution, intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false, setupRequested: false, parameterState: new Map(), parameterObservations: [], percussion, choked: false, controlOnly: route.organ?.controlOnly === true, auxiliary: mode === 'auxiliary', lastTarget: targetMicroseconds };
       if (!route.mpe && route.protocol === 'midi1-in-ump' && pitch !== note) entry.losses.push(Object.freeze({ kind: 'midi1-pitch-quantization', requested: pitch, represented: note }));
       if (percussion) entry.losses.push(Object.freeze({ kind: 'percussion-map-qualification', ...percussion }));
       if (lane.devicePatch) entry.losses.push(Object.freeze({ kind: 'device-patch-reported-under-user-declared-address-mapping', requested: lane.devicePatch.title }));
@@ -211,7 +220,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
             const owner = createOrganRotaryPart({ routes, route, laneId: lane.id, now, getLane: () => laneFor(lane.id), submit: (words, provenance, target) => {
               const accepted = batches.enqueue({ grant: route.grant, execution: wireExecution, priority: 1, targetTimeMs: target / 1000, words, provenance });
               accepted.completion?.then(receipt => routes.recordSubmission({ words, provenance, receipt }), error => routes.recordSubmission({ words, provenance, receipt: { session: route.connectionEpoch, grant: route.grant, execution: wireExecution, kind: 'error', acceptedWords: 0, failedPacketUnconfirmed: error.notSubmitted !== true, submissionExtent: error.notSubmitted ? 'observed-prefix' : 'unobserved-batch', reason: error.message } })); return accepted;
-            } }); part = { owner, route, laneId: lane.id }; state.organParts.set(key, part);
+            } }); part = { owner, route, laneId: lane.id, wireExecution }; state.organParts.set(key, part);
           }
           if (!part.owner.canPerform()) throw new Error('Review and rebind this organ/rotary part after its fault or registration restore');
           entry.organPart = part; part.owner.touch(intent.voiceId, intent, intent.performanceCause, targetMicroseconds); entry.organUpdate = part.owner.prepare(lane); words.push(...entry.organUpdate.words);
@@ -246,7 +255,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (!route.mpe && !route.percussion && !route.piano && !route.organ && unit(intent.expression?.pressure01)) words.push(...(route.protocol === 'midi2' ? encodeIntent({ group: route.group, channel: route.channel, status: 'polyPressure', note, controllerValue: { value: Math.round(intent.expression.pressure01 * 0xffffffff), bits: 32 } }) : midi1(route, 10, note, Math.round(intent.expression.pressure01 * 127))));
       state.voices.set(intent.voiceId, entry); if (!entry.controlOnly) { wireVoices.set(wireKey, entry); channelVoices.set(address, (channelVoices.get(address) || 0) + 1); } state.grants.add(route.grant);
       if (entry.controlOnly && !words.length) return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false });
-      const queued = send(entry, intent, admission, words, targetMicroseconds, 1, false, true); if (queued.status !== 'accepted') { removeVoice(entry); return queued; } if (entry.setupRequested) state.programs.set(address, program); if (entry.mpeSetupRequested) { state.mpeSetups.add(entry.mpeSetupRequested); state.mpeGains.set(entry.mpeSetupRequested, { value: Math.min(1, lane.gain ?? 1), pending: true, fault: null }); }
+      const queued = send(entry, intent, admission, words, targetMicroseconds, 1, false, true); if (queued.status !== 'accepted') { removeVoice(entry); return queued; } if (entry.setupRequested) state.programs.set(address, program); if (entry.mpeSetupRequested) { state.mpeSetups.add(entry.mpeSetupRequested); wireOwner.mpeKeys.add(entry.mpeSetupRequested); state.mpeGains.set(entry.mpeSetupRequested, { value: Math.min(1, lane.gain ?? 1), pending: true, fault: null }); }
       return Object.freeze({ status: 'degraded', stage: 'accepted', losses: Object.freeze(entry.losses), outputId: route.outputId, channel: route.channel + 1, group: route.group });
     },
     update(voiceId, expression, targetMicroseconds, execution, slewSeconds, causeIntent, admission) {
