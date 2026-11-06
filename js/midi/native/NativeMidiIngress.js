@@ -32,6 +32,7 @@ export function createNativeMidiIngress({ now = () => performance.now(), maximum
     while (history.length > 1024 || traceWords > maximumTraceWords) { const old = history.shift(); traceWords -= old.packet.wordCount; omitted++; }
   };
   return Object.freeze({
+    scope(grant) { const owner = grants.get(grant); return owner ? Object.freeze({ session: owner.session, grant: owner.grant, ingressEpoch: owner.epoch, groupMask: owner.groupMask, permissions: owner.permissions }) : null; },
     register(receipt) {
       if (retired || receipt.direction !== 'input' || !safe(receipt.grant) || !receipt.grant || !safe(receipt.session) || !receipt.session || !Number.isInteger(receipt.groupMask) || receipt.groupMask < 0 || receipt.groupMask > 65535 || !Number.isInteger(receipt.permissions) || receipt.permissions < 0 || receipt.permissions > 15 || grants.size >= maximumGrants || grants.has(receipt.grant)) throw new Error('Invalid native ingress grant');
       const owner = { session: receipt.session, grant: receipt.grant, groupMask: receipt.groupMask, permissions: receipt.permissions, timestampMode: receipt.timestampMode,

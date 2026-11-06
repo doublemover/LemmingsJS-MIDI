@@ -99,6 +99,12 @@ export class NativeMidiBridgeClient {
     } while (cursor !== null);
     return Object.freeze({ inventoryEpoch, endpoints: Object.freeze(endpoints.map(row => Object.freeze({ ...row, connectionEpoch: this.#session }))) });
   }
+  encodeCi(grant, { group, operation, sourceMuid, destinationMuid = 0x0fffffff, scope = 127, parameters = [] }) { return this.#request('ciEncode', { grant, group, operation, sourceMuid, destinationMuid, scope, parameters }); }
+  decodeCi(grant, payload) {
+    if (!Array.isArray(payload) && !(payload instanceof Uint8Array) || payload.length < 14 || payload.length > 2048 || Array.from(payload).some(byte => !Number.isInteger(byte) || byte < 0 || byte > 127)) return Promise.reject(beforeSubmission('Invalid CI payload'));
+    const payloadHex = Array.from(payload, byte => byte.toString(16).padStart(2, '0')).join('');
+    return this.#request('ciDecode', { grant, payloadHex });
+  }
   selectBackend(api) { return this.#request('selectBackend', { api }); }
   open({ inventoryEpoch, endpointToken, groupMask, permissions = 0 }) { return this.#request('open', { inventoryEpoch, endpointToken, groupMask, permissions }); }
   publish({ name = 'Lemmings Performance', direction = 'output', groupMask, permissions = 0 }) { return this.#request('publish', { name, direction, groupMask, permissions }); }

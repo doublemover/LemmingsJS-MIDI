@@ -53,14 +53,31 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const exportTrace = button('Save native wire trace', () => {
     const blob = new Blob([JSON.stringify(routes.wireTrace(), null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), link = element(document, 'a'); link.href = url; link.download = 'lemmings-native-wire-trace.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
   }, routeControls);
+  const ciInput = select('CI receive connection', routeControls), ciPeer = select('Discovered peer', routeControls);
+  const showCi = () => {
+    const state = ciSession?.state(); ciStatus.textContent = state ? 'Device discovery: ' + state.status + (state.reason ? ' · ' + state.reason : '') + ' · ' + state.peers.length + ' peers · advertised advanced categories: none' : 'Device features unknown. Discovery requires separately selected SysEx input and output grants.';
+    options(ciPeer, (state?.peers || []).map(peer => [peer.muid, 'Peer 0x' + peer.muid.toString(16).padStart(7, '0') + ' · CI v' + peer.version + ' · ' + peer.freshness]), 'Choose a discovered peer');
+  };
+  const ensureCi = async () => {
+    const selected = { inputGrant: Number(ciInput.value), outputGrant: Number(active.value), group: Number(group.value) }, previous = ciSession?.state();
+    if (ciSession && (previous.inputGrant !== selected.inputGrant || previous.outputGrant !== selected.outputGrant || previous.group !== selected.group || ['stale', 'disposed'].includes(previous.status))) {
+      ciUnsubscribe?.(); ciUnsubscribe = null; await routes.closeCiSession(ciSession); ciSession = null;
+    }
+    if (!ciSession) { ciSession = routes.createCiSession(selected); ciUnsubscribe = ciSession.subscribe(showCi); } return ciSession;
+  };
+  const ciDiscover = button('Discover device features (SysEx)', async () => { const session = await ensureCi(); await session.discover(); showCi(); }, routeControls);
+  const ciInformation = button('Read endpoint information', async () => { if (!ciSession || !ciPeer.value) throw new Error('Discover and select a current peer'); const reply = await ciSession.endpointInformation(Number(ciPeer.value)); message.textContent = 'Endpoint information received: ' + reply.informationData.length + ' bytes.'; showCi(); }, routeControls);
+  const ciProcess = button('Read Process Inquiry support', async () => { if (!ciSession || !ciPeer.value) throw new Error('Discover and select a current peer'); const reply = await ciSession.processCapabilities(Number(ciPeer.value)); message.textContent = 'Device Process Inquiry feature bitmap: 0x' + reply.supportedFeatures.toString(16) + '.'; showCi(); }, routeControls);
+  const ciClose = button('Close device discovery', async () => { ciUnsubscribe?.(); ciUnsubscribe = null; if (ciSession) await routes.closeCiSession(ciSession); ciSession = null; showCi(); }, routeControls);
   const exportInput = button('Save native input trace', () => {
     const blob = new Blob([JSON.stringify(routes.input.trace(), null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), link = element(document, 'a'); link.href = url; link.download = 'lemmings-native-input-trace.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
   }, routeControls);
   const status = element(document, 'output', '', 'midi-status'), message = element(document, 'p', '', 'midi-help'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   const details = element(document, 'p', '', 'midi-help'); details.textContent = 'A native connection does not verify the receiver or DAW. Queued, driver-submitted, receiver-observed and audible are separate stages. Receiver protocol, conversion and original hardware precision remain unknown until independently qualified.';
   const inputStatus = element(document, 'output', '', 'midi-status'); inputStatus.setAttribute('aria-live', 'off');
-  root.append(controls, routeControls, status, inputStatus, message, details); container.append(root);
-  let inputTimer = null;
+  const ciStatus = element(document, 'output', '', 'midi-status'); ciStatus.setAttribute('role', 'status'); ciStatus.setAttribute('aria-live', 'polite');
+  root.append(controls, routeControls, status, inputStatus, ciStatus, message, details); container.append(root);
+  let ciSession = null, ciUnsubscribe = null, inputTimer = null;
   const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category : ''); };
   let busy = false, selectedGrant = null, inventoryEpoch = null, laneSignature = '';
   const options = (node, rows, placeholder) => {
@@ -75,6 +92,9 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     switchBackend.disabled ||= !connected || !!state.grants.length; revoke.disabled ||= !state.grants.length; assign.disabled ||= !writable; all.disabled ||= !writable; exportTrace.disabled ||= !state.traceRecords; exportInput.disabled ||= !state.ingress.receivedPackets; renderInput();
     status.textContent = state.state + (connected ? ' · native UMP · ' + state.grants.length + ' owned connections · clock ' + state.clock.status : ' · local audio remains available');
     const capabilities = routes.client.capabilities;
+    const ciReady = !!capabilities?.ciCodec && connected && state.grants.some(row => row.direction === 'input' && (row.permissions & 1)) && state.grants.some(row => row.direction === 'output' && (row.permissions & 1));
+    ciDiscover.disabled ||= !ciReady; ciInformation.disabled ||= !ciSession; ciProcess.disabled ||= !ciSession; ciClose.disabled ||= !ciSession;
+    options(ciInput, state.grants.filter(row => row.direction === 'input' && (row.permissions & 1)).map(row => [row.grant, row.endpoint?.name || 'Published control input']), 'Choose a SysEx input'); showCi();
     if (capabilities && backend.options.length !== capabilities.compiledApis.length + 1) options(backend, capabilities.compiledApis.map(api => [api.id, api.name]), 'Choose backend');
     if (capabilities && !backend.value) backend.value = String(capabilities.selectedApi);
     if (state.inventory?.inventoryEpoch !== inventoryEpoch) { inventoryEpoch = state.inventory?.inventoryEpoch ?? null; options(endpoint, (state.inventory?.endpoints || []).map(row => [row.endpointToken, row.name + ' · ' + row.direction + (row.groupMask == null ? ' · group support unknown' : ' · groups ' + Array.from({ length: 16 }, (_, i) => row.groupMask & 1 << i ? i + 1 : null).filter(Boolean).join(','))]), 'Choose a native device'); }
@@ -86,5 +106,5 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
   bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; });
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
-  return { render, dispose() { unsubscribe(); clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
+  return { render, dispose() { unsubscribe(); ciUnsubscribe?.(); ciUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
 }

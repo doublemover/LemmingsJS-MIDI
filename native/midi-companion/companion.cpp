@@ -1,5 +1,6 @@
 #include "CommandReader.hpp"
 #include "IngressHandoff.hpp"
+#include "MidiCiCodec.hpp"
 #include "NativeBatch.hpp"
 #include "NativeIo.hpp"
 #include "Protocol.hpp"
@@ -816,7 +817,22 @@ class Companion {
                   ",\"domain\":\"companion-steady-microseconds\"");
       } else if (operation == "L")
         list(request, session, input);
-      else if (operation == "A") {
+      else if (operation == "K" || operation == "Y") {
+        const auto id = static_cast<std::uint32_t>(input.number());
+        auto &owner = grant(session, id);
+        if (!(owner.flags & sysex) ||
+            (operation == "K" ? owner.input : !owner.input))
+          throw std::runtime_error(
+              "ci-codec-requires-permitted-directional-grant");
+        if (operation == "K") {
+          Tokens checked = input;
+          const auto group = checked.number(15);
+          if (!(owner.groups & (1u << group)))
+            throw std::runtime_error("ci-group-outside-device-grant");
+        }
+        reply(request, session, operation == "K" ? "ci-encoded" : "ci-decoded",
+              operation == "K" ? encode_ci(input) : decode_ci(input));
+      } else if (operation == "A") {
         const auto selected = static_cast<libremidi::API>(input.number(65535));
         input.finish();
         if (std::find(apis_.begin(), apis_.end(), selected) == apis_.end())
@@ -931,7 +947,9 @@ public:
          apis + ",\"backendReady\":" + (backend_ready_ ? "true" : "false") +
          ",\"selectedApi\":" + std::to_string(static_cast<int>(api_)) +
          ",\"libremidiRevision\":\"" LIBREMIDI_REVISION
-         "\",\"clockDomain\":\"companion-steady-microseconds\","
+         "\",\"ciCodec\":\"ni-midi2:" NI_MIDI2_REVISION
+         "\",\"ciMaximumMessageBytes\":2048,"
+         "\"clockDomain\":\"companion-steady-microseconds\","
          "\"maximumWordsPerBatch\":4096,\"maximumPendingBatches\":128,"
          "\"queueHorizonUs\":2000000,\"transportBytesPerSecond\":null,"
          "\"qualification\":\"awaiting-consolidated-validation\"}");

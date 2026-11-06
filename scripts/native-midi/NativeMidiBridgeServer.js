@@ -72,6 +72,18 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     }
     case 'close': if (!client.grants.has(uint(row.grant))) throw new Error('Endpoint grant required'); return call(client, requestId, 'X', [row.grant], { priority: true });
     case 'cancel': if (!client.grants.has(uint(row.grant)) || !uint(row.execution)) throw new Error('Owned execution required'); return call(client, requestId, 'C', [row.grant, row.execution], { priority: true });
+    case 'ciEncode': {
+      const grant = client.grants.get(uint(row.grant));
+      if (!grant || grant.direction !== 'output' || !(grant.permissions & 1) || !['discovery', 'discovery-reply', 'endpoint-inquiry', 'invalidate', 'process-inquiry', 'message-report', 'nak'].includes(row.operation) ||
+          !Array.isArray(row.parameters) || row.parameters.length > 6 || row.parameters.some(value => !Number.isSafeInteger(value) || value < 0 || value > 0x0fffffff)) throw Object.assign(new Error('Explicit SysEx output grant and supported CI operation required'), { notSubmitted: true });
+      return call(client, requestId, 'K', [row.grant, uint(row.group, 15), row.operation, uint(row.sourceMuid, 0x0ffffeff), uint(row.destinationMuid, 0x0fffffff), uint(row.scope, 127), ...row.parameters]);
+    }
+    case 'ciDecode': {
+      const grant = client.grants.get(uint(row.grant));
+      if (!grant || grant.direction !== 'input' || !(grant.permissions & 1) || typeof row.payloadHex !== 'string' || row.payloadHex.length < 28 || row.payloadHex.length > 4096 || row.payloadHex.length % 2 || !/^[0-9a-f]+$/.test(row.payloadHex)) throw Object.assign(new Error('Explicit SysEx input grant and bounded CI payload required'), { notSubmitted: true });
+      const bytes = Buffer.from(row.payloadHex, 'hex'); if (bytes.some(byte => byte > 127)) throw Object.assign(new Error('CI payload must be 7-bit data'), { notSubmitted: true });
+      return call(client, requestId, 'Y', [row.grant, bytes.length, ...bytes]);
+    }
     case 'disconnect': revoke(client, 'explicit-disconnect'); return;
     default: throw new Error('Unsupported bridge operation');
     }

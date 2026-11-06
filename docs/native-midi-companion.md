@@ -118,3 +118,23 @@ observation scopes can consume report bodies before ordinary observers; they
 expire or revoke on loss and connection replacement. This provides the ingress
 boundary for application CI/report owners. Discovery, Profile/Property Exchange,
 live controller mapping and full message-report transactions remain outstanding.
+
+The companion now links the immutable ni-midi2 dependency for MIDI-CI constructors
+and views. Authorized CI encode/decode requests require an explicit directional
+SysEx grant. They validate bounded 7-bit messages, preserve the selected CI
+version and use NI's discovery, endpoint, status, invalidation and Process Inquiry
+layouts. Native readiness advertises this codec separately from backend readiness.
+
+The connection panel provides explicit Discover device features, endpoint
+information and Process Inquiry actions. Choose a SysEx input connection and an
+owned output, then discover. The application owns bounded peers/requests,
+correlation, message-size negotiation, freshness, discovery windows, MUID collision
+recovery, invalidation and async teardown. Old transaction epochs cannot resume
+encoder or driver work. CI writes share the actual wire trace and use reserved
+low-priority native control budgets. Ordinary performance grants remain separate.
+
+The application advertises zero advanced CI categories. Its development identity
+uses the non-commercial SysEx identifier, with no registered manufacturer claim.
+The pinned library implements CI v1.2; v1.2.1 errata and platform/interoperability
+qualification remain outstanding. Profiles, Property Exchange, full isolated
+Message Reports and native live-controller mapping remain separate feature work.

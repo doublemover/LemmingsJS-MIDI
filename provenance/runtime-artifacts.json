@@ -510,6 +510,7 @@
       "files": [
         "js/app/midi-ui/NativeMidiConnectionView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
+        "js/midi/native/MidiCiSession.js",
         "js/midi/native/NativeMidiBatchQueue.js",
         "js/midi/native/NativeMidiBridgeClient.js",
         "js/midi/native/NativeMidiBridgeProtocol.js",
@@ -520,6 +521,7 @@
         "native/midi-companion/CMakeLists.txt",
         "native/midi-companion/CommandReader.hpp",
         "native/midi-companion/IngressHandoff.hpp",
+        "native/midi-companion/MidiCiCodec.hpp",
         "native/midi-companion/NativeBatch.hpp",
         "native/midi-companion/NativeIo.hpp",
         "native/midi-companion/Protocol.hpp",
@@ -531,8 +533,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 22,
-      "sha256": "d5833ba4a5fa8d990751edbb69c53e9a7c80f0c8dadc0f759f145e3482f45460"
+      "fileCount": 24,
+      "sha256": "2d82b918d51839ea3abe67ddb64fcd8f7f48a636f36db6fceb283b3c8ed047e9"
     }
   ]
 }
