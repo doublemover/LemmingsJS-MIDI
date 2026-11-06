@@ -1,3 +1,4 @@
+import { decodeMpeFeatures, MPE_PROFILE_ID } from './MpeProfileAdapter.js';
 import { createDeviceMutationOwner } from './DeviceMutation.js';
 
 export const profileIdKey = id => Array.isArray(id) && id.length === 5 && id.every(byte => Number.isInteger(byte) && byte >= 0 && byte <= 127) ? id.map(byte => byte.toString(16).padStart(2, '0')).join('') : null;
@@ -10,8 +11,8 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
   const peer = ci.getPeer(peerMuid);
   if (!peer || peer.version !== 2 || !(peer.categories & 4) || routes.client.capabilities?.ciProfileCodecVersion !== 1 || !Number.isFinite(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000) throw new Error('Discover a current Profile Configuration peer using a companion with profile decoding');
   const identity = ci.state(), records = new Map(), listeners = new Set(), mutation = createDeviceMutationOwner({ routes, ci, now });
-  let disposed = false, active = null, revision = 0, latest = null, retainedBytes = 0;
-  const current = () => !disposed && ci.state().epoch === identity.epoch && !!ci.getPeer(peerMuid);
+  let stale = false, disposed = false, active = null, revision = 0, latest = null, retainedBytes = 0;
+  const current = () => !disposed && !stale && ci.state().epoch === identity.epoch && !!ci.getPeer(peerMuid);
   const emit = () => { for (const listener of listeners) { try { listener(); } catch {} } };
   const key = (group, scope, id) => [group, scope, profileIdKey(id)].join(':');
   const finish = result => { if (!active) return; const request = active; active = null; clearTimeout(request.timer); latest = Object.freeze(result); request.resolve(latest); emit(); };
@@ -37,6 +38,9 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
     emit(); return completion;
   };
   const invalidate = reason => {
+    if (stale || disposed) return;
+    const hadEnabledProfiles = [...records.values()].some(row => row.enabled === true); stale = true;
+    if (hadEnabledProfiles) changed('stale-profile-session');
     if (active) finish({ status: 'cancelled', reason, receiverState: 'unknown' });
     mutation.cancel();
     for (const [address, record] of records) records.set(address, Object.freeze({ ...record, freshness: 'stale', enabled: null, channels: null, revision: ++revision, reason }));
@@ -88,14 +92,18 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
           allocation = Object.freeze({ current: data[0] | data[1] << 7, maximum: data[2] | data[3] << 7 });
           if (allocation.maximum > 256 || allocation.current > allocation.maximum) throw new Error('Invalid profile channel-count details');
         }
-        const record = retain(group, message.scope, message.profile, { detailsTarget: message.target, detailsData: Object.freeze([...data]), ...(allocation ? { allocation } : {}), freshness: 'current' });
+        const previous = records.get(key(group, message.scope, message.profile));
+        const record = retain(group, message.scope, message.profile, { detailsTarget: message.target, detailsData: Object.freeze([...data]), ...(allocation ? { allocation, channels: allocation.current, enabled: allocation.current > 0 } : {}), ...(profileIdKey(message.profile) === '7e31000101' && message.target === 1 ? { mpeFeatures: decodeMpeFeatures(data) } : {}), freshness: 'current' });
+        if (previous?.enabled && (allocation && previous.channels != null && previous.channels !== allocation.current || previous.mpeFeatures && JSON.stringify(previous.mpeFeatures) !== JSON.stringify(record.mpeFeatures))) changed('profile-details-changed');
         finish({ status: 'ok', record, receiverState: 'reported' }); return;
       }
       if (![36, 37, 38, 39, 47].includes(message.subtype)) return;
       const address = key(group, message.scope, message.profile), prior = records.get(address);
       if (message.subtype === 47) {
         if (!prior || !Array.isArray(message.profileData) || message.profileData.length > 1024) return;
-        retain(group, message.scope, message.profile, { profileData: Object.freeze([...message.profileData]), profileDataInterpretation: 'unverified-read-only' }); emit(); return;
+        const mpeResponse = prior.id === '7e31000101' && message.profileData.length === 1 && [0, 1].includes(message.profileData[0]) ? message.profileData[0] === 0 ? 'polyphonic' : 'monophonic' : null;
+        retain(group, message.scope, message.profile, { profileData: Object.freeze([...message.profileData]), profileDataInterpretation: mpeResponse ? 'M2-120-channel-response' : 'unverified-read-only', ...(mpeResponse ? { mpeChannelResponse: mpeResponse } : {}) });
+        if (mpeResponse && prior.mpeChannelResponse !== mpeResponse) changed('MPE-channel-response-changed'); emit(); return;
       }
       const enabled = message.subtype === 36 ? true : message.subtype === 37 ? false : message.subtype === 38 ? prior?.enabled ?? false : null;
       const own = pending && ['profile-on', 'profile-off'].includes(pending.operation) && group === pending.group && pending.scope === message.scope && profileIdKey(pending.profile) === profileIdKey(message.profile);
@@ -114,6 +122,7 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
     } catch (error) { if (active) finish({ status: 'malformed', reason: error.message, receiverState: 'unknown' }); else { latest = Object.freeze({ status: 'malformed', reason: error.message }); emit(); } }
   };
   const unsubscribe = ci.subscribeProtocol(receive), unsubscribeCi = ci.subscribe(() => { if (!current()) invalidate('Device peer or CI epoch changed'); }), unsubscribeMutation = mutation.subscribe(emit);
+  const expiryTimer = setInterval(() => { if (!current()) invalidate('Device profile evidence expired'); }, 1000); expiryTimer.unref?.();
   return Object.freeze({
     inquire(scope = 127) {
       if (!validScope(scope) || mutation.state().busy) return Promise.resolve(Object.freeze({ status: 'rejected', reason: 'Choose a current idle profile scope' }));
@@ -136,11 +145,12 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
       return current() && record?.freshness === 'current' && record.enabled === true && record.specification && Number.isInteger(record.channels) ?
         Object.freeze({ ...record, transportProtocol: 'not-implied-by-profile', perNoteControllerResponse: 'not-implied-by-profile' }) : null;
     },
-    state: () => Object.freeze({ disposed, peerMuid, connectionEpoch: identity.connectionEpoch, ciEpoch: identity.epoch, group: identity.group, revision,
+    isBindingCurrent(binding) { const record = records.get(key(binding.group, binding.scope, MPE_PROFILE_ID)); const features = record?.mpeFeatures; return !!(current() && record?.enabled === true && record.freshness === 'current' && record.channels === binding.channels && (record.mpeChannelResponse || 'unknown') === binding.channelResponse && features && ['responseNotifications', 'pitchBend', 'pressure', 'thirdAxis'].every(key => features[key] === binding.features[key])); },
+    state: () => Object.freeze({ disposed, stale, inputGrant: identity.inputGrant, outputGrant: identity.outputGrant, peerMuid, connectionEpoch: identity.connectionEpoch, ciEpoch: identity.epoch, group: identity.group, revision,
       busy: !!active || mutation.state().busy, pending: active ? Object.freeze({ operation: active.operation, scope: active.scope, profile: active.profile }) : null,
       profiles: Object.freeze([...records.values()]), retainedBytes, latest, mutation: mutation.state() }),
     subscribe(listener) { if (disposed || typeof listener !== 'function' || listeners.size >= 8) throw new Error('Profile observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
     cancel() { if (active) finish({ status: 'cancelled', reason: 'Profile request cancelled', receiverState: 'unknown' }); mutation.cancel(); },
-    dispose() { if (disposed) return; disposed = true; if (active) finish({ status: 'cancelled', reason: 'Profile owner retired', receiverState: 'unknown' }); mutation.dispose(); unsubscribe(); unsubscribeCi(); unsubscribeMutation(); records.clear(); listeners.clear(); retainedBytes = 0; }
+    dispose() { if (disposed) return; disposed = true; clearInterval(expiryTimer); if (active) finish({ status: 'cancelled', reason: 'Profile owner retired', receiverState: 'unknown' }); mutation.dispose(); unsubscribe(); unsubscribeCi(); unsubscribeMutation(); records.clear(); listeners.clear(); retainedBytes = 0; }
   });
 }

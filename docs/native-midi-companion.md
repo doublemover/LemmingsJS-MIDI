@@ -175,3 +175,21 @@ qualification remains deferred.
 
 Profile framing follows the pinned NI implementation, [MIDI-CI v1.2 section 7](https://amei.or.jp/midistandardcommittee/MIDI2.0/MIDI2.0-DOCS/M2-101-UM_v1-2_MIDI-CI_Specification.pdf)
 and [Common Profile Rules v1.1](https://amei.or.jp/midistandardcommittee/MIDI2.0/MIDI2.0-DOCS/M2-102-U_v1-1_Common_Rules_for_MIDI-CI_Profiles.pdf).
+
+
+The MPE adapter now binds a receiver-reported allocation and queried optional
+features to a selected native lane. It distinguishes CI MPE from plain UMP routes,
+legacy MPE and MIDI2 per-note controllers. Every active note owns an available
+member channel; the lowest allocated manager never receives notes. Exhausted
+members are refused rather than sharing away independent expression. Granted
+groups and route overlap are checked explicitly.
+
+Manager-only setup establishes the shared 48-HCU bend range and cohort expression.
+Members receive initial bend/pressure/third-axis values before onset and retain
+independent updates until release. Queried support selects either classic
+Channel Pressure/CC74 or bipolar RPN/Registered Controllers, with no duplicate
+axis messages. MIDI1-in-UMP and MIDI2 retain separate wire resolution. Lane gain
+updates drive manager expression as bounded coalesced cohort controls. Program
+recall remains a separate device mutation, and MPE never unlocks native per-note
+rotation. Profile loss or changed semantics retires affected owned executions.
+This source implementation is still unqualified against an independent receiver.

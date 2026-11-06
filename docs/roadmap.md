@@ -10587,3 +10587,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add owned ProfileSession with atomic bounded inventories, supported/active/requested distinctions, channel details, partial/refused/timeout results, external notifications and explicit panel controls. Unknown specifications remain read-only; MPE's published identity is cataloged separately from its upcoming musical adapter.
 - Add quiescent DeviceMutation ownership. Hold new attacks and ordinary input, invalidate route/device observations and retire only affected native grant executions. Preserve receiver-state uncertainty and require explicit lane reassignment. Keep per-grant wire execution identities fresh after retirement.
 - Formatting and the Windows companion compile/link pass; functional and interoperability tests remain deferred with the rest of the feature pass.
+
+
+### 2026-11-06 — Rook continuation486: CI MPE physical-performance adapter
+
+- Implement M2-120 v2.0.3's exact profile identity, accepted manager/member span, optional-feature parsing, explicit classic/bipolar alternatives and separate MIDI1/MIDI2 wire policies. Retain one active owned note per member with explicit capacity refusal; never use the manager for notes or legacy RPN6 allocation.
+- Bind reviewed current profile evidence through the native lane panel. Validate every granted group and occupied application address. Manager-only shared bend setup and cohort expression precede member onset; members receive independently owned bend, pressure and third-axis controls. Lane gains send coalesced manager expression updates with separate control provenance.
+- Invalidate profile evidence on expiry/loss and retire affected owned executions when allocation/semantics change. Program recall stays an explicit device mutation; MPE advertisement does not enable native per-note controllers. Defer independent receiver and physical cohort qualification to the final consolidated pass.

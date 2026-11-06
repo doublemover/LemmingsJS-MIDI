@@ -84,9 +84,11 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     const row = selectedProfile(), result = state?.latest, mutable = !!row?.specification && row.group === state?.group && row.freshness === 'current' && row.supported;
     profileStatus.textContent = state ? 'Device profiles: ' + state.profiles.length + ' · ' + (state.busy ? 'pending' : result?.status || 'idle') + (result?.reason ? ' · ' + result.reason : '') +
       (row?.allocation ? ' · channel allocation ' + row.allocation.current + ' / ' + row.allocation.maximum : '') +
+      (row?.mpeFeatures ? ' · bend ' + (row.mpeFeatures.pitchBend ? 'supported' : 'unsupported') + ' · pressure form ' + row.mpeFeatures.pressure + ' · third-axis form ' + row.mpeFeatures.thirdAxis : '') +
       (row ? ' · ' + (row.specification?.revision || 'Unreviewed specification; read-only inspection') : '') : 'Device profiles are unknown until queried.';
     profileEnable.disabled = busy || !mutable || !profileConsent.checked; profileDisable.disabled = busy || !mutable || !profileConsent.checked;
-    profileDetails.disabled = busy || !row || row.group !== state?.group; profileCancel.disabled = !state?.busy;
+    profileDetails.disabled = busy || !row || row.group !== state?.group;
+    mpeFeatures.disabled = busy || row?.id !== '7e31000101' || row?.group !== state?.group; mpeAssign.disabled = busy || row?.id !== '7e31000101' || row?.group !== state?.group || !row?.enabled || !row?.mpeFeatures || !Number.isInteger(row?.channels); profileCancel.disabled = !state?.busy;
   };
   const ensureProfile = async () => {
     const session = await ensureCi(), peerMuid = Number(ciPeer.value);
@@ -105,6 +107,19 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     profileConsent.checked = false; message.textContent = result.reason || (result.status === 'ok' ? 'Device reported the requested profile state. Review its accepted channel count, then explicitly reassign affected native lanes.' : 'Profile change: ' + result.status); showProfiles();
   };
   const profileEnable = button('Enable selected profile', () => changeProfile(true), routeControls), profileDisable = button('Disable selected profile', () => changeProfile(false), routeControls);
+  const mpePressure = select('MPE pressure form', routeControls), mpeThird = select('MPE third-axis form', routeControls);
+  for (const picker of [mpePressure, mpeThird]) for (const [value, label] of [['classic', 'Classic controller'], ['bipolar', 'Negotiated bipolar registered controller']]) { const option = element(document, 'option', label); option.value = value; picker.append(option); }
+  const mpeFeatures = button('Read MPE optional features', async () => {
+    const session = await ensureProfile(), row = selectedProfile(); if (!row || row.id !== '7e31000101' || row.group !== session.state().group) throw new Error('Select the current-group MPE profile');
+    const result = await session.details(row.profile, row.scope, 1); message.textContent = result.reason || 'MPE features: ' + result.status; showProfiles();
+  }, routeControls);
+  const mpeAssign = button('Use accepted MPE allocation for this lane', async () => {
+    const session = await ensureProfile(), row = selectedProfile(); if (!row || row.group !== session.state().group) throw new Error('Select an enabled MPE profile in this group');
+    if (!getLanes().some(value => value.id === lane.value)) throw new Error('Choose a current lane');
+    const route = routes.bindMpe({ laneId: lane.value, session, profile: row.profile, scope: row.scope, protocol: protocol.value, pressureForm: mpePressure.value, thirdAxisForm: mpeThird.value });
+    onAssign(lane.value, route); message.textContent = 'CI MPE uses manager group ' + (route.mpe.manager.group + 1) + ', channel ' + (route.mpe.manager.channel + 1) + ' and ' + route.mpe.members.length +
+      ' independent members. Lane gain controls the cohort on its manager. Program recall stays a separate device change; shared same-pitch voices use separate members.'; showProfiles();
+  }, routeControls);
   const profileCancel = button('Cancel profile request', () => { profileSession?.cancel(); showProfiles(); }, routeControls, true);
   bindEvent(profileChoice, 'change', () => { profileConsent.checked = false; showProfiles(); }); bindEvent(profileConsent, 'change', showProfiles);
   const isolated = checkbox('Device idle; no other playback, controller or Thru traffic');
