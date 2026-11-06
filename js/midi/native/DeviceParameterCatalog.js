@@ -1,16 +1,25 @@
 import { createMidiControllerMutations } from '../protocol/MidiControllerMutations.js';
 import { encodeIntent } from '../protocol/UmpPacketCodec.js';
-import { normalizeDeviceParameters, normalizeControllerMap, validateDeviceParameterMappings, mapDeviceParameterSource, encodeDeviceParameter, quantizeDeviceParameter } from './DeviceParameter.js';
+import { assertDeviceParameterOwnership, normalizeDeviceParameters, normalizeControllerMap, validateDeviceParameterMappings, mapDeviceParameterSource, encodeDeviceParameter, quantizeDeviceParameter } from './DeviceParameter.js';
 import { scaleMidiResolution } from '../protocol/MidiProtocolLowering.js';
 
 const projected = (parameter, raw) => quantizeDeviceParameter(parameter, raw, { projectEnumeration: true });
 const fingerprint = peer => JSON.stringify(peer?.identity || null);
-const intentSignature = mapping => JSON.stringify([mapping.stableId, mapping.signature, mapping.deviceFingerprint, mapping.source, mapping.inputMinimum, mapping.inputMaximum, mapping.curve, mapping.exponent, mapping.smoothingMs, mapping.deadband, mapping.pickup, mapping.scope]);
+const intentSignature = mapping => JSON.stringify([mapping.stableId, mapping.signature, mapping.deviceFingerprint, mapping.source, mapping.inputMinimum, mapping.inputMaximum, mapping.curve, mapping.exponent, mapping.smoothingMs, mapping.deadband, mapping.pickup, mapping.scope, mapping.releaseValue ?? null]);
 const result = (status, reason = null, fields = {}) => Object.freeze({ status, reason, ...fields });
 export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid } = {}) {
   const scope = ci.state(), initialPeer = ci.getPeer(peerMuid), listeners = new Set(), values = new Map(), active = new Map(), wireParameters = new Map(), mutations = createMidiControllerMutations({ maximumEntries: 512 }), automation = [];
   let capturing = false, automationBytes = 0, mutationSequence = 0, observedGroupRevisions = null;
-  const parameterScopes = new Map();
+  const parameterScopes = new Map(), releasing = new Set();
+  const releaseClaims = predicate => {
+    const completions = [];
+    for (const [key, claim] of active) if (predicate(claim, key)) {
+      active.delete(key); if (!claim.lease) continue;
+      const completion = claim.lease.release(); releasing.add(completion); completions.push(completion);
+      completion.then(() => releasing.delete(completion), error => { releasing.delete(completion); latest = result('incomplete', error.message); emit(); });
+    }
+    return Promise.all(completions);
+  };
   if (!initialPeer || properties.state().ciEpoch !== scope.epoch) throw new Error('Choose a current discovered Property Exchange peer');
   let closing = false, writeCompletion = Promise.resolve(), finishWrite = null;
   let disposed = false, loading = false, generation = 0, parameters = [], revision = 0, deviceRevision = null, latest = null, writing = false, disposal = null;
@@ -50,7 +59,7 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
   };
   const address = parameter => routes.resolvePropertyChannel(ci, peerMuid, parameter.propertyChannel);
   const parameterFor = stableId => parameters.find(row => row.stableId === stableId);
-  const invalidate = reason => { generation++; active.clear(); mutations.clear(); capturing = false; deviceRevision = null; for (const [key, value] of values) values.set(key, Object.freeze({ ...value, known: false, pending: false, reason, revision: ++revision })); latest = result('stale', reason); emit(); };
+  const invalidate = reason => { generation++; void releaseClaims(() => true).catch(() => {}); mutations.clear(); capturing = false; deviceRevision = null; for (const [key, value] of values) values.set(key, Object.freeze({ ...value, known: false, pending: false, reason, revision: ++revision })); latest = result('stale', reason); emit(); };
   const getRecord = async (resource, options, owned) => {
     const response = await properties.get(resource, { ...options, isCurrent: () => current() && generation === owned });
     if (!current() || generation !== owned) throw new Error('Device controller discovery changed');
@@ -94,15 +103,16 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
       if (![previous?.group, target?.group].some(group => group != null && next[group] !== observedGroupRevisions[group])) continue;
       for (const candidate of [previous, target]) { const controller = candidate && mutationAddress(parameter, candidate); if (controller) mutations.invalidate(controller); }
       for (const [key, value] of values) if (key.startsWith(parameter.stableId + ':')) values.set(key, Object.freeze({ ...value, known: false, value: null, localValue: null, rawAccumulator: null, pending: false, reason: 'device-controller-group-changed', revision: ++revision }));
-      for (const [key, claim] of active) if (claim.mapping.stableId === parameter.stableId) active.delete(key);
+      for (const [key, claim] of active) if (claim.mapping.stableId === parameter.stableId) void releaseClaims((row, id) => id === key).catch(() => {});
     }
     observedGroupRevisions = next; emit();
   });
   const api = Object.freeze({
     async load({ resource = 'AllCtrlList', propertyChannel = null, resId = null } = {}) {
       if (loading || writing || !current()) return result('rejected', 'Device controller discovery is busy or stale');
-      loading = true; const owned = ++generation; active.clear(); emit();
+      loading = true; const owned = ++generation; emit();
       try {
+        await releaseClaims(() => true);
         const discovered = await properties.discoverResources(); if (discovered.status !== 'ok') throw new Error(discovered.reason || 'Resource discovery failed');
         if (resource === 'ChCtrlList') {
           const channels = await getRecord('ChannelList', {}, owned), row = channels.data?.find(value => value.channel === propertyChannel);
@@ -131,18 +141,25 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
       return validateDeviceParameterMappings([{ ...mapping, schema: 'lemmings-device-parameter-intent/v1', stableId, signature: parameter.signature,
         cachedDescriptor: parameter, deviceFingerprint: fingerprint(initialPeer), scope: parameter.scope }])[0];
     },
-    activate(laneId, intent, route) {
+    async activate(laneId, intent, route) {
       const mapping = validateDeviceParameterMappings([intent])[0], parameter = parameterFor(mapping.stableId), target = parameter && address(parameter);
-      if (!ready() || !parameter || parameter.signature !== mapping.signature || mapping.deviceFingerprint !== fingerprint(ci.getPeer(peerMuid)) || !parameter.writable ||
-          !target || route.grant !== scope.outputGrant || route.group !== target.group || route.channel !== target.channel || route.mpe ||
-          parameter.type === 'enum' && !parameter.enumValues.length || ['momentary', 'toggle'].includes(parameter.type) && parameter.scope === 'channel' || !['absolute', 'both'].includes(parameter.recognize)) throw new Error('Review a matching current channel route and an absolute writable controller; shared momentary and toggle mappings require a controller-release lease');
-      const hold = routes.holdForObservation(scope.outputGrant); routes.releaseObservation(hold);
-      if (active.size >= 256 && !active.has(laneId + ':' + mapping.stableId)) throw new Error('Active device-expression mapping capacity');
-      active.set(laneId + ':' + mapping.stableId, Object.freeze({ mapping, intentSignature: intentSignature(mapping), outputId: route.outputId, routeRevision: route.routeRevision }));
-      emit(); return mapping;
+      if (!ready() || !parameter || parameter.signature !== mapping.signature || mapping.deviceFingerprint !== fingerprint(ci.getPeer(peerMuid)) || !parameter.writable || !target || route.grant !== scope.outputGrant || route.group !== target.group || route.channel !== target.channel || route.mpe || parameter.type === 'enum' && !parameter.enumValues.length || !['absolute', 'both'].includes(parameter.recognize)) throw new Error('Review a matching current channel route and an absolute writable controller');
+      assertDeviceParameterOwnership(parameter, route);
+      const key = laneId + ':' + mapping.stableId, hold = routes.holdForObservation(scope.outputGrant), owned = generation; let lease = null;
+      try {
+        if (active.size >= 256 && !active.has(key)) throw new Error('Active device-expression mapping capacity');
+        await releaseClaims((row, id) => id === key);
+        if (parameter.scope === 'channel' && ['momentary', 'toggle'].includes(parameter.type)) lease = await routes.acquireControllerReleasePolicy(scope.outputGrant, encodeDeviceParameter(parameter, route, { value: mapping.releaseValue }), parameter.type);
+        if (!ready() || generation !== owned || routes.resolve(route.outputId, laneId)?.routeRevision !== route.routeRevision) throw new Error('Device mapping route changed during activation');
+        const signature = intentSignature(mapping), claim = { mapping, lease, laneId, intentSignature: signature, outputId: route.outputId, routeRevision: route.routeRevision,
+          current: lane => ready() && active.get(key) === claim && (!lease || lease.current()) && lane?.outputId === route.outputId && lane.deviceParameters?.some(row => row.stableId === mapping.stableId && intentSignature(row) === signature) && routes.resolve(route.outputId, laneId)?.routeRevision === route.routeRevision };
+        active.set(key, Object.freeze(claim)); emit(); return mapping;
+      } catch (error) { if (lease) await lease.release(); throw error; } finally { routes.releaseObservation(hold); }
     },
+    deactivate(laneId, stableId) { const completion = releaseClaims((claim, key) => key === laneId + ':' + stableId); emit(); return completion; },
+    reconcile(lanes) { for (const claim of active.values()) if (!claim.current(lanes.get(claim.laneId))) void releaseClaims(row => row === claim).catch(() => {}); },
     ownsMapping(laneId, mapping, route) { const claim = active.get(laneId + ':' + mapping.stableId); return ready() && !!claim && claim.outputId === route.outputId && claim.routeRevision === route.routeRevision && claim.intentSignature === intentSignature(mapping); },
-    voiceWords(lane, route, intent, state, targetMicroseconds) {
+    voiceWords(lane, route, intent, state, targetMicroseconds, cohort) {
       const words = [], observations = [];
       for (const mapping of lane.deviceParameters || []) {
         const claim = active.get(lane.id + ':' + mapping.stableId), parameter = parameterFor(mapping.stableId);
@@ -151,6 +168,11 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
         state.set(key, previous); const observed = baseline(parameter, route.note), value = mapDeviceParameterSource(parameter, mapping, intent, previous, targetMicroseconds, observed);
         if (value == null) continue;
         const controller = mutationAddress(parameter); if (controller) mutations.invalidate(controller);
+        if (claim.lease) {
+          if (!cohort) throw new Error('Shared controller cohort required');
+          cohort.contribute({ claim, mapping, parameter, route, voiceId: intent.voiceId, laneId: lane.id, value, onWords: encodeDeviceParameter(parameter, route, { value: parameter.maximum }) });
+          continue;
+        }
         words.push(...encodeDeviceParameter(parameter, route, { value })); observations.push(Object.freeze({ stableId: parameter.stableId, value, source: mapping.source, sourceResolution: parameter.sourceResolution }));
       }
       return Object.freeze({ words: Object.freeze(words), observations: Object.freeze(observations) });
@@ -234,7 +256,7 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
     baseline: (stableId, note = null) => { const parameter = parameterFor(stableId); return parameter ? baseline(parameter, note) : Object.freeze({ known: false, revision: 0, reason: 'missing-parameter' }); },
     state: () => Object.freeze({ disposed, stale: !ready(), loading, writing, peerMuid, outputGrant: scope.outputGrant, parameters, activeBindings: active.size, revision, latest, capturing, automationRecords: automation.length, automationBytes, controllerOwner: mutations.diagnostics() }),
     subscribe(listener) { if (disposed || listeners.size >= 8 || typeof listener !== 'function') throw new Error('Controller observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
-    dispose() { if (disposal) return disposal; closing = true; generation++; active.clear(); removeInput(); removeCi(); removeProperties(); removeRoutes(); disposal = writeCompletion.then(() => { disposed = true; parameters = []; values.clear(); wireParameters.clear(); parameterScopes.clear(); mutations.dispose(); automation.length = automationBytes = 0; listeners.clear(); }); return disposal; }
+    dispose() { if (disposal) return disposal; closing = true; generation++; const releases = releaseClaims(() => true); removeInput(); removeCi(); removeProperties(); removeRoutes(); disposal = Promise.all([writeCompletion, releases, ...releasing]).then(() => { disposed = true; parameters = []; values.clear(); wireParameters.clear(); parameterScopes.clear(); mutations.dispose(); automation.length = automationBytes = 0; listeners.clear(); }); return disposal; }
   });
   return api;
 }

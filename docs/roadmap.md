@@ -10752,3 +10752,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Preserve native admission order at equal deadlines rather than reversing an onset/release pair by priority. Reserved release capacity remains independent of ordering.
 - Separate matching Note Offs from shared piano part updates. A departing actor can lower its contribution without lifting another actor or an explicit pedal override; positive/decreased depth changes retain ordinary performance priority. Failed release admission/submission retires the affected group execution instead of leaving stuck ownership.
 - Reconcile confirmed automatic native grant cleanup with browser voices/parts, retaining explicit uncertainty for failed note/controller cleanup. No functional tests; formatting only. Continue shared generic switch mappings and coordinated graph restoration before consolidated validation.
+
+
+### 2026-11-06 — Rook continuation507: shared discovered-device switch mappings
+
+- Enable explicitly reviewed channel-scoped momentary and toggle mappings through registered native release policies. Persist their exact off endpoint, reject structural/profile-owned controller conflicts and require a current stopped route during asynchronous policy registration.
+- Share policy references across catalogs/lanes and combine actor trigger contributions per native group execution. Send transitions only; the last contributor releases the trigger, without claiming to reverse a toggle’s latched receiver property. Track prior controller completions, bounded part/contribution ownership and failed-submission retirement.
+- Reconcile mapping removal, metadata/route changes and catalog disposal with policy-specific native cleanup. Keep matching Note Off independent of controller retirement, including control-only organ sources and rejected onsets. Add typed shared-trigger/release explanations and awaited activation/removal in the existing compact parameter panel.
+- Formatting and critical/boundary typechecks pass. No functional tests or device execution. Continue coordinated source/effect state cuts, remaining timing/route work and outstanding issue implementation before the consolidated validation pass.

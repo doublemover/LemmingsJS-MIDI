@@ -13,7 +13,7 @@ export function createNativeMidiParameterView({ document, container, routes, get
   const slider = field('Parameter position', element('input')); slider.type = 'range'; slider.min = '0'; slider.max = '4294967295'; slider.step = '1'; slider.value = '0';
   const numeric = number('Exact parameter value', 0, 0, 4294967295, 1), enumeration = field('Named parameter value', element('select')), binary = checkbox('Momentary / toggle state');
   const increment = number('Relative change (signed full-resolution units)', 1, -2147483648, 2147483647, 1);
-  const rawReplay = checkbox('Explicitly include baseline-dependent raw relative automation');
+  const rawReplay = checkbox('Explicitly include receiver-dependent relative / toggle automation');
   const stopped = checkbox('The selected native output is stopped; apply this device-control change');
   const source = field('Physical source', element('select'));
   for (const [id, definition] of Object.entries(DEVICE_PARAMETER_SOURCES)) { const option = element('option', definition.label); option.value = id; source.append(option); }
@@ -27,7 +27,7 @@ export function createNativeMidiParameterView({ document, container, routes, get
   const selected = () => catalog?.state().parameters.find(row => row.stableId === parameter.value);
   const draft = () => {
     const row = selected(); if (!row) throw new Error('Discover and select a device parameter first');
-    return catalog.intent(row.stableId, { source: source.value, inputMinimum: Number(inputMinimum.value), inputMaximum: Number(inputMaximum.value), curve: curve.value, exponent: Number(exponent.value), smoothingMs: Number(smoothing.value), deadband: Number(deadband.value), pickup: pickup.checked });
+    return catalog.intent(row.stableId, { source: source.value, inputMinimum: Number(inputMinimum.value), inputMaximum: Number(inputMaximum.value), curve: curve.value, exponent: Number(exponent.value), smoothingMs: Number(smoothing.value), deadband: Number(deadband.value), pickup: pickup.checked, ...(['momentary', 'toggle'].includes(row.type) && row.scope === 'channel' ? { releaseValue: row.minimum } : {}) });
   };
   const render = () => {
     if (disposed) return; const state = catalog?.state(), row = selected(), observed = row ? catalog.baseline(row.stableId) : null;
@@ -58,7 +58,7 @@ export function createNativeMidiParameterView({ document, container, routes, get
     status.textContent = flags + (row ? ' · value ' + (observed.known ? observed.value : 'unknown') + (observed.localValue != null ? ' · local requested ' + observed.localValue + ' · residual ' + observed.rawRemainder : '') + ' · ' + row.sourceResolution + ' significant bits' + (observed.reason ? ' · ' + observed.reason : '') : '') +
       (state?.latest ? ' · ' + state.latest.status + (state.latest.reason ? ' · ' + state.latest.reason : '') : '') + (state?.automationRecords ? ' · ' + state.automationRecords + ' captured controller gestures' + (state.capturing ? ' · capturing' : '') : '') + (message ? ' · ' + message : '');
     description.textContent = row ? row.name + (row.description ? ' · ' + row.description : '') + ' · range ' + row.minimum + '–' + row.maximum + (row.unit ? ' ' + row.unit : ' · unit not declared') +
-      ' · sends ' + row.transmit + ' / recognizes ' + row.recognize + (row.paramPath ? ' · ' + row.paramPath : '') + ' · ' + (row.scope === 'note' ? 'Each owned note keeps its own value.' : 'All voices on this lane channel share the control.') :
+      ' · sends ' + row.transmit + ' / recognizes ' + row.recognize + (row.paramPath ? ' · ' + row.paramPath : '') + ' · ' + (row.scope === 'note' ? 'Each owned note keeps its own value.' : ['momentary', 'toggle'].includes(row.type) ? 'Actor triggers combine across this channel; the last trigger releases to ' + row.minimum + (row.type === 'toggle' ? '. Only a rising edge toggles the receiver; trigger release does not restore its latched setting.' : '.') : 'All voices on this lane channel share the control.') :
       'Discover the selected peer’s declared controls. A saved physical mapping requires explicit activation after reconnecting. Device observations never send an echo.';
   };
   const ensure = async () => {
@@ -85,11 +85,11 @@ export function createNativeMidiParameterView({ document, container, routes, get
   });
   const relative = button('Apply relative change', async () => { const row = selected(), response = await catalog.write(row.stableId, { target: getWireTarget(), delta: Number(increment.value), expectedRevision: displayedRevision, confirmed: stopped.checked }); message = response.reason || 'Relative control ' + response.status; stopped.checked = false; dirty = false; });
   const save = button('Save physical source mapping to lane', () => { const lane = getLane(), mapping = draft(); onSaveMappings(lane.id, [...(lane.deviceParameters || []).filter(row => row.stableId !== mapping.stableId), mapping]); message = 'Mapping intent saved. Review and activate it on the current device before native playback.'; });
-  const activate = button('Activate saved mapping on this route', () => {
+  const activate = button('Activate saved mapping on this route', async () => {
     const lane = getLane(), mapping = lane.deviceParameters.find(row => row.stableId === selected().stableId), route = routes.resolve(lane.outputId, lane.id);
-    if (!route) throw new Error('Explicitly route this lane to the matching native device first'); catalog.activate(lane.id, mapping, route); message = 'Physical mapping active for this route. Soft takeover uses observed device values; an unknown baseline waits for a report or device movement.';
+    if (!route) throw new Error('Explicitly route this lane to the matching native device first'); await catalog.activate(lane.id, mapping, route); message = 'Physical mapping active for this route. Soft takeover uses observed device values; an unknown baseline waits for a report or device movement.';
   });
-  const remove = button('Remove selected lane mapping', () => { const lane = getLane(); onSaveMappings(lane.id, (lane.deviceParameters || []).filter(row => row.stableId !== parameter.value)); message = 'Saved mapping removed from this lane.'; });
+  const remove = button('Remove selected lane mapping', async () => { const lane = getLane(); await catalog?.deactivate(lane.id, parameter.value); onSaveMappings(lane.id, (lane.deviceParameters || []).filter(row => row.stableId !== parameter.value)); message = 'Saved mapping removed from this lane.'; });
   const startCapture = button('Capture ordered controller automation', () => { catalog.startAutomationCapture(); message = 'Capturing native hardware movements and submitted UI gestures. Resolved values and original relative gestures remain separate.'; });
   const stopCapture = button('Stop controller capture', () => catalog.stopAutomationCapture());
   const exportCapture = button('Save controller automation', () => { const data = catalog.automation({ includeBaselineDependent: rawReplay.checked }), url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' })), link = element('a'); link.href = url; link.download = 'lemmings-device-controller-automation.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 0); });

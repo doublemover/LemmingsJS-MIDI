@@ -93,11 +93,11 @@ export function validateDeviceParameterMappings(input) {
         !cached || cached.stableId !== row.stableId || cached.signature !== row.signature || JSON.stringify(cached).length > 16384 || !text(cached.name) ||
         !bounded(row.inputMinimum, -1000000000, 1000000000) || !bounded(row.inputMaximum, -1000000000, 1000000000) || row.inputMinimum >= row.inputMaximum ||
         !['linear', 'exponential', 'logarithmic', 'step'].includes(row.curve) || !bounded(row.exponent, 0.1, 10) || !bounded(row.smoothingMs, 0, 60000) || !bounded(row.deadband, 0, 0.5) ||
-        typeof row.pickup !== 'boolean' || !['channel', 'note'].includes(row.scope) || typeof row.deviceFingerprint !== 'string' || row.deviceFingerprint.length > 1024) throw new Error('Invalid saved device-expression intent');
+        typeof row.pickup !== 'boolean' || !['channel', 'note'].includes(row.scope) || typeof row.deviceFingerprint !== 'string' || row.deviceFingerprint.length > 1024 || ['momentary', 'toggle'].includes(cached.type) && row.scope === 'channel' && row.releaseValue !== cached.minimum) throw new Error('Invalid saved device-expression intent');
     seen.add(row.stableId);
     return Object.freeze({ schema: row.schema, stableId: row.stableId, signature: row.signature, cachedDescriptor: Object.freeze(JSON.parse(JSON.stringify(cached))),
       deviceFingerprint: row.deviceFingerprint, source: row.source, inputMinimum: row.inputMinimum, inputMaximum: row.inputMaximum, curve: row.curve, exponent: row.exponent,
-      smoothingMs: row.smoothingMs, deadband: row.deadband, pickup: row.pickup, scope: row.scope, reconnect: 'explicit-review-required' });
+      smoothingMs: row.smoothingMs, deadband: row.deadband, pickup: row.pickup, scope: row.scope, ...(['momentary', 'toggle'].includes(cached.type) && row.scope === 'channel' ? { releaseValue: row.releaseValue } : {}), reconnect: 'explicit-review-required' });
   }));
 }
 export function mapDeviceParameterSource(parameter, mapping, intent, state, targetMicroseconds, baseline) {
@@ -123,4 +123,13 @@ export function mapDeviceParameterSource(parameter, mapping, intent, state, targ
   const value = quantizeDeviceParameter(parameter, raw);
   if (state.sent != null && Math.abs(value - state.sent) <= mapping.deadband * (parameter.maximum - parameter.minimum)) return null;
   state.sent = value; return value;
+}
+
+export function assertDeviceParameterOwnership(parameter, route) {
+  const type = parameter.ctrlType, [bank, index] = parameter.ctrlIndex;
+  if (type === 'cc' && parameter.ctrlIndex.some(controller => [0, 32, 6, 38, 96, 97, 98, 99, 100, 101].includes(controller) || controller >= 120)) throw new Error('Structural channel controls cannot own physical expression mappings');
+  if (type === 'rpn' && bank === 0 && index === 6) throw new Error('Legacy MPE zone configuration cannot be a physical expression mapping');
+  if (type === 'cc' && [64, 66, 67].includes(bank) && (route.piano || ['momentary', 'toggle'].includes(parameter.type))) throw new Error('Use the owned Piano pedal adapter for shared pedal mappings');
+  if (type === 'rpn' && (route.piano && bank === 65 && [2, 3].includes(index) || route.organ && (bank === 64 && index >= 48 && index <= 65 || bank === 96 && index >= 32 && index <= 45) || route.orchestral && bank === 32 && [34, 35].includes(index)) || route.orchestral && type === 'pnrc' && bank === 12) throw new Error('This address is already owned by the selected performance profile');
+  if (parameter.scope === 'channel' && ['momentary', 'toggle'].includes(parameter.type) && !['cc', 'rpn', 'nrpn'].includes(type)) throw new Error('Shared binary control requires a typed CC, RPN or NRPN release transaction');
 }

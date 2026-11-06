@@ -364,3 +364,8 @@ Registration sends no controller data. Native execution ownership arms only afte
 
 
 Browser release jobs retain bounded dependencies on the actual onset or prior part control, and remain cancellable while waiting. Matching Note Offs travel separately from shared pedal transitions, so an actor ending cannot turn a positive shared-control update into an invalid release packet. Equal native deadlines preserve admission order; release priority reserves capacity without moving a release ahead of its own onset. A failed release retires its affected group execution. Confirmed native grant retirement also clears the browser owner; unconfirmed cleanup remains visible in native retirement diagnostics.
+
+
+Discovered channel-scoped momentary and toggle mappings now require explicit current-route activation and retain the advertised minimum as their release endpoint. Shared actor inputs combine as a logical OR per owned controller/execution; another held actor keeps the trigger high. The final contribution sends the exact registered release after earlier control submissions settle. Toggle output is an edge-trigger level, not an inferred latched property. Unknown pickup waits for a report or hardware movement unless the saved mapping explicitly disables pickup.
+
+A central reference owner shares identical policies across lane/catalog claims; removing the final claim retires only that policy and dependent queued work. Structural channel configuration and existing profile controls cannot be mapped over their owners. Shared pedal mappings use the dedicated Piano adapter. Mapping removal, route/resource changes, stopped reactivation and disposal keep cleanup scope explicit. These adapters remain unqualified until the deferred consolidated runtime/receiver pass.
