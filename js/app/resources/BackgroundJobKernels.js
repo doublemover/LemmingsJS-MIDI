@@ -270,6 +270,13 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   }
   if (kind === 'snapshot-canonical-data') return runCanonicalSnapshotKernel(kind, input, options);
   const metadata = await inspectValue(input, options, { allowBinary: ['owned-audio-image', 'prepare-owned-effect-cut', 'prepare-owned-source-cut', 'decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
+  if (kind === 'encode-causal-checkpoint') {
+    const encoded = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 32 * 1048576), maxNodes }); guard(signal, current);
+    if (encoded.bytes.length * 4 + encoded.nodes * 96 + metadata.bytes * 2 > estimatedPeakBytes) throw problem('checkpoint-capacity', 'The canonical checkpoint exceeds its admitted encoding/hash overlap.');
+    const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', encoded.bytes))].map(byte => byte.toString(16).padStart(2, '0')).join(''); guard(signal, current);
+    const value = { schema: 'lemmings-canonical-checkpoint-encoding/v1', canonical: encoded.text, hash, bytes: encoded.bytes.length, nodes: encoded.nodes, method: 'dedicated-worker-canonical-encoding' };
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes: encoded.text.length * 2 + 4096 };
+  }
   if (kind === 'encode-preference-pages') {
     if (!Array.isArray(input) || input.length < 1 || input.length > 8) throw problem('invalid-data', 'Preference encoding needs one to eight owned pages.');
     const value = []; let retainedBytes = 4096;

@@ -1,3 +1,4 @@
+import { prepareCausalCheckpointEncoding } from './CausalCheckpointEncoding.js';
 import { metadataFor, finalizationEvidence, verifyManifestHashes } from './CausalJournalValidation.js';
 import { validateCausalChunk } from './CausalArchiveEntry.js';
 import { canonicalJournalText, estimateJournalBytes, cloneJournalData, freezeJournalData, hashJournalText, hashJournalData, journalError } from './CausalJournalCanonical.js';
@@ -65,17 +66,17 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     if (entry) { entry.retiring = true; entry.release?.(); qualifiedBytes -= entry.bytes; qualified.delete(takeId); }
   };
   const createTake = async ({ takeId, takeName = 'Untitled take', documentId, sourceVersions, captureProfile, boundaryState = {}, initialCheckpoint,
-    mapping, assetRefs = [], prefix = null } = {}) => {
+    mapping, assetRefs = [], prefix = null, signal = null } = {}) => {
     if (!id(takeId) || typeof takeName !== 'string' || !takeName.trim() || takeName.length > 120 || !id(documentId) || !sourceVersions || !captureProfile || !initialCheckpoint || !mapping) throw new Error('A take requires bounded name/document/source/checkpoint/capture identities.');
-    const release = reserve((estimateJournalBytes(initialCheckpoint, { maxBytes: 32 * 1048576, maxNodes: 4000000 }) +
-      estimateJournalBytes({ sourceVersions, captureProfile, boundaryState, mapping, assetRefs, prefix }, { maxBytes: 8 * 1048576 })) * 4);
+    const checkpoint = await prepareCausalCheckpointEncoding(initialCheckpoint, { resourceBudget, jobs, signal, sourceRevision: takeId + ':initial' });
+    let release = null;
     try {
-      const encodedCheckpoint = canonicalJournalText(initialCheckpoint, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
-      const checkpointText = encodedCheckpoint.text;
-      const checkpointHash = await hashJournalText(checkpointText), checkpointId = JSON.stringify([takeId, 'checkpoint', 0]);
+      release = reserve(estimateJournalBytes({ sourceVersions, captureProfile, boundaryState, mapping, assetRefs, prefix }, { maxBytes: 8 * 1048576 }) * 4);
+      const encodedCheckpoint = checkpoint.read(), checkpointText = encodedCheckpoint.canonical;
+      const checkpointHash = encodedCheckpoint.hash, checkpointId = JSON.stringify([takeId, 'checkpoint', 0]);
       const metadata = cloneJournalData({ schema: 'lemmings-causal-take', version: 1, takeId, takeName: takeName.trim(), documentId, sourceVersions,
         captureProfile, boundaryState, mapping, assetRefs, prefix,
-        initialCheckpoint: { id: checkpointId, sequence: 0, hash: checkpointHash, bytes: encodedCheckpoint.bytes.length, nodes: encodedCheckpoint.nodes } }, { maxBytes: 8 * 1048576 });
+        initialCheckpoint: { id: checkpointId, sequence: 0, hash: checkpointHash, bytes: encodedCheckpoint.bytes, nodes: encodedCheckpoint.nodes } }, { maxBytes: 8 * 1048576 });
       const rootHash = await hashJournalData(metadata, { maxBytes: 8 * 1048576 });
       const start = prefix?.throughSequence ?? 0;
       const manifest = { ...metadata, revision: 1, state: 'recording', complete: false, durableSequence: start,
@@ -85,7 +86,10 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       await publish({ takeId, expectedRevision: 0, manifest,
         checkpoint: { id: checkpointId, takeId, sequence: 0, hash: checkpointHash, canonical: checkpointText }, commitId: manifest.lastCommitId });
       return openWriter(manifest);
-    } finally { release(); }
+    } finally {
+      const receipt = createProcgenRetirementScope().retire([{ name: 'initial-checkpoint-encoding', run: () => checkpoint.release() }, { name: 'initial-checkpoint-metadata', run: () => release?.() }]);
+      await receipt.completion; if (receipt.outcome !== 'complete') throw journalError('checkpoint-retirement-unknown', 'The initial checkpoint encoding retains unresolved ownership.', { retirement: receipt, takeId });
+    }
   };
   const openWriter = initial => {
     const copied = cloneJournalData(initial, { maxBytes: 8 * 1048576 });
