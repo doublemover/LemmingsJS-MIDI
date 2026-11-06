@@ -10798,3 +10798,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add owned automation cuts containing the current interpolation value/target/remainder, ordered future controls and sequence frontier. Restore onto a fresh unpublished timeline at its chosen activation time; reject pruned history, changed queue/profile domains and failed native scheduling.
 - Bind processor, gain and sidechain automation to exact parameter ranges, including discrete spectral hold. Add bounded independently owned native-graph control cuts and staged restore, preserving one declared source frame/rate/hash across every curve.
 - Keep API automation evidence separate from applied processor state and native hidden DSP. The control image alone makes no effect-memory restoration claim; coordinated live processor/source transport and host publication follow. Formatting only, with all functional tests deferred.
+
+
+### 2026-11-06 — Rook continuation513: bounded effect-state transfer work
+
+- Add fixed32KiB capture and worker-prevalidated restore generators to the shared effect-state codec. Serialize stable scalars and owned histories without a whole-delay-buffer clear/copy/checksum in one renderer callback.
+- Keep existing full domain-validated restore for worker/private preparation. Prepared render copying checks exact immutable layout/configuration and finite transferred data while the destination remains unpublished; the forthcoming live protocol must additionally own worker validation, exclusive transfer checksum and activation.
+- Formatting only; no functional tests or native execution. Continue the live graph transfer/worker/host integration before consolidated qualification.

@@ -21,6 +21,41 @@ export function createOwnedEffectState({ kernel, identity, arrays, scalars, conf
     return { view, scalar, planes, named: name => { const index = scalars.findIndex(field => field.name === name); if (index < 0) fail('Unknown state frontier.'); return scalar(index); } };
   };
   return Object.freeze({ byteLength,
+    *writeChunks(bytes, chunkBytes = 32768) {
+      if (chunkBytes !== 32768) fail('Owned effect transfers use the fixed32KiB work budget.');
+      const data = access(bytes), { view, planes } = data; bytes.fill(0, 0, HEADER);
+      view.setUint32(0, MAGIC, true); view.setUint32(4, 1, true); view.setUint32(8, layout.length, true); view.setUint32(12, byteLength, true);
+      for (let index = 0; index < layout.length; index++) view.setUint8(64 + index, layout.charCodeAt(index));
+      for (let index = 0; index < scalars.length; index++) { const field = scalars[index], value = kernel[field.name]; if (field.type === 'boolean' ? typeof value !== 'boolean' : !Number.isFinite(value)) fail('Active effect contains invalid scalar state.'); view.setFloat64(HEADER + index * 8, field.type === 'boolean' ? Number(value) : value, true); }
+      yield;
+      for (const plane of planes) {
+        const width = plane.array.BYTES_PER_ELEMENT, step = chunkBytes / width;
+        for (let first = 0; first < plane.array.length; first += step) {
+          const end = Math.min(first + step, plane.array.length);
+          for (let index = first; index < end; index++) { const value = plane.array[index]; if (!Number.isFinite(value)) fail('Active effect contains nonfinite history.'); if (width === 4) view.setFloat32(plane.at + index * width, value, true); else view.setFloat64(plane.at + index * width, value, true); }
+          yield;
+        }
+      }
+      if (configurationBytes) for (let first = 0; first < configurationBytes.length; first += chunkBytes) { bytes.set(configurationBytes.subarray(first, Math.min(first + chunkBytes, configurationBytes.length)), configurationOffset + first); yield; }
+      let crc = 0xffffffff;
+      for (let first = 0; first < bytes.length; first += chunkBytes) { const end = Math.min(first + chunkBytes, bytes.length); for (let index = first; index < end; index++) crc = crc >>> 8 ^ crcTable[(crc ^ (index >= HEADER - 4 && index < HEADER ? 0 : bytes[index])) & 255]; yield; }
+      view.setUint32(HEADER - 4, (crc ^ 0xffffffff) >>> 0, true);
+      return Object.freeze({ abi: OWNED_EFFECT_STATE_ABI, bytes: byteLength, frame: kernel.frame, validation: 'captured-awaiting-worker-domain-validation' });
+    },
+    *restorePreparedChunks(bytes, chunkBytes = 32768) {
+      if (chunkBytes !== 32768) fail('Owned effect transfers use the fixed32KiB work budget.');
+      const { view, planes, scalar } = access(bytes);
+      if (view.getUint32(0, true) !== MAGIC || view.getUint32(4, true) !== 1 || view.getUint32(8, true) !== layout.length || view.getUint32(12, true) !== byteLength) fail('Prepared effect state layout differs.');
+      for (let index = 0; index < layout.length; index++) if (view.getUint8(64 + index) !== layout.charCodeAt(index)) fail('Prepared effect state belongs to another processor, rate or configuration.');
+      for (let index = 0; index < scalars.length; index++) { const value = scalar(index); if (!Number.isFinite(value) || scalars[index].type === 'boolean' && value !== 0 && value !== 1) fail('Prepared effect scalar frontier is invalid.'); }
+      if (configurationBytes) for (let first = 0; first < configurationBytes.length; first += chunkBytes) { const end = Math.min(first + chunkBytes, configurationBytes.length); for (let index = first; index < end; index++) if (bytes[configurationOffset + index] !== configurationBytes[index]) fail('Prepared effect immutable configuration differs.'); yield; }
+      for (const plane of planes) {
+        const step = chunkBytes / plane.array.BYTES_PER_ELEMENT;
+        for (let first = 0; first < plane.array.length; first += step) { const end = Math.min(first + step, plane.array.length); for (let index = first; index < end; index++) { const value = plane.read(index); if (!Number.isFinite(value)) fail('Prepared effect history contains nonfinite values.'); plane.array[index] = value; } yield; }
+      }
+      for (let index = 0; index < scalars.length; index++) kernel[scalars[index].name] = scalars[index].type === 'boolean' ? Boolean(scalar(index)) : scalar(index);
+      return Object.freeze({ status: 'restored-worker-prevalidated-effect', abi: OWNED_EFFECT_STATE_ABI, frame: kernel.frame });
+    },
     write(bytes) {
       const data = access(bytes), { view, planes } = data; bytes.fill(0); view.setUint32(0, MAGIC, true); view.setUint32(4, 1, true); view.setUint32(8, layout.length, true); view.setUint32(12, byteLength, true);
       for (let i = 0; i < layout.length; i++) view.setUint8(64 + i, layout.charCodeAt(i));
