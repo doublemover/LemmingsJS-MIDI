@@ -10791,3 +10791,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add read-only selected-grant reconnect previews with capacity/protocol/group conflicts and paged coverage for all saved lanes. Require a fresh exact identity/metadata/stopped boundary at apply, preflight the complete candidate batch and publish project assignments before activating its routes.
 - Keep patch/profile/device mappings subject to their own fresh activation. A prior MPE allocation cannot silently become a normal manager-channel route. Remove retired live route records while retaining authored destination intent, and keep ambiguous same-name choices explicit through inventory/connection identifiers.
 - Add compact remember/review/apply controls and canonical project persistence. Formatting and critical/boundary typechecks pass; native compilation/linking is checked separately. No functional or device execution; continue live automation/state transport and the remaining backlog before consolidated validation.
+
+
+### 2026-11-06 — Rook continuation512: live automation continuation state
+
+- Add owned automation cuts containing the current interpolation value/target/remainder, ordered future controls and sequence frontier. Restore onto a fresh unpublished timeline at its chosen activation time; reject pruned history, changed queue/profile domains and failed native scheduling.
+- Bind processor, gain and sidechain automation to exact parameter ranges, including discrete spectral hold. Add bounded independently owned native-graph control cuts and staged restore, preserving one declared source frame/rate/hash across every curve.
+- Keep API automation evidence separate from applied processor state and native hidden DSP. The control image alone makes no effect-memory restoration claim; coordinated live processor/source transport and host publication follow. Formatting only, with all functional tests deferred.

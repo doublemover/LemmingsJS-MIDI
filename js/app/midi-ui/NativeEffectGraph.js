@@ -2,7 +2,7 @@ import { RESONATOR_BLEND_REVISION, resonatorBlendBodyIdentity, verifyResonatorBl
 import { RESONATOR_MORPH_KERNEL_REVISION, pairedModalBodyIdentity, verifyPairedModalBodyProfile } from '../../midi/content/PairedModalBodyProfile.js';
 import { validateSpectralCaptureReceipt } from '../../midi/content/SpectralCaptureReceipt.js';
 import { RECTANGULAR_MEMBRANE_REVISION, rectangularMembraneIdentity, MEMBRANE_LIVE_CONTROLS, membraneControlValid, membraneInitialControl, membraneTouchSupported, membraneControlTarget } from '../../midi/content/RectangularMembraneProfile.js';
-import { canonicalDataText } from '../../core/CanonicalData.js';
+import { canonicalDataText, cloneData } from '../../core/CanonicalData.js';
 import { SYMPATHETIC_NETWORK_REVISION, sympatheticNetworkIdentity, NETWORK_LOSS_CONTROLS, NETWORK_PICKUP_CONTROLS } from '../../midi/content/SympatheticNetworkProfile.js';
 import { SPECTRAL_FREEZE_REVISION, spectralFreezeIdentity } from '../../midi/content/SpectralFreezeProfile.js';
 import { ALLPASS_NOTCH_REVISION, allpassNotchIdentity } from '../../midi/content/AllpassNotchProfile.js';
@@ -167,7 +167,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     const adapters = new Map();
     for (const [name, initialValue] of Object.entries(parameterData)) {
       const param = value.parameters.get(name); if (!param?.setValueAtTime || !param.cancelScheduledValues) throw failure('effect-control-unavailable', 'Effect automation lacks bounded native queue replacement.');
-      adapters.set(name, createSmoothedAudioParameter({ param, initialValue, startTime: context.currentTime, smoothingSeconds: 0, maxEvents: 128 }));
+      const p = entry.parameters || {}, valueMinimum = name === 'feedback' ? -p.feedbackMaximum : name === 'delayFrames' ? p.interpolation === 'lagrange3' ? 2 : 1 : name === 'frequencyHz' ? 160 : name === 'feedbackLowpassHz' ? 200 : name.endsWith('Radius01') ? 0.08 : 0;
+      const valueMaximum = name === 'feedback' ? p.feedbackMaximum : name === 'delayFrames' ? p.maxDelaySeconds * context.sampleRate : name === 'frequencyHz' ? 1600 : name === 'feedbackLowpassHz' ? context.sampleRate * 0.4 : name === 'driveDb' ? 24 : name.endsWith('Radius01') ? 0.18 : 1;
+      adapters.set(name, createSmoothedAudioParameter({ param, initialValue, startTime: context.currentTime, smoothingSeconds: 0, maxEvents: 128, valueMinimum, valueMaximum, ...(name === 'hold' ? { allowedValues: [0, 1] } : {}) }));
     } parameterControls.set(entry.id, adapters);
     return value;
   };
@@ -239,8 +241,8 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
             feedback: p.feedback, feedbackMaximum: p.feedbackMaximum, feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 } });
       } else { value = node(context.createGain()); value.gain.setValueAtTime(entry.kind === 'modulated-gain' ? 0 : entry.kind === 'polarity-invert' ? -1 : entry.kind === 'gain' ? entry.parameters.gain01 : 1, context.currentTime); }
       instances.set(entry.id, value); nodeOutputs.set(entry.id, outputValue || value); controls.set(entry.id, Object.freeze({ ...entry.parameters }));
-      if (entry.kind === 'gain') gainControls.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: entry.parameters.gain01, startTime: context.currentTime, smoothingSeconds: 0.008, maxEvents: 128 }));
-      if (entry.kind === 'sidechain-in') { sidechainGates.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: offline ? 1 : 0, startTime: context.currentTime, smoothingSeconds: 0.02, maxEvents: 32 })); value.channelCount = entry.parameters.inputLayout === 'audioMono' ? 1 : 2; value.channelCountMode = 'explicit'; value.channelInterpretation = 'discrete'; sidechainInputs.set(entry.id, value); }
+      if (entry.kind === 'gain') gainControls.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: entry.parameters.gain01, startTime: context.currentTime, smoothingSeconds: 0.008, maxEvents: 128, valueMinimum: 0, valueMaximum: entry.parameters.gainMaximum01 }));
+      if (entry.kind === 'sidechain-in') { sidechainGates.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: offline ? 1 : 0, startTime: context.currentTime, smoothingSeconds: 0.02, maxEvents: 32, valueMinimum: 0, valueMaximum: 1 })); value.channelCount = entry.parameters.inputLayout === 'audioMono' ? 1 : 2; value.channelCountMode = 'explicit'; value.channelInterpretation = 'discrete'; sidechainInputs.set(entry.id, value); }
       if (entry.kind === 'bus-in') inputs.set(entry.id, value); if (entry.kind === 'bus-out') outputs.set(entry.id, value);
     }
     const entries = new Map(plan.nodes.map(entry => [entry.id, entry]));
@@ -361,7 +363,39 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     for (const entry of processors) entry.node.port.postMessage({ type: 'inspect' });
     return true;
   };
-  return Object.freeze({ plan, hash, update, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
+  let controlCutCount = 0, controlsRestored = false;
+  const controlInventory = () => [
+    ...[...gainControls].map(([id, adapter]) => ({ key: 'gain:' + id, adapter })),
+    ...[...sidechainGates].map(([id, adapter]) => ({ key: 'sidechain:' + id, adapter })),
+    ...[...parameterControls].flatMap(([id, adapters]) => [...adapters].map(([name, adapter]) => ({ key: 'parameter:' + JSON.stringify([id, name]), adapter })))
+  ].sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  const captureControlState = frame => {
+    checkPublication();
+    if (!Number.isSafeInteger(frame) || frame < 0 || controlCutCount >= 2) throw failure('effect-control-cut-capacity', 'Choose an exact output frame and release prior control-state cuts.');
+    const lease = resources.reserve({ kind: 'effect-control-state-cut', owner, generation, bytes: 2 * 1048576, estimateBytes: 14 * 1048576, consumerOwned: true }); let data;
+    try {
+      data = cloneData({ schema: 'lemmings-native-effect-control-cut/v1', graphHash: hash, sampleRate: context.sampleRate, frame, controlSequence, controls: Object.fromEntries(controls),
+        curves: controlInventory().map(entry => ({ key: entry.key, state: entry.adapter.snapshot(frame / context.sampleRate) })), evidence: 'owned-native-API-automation;DSP-state-and-applied-readback-separate' }, { maxBytes: 2 * 1048576, maxNodes: 131072 }); controlCutCount++;
+    } catch (error) { lease.release(); throw error; }
+    return Object.freeze({ value: () => { if (!data) throw failure('effect-control-cut-released', 'Control state ownership was released.'); return data; }, release() { if (!data) return false; data = null; controlCutCount--; return lease.release(); } });
+  };
+  const restoreControlState = (state, activationFrame) => {
+    checkPublication();
+    if (offline || sidechainsActivated || controlSequence || controlsRestored || !Number.isSafeInteger(activationFrame) || activationFrame < Math.ceil(context.currentTime * context.sampleRate)) throw failure('effect-control-restore-staging', 'Restore control state only into a fresh unpublished graph at a future audio frame.');
+    const value = cloneData(state, { maxBytes: 2 * 1048576, maxNodes: 131072 }), inventory = controlInventory();
+    if (value.schema !== 'lemmings-native-effect-control-cut/v1' || value.graphHash !== hash || value.sampleRate !== context.sampleRate || !Number.isSafeInteger(value.frame) || value.frame < 0 || !Number.isSafeInteger(value.controlSequence) || value.controlSequence < 0 || !Array.isArray(value.curves) || value.curves.length !== inventory.length || canonicalDataText(Object.keys(value.controls || {}).sort()).text !== canonicalDataText([...controls.keys()].sort()).text) throw failure('effect-control-restore-identity', 'Control state differs from the exact prepared graph, rate or parameter inventory.');
+    for (let index = 0; index < inventory.length; index++) {
+      const curve = value.curves[index]; if (curve?.key !== inventory[index].key || curve.state?.sourceTimeSeconds !== value.frame / context.sampleRate) throw failure('effect-control-restore-frontier', 'Control curves do not share the declared output frame.');
+      inventory[index].adapter.validateSnapshot(curve.state);
+    }
+    try {
+      for (let index = 0; index < inventory.length; index++) inventory[index].adapter.restore(value.curves[index].state, activationFrame / context.sampleRate);
+      for (const [id, parameters] of Object.entries(value.controls)) controls.set(id, parameters);
+      controlSequence = value.controlSequence; controlsRestored = true;
+      return Object.freeze({ status: 'control-state-restaged', sourceFrame: value.frame, activationFrame, sampleRate: context.sampleRate, futureControls: value.curves.reduce((sum, curve) => sum + curve.state.future.length, 0), graphHash: hash, dspMemory: 'not-restored-by-control-state', acousticReceipt: false });
+    } catch (error) { fault ||= error; for (const processor of processors) processor.node.port.postMessage({ type: 'panic' }); throw error; }
+  };
+  return Object.freeze({ plan, hash, update, captureControlState, restoreControlState, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
     isBodyQuarantined: nodeId => processors.find(processor => processor.nodeId === nodeId && ['rectangular-membrane', 'sympathetic-network', 'paired-modal-body', 'resonator-blend-body'].includes(processor.kind))?.health?.muted === true,
     bodyLossTargets: nodeId => NETWORK_LOSS_CONTROLS.map(key => Math.max(controls.get(nodeId)?.[key] ?? 0, parameterControls.get(nodeId)?.get(key)?.valueAt(context.currentTime) ?? 0)),
