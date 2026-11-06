@@ -10813,3 +10813,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Validate processor wrapper state for delay requests, spectral capture and source availability, restore every private component in an isolated validation graph, and prohibit that partial validation owner from rendering. Canonical output images retain independent bytes with SHA-256 identity and bounded transport checksums.
 - Admit at most48MiB of DSP image plus bounded automation/definition metadata, retain executing application-build evidence and own cancellation/result retirement. These prepared images are the prerequisite for live Worklet transfer and coordinated host publication, not a live-restore completion claim.
 - Formatting and necessary boundary typechecks only; all functional tests remain deferred.
+
+
+### 2026-11-06 — Rook continuation515: live effect transfer protocol
+
+- Add a fixed-work effect transfer owner with offer/buffer admission, exact future audio-block capture, detached-clock copying, transport checksum, worker-prevalidated staging and explicit common-frame activation. Keep source audio and processor-local logical frames separate across a new context.
+- Remain silent while detached/staged; a missed cut/activation or interrupted transfer returns owned buffers and fails without resuming partial state. Large standard effect images use32KiB generators; small custom composite images have an explicit512KiB synchronous ceiling.
+- Preserve per-component logical clock offsets in prepared worker images. Processor wrapper wiring, aggregate graph/source coordination and host publication follow next. Formatting only; no functional tests.

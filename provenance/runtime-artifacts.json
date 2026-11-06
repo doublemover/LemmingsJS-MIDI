@@ -194,6 +194,7 @@
         "js/app/midi-ui/worklet/OwnedChoirProcessor.js",
         "js/app/midi-ui/worklet/OwnedCircularPartials.js",
         "js/app/midi-ui/worklet/OwnedEffectState.js",
+        "js/app/midi-ui/worklet/OwnedEffectTransfer.js",
         "js/app/midi-ui/worklet/OwnedFrictionProcessor.js",
         "js/app/midi-ui/worklet/OwnedFrictionState.js",
         "js/app/midi-ui/worklet/OwnedGranularProcessor.js",
@@ -468,8 +469,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 322,
-      "sha256": "4380c695b3efc6b95b2d1afc4e8446d37cca11179cce1844d742df88d2c227f5"
+      "fileCount": 323,
+      "sha256": "47f15284af3b9ac962a61288a29e3ceed867bccf623dd31bd7f044f75fe95d12"
     },
     {
       "id": "lemmings-timing-worker-source",
