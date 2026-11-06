@@ -80,6 +80,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
       const targets = routes.get(intent?.route) || [null];
       for (const sink of targets) {
         if (sink?.enabled) { let enabled = false; try { enabled = sink.enabled() === true; } catch {} if (!enabled) continue; }
+        if (sink?.acceptsIntent) { let accepts = false; try { accepts = sink.acceptsIntent(intent) === true; } catch {} if (!accepts) continue; }
         let route = null; try { if (sink) route = routeIdentity(sink, intent, batch); } catch {}
         const base = { worldId: batch.worldId ?? intent?.worldId ?? null, onsetId: intent?.onsetId ?? null,
           eventId: intent?.eventId ?? (intent?.sourceEventIds?.length === 1 ? intent.sourceEventIds[0] : null),

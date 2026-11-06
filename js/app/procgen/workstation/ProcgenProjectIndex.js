@@ -10,9 +10,9 @@ export const procgenLane = (lanes, id) => { lookups++; const position = procgenL
 export function inheritProcgenLaneIndex(before, after) { indexes.set(after, procgenLaneIndex(before)); }
 export function recordProcgenProjectChange(before, after, action) {
   const structural = ['procgen/addLane', 'procgen/removeLane'].includes(action.type);
-  const laneIds = action.type === 'procgen/sceneMacro' ? action.targets.map(target => target.laneId) : action.type === 'procgen/launchedBatch' ? [...new Set(action.launches.map(launch => launch.laneId))] : action.laneId ? [action.laneId] : [];
+  const laneIds = action.type === 'procgen/nativeRoutes' ? action.routes.map(route => route.laneId) : action.type === 'procgen/sceneMacro' ? action.targets.map(target => target.laneId) : action.type === 'procgen/launchedBatch' ? [...new Set(action.launches.map(launch => launch.laneId))] : action.laneId ? [action.laneId] : [];
   const change = Object.freeze({ beforeIdentity: identity(before), type: action.type, structural, laneIds: Object.freeze(laneIds),
-    fields: Object.freeze(action.type === 'procgen/sceneMacro' ? ['instrumentControls'] : action.patch && typeof action.patch === 'object' ? Object.keys(action.patch) : []),
+    fields: Object.freeze(action.type === 'procgen/nativeRoutes' ? ['outputId', 'channel'] : action.type === 'procgen/sceneMacro' ? ['instrumentControls'] : action.patch && typeof action.patch === 'object' ? Object.keys(action.patch) : []),
     revision: after.procgen.revision });
   changes.set(after, change);
   if (before.procgen.lanes !== after.procgen.lanes) laneChanges.set(after.procgen.lanes, Object.freeze({ ...change, beforeIdentity: identity(before.procgen.lanes) }));

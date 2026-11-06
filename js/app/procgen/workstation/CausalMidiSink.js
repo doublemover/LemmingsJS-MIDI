@@ -197,6 +197,7 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
       if (!anchor || anchor.executionEpoch !== executionEpoch || anchor.scoreEpoch !== score.epoch || anchor.bpm !== bpm) anchor = { executionEpoch, scoreEpoch: score.epoch, beat: score.beat, hostMs: now() + delayMs, bpm };
     },
     sinks: ['local', 'prepared-body'].map(route => Object.freeze({ id: 'physical-midi:' + route, route, backend, enabled,
+      acceptsIntent: intent => intent.kind !== 'begin' || !String(laneFor(intent.laneId)?.outputId || '').startsWith('native-midi:'),
       getAdmissionIdentity: intent => ports.getOutputAdmissionIdentity?.(laneFor(intent.laneId)?.outputId) ?? { connectionEpoch: null, routeRevision: ports.getRouteRevision() },
       executionLease: false, timeDomain: 'performance-microseconds', latePolicy, toTargetFrame: score => {
         if (!enabled() || !anchor || score?.epoch !== anchor.scoreEpoch || !Number.isFinite(score.beat)) return null;

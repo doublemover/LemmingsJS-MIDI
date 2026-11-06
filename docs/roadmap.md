@@ -31,7 +31,10 @@ ledger; recent feature commits do not imply rendered or browser qualification.
 The native companion has a compiled C++20 transport target with pinned Windows SDK
 inputs, explicit device and virtual publication grants, bounded raw ingress, native
 monotonic scheduling, cancellation and exact-prefix receipts (#978–#981, #1061,
-#1143, #1199). Browser pairing and endpoint integration remain in development.
+#1143, #1199). Paired loopback access, workstation connection/publication controls,
+canonical physical output, explicit group/channel allocation and wire trace export
+are implemented. Continue with native ingress/control-plane integration, protocol
+capability discovery and throughput batching.
 Whole-graph effect restoration remains alongside implemented source continuation.
 These feature changes await consolidated transport, device and browser validation.
 

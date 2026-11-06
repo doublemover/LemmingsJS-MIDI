@@ -551,3 +551,13 @@ body.procgen-workstation {
 .studio-causal-summary { top:18px; }
 .studio-axis-ruler { padding:4px 0; border-bottom:1px solid var(--material-line,#9babb4); font:11px/1.5 ui-monospace,Consolas,monospace; }
 .studio-axis-conversion { display:block; margin:6px 0; font-size:11px; line-height:1.5; }
+
+.native-midi-connection { margin: 12px 0; padding: 12px; border: 1px solid #657586; border-radius: 6px; }
+.native-midi-connection > summary { cursor: pointer; font-weight: 650; }
+.native-midi-connection .midi-control-group { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 12px 0; }
+.native-midi-connection .midi-field { display: flex; flex: 1 1 220px; flex-direction: column; gap: 4px; min-width: 0; }
+.native-midi-connection input, .native-midi-connection select { box-sizing: border-box; width: 100%; min-height: 32px; }
+.native-midi-connection input[type="checkbox"] { width: auto; align-self: flex-start; }
+.native-midi-connection button { min-height: 32px; white-space: normal; }
+.native-midi-connection .midi-help { font-size: 12px; line-height: 1.5; }
+.native-midi-connection .midi-status { display: block; padding: 8px; border-left: 3px solid #657586; }

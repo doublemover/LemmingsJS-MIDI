@@ -92,7 +92,7 @@ struct Grant {
   std::array<std::uint32_t, 256> channels{};
   std::map<NoteKey, OwnedNote> notes;
   std::set<std::uint32_t> cancelled;
-  std::uint64_t ingress_sequence{}, filtered{}, malformed{};
+  std::uint64_t ingress_sequence{}, filtered{}, malformed{}, cleanup_unknown{};
   stdx::error write(const std::uint32_t *words, std::size_t count) {
 #if defined(LIBREMIDI_WINMIDI)
     if (windows)
@@ -323,16 +323,19 @@ class Companion {
     }
     return unknown;
   }
-  void retire_grant(std::uint32_t id, std::string_view reason) {
+  std::pair<bool, std::uint64_t> retire_grant(std::uint32_t id,
+                                              std::string_view reason) {
     const auto found = grants_.find(id);
-    if (found == grants_.end() || found->second.retiring)
-      return;
+    if (found == grants_.end())
+      return {true, 0};
+    if (found->second.retiring)
+      return {false, found->second.cleanup_unknown};
     auto &owner = found->second;
     owner.retiring = true;
     owner.fence->live.store(false, std::memory_order_release);
     cancel_batches([&](const auto &batch) { return batch.grant == id; },
                    reason);
-    const auto unknown = cleanup(owner);
+    const auto unknown = owner.cleanup_unknown = cleanup(owner);
     bool closed = true;
 #if defined(LIBREMIDI_WINMIDI)
     if (owner.windows)
@@ -358,6 +361,7 @@ class Companion {
          ",\"nativeCloseConfirmed\":" + (closed ? "true" : "false") + "}");
     if (closed)
       grants_.erase(found);
+    return {closed, unknown};
   }
   void retire_session(std::uint32_t session, std::string_view reason) {
     sessions_.erase(session);
@@ -881,8 +885,12 @@ class Companion {
         const auto found = grants_.find(id);
         if (found != grants_.end() && found->second.session != session)
           throw std::runtime_error("device-grant-not-owned");
-        retire_grant(id, "explicit-revoke");
-        reply(request, session, "closed", "\"grant\":" + std::to_string(id));
+        const auto retired = retire_grant(id, "explicit-revoke");
+        reply(request, session, "closed",
+              "\"grant\":" + std::to_string(id) + ",\"nativeCloseConfirmed\":" +
+                  (retired.first ? "true" : "false") +
+                  ",\"cleanupUnconfirmedNotes\":" +
+                  std::to_string(retired.second));
       } else if (operation == "D") {
         input.finish();
         retire_session(session, "session-closed");

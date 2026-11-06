@@ -71,3 +71,24 @@ Socket heartbeats cannot replace application heartbeats or device sensing.
 
 The bridge/client are implemented; application routing and final security,
 browser and native integration qualification remain outstanding.
+
+The ProcGen workstation's Music settings now include Native MIDI / DAW controls.
+Pair, grant a named native device or publish a named performance source, then
+assign a lane and explicit group/channel. A bulk action allocates dedicated
+addresses without modulo reuse and reports overflow as local only. Route edits
+are one project history transaction. Saved logical output IDs require a new
+explicit grant after reconnect; they are never used as OS handles.
+
+Canonical physical intents now feed a separate native sink. MIDI2 writes retain
+16-bit attack velocity, 32-bit polyphonic pressure and 7.9 pitch attributes;
+explicit MIDI1-in-UMP uses reduced wire resolution. Unsupported continuous
+dimensions and unverified receiver protocol are reported as degradation.
+Duplicate same-pitch voices are refused, because a local voice ID does not
+establish independent same-pitch receiver behavior. Shared channel use requires
+an explicit ensemble decision. Setup and onset share one prevalidated batch.
+
+Shared Stop/Panic retires native executions as well as local/WebMIDI output.
+Closing and unpublishing preserve native-close and owned-note cleanup uncertainty.
+Save native wire trace exports actual acknowledged prefixes and separately
+unconfirmed packets with original causal identities. Browser, device and DAW
+functional validation is still deferred; no listening or hardware claim is made.

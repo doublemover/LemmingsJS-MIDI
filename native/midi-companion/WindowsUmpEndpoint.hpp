@@ -35,10 +35,10 @@ inline std::vector<WindowsEndpointInfo> windows_endpoints() {
       const auto direction = block.Direction();
       if (direction == Direction::BlockInput ||
           direction == Direction::Bidirectional)
-        info.input_groups |= mask;
+        info.output_groups |= mask;
       if (direction == Direction::BlockOutput ||
           direction == Direction::Bidirectional)
-        info.output_groups |= mask;
+        info.input_groups |= mask;
     };
     for (const auto &block : endpoint.GetDeclaredFunctionBlocks())
       collect(block);

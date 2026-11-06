@@ -51,6 +51,9 @@ import { createProcgenSession, validateProcgenSession, createProcgenSessionStora
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
 import { createCausalMidiSink } from './CausalMidiSink.js';
+import { createCausalNativeMidiSink } from './CausalNativeMidiSink.js';
+import { createNativeMidiRoutes } from '../../../midi/native/NativeMidiRoutes.js';
+import { createNativeMidiConnectionView } from '../../midi-ui/NativeMidiConnectionView.js';
 import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
 import { createCausalTakeRecorder, querySoundOnlyRevoiceOwned } from './CausalTake.js';
 import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
@@ -80,7 +83,7 @@ const MAX_SESSION_FILE_BYTES = 64 * 1048576;
 const WORLD_HISTORY_ACTIONS = new Set(['procgen/worldTheme', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed',
   'procgen/physicalGraph', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment', 'procgen/releaseGesture']);
 const FAST_PROCGEN_ACTIONS = new Set(['procgen/sceneMacro', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
-  'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
+  'procgen/nativeRoutes', 'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const historyPatchBytes = (before, after, action) => {
@@ -93,6 +96,7 @@ const historyPatchBytes = (before, after, action) => {
   }
   if (action.type === 'procgen/pattern') return commandBytes + JSON.stringify(lane?.patterns[action.slot ?? lane.activeSlot] ?? null).length * 2 + structuralBytes;
   if (action.type === 'procgen/sceneMacro') return commandBytes + action.targets.reduce((bytes, target) => bytes + JSON.stringify(procgenLane(before.procgen.lanes, target.laneId)?.instrumentControls ?? null).length * 2, 0) + structuralBytes;
+  if (action.type === 'procgen/nativeRoutes') { const ids = new Set(action.routes.map(route => route.laneId)); return commandBytes + JSON.stringify(before.procgen.lanes.filter(lane => ids.has(lane.id)).map(lane => ({ id: lane.id, outputId: lane.outputId, channel: lane.channel }))).length * 2 + structuralBytes; }
   if (action.type === 'procgen/lane') return commandBytes + JSON.stringify(Object.fromEntries(Object.keys(action.patch || {}).map(key => [key, lane?.[key]]))).length * 2 + structuralBytes;
   if (action.type === 'procgen/palette' || action.type === 'procgen/removeLane')
     return commandBytes + JSON.stringify(lane ?? null).length * 2 + structuralBytes;
@@ -144,6 +148,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const operationalExecution = getActiveExecutionIdentity('browser-native-audio');
   let operationalLessonAvailable = operationalExecution.activeExecution === 'bound' && ['worklet-sine', 'worklet-pluck'].every(id => operationalExecution.instrumentArtifacts?.some(artifact => artifact.engineId === id));
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
+  const nativeMidiRoutes = createNativeMidiRoutes();
+  let nativeMidiView = null;
   const sessionIdentities = new WeakMap(), sessionAdoptions = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let recoveredDocument = null;
@@ -520,6 +526,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     persist();
     if (!transport.getState().playing) scheduleRecovery();
     if (render) {
+      if (nativeMidiView) nativeMidiView.render();
       if (change && renderAction && view?.patchProject) view.patchProject(renderAction, change);
       else if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render();
       if (!change || change.structural || change.fields.some(key => ['ccAutomation', 'mute', 'channel', 'outputId', 'externalProgram', 'externalPercussion', 'bankMSB', 'bankLSB'].includes(key))) reportRouting();
@@ -548,7 +555,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (project === previous) { transaction.commands.splice(transaction.commands.indexOf(command), 1); transaction.bytes -= bytes; }
         throw error;
       }
-      if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
+      if (action.type === 'procgen/nativeRoutes' || action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
       return updated;
     }
     if (action.type === 'procgen/worldTheme' && action.worldThemeId && procgenLane(project.procgen.lanes, action.laneId)?.worldThemeId !== action.worldThemeId || action.type === 'procgen/lane' && action.patch?.worldThemeId && procgenLane(project.procgen.lanes, action.laneId)?.worldThemeId !== action.patch.worldThemeId) {
@@ -562,7 +569,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       historyPatchBytes(project, reduced, action) : null;
     const next = syncProject(reduced, { history: !launchAcknowledgment, historyGroup, historyCost,
       render: !launchAcknowledgment, renderAction: action });
-    if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
+    if (action.type === 'procgen/nativeRoutes' || action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
     if (launchAcknowledgment) view?.launched?.(launchChange);
     return next;
   };
@@ -1118,7 +1125,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
       let nextPlayback;
       physicalPlayback = nextPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, initialCavityBody: boundProject.procgen.sceneOrigin?.recipe.initialCavityBody || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
-        additionalOutputs: [physicalMidi],
+        additionalOutputs: [physicalMidi, createCausalNativeMidiSink({ routes: nativeMidiRoutes, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), onReceipt: onPhysicalReceipt })],
         onIntentProvenance: value => {
           if (!physicalProvenanceBuffer || physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
           if (value.kind === 'omitted') { physicalProvenanceDropped += value.count; return; }
@@ -2234,7 +2241,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }),
     stageExit: safe(async () => { const result = await stageSession?.exit(); legacy.refreshShortcutHints?.(); return result; }), stageGo: safe(() => stageSession?.go()),
     stagePlay: () => play(), stagePause() { transport.pause(); },
-    panicOutput() { midiConnectSerial++; soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
+    panicOutput() { midiConnectSerial++; soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.stop(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
     scenes: safe(openPerformanceScenes),
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed, { owned: true }); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
@@ -2565,6 +2572,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (stageSession && !stageSession.permitsCommand(name, args)) return stageSession.reject();
     try { const result = Reflect.apply(action, undefined, args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
+  nativeMidiView = createNativeMidiConnectionView({ document, container: document.getElementById?.('procgenNativeMidiHost') || document.getElementById?.('midiDevicesView'), routes: nativeMidiRoutes,
+    getLanes: () => project.procgen.lanes, getSelectedLaneId: () => state.laneId, onStatus: status,
+    onAssign(laneId, route) { const result = dispatch({ type: 'procgen/lane', laneId, patch: { outputId: route.outputId, channel: route.channel + 1 } }); if (result === false) throw new Error('Finish the current operation before changing lane routes'); },
+    onAssignMany(rows) { const result = dispatch({ type: 'procgen/nativeRoutes', routes: rows.map(row => ({ laneId: row.laneId, outputId: row.route?.outputId || row.outputId, channel: row.route ? row.route.channel + 1 : null })) }); if (result === false) throw new Error('Finish the current operation before changing lane routes'); }
+  });
   view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration, getDocumentStatus,
     getArmedLaneIds: () => [inputLease?.laneId, state.recording && procgenLane(project.procgen.lanes, state.laneId)?.mode === 'pattern' ? state.laneId : null].filter(Boolean), dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
@@ -2759,6 +2771,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'prelisten-monitor', run: () => prelistenMonitor?.dispose() },
         { name: 'transport', run: () => transport.dispose()?.completion },
         { name: 'midi-ports', run: () => ports.dispose() },
+        { name: 'native-midi-view', run: () => nativeMidiView?.dispose() },
+        { name: 'native-midi-routes', run: () => afterProcgenRetirement([physicalPlayback?.dispose()], () => nativeMidiRoutes.dispose()) },
         { name: 'midi-parameter-evidence', run: () => midiParameterEvidence.dispose() },
         { name: 'lane-display-evidence', run: () => laneDisplayEvidence.dispose() },
         ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),

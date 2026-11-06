@@ -2,7 +2,7 @@
   "version": 1,
   "selectedBackends": {
     "browserMidi": "vendored WebMidi.js 3.1.12; MIDI 1 byte output",
-    "nativeUmp": "none selected or shipped",
+    "nativeUmp": "optional source-built libremidi companion; explicit paired endpoint grants; runtime and receiver qualification pending",
     "audioRuntime": "first-party Web Audio local preview",
     "optionalAudioBank": "none selected or shipped"
   },
@@ -460,7 +460,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 313,
-      "sha256": "50e23728e7f2b521d5b4d959af2b282374dcd3c3bf74d28cd9c5caa7a9e443e2"
+      "sha256": "ac88e47c15d97733a580a219d90204320059b2a419ba15968a1e0d0adb2f3472"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -494,6 +494,43 @@
       ],
       "fileCount": 2,
       "sha256": "db886b32ceefe1261fe1bafc07570c970f114df63d68c35ae5fd95beaeb8e15e"
+    },
+    {
+      "id": "lemmings-native-midi-companion-source",
+      "upstream": "https://github.com/doublemover/LemmingsJS-MIDI",
+      "upstreamVersion": "source-bound",
+      "license": "NOASSERTION",
+      "reproductionStatus": "first-party-owned-sidecar-and-loopback-bridge-awaiting-functional-qualification",
+      "classification": "source",
+      "entryPoints": [
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "scripts/native-midi-bridge.js",
+        "scripts/build-native-midi-companion.js"
+      ],
+      "files": [
+        "js/app/midi-ui/NativeMidiConnectionView.js",
+        "js/app/procgen/workstation/CausalNativeMidiSink.js",
+        "js/midi/native/NativeMidiBridgeClient.js",
+        "js/midi/native/NativeMidiBridgeProtocol.js",
+        "js/midi/native/NativeMidiRoutes.js",
+        "native/midi-codec/UmpBatchGuard.hpp",
+        "native/midi-codec/dependencies.json",
+        "native/midi-companion/CMakeLists.txt",
+        "native/midi-companion/CommandReader.hpp",
+        "native/midi-companion/IngressHandoff.hpp",
+        "native/midi-companion/NativeBatch.hpp",
+        "native/midi-companion/NativeIo.hpp",
+        "native/midi-companion/Protocol.hpp",
+        "native/midi-companion/WindowsUmpEndpoint.hpp",
+        "native/midi-companion/companion.cpp",
+        "native/midi-companion/sdk-dependencies.json",
+        "scripts/build-native-midi-companion.js",
+        "scripts/native-midi-bridge.js",
+        "scripts/native-midi/NativeMidiBridgeServer.js",
+        "scripts/native-midi/NativeMidiProcess.js"
+      ],
+      "fileCount": 20,
+      "sha256": "82811cffcc4c763b899675d8963ee33d5341ec0f6da892c0cf9a1b45c918e699"
     }
   ]
 }

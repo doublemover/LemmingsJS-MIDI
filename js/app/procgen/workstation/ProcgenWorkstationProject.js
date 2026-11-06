@@ -171,6 +171,17 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
     const next = { ...procgen }; if (actorTimbreLocks.length) next.actorTimbreLocks = actorTimbreLocks; else delete next.actorTimbreLocks;
     return { ...project, procgen: next };
   }
+  if (action.type === 'procgen/nativeRoutes') {
+    if (!Array.isArray(action.routes) || action.routes.length > 1024 || new Set(action.routes.map(row => row.laneId)).size !== action.routes.length || action.routes.some(row => typeof row.laneId !== 'string' || typeof row.outputId !== 'string' || !row.outputId.startsWith('native-midi:') || row.outputId.length > 512 || row.channel != null && (!Number.isInteger(row.channel) || row.channel < 1 || row.channel > 16))) throw new Error('Invalid native lane routes');
+    const assignments = new Map(action.routes.map(row => [row.laneId, row]));
+    for (const id of assignments.keys()) if (!procgenLaneIndex(lanes).has(id)) throw new Error('Native lane route target was removed');
+    let changed = false;
+    const updated = lanes.map(lane => { const route = assignments.get(lane.id); if (!route || lane.outputId === route.outputId && (route.channel == null || lane.channel === route.channel)) return lane;
+      if (!Number.isSafeInteger((lane.revision || 0) + 1)) throw new Error('Lane revision exhausted');
+      changed = true; return { ...lane, outputId: route.outputId, ...(route.channel == null ? {} : { channel: route.channel }), revision: (lane.revision || 0) + 1 };
+    });
+    if (!changed) return project; inheritProcgenLaneIndex(lanes, updated); return { ...project, procgen: { ...procgen, lanes: updated } };
+  }
   if (action.type === 'procgen/sceneMacro') return applySceneMacroAction(project, action);
   if (action.type === 'procgen/releaseGesture') { const releaseGesture = validateReleaseGesture(action.gesture, procgen.lanes.length); if (sameValue(releaseGesture, procgen.releaseGesture)) return project; if (procgen.releaseGesture?.id === releaseGesture.id && releaseGesture.revision <= procgen.releaseGesture.revision) throw new Error('A saved release gesture change requires a newer revision.'); return { ...project, procgen: { ...procgen, releaseGesture } }; }
   if (action.type === 'procgen/fragments') {
@@ -284,6 +295,7 @@ const reduceProcgenWorkstationProject = (project, action = {}) => {
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, ...(Object.hasOwn(action.patch || {}, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id } : lane);
+  else if (action.type === 'procgen/nativeRoutes') return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   else if (action.type === 'procgen/palette') lanes = lanes.map(lane => target(lane) ? { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role, patch: action.patch ?? null, instrumentPatchId: null, performanceRecipeId: null, linkedThemePresetId: action.family ?? lane.family, instrumentRef: null, instrumentControls: { macros: {} },
     ...(action.resetPatterns ? { patterns: undefined } : {}) } : lane);
   else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') lanes = lanes.map(lane => target(lane) ? { ...lane, patterns: lane.patterns.map((pattern, slot) => slot === (action.slot ?? lane.activeSlot) ?

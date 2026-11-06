@@ -1,14 +1,19 @@
 import { NATIVE_MIDI_BRIDGE_PROTOCOL, encodeNativeMidiBatch } from './NativeMidiBridgeProtocol.js';
 
+const bridgeUrl = value => {
+  const address = new URL(value);
+  if (!['ws:', 'wss:'].includes(address.protocol) || address.hostname !== '127.0.0.1' || address.pathname !== '/midi' || address.search || address.hash || address.username || address.password) throw new Error('Native MIDI requires an explicit loopback bridge URL');
+  if (globalThis.location?.protocol === 'https:' && address.protocol !== 'wss:') throw new Error('HTTPS applications require a trusted WSS native bridge');
+  return address.href;
+};
+
 export class NativeMidiBridgeClient {
   #socket = null; #requests = new Map(); #listeners = new Set(); #sequence = 0; #session = 0; #timer = null;
   #samples = []; #grants = new Map(); #state = 'disconnected'; #capabilities = null; #connect = null; #lastClock = 0;
-  constructor({ url = 'ws://127.0.0.1:8765/midi', WebSocketImpl = globalThis.WebSocket, now = () => performance.now() } = {}) {
-    const address = new URL(url);
-    if (!['ws:', 'wss:'].includes(address.protocol) || address.hostname !== '127.0.0.1' || address.pathname !== '/midi' || address.search || address.hash || address.username || address.password) throw new Error('Native MIDI requires an explicit loopback bridge URL');
-    if (globalThis.location?.protocol === 'https:' && address.protocol !== 'wss:') throw new Error('HTTPS applications require a trusted WSS native bridge');
-    this.url = address.href; this.WebSocketImpl = WebSocketImpl; this.now = now;
+  constructor({ url = (globalThis.location?.protocol === 'https:' ? 'wss:' : 'ws:') + '//127.0.0.1:8765/midi', WebSocketImpl = globalThis.WebSocket, now = () => performance.now() } = {}) {
+    this.url = bridgeUrl(url); this.WebSocketImpl = WebSocketImpl; this.now = now;
   }
+  setUrl(url) { if (this.#socket) throw new Error('Disconnect before changing the bridge address'); this.url = bridgeUrl(url); }
   get state() { return this.#state; }
   get session() { return this.#session; }
   get capabilities() { return this.#capabilities; }
@@ -49,6 +54,7 @@ export class NativeMidiBridgeClient {
           this.#requests.delete(row.requestId); clearTimeout(pending.timeout);
           if (row.kind === 'opened') this.#grants.set(row.grant, Object.freeze({ ...row, connectionEpoch: this.#session }));
           if (row.kind === 'closed') this.#grants.delete(row.grant);
+          if (row.kind === 'backend') { this.#capabilities = Object.freeze({ ...this.#capabilities, backendReady: row.ready, selectedApi: row.api }); this.#setState(row.ready ? 'connected' : 'native-backend-unavailable'); }
           pending.onReceipt?.(Object.freeze(row));
           if (row.kind === 'error') pending.reject(Object.assign(new Error(row.reason), { receipt: row })); else pending.resolve(Object.freeze(row));
         } else if (row.event === 'grant-retired') this.#grants.delete(row.grant);
