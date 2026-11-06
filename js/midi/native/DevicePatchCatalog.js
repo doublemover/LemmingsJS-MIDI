@@ -1,3 +1,4 @@
+import { createDeviceStateBank } from './DeviceStateBank.js';
 import { createDeviceMutationOwner } from './DeviceMutation.js';
 import { validateDevicePatchIntent } from './DevicePatchIntent.js';
 import { encodeIntent } from '../protocol/UmpPacketCodec.js';
@@ -10,6 +11,7 @@ const digest = async value => Array.from(new Uint8Array(await globalThis.crypto.
 export function createDevicePatchCatalog({ routes, ci, properties, peerMuid, now = () => performance.now() } = {}) {
   const identity = ci.state(), peer = ci.getPeer(peerMuid), listeners = new Set(), pages = new Map(), mutation = createDeviceMutationOwner({ routes, ci, now });
   if (!peer || properties.state().peerMuid !== peerMuid || properties.state().ciEpoch !== identity.epoch) throw new Error('An owned current Property Exchange peer is required');
+  const deviceStates = createDeviceStateBank({ routes, ci, properties, peerMuid, now });
   let disposed = false, generation = 0, loading = false, channels = [], channelsRevision = null, channelDeviceRevision = null, retainedEntries = 0, retainedEstimate = 0, latest = null, applied = null;
   const current = () => !disposed && ci.state().epoch === identity.epoch && !!ci.getPeer(peerMuid) && !properties.state().stale && !properties.state().disposed;
   const revision = () => routes.state().grants.find(row => row.grant === identity.outputGrant)?.deviceRevision ?? null;
@@ -63,6 +65,7 @@ export function createDevicePatchCatalog({ routes, ci, properties, peerMuid, now
   });
   const unsubscribeCi = ci.subscribe(() => { if (!current()) { generation++; channels = []; clearPages(); staleApplied('device-patch-peer-stale'); latest = Object.freeze({ status: 'stale', reason: 'Device patch peer changed' }); emit(); } });
   const api = Object.freeze({
+    deviceStates,
     async loadChannels() {
       if (!current() || loading) return Object.freeze({ status: 'rejected', reason: 'Patch catalog is stale or busy' });
       const selected = ++generation; loading = true; emit();
@@ -153,7 +156,7 @@ export function createDevicePatchCatalog({ routes, ci, properties, peerMuid, now
       stale: !current() || channelDeviceRevision !== revision(), channels, channelsRevision, pages: Object.freeze([...pages.values()]), retainedEntries, retainedEstimate, latest, mutation: mutation.state() }),
     subscribe(listener) { if (disposed || listeners.size >= 8 || typeof listener !== 'function') throw new Error('Patch catalog observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
     cancel() { generation++; mutation.cancel(); properties.cancelResource('ProgramList'); properties.cancelResource('ChannelList'); emit(); },
-    dispose() { if (disposed) return; api.cancel(); disposed = true; unsubscribe(); unsubscribeCi(); channels = []; clearPages(); applied = null; listeners.clear(); return mutation.dispose(); }
+    dispose() { if (disposed) return; api.cancel(); disposed = true; unsubscribe(); unsubscribeCi(); channels = []; clearPages(); applied = null; listeners.clear(); return Promise.all([mutation.dispose(), deviceStates.dispose()]); }
   });
   return api;
 }

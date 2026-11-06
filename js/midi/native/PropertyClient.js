@@ -146,7 +146,7 @@ export function createPropertyClient({ routes, ci, peerMuid, now = () => perform
           descriptor.canGet != null && typeof descriptor.canGet !== 'boolean' || descriptor.canSet != null && !['none', 'full', 'partial'].includes(descriptor.canSet) ||
           descriptor.encodings && (!Array.isArray(descriptor.encodings) || descriptor.encodings.length > 8) ||
           descriptor.mediaTypes && (!Array.isArray(descriptor.mediaTypes) || descriptor.mediaTypes.length > 8)) throw new Error('Malformed resource capabilities');
-      staged.set(descriptor.resource, descriptor);
+      staged.set(descriptor.resource, descriptor.resource === 'State' ? Object.freeze({ canGet: true, canSet: 'full', requireResId: true, encodings: ['Mcoded7'], mediaTypes: ['application/octet-stream'], ...descriptor }) : descriptor);
     }
     resources.clear(); for (const row of staged) resources.set(...row); descriptorRevision = deviceRevision();
   };
@@ -313,7 +313,7 @@ export function createPropertyClient({ routes, ci, peerMuid, now = () => perform
         if (closing) throw new Error('Property client is closing'); const prepared = prepare(resource, options, 'set');
         if (options.partial === true) { if (prepared.descriptor.canSet !== 'partial') throw new Error('Resource did not permit partial writes'); prepared.header.setPartial = true; }
         const body = await encodePropertyData(value, { encoding: prepared.encoding, binary: prepared.mediaType !== 'application/json', signal: options.signal });
-        return await mutation.run({ confirmed: options.confirmed, requested: { kind: 'property-set', resource, resId: options.resId ?? null, mediaType: prepared.mediaType, byteSize: body.length, partial: options.partial === true },
+        return await mutation.run({ confirmed: options.confirmed, allOutputs: resource === 'State', requested: { kind: 'property-set', resource, resId: options.resId ?? null, mediaType: prepared.mediaType, byteSize: body.length, partial: options.partial === true },
           isCurrent: () => current() && !closing && (options.isCurrent?.() ?? true),
           send: isCurrent => enqueue({ subtype: 54, header: prepared.header, body, resource, resId: options.resId, scope: options.scope, isCurrent }) });
       } catch (error) { return result('rejected', error.message, { receiverState: 'unchanged-before-admission' }); }

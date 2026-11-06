@@ -1,3 +1,5 @@
+import { createNativeMidiDeviceStateView } from './NativeMidiDeviceStateView.js';
+
 export function createNativeMidiPatchView({ document, container, routes, getCiSession, getPeerMuid, getLaneId, getWireTarget, onRequestPatch, onBindPatch, onStatus = () => {} }) {
   const element = (tag, text = '') => { const node = document.createElement(tag); node.textContent = text; return node; };
   const root = element('details'); root.className = 'midi-preset-panel'; root.append(element('summary', 'Hardware sounds / device patch browser'));
@@ -17,7 +19,7 @@ export function createNativeMidiPatchView({ document, container, routes, getCiSe
     return rows.length;
   };
   const render = () => {
-    if (disposed) return; const state = catalog?.state(), result = state?.latest, shown = showPrograms(), target = getWireTarget();
+    if (disposed) return; stateView.render(); const state = catalog?.state(), result = state?.latest, shown = showPrograms(), target = getWireTarget();
     const signature = JSON.stringify([getLaneId(), target.grant, target.group, target.channel, target.protocol]); if (signature !== targetSignature) { targetSignature = signature; confirm.checked = false; }
     if (state && state.channelsRevision !== channelRevision) {
       channelRevision = state.channelsRevision; options(channel, state.channels.map(row => [row.channel, row.channel + ' · ' + row.title + (row.programTitle ? ' · ' + row.programTitle : '')]), 'Select a device channel'); updateCollections();
@@ -81,6 +83,7 @@ export function createNativeMidiPatchView({ document, container, routes, getCiSe
   bind(collection, 'change', () => { catalog?.cancel(); page = null; confirm.checked = false; render(); });
   bind(search, 'input', () => { confirm.checked = false; render(); }); bind(program, 'change', () => { confirm.checked = false; render(); }); bind(confirm, 'change', render);
   bind(root, 'toggle', () => { if (!root.open) catalog?.cancel(); render(); });
+  const stateView = createNativeMidiDeviceStateView({ document, container: root, getBank: async () => (await ensureCatalog()).deviceStates, getSelection: () => ({ grant: getWireTarget().grant, peerMuid: getPeerMuid() }), onStatus });
   loadChannels.disabled = false; render();
-  return Object.freeze({ render, dispose() { if (disposed) return; disposed = true; operation++; unsubscribe?.(); catalog?.cancel(); for (const remove of removers) remove(); root.remove(); } });
+  return Object.freeze({ render, dispose() { if (disposed) return; disposed = true; operation++; stateView.dispose(); unsubscribe?.(); catalog?.cancel(); for (const remove of removers) remove(); root.remove(); } });
 }

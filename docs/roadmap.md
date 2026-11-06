@@ -10673,3 +10673,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add tactile nine-drawbar/numeric controls, independent profile activation, physical-density registrations, completed-motion circulation and once-per-tick cohort control dispatch. Add a separate parallel rotary-control sink with no fabricated notes and preserve the lane’s note output.
 - Preserve organ policy/control changes in project and causal performance history; retain completed motion vector measurements. Restore only observed original controls with fresh matching current readback, skipping unknown/conflicting settings and requiring explicit reactivation. Index isolated baselines and expire their reuse after actual controller writes on the affected owned channel.
 - Formatting passes; no functional or hardware execution. Generic controller-release leases and relative-gesture integration, bounded device-state capture, incoming JR context, finer group retirement and whole-graph restoration remain production work before consolidated validation.
+
+
+### 2026-11-06 — Rook continuation497: private device-state capture and explicit restore
+
+- Implement advertised StateList/State browsing, bounded read-only captures, same-model/software identity checks, SHA-256 integrity and explicit private-file import/export. Keep opaque state out of normal project persistence and public project exports.
+- Preview the exact current CI/output destination, state revisions, byte size and device-wide impact before mutation. Hold all owned native outputs at a stopped boundary, invalidate affected instrument state, and compare bounded State readback before reporting restoration.
+- Apply the normative State resource defaults, retain PE compression/byte limits, and keep unversioned, rejected, acknowledged-only, mismatched and verified-readback outcomes distinct. No vendor payload is executed.
+- Formatting only; functional and device qualification remains deferred. Continue ordered relative-controller integration, release leases, incoming JR context, group retirement and coordinated graph restoration before the consolidated validation pass.

@@ -514,6 +514,7 @@
       "files": [
         "js/app/midi-ui/NativeMidiArticulationView.js",
         "js/app/midi-ui/NativeMidiConnectionView.js",
+        "js/app/midi-ui/NativeMidiDeviceStateView.js",
         "js/app/midi-ui/NativeMidiEndpointView.js",
         "js/app/midi-ui/NativeMidiOrganView.js",
         "js/app/midi-ui/NativeMidiParameterView.js",
@@ -531,6 +532,7 @@
         "js/midi/native/DeviceParameterCatalog.js",
         "js/midi/native/DevicePatchCatalog.js",
         "js/midi/native/DevicePatchIntent.js",
+        "js/midi/native/DeviceStateBank.js",
         "js/midi/native/DeviceStateObservation.js",
         "js/midi/native/DrumProfileAdapter.js",
         "js/midi/native/MidiCiSession.js",
@@ -571,8 +573,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 58,
-      "sha256": "a1be009d92fc5980eb367b926b6fba1063df555938a4e995f9994bcb30906cc5"
+      "fileCount": 60,
+      "sha256": "e79d709dd625651532a6ec36341181f97551df1af8503cf5a887a3168bffe61f"
     }
   ]
 }
