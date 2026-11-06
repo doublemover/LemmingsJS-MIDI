@@ -7496,5 +7496,37 @@
       "Execute the consolidated controller/native qualification; source inspection is not an executed historical repro.",
       "Transport and engine publication failure frontiers and native consumer retirement remain distinct; matching canonical project/world does not prove every consumer bound successfully."
     ]
+  },
+  "continuation468": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "issues": [
+      1120,
+      1048
+    ],
+    "scope": "Extend the generated controller reference through owned import reads, reversed completions and exact publication frontiers.",
+    "implementation": [
+      "The independent serial reference now tracks the latest import owner, its captured document/edit boundary, bounded unresolved file reads and accepted versus refused publication independently from durable saves.",
+      "Actual production imports read controlled file promises and parse through the owned paged worker endpoint. Generator commands interleave up to two unresolved selected reads, finalizing saves, edits/history, transport, New and disposal.",
+      "Read rejection, malformed JSON, refused restart and committed presentation error have distinct reference outcomes. A stale selected read cannot overwrite a newer import, edited source, fresh document or disposed controller. Each transition compares canonical project/world/document/history/transport and current operation ownership.",
+      "Authored deterministic schedules cover reversed selection completions for five outcomes, three stale-edited completions, all current failure frontiers, disposal with both reads pending, mixed old Save/New/import and invalid shrink preconditions. Campaign schema advances to v2 and reports accepted imports."
+    ],
+    "validation": {
+      "format": "passed",
+      "functionalTests": "intentionally deferred until remaining backlog development is implemented per user instruction",
+      "sources": [
+        "test/support/workstation-controller-model.js",
+        "test/workstation-controller-model.test.js",
+        "scripts/profile-workstation-controller-model.mjs"
+      ],
+      "modelCampaign": "not executed",
+      "nativeExecution": "not run",
+      "fullSuiteExecution": "not run",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Consolidated final execution and independent assessment of generated model failures remains required. No seeded transition or timing/heap count is claimed.",
+      "Naming/quiescing saves, controller/page/device lifecycle, Thru/UMP/Active Sensing and broader native/cache schedules remain separate development under1120."
+    ]
   }
 }

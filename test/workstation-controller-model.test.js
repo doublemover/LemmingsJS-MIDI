@@ -26,3 +26,40 @@ describe('coupled document, history, save and transport controller reference', f
     expect(await replayControllerTrace([{ kind: 'gain', value: 1 }])).to.include({ valid: false });
   });
 });
+
+describe('coupled controller import read and publication reference', function() {
+  this.timeout(30000);
+  for (const outcome of ['success', 'read-failure', 'malformed', 'restart-refused', 'presentation-error']) it('preserves latest-selection ownership when an older import finishes with ' + outcome, async () => {
+    const trace = [{ kind: 'gain', value: 0.25 }, { kind: 'play' }, { kind: 'save', id: 'saved-before-import', name: 'Before import' },
+      { kind: 'import', id: 'older', seed: 51, gain: 0.5, name: 'Older selection' }, { kind: 'import', id: 'current', seed: 91, gain: 0.75, name: 'Current selection' },
+      { kind: 'settle-import', id: 'current', outcome: 'success' }, { kind: 'gain', value: 0.875 }, { kind: 'settle-save', id: 'saved-before-import', outcome: 'success' },
+      { kind: 'settle-import', id: 'older', outcome }, { kind: 'undo' }, { kind: 'redo' }, { kind: 'dispose' }];
+    expect(await replayControllerTrace(trace)).to.include({ valid: true, complete: true, acceptedImports: 1, generations: 1, documents: 1 });
+  });
+  for (const outcome of ['success', 'read-failure', 'malformed']) it('retains current edited state when a held import completes with ' + outcome, async () => {
+    const trace = [{ kind: 'import', id: 'edited-source', seed: 91, gain: 0.5, name: 'Source before edits' }, { kind: 'gain', value: 0.75 },
+      { kind: 'settle-import', id: 'edited-source', outcome }, { kind: 'undo' }, { kind: 'redo' }, { kind: 'dispose' }];
+    expect(await replayControllerTrace(trace)).to.include({ valid: true, complete: true, acceptedImports: 0, generations: 0 });
+  });
+  for (const outcome of ['read-failure', 'malformed', 'restart-refused', 'presentation-error']) it('records the exact document commit frontier for current import ' + outcome, async () => {
+    const trace = [{ kind: 'gain', value: 0.25 }, { kind: 'import', id: 'candidate', seed: 91, gain: 0.625, name: 'Candidate' },
+      { kind: 'settle-import', id: 'candidate', outcome }, { kind: 'dispose' }];
+    const accepted = Number(outcome === 'presentation-error'); expect(await replayControllerTrace(trace)).to.include({ valid: true, complete: true, acceptedImports: accepted, generations: accepted });
+  });
+  it('joins both selected file reads after disposal without creating a replacement world', async () => {
+    const trace = [{ kind: 'import', id: 'older', seed: 51, gain: 0.5, name: 'Older' }, { kind: 'import', id: 'current', seed: 91, gain: 0.75, name: 'Current' },
+      { kind: 'dispose' }, { kind: 'settle-import', id: 'current', outcome: 'success' }, { kind: 'settle-import', id: 'older', outcome: 'malformed' }];
+    expect(await replayControllerTrace(trace)).to.include({ valid: true, complete: true, acceptedImports: 0, generations: 0 });
+  });
+  it('preserves a fresh New document across an older import and save acknowledgment', async () => {
+    const trace = [{ kind: 'play' }, { kind: 'save', id: 'old-save', name: 'Old save' }, { kind: 'import', id: 'old-file', seed: 51, gain: 0.5, name: 'Old file' },
+      { kind: 'new', seed: 91 }, { kind: 'pause' }, { kind: 'gain', value: 0.625 }, { kind: 'settle-import', id: 'old-file', outcome: 'success' },
+      { kind: 'settle-save', id: 'old-save', outcome: 'success' }, { kind: 'undo' }, { kind: 'dispose' }];
+    expect(await replayControllerTrace(trace)).to.include({ valid: true, complete: true, acceptedImports: 0, generations: 1, documents: 1 });
+  });
+  it('rejects missing import owners and a third unresolved read during shrinking', async () => {
+    expect(await replayControllerTrace([{ kind: 'settle-import', id: 'missing', outcome: 'success' }])).to.include({ valid: false });
+    const trace = ['a', 'b', 'c'].map((id, index) => ({ kind: 'import', id, seed: index + 51, gain: 0.5, name: id }));
+    expect(await replayControllerTrace(trace)).to.include({ valid: false, step: 2 });
+  });
+});
