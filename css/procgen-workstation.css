@@ -582,3 +582,12 @@ body.procgen-workstation {
 .studio-physical-mappings button, .studio-physical-mappings input, .studio-physical-mappings select { min-height: 32px; }
 .studio-physical-mappings input[aria-invalid=true] { outline: 2px solid #edb254; }
 .studio-physical-mappings output { display: block; min-height: 1.5em; }
+
+.parameter-knob { position: relative; }
+.parameter-knob .parameter-knob-help { display: none; position: absolute; top: 100%; left: 0; width: 28rem; z-index: 20; font: 12px/1.5 system-ui, sans-serif; padding: 8px; background: var(--studio-panel, #171d22); color: var(--studio-text, #ddd); border: 1px solid currentColor; pointer-events: none; overflow-wrap: anywhere; }
+.parameter-knob:focus-within .parameter-knob-help, .parameter-knob:hover .parameter-knob-help { display: block; }
+.studio-physical-help { width: 920px; max-height: calc(100vh - 96px); overflow: auto; }
+.studio-physical-help input[type=search] { width: 100%; min-height: 36px; }
+.studio-physical-help section { border-top: 1px solid var(--material-line, #657586); padding-block: 8px; line-height: 1.5; }
+.studio-physical-help dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+.studio-physical-help dd { margin: 0; font-family: ui-monospace, monospace; }

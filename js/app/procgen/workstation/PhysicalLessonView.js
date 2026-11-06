@@ -11,7 +11,8 @@ export function createPhysicalLessonView({ document, window, definitions, loadSc
   const predictionLabel = node('label', 'Your prediction (written or dictated)'), prediction = node('textarea'); prediction.maxLength = 512; prediction.rows = 2; prediction.setAttribute('aria-label', 'Your prediction'); predictionLabel.append(prediction);
   const say = text => { if (disposed) return; status.textContent = text; try { onStatus(text); } catch {} };
   let storage = null; try { storage = window?.localStorage || null; } catch {}
-  const session = createPhysicalLessonSession({ progress: createPhysicalLessonProgress({ storage }), onState: () => refresh() });
+  const progress = createPhysicalLessonProgress({ storage });
+  const session = createPhysicalLessonSession({ progress, onState: () => refresh() });
   const button = (text, handler) => { const value = node('button', text); value.type = 'button'; const run = () => { try { Promise.resolve(handler()).catch(error => say(error.message)); } catch (error) { say(error.message); } }; value.addEventListener('click', run); listeners.push(() => value.removeEventListener('click', run)); actions.append(value); return value; };
   const stop = () => { serial++; active?.controller.abort(new Error('Lesson navigation canceled this preparation.')); navigation = Promise.resolve().then(cancelLoad).catch(error => say(error.message)); };
   const load = async reference => {
@@ -31,7 +32,8 @@ export function createPhysicalLessonView({ document, window, definitions, loadSc
   const reset = button('Reset attempt', async () => { if (active) return; session.reset(); prediction.value = ''; await load(definitions[index].zeroNoteScene); });
   const choose = next => { stop(); index = next; prediction.value = ''; session.select(definitions[index]); };
   const back = button('Back', () => { if (index > 0) choose(index - 1); });
-  const skip = button('Skip · explore freely', () => { stop(); session.skip(); say('Skipped without a completion grade. The current world remains yours to explore.'); });
+  const skip = button('Skip · explore freely', () => { stop(); progress.dismiss(definitions[index].id, definitions[index].version); session.skip(); say('Skipped without a completion grade. This preference is saved separately from your project.'); });
+  button('Reset saved lesson progress', () => { progress.reset(); refresh(); say('Saved lesson completion and dismissal preferences cleared. The current project and active attempt are unchanged.'); });
   const next = button('Next lesson', () => { if (index + 1 < definitions.length) choose(index + 1); });
   button('Close lessons', () => { stop(); session.suspend(); root.hidden = true; });
   function refresh() {

@@ -1,6 +1,7 @@
 import { formatLaneGain } from './LaneMixState.js';
 import { causalIntentOutcome, isCausalBodyApplication, isCausalMidiRelease } from './CausalVisualProjection.js';
 import { explainCausalIntentLineage, causalSourceSuppression } from './CausalIntentLineage.js';
+import { explainPhysicalCause } from './PhysicalCauseExplanation.js';
 
 export const LANE_DISPLAY_PAGES = Object.freeze(['identity', 'cause', 'parameter', 'output']);
 const words = value => String(value || '').replaceAll('-', ' ');
@@ -38,6 +39,7 @@ export function createLaneDisplaySnapshot({ lane, revision = 0, page = 'identity
   if (simulation.state === 'paused' && !activeControl && page === 'identity') top = inactive ? 'World paused · OFF' : 'World paused';
   if (blocked || fullyRejected || !evidence?.available) { priority = 'blocked'; top = !evidence?.available ? evidence?.reason || 'Display evidence unavailable' : blocked ? words(outputState) : outcome === 'cancelled' ? 'Intent cancelled' : 'Intent rejected'; bottom = rejected || cancelled ? receiptText : 'Output activity not confirmed'; }
   const patchIdentity = lane.instrumentRef?.definitionHash || lane.instrumentPatchId || null;
+  const explanation = explainPhysicalCause({ lane, evidence, operational, mix });
   const detail = [lane.name, `${lane.role} · ${lane.mode}; world ${simulation.state || 'unreported'}; output ${words(outputState)}`, top, bottom, receiptText,
     `Requested lane level ${formatLaneGain(lane.gain ?? 1)}; project revision ${revision}; display evidence revision ${evidence?.revision ?? 'unknown'}; current patch ${patchIdentity || 'unknown'}`,
     event ? `Intent ${event.intentId}; batch ${event.batchId}; mapping ${event.mappingId || 'unknown'}; graph revision ${event.graphRevision ?? 'unknown'}; definition revision ${event.mappingRevision ?? 'unknown'}; ${event.mappingEvidence || 'unrecorded'}; voice ${event.voiceId || 'unknown'}` : 'Cause unknown',
@@ -45,7 +47,8 @@ export function createLaneDisplaySnapshot({ lane, revision = 0, page = 'identity
     ...(event ? explainCausalIntentLineage(event) : []),
     ...receipts.map(value => `${value.sinkId || 'Unknown sink'}: ${value.status || 'unknown'} / ${value.stage || 'unknown'}; target ${value.targetFrame ?? 'unknown'} ${value.targetTimeDomain || 'unreported domain'}; execution ${value.executionEpoch || 'unknown'}${value.reason ? '; ' + value.reason : ''}`),
     event ? `Sources ${event.sources.map(value => value.eventId + (value.recorded ? '' : ' (unrecorded)')).join(', ') || 'unknown'}; source tick ${event.tick}; age ${ageTicks ?? 'unknown'} ticks` : '',
-    `Coverage ${record?.completeness || 'unrecorded'}; omitted ${evidence?.omitted ?? 0}; acoustic evidence unknown`].filter(Boolean).join('\n');
+    `Coverage ${record?.completeness || 'unrecorded'}; omitted ${evidence?.omitted ?? 0}; acoustic evidence unknown`,
+    ...explanation.stages.map(stage => stage.label + ': ' + stage.state + ' · ' + stage.detail)].filter(Boolean).join('\n');
   const glyph = priority === 'blocked' && !['rejected', 'cancelled', 'suppressed'].includes(evidenceClass) ? '!' : { mixed: '±', rejected: '×', cancelled: '⊘', suppressed: '∅', degraded: '!', 'processor-applied': '▣', 'api-release-submitted': '↘', 'api-submitted': '↗', 'sink-admitted': '▷', 'intent-observed': '◇', unknown: '○' }[evidenceClass];
   return Object.freeze({ version: 1, laneId: lane.id, revision, projectRevision: revision, evidenceRevision: evidence?.revision ?? null, patchIdentity, name: lane.name, role: lane.role, mode: lane.mode, displayPage: page, glyph,
     sourceTick: record?.sourceTick ?? null, ageTicks, stale, outputState, evidenceClass, completeness: record?.completeness || 'unrecorded', priority, top, bottom, detail,

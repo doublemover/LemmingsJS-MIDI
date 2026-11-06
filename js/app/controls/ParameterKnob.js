@@ -1,6 +1,9 @@
 import { getPointerGestureArbiter } from './PointerGestureArbiter.js';
 import { normalizeParameterDescriptor, parameterUnitPosition, parameterValueAt, quantizeParameter, parseParameterValue, formatParameterValue } from './ParameterDescriptor.js';
 import { createParameterEntryPopover } from './ParameterEntryPopover.js';
+import { parameterHelpText } from './HelpTopics.js';
+
+let helpSerial = 0;
 
 export function createParameterKnob({ document, window = document.defaultView, descriptor: input, value, getIdentity = () => input,
   commit, preview = () => {}, onCancel = () => {}, onFinish = () => {}, readOnly = false, pending = false, momentary = false, presentation = 'knob',
@@ -11,6 +14,10 @@ export function createParameterKnob({ document, window = document.defaultView, d
   const root = node('div', 'parameter-knob'), cap = node('button', 'parameter-knob-cap'), indicator = node('span', 'parameter-knob-indicator');
   const label = node('span', 'parameter-knob-label', descriptor.name), output = node('output', 'parameter-knob-value'), entry = node('input', 'parameter-knob-number');
   const effective = node('span', 'parameter-knob-effective'), pickup = node('span', 'parameter-knob-pickup'), error = node('output', 'parameter-knob-error'), textConflict = node('div', 'parameter-knob-text-conflict');
+  const help = node('span', 'parameter-knob-help'); help.id = 'parameter-help-' + (++helpSerial);
+  let observedEffective = null, observedPickup = null;
+  const updateHelp = () => { help.textContent = parameterHelpText(descriptor, { effectiveValue: observedEffective, pickupValue: observedPickup, readOnly, pending }); };
+  cap.setAttribute('aria-describedby', help.id); entry.setAttribute('aria-describedby', help.id); root.append(help); updateHelp();
   textConflict.hidden = true; const actionButtons = [], conflictButtons = new Map();
   root.dataset.presentation = presentation;
   root.dataset.parameterRole = descriptor.functionalRole;
@@ -131,6 +138,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
     resetDraft() { if (!entryDirty && !entryConflict) return false; entryDirty = false; clearTextConflict(); entry.value = acceptedText(); paint(); return true; } });
   const observations = ({ effectiveValue = null, pickupValue = null } = {}) => {
     if (disposed) return;
+    observedEffective = effectiveValue; observedPickup = pickupValue; updateHelp();
     for (const [mark, position] of [[effective, effectiveValue], [pickup, pickupValue]]) {
       mark.hidden = !Number.isFinite(position);
       if (!mark.hidden) { mark.style.transform = presentation === 'fader' ? 'none' : `rotate(${-135 + parameterUnitPosition(descriptor, position) * 270}deg)`;

@@ -20,6 +20,8 @@ import { createProcgenProjectPreview } from './ProcgenProjectPreview.js';
 import { createProjectReplacementDialog } from '../../controls/ProjectReplacementDialog.js';
 import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
 import { createParameterKnob } from '../../controls/ParameterKnob.js';
+import { createPhysicalHelpView } from './PhysicalHelpView.js';
+import { explainPhysicalCause } from './PhysicalCauseExplanation.js';
 import { getPointerGestureArbiter } from '../../controls/PointerGestureArbiter.js';
 import { PROCGEN_SOUND_COLLECTIONS, PROCGEN_ROLES, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { createAxisDescriptor, formatAxisDescriptor, describeCapturedCoordinateSample } from './AxisDescriptor.js';
@@ -1336,6 +1338,18 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const ids = [...laneDisplays.keys()]; if (!ids.includes(state.laneId)) ids.push(state.laneId);
     return handlers.laneDisplayState?.(ids) || ids.map(id => ({ lane: procgenLane(getProject().procgen.lanes, id), mix: handlers.laneMixView?.(id), evidence: { available: true } })).filter(value => value.lane);
   }
+  let physicalHelp = null;
+  const openPhysicalHelp = (topic = 'evidence') => {
+    physicalHelp ||= createPhysicalHelpView({ document, dispatcher: commandDispatcher, displayScheduler, resourceBudget,
+      readSelected: () => readLaneDisplayValues().find(value => value.lane.id === state.laneId), onStatus: setStatus,
+      performAction: captured => {
+        const current = explainPhysicalCause(readLaneDisplayValues().find(value => value.lane.id === state.laneId)).action;
+        if (!current || current.id !== captured.id || current.identity !== captured.identity || current.laneId !== captured.laneId) { setStatus('The selected cause or output state changed. Review Why no sound again.'); return false; }
+        if (current.id === 'inspect-mix') { state.tab = 'Lane'; dock.open(); render(); return true; }
+        return handlers.recoverOperational?.(current.id, current.identity);
+      } });
+    return physicalHelp.open(topic);
+  };
   function paintLaneDisplays() {
     if (disposed || !projection) return;
     if (state.tab === 'Harmony' && dock.visible() && harmonyView?.element.isConnected) harmonyView.render();
@@ -1403,11 +1417,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     label: direction < 0 ? 'Select the previous step' : 'Select the next step', contexts: ['optional-pattern'], bindings: [key], repeat: true, enabled: patternReady,
     execute: () => { const length = selected().patterns[state.slot].length; state.step = (state.step + length + direction) % length; state.tab = 'Step'; render(); } });
   for (const [action, label] of [['openSoundLibrary', 'Open the sound library'], ['openShapeFoundry', 'Open Shape Foundry'],
-    ['openPhysicalAuthoring', 'Open physical authoring'], ['openPhysicalJunctions', 'Inspect physical junctions'], ['openPhysicalScene', 'Open physical scene and cargo authoring'],
+    ['openPhysicalAuthoring', 'Open physical authoring'], ['openPhysicalMappings', 'Edit physical parameter mappings'], ['openPhysicalJunctions', 'Inspect physical junctions'], ['openPhysicalScene', 'Open physical scene and cargo authoring'],
     ['openMasterCapture', 'Record the browser master'], ['openPrelistenMonitor', 'Open Prelisten routing'], ['save', 'Save the current project'], ['load', 'Open a saved project'], ['export', 'Prepare a performance file']]) {
     commands.push({ id: 'workstation.' + action, label, contexts: ['selected-lane'], enabled: () => canCommand(action), execute: () => action === 'load' ? handlers.load?.({ review: true }) : handlers[action]?.() });
   }
   commands.push({ id: 'workstation.import', label: 'Import a performance file', contexts: ['project'], enabled: () => canCommand('import'), execute: () => importInput.click() });
+  commands.push({ id: 'workstation.contextHelp', label: 'Physical music concepts and current shortcuts', contexts: ['selected-lane'], enabled: () => !stageActive, execute: () => openPhysicalHelp('contact') },
+    { id: 'workstation.whyNoSound', label: 'Why no sound? Explain the selected cause', contexts: ['selected-lane'], enabled: () => !stageActive, execute: () => openPhysicalHelp('evidence') });
   commands.push({ id: 'workstation.inspectLane', label: 'Inspect the selected lane in the instrument dock', contexts: ['selected-lane'], enabled: () => !stageActive, execute: () => dock.open() },
     { id: 'workstation.perform', label: 'Return to performance and close the instrument dock', contexts: ['selected-lane'], enabled: () => !stageActive, execute: () => dock.choose('perform') });
   const commandRegistration = commandDispatcher.register({ commands, priority: 100, getContext: commandContext, isCurrent: commandCurrent,
@@ -1420,6 +1436,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const commandPalette = createProcgenCommandPalette({ document, dispatcher: commandDispatcher, getScopeLabel: () => 'Selected lane: ' + (selected().name || selected().id),
     onStatus: message => { setStatus(message); } });
   fullscreenMenu.append(button('Commands…', () => commandPalette.open(), 'Find a desktop action and inspect its actual shortcuts'));
+  fullscreenMenu.append(button('Physical music help…', () => openPhysicalHelp('contact')),
+    button('Why no sound?', () => openPhysicalHelp('evidence'), 'Inspect the selected cause, mapping, intent, output and monitor evidence'));
   fullscreenMenu.append(button('Inspect world selection', () => { state.tab = 'Selection'; if (dock.visible()) render(); else dock.open(); }, 'Read selected actors and physical objects without changing their world'));
 
   const setupMusic = node('div', null, 'studio-setup-music'); setupMusic.setAttribute('role', 'group'); setupMusic.setAttribute('aria-label', 'Musical setup');
@@ -1583,6 +1601,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'lane-organization', run: () => { laneGroups.dispose(); navigationMetadata.dispose(); } },
         { name: 'lane-mix-controls', run: () => { for (const control of [...laneMixControls.values(), ...lanePanControls.values()]) control.dispose(); laneMixControls.clear(); lanePanControls.clear(); retainedLaneDrafts.clear(); } },
         { name: 'lane-displays', run: () => { for (const display of laneDisplays.values()) display.dispose(); laneDisplays.clear(); laneDisplayPages.clear(); laneDisplayDialog.close(); laneDisplayDialog.remove(); } },
+        { name: 'physical-context-help', run: () => physicalHelp?.dispose() },
         { name: 'causal-visual-view', run: () => causalView.dispose() },
         { name: 'physical-harmony-view', run: () => { handlers.closeHarmony?.(); return harmonyView?.dispose(); } },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },

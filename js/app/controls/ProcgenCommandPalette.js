@@ -1,3 +1,5 @@
+import { commandHelpTopic } from './HelpTopics.js';
+
 export function createProcgenCommandPalette({ document, dispatcher, getScopeLabel = () => '', onStatus = () => {} }) {
   let current = null, disposed = false;
   const node = (tag, text) => { const value = document.createElement(tag); if (text) value.textContent = text; return value; };
@@ -21,11 +23,12 @@ export function createProcgenCommandPalette({ document, dispatcher, getScopeLabe
         if (result.status !== 'executed') onStatus('The command target changed. Review the current selection before trying again.');
       };
       const render = () => {
-        const query = search.value.trim().toLocaleLowerCase(), matches = entries.filter(entry => (entry.label + ' ' + entry.shortcut + ' ' + entry.contexts.join(' ')).toLocaleLowerCase().includes(query));
+        const query = search.value.trim().toLocaleLowerCase(), matches = entries.filter(entry => (entry.label + ' ' + entry.shortcut + ' ' + entry.contexts.join(' ') + ' ' + (commandHelpTopic(entry.id)?.concept || '')).toLocaleLowerCase().includes(query));
         list.replaceChildren();
         for (const entry of matches.slice(0, 48)) {
           const row = node('div'); row.setAttribute('role', 'listitem'); const button = node('button'); button.type = 'button';
           button.dataset.commandId = entry.id; button.disabled = !entry.enabled; button.append(node('span', entry.label), node('kbd', entry.shortcut));
+          const help = commandHelpTopic(entry.id); if (help) button.title = help.shortHint;
           button.addEventListener('keydown', event => { if (event.repeat && ['Enter', ' '].includes(event.key)) { event.preventDefault(); event.stopPropagation(); } });
           button.addEventListener('click', () => execute(entry)); row.append(button); list.append(row);
         }
