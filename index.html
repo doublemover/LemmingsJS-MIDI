@@ -27,6 +27,7 @@
   <link type="text/css" rel="stylesheet" href="css/game.css">
   <link type="text/css" rel="stylesheet" href="css/icons.css">
   <link type="text/css" rel="stylesheet" href="css/midi-instrument.css">
+  <link type="text/css" rel="stylesheet" href="css/sound-content-library.css">
   <link type="text/css" rel="stylesheet" href="css/character-controls.css">
   <link type="text/css" rel="stylesheet" href="css/midi-spans.css">
   <script>
@@ -115,7 +116,10 @@
           </div>
           <label id="midiSoundOrderField" class="midi-field"><span>Event pattern order</span><select id="midiSoundOrder"><option value="up">Up</option><option value="down">Down</option><option value="updown">Up / down</option></select></label>
           <label id="midiSoundPreviewRoleField" class="midi-field" hidden><span>Test ensemble role</span><select id="midiSoundPreviewRole" aria-label="Local test ensemble role"></select></label>
-          <button id="midiSoundPreview" title="Uses the local oscillator/noise synth. Program/role approximations follow the game; no sound-font bank or external MIDI is used." data-icon="play" type="button">Test event locally</button>
+          <button id="midiLocalInstrument" type="button">Choose local instrument</button>
+          <button id="midiLocalInstrumentClear" type="button" hidden>Clear local instrument</button>
+          <output id="midiLocalInstrumentName" aria-live="polite"></output>
+          <button id="midiSoundPreview" title="Plays the selected local instrument on this event phrase. No external MIDI is sent." data-icon="play" type="button">Test event locally</button>
           <details class="midi-sound-secondary"><summary data-icon="settings-2">Routing &amp; reference</summary>
           <p id="midiSoundRoute" class="midi-route-summary"></p>
           <button id="midiInspectTrack" data-icon="arrow-up-right" type="button">Inspect destination track</button>

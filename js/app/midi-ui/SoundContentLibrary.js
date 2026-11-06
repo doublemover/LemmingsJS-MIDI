@@ -32,7 +32,7 @@ const TACTILE_SOURCE = new URL('../../../content/sounds/tactile-contacts.json', 
 const SPECTRUM_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'liquid-drawbars').source;
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
-export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null } = {}) {
+export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null, targetLabel = 'selected lane', allowLivePreview = true } = {}) {
   if (!document?.createElement || !resourceBudget || typeof onApply !== 'function') throw new TypeError('Invalid sound library surface.');
   const reader = createSoundContentReader({ resourceBudget, jobs }), archiver = createSoundContentArchiver({ resourceBudget, jobs });
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
@@ -154,7 +154,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     check(operation); installed = true; setStatus('Pack installed. Apply remains a separate command.'); }));
   const referenceInstall = button('Keep as reference', () => run(async operation => { await installation.install(stage, { referenceOnly: true, signal: operation.controller.signal, isCurrent: () => current === operation && !disposed });
     check(operation); installed = true; setStatus('Reference pack installed. Missing engines and material remain explicit requirements.'); }));
-  const apply = button('Apply to selected lane', () => {
+  const apply = button('Apply to ' + targetLabel, () => {
     if (current?.previewLease) {
       try { current.previewLease.commit(); setStatus('Preview committed as one musical edit.'); }
       catch (error) { setStatus(error.message); }
@@ -162,13 +162,14 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       return;
     }
     return run(async operation => { let candidate = installation.applyCandidate(stage, selection); check(operation); const drumKit = await readStagedDrumKit(stage, selection, { signal: operation.controller.signal, resourceBudget }); check(operation); if (drumKit) candidate = Object.freeze({ ...candidate, reference: Object.freeze({ ...candidate.reference, drumKit }) });
-      await onApply(candidate, { signal: operation.controller.signal }); check(operation); setStatus('Instrument applied to the selected lane.'); });
+      await onApply(candidate, { signal: operation.controller.signal }); check(operation); setStatus('Instrument applied to the ' + targetLabel + '.'); });
   });
   const hold = button('Hold to preview incoming events', () => {});
+  hold.hidden = !allowLivePreview;
   hold.setAttribute('aria-label', 'Hold Space, Enter or pointer to preview this instrument on incoming physical events; release to restore');
   const releasePreview = () => { if (current?.mode === 'lane-preview') current.controller.abort(failure('Sound preview released.')); };
   const startPreview = () => {
-    if (disposed || current || factoryFaults.size || !installed || !stage || !selection) return;
+    if (!allowLivePreview || disposed || current || factoryFaults.size || !installed || !stage || !selection) return;
     let candidate; try { candidate = installation.applyCandidate(stage, selection); } catch (error) { setStatus(error.message); return; }
     const operation = { mode: 'lane-preview', controller: new AbortController(), sequence: ++sequence, previewLease: null }; current = operation;
     const released = new Promise(resolve => operation.controller.signal.addEventListener('abort', resolve, { once: true }));

@@ -7528,5 +7528,34 @@
       "Consolidated final execution and independent assessment of generated model failures remains required. No seeded transition or timing/heap count is claimed.",
       "Naming/quiescing saves, controller/page/device lifecycle, Thru/UMP/Active Sensing and broader native/cache schedules remain separate development under1120."
     ]
+  },
+  "continuation469": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "issues": [
+      973,
+      1111,
+      971
+    ],
+    "scope": "Add real pinned-instrument phrase preview and sound-library selection to the ordinary event sound editor.",
+    "implementation": [
+      "The sound editor can choose an installed authored local instrument for its selected source/ensemble track, displays the exact patch name/revision and can clear it. Existing library installation/audition is reused with a selected-track target and without an inapplicable physical-event hold command.",
+      "Track project sanitation/export/Undo retains validated immutable sound references and distinct authored macro overrides. Ensemble and standalone event phrase planning carries those complete references and controls rather than reconstructing the selected patch from a GM program or role.",
+      "Pinned phrases prepare their exact native oscillator/FM/modal, native sample or supported worklet engine and verified assets on the existing shared audio graph. Begin/end commands retain continuous pitch/dynamics/expression, per-note voice identities, resolved macro parameters, actual sample-frame targets and the authored gate/one-shot policy. Legacy mapping strength/gate fields are not interpreted as ADSR seconds.",
+      "Preparation invokes user-gesture enable before catalog/material awaits. Up to eight pinned instruments and64notes share the existing backend/voice/material budgets; incomplete note-only interfaces refuse explicitly instead of inventing physical travel or topology. Per-note patch/effective-control receipts and partial refusal are observable.",
+      "Source/project changes retire pending event audition and invalidate its phrase-counter publication. Prepared producer completion, execution, renderer and material readers have explicit retirement on replacement/Stop/disposal; private owner cancellation leaves unrelated sessions independent."
+    ],
+    "validation": {
+      "format": "passed",
+      "functionalTests": "intentionally deferred until remaining feature development is implemented per user instruction",
+      "nativeExecution": "not run",
+      "fullSuiteExecution": "not run",
+      "newRegressionSources": "not expanded in this feature batch",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Complete ordinary live game routing through the same prepared semantic owner and remove its remaining local program/percussion facade. Plain source-preview notes still use that explicit old path in this intermediate commit.",
+      "Validate the full feature together with remaining development at the final batch. No rendered/audio/browser or acceptance pass is claimed."
+    ]
   }
 }

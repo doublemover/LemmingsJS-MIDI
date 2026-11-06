@@ -14,6 +14,7 @@ import { getPlayableMidiClipSteps, describeMidiClipPlayback } from '../midi/proj
 import { resolveMidiAvailability, applyMidiAvailability } from './midiAvailability.js';
 import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
 import { resolveGameSoundSource, GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch, transposeEventPitch, soundNoteName } from './midi-ui/midiSoundEditor.js';
+import { createResourceBudget } from './resources/ResourceBudget.js';
 import { createBrowserNotePreview } from './midi-ui/browserNotePreview.js';
 import { createLocalGamePreview } from './midi-ui/localGamePreview.js';
 import { GAME_EVENT_MIDI_PRESETS, applyGameEventMidiPreset } from '../midi/project/GameEventMidiPresets.js';
@@ -264,7 +265,8 @@ const createMidiUiController = ({
   freshProjectPresetId = null,
   downloadTextFile = downloadTextFileDefault,
   readTextFile = readTextFileDefault,
-  createPreviewAudio = createBrowserNotePreview
+  createPreviewAudio = createBrowserNotePreview,
+  resourceBudget = createResourceBudget()
 } = {}) => {
   const available = resolveMidiAvailability({ windowRef: window });
   applyMidiAvailability(document, available);
@@ -318,6 +320,7 @@ const createMidiUiController = ({
   let localAudioGraph = null;
   let localAudio = null;
   let auditionAudio = null;
+  let localInstrumentLibrary = null, localInstrumentLibraryLoading = null, localInstrumentTarget = null, localDocumentEpoch = 0;
   let masterVolume = DEFAULT_MASTER_VOLUME;
   const auditionSteps = new Map();
   let localGamePreview = null;
@@ -670,6 +673,7 @@ const createMidiUiController = ({
 
   const commitProject = (nextProject, { persist = true, apply = true, renderUi = true } = {}) => {
     const next = sanitizeMidiProject(nextProject);
+    if (auditionPending || auditionAudio?.getState?.().activeVoices) { localInteraction++; auditionPending = false; auditionAudio?.stop?.(); }
     editHistory.record(project, next);
     project = next;
     if (persist) {
@@ -1218,6 +1222,7 @@ const createMidiUiController = ({
   const hasRecordCapture = () => recordState.active || recordState.notes.length > 0 || recordState.activeNotes.size > 0;
 
   const clearTransientProjectState = () => {
+    localDocumentEpoch++; localInstrumentTarget = null;
     workbench?.clearPlayback(); editHistory.endGesture();
     learnState.active = false; learnState.pending = null; learnState.sourceId = null; learnState.trackId = null; learnState.conflicts = [];
     clearLearnCapture(); clearRecordCapture(); resetRecordState();
@@ -2449,7 +2454,7 @@ const createMidiUiController = ({
   const createLocalAudioOwner = owner => {
     const callbacks = { onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner }) };
     if (!localAudioGraph) {
-      const audio = createPreviewAudio({ masterVolume, ...callbacks, onStateChange: () => { if (!localAudioGraph) renderLocalSummary(); } });
+      const audio = createPreviewAudio({ masterVolume, resourceBudget, cueVoices: 4, cueCostUnits: 16, ...callbacks, onStateChange: () => { if (!localAudioGraph) renderLocalSummary(); } });
       // Existing injected adapters may lack sessions; the built-in synth always shares one graph.
       if (typeof audio.createSession !== 'function') return audio;
       localAudioGraph = audio;
@@ -2485,12 +2490,32 @@ const createMidiUiController = ({
     renderLocalSummary();
   };
 
+  const localInstrumentTrack = () => {
+    const current = ensureProject(), source = selectedSource(), roleId = document?.getElementById('midiSoundPreviewRole')?.value;
+    return current.tracks.find(track => track.id === (roleId || source?.trackId)) || null;
+  };
+  const openLocalInstrumentLibrary = async () => {
+    const source = selectedSource(), track = localInstrumentTrack(); if (!source || !track || disposed) return false;
+    if (!auditionAudio) auditionAudio = createLocalAudioOwner('audition');
+    const target = { documentEpoch: localDocumentEpoch, sourceId: source.id, trackId: track.id }; localInstrumentTarget = target;
+    if (!localInstrumentLibraryLoading) localInstrumentLibraryLoading = import('./midi-ui/SoundContentLibrary.js');
+    const { createSoundContentLibrary } = await localInstrumentLibraryLoading;
+    if (disposed || localInstrumentTarget !== target || localDocumentEpoch !== target.documentEpoch) return false;
+    if (!localAudioGraph) throw new Error('This audio adapter cannot prepare authored local instruments.');
+    localInstrumentLibrary ||= createSoundContentLibrary({ document, window, audio: localAudioGraph, resourceBudget, targetLabel: 'selected track', allowLivePreview: false, onStatus: setStatus,
+      onApply: async (candidate, { signal, hold = false } = {}) => {
+        signal?.throwIfAborted(); const bound = localInstrumentTarget;
+        if (hold || disposed || !bound || bound.documentEpoch !== localDocumentEpoch || selectedSource()?.id !== bound.sourceId || localInstrumentTrack()?.id !== bound.trackId) throw new Error('The selected sound target changed. Open its local instrument library again.');
+        dispatchProjectIntent({ type: 'track.update', trackId: bound.trackId, patch: { instrumentRef: candidate.reference, instrumentControls: { macros: {} } } });
+      } });
+    localInstrumentLibrary.open(); return true;
+  };
   const testSelectedSound = async (previewContext = {}) => {
     const source = selectedSource();
     if (!source) return false;
     if (!auditionAudio) auditionAudio = createLocalAudioOwner('audition');
     auditionAudio.setCapture?.(outputCapture.getState().active ? outputCapture : null, captureContext);
-    const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback]);
+    const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback, ensureProject().tracks.map(track => [track.id, track.instrumentRef?.definitionHash, track.instrumentControls])]);
     settleAuditionPasses();
     const previous = auditionSteps.get(source.id);
     const index = previous?.key === key ? previous.index : 0;
@@ -2509,7 +2534,8 @@ const createMidiUiController = ({
     if (interaction !== localInteraction || disposed) return false;
     if (ok) {
       advance();
-      setStatus([plan.omitted ? plan.omitted + ' notes omitted by the local audition/expansion cap. Shorten repeats or test fewer cells.' : '', plan.notice].filter(Boolean).join(' '));
+      const observedPreview = auditionAudio.getState().preparedPreview;
+      setStatus([observedPreview?.rejected ? observedPreview.rejected + ' notes could not be realized by the selected local instrument.' : '', plan.omitted ? plan.omitted + ' notes omitted by the local audition/expansion cap. Shorten repeats or test fewer cells.' : '', plan.notice].filter(Boolean).join(' '));
     } else setStatus(auditionAudio.getState().message || 'Local audio could not start');
     renderLocalSummary();
     return ok;
@@ -2597,6 +2623,10 @@ const createMidiUiController = ({
       }
       previewRole.value = Array.from(previewRole.children).some(option => option.value === selected) ? selected : '';
     }
+    const localTrack = localInstrumentTrack(), localDefinition = localTrack?.instrumentRef?.definition;
+    setText(document?.getElementById('midiLocalInstrumentName'), localDefinition ? localDefinition.name + ' · revision ' + localDefinition.revision : 'Source preview');
+    const clearLocal = document?.getElementById('midiLocalInstrumentClear'); if (clearLocal) clearLocal.hidden = !localDefinition;
+    const chooseLocal = document?.getElementById('midiLocalInstrument'); if (chooseLocal) chooseLocal.disabled = !source;
     setText(document?.getElementById('midiSoundTitle'), source ? `${eventLabel} sound` : eventLabel);
     setText(document?.getElementById('midiActiveKeySummary'), `Key: ${KEY_ROOT_LABELS[current.global.scale.root] || 'C'} ${SCALE_LABELS[current.global.scale.name] || current.global.scale.name}`);
     setChecked(document?.getElementById('midiSoundEnabled'), source?.enabled);
@@ -2943,6 +2973,9 @@ const createMidiUiController = ({
       renderLocalSummary();
     });
     bindById('midiSoundPreview', 'click', () => testSelectedSound());
+    bindById('midiLocalInstrument', 'click', () => { void openLocalInstrumentLibrary().catch(error => { if (!disposed) setStatus(error.message); }); });
+    bindById('midiLocalInstrumentClear', 'click', () => { const track = localInstrumentTrack(); if (track) dispatchProjectIntent({ type: 'track.update', trackId: track.id, patch: { instrumentRef: null, instrumentControls: null } }); });
+    bindById('midiSoundPreviewRole', 'change', renderSoundEditor);
     const presetSelect = document?.getElementById('midiGamePresetSelect');
     const presetMode = document?.getElementById('midiGamePresetMode');
     if (presetMode) presetMode.value = 'phrase';
@@ -3536,6 +3569,7 @@ const createMidiUiController = ({
     workbench?.dispose(); eventClipEditor?.dispose(); gameEventRows.clear();
     localInteraction += 1;
     getLemmings()?.setLocalAudioStopHandler?.(null);
+    if (localInstrumentLibrary) void Promise.resolve(localInstrumentLibrary.dispose()).catch(() => {});
     auditionAudio?.dispose?.();
     auditionSteps.clear();
     localGamePreview?.dispose?.();

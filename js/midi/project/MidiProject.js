@@ -1,3 +1,5 @@
+import { validateSoundContentReference } from '../content/SoundContentReference.js';
+import { validateInstrumentControls } from '../content/InstrumentPerformance.js';
 import { recordProcgenProjectChange } from '../../app/procgen/workstation/ProcgenProjectIndex.js';
 import { sanitizeClipVoices, sanitizeClipTransformLayers } from './MidiClipTransforms.js';
 import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
@@ -404,6 +406,7 @@ const createDefaultMidiTrack = (overrides = {}) => ({
   channel: overrides.channel ?? 1,
   program: overrides.program ?? null,
   instrumentLabel: overrides.instrumentLabel || 'General MIDI',
+  ...(overrides.instrumentRef ? { instrumentRef: validateSoundContentReference(overrides.instrumentRef), instrumentControls: validateInstrumentControls(overrides.instrumentControls || { macros: {} }) } : {}),
   mute: overrides.mute ?? overrides.muted ?? false,
   solo: overrides.solo ?? false,
   arm: overrides.arm ?? false,
@@ -425,6 +428,7 @@ const sanitizeTrack = (track, fallbackIndex, usedIds) => {
     channel: sanitizeChannel(track?.channel, fallback.channel),
     program: track?.program == null || track.program === '' ? null : clamp(toInteger(track.program, 0), 0, 127),
     instrumentLabel: sanitizeId(track?.instrumentLabel, fallback.instrumentLabel),
+    ...(track?.instrumentRef ? { instrumentRef: validateSoundContentReference(track.instrumentRef), instrumentControls: validateInstrumentControls(track.instrumentControls || { macros: {} }) } : {}),
     mute: sanitizeBoolean(track?.mute ?? track?.muted, false),
     solo: sanitizeBoolean(track?.solo, false),
     arm: sanitizeBoolean(track?.arm, false),
@@ -1165,6 +1169,7 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
   if (mapping.priority != null) out.eventPriority = mapping.priority;
   out.voiceBudget = track.voiceBudget;
   out.trackId = track.id;
+  if (track.instrumentRef) { out.instrumentRef = track.instrumentRef; out.instrumentControls = track.instrumentControls; }
   out.outputId = track.outputId;
   if (track.velocityScale !== 1) {
     const velocity = Number.isFinite(out.velocity) ? out.velocity : globalVelocityDefault;

@@ -17,6 +17,7 @@ import { createSoundMaterialProvider } from './SoundMaterialProvider.js';
 import { createOwnedCueRouting } from './OwnedCueRouting.js';
 import { createForegroundAuditionOwner } from './ForegroundAuditionOwner.js';
 import { createAudioIntervalAdmission, audioIntervalStorageBytes } from './AudioIntervalAdmission.js';
+import { createPreparedInstrumentPreview } from './PreparedInstrumentPreview.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 const retirementState = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome,
   failures: receipt.resources.filter(resource => ['failed', 'unknown'].includes(resource.status)).map(resource => ({ name: resource.name, status: resource.status, error: resource.error })) } : null;
@@ -125,6 +126,7 @@ class BrowserNotePreview {
     this._voicesByToken = new Map();
     this._semanticVoiceOwners = new Map();
     this._instrumentBackends = new Set();
+    this._preparedPreviews = new Set(); this._preparedRootSession = null; this._lastPreparedPreview = null;
     this._previewPending = [];
     this._previewTimer = null;
     this._voiceSequence = 0;
@@ -285,7 +287,7 @@ class BrowserNotePreview {
       const state = this.getState(); let activeVoices = 0, pendingNotes = 0;
       for (const voice of this._voices) if (voice.owner === id) activeVoices++;
       for (const entry of this._previewPending) if (entry.spec.owner === id) pendingNotes++;
-      return { ...state, owner: label, ownerId: id, sharedMix: true, activeVoices, pendingNotes, enabled: session.enabled && state.enabled && !this._retirementFaults.has(id),
+      return { ...state, preparedPreview: session.preparedPreview || null, owner: label, ownerId: id, sharedMix: true, activeVoices, pendingNotes, enabled: session.enabled && state.enabled && !this._retirementFaults.has(id),
         laneSources: this._laneSourceBuses.get(id)?.buses.diagnostics() || null, effectRetirement: retirementState(this._effectRetirements.get(id)?.scope.getReceipt()), retirement: retirementState(retirement.getReceipt()),
         status: session.disposed ? 'disposed' : this._retirementFaults.has(id) ? 'error' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
         message: session.disposed ? 'Local audio session is closed.' : session.enabled || session.starting ? state.message : 'Local audio session is off.' };
@@ -475,6 +477,7 @@ class BrowserNotePreview {
       resourceAccounting: this._audioResources.diagnostics(),
       retirement: retirementState(this._retirement.getReceipt()), retiredVoices: this._retiredVoices.size, unclosedContext: !!this._retiringContext,
       activeVoices: this._voices.size, sharedMix: this._sessions.size > 0, sessionCount: this._sessions.size,
+      preparedPreview: this._lastPreparedPreview, preparedPreviews: this._preparedPreviews.size,
       instrumentBackends: this._instrumentBackends.size, maxInstrumentBackends: this._maxInstrumentBackends,
       maxVoices: this._maxVoices, maxScheduledVoices: this._maxScheduledVoices,
       workload: { liveCostUnits: this._maxVoices, cueCostUnits: this._maxCueCostUnits, aggregateCostUnits: this._maxVoices + this._maxCueCostUnits, liveVoices: this._maxVoices, cueVoices: this._maxCueVoices, aggregateVoices: this._maxVoices + this._maxCueVoices,
@@ -1063,9 +1066,29 @@ class BrowserNotePreview {
       backend: 'local-synth', outputId: output.id, outputScope: output.captureScope });
   }
 
-  /** Notes use {note, velocity, durationMs, offsetMs, channel}; numbers are also accepted. */
+  async _previewPreparedInstruments(notes, { replace = true, owner = null } = {}) {
+    if (this._disposed) return false;
+    if (owner == null) { this._preparedRootSession ||= this.createSession('prepared-instrument-preview'); return this._preparedRootSession.preview(notes, { replace }); }
+    const session = this._sessions.get(owner); if (!session || session.disposed) return false;
+    if (replace) session.api.stop();
+    if (this._preparedPreviews.size >= 8 || [...this._preparedPreviews].some(entry => entry.player.state().phase === 'retirement-unknown')) { this._setStatus('error', 'Finish or retire earlier prepared previews before starting another.'); return false; }
+    const generation = session.generation, graphGeneration = this._generation, entry = { owner, player: null };
+    const current = () => !this._disposed && !session.disposed && generation === session.generation && graphGeneration === this._generation;
+    entry.player = createPreparedInstrumentPreview({ session: session.api, getContext: () => this._context, getMaterialProvider: () => this.getSoundMaterialProvider(), maxSeconds: this._maxNoteSeconds, current,
+      onReceipt: receipt => { this._lastPreparedPreview = receipt; session.preparedPreview = receipt; if (receipt.phase === 'retired') this._preparedPreviews.delete(entry); this._observe('prepared-instrument-preview', { ...receipt, owner }); if (!receipt.voiceId) session.report(); } });
+    this._preparedPreviews.add(entry);
+    try { return await entry.player.play(notes); }
+    catch (error) { const receipt = entry.player.dispose(); await receipt.completion; if (current()) this._setStatus('error', String(error?.message || 'The selected local instrument could not be prepared.').slice(0, 512)); return false; }
+  }
+
+  /** Pinned instrumentRef phrases use the semantic backend; plain notes retain their explicit source preview. */
   async preview(notes, { replace = true, durationMs = 220, stepMs = 160, owner = null } = {}) {
     if (this._disposed) return false;
+    const requested = Array.isArray(notes) ? notes : [notes];
+    if (requested.some(note => note && typeof note === 'object' && note.instrumentRef)) {
+      if (requested.some(note => !note || typeof note !== 'object' || !note.instrumentRef)) { this._setStatus('error', 'Every note in this prepared phrase must name its pinned local instrument.'); return false; }
+      return this._previewPreparedInstruments(requested, { replace, owner });
+    }
     const session = owner == null ? null : this._sessions.get(owner);
     if (owner != null && (!session || session.disposed)) return false;
     if (replace) { if (session) session.api.stop(); else this.stop(); }
@@ -1389,6 +1412,7 @@ class BrowserNotePreview {
     const removed = new Set(pending);
     this._previewPending = this._previewPending.filter(entry => !removed.has(entry));
     return createProcgenRetirementScope().retire([
+      ...(number == null ? [...this._preparedPreviews].filter(entry => owner === undefined || entry.owner === owner).map((entry, index) => ({ name: 'prepared-preview-' + index, run: () => entry.player.dispose() })) : []),
       ...(number == null ? [...this._instrumentBackends].filter(entry => owner === undefined || entry.owner === owner).map((entry, index) =>
         ({ name: `backend-stop-${index}`, run: () => entry.backend.onOwnerStop?.() })) : []),
       { name: 'preview-timer', run: () => { if (this._previewTimer != null) clearTimeout(this._previewTimer); this._previewTimer = null; } },
