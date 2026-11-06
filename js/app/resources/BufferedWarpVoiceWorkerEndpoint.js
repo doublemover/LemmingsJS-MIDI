@@ -40,6 +40,7 @@ export function createBufferedWarpVoiceWorkerEndpoint({ postMessage, close, time
     processing = (async () => {
       const clock = await readClock(); if (phase !== 'bound') return;
       if (clock.failure || clock.sampleRate !== history.plan.outputRate) throw failure(clock.failure || 'The PCM processor changed its prepared sample rate.');
+      if (Number.isSafeInteger(clock.gateFinishedOutputFrame)) { phase = 'ended'; send('ended', { diagnostics: voice.diagnostics(), gateFinishedOutputFrame: clock.gateFinishedOutputFrame, ending: 'owned-output-release;source-DSP-prefix-preserved' }); return; }
       let free = Math.min(16, clock.freeChunks), horizon = clock.currentFrame + 2048;
       while (free-- > 0 && phase === 'bound' && voice.diagnostics().outputFrame < horizon) {
         await voice.processChunk({ signal: controller.signal });
@@ -87,7 +88,7 @@ export function createBufferedWarpVoiceWorkerEndpoint({ postMessage, close, time
           if (input.image) {
             const applicationBuildId = getActiveExecutionIdentity('browser-background-jobs').buildId;
             image = await sealStretchImageMaterial(input.image, { applicationBuildId, sampleRate: plan.outputRate, estimatedPeakBytes: 256 * 1048576, signal: controller.signal }); controller.signal.throwIfAborted();
-            core = instantiateStretchInitialImage(image, { applicationBuildId, estimatedPeakBytes: 128 * 1048576 }); image.dispose(); image = null;
+            core = instantiateStretchInitialImage(image, { applicationBuildId, estimatedPeakBytes: 128 * 1048576 });
           } else core = await prepareOwnedStretchCore(input.wasmBytes, { sampleRate: plan.outputRate, blockFrames, intervalFrames: blockFrames / 4,
             randomSeed: input.randomSeed ?? 1, captureInitialImage: plan.algorithm.artifactHashes.length > 1, estimatedPeakBytes: 256 * 1048576, signal: controller.signal });
           controller.signal.throwIfAborted();
@@ -95,6 +96,12 @@ export function createBufferedWarpVoiceWorkerEndpoint({ postMessage, close, time
             configurationHash: core.configurationHash, estimatedPeakBytes: 128 * 1048576, signal: controller.signal }); controller.signal.throwIfAborted(); input = null;
           phase = 'ready'; send('material-ready', { configuration: core.configuration, configurationHash: core.configurationHash, executionIdentity: getActiveExecutionIdentity('browser-background-jobs') });
         })(); await prepareWork; return;
+      }
+      if (request.type === 'rearm' && phase === 'ended') {
+        if (!image) throw failure('Reusable source preparation requires its owned immutable initial image.');
+        if (processing) await processing; controller.signal.throwIfAborted();
+        voice?.dispose({ producerRetired: true }); voice = null; core?.dispose(); core = instantiateStretchInitialImage(image, { applicationBuildId: getActiveExecutionIdentity('browser-background-jobs').buildId, estimatedPeakBytes: 128 * 1048576 });
+        phase = 'ready'; send('response', { requestId: request.requestId, value: { status: 'ready', reset: 'fresh-private-heap-from-immutable-initial-image;no-recompile', configurationHash: core.configurationHash } }); return;
       }
       if (request.type === 'bind' && phase === 'ready') {
         const clock = await readClock(); controller.signal.throwIfAborted();

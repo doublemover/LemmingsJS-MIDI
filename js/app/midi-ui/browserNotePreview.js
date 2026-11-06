@@ -392,9 +392,10 @@ class BrowserNotePreview {
         } }]);
         const requirePrepared = () => { if (!prepared || scope.getReceipt()) throw new Error('The streaming warp source is not prepared.'); return prepared; };
         const backend = this._registerInstrumentBackend({ family: 'buffered-warp', dispose, onOwnerStop: () => backend.dispose(),
-          sourceCaptureStatus: () => Object.freeze({ quiescent: !prepared?.state().bound && !prepared?.state().pendingRequests,
+          sourceCaptureStatus: () => Object.freeze({ quiescent: !prepared?.state().bound && !prepared?.state().binding && !prepared?.state().pendingRequests,
             capability: 'deterministicPreroll', liveHeapSnapshot: false }),
           begin: value => { if (!this._ownerReady(id)) throw new Error('Deliberately activate this owned output or Prelisten route before its canonical onset.'); return requirePrepared().begin(value); }, schedule: (...args) => requirePrepared().schedule(...args), cancelFrom: (...args) => requirePrepared().cancelFrom(...args),
+          rearm: () => requirePrepared().rearm(), endOutputGate: value => requirePrepared().endOutputGate(value), setOutputPerformance: value => requirePrepared().setOutputPerformance(value), inspectOutputGate: () => requirePrepared().inspectOutputGate(),
           inspect: () => requirePrepared().inspect(), state: () => prepared?.state() || Object.freeze({ preparing: !scope.getReceipt(), disposed: !!scope.getReceipt() }) }, id);
         work = Promise.resolve().then(() => { const material = sourceMaterial; sourceMaterial = null; return prepareBufferedWarpVoiceOwner({ ...options, material, context, contextEpoch: epoch, destination: this._channel(0, id).sourceInput,
           resourceBudget: this._soundMaterialBudget, signal: controller.signal,

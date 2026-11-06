@@ -16,25 +16,38 @@ export async function prepareBufferedWarpVoiceOwner({ context, destination, mate
   signal?.throwIfAborted(); if (!isCurrent()) throw fail('The requesting sound owner changed.');
   const identity = { ownerId: 'buffered-warp-' + (++nextOwner), ownerEpoch: contextEpoch + 1 }, scope = createProcgenRetirementScope({ deadlineMs: 15000 }),
     reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: identity.ownerId, generation: contextEpoch, category: 'candidate', kind: 'warp-processing-worker-and-owned-pcm-node', bytes: 256 * 1048576 }),
-    controller = new AbortController(), pending = new Map(); active++;
-  let worker = null, node = null, producer = null, moduleWork = null, inputAck = null, disposed = false, fault = null, serial = 0, metadata = null, fence = null, bound = false, ended = false,
+    controller = new AbortController(), pending = new Map(), nodePending = new Map(); active++;
+  let worker = null, node = null, producer = null, moduleWork = null, inputAck = null, disposed = false, fault = null, serial = 0, metadata = null, fence = null, bound = false, ended = false, binding = false, outputGated = false,
     readyResolve, readyReject, workerRetiredResolve, nodeRetiredResolve, nodeRetired = false;
   const ready = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; }); ready.catch(() => {});
   const workerRetirement = new Promise(resolve => { workerRetiredResolve = resolve; }), nodeRetirement = new Promise(resolve => { nodeRetiredResolve = resolve; });
   const envelope = (type, fields = {}) => ({ protocol, ...identity, type, ...fields });
   const changed = () => { controller.signal.throwIfAborted(); if (disposed || fault || !isCurrent() || context.state !== 'running') throw fault || fail('The audio source, route or clock changed.'); };
   const state = () => Object.freeze({ disposed, bound, ended, fault: fault?.message || null, prepared: !!metadata, configuration: metadata?.configuration || null,
-    ownerId: identity.ownerId, contextEpoch, pendingRequests: pending.size, activeOwners: active,
+    ownerId: identity.ownerId, contextEpoch, pendingRequests: pending.size + nodePending.size, binding, outputGated, activeOwners: active,
     timing: 'fixed-physical-onset;positive-declared-preparation-and-processing-lead;no-device-latency-inference', qualification: 'streaming-buffered-source-adapter;device-and-quality-evidence-pending' });
   const report = () => { try { onState(state()); } catch {} };
   const wait = (value, ms, message) => new Promise((resolve, reject) => { const timer = setTimeout(() => reject(fail(message)), ms); Promise.resolve(value).then(resolve, reject).finally(() => clearTimeout(timer)); });
   const failed = error => { fault ||= error; controller.abort(error); readyReject(error); inputAck?.reject(error); inputAck = null;
-    for (const row of pending.values()) { clearTimeout(row.timer); row.reject(error); } pending.clear(); report(); if (!disposed) dispose(); };
+    for (const map of [pending, nodePending]) { for (const row of map.values()) { clearTimeout(row.timer); row.reject(error); } map.clear(); } report(); if (!disposed) dispose(); };
   const send = (type, fields = {}, transfers = []) => worker.postMessage(envelope(type, fields), transfers);
   const request = (type, fields = {}) => {
     changed(); if (pending.size >= 16) throw fail('The bounded warp command queue is full.'); const requestId = ++serial;
     return new Promise((resolve, reject) => { const timer = setTimeout(() => { pending.delete(requestId); const error = fail('The streaming source command expired.'); reject(error); failed(error); }, 10000);
       pending.set(requestId, { resolve, reject, timer }); try { send(type, { ...fields, requestId }); } catch (error) { clearTimeout(timer); pending.delete(requestId); reject(error); failed(error); } });
+  };
+  const requestNode = (type, fields = {}) => {
+    changed(); if (!node || nodePending.size >= 16) throw fail('The output gate command owner is unavailable or busy.'); const requestId = ++serial;
+    return new Promise((resolve, reject) => { const timer = setTimeout(() => { nodePending.delete(requestId); const error = fail('The owned output gate command expired.'); reject(error); failed(error); }, 5000);
+      nodePending.set(requestId, { resolve, reject, timer }); try { node.port.postMessage({ type, ...identity, ...fields, requestId }); } catch (error) { clearTimeout(timer); nodePending.delete(requestId); reject(error); failed(error); } });
+  };
+  const setOutputPerformance = ({ gain01, pan01, outputFrame, smoothingFrames = 128 } = {}) => {
+    changed(); const now = Math.floor(context.currentTime * context.sampleRate);
+    if (!node || !Number.isFinite(gain01) || gain01 < 0 || gain01 > 1 || !Number.isFinite(pan01) || pan01 < -1 || pan01 > 1 || !Number.isSafeInteger(outputFrame) || outputFrame < now || !Number.isSafeInteger(smoothingFrames) || smoothingFrames < 0 || smoothingFrames > context.sampleRate)
+      throw fail('Output performance needs bounded gain/pan and an explicit unexpired output frame.');
+    for (const [name, value] of [['gain', gain01], ['pan', pan01]]) { const parameter = node.parameters.get(name), time = outputFrame / context.sampleRate;
+      if (smoothingFrames) parameter.setTargetAtTime(value, time, smoothingFrames / context.sampleRate); else parameter.setValueAtTime(value, time); }
+    return Object.freeze({ status: 'accepted', stage: 'native-audio-param-submission', targetOutputFrame: outputFrame, appliedFrame: null, evidence: 'API-submission;processor-and-device-output-separate' });
   };
   const transmit = (type, sequence, fields = {}, transfers = []) => wait(new Promise((resolve, reject) => {
     changed(); if (inputAck) throw fail('The previous source page remains leased.'); inputAck = { sequence, resolve, reject }; send(type, { sequence, ...fields }, transfers);
@@ -52,8 +65,8 @@ export async function prepareBufferedWarpVoiceOwner({ context, destination, mate
   };
   const aborted = () => failed(signal.reason || fail('The source owner canceled streaming warp.'));
   const dispose = () => {
-    if (scope.getReceipt()) return scope.getReceipt(); disposed = true; controller.abort(); clearInterval(fence); inputAck?.reject(fail('The source preparation retired.')); inputAck = null;
-    for (const row of pending.values()) { clearTimeout(row.timer); row.reject(fail('The warp request retired.')); } pending.clear();
+    if (scope.getReceipt()) return scope.getReceipt(); disposed = true; controller.abort(); readyReject(fail('The warp preparation retired.')); clearInterval(fence); inputAck?.reject(fail('The source preparation retired.')); inputAck = null;
+    for (const map of [pending, nodePending]) { for (const row of map.values()) { clearTimeout(row.timer); row.reject(fail('The warp request retired.')); } map.clear(); }
     const stopNode = (async () => {
       if (!node) { nodeRetired = true; return; } node.port.postMessage({ type: 'retire' }); await wait(nodeRetirement, 5000, 'The PCM processor did not acknowledge retirement.');
       if (!nodeRetired) throw fail('The PCM processor still owns queued output.'); node.disconnect();
@@ -72,7 +85,7 @@ export async function prepareBufferedWarpVoiceOwner({ context, destination, mate
     let module = modules.get(context); if (!module) { module = context.audioWorklet.addModule(new URL('./worklet/BufferedWarpPcmProcessor.js', import.meta.url)); modules.set(context, module); module.catch(() => { if (modules.get(context) === module) modules.delete(context); }); }
     moduleWork = module; await module; changed(); node = new AudioWorkletNode(context, 'lemmings-buffered-warp-pcm', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
     node.onprocessorerror = () => failed(fail('The owned PCM processor failed.'));
-    node.port.onmessage = event => { const message = event.data; if (message?.type === 'retired') { nodeRetired = message.outcome === 'complete' && message.queuedPcmRetained === false; nodeRetiredResolve(message); } else if (message?.type === 'failed') failed(fail(message.reason)); };
+    node.port.onmessage = event => { const message = event.data; if (message?.type === 'retired') { nodeRetired = message.outcome === 'complete' && message.queuedPcmRetained === false; nodeRetiredResolve(message); } else if (message?.type === 'gate-response') { const row = nodePending.get(message.requestId); if (!row) return; nodePending.delete(message.requestId); clearTimeout(row.timer); row.resolve(message); } else if (message?.type === 'failed') failed(fail(message.reason)); };
     node.connect(destination); const channel = new MessageChannel(); node.port.postMessage({ type: 'attach-source', ...identity, port: channel.port1 }, [channel.port1]);
     worker = new Worker(new URL('../resources/BufferedWarpVoiceWorker.js', import.meta.url), { type: 'module', name: identity.ownerId }); worker.addEventListener('message', receive);
     worker.onerror = event => { event.preventDefault?.(); failed(fail('The streaming processing worker crashed.')); }; worker.onmessageerror = () => failed(fail('The streaming worker response could not be decoded.'));
@@ -89,7 +102,22 @@ export async function prepareBufferedWarpVoiceOwner({ context, destination, mate
     })(); await producer; await wait(ready, 180000, 'The streaming source did not finish preparation.'); changed();
     fence = setInterval(() => { try { changed(); } catch (error) { failed(error); } }, 50); report();
     return Object.freeze({ state, configuration: metadata.configuration, preparationLeadFrames: plan.algorithm.requiredPreparationLeadFrames,
-      async begin({ identity: sourceIdentity, onsetOutputFrame, segment, endOutputFrame }) { const value = await request('bind', { identity: sourceIdentity, onsetOutputFrame, segment, ...(endOutputFrame == null ? {} : { endOutputFrame }) }); bound = true; report(); return value; },
+      async begin({ identity: sourceIdentity, onsetOutputFrame, segment, endOutputFrame, outputGate = null }) {
+        changed(); if (binding || bound || ended) throw fail('This prepared source already owns an onset.'); binding = true; report();
+        try {
+          let gate = null;
+          if (outputGate) { gate = await requestNode('gate-start', { sourceIdentity, outputFrame: onsetOutputFrame, attackFrames: outputGate.attackFrames ?? 0, maximumEndOutputFrame: outputGate.maximumEndOutputFrame });
+            if (gate.status !== 'accepted') throw fail('The owned onset gate was refused: ' + gate.reason); outputGated = true;
+            setOutputPerformance({ gain01: outputGate.gain01 ?? 1, pan01: outputGate.pan01 ?? 0, outputFrame: onsetOutputFrame, smoothingFrames: 0 }); }
+          const value = await request('bind', { identity: sourceIdentity, onsetOutputFrame, segment, ...(endOutputFrame == null ? {} : { endOutputFrame }) }); bound = true; report(); return Object.freeze({ ...value, outputGate: gate });
+        } catch (error) { failed(error); throw error; } finally { binding = false; report(); }
+      },
+      endOutputGate: async ({ identity: sourceIdentity, outputFrame, releaseFrames, latePolicy = 'reject' }) => {
+        changed(); if (!outputGated) throw fail('This source has no owned physical output gate.'); return requestNode('gate-end', { sourceIdentity, outputFrame, releaseFrames, latePolicy });
+      },
+      setOutputPerformance, inspectOutputGate: () => requestNode('gate-inspect'),
+      async rearm() { changed(); if (binding || bound || !ended) throw fail('Wait for the prior source and owned output to settle before rearming.'); const gate = await requestNode('reset-source'); if (gate.status !== 'accepted') return gate;
+        const reset = await request('rearm'); ended = false; outputGated = false; report(); return reset; },
       schedule: (segment, sourceIdentity) => request('schedule', { segment, identity: sourceIdentity }),
       cancelFrom: (outputFrame, sourceIdentity) => request('cancel-from', { outputFrame, identity: sourceIdentity }), inspect: () => request('inspect'), dispose });
   } catch (error) { const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
