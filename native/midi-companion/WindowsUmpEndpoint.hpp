@@ -1,7 +1,9 @@
 #pragma once
 #include "IngressHandoff.hpp"
+#include "Protocol.hpp"
 #if defined(LIBREMIDI_WINMIDI)
 #include <functional>
+#include <algorithm>
 #include <libremidi/backends/winmidi/helpers.hpp>
 #include <libremidi/libremidi.hpp>
 #include <limits>
@@ -11,6 +13,8 @@ namespace lemmings::companion {
 namespace win_midi = winrt::Microsoft::Windows::Devices::Midi2;
 struct WindowsEndpointInfo {
   std::string device, name, manufacturer, transport;
+  std::string metadata_json{}, metadata_shape{};
+  bool groups_known{};
   std::uint16_t input_groups{}, output_groups{};
 };
 inline std::vector<WindowsEndpointInfo> windows_endpoints() {
@@ -40,10 +44,53 @@ inline std::vector<WindowsEndpointInfo> windows_endpoints() {
           direction == Direction::Bidirectional)
         info.input_groups |= mask;
     };
-    for (const auto &block : endpoint.GetDeclaredFunctionBlocks())
-      collect(block);
-    for (const auto &block : endpoint.GetGroupTerminalBlocks())
-      collect(block);
+    const auto declared = endpoint.GetDeclaredEndpointInfo();
+    const auto configuration = endpoint.GetDeclaredStreamConfiguration();
+    const bool info_known = endpoint.DeclaredEndpointInfoLastUpdateTime().time_since_epoch().count() != 0;
+    const bool config_known = endpoint.DeclaredStreamConfigurationLastUpdateTime().time_since_epoch().count() != 0;
+    const auto protocol = static_cast<unsigned>(configuration.Protocol);
+    const auto protocols = (declared.SupportsMidi10Protocol ? 1u : 0u) | (declared.SupportsMidi20Protocol ? 2u : 0u);
+    const auto extensions = (configuration.SendJitterReductionTimestamps ? 1u : 0u) | (configuration.ReceiveJitterReductionTimestamps ? 2u : 0u);
+    const auto supported_jr = (declared.SupportsSendingJitterReductionTimestamps ? 1u : 0u) | (declared.SupportsReceivingJitterReductionTimestamps ? 2u : 0u);
+    struct Block { unsigned number; std::string shape, record; };
+    std::vector<Block> blocks;
+    const auto function_blocks = endpoint.GetDeclaredFunctionBlocks();
+    if (function_blocks.Size() > 32) throw std::runtime_error("windows-function-block-capacity");
+    for (const auto &block : function_blocks) {
+      if (block.IsActive()) collect(block);
+      const auto number = static_cast<unsigned>(block.Number());
+      if (number > 31) throw std::runtime_error("windows-function-block-number");
+      const auto shape = "{\"number\":" + std::to_string(number) +
+        ",\"active\":" + (block.IsActive() ? "true" : "false") +
+        ",\"direction\":" + std::to_string(static_cast<unsigned>(block.Direction())) +
+        ",\"midi1\":" + std::to_string(static_cast<unsigned>(block.RepresentsMidi10Connection())) +
+        ",\"uiHint\":" + std::to_string(static_cast<unsigned>(block.UIHint())) +
+        ",\"firstGroup\":" + std::to_string(block.FirstGroup().Index()) +
+        ",\"groupCount\":" + std::to_string(block.GroupCount()) +
+        ",\"ciVersion\":" + std::to_string(block.MidiCIMessageVersionFormat()) +
+        ",\"maximumSysex8Streams\":" + std::to_string(block.MaxSystemExclusive8Streams());
+      blocks.push_back({number, shape + "}", shape + ",\"name\":" + quote(winrt::to_string(block.Name())) + "}"});
+    }
+    std::sort(blocks.begin(), blocks.end(), [](const auto &a, const auto &b) { return a.number < b.number; });
+    std::string shapes = "[", records = "[";
+    for (const auto &block : blocks) { if (shapes.size() > 1) { shapes += ','; records += ','; } shapes += block.shape; records += block.record; }
+    shapes += ']'; records += ']';
+    const auto terminal_blocks = endpoint.GetGroupTerminalBlocks();
+    if (function_blocks.Size() == 0)
+      for (const auto &block : terminal_blocks) collect(block);
+    info.groups_known = function_blocks.Size() > 0 || terminal_blocks.Size() > 0 || (info_known && declared.DeclaredFunctionBlockCount == 0);
+    const auto base = std::string{"{\"source\":\"windows-midi-services-declared\",\"umpMajor\":"} +
+      (info_known ? std::to_string(declared.SpecificationVersionMajor) : "null") +
+      ",\"umpMinor\":" + (info_known ? std::to_string(declared.SpecificationVersionMinor) : "null") +
+      ",\"supportedProtocols\":" + (info_known ? std::to_string(protocols) : "null") +
+      ",\"jrCapabilities\":" + (info_known ? std::to_string(supported_jr) : "null") +
+      ",\"functionBlockCount\":" + (info_known ? std::to_string(declared.DeclaredFunctionBlockCount) : "null") +
+      ",\"staticFunctionBlocks\":" + (info_known ? (declared.HasStaticFunctionBlocks ? "true" : "false") : "null") +
+      ",\"activeProtocol\":" + (config_known && (protocol == 1 || protocol == 2) ? std::to_string(protocol) : "null") +
+      ",\"activeExtensions\":" + (config_known ? std::to_string(extensions) : "null");
+    info.metadata_shape = base + ",\"functionBlocks\":" + shapes + "}";
+    info.metadata_json = base + ",\"functionBlocks\":" + records + "}";
+
     result.push_back(std::move(info));
   }
   return result;

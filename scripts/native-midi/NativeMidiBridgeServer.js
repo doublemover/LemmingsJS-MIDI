@@ -72,6 +72,17 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     }
     case 'close': if (!client.grants.has(uint(row.grant))) throw new Error('Endpoint grant required'); return call(client, requestId, 'X', [row.grant], { priority: true });
     case 'cancel': if (!client.grants.has(uint(row.grant)) || !uint(row.execution)) throw new Error('Owned execution required'); return call(client, requestId, 'C', [row.grant, row.execution], { priority: true });
+    case 'streamEncode': {
+      const grant = client.grants.get(uint(row.grant));
+      if (!grant || grant.direction !== 'output' || !(grant.permissions & 8) || !['endpoint-discovery', 'function-block-discovery', 'stream-configuration'].includes(row.operation) ||
+          !Array.isArray(row.parameters) || row.parameters.length > 2 || row.parameters.some(value => !Number.isSafeInteger(value) || value < 0 || value > 255)) throw Object.assign(new Error('Explicit endpoint-control output grant and supported Stream operation required'), { notSubmitted: true });
+      return call(client, requestId, 'R', [row.grant, row.operation, ...row.parameters]);
+    }
+    case 'streamDecode': {
+      const grant = client.grants.get(uint(row.grant));
+      if (!grant || grant.direction !== 'input' || !(grant.permissions & 8) || !Array.isArray(row.words) || row.words.length !== 4 || row.words.some(value => !Number.isSafeInteger(value) || value < 0 || value > 0xffffffff)) throw Object.assign(new Error('Explicit endpoint-control input grant and complete Stream packet required'), { notSubmitted: true });
+      return call(client, requestId, 'T', [row.grant, ...row.words.map(value => value.toString(16))]);
+    }
     case 'ciEncode': {
       const grant = client.grants.get(uint(row.grant));
       if (!grant || grant.direction !== 'output' || !(grant.permissions & 1) || !['discovery', 'discovery-reply', 'endpoint-inquiry', 'invalidate', 'process-inquiry', 'message-report', 'profile-inquiry', 'profile-details', 'profile-on', 'profile-off', 'pe-capabilities', 'pe-chunk', 'pe-status', 'nak'].includes(row.operation) ||

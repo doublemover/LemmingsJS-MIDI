@@ -9,7 +9,7 @@ export function createNativeMidiPatchView({ document, container, routes, getCiSe
   const confirm = field('This device ChannelList entry corresponds to the native group/channel selected above; recall it at a stopped boundary', element('input')); confirm.type = 'checkbox';
   const status = element('output'); status.className = 'midi-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
   root.append(status, element('p', 'The selected local instrument remains the preview approximation. Saved device patch intent grants no hardware access. The ChannelList address mapping is explicitly supplied here; it is not independently verified endpoint metadata.')); container.append(root);
-  let catalog = null, ci = null, unsubscribe = null, page = null, currentReceipt = null, busy = false, disposed = false, operation = 0, channelRevision = null;
+  let catalog = null, ci = null, unsubscribe = null, page = null, currentReceipt = null, busy = false, disposed = false, operation = 0, channelRevision = null, targetSignature = null;
   const options = (node, rows, placeholder) => { const old = node.value, empty = element('option', placeholder); empty.value = ''; node.replaceChildren(empty); for (const [value, title] of rows) { const row = element('option', title); row.value = String(value); node.append(row); } if ([...node.options].some(row => row.value === old)) node.value = old; };
   const showPrograms = () => {
     const query = search.value.toLowerCase(), rows = (page?.entries || []).filter(row => !query || row.search.includes(query));
@@ -18,6 +18,7 @@ export function createNativeMidiPatchView({ document, container, routes, getCiSe
   };
   const render = () => {
     if (disposed) return; const state = catalog?.state(), result = state?.latest, shown = showPrograms(), target = getWireTarget();
+    const signature = JSON.stringify([getLaneId(), target.grant, target.group, target.channel, target.protocol]); if (signature !== targetSignature) { targetSignature = signature; confirm.checked = false; }
     if (state && state.channelsRevision !== channelRevision) {
       channelRevision = state.channelsRevision; options(channel, state.channels.map(row => [row.channel, row.channel + ' · ' + row.title + (row.programTitle ? ' · ' + row.programTitle : '')]), 'Select a device channel'); updateCollections();
     }
@@ -65,7 +66,7 @@ export function createNativeMidiPatchView({ document, container, routes, getCiSe
   const recall = button('Recall selected patch on owned device', async () => {
     const owner = await ensureCatalog(); if (!page) throw new Error('Choose a current device patch'); const laneId = getLaneId(), intent = owner.requestIntent(page, program.value);
     onRequestPatch(laneId, intent);
-    const result = await owner.recall({ page, entryKey: program.value, target: { ...getWireTarget(), propertyChannel: Number(channel.value), addressMapping: 'user-declared' }, confirmed: confirm.checked,
+    const result = await owner.recall({ page, entryKey: program.value, target: { ...getWireTarget(), propertyChannel: Number(channel.value), addressMapping: routes.resolvePropertyChannel(ci, owner.state().peerMuid, Number(channel.value)) ? 'endpoint-function-block' : 'user-declared' }, confirmed: confirm.checked,
       isCurrent: () => !disposed && owner === catalog && getLaneId() === laneId });
     confirm.checked = false; if (owner !== catalog || disposed) return; currentReceipt = result.status === 'ok' ? result : null;
     onStatus(result.reason || (result.status === 'ok' ? 'Selected ChannelList entry reports the requested bank/program under your declared mapping. Bind the patch to this lane; review and rebind MPE first if applicable. Audible sound remains unverified.' : 'Hardware patch: ' + result.status));

@@ -1,6 +1,7 @@
 #include "CommandReader.hpp"
 #include "IngressHandoff.hpp"
 #include "MidiCiCodec.hpp"
+#include "UmpStreamCodec.hpp"
 #include "NativeBatch.hpp"
 #include "NativeIo.hpp"
 #include "Protocol.hpp"
@@ -64,10 +65,11 @@ template <class Variant> std::string identifier(const Variant &input) {
       input);
 }
 struct Endpoint {
-  std::uint32_t token{};
+  std::uint32_t token{}, association{};
   bool input{}, windows{}, groups_known{};
   std::uint16_t groups{};
   std::string identity, name, device_name, port_name, windows_device;
+  std::string endpoint_metadata, metadata_shape;
   libremidi::input_port in;
   libremidi::output_port out;
 };
@@ -213,7 +215,8 @@ class Companion {
                 input ? "Native input / control" : "Native output / control";
             row.identity =
                 field(device.device) + (input ? ":input" : ":output");
-            row.groups_known = true;
+            row.groups_known = device.groups_known;
+            row.endpoint_metadata = device.metadata_json; row.metadata_shape = device.metadata_shape;
             row.groups = input ? device.input_groups : device.output_groups;
             next.push_back(std::move(row));
           }
@@ -244,12 +247,17 @@ class Companion {
         row.token = ++next_endpoint_;
       }
     }
+    for (auto &row : next) if (row.windows) {
+      const auto peer = std::find_if(next.begin(), next.end(), [&](const auto &candidate) { return candidate.windows && candidate.windows_device == row.windows_device; });
+      row.association = peer->token;
+    }
     std::vector<std::uint32_t> removed;
     for (const auto &[id, grant] : grants_)
       if (grant.endpoint &&
           std::none_of(next.begin(), next.end(), [&](const auto &row) {
-            return row.token == grant.endpoint &&
-                   (!row.groups_known || (grant.groups & ~row.groups) == 0);
+            const auto old = std::find_if(endpoints_.begin(), endpoints_.end(), [&](const auto &previous) { return previous.token == grant.endpoint; });
+            return row.token == grant.endpoint && (!row.groups_known || (grant.groups & ~row.groups) == 0) &&
+                   (old == endpoints_.end() || old->metadata_shape == row.metadata_shape);
           }))
         removed.push_back(id);
     for (const auto id : removed)
@@ -463,6 +471,7 @@ class Companion {
       reply(request, session, "opened",
             "\"grant\":" + std::to_string(id) +
                 ",\"endpointToken\":" + std::to_string(owner.endpoint) +
+                ",\"endpointAssociationToken\":" + (endpoint && endpoint->association ? std::to_string(endpoint->association) : "null") +
                 ",\"direction\":" + quote(input ? "input" : "output") +
                 ",\"groupMask\":" + std::to_string(groups) +
                 ",\"permissions\":" + std::to_string(flags) +
@@ -472,7 +481,8 @@ class Companion {
                 quote(api_ == libremidi::API::WINDOWS_MIDI_SERVICES
                           ? "sdk-clock-nanoseconds"
                           : "system-monotonic-nanoseconds") +
-                ",\"activeChannelProtocol\":\"unknown\"");
+                ",\"activeChannelProtocol\":\"unknown\",\"endpointMetadata\":" +
+                (endpoint && !endpoint->endpoint_metadata.empty() ? endpoint->endpoint_metadata : "null"));
     } catch (...) {
       retire_grant(id, "open-failed");
       throw;
@@ -832,6 +842,12 @@ class Companion {
         }
         reply(request, session, operation == "K" ? "ci-encoded" : "ci-decoded",
               operation == "K" ? encode_ci(input) : decode_ci(input));
+      } else if (operation == "R" || operation == "T") {
+        const auto id = static_cast<std::uint32_t>(input.number());
+        auto &owner = grant(session, id);
+        if (!(owner.flags & endpoint_control) || (operation == "R" ? owner.input : !owner.input))
+          throw std::runtime_error("stream-codec-requires-permitted-directional-grant");
+        reply(request, session, operation == "R" ? "stream-encoded" : "stream-decoded", operation == "R" ? encode_stream(input) : decode_stream(input));
       } else if (operation == "A") {
         const auto selected = static_cast<libremidi::API>(input.number(65535));
         input.finish();
@@ -948,7 +964,7 @@ public:
          ",\"selectedApi\":" + std::to_string(static_cast<int>(api_)) +
          ",\"libremidiRevision\":\"" LIBREMIDI_REVISION
          "\",\"ciCodec\":\"ni-midi2:" NI_MIDI2_REVISION
-         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,"
+         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,"
          "\"clockDomain\":\"companion-steady-microseconds\","
          "\"maximumWordsPerBatch\":4096,\"maximumPendingBatches\":128,"
          "\"queueHorizonUs\":2000000,\"transportBytesPerSecond\":null,"

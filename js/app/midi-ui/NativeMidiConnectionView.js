@@ -1,3 +1,4 @@
+import { createNativeMidiEndpointView } from './NativeMidiEndpointView.js';
 import { createNativeMidiPatchView } from './NativeMidiPatchView.js';
 import { createNativeMidiPropertyView } from './NativeMidiPropertyView.js';
 
@@ -25,6 +26,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const groups = input('Granted groups (1–16, comma-separated)', '1');
   const sysex = checkbox('Allow SysEx / CI data'), timing = checkbox('Allow timing'), sensing = checkbox('Allow active sensing'), control = checkbox('Allow endpoint control');
   const groupMask = () => {
+    if (!groups.value.trim() && control.checked) return 0;
     const values = groups.value.split(',').map(value => Number(value.trim()));
     if (!values.length || values.length > 16 || values.some(value => !Number.isInteger(value) || value < 1 || value > 16)) throw new Error('Choose explicit group numbers from 1 to 16');
     return values.reduce((mask, value) => mask | 1 << value - 1, 0);
@@ -156,6 +158,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const reportStatus = element(document, 'output', '', 'midi-status'), reportValues = element(document, 'div'); reportStatus.setAttribute('role', 'status'); reportStatus.setAttribute('aria-live', 'polite');
   const profileStatus = element(document, 'output', '', 'midi-status'); profileStatus.setAttribute('role', 'status'); profileStatus.setAttribute('aria-live', 'polite');
   root.append(controls, routeControls, status, inputStatus, ciStatus, profileStatus, reportStatus, reportValues, message, details); container.append(root);
+  const endpointView = createNativeMidiEndpointView({ document, container: root, routes, getOutputGrant: () => Number(active.value) || null, onStatus });
   const propertyView = createNativeMidiPropertyView({ document, container: root, routes, getCiSession: ensureCi, getPeerMuid: () => ciPeer.value ? Number(ciPeer.value) : null, onStatus });
   const patchView = createNativeMidiPatchView({ document, container: root, routes, getCiSession: ensureCi, getPeerMuid: () => ciPeer.value ? Number(ciPeer.value) : null, getLaneId: () => lane.value,
     getWireTarget: () => ({ grant: Number(active.value), group: Number(group.value), channel: Number(channel.value), protocol: protocol.value }), onRequestPatch, onBindPatch, onStatus });
@@ -169,7 +172,6 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   };
   function render() {
     if (!root.open) return;
-    propertyView.render(); patchView.render();
     const state = routes.state(), connected = !!state.connectionEpoch, writable = state.grants.some(row => row.direction === 'output');
     for (const node of buttons) node.disabled = busy;
     connect.disabled ||= connected; disconnect.disabled = !connected; refresh.disabled ||= !connected; open.disabled ||= !connected || !state.inventory; publish.disabled ||= !connected; publishInput.disabled ||= !connected;
@@ -186,9 +188,11 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     if (selectedGrant && state.grants.some(row => row.grant === selectedGrant)) active.value = String(selectedGrant);
     const lanes = getLanes(), signature = lanes.map(value => value.id + ':' + value.name).join('|');
     if (signature !== laneSignature) { laneSignature = signature; options(lane, lanes.map(value => [value.id, value.name || value.id]), 'Choose a lane'); if (!lane.value) lane.value = getSelectedLaneId(); }
+    endpointView.render(); propertyView.render(); patchView.render();
   }
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
-  bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; });
+  bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; render(); });
+  for (const picker of [lane, group, channel, protocol, ciInput, ciPeer]) bindEvent(picker, 'change', render);
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
-  return { render, dispose() { unsubscribe(); propertyView.dispose(); patchView.dispose(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
+  return { render, dispose() { unsubscribe(); endpointView.dispose(); propertyView.dispose(); patchView.dispose(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
 }

@@ -509,6 +509,7 @@
       ],
       "files": [
         "js/app/midi-ui/NativeMidiConnectionView.js",
+        "js/app/midi-ui/NativeMidiEndpointView.js",
         "js/app/midi-ui/NativeMidiPatchView.js",
         "js/app/midi-ui/NativeMidiPropertyView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
@@ -517,6 +518,7 @@
         "js/midi/native/DevicePatchIntent.js",
         "js/midi/native/DeviceStateObservation.js",
         "js/midi/native/MidiCiSession.js",
+        "js/midi/native/MidiEndpointRegistry.js",
         "js/midi/native/MidiMessageReportSession.js",
         "js/midi/native/MidiMessageReportValues.js",
         "js/midi/native/MpeProfileAdapter.js",
@@ -538,6 +540,7 @@
         "native/midi-companion/NativeBatch.hpp",
         "native/midi-companion/NativeIo.hpp",
         "native/midi-companion/Protocol.hpp",
+        "native/midi-companion/UmpStreamCodec.hpp",
         "native/midi-companion/WindowsUmpEndpoint.hpp",
         "native/midi-companion/companion.cpp",
         "native/midi-companion/sdk-dependencies.json",
@@ -546,8 +549,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 37,
-      "sha256": "220aafc3fd20e3fd712c8ce3c54968115023f574ff97962f139ba64e22585ff4"
+      "fileCount": 40,
+      "sha256": "a564c21d33dd394a76417d85708798ca6100a95779c8844f77cf0093d7c10af7"
     }
   ]
 }

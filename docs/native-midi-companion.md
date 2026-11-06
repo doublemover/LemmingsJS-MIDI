@@ -247,3 +247,33 @@ external program observations invalidate old authorization. Patch/property write
 invalidate prior profile semantics; MPE must be reviewed and rebound after recall.
 The browser UI shows the accepted/reporting boundary separately from audible
 sound. Independent endpoint mapping and hardware/peer qualification remain open.
+
+
+Endpoint control now uses owned input/output registries. The companion exposes NI
+Stream discovery/configuration constructors and bounded Endpoint Info, identity,
+configuration and Function Block views. Windows grants include the SDK's declared
+endpoint/protocol/function-block metadata and opaque same-endpoint association
+tokens. Function Blocks take precedence over USB terminal blocks; inactive blocks
+do not contribute routable groups. Names do not define endpoint identity.
+
+The endpoint panel distinguishes supported protocols from a notified active
+protocol, displays block number/direction/group span, and requests a protocol
+change only at an explicit stopped boundary. Discovery is rate/time/queue bounded
+and does not activate note output. Unknown metadata remains visible. Changes to
+declared endpoint semantics retire the current affected endpoint grants rather
+than applying old route assumptions after reconfiguration.
+
+Dedicated and MPE allocation consult current direction, protocol and group
+evidence. ChannelList mapping can use the CI peer's actual Function Block number,
+then translate its relative channel through that block's first group. Patch recall
+refuses a conflicting declared mapping. OS-associated endpoint evidence remains
+distinct from a manually selected input/output pair. Private Product Instance IDs
+are not exported by the registry state.
+
+This implementation follows [UMP v1.1.2](https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-104-UM_v1-1-2_UMP_and_MIDI_2-0_Protocol_Specification.pdf)
+and the pinned NI Stream APIs. Fine-grained retirement within an already granted
+endpoint and native JR timestamp realization remain separate development work.
+JR-required receiver configuration currently holds performance admission; the
+panel's explicit protocol request selects a configuration without JR. Native
+compilation and formatting pass; no functional/device/interoperability pass is
+claimed before the final consolidated run.

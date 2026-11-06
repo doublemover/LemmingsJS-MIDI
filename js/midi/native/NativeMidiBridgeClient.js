@@ -99,6 +99,8 @@ export class NativeMidiBridgeClient {
     } while (cursor !== null);
     return Object.freeze({ inventoryEpoch, endpoints: Object.freeze(endpoints.map(row => Object.freeze({ ...row, connectionEpoch: this.#session }))) });
   }
+  encodeStream(grant, { operation, parameters = [] }) { return this.#request('streamEncode', { grant, operation, parameters }); }
+  decodeStream(grant, words) { return this.#request('streamDecode', { grant, words }); }
   encodeCi(grant, { group, operation, sourceMuid, destinationMuid = 0x0fffffff, scope = 127, parameters = [] }) { return this.#request('ciEncode', { grant, group, operation, sourceMuid, destinationMuid, scope, parameters }); }
   decodeCi(grant, payload) {
     if (!Array.isArray(payload) && !(payload instanceof Uint8Array) || payload.length < 13 || payload.length > 2048 || Array.from(payload).some(byte => !Number.isInteger(byte) || byte < 0 || byte > 127)) return Promise.reject(beforeSubmission('Invalid CI payload'));

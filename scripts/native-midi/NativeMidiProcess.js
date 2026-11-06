@@ -37,7 +37,7 @@ export class NativeMidiProcess extends EventEmitter {
     return this;
   }
   request(operation, session, fields = [], { priority = false, onQueued } = {}) {
-    if (!this.ready || this.#closed || !/^[SHPLAOVBCXDQKY]$/.test(operation) || !Number.isSafeInteger(session) || session < 0 || session > 0xffffffff ||
+    if (!this.ready || this.#closed || !/^[SHPLAOVBCXDQKYRT]$/.test(operation) || !Number.isSafeInteger(session) || session < 0 || session > 0xffffffff ||
         this.#sequence >= 0xffffffff || this.#pending.size >= (priority ? 512 : 480)) return Promise.reject(Object.assign(new Error('Native peer unavailable or at capacity'), { notSubmitted: true }));
     if (fields.some(value => typeof value !== 'string' && !Number.isSafeInteger(value) || String(value).includes('\n') || String(value).includes('\r') || String(value).includes('\0'))) return Promise.reject(Object.assign(new Error('Invalid native command field'), { notSubmitted: true }));
     const requestId = ++this.#sequence, line = [operation, requestId, session, ...fields].join(' ') + '\n';

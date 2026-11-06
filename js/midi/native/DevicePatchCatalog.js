@@ -114,7 +114,9 @@ export function createDevicePatchCatalog({ routes, ci, properties, peerMuid, now
       const grant = routes.state().grants.find(row => row.grant === identity.outputGrant);
       if (!grant || !target || target.grant !== identity.outputGrant || !Number.isInteger(target.group) || target.group < 0 || target.group > 15 || !(grant.groupMask & 1 << target.group) ||
           !Number.isInteger(target.channel) || target.channel < 0 || target.channel > 15 || !['midi2', 'midi1-in-ump'].includes(target.protocol) ||
-          target.propertyChannel !== page.propertyChannel || target.addressMapping !== 'user-declared') return Object.freeze({ status: 'rejected', reason: 'Choose an exact owned wire address and explicitly declare its ChannelList mapping' });
+          target.propertyChannel !== page.propertyChannel || !['user-declared', 'endpoint-function-block'].includes(target.addressMapping)) return Object.freeze({ status: 'rejected', reason: 'Choose an exact owned wire address and explicitly declare its ChannelList mapping' });
+      const mapping = routes.resolvePropertyChannel(ci, peerMuid, target.propertyChannel);
+      if (target.addressMapping === 'endpoint-function-block' && (!mapping || mapping.group !== target.group || mapping.channel !== target.channel)) return Object.freeze({ status: 'rejected', reason: 'Current function-block metadata does not match this ChannelList address' });
       const epoch = ++generation, wireExecution = routes.allocateExecutionEpoch(), ownedTarget = Object.freeze({ group: target.group, channel: target.channel, protocol: target.protocol, propertyChannel: target.propertyChannel, addressMapping: target.addressMapping }), provenance = Object.freeze({ schema: 'lemmings-device-patch-recall/v1', peerMuid,
         connectionEpoch: identity.connectionEpoch, ciEpoch: identity.epoch, group: target.group, channel: target.channel, propertyChannel: target.propertyChannel, intent });
       const outcome = await mutation.run({ requested: { kind: 'program-recall', intent, target: ownedTarget }, confirmed,
@@ -131,7 +133,7 @@ export function createDevicePatchCatalog({ routes, ci, properties, peerMuid, now
             const record = await readChannels(owns), reported = parseChannels(record.data).find(row => row.channel === target.propertyChannel);
             if (!sameBank(reported?.bankPC, intent.bankPC)) return Object.freeze({ status: 'mismatch', reason: 'Selected device ChannelList did not report the requested bank/program', receiverState: 'reported-mismatch', submission });
             return Object.freeze({ status: 'ok', intent, target: ownedTarget, submission, reported: Object.freeze({ channel: reported.channel, bankPC: reported.bankPC, programTitle: reported.programTitle, revision: record.revision }),
-              receiverState: 'matching-reported-channel-under-user-declared-address-mapping', acousticState: 'unverified' });
+              receiverState: target.addressMapping === 'endpoint-function-block' ? 'matching-reported-patch-on-function-block-address' : 'matching-reported-channel-under-user-declared-address-mapping', acousticState: 'unverified' });
           } catch (error) {
             if (!submission) routes.recordSubmission({ words, provenance, receipt: { session: identity.connectionEpoch, grant: identity.outputGrant, execution: wireExecution, kind: 'error', acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: error.notSubmitted !== true, submissionExtent: error.notSubmitted === true ? 'observed-prefix' : 'unobserved-batch', reason: error.message } });
             return Object.freeze({ status: 'incomplete', reason: error.message, receiverState: 'unknown', submission });

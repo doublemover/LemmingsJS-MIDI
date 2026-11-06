@@ -10,6 +10,7 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
       !Number.isInteger(group) || group < 0 || group > 15 || !(input.groupMask & output.groupMask & 1 << group) || ![127, 126, ...Array.from({ length: 16 }, (_, i) => i)].includes(scope) ||
       !Number.isSafeInteger(maximumPeers) || maximumPeers < 1 || maximumPeers > 64 || !Number.isSafeInteger(maximumMessageBytes) || maximumMessageBytes < 128 || maximumMessageBytes > 2048 ||
       !Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000) throw new Error('MIDI-CI needs explicit current SysEx input/output grants and group');
+  if (input.endpointAssociationToken && output.endpointAssociationToken && input.endpointAssociationToken !== output.endpointAssociationToken) throw new Error('CI input and output belong to different native endpoints');
   const peers = new Map(), pending = new Map(), listeners = new Set(), protocolObservers = new Set(), receive = [];
   let status = 'idle', reason = null, localMuid = randomMuid(), epoch = 1, execution = routes.allocateExecutionEpoch(), disposed = false, sendTail = Promise.resolve(), receiveRunning = false, receiveBytes = 0;
   let cancellation = null, cancellationExecution = null, cancellationError = null, receiveTail = Promise.resolve(), disposal = null, discovery = null, discoveryTimer = null, lastDiscoveryMs = -Infinity, collisions = [], lastVerifiedMs = null;
