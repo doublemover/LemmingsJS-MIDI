@@ -3,6 +3,9 @@ import { procgenLane, procgenLaneIndex } from './ProcgenProjectIndex.js';
 import { INSTRUMENT_PHYSICAL_SOURCE_KINDS, validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
 import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
 
+export const causalLanePhysicalControlKinds = entry => [...new Set([...(getSupportedInstrumentDefinition(entry?.instrumentRef)?.causalBindings || []).filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind),
+  ...(entry?.deviceParameters || []).flatMap(mapping => ['positionYWorldPixels', 'displacementPixels'].includes(mapping.source) ? ['MotionCommitted'] : mapping.source === 'changedSolidCells' ? ['TerrainWorkCommitted'] : [])])];
+
 const plain = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const fail = () => { throw new TypeError('Invalid causal lane performance state.'); };
 const keys = (value, allowed) => plain(value) && Object.keys(value).every(key => allowed.includes(key));
@@ -25,13 +28,13 @@ export function validateCausalPerformanceState(value) {
 export function captureCausalPerformanceState(lanes, actorTimbreLocks) {
   if (!Array.isArray(lanes) || lanes.length > 1024) fail();
   return validateCausalPerformanceState({ version: 1, actorTimbreLocks, lanes: lanes.map((entry, sourceIndex) => ({ id: entry.id, sourceIndex, controls: entry.instrumentControls || {}, mix: { gain: entry.gain ?? 1, pan: entry.pan ?? 0, mute: !!entry.mute, solo: !!entry.solo },
-    physicalSourceKinds: [...new Set((getSupportedInstrumentDefinition(entry.instrumentRef)?.causalBindings || []).filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))] })) });
+    physicalSourceKinds: causalLanePhysicalControlKinds(entry) })) });
 }
 export function diffCausalLanePerformance(before, after, ids) {
   const capture = (lanes, id) => {
     const entry = procgenLane(lanes, id); if (!entry) return null;
     return lane({ id, sourceIndex: procgenLaneIndex(lanes).get(id), controls: entry.instrumentControls || {}, mix: { gain: entry.gain ?? 1, pan: entry.pan ?? 0, mute: !!entry.mute, solo: !!entry.solo },
-      physicalSourceKinds: [...new Set((getSupportedInstrumentDefinition(entry.instrumentRef)?.causalBindings || []).filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))] });
+      physicalSourceKinds: causalLanePhysicalControlKinds(entry) });
   };
   const upserts = [], removed = [];
   for (const id of ids) {

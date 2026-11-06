@@ -10626,3 +10626,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Record bounded SDK-call observations for original packets, JR utilities and owned-note cleanup, including native call intervals and unknown failed writes. Connect endpoint policy activation to lane, MPE and patch routing controls.
 - Respect Windows MIDI Services ownership: consume OS discovery, refuse application Stream Configuration/JR generation and known unsupported JR-required performance. Eligible other backends can explicitly select receiver JR support.
 - Formatting and native compilation/linking pass. No functional tests or device execution; qualification remains deferred. Continue with typed discovery-backed physical-expression controls, remaining instrument profiles, group-scoped retirement and coordinated whole-graph restore.
+
+
+### 2026-11-06 — Rook continuation491: discovered typed device controls and physical mappings
+
+- Implement bounded AllCtrlList, linked ChCtrlList and CtrlMapList normalization with exact scope/index, carrier range, significant bits, paths, priorities, forms and enumeration identity. Add keyboard-accessible continuous/numeric, enum and switch controls, stopped-boundary manual writes and signed relative gestures.
+- Keep observed values, desired writes and native acceptance distinct. Preserve unknown baselines and ordered relative changes; revision-check UI edits, cancel stale drafts on device moves, and merge isolated reports only over unchanged local edits. No observation emits a feedback write.
+- Persist up to eight cached descriptor/source intents per lane, require fresh matching discovery and explicit activation, and connect pressure/impact/spacing plus completed movement/height/work facts through the existing native sink/deadline/batch ownership. Apply source-driven smoothing, deadband and soft takeover without generated note onsets. Capture matching physical-control source kinds for replay.
+- Format passes; functional tests remain deferred. Shared momentary/toggle physical controls are explicitly unavailable pending controller-release leases; instrument profile adapters, group-scoped retirement and coordinated whole-graph restore remain production work.

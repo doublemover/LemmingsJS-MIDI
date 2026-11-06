@@ -54,7 +54,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     try { onReceipt(latestReceipt); } catch {}
   };
   const send = (entry, intent, admission, words, targetMicroseconds, priority = 1, terminal = false, onset = false) => {
-    const provenance = causal(intent);
+    const provenance = Object.freeze({ ...causal(intent), ...(entry.parameterObservations?.length ? { deviceParameters: entry.parameterObservations } : {}) });
     const submission = batches.enqueue({ grant: entry.route.grant, execution: entry.wireExecution, targetTimeMs: targetMicroseconds / 1000, priority, words, provenance,
       onReceipt: receipt => { if (receipt.kind === 'queued') report(entry, intent, admission, receipt, words); } });
     if (submission.status !== 'accepted') { report(entry, intent, admission, { kind: 'rejected', reason: submission.reason, acceptedWords: 0, acceptedPackets: 0, failedPacketUnconfirmed: false }, words); return reject(submission.reason); }
@@ -119,7 +119,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       const wireKey = keyFor(route, note);
       if (wireVoices.has(wireKey)) return reject('native-same-pitch-voice-overlap');
       if (!state.grantExecutions.has(route.grant)) state.grantExecutions.set(route.grant, routes.allocateExecutionEpoch());
-      const entry = { state, route, wireExecution: state.grantExecutions.get(route.grant), intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false, setupRequested: false };
+      const entry = { state, route, wireExecution: state.grantExecutions.get(route.grant), intent, voiceId: intent.voiceId, laneId: lane.id, note, pitch, baseOffset: intent.expression?.pitchOffsetCents ?? 0, losses: [], uncertain: false, ending: false, setupRequested: false, parameterState: new Map(), parameterObservations: [] };
       if (!route.mpe && route.protocol === 'midi1-in-ump' && pitch !== note) entry.losses.push(Object.freeze({ kind: 'midi1-pitch-quantization', requested: pitch, represented: note }));
       if (lane.devicePatch) entry.losses.push(Object.freeze({ kind: 'device-patch-reported-under-user-declared-address-mapping', requested: lane.devicePatch.title }));
       entry.losses.push(Object.freeze({ kind: 'receiver-protocol-unverified', requested: route.protocol }));
@@ -130,6 +130,10 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
           bankValid: lane.bankMSB != null || lane.bankLSB != null, bankMSB: lane.bankMSB ?? 0, bankLSB: lane.bankLSB ?? 0 }));
         else { if (lane.bankMSB != null) words.push(...midi1(route, 11, 0, lane.bankMSB)); if (lane.bankLSB != null) words.push(...midi1(route, 11, 32, lane.bankLSB)); words.push(...midi1(route, 12, lane.externalProgram)); }
         entry.setupRequested = true;
+      }
+      if (lane.deviceParameters?.length) {
+        try { const plan = routes.deviceParameterWords(lane, { ...route, note }, intent, entry.parameterState, targetMicroseconds); words.push(...plan.words); entry.parameterObservations = plan.observations; }
+        catch (error) { return reject(error.message); }
       }
       if (route.mpe) {
         const setupKey = route.grant + ':' + route.routeRevision;
@@ -153,6 +157,11 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       const entry = executions.get(execution)?.voices.get(voiceId);
       if (!enabled() || !entry || entry.state.closed || entry.uncertain || entry.ending) return reject('native-voice-unavailable');
       const words = [], losses = [];
+      if (!routes.allowsPerformance(entry.route.grant)) return reject('native-device-observation-active');
+      if (laneFor(entry.laneId)?.deviceParameters?.length) {
+        try { const plan = routes.deviceParameterWords(laneFor(entry.laneId), { ...entry.route, note: entry.note }, { ...(causeIntent || entry.intent), expression }, entry.parameterState, targetMicroseconds); words.push(...plan.words); entry.parameterObservations = plan.observations; }
+        catch (error) { return reject(error.message); }
+      }
       if (entry.route.mpe) {
         try {
           for (const [name, value] of Object.entries(expression || {})) {
@@ -174,7 +183,15 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       if (words.length) { const queued = send(entry, causeIntent || entry.intent, admission, words, targetMicroseconds); if (queued.status !== 'accepted') return queued; }
       return Object.freeze({ status: losses.length ? 'degraded' : 'accepted', stage: words.length ? 'accepted' : 'semantic-observation', outputRequested: !!words.length, losses: Object.freeze(losses) });
     },
-    updatePhysical: () => Object.freeze({ status: 'degraded', stage: 'semantic-observation', outputRequested: false, reason: 'physical-audio-control-unrepresented-in-native-midi' }),
+    updatePhysical(voiceId, cause, targetMicroseconds, execution, causeIntent, admission) {
+      const entry = executions.get(execution)?.voices.get(voiceId), lane = entry && laneFor(entry.laneId);
+      if (!enabled() || !entry || entry.state.closed || entry.uncertain || entry.ending || !routes.allowsPerformance(entry.route.grant)) return reject('native-voice-unavailable');
+      if (!lane?.deviceParameters?.length) return Object.freeze({ status: 'degraded', stage: 'semantic-observation', outputRequested: false, reason: 'no-discovered-device-physical-mapping' });
+      try {
+        const intent = { ...(causeIntent || entry.intent), performanceCause: cause }, plan = routes.deviceParameterWords(lane, { ...entry.route, note: entry.note }, intent, entry.parameterState, targetMicroseconds);
+        entry.parameterObservations = plan.observations; return plan.words.length ? send(entry, intent, admission, plan.words, targetMicroseconds) : Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false });
+      } catch (error) { return reject(error.message); }
+    },
     updateCanonicalTravel: () => Object.freeze({ status: 'degraded', stage: 'semantic-observation', outputRequested: false, reason: 'travel-audio-realization-unrepresented-in-native-midi' }),
     transferVoiceLane(voiceId, laneId, targetMicroseconds, execution) {
       const entry = executions.get(execution)?.voices.get(voiceId), lane = laneFor(laneId), route = routes.resolve(lane?.outputId);

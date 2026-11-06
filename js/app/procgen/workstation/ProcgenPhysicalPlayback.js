@@ -15,7 +15,7 @@ import { createLaneMixState } from './LaneMixState.js';
 import { procgenLaneCollectionChange } from './ProcgenProjectIndex.js';
 import { createAudioClockBridge } from './AudioClockBridge.js';
 import { createCausalMusicEngine } from './CausalMusicEngine.js';
-import { captureCausalPerformanceState } from './CausalPerformanceState.js';
+import { causalLanePhysicalControlKinds, captureCausalPerformanceState } from './CausalPerformanceState.js';
 import { createCausalIntentDispatcher, createStrictLiveFramePolicy } from './CausalIntentDispatcher.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { createRoutedInstrumentBackend } from '../../midi-ui/RoutedInstrumentBackend.js';
@@ -200,8 +200,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer 
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes(), getActorTimbreLocks()),
     getOnsetControls: (laneId, identity) => actorTimbreControls((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity),
-    getPhysicalControlKinds: laneId => [...new Set((getSupportedInstrumentDefinition((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef)?.causalBindings || [])
-      .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],
+    getPhysicalControlKinds: laneId => causalLanePhysicalControlKinds(typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId)),
     deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(), audioAdmissions = new Map();
       for (const receipt of receipts) {
         if (receipt.sinkId === 'physical-browser-audio') audioAdmissions.set(receipt.intentId, receipt.status);

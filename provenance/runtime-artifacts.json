@@ -460,7 +460,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 313,
-      "sha256": "b79dfaac771e3b66294928ecf97d759f1340c565c5dc607f407ff235f1f42b56"
+      "sha256": "a43b8cbd5b103b5c1e39a880546b503340ee3e0887d64b105d8408fd991d5424"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -510,10 +510,13 @@
       "files": [
         "js/app/midi-ui/NativeMidiConnectionView.js",
         "js/app/midi-ui/NativeMidiEndpointView.js",
+        "js/app/midi-ui/NativeMidiParameterView.js",
         "js/app/midi-ui/NativeMidiPatchView.js",
         "js/app/midi-ui/NativeMidiPropertyView.js",
         "js/app/procgen/workstation/CausalNativeMidiSink.js",
         "js/midi/native/DeviceMutation.js",
+        "js/midi/native/DeviceParameter.js",
+        "js/midi/native/DeviceParameterCatalog.js",
         "js/midi/native/DevicePatchCatalog.js",
         "js/midi/native/DevicePatchIntent.js",
         "js/midi/native/DeviceStateObservation.js",
@@ -550,8 +553,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 41,
-      "sha256": "3a7cdad83f5bf289535e1ce2a73aeca6329ef1ab144c50a81f3719d377fbd15e"
+      "fileCount": 44,
+      "sha256": "ec6bcd000153e9fe9d8ca5c1e90d5117c7b9c8fc4cfbc978f9dbfea86e4ca47a"
     }
   ]
 }

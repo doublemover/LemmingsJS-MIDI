@@ -130,7 +130,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           else if (intent.kind === 'update' && intent.articulationState?.travel && typeof sink.backend.updateCanonicalTravel === 'function') outcome = sink.backend.updateCanonicalTravel(intent.voiceId, intent, frame, identity.execution);
           else if (intent.kind === 'update' && intent.articulationState?.travel && typeof sink.backend.updateSampleTravel === 'function') outcome = sink.backend.updateSampleTravel(intent.voiceId, intent, frame, identity.execution);
           else if (intent.kind === 'update' && intent.performanceCause) outcome = typeof sink.backend.updatePhysical === 'function'
-            ? sink.backend.updatePhysical(intent.voiceId, intent.performanceCause, frame, identity.execution)
+            ? sink.backend.updatePhysical(intent.voiceId, intent.performanceCause, frame, identity.execution, intent, admissionContext)
             : { status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' };
           else if (intent.kind === 'update') outcome = intent.expression && Object.getPrototypeOf(intent.expression) === Object.prototype && Object.keys(intent.expression).length === 0 && intent.articulationState
             ? { status: 'accepted', stage: 'semantic-observation', outputRequested: false }
