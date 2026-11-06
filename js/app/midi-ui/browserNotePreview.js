@@ -382,11 +382,11 @@ class BrowserNotePreview {
         return this._registerInstrumentBackend(await prepareOwnedPcmCue(this, id, options), id);
       },
       prepareBufferedWarpVoice: async options => {
-        let sourceMaterial = options?.material; options = { ...options, material: null };
+        const liveInput = options?.sourceMode === 'live-input'; let sourceMaterial = options?.material; options = { ...options, material: null };
         const generation = session.generation, context = this._context, epoch = this._contextEpoch;
         const readyForPreparation = () => this._ownerReady(id) || workloadClass === 'cue' && session.enabled && this._ready() && !this._retirementFaults.has(id) && this._cueRouting?.state().state === 'ready';
         if (session.disposed || session.audioOperation || !readyForPreparation()) throw new Error('Enable an available audio owner before preparing a streaming warp source.');
-        const { prepareBufferedWarpVoiceOwner } = await import('./BufferedWarpVoiceOwner.js');
+        const prepareSourceOwner = liveInput ? (await import('./LiveInputWarpOwner.js')).prepareLiveInputWarpOwner : (await import('./BufferedWarpVoiceOwner.js')).prepareBufferedWarpVoiceOwner;
         if (session.disposed || generation !== session.generation || context !== this._context || epoch !== this._contextEpoch) throw new Error('The streaming source context changed.');
         const controller = new AbortController(), scope = createProcgenRetirementScope(); let prepared = null, work = null, abort = null;
         const dispose = () => scope.getReceipt() || scope.retire([{ name: 'streaming-warp-source', run: async () => {
@@ -394,13 +394,14 @@ class BrowserNotePreview {
             if (receipt.outcome !== 'complete') throw new Error('The streaming warp producer or PCM consumer retains unresolved ownership.'); prepared = null; }
         } }]);
         const requirePrepared = () => { if (!prepared || scope.getReceipt()) throw new Error('The streaming warp source is not prepared.'); return prepared; };
-        const backend = this._registerInstrumentBackend({ family: 'buffered-warp', dispose, onOwnerStop: () => backend.dispose(),
+        const backend = this._registerInstrumentBackend({ family: liveInput ? 'live-input-pitch-shift' : 'buffered-warp', dispose, onOwnerStop: () => backend.dispose(),
           sourceCaptureStatus: () => Object.freeze({ quiescent: !prepared?.state().bound && !prepared?.state().binding && !prepared?.state().pendingRequests,
-            capability: 'deterministicPreroll', liveHeapSnapshot: false }),
-          begin: value => { if (!this._ownerReady(id)) throw new Error('Deliberately activate this owned output or Prelisten route before its canonical onset.'); return requirePrepared().begin(value); }, schedule: (...args) => requirePrepared().schedule(...args), cancelFrom: (...args) => requirePrepared().cancelFrom(...args),
-          rearm: () => requirePrepared().rearm(), endOutputGate: value => requirePrepared().endOutputGate(value), setOutputPerformance: value => requirePrepared().setOutputPerformance(value), inspectOutputGate: () => requirePrepared().inspectOutputGate(),
+            capability: liveInput ? 'semanticResume' : 'deterministicPreroll', liveHeapSnapshot: false }),
+          ...(liveInput ? { startLiveInput: value => { if (!this._ownerReady(id)) throw new Error('Deliberately activate the owned live-input route before capture.'); return requirePrepared().start(value); }, schedulePitch: value => requirePrepared().schedulePitch(value), outputCompletion: () => requirePrepared().completion } : {
+            begin: value => { if (!this._ownerReady(id)) throw new Error('Deliberately activate this owned output or Prelisten route before its canonical onset.'); return requirePrepared().begin(value); }, schedule: (...args) => requirePrepared().schedule(...args), cancelFrom: (...args) => requirePrepared().cancelFrom(...args),
+            rearm: () => requirePrepared().rearm(), endOutputGate: value => requirePrepared().endOutputGate(value), setOutputPerformance: value => requirePrepared().setOutputPerformance(value), inspectOutputGate: () => requirePrepared().inspectOutputGate() }),
           inspect: () => requirePrepared().inspect(), state: () => prepared?.state() || Object.freeze({ preparing: !scope.getReceipt(), disposed: !!scope.getReceipt() }) }, id);
-        work = Promise.resolve().then(() => { const material = sourceMaterial; sourceMaterial = null; return prepareBufferedWarpVoiceOwner({ ...options, material, context, contextEpoch: epoch, destination: this._channel(0, id).sourceInput,
+        work = Promise.resolve().then(() => { const material = sourceMaterial; sourceMaterial = null; return prepareSourceOwner({ ...options, material, context, contextEpoch: epoch, destination: this._channel(0, id).sourceInput,
           resourceBudget: this._soundMaterialBudget, signal: controller.signal,
           isCurrent: () => !session.disposed && generation === session.generation && context === this._context && epoch === this._contextEpoch && readyForPreparation() && !session.audioOperation && options?.isCurrent?.() !== false,
           onState: value => { session.report(); options?.onState?.(value); } }); }).then(value => { prepared = value; return value; });
@@ -408,6 +409,7 @@ class BrowserNotePreview {
         try { await work; controller.signal.throwIfAborted(); return backend; }
         catch (error) { const receipt = backend.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
       },
+      prepareLiveInputPitchShift: options => session.api.prepareBufferedWarpVoice({ ...options, sourceMode: 'live-input' }),
       configureLaneSources: laneIds => {
         if (!Array.isArray(laneIds) || laneIds.length > 1024 || laneIds.some(value => typeof value !== 'string' || !value || value.length > 160) || new Set(laneIds).size !== laneIds.length) throw new TypeError('Invalid lane source declaration.');
         if (session.disposed) throw new Error('The lane source session has retired.');

@@ -3,8 +3,9 @@ import { encodeBackgroundSnapshotPages, backgroundSnapshotTransfers } from '../r
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { validateBufferedWarpPlan } from '../../midi/content/BufferedWarpPlan.js';
+import { prepareWarpPcmModule } from './BufferedWarpPcmModule.js';
 
-const modules = new WeakMap(); let nextOwner = 0, active = 0;
+let nextOwner = 0, active = 0;
 const protocol = 'lemmings-buffered-warp-worker/v1';
 const fail = message => Object.assign(new Error('WarpVoice owner: ' + message), { code: 'buffered-warp-owner-unavailable' });
 export async function prepareBufferedWarpVoiceOwner({ context, destination, material, resourceBudget, contextEpoch, signal, isCurrent = () => true,
@@ -82,7 +83,7 @@ export async function prepareBufferedWarpVoiceOwner({ context, destination, mate
   };
   try {
     signal?.addEventListener('abort', aborted, { once: true });
-    let module = modules.get(context); if (!module) { module = context.audioWorklet.addModule(new URL('./worklet/BufferedWarpPcmProcessor.js', import.meta.url)); modules.set(context, module); module.catch(() => { if (modules.get(context) === module) modules.delete(context); }); }
+    const module = prepareWarpPcmModule(context);
     moduleWork = module; await module; changed(); node = new AudioWorkletNode(context, 'lemmings-buffered-warp-pcm', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
     node.onprocessorerror = () => failed(fail('The owned PCM processor failed.'));
     node.port.onmessage = event => { const message = event.data; if (message?.type === 'retired') { nodeRetired = message.outcome === 'complete' && message.queuedPcmRetained === false; nodeRetiredResolve(message); } else if (message?.type === 'gate-response') { const row = nodePending.get(message.requestId); if (!row) return; nodePending.delete(message.requestId); clearTimeout(row.timer); row.resolve(message); } else if (message?.type === 'failed') failed(fail(message.reason)); };

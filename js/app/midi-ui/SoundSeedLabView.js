@@ -128,6 +128,10 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
     if (streamingFingerprint !== streamingKey()) throw new Error('Prepare streaming material for the current source and controls.');
     const key = streamingKey(), receipt = await streamingAudition.play({ seconds: 3, isCurrent: () => key === streamingKey() }); say('Explicit one-voice streaming preview queued at frame ' + receipt.startOutputFrame + '. This is a hypothetical source audition; acoustic hearing is unverified.');
   }));
+  const previewLivePitch = button('Preview actual-input pitch shift · 1× rate', run(async () => {
+    if (streamingFingerprint !== streamingKey() || streamingMaterial.state().plan?.rateRatio !== 1) throw new Error('Prepare this exact source at 1× traversal before actual-input pitch preview.');
+    const key = streamingKey(), receipt = await streamingAudition.play({ seconds: 3, sourceMode: 'live-input', isCurrent: () => key === streamingKey() }); say('Actual-input pitch preview queued with ' + Math.round(receipt.declaredSignalLatencyFrames * 1000 / receipt.sampleRate) + ' ms declared transport/algorithm delay. The processing core receives only rendered input; device latency is separate.');
+  }));
   const stopStreaming = button('Stop streaming WarpVoice', () => { streamingMaterial.cancel(); streamingAudition.stop(); refresh(); });
   for (const input of [warpRate, warpPitch, warpOutputRate, pitch, rootPitch]) listen(input, 'change', () => { streamingMaterial?.cancel(); streamingAudition?.stop(); refresh(); });
   const useCrossings = button('Use suggested edge crossings', () => {
@@ -274,7 +278,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
     bakeWarp.disabled = busy || core.unknownRetirement || !validAsset || !!modalSelection || derivedSelection === 'warped-seed'; useWarp.disabled = busy || !warpCurrent(); for (const input of [warpRate, warpPitch, warpOutputRate]) input.disabled = busy;
     warpInfo.textContent = w.active ? w.phase : w.error || core.error || (w.analysis ? (warpCurrent() ? '' : 'STALE CONTROLS · ') + 'Finite material · ' + w.analysis.recipe.options.rateRatio + '× traversal / ' + w.analysis.recipe.options.pitchRatio + '× pitch · original ' + w.analysis.recipe.preparedMaterial.originalRate + ' Hz → prepared ' + w.analysis.recipe.options.outputRate + ' Hz · ' + w.analysis.recipe.bodyFrames + ' body frames + ' + w.analysis.recipe.tailFrames + ' algorithm tail frames. Source onset/spectra/device/listening qualification pending; no live warp voice is applied.' : 'Prepare a frozen original or component for an experimental finite bake. The previous live instrument stays unchanged.');
     const stream = streamingMaterial.state(), streamAudio = streamingAudition.state(), streamCurrent = streamingFingerprint === streamingKey() && stream.phase === 'ready';
-    prepareStreaming.disabled = busy || !validAsset || pitch.value !== 'pitched'; previewStreaming.disabled = busy || !streamCurrent; stopStreaming.disabled = !stream.active && !streamAudio.active;
+    prepareStreaming.disabled = busy || !validAsset || pitch.value !== 'pitched'; previewStreaming.disabled = busy || !streamCurrent; previewLivePitch.disabled = busy || !streamCurrent || stream.plan?.rateRatio !== 1; stopStreaming.disabled = !stream.active && !streamAudio.active;
     streamingInfo.textContent = stream.error || (stream.active ? 'Preparing streaming image and selected PCM in the admitted worker.' : stream.plan ?
       (streamCurrent ? '' : 'STALE SOURCE/CONTROLS · ') + 'Streaming · ' + stream.plan.rateRatio + '× traversal / ' + stream.plan.pitchRatio + '× pitch · original ' + stream.plan.sourceRate + ' Hz → prepared ' + stream.plan.outputRate +
       ' Hz · algorithm latency ' + stream.plan.algorithm.inputLatencyFrames + ' input + ' + stream.plan.algorithm.outputLatencyFrames + ' output frames; fixed onset preparation lead ' + stream.plan.algorithm.requiredPreparationLeadFrames + ' frames. ' + streamAudio.phase +
@@ -333,7 +337,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   analysis = createSoundSeedAnalysisOwner({ resourceBudget, jobs, onState: refresh });
   coreMaterial = suppliedCoreMaterial || createOwnedStretchMaterial({ resourceBudget, onState: refresh });
   streamingMaterial = createStreamingWarpMaterialOwner({ resourceBudget, jobs, coreMaterial, onState: refresh });
-  streamingAudition = createStreamingWarpAudition({ audio, materials: streamingMaterial, onState: refresh, onReveal: () => { root.hidden = false; refresh(); } });
+  streamingAudition = createStreamingWarpAudition({ audio, materials: streamingMaterial, resourceBudget, onState: refresh, onReveal: () => { root.hidden = false; refresh(); } });
   warp = createSoundSeedDerivedOwner({ resourceBudget, jobs, kind: 'warp', coreMaterial, onState: refresh });
   derived = createSoundSeedDerivedOwner({ resourceBudget, jobs, onState: refresh });
   composition = createSoundSeedDerivedOwner({ resourceBudget, jobs, kind: 'composition', onState: refresh });

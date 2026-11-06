@@ -1197,6 +1197,7 @@
         "js/app/midi-ui/AudioAssetRef.js",
         "js/app/midi-ui/AudioResourceLeases.js",
         "js/app/midi-ui/BufferedWarpInstrumentBackend.js",
+        "js/app/midi-ui/BufferedWarpPcmModule.js",
         "js/app/midi-ui/BufferedWarpVoiceOwner.js",
         "js/app/midi-ui/CapturedEffectHistory.js",
         "js/app/midi-ui/CapturedEffectHistoryDriver.js",
@@ -1208,6 +1209,7 @@
         "js/app/midi-ui/EffectRenderPlan.js",
         "js/app/midi-ui/EffectSourceBindings.js",
         "js/app/midi-ui/InstrumentExecutionLifecycle.js",
+        "js/app/midi-ui/LiveInputWarpOwner.js",
         "js/app/midi-ui/MembraneStrikeContinuation.js",
         "js/app/midi-ui/NativeFmSource.js",
         "js/app/midi-ui/NativeInstrumentSchema.js",
@@ -1391,6 +1393,8 @@
         "js/app/resources/GroundAssetDecode.js",
         "js/app/resources/ImpulseResponseAnalysis.js",
         "js/app/resources/InitialBackgroundReservation.js",
+        "js/app/resources/LiveInputWarpWorker.js",
+        "js/app/resources/LiveInputWarpWorkerEndpoint.js",
         "js/app/resources/NativeOfflineEncoding.js",
         "js/app/resources/OwnedControlKernel.js",
         "js/app/resources/OwnedEffectCutPreparation.js",
@@ -1528,8 +1532,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 336,
-      "sha256": "03a61e2f47a168ce4a558cf74126e115c73afb527c8d598aab503cc790908403"
+      "fileCount": 340,
+      "sha256": "fcbeb4a8f7e5f41cd2416d22fc2feef10a7f43e2eed3e9ded50faea1022b2c9c"
     }
   ]
 }
