@@ -27,7 +27,10 @@ export function admissionReference({ maxWorkers = 2, maxQueuedJobs = 4, maxQueue
     else if (command.kind === 'dispose') { if (retired) return false; retired = true; for (const value of jobs.values()) if (['queued', 'running', 'computed'].includes(value.phase)) { value.phase = value.phase === 'queued' ? 'canceled' : 'released'; value.bytes = 0; } }
     else {
       if (!job) return false;
-      if (command.kind === 'finish') {
+      if (['resize-failure', 'release-failure', 'confirmation-failure'].includes(command.kind)) {
+        if (!['shared', 'external'].includes(command.budget) || !['before', 'after'].includes(command.when) || command.kind === 'resize-failure' && job.phase !== 'running' || command.kind === 'release-failure' && !['running', 'computed'].includes(job.phase) || command.kind === 'confirmation-failure' && job.phase !== 'failed-or-unknown') return false;
+        job.phase = 'failed-or-unknown'; job.bytes = job.peak;
+      } else if (command.kind === 'finish') {
         if (job.phase !== 'running') return false;
         if (command.interrupt) return apply({ kind: command.interrupt, id: command.id });
         job.bytes = command.retained; job.phase = command.retained ? 'computed' : 'released';
@@ -55,13 +58,14 @@ export function generateAdmissionTrace(seed, { steps = 128, ...options } = {}) {
   const model = admissionReference(options), trace = []; let word = seed >>> 0, nextId = 0;
   const random = max => { word ^= word << 13; word ^= word >>> 17; word ^= word << 5; return (word >>> 0) % max; };
   for (let step = 0; step < steps; step++) {
-    const candidates = [...model.jobs.values()].filter(job => live(job.phase)), choice = random(10); let command;
+    const candidates = [...model.jobs.values()].filter(job => live(job.phase)), choice = random(12); let command;
     if (choice < 3 || !candidates.length) command = { kind: 'acquire', id: 'job:' + nextId++, priority: Object.keys(weights)[random(3)], inputBytes: random(5) * 64, peak: 8192 + random(4) * 4096 };
     else if (choice === 3) command = { kind: 'advance', ms: random(5000) };
     else {
       const job = candidates[random(candidates.length)];
-      const kinds = job.phase === 'queued' ? ['abort'] : job.phase === 'failed-or-unknown' ? ['confirm', 'release'] : job.phase === 'running' ? ['finish', 'abort', 'unknown', 'release'] : ['abort', 'unknown', 'release'];
+      const kinds = job.phase === 'queued' ? ['abort'] : job.phase === 'failed-or-unknown' ? ['confirm', 'release', 'confirmation-failure'] : job.phase === 'running' ? ['finish', 'abort', 'unknown', 'release', 'resize-failure', 'release-failure'] : ['abort', 'unknown', 'release', 'release-failure'];
       const kind = kinds[random(kinds.length)]; command = { kind, id: job.id };
+      if (['resize-failure', 'release-failure', 'confirmation-failure'].includes(kind)) Object.assign(command, { budget: ['shared', 'external'][random(2)], when: ['before', 'after'][random(2)] });
       if (kind === 'finish') {
         command.retained = random(4) * 1024;
         if (command.retained && random(3) === 0) Object.assign(command, { interrupt: ['abort', 'release', 'unknown'][random(3)], budget: ['shared', 'external'][random(2)], when: ['before', 'after'][random(2)] });
@@ -81,11 +85,23 @@ export async function replayAdmissionTrace(trace, { factory = createBackgroundWo
     else if (command.kind === 'unknown') handle.lease.retainUnknown(new Error('Modeled unknown retirement'));
     else if (command.kind === 'confirm') handle.lease.confirmRetirement();
     else if (command.kind === 'dispose') service.dispose();
+    else if (command.kind === 'resize-failure') { hook = command; assert.equal(handle.lease.computationFinished({ retainedBytes: 4096 }), false, 'failed resize cannot publish'); assert.equal(hook, null, 'resize fault must execute'); }
+    else if (command.kind === 'confirmation-failure') { hook = command; assert.equal(handle.lease.confirmRetirement(), false, 'failed confirmation cannot release ownership'); assert.equal(hook, null, 'confirmation fault must execute'); }
+    else if (command.kind === 'release-failure') { hook = command; assert.equal(handle.lease.release(), false, 'failed release cannot acknowledge'); assert.equal(hook, null, 'release fault must execute'); }
   };
-  const adapter = (actual, name) => ({ diagnostics: actual.diagnostics, release: actual.release, reserve(request) {
-    const interrupt = when => { if (hook?.budget === name && hook.when === when) { const command = hook; hook = null; execute({ kind: command.interrupt, id: command.id }); } };
-    interrupt('before'); actual.reserve(request); interrupt('after');
-  } });
+  const adapter = (actual, name) => {
+    const fault = (kind, when) => {
+      if (hook?.kind !== kind || hook.budget !== name || hook.when !== when) return;
+      hook = null; throw new Error('Modeled ' + kind + ' ' + when + ' ' + name + ' side effect');
+    };
+    return { diagnostics: actual.diagnostics,
+      release(request) { const kind = hook?.kind === 'confirmation-failure' ? 'confirmation-failure' : 'release-failure'; fault(kind, 'before'); const result = actual.release(request); fault(kind, 'after'); return result; },
+      reserve(request) {
+        const interrupt = when => { if (hook?.interrupt && hook.budget === name && hook.when === when) { const command = hook; hook = null; execute({ kind: command.interrupt, id: command.id }); } };
+        fault('resize-failure', 'before'); interrupt('before'); actual.reserve(request); fault('resize-failure', 'after'); interrupt('after');
+      }
+    };
+  };
   service = factory({ ...model.options, resourceBudget: adapter(shared, 'shared'), now: model.now });
   const settle = async () => { await Promise.resolve(); await Promise.resolve(); };
   let step = 0;

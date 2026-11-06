@@ -1,0 +1,213 @@
+{
+  "schema": "background-budget-fault-model/v1",
+  "date": "2026-11-05",
+  "agent": "rook",
+  "source": {
+    "parent": "4d56fd4a505555d04e5140b9d465447972baf4bd",
+    "runtime": "unchanged from parent; all staged development changes are three model/test/tool files",
+    "browserPaths": 1296,
+    "browserClosureDigest": "a50d5e827b12497546863fd246d2044e715f6a040c30aea95ea82120c30d3634",
+    "workerFiles": 308,
+    "workerDigest": "0b226c0f0ebbf75d7bc9fe9730a0ca4028ccfdf7aa33e6fb7cf30e00432beb95",
+    "inputInventory": {
+      "encoding": "sha256-bound-base-plus-upserts/v1",
+      "baseReceipt": {
+        "path": "docs/validation/checked-operational-presentation-2026-11-05.json",
+        "bytes": 12720,
+        "sha256": "69992c7a783470fd231a9e31d0fa32a55d592bd7e917136d259c4aca389edda1"
+      },
+      "baseField": "source.inputInventory",
+      "upsert": [
+        {
+          "path": "scripts/run-background-admission-model.js",
+          "bytes": 3018,
+          "sha256": "bf0adf4f96319dc82d6778ef84eb7786b82d1607ca57cd4f41cef99872aefc39"
+        },
+        {
+          "path": "test/background-admission-model.test.js",
+          "bytes": 4368,
+          "sha256": "349654be7d86726956b87696b4b7952fac2305b2feebe57798a507926f79f625"
+        },
+        {
+          "path": "test/support/background-admission-model.js",
+          "bytes": 12605,
+          "sha256": "0eae44cd2b279a7a4158810e4ef04cf9d5961f4dd13cf3a32666741ed768d76a"
+        }
+      ],
+      "removed": [],
+      "pathCount": 1659
+    },
+    "stagedByteAudit": {
+      "paths": 1659,
+      "byteExact": 1647,
+      "untouchedNewlineInputs": [
+        {
+          "path": "css/procgen-world-inspector.css",
+          "workingBytes": 1576,
+          "workingSha256": "117e4d4b077871be05cb761e35322ff1e5b29c234e65588c4568a647f3b2c684",
+          "indexBytes": 1574,
+          "indexSha256": "b293d64556310dd7514e9fa6a4edbc3bbef2b75873c009e99ee5511adcc28cc3"
+        },
+        {
+          "path": "js/app/procgen/ActorEffectVisualProfile.js",
+          "workingBytes": 2855,
+          "workingSha256": "61f52aeeae3efbaab0d8fb95b3ba44d75ab7802d06ada8037a09142434768eb6",
+          "indexBytes": 2827,
+          "indexSha256": "7868ef9bb397d135ca873d0639c9dd6e0a9dfeb79ac41cfd57a6bd3c1092e85d"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectPass.js",
+          "workingBytes": 6019,
+          "workingSha256": "16441a79bd4480932b27ceef9c3d4679276a03126c0e6a1542474ca41df3827e",
+          "indexBytes": 5957,
+          "indexSha256": "cc47893b214d16c1c6237e0331664f8bb940d68f67e4fa08d3ffff07c882a902"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectSource.js",
+          "workingBytes": 1517,
+          "workingSha256": "57a697d8a5d542ddc5daf0ffff0b625f8babe6cc78d9c09582c882ca40cfb9ae",
+          "indexBytes": 1516,
+          "indexSha256": "777a7fd07293f47b7d1df39f41a6e590201d29b088189bab9bd4cf7dba1ba274"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationHost.js",
+          "workingBytes": 9542,
+          "workingSha256": "9d04bf0ac26ede44a694bace0059ba543c3f5df89596d336591b6dfa0c5bac35",
+          "indexBytes": 9441,
+          "indexSha256": "f9a7eb990b4b5fd8939c6619853dc3718cf3b5bbde136c2e259bf73b7668f0c4"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationSnapshot.js",
+          "workingBytes": 11674,
+          "workingSha256": "1e1920ba079a31720bdf7709fa0262262f5eb3ca697505a0c95d713de5ca2e05",
+          "indexBytes": 11543,
+          "indexSha256": "3a9ee413244f7b65bcd7ac003a9e1bdce4724d36e737e27ba7f99acd6d74ddcb"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenCausalJournal.js",
+          "workingBytes": 43603,
+          "workingSha256": "be474b5fcdd7c1a30d6cab05c6aafb343c639becfd2f710b48fdb8246f4775bc",
+          "indexBytes": 43072,
+          "indexSha256": "298d81f7271b179c3141644c0c8757c588ca2faccd4a19ef5347725dbab4e84c"
+        },
+        {
+          "path": "js/app/procgenAssetManager.js",
+          "workingBytes": 6329,
+          "workingSha256": "87ece444038074ededfe1d9e98deeca4be7dacf324d9391b40ea91b29bc0e9b6",
+          "indexBytes": 6127,
+          "indexSha256": "63180bec0443b8a399de2b51b10ff82c5cf86421883ca6a2a79c9ced5867ebc6"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCache.js",
+          "workingBytes": 5902,
+          "workingSha256": "b14828c6cb18a5bf2525abe342c2af7a3fa2d34e3c9a9a636f5ce4a11bbabf5f",
+          "indexBytes": 5751,
+          "indexSha256": "4c77eb850770782b7326f873c303ee9ba8efbe7197dadd0eb9ddfdfbadccc50d"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCore.js",
+          "workingBytes": 5699,
+          "workingSha256": "9f625f7ad2ef7511f66ba9a5c727142f7f0280c24a7b4fc559e0bb6a4c14bafd",
+          "indexBytes": 5582,
+          "indexSha256": "748233dbc3a567c793c6616f68fd4748334e3f4af529b8c67de0e6cfccd5c260"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderStorage.js",
+          "workingBytes": 25667,
+          "workingSha256": "521e7f98c594dcd2aee33ca7d51d02e3257b6bd1c5e13856a7a19627e2cee90e",
+          "indexBytes": 25148,
+          "indexSha256": "2de574ca65a70ede60b7cba120ef88a58eaa0ea8d3a9d4392c517ab2d2309a1e"
+        },
+        {
+          "path": "js/editor/EditorAssetCache.js",
+          "workingBytes": 12316,
+          "workingSha256": "5b5d8eebe2141654b0eddf00f9848ddc8393c410b0e6ffd0692bf0425561a3cd",
+          "indexBytes": 12065,
+          "indexSha256": "78da502737d925d32394ae10c90599bdc6fd1580cbd2a2a3d425ce6939f989ea"
+        }
+      ],
+      "mismatches": []
+    }
+  },
+  "implementation": [
+    "Extend the independent serial reference with shared/external budget failures before/after result resize, release and retirement confirmation.",
+    "After every transition, compare runnable/retained/queued owners, queued input bytes, exact lease phase and queue age, both budgets resident bytes and 25% candidate overhead. Failed/unknown ownership restores the full peak estimate.",
+    "A failed release cannot free a waiting worker; ordinary release cannot erase uncertainty. Explicit successful confirmation returns the slot and acknowledges remaining owned bytes.",
+    "Seventeen deterministic cases add running/computed failures, repeated failed confirmation, pending-peer admission and invalid fault-frontier refusal. Existing cancellation/reentrant resize/priority-aging schedules remain.",
+    "The bounded CLI reports each of12frontiers separately, partial versus complete observed coverage, elapsed time and sampled heap within its existing120s/256MiBbudget."
+  ],
+  "validation": {
+    "node": {
+      "suites": 8,
+      "tests": 99,
+      "passes": 99,
+      "pending": 0,
+      "failures": 0,
+      "start": "2026-11-06T03:04:22.662Z",
+      "end": "2026-11-06T03:04:23.037Z",
+      "duration": 375,
+      "raw": {
+        "path": ".tmp/rook461-node.json",
+        "bytes": 87925,
+        "sha256": "5c9a9ddbdc2a3636768b04c1b22e29b7b0a034de298d91c05889b0d09dc3c299"
+      },
+      "log": {
+        "path": ".tmp/rook461-node.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "campaign": {
+      "schema": "background-admission-campaign/v2",
+      "name": "rook",
+      "seed": 9991186,
+      "seeds": 4096,
+      "steps": 128,
+      "transitions": 528384,
+      "elapsedMs": 24551.8907,
+      "budget": {
+        "maxMs": 120000,
+        "maxHeapBytes": 268435456,
+        "observationEveryTransitions": 32
+      },
+      "maximumObservedHeapBytes": 51824384,
+      "faultFrontiers": {
+        "resize-failure:shared:before": 3975,
+        "resize-failure:shared:after": 3919,
+        "resize-failure:external:before": 3997,
+        "resize-failure:external:after": 3928,
+        "release-failure:shared:before": 4400,
+        "release-failure:shared:after": 4443,
+        "release-failure:external:before": 4455,
+        "release-failure:external:after": 4390,
+        "confirmation-failure:shared:before": 12098,
+        "confirmation-failure:shared:after": 12262,
+        "confirmation-failure:external:before": 12423,
+        "confirmation-failure:external:after": 12083
+      },
+      "faultCoverage": "all12frontiers-observed",
+      "raw": {
+        "path": ".tmp/rook461-campaign.json",
+        "bytes": 795,
+        "sha256": "c04caf7a838cbb02248735edb669edcb3905a7cbe177dc115f7d6eb4c8afea8d"
+      },
+      "log": {
+        "path": ".tmp/rook461-campaign.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "faultTransitions": 82373
+    },
+    "format": "passed;fullnpmformat followed by changed-file fixes",
+    "whitespace": "passed",
+    "runtimeTestsRepeated": false,
+    "fullLocalSuiteRepeated": false
+  },
+  "limits": [
+    "Failures are deliberate deterministic faults in explicit shared/external budget adapters, not historical production regressions or real native-worker/filesystem/device faults.",
+    "The campaign checks post-admission resize/release/confirmation ownership. Initial reservation failure/partial side effects and async acknowledgment remain distinct qualification boundaries.",
+    "It does not replace coupled document/history/import/rebuild/transport/device/Thru/UMP/active-sensing models, cache eviction/capacity or native physical retirement required by1120.",
+    "Heap is sampled at bounded checkpoints and is not an instantaneous process/RSS peak. A finite seeded corpus is not exhaustive proof.",
+    "Browser/audio runtime is unchanged; no redundant native or full local repository suite was repeated. Current whole-branch CI remains separate."
+  ]
+}

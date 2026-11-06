@@ -7243,5 +7243,43 @@
       "Opaque native errors remain unknown until narrowed. This is not the complete authored/runtime checkpoint schema and imported-owner audit required by1089.",
       "Four current-source native cases qualify Windows Chromium desktop behavior; prior22broader native cases retain their separate source-bound receipt. Whole-branch Linux/fullcoverage CI follows publication."
     ]
+  },
+  "continuation461": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Extend admission reference models with shared/external resize, release and confirmation faults.",
+    "evidence": {
+      "path": "docs/validation/background-budget-fault-model-2026-11-05.json",
+      "bytes": 9746,
+      "sha256": "87d0055004c28c2e7f7c48d1e86e6e32bb6a8babf27f89a0ed68dbcc3d11a85b"
+    },
+    "validation": {
+      "nodeCases": 99,
+      "modelSeeds": 4096,
+      "modelTransitions": 528384,
+      "faultTransitions": 82373,
+      "faultFrontiers": 12,
+      "campaignElapsedMs": 24551.8907,
+      "maximumObservedHeapBytes": 51824384,
+      "formatWhitespace": "passed",
+      "fullLocalSuiteRepeated": false
+    },
+    "source": {
+      "runtime": "unchanged4d56fd4a",
+      "browserPaths": 1296,
+      "browserDigest": "a50d5e827b12497546863fd246d2044e715f6a040c30aea95ea82120c30d3634",
+      "workerFiles": 308,
+      "workerDigest": "0b226c0f0ebbf75d7bc9fe9730a0ca4028ccfdf7aa33e6fb7cf30e00432beb95",
+      "inputPaths": 1659,
+      "byteExact": 1647,
+      "untouchedNewlineMappings": 12
+    },
+    "remaining": [
+      "Failures are deliberate deterministic faults in explicit shared/external budget adapters, not historical production regressions or real native-worker/filesystem/device faults.",
+      "The campaign checks post-admission resize/release/confirmation ownership. Initial reservation failure/partial side effects and async acknowledgment remain distinct qualification boundaries.",
+      "It does not replace coupled document/history/import/rebuild/transport/device/Thru/UMP/active-sensing models, cache eviction/capacity or native physical retirement required by1120.",
+      "Heap is sampled at bounded checkpoints and is not an instantaneous process/RSS peak. A finite seeded corpus is not exhaustive proof.",
+      "Browser/audio runtime is unchanged; no redundant native or full local repository suite was repeated. Current whole-branch CI remains separate."
+    ]
   }
 }
