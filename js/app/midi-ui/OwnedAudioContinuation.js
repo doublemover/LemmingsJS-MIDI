@@ -1,3 +1,4 @@
+import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { cloneData } from '../../core/CanonicalData.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { chooseOwnedAudioFrame } from './OwnedAudioFrame.js';
@@ -26,10 +27,11 @@ const releaseTickets = async (entry, ticket) => {
   if (receipt?.outcome && receipt.outcome !== 'complete') throw Object.assign(failure('prepared-audio-retirement-unresolved'), { retirement: receipt });
 };
 
-export async function captureOwnedAudioContinuation({ context, sources, rack = null, graphRevision, semanticBoundary = null, captureBindings = null, signal, timeoutMs = 30000, assertCoverage = () => {} } = {}) {
+export async function captureOwnedAudioContinuation({ context, sources, rack = null, graphRevision, semanticBoundary = null, captureBindings = null, resourceBudget = null, signal, timeoutMs = 30000, assertCoverage = () => {} } = {}) {
   sourceInventory(sources, 'detachSourceState');
   if (context?.state !== 'running' || !Number.isSafeInteger(graphRevision) || graphRevision < 0 || graphRevision > 0xffffffff ||
       !sources.length && !rack || rack && typeof rack.detachState !== 'function' || typeof assertCoverage !== 'function' || captureBindings !== null && typeof captureBindings !== 'function') throw failure('running-owned-audio-cone-required');
+  signal?.throwIfAborted(); const metadataLease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'owned-audio-cut', kind: 'aggregate-audio-cut-metadata', category: 'audio', bytes: 2 * 1048576 });
   const controller = new AbortController(), unlink = linkAbort(signal, controller), target = deferred(), effectsDetached = deferred(), grids = new Map();
   const operations = [], expected = sources.length + (rack ? 1 : 0); let audioFrame = null, bindingState = null;
   const select = id => incoming => {
@@ -69,12 +71,12 @@ export async function captureOwnedAudioContinuation({ context, sources, rack = n
       return Object.freeze({ schema: 'lemmings-owned-audio-cut/v1', metadata: () => metadata,
         sources: () => { if (released) throw failure('audio-cut-released'); return ownedSources.map(row => Object.freeze({ ...row })); },
         rack: () => { if (released) throw failure('audio-cut-released'); return rackResult; },
-        release() { if (released) return false; released = true; metadata = null; for (const row of ownedSources) row.cut.release(); ownedSources.length = 0; rackResult?.release(); return true; } });
+        release() { if (released) return false; released = true; metadata = null; for (const row of ownedSources) row.cut.release(); ownedSources.length = 0; rackResult?.release(); metadataLease.release(); return true; } });
     } catch (error) { for (const row of ownedSources) row.cut.release(); rackResult?.release(); throw error; }
   } catch (error) {
     controller.abort(error); target.reject(error); effectsDetached.reject(error);
     try { await retireSources(sources); const receipt = rack?.dispose?.(); await receipt?.completion; if (receipt?.outcome && receipt.outcome !== 'complete') error.rackRetirement = receipt; } catch (retirementError) { error.retirementError = retirementError; }
-    throw error;
+    metadataLease.release(); throw error;
   } finally { unlink(); }
 }
 
@@ -82,13 +84,14 @@ export async function prepareOwnedAudioContinuation({ cut, sources, jobs, resour
   const metadata = cut?.metadata?.(), captured = cut?.sources?.(), rack = cut?.rack?.();
   if (metadata?.schema !== 'lemmings-owned-audio-cut/v1' || !Array.isArray(captured) || !Array.isArray(sources) || sources.length !== captured.length ||
       new Set(sources.map(row => row?.sourceId)).size !== sources.length || captured.some(row => !sources.some(input => input.sourceId === row.sourceId))) throw failure('exact-cut-source-references-required');
+  const metadataLease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'owned-audio-continuation', kind: 'prepared-aggregate-audio-metadata', category: 'audio', bytes: 2 * 1048576 });
   const entry = { metadata, sources: [], rack: null, busy: false, released: false, retirement: createProcgenRetirementScope() };
   const ticket = Object.freeze({ schema: 'lemmings-owned-audio-continuation/v1', metadata: () => entry.released ? null : entry.metadata,
     release() {
       if (entry.busy) throw failure('audio-continuation-owned-by-renderers');
       if (entry.released) return entry.retirement.getReceipt(); entry.released = true;
       return entry.retirement.retire([...entry.sources.map(row => ({ name: 'source:' + row.sourceId, run: () => row.ticket.release() })),
-        ...(entry.rack ? [{ name: 'creative-rack', run: () => entry.rack.ticket.release() }] : [])]);
+        ...(entry.rack ? [{ name: 'creative-rack', run: () => entry.rack.ticket.release() }] : []), { name: 'aggregate-metadata', run: () => { entry.metadata = null; metadataLease.release(); } }]);
     } });
   try {
     for (const row of captured) {

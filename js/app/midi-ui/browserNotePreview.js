@@ -327,7 +327,7 @@ class BrowserNotePreview {
             [...this._voices].some(voice => voice.owner === id && !sources.some(source => source.backend.ownsSourceVoice?.(voice)))) throw new Error('This owner has a native, preview or uncaptured source outside the owned DSP cone.');
       };
       assertCoverage();
-      return captureOwnedAudioContinuation({ ...options, ...operation, sources, rack: rackState?.activeGraph ? effects : null, assertCoverage });
+      return captureOwnedAudioContinuation({ resourceBudget: this._soundMaterialBudget, ...options, ...operation, sources, rack: rackState?.activeGraph ? effects : null, assertCoverage });
     });
     const restoreAudioState = options => runContinuation('restoring', options, async operation => {
       if (workloadClass !== 'cue' && options.route !== 'owner-live') throw new Error('Use the isolated cue owner for scrub restoration, or explicitly select owner-live routing.');

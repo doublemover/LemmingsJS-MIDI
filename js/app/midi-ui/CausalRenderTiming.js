@@ -70,6 +70,7 @@ export function createCausalRenderTiming(source, sampleRate, { timeTransformMode
       const relativeMs = transformedMilliseconds.has(intent.intentId) ? transformedMilliseconds.get(intent.intentId) - origin : base - origin + fraction * (tickDuration ?? 0), frame = Math.round(relativeMs * sampleRate / 1000);
       if (!natural(frame)) throw failure('render-frame-overflow', 'Captured intent cannot be represented as a safe output frame.'); return frame;
     },
+    coverage() { prepareGroove(); const delaySeconds = (groove?.maximumPositiveOutputDelayMs || 0) / 1000; return Object.freeze({ sourceEndSeconds: (end - origin) / 1000, maximumPositiveOutputDelaySeconds: delaySeconds, maximumCoveredOutputSeconds: (end - origin) / 1000 + delaySeconds, policy: 'declared-groove-output-padding;no-new-physical-input' }); },
     receipt: () => Object.freeze({ timeDomain: 'captured-source-time', timeTransformMode, groove, scope: 'provided-semantic-history-preflight', fractionalIntents: fractional, capturedDurationUses: directDurations,
       timelineDurationUses: timelineDurations, scoreTimesConfirmed: confirmedScoreTimes, rounding: 'nearest-frame-math-round', tempoPolicy: 'captured-source-segments-no-constant-tempo-substitution' }),
     sourceTimeline: saved || null

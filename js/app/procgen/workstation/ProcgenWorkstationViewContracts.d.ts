@@ -5,7 +5,7 @@ export interface WorkstationUiState {
   laneId: string; slot: number; step: number; tab: string; tool: string; layout: 'strip' | 'overlay';
   inspectorWidth: number; firstLane: number; minimumRow: number; hazardSpacing: number;
   observerMode: string; observerLane: string | null; observerHold: number;
-  outputId?: string | null; scoreTimeDomain?: string; physicalSearch?: string; beat?: number;
+  outputId?: string | null; scoreTimeDomain?: string; grooveOpen?: boolean; physicalSearch?: string; beat?: number;
   inputId: string | null; clockOutputId: string | null; thru: boolean; recording: boolean; lastMidi: string;
   dockVersion?: number; dockHeight?: number; workspaceMode?: 'perform' | 'inspect' | 'overview';
   laneQuery?: string; laneNavigation?: unknown; motionMode?: 'system' | 'reduce' | 'freeze';

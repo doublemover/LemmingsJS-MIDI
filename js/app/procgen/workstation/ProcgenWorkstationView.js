@@ -1,3 +1,4 @@
+import { defaultTimeTransform, validateTimeTransform } from '../../../midi/content/TimeTransform.js';
 import { createProcgenNoticeView } from './ProcgenNoticeView.js';
 import { createProcgenOperationalView } from './ProcgenOperationalView.js';
 import { createAudioRuntimeSettingsView } from '../../midi-ui/AudioRuntimeSettingsView.js';
@@ -631,6 +632,38 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     nextFields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
       labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), nextFields);
+      if (lane.mode === 'physical') {
+        const groove = lane.timeTransform || defaultTimeTransform('groove:' + lane.id), grooveDetails = node('details');
+        grooveDetails.dataset.controlKey = 'physical-groove:' + lane.id; grooveDetails.open = state.grooveOpen === true;
+        controlTree.bind(grooveDetails, { toggle: event => { state.grooveOpen = event.currentTarget.open; } });
+        grooveDetails.append(node('summary', groove.mode === 'literal' || groove.strength01 === 0 ? 'Physical timing · literal' : 'Physical groove · ' + groove.mode));
+        const changeGroove = patch => {
+          if (selected().id !== lane.id) return;
+          const current = selected().timeTransform || defaultTimeTransform('groove:' + lane.id);
+          try {
+            if (!Number.isSafeInteger(current.revision + 1)) throw new Error('Create a new groove identity before its revision limit.');
+            changeLane({ timeTransform: validateTimeTransform({ ...current, ...patch, revision: current.revision + 1 }) });
+          } catch (error) { handlers.status?.(error.message); }
+        };
+        labeled('Timing', select([['literal', 'Literal physical timing'], ['attract', 'Pulse attraction'], ['swingField', 'Swing field'], ['ratioFold', 'Ratio pulse grid']],
+          groove.mode, mode => changeGroove({ mode, ...(mode !== 'literal' && groove.strength01 === 0 ? { strength01: 0.5 } : {}) }), 'Physical groove timing'), grooveDetails);
+        labeled('Strength', parameter(groove.strength01, strength01 => changeGroove({ strength01 }), { id: 'groove:strength', name: 'Groove strength', quantity: 'normalized', unit: 'normalized',
+          min: 0, max: 1, step: 0.01, fineStep: 0.001, defaultValue: 0 }, { readOnly: groove.mode === 'literal' }), grooveDetails);
+        labeled('Pulse grid', select([1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1, 2, 4, 8, 16].map(beats => [String(beats), beats + ' quarter-note beats']),
+          String(groove.gridBeats), value => changeGroove({ gridBeats: Number(value) }), 'Groove pulse grid'), grooveDetails);
+        for (const [key, name, min, max, step, unit] of [
+          ['maxDisplacementMs', 'Maximum attraction', 0, 2000, 1, 'ms'], ['causalLatencyMs', 'Added live buffer', 0, 2000, 1, 'ms'],
+          ...(groove.mode === 'swingField' ? [['swingRatio', 'Swing ratio', 0.5, 0.75, 0.01, 'ratio']] : []),
+          ...(groove.mode === 'ratioFold' ? [['ratioNumerator', 'Ratio numerator', 1, 16, 1, 'integer'], ['ratioDenominator', 'Ratio denominator', 1, 16, 1, 'integer']] : [])
+        ]) labeled(name, parameter(groove[key], value => changeGroove({ [key]: value }), { id: 'groove:' + key, name, quantity: 'authored-event-timing', unit, min, max, step, fineStep: step, defaultValue: min }, { readOnly: groove.mode === 'literal' }), grooveDetails);
+        labeled('Named surface / region IDs', input(groove.scope.regionIds.join(', '), value => {
+          const regionIds = [...new Set(value.split(',').map(id => id.trim()).filter(Boolean))];
+          changeGroove({ scope: regionIds.length ? { kind: 'regions', regionIds } : { kind: 'lane', regionIds: [] } });
+        }, { type: 'text' }), grooveDetails);
+        grooveDetails.append(node('p', 'Blank scope covers this lane. Named scope requires the captured source to identify that surface or region. New onsets use the selected policy; held voices keep their timing offset. Original physical times stay in the take.', 'studio-hint'));
+        grooveDetails.append(node('p', 'Live groove can delay an arrival. An earlier pulse needs enough added buffer; otherwise the arrival stays causal. Maximum/RMS desired and actual offsets are saved with timing receipts.', 'studio-hint'));
+        nextFields.append(grooveDetails);
+      }
       labeled('Sound collection (legacy aliases)', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => selectSound(lane.id, { family }), 'Sound collection'), nextFields);
       labeled('Role', select(PROCGEN_ROLES, lane.role, role => selectSound(lane.id, { role }), 'Instrument role'), nextFields);
       const collection = PROCGEN_SOUND_COLLECTIONS.find(c => c.id === lane.family).roles.find(r => r.id === lane.role);

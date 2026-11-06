@@ -208,7 +208,9 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     if (!current.execution) throw new Error(current.reason || 'The restored sink did not register its execution.');
     return Object.freeze({ execution: current.execution, executionEpoch: epoch, generation });
   };
-  return { prepareRestoredExecution, dispatch, cancelGeneration, renewExecutionLease, observeDisplaySamples, diagnostics, acknowledge: admissions.acknowledge, cancelPendingAdmissions: admissions.sweep, dispose };
+  return { captureTimeTransform: options => timingLease ? timingOwner.snapshot(options) : null,
+    restoreTimeTransform(state, options) { if (state === null) return null; if (timingLease) throw new Error('Restore timing only into a fresh dispatcher.'); timingLease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-groove-owner', kind: 'restored-groove-lifecycle-metadata-estimate', category: 'audio', bytes: 48 * 1048576 }); try { return timingOwner.restore(state, options); } catch (error) { timingLease.release(); timingLease = null; throw error; } },
+    prepareRestoredExecution, dispatch, cancelGeneration, renewExecutionLease, observeDisplaySamples, diagnostics, acknowledge: admissions.acknowledge, cancelPendingAdmissions: admissions.sweep, dispose };
 };
 
 export { createCausalIntentDispatcher, createStrictLiveFramePolicy };

@@ -44,11 +44,11 @@ const sourceMilliseconds = time => {
 };
 const covers = (policy, intent) => policy.scope.kind === 'lane' || policy.scope.regionIds.includes(intent.preparedBodyStrike?.surfaceId ?? intent.topologyBinding?.regionInstanceId ?? intent.regionInstanceId ?? intent.articulationState?.contactCoordinate?.regionInstanceId ?? intent.performanceCause?.regionInstanceId);
 const voiceKey = (intent, execution) => JSON.stringify([execution, intent.worldId ?? null, intent.generation, intent.voiceId]);
-const actorKey = (intent, execution) => JSON.stringify([execution, intent.worldId ?? null, intent.generation, intent.laneId ?? null, intent.actorId ?? intent.voiceId]);
+const actorKey = (intent, execution) => JSON.stringify([execution, intent.worldId ?? null, intent.generation, null, intent.actorId ?? intent.voiceId]);
 export function createTimeTransformOwner({ mode = 'live', maxVoices = 4096, maxActors = 4096, cacheLimit = 8192, retainReceipts = true } = {}) {
   if (!['live', 'offline'].includes(mode) || ![maxVoices, maxActors, cacheLimit].every(value => Number.isSafeInteger(value) && value >= 1 && value <= 65536)) throw new TypeError('Invalid time-transform owner limits.');
   const voices = new Map(), actors = new Map(), cache = new Map(), policies = new WeakMap();
-  let scope = null, count = 0, transformed = 0, sumSquares = 0, desiredSquares = 0, maximumMs = 0, maximumDesiredMs = 0, buffered = 0, orderRepairs = 0;
+  let scope = null, count = 0, transformed = 0, sumSquares = 0, desiredSquares = 0, maximumMs = 0, maximumDesiredMs = 0, maximumPositiveOutputDelayMs = 0, buffered = 0, orderRepairs = 0;
   const validate = raw => {
     if (raw == null) return null;
     let value = policies.get(raw); if (!value) { value = validateTimeTransform(raw); if (Object.isFrozen(raw)) policies.set(raw, value); } return value;
@@ -69,7 +69,7 @@ export function createTimeTransformOwner({ mode = 'live', maxVoices = 4096, maxA
     if (previous && originalMs < previous.originalMs) fail('time-transform-order', 'Physical events must arrive in their committed per-actor order.');
     if (intent.kind === 'begin' && held) fail('time-transform-duplicate-begin', 'A timing owner cannot replace a held source onset.');
     const active = !identity, millisecondsPerBeat = 60000 / tempoBpm;
-    let desiredMs = originalMs, latencyMs = 0, scheduledMs = originalMs, reason = null;
+    let desiredMs = originalMs, latencyMs = 0, scheduledMs = originalMs, reason = null, orderRepaired = false;
     if (held) {
       desiredMs += held.desiredOffsetMs; scheduledMs += held.outputOffsetMs; latencyMs = held.causalLatencyMs;
       reason = 'preserved-onset-time-offset';
@@ -81,7 +81,7 @@ export function createTimeTransformOwner({ mode = 'live', maxVoices = 4096, maxA
       if (mode === 'live' && scheduledMs < originalMs) { scheduledMs = originalMs; reason = 'earlier-target-needs-more-explicit-buffer-latency'; }
       if (Math.abs(wanted) > policy.maxDisplacementMs) reason = 'authored-displacement-clamp';
     }
-    if (previous && scheduledMs < previous.scheduledMs) { scheduledMs = previous.scheduledMs; reason = 'preserved-per-actor-lifecycle-order'; orderRepairs++; }
+    if (previous && scheduledMs < previous.scheduledMs) { scheduledMs = previous.scheduledMs; reason = 'preserved-per-actor-lifecycle-order'; orderRepaired = true; }
     if (!Number.isFinite(scheduledMs) || scheduledMs < 0 || mode === 'live' && scheduledMs < originalMs) fail('time-transform-noncausal', 'Live output cannot precede its committed physical event.');
     const outputOffsetMs = scheduledMs - originalMs, desiredOffsetMs = desiredMs - originalMs;
     if (intent.kind === 'begin' && (active || outputOffsetMs || desiredOffsetMs) && voices.size >= maxVoices) fail('time-transform-voice-capacity', 'The held timing-owner limit is full.');
@@ -102,14 +102,59 @@ export function createTimeTransformOwner({ mode = 'live', maxVoices = 4096, maxA
     if (intent.kind === 'begin' && (active || outputOffsetMs || desiredOffsetMs)) voices.set(key, { policy, desiredOffsetMs, outputOffsetMs, causalLatencyMs: latencyMs });
     if (intent.kind === 'end') voices.delete(key);
     cache.set(intent.intentId, decision); if (cache.size > cacheLimit) cache.delete(cache.keys().next().value);
-    count++; if (outputOffsetMs || desiredOffsetMs) transformed++; if (latencyMs) buffered++;
+    count++; if (orderRepaired) orderRepairs++; if (outputOffsetMs || desiredOffsetMs) transformed++; if (latencyMs) buffered++;
     sumSquares += outputOffsetMs * outputOffsetMs; desiredSquares += desiredOffsetMs * desiredOffsetMs;
-    maximumMs = Math.max(maximumMs, Math.abs(outputOffsetMs)); maximumDesiredMs = Math.max(maximumDesiredMs, Math.abs(desiredOffsetMs));
+    maximumPositiveOutputDelayMs = Math.max(maximumPositiveOutputDelayMs, outputOffsetMs); maximumMs = Math.max(maximumMs, Math.abs(outputOffsetMs)); maximumDesiredMs = Math.max(maximumDesiredMs, Math.abs(desiredOffsetMs));
     return decision;
   };
-  return Object.freeze({ apply, reset() { scope = null; voices.clear(); actors.clear(); cache.clear(); },
+  return Object.freeze({ apply,
+    snapshot({ completedSourceTimeMs = null } = {}) {
+      if (completedSourceTimeMs !== null && !finite(completedSourceTimeMs, 0, Number.MAX_VALUE)) fail('time-transform-cut-frontier', 'A timing cut requires a finite completed source frontier.');
+      return cloneData({ schema: 'lemmings-time-transform-state/v1', mode, scope: scope === null ? null : JSON.parse(scope),
+        voices: [...voices], actors: [...actors].filter(([, frontier]) => completedSourceTimeMs === null || frontier.scheduledMs > completedSourceTimeMs),
+        statistics: { count, transformed, sumSquares, desiredSquares, maximumMs, maximumDesiredMs, maximumPositiveOutputDelayMs, buffered, orderRepairs },
+        cache: 'not-retained;canonical-intent-deduplication-remains-with-source-owner' }, { maxBytes: 2 * 1048576, maxNodes: 262144 });
+    },
+    restore(raw, { executionEpoch } = {}) {
+      if (scope !== null || voices.size || actors.size || cache.size || count) fail('fresh-time-transform-owner-required', 'Restore timing state only into a fresh unpublished owner.');
+      const state = cloneData(raw, { maxBytes: 2 * 1048576, maxNodes: 262144 }), saved = state.scope, stats = state.statistics;
+      if (state.schema !== 'lemmings-time-transform-state/v1' || state.mode !== mode || !text(executionEpoch) ||
+          saved !== null && (!Array.isArray(saved) || saved.length !== 3 || !text(saved[0]) || executionEpoch === saved[0] || saved[1] !== null && !text(saved[1]) || !natural(saved[2])) ||
+          !Array.isArray(state.voices) || state.voices.length > maxVoices || !Array.isArray(state.actors) || state.actors.length > maxActors ||
+          !stats || ['count', 'transformed', 'buffered', 'orderRepairs'].some(key => !natural(stats[key])) || stats.transformed > stats.count || stats.buffered > stats.count || stats.orderRepairs > stats.count ||
+          !finite(stats.sumSquares, 0, stats.count * 16000000 + 1) || !finite(stats.desiredSquares, 0, stats.count * 4000000 + 1) ||
+          !finite(stats.maximumMs, 0, 4000) || !finite(stats.maximumDesiredMs, 0, 2000) || !finite(stats.maximumPositiveOutputDelayMs, 0, 4000) ||
+          saved === null && (state.voices.length || state.actors.length)) fail('invalid-time-transform-state', 'The timing image has a foreign clock, owner, inventory or displacement domain.');
+      const nextVoices = new Map(), nextActors = new Map();
+      const rekey = (key, length) => {
+        let parts; try { parts = JSON.parse(key); } catch { fail('invalid-time-transform-key', 'Invalid timing ownership identity.'); }
+        if (!Array.isArray(parts) || parts.length !== length || parts[0] !== saved?.[0] || parts[1] !== saved?.[1] || parts[2] !== saved?.[2] ||
+            parts.slice(3).some(value => !(value === null || text(value) || natural(value))) || length === 4 && !text(parts[3]) || length === 5 && !(text(parts[4]) || natural(parts[4]))) fail('invalid-time-transform-key', 'Timing state does not share its declared execution scope.');
+        parts[0] = executionEpoch; return JSON.stringify(parts);
+      };
+      for (const pair of state.voices) {
+        if (!Array.isArray(pair) || pair.length !== 2) fail('invalid-time-transform-voice', 'Invalid held timing record.');
+        const key = rekey(pair[0], 4), value = pair[1];
+        if (nextVoices.has(key) || !value || !finite(value.desiredOffsetMs, -2000, 2000) || !finite(value.outputOffsetMs, mode === 'live' ? 0 : -2000, 4000) ||
+            !finite(value.causalLatencyMs, 0, mode === 'live' ? 2000 : 0) || value.outputOffsetMs + 1e-7 < value.desiredOffsetMs + value.causalLatencyMs) fail('invalid-time-transform-voice', 'Invalid held onset timing offset.');
+        nextVoices.set(key, { policy: validateTimeTransform(value.policy), desiredOffsetMs: value.desiredOffsetMs, outputOffsetMs: value.outputOffsetMs, causalLatencyMs: value.causalLatencyMs });
+      }
+      for (const pair of state.actors) {
+        if (!Array.isArray(pair) || pair.length !== 2) fail('invalid-time-transform-frontier', 'Invalid actor timing frontier.');
+        const key = rekey(pair[0], 5), value = pair[1];
+        if (nextActors.has(key) || !value || !finite(value.originalMs, 0, Number.MAX_VALUE) || !finite(value.scheduledMs, 0, Number.MAX_VALUE) ||
+            !finite(value.scheduledMs - value.originalMs, mode === 'live' ? 0 : -2000, 4000) || !text(value.scoreEpoch)) fail('invalid-time-transform-frontier', 'Invalid actor timing displacement or score epoch.');
+        nextActors.set(key, { ...value });
+      }
+      scope = saved === null ? null : JSON.stringify([executionEpoch, saved[1], saved[2]]);
+      for (const [key, value] of nextVoices) voices.set(key, value);
+      for (const [key, value] of nextActors) actors.set(key, value);
+      ({ count, transformed, sumSquares, desiredSquares, maximumMs, maximumDesiredMs, maximumPositiveOutputDelayMs, buffered, orderRepairs } = stats);
+      return Object.freeze({ restoredVoices: voices.size, actorFrontiers: actors.size, freshExecutionEpoch: executionEpoch, outputRequested: false });
+    },
+    reset() { scope = null; voices.clear(); actors.clear(); cache.clear(); },
     diagnostics: () => Object.freeze({ scope: 'canonical-intent-timing-decisions;not-output-acceptance', mode, count, transformed, buffered, orderRepairs, activeVoices: voices.size, actorFrontiers: actors.size,
-      maximumOutputDisplacementMs: maximumMs, rmsOutputDisplacementMs: count ? Math.sqrt(sumSquares / count) : 0,
+      maximumPositiveOutputDelayMs, maximumOutputDisplacementMs: maximumMs, rmsOutputDisplacementMs: count ? Math.sqrt(sumSquares / count) : 0,
       maximumDesiredDisplacementMs: maximumDesiredMs, rmsDesiredDisplacementMs: count ? Math.sqrt(desiredSquares / count) : 0,
       minimumSeparationMs: 0, literalDefault: true, precisionPolicy: 'retained-source-tick-precision;no-inferred-subtick' }) });
 }
