@@ -349,6 +349,10 @@ class BrowserNotePreview {
       prepareAudioContinuation: async options => { const { prepareOwnedAudioContinuation } = await import('./OwnedAudioContinuation.js'); return prepareOwnedAudioContinuation({ resourceBudget: this._soundMaterialBudget, ...options }); },
       encodeAudioImage: async options => { const { encodeMaterializedAudioImage } = await import('./OwnedAudioImageMaterials.js'); return encodeMaterializedAudioImage({ resourceBudget: this._soundMaterialBudget, materialProvider: this.getSoundMaterialProvider(), resources: this._audioResources, ...options }); },
       openAudioImage: async options => { const { openMaterializedAudioImage } = await import('./OwnedAudioImageMaterials.js'); return openMaterializedAudioImage({ resourceBudget: this._soundMaterialBudget, materialProvider: this.getSoundMaterialProvider(), resources: this._audioResources, ...options }); },
+      prepareAudioCutContinuation: async options => {
+        const { prepareMaterializedAudioCut } = await import('./OwnedAudioImageMaterials.js');
+        return prepareMaterializedAudioCut({ resourceBudget: this._soundMaterialBudget, materialProvider: this.getSoundMaterialProvider(), resources: this._audioResources, ...options }, (cut, sources) => session.api.prepareAudioContinuation({ ...options, cut, sources }));
+      },
       prepareAudioImageContinuation: async options => {
         const { prepareMaterializedAudioImage } = await import('./OwnedAudioImageMaterials.js');
         return prepareMaterializedAudioImage({ resourceBudget: this._soundMaterialBudget, materialProvider: this.getSoundMaterialProvider(), resources: this._audioResources, ...options },

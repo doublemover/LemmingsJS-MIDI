@@ -329,7 +329,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     find: key => children.get(key)?.retirementScope ? null : children.get(key)?.backend || null,
     retain(key) { const child = children.get(key); if (!child || child.retirementScope || disposed) return null; child.pins = (child.pins || 0) + 1; let released = false;
       return Object.freeze({ backend: child.backend, release() { if (!released) { released = true; child.pins--; collect(); } } }); },
-    assignment: lane => assignments.get(lane)?.key || null,
+    assignment: lane => assignments.get(lane)?.key || null, assignmentBackend: lane => disposed ? null : assignments.get(lane)?.backend || null,
     retainAssignment(lane) {
       if (!validLane(lane) || disposed) throw new Error('Lane assignment owner is unavailable.');
       const previous = assignments.get(lane) || null; if (previous && !previous.blocked) previous.pins = (previous.pins || 0) + 1;

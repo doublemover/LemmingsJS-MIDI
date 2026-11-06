@@ -19,10 +19,11 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
   const metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: 'lane-instruments-' + (++nextPreparationOwner), kind: 'lane-instrument-inputs', category: 'audio', bytes: 4096 });
   const reserveInputs = (laneCount = 0, nextPending = pending.size) => metadata.resize(4096 + Math.max(laneCount, observed.size, queued.size, laneRequests.size) * 2048 +
     (nextPending + unknown.size) * 2 * 1048576);
+  const restorationNamespace = nextPreparationOwner;
   const retirement = createProcgenRetirementScope(); let disposed = false, serial = 0, pumping = null;
   const realizationInventories = new Map(), realizationRequests = new Map(), realizationReads = new Set();
   const report = (laneId, state, code = null) => { if (disposed) return; try { onState(Object.freeze({ laneId, state, code })); } catch { /* Views cannot publish instruments. */ } };
-  const prepare = async (laneId, raw, { signal: externalSignal, retainPrevious = false, switchLane = null, effectiveReference = null, realizationDecision = null } = {}) => {
+  const prepare = async (laneId, raw, { signal: externalSignal, retainPrevious = false, switchLane = null, effectiveReference = null, realizationDecision = null, restorationSourceId = null } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || unknown.size || pending.size >= 2) throw failure('instrument-preparation-capacity', 'Lane instrument preparation is unavailable or busy.');
     if (typeof laneId !== 'string' || !laneId || laneId.length > 160) throw new TypeError('Invalid lane identity.');
@@ -31,8 +32,9 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
     const realizedReference = effectiveReference ? validateSoundContentReference(effectiveReference) : reference;
     if (realizedReference.packHash !== reference.packHash) throw failure('realization-pack-conflict', 'A realization must remain in its verified authored group.');
     const key = keyFor(reference), realizedKey = effectiveReference ? keyFor(realizedReference) + '@requested:' + reference.definitionHash : key;
-    const policy = laneInstrumentSwitchPolicy(switchLane || getLane(laneId), reference.definition);
-    const gated = policy.mode !== 'new-notes-only' || policy.boundary !== 'immediate', runtimeKey = gated ? realizedKey + '@switch:' + (serial + 1) : realizedKey;
+    if (restorationSourceId !== null && (typeof restorationSourceId !== 'string' || !restorationSourceId || restorationSourceId.length > 160)) throw failure('invalid-restoration-source', 'Use a bounded immutable historical source owner.');
+    const policy = laneInstrumentSwitchPolicy(restorationSourceId !== null ? { soundChangePolicy: 'new-notes-only', soundChangeBoundary: 'immediate', soundChangeFadeSeconds: 0.02 } : switchLane || getLane(laneId), reference.definition);
+    const gated = policy.mode !== 'new-notes-only' || policy.boundary !== 'immediate', runtimeKey = restorationSourceId !== null ? 'restored-source:' + restorationNamespace + ':' + restorationSourceId : gated ? realizedKey + '@switch:' + (serial + 1) : realizedKey;
     if (routed.hasPendingSwitch?.(laneId)) throw failure('instrument-boundary-pending', 'A committed patch switch is already scheduled. Its accepted score boundary remains fixed.');
     if (!routed.canAssign(runtimeKey)) throw failure('instrument-retirement-capacity', 'Prior held voices still occupy renderer capacity. Choose New notes only to avoid held overlap.');
     if (!Number.isSafeInteger(serial + 1)) throw failure('instrument-identity-exhausted', 'Lane instrument preparation identity is exhausted.');

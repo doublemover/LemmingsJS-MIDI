@@ -39,7 +39,7 @@ const nativeResolution = Object.freeze({
 // router keep their independent leases on the shared output graph.
 /** @param {Partial<import('./PhysicalPlaybackContracts.js').PhysicalPlaybackOptions>} options */
 function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreContext = () => null, renderer = null, resourceBudget = null, world = null, getLanes = () => [], getActorTimbreLocks = () => EMPTY_ACTOR_TIMBRE_LOCKS, isPlaybackEnabled = () => !!audio?.getState?.().enabled,
-  initialMorphMechanism = null, initialCavityBody = null, presentationDelayMs = 24, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, onIntentProvenance = null, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
+  initialMorphMechanism = null, initialCavityBody = null, continuationStaging = false, presentationDelayMs = 24, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, onIntentProvenance = null, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
   if (!Number.isFinite(presentationDelayMs) || presentationDelayMs < 0 || presentationDelayMs > 1000) throw new RangeError('Invalid physical audio presentation delay.');
   /** @param {readonly import('./PhysicalPlaybackContracts.js').PhysicalOutputOwner[]} outputs @returns {boolean} */
   const validOutputs = outputs => Array.isArray(outputs) && outputs.length <= 8 && outputs.every(output => Array.isArray(output?.sinks) && typeof output.enabled === 'function' && typeof output.observe === 'function' && typeof output.dispose === 'function');
@@ -104,7 +104,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     ]);
     if (receipt.outcome !== 'complete') { displayErrors++; displayBlocked = true; } return receipt;
   };
-  const prepareSceneBody = () => { if (sceneMorph && !sceneMorph.state().error && !sceneMorph.isPrepared()) sceneMorph.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (cavityBody) cavityBody.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); };
+  const prepareSceneBody = () => { if (continuationStaging) return; if (sceneMorph && !sceneMorph.state().error && !sceneMorph.isPrepared()) sceneMorph.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (cavityBody) cavityBody.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); };
   const arm = () => {
     if (disposed || !armEnabled || !prepared || !session || !permitted() || !audio?.getState?.().enabled || enableLease) return;
     if (session.getState().enabled) { prepareSceneBody(); return; }
@@ -124,7 +124,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       clock.invalidate(); anchoredEpoch = null; anchoredBpm = null;
       leaseUntil = null; leaseEpoch = null; leaseContext = null;
     }
-    if (state.enabled) { arm(); if (!lastAudioEnabled || context !== lastAudioContext) laneInstruments?.retry(getLanes()).catch(() => {}); }
+    if (state.enabled) { arm(); if (!continuationStaging && (!lastAudioEnabled || context !== lastAudioContext)) laneInstruments?.retry(getLanes()).catch(() => {}); }
     lastAudioEnabled = !!state.enabled; lastAudioContext = context;
   }) || null;
   let bodyBackend = null;
@@ -441,14 +441,19 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))
     ]);
   };
-  return { engine, processBatch, stop, dispose, capturePreparedBodyContinuation, prepareRestorationExecution, restorePreparedBodyContinuation, stageAudioRoutingContinuation, anchorAudioContinuation,
-    audioContinuation: Object.freeze({ sources: () => session?.instrumentSources?.() || [], capture: captureAudioState, captureImage: captureAudioImage, encode: options => session?.encodeAudioImage?.(options), prepare: options => session?.prepareAudioContinuation?.(options), prepareImage: options => session?.prepareAudioImageContinuation?.(options), restore: options => session?.restoreAudioState?.({ ...options, route: 'owner-live' }) }),
+  const api = { engine, processBatch, stop, dispose, capturePreparedBodyContinuation, prepareRestorationExecution, restorePreparedBodyContinuation, stageAudioRoutingContinuation, anchorAudioContinuation,
+    audioContinuation: Object.freeze({ prepareSources: async options => { const { preparePhysicalContinuationSources } = await import('./PhysicalContinuationSources.js'); return preparePhysicalContinuationSources({ owner: api, lanes: getLanes(), ...options }); }, enable: () => session?.enable?.(), context: () => audio?.getAudioContext?.(), assignment: lane => routed?.assignmentBackend(lane) || null,
+      provider: () => audio?.getSoundMaterialProvider?.(), createSource: options => session?.createWorkletInstrumentBackend?.(options),
+      capabilities: () => { const sources = session?.instrumentSources?.() || [], owned = sources.filter(row => typeof row.backend.detachSourceState === 'function'), uncovered = sources.some(row => !owned.includes(row) && row.backend.sourceCaptureStatus?.().quiescent !== true), ready = !!session?.getState().enabled && !!executionEpoch && !initialMorphMechanism && !initialCavityBody && !externalEnabled() && owned.length > 0 && owned.length <= 16 && !uncovered && owned.every(row => row.backend.sourceContentReference?.() && row.backend.renderDiagnostics().readiness === 'ready');
+        return Object.freeze({ ready, externalOutput: externalEnabled(), sceneBody: !!initialMorphMechanism || !!initialCavityBody, ownedSources: owned.length, uncoveredSources: uncovered, sourceEpoch: executionEpoch }); },
+      activate: () => { continuationStaging = false; return true; }, sources: () => session?.instrumentSources?.() || [], capture: captureAudioState, captureImage: captureAudioImage, encode: options => session?.encodeAudioImage?.(options), prepare: options => session?.prepareAudioCutContinuation?.(options), prepareImage: options => session?.prepareAudioImageContinuation?.(options), restore: options => session?.restoreAudioState?.({ ...options, route: 'owner-live' }) }),
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
     isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, synchronizePerformance,
     performanceView: laneId => Object.freeze({ status: lastPerformancePublication?.status || 'unavailable', acousticReceipt: false, outcomes: Object.freeze((lastPerformancePublication?.outcomes || []).filter(outcome => outcome.laneId === laneId)) }), travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: externalEnabled() || permitted() && !!session?.getState().enabled }),
     bindPreparedSurface, preparedSurfaceDefinitions: () => getGraph().preparedSurfaces || [], preparedSurfaceBodies: () => { surfaceBodies?.prune(); return surfaceBodies?.state() || null; }, prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: INSTRUMENT_SWITCH_MODES,
       boundaries: Object.freeze(['immediate', 'next-beat', 'next-bar']), heldFidelity: 'new-realizations;no-phase-or-sample-cursor-transfer', overlap: 'admitted-before-outgoing-release', fallback: 'new-notes-only' }),
+    prepareRestorationLane: (laneId, reference, options) => continuationStaging && laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Historical source preparation requires a fresh staged physical owner.')),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneRealization: laneId => laneInstruments?.synchronizeRealization(laneId) || Promise.resolve(null),
     laneRealizationState: laneId => laneInstruments?.realizationState(laneId) || null,
@@ -467,6 +472,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       sourceRender: requestSourceDiagnostics ? (backend || nativeBackend)?.renderDiagnostics?.({ includeTraces: includeSourceTraces }) || null : null,
       effects: session?.inspectEffectGraph?.({ requestHealth }) || null, preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, scoreMorph: sceneMorph?.state() || null, cavityBody: cavityBody?.state() || null, cavitySourceAdmission: cavityBackend?.cavityDiagnostics() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, laneMix: laneMix.diagnostics(), renderers: routed?.backend.renderDiagnostics() || null }) };
+  return api;
 }
 
 

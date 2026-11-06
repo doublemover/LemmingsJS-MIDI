@@ -171,7 +171,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let writingLegacy = false;
   let worldBusy = false, pendingWorldSettings = null;
   let laneObserver = null;
-  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, physicalFeedback = null, physicalFeedbackView = null, physicalDomainEditor = null, feedbackEpoch = 0, worldInspector = null;
+  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, preparePhysicalAudioReplacement = null, physicalAudioIncarnation = 0, physicalFeedback = null, physicalFeedbackView = null, physicalDomainEditor = null, feedbackEpoch = 0, worldInspector = null;
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null, causalMarkerCheckpoint = null;
   let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0, lastCausalBranchPublication = null, lastWorkerPublication = null;
   const continuationExecutionIdentity = () => lastCausalBranchPublication || lastWorkerPublication ? { ...getActiveExecutionIdentity(), ...(lastCausalBranchPublication ? { physicalBranch: lastCausalBranchPublication } : {}), ...(lastWorkerPublication ? { workerContinuation: lastWorkerPublication } : {}) } : undefined;
@@ -1196,21 +1196,37 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         else if (causalTake && physicalReceiptBoundary) { const recorded = causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary); if (receipt.schema === 'lemmings-effect-performance/v1' && recorded.status !== 'accepted') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' }); }
         if (!physicalReceiptBuffer) { try { if (laneDisplayEvidence.receipt(laneDisplaySource(next.world), receipt)) view?.refreshLaneDisplays?.(); } catch {} }
       };
-      const physicalMidi = createCausalMidiSink({ ports, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes),
-        isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
-      let nextPlayback;
-      physicalPlayback = nextPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, initialCavityBody: boundProject.procgen.sceneOrigin?.recipe.initialCavityBody || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
-        additionalOutputs: [physicalMidi, createCausalNativeMidiSink({ routes: nativeMidiRoutes, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), onReceipt: onPhysicalReceipt }),
-          createCausalNativeMidiSink({ routes: nativeMidiRoutes, mode: 'auxiliary', now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), onReceipt: onPhysicalReceipt })],
-        onIntentProvenance: value => {
-          if (!physicalProvenanceBuffer || physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
-          if (value.kind === 'omitted') { physicalProvenanceDropped += value.count; return; }
-          if (physicalProvenanceBuffer.length < 512) physicalProvenanceBuffer.push(value); else physicalProvenanceDropped++;
-        },
-        getScoreContext: () => ({ meter: playbackProject().transport?.timeSignature || null }), getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), getActorTimbreLocks: () => playbackProject().procgen.actorTimbreLocks || EMPTY_ACTOR_TIMBRE_LOCKS, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
-        onInstrumentState: event => { if (!disposed && nextPlayback && physicalPlayback === nextPlayback && runtime() === next && (event.state === 'unavailable' || event.state === 'retirement-unknown')) status('Lane ' + event.laneId + ' instrument: ' + event.code); },
-        onReceipt: onPhysicalReceipt });
-      void nextPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => { if (!disposed && physicalPlayback === nextPlayback && runtime() === next) status('Saved lane instruments: ' + error.message); });
+      const createPhysicalOwner = ({ staging = false } = {}) => {
+        const physicalMidi = createCausalMidiSink({ ports, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes),
+          isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
+        let nextPlayback;
+        const fresh = nextPlayback = createProcgenPhysicalPlayback({ continuationStaging: staging, initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, initialCavityBody: boundProject.procgen.sceneOrigin?.recipe.initialCavityBody || null, documentEpoch: 'procgen-document-' + documentGeneration + ':audio-' + (++physicalAudioIncarnation), isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+          additionalOutputs: [physicalMidi, createCausalNativeMidiSink({ routes: nativeMidiRoutes, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), onReceipt: onPhysicalReceipt }),
+            createCausalNativeMidiSink({ routes: nativeMidiRoutes, mode: 'auxiliary', now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), onReceipt: onPhysicalReceipt })],
+          onIntentProvenance: value => {
+            if (!physicalProvenanceBuffer || physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
+            if (value.kind === 'omitted') { physicalProvenanceDropped += value.count; return; }
+            if (physicalProvenanceBuffer.length < 512) physicalProvenanceBuffer.push(value); else physicalProvenanceDropped++;
+          },
+          getScoreContext: () => ({ meter: playbackProject().transport?.timeSignature || null }), getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), getActorTimbreLocks: () => playbackProject().procgen.actorTimbreLocks || EMPTY_ACTOR_TIMBRE_LOCKS, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+          onInstrumentState: event => { if (!disposed && nextPlayback && physicalPlayback === nextPlayback && runtime() === next && (event.state === 'unavailable' || event.state === 'retirement-unknown')) status('Lane ' + event.laneId + ' instrument: ' + event.code); },
+          onReceipt: onPhysicalReceipt });
+        if (!staging) void nextPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => { if (!disposed && physicalPlayback === nextPlayback && runtime() === next) status('Saved lane instruments: ' + error.message); });
+        return fresh;
+      };
+      physicalPlayback = createPhysicalOwner();
+      preparePhysicalAudioReplacement = async ({ semanticState = null, signal = null, isCurrent = () => true } = {}) => {
+        const previous = physicalPlayback, fresh = createPhysicalOwner({ staging: true }); let published = false;
+        try {
+          signal?.throwIfAborted(); if (!isCurrent() || runtime() !== next || physicalPlayback !== previous) throw new Error('The physical audio source changed before staging.');
+          if (!await fresh.ready() || !await fresh.audioContinuation.enable()) throw new Error('The fresh physical audio session could not prepare its exact context.');
+          signal?.throwIfAborted(); if (!isCurrent() || runtime() !== next || physicalPlayback !== previous) throw new Error('The physical audio source changed during staging.');
+          fresh.engine.restore(semanticState); physicalPlayback = fresh; published = true;
+          const receipt = previous?.dispose(); await receipt?.completion;
+          if (receipt?.outcome && receipt.outcome !== 'complete') throw Object.assign(new Error('The captured outgoing physical audio owner retains unresolved ownership.'), { retirement: receipt });
+          return fresh;
+        } catch (error) { if (!published) { const receipt = fresh.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; } else error.preparedPhysicalOwner = fresh; throw error; }
+      };
       if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
       if (typeof next.world.step === 'function') physicalFeedback = createPhysicalFeedbackController({ world: next.world, resourceBudget, getGraph: () => project.procgen.physicalGraph, recordInput: (input, boundary) => causalTake ? causalTake.recordInput(input, boundary) : { status: 'accepted' }, onStatus: status, onFailure: () => { transport.pause(); physicalPlayback?.stop(); } });
       const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };

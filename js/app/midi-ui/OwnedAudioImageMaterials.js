@@ -65,6 +65,7 @@ async function openWithMaterials(options, prepare) {
   try { await join(inspection.release()); } catch (error) { failure ||= error; }
   if (failure) { if (result?.release) { try { await join(result.release()); } catch (error) { failure.resultRetirement = error.retirement || error; } } throw failure; } return result;
 }
+export const prepareMaterializedAudioCut = (options = {}, prepare) => { if (typeof prepare !== 'function' || !options.cut) fail('Prepare one retained cut with its complete immutable source references.'); return withMaterials(options.sources, options, sources => prepare(options.cut, sources)); };
 export const openMaterializedAudioImage = (options = {}) => openWithMaterials(options, null);
 export const prepareMaterializedAudioImage = (options = {}, prepare) => {
   if (typeof prepare !== 'function') fail('A complete image continuation preparer is required.'); return openWithMaterials(options, prepare);
