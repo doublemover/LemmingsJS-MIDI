@@ -35,7 +35,7 @@ export function createLiveLocalInstrumentSink({ audio, resourceBudget = null, no
     instruments = createLaneInstrumentPreparation({ session, routed, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider(), onState: value => report({ status: value.state, trackId: value.laneId, reason: value.code }) });
   })();
   const prepare = async next => {
-    check(); config = next; tracks = localInstrumentTracks(next); if (!tracks.length && !initialized) return true; if (tracks.length > 16) throw failure('local-instrument-capacity', 'Use at most sixteen distinct local instrument tracks.');
+    check(); config = next; tracks = localInstrumentTracks(next); if (!tracks.length && !initialized) return true; if (tracks.length > 1024 || new Set(tracks.map(track => keyFor(track.instrumentRef))).size > 16) throw failure('local-instrument-capacity', 'Use at most sixteen distinct local instruments across the active tracks.');
     const liveTrackIds = new Set(tracks.map(track => track.id)); for (const id of trackInstances.keys()) if (!liveTrackIds.has(id)) trackInstances.delete(id);
     for (const track of tracks) if (!trackInstances.has(track.id)) trackInstances.set(track.id, ++nextTrackInstance);
     preparing++; report({ status: 'preparing' });

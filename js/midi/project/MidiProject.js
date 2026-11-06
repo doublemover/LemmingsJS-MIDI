@@ -1,3 +1,4 @@
+import { validateMidiLocalInstrumentMigration } from '../content/MidiLocalInstrumentMigration.js';
 import { validateSoundContentReference } from '../content/SoundContentReference.js';
 import { validateInstrumentControls } from '../content/InstrumentPerformance.js';
 import { recordProcgenProjectChange } from '../../app/procgen/workstation/ProcgenProjectIndex.js';
@@ -694,6 +695,7 @@ function sanitizeMidiProject(project = {}) {
     transport: sanitizeTransport(source.transport),
     global: sanitizeGlobal(source.global),
     ...(source.procgen ? { procgen: sanitizeProcgenWorkstation(source.procgen) } : {}),
+    ...(source.localInstrumentMigration ? { localInstrumentMigration: validateMidiLocalInstrumentMigration(source.localInstrumentMigration) } : {}),
     ...(sanitizeMidiEnsemble(source.ensemble, trackIds) ? { ensemble: sanitizeMidiEnsemble(source.ensemble, trackIds) } : {}),
     tracks,
     sources,

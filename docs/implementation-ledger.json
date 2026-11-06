@@ -7590,5 +7590,33 @@
       "Continuous physical travel/timbre/macro interfaces remain engine-specific. Note-only event preview refuses unsupported physical interfaces instead of creating movement.",
       "Run consolidated runtime/render/native-browser validation after remaining development. No audible or acceptance qualification is claimed by this implementation record."
     ]
+  },
+  "continuation471": {
+    "date": "2026-11-06",
+    "agent": "rook",
+    "issues": [
+      973,
+      971,
+      1111
+    ],
+    "scope": "Convert legacy event-track local sounds to explicit authored native references as one reviewable project edit.",
+    "implementation": [
+      "The sound editor adds Use native defaults for tracks without selected local instruments. A pure bounded conversion plan chooses existing authored foundation, FM, pluck, choir, spectrum and modal recipes; the existing NativeSoundSelection owner compiles and pins their exact engine/definition revisions. No new parallel preset catalog or synth is introduced.",
+      "Conversion prepares every required source before publishing one project/history edit. Existing native references remain selected. Failure or project replacement leaves the current project unchanged; compiled source readers and reservations remain owned through retirement.",
+      "The versioned persisted receipt lists original external programs, selected native revisions/hashes and explicit approximation notices. Note/scale, duration/gate, strength/reduction and release-velocity mapping semantics are retained; legacy attack/sustain keys are never reinterpreted as DSP seconds. External programs/routing and physical world are preserved.",
+      "Percussion defaults explicitly select an authored metallic body and disclose that GM kit articulations are not emulated; the existing prepared kit selector supplies actual kick/snare/hat voices separately. Native defaults are a deliberate conversion, not a claim of bit-identical GM timbre.",
+      "Live local capacity now counts distinct renderer definitions rather than track count, allowing shared instruments across up to1024routes under the existing sixteen-child renderer bound and shared voice/resource budgets. Conversion handles the full supported64event tracks and prunes receipts for removed targets."
+    ],
+    "validation": {
+      "format": "passed",
+      "functionalTests": "intentionally deferred until all remaining feature work is implemented per user instruction",
+      "nativeExecution": "not run",
+      "fullSuiteExecution": "not run",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Remove the obsolete unpinned local source-preview facade and migrate its remaining production consumers in this cutover phase.",
+      "Consolidated runtime/audio/browser validation follows remaining development. No listening quality or timbre equivalence is claimed."
+    ]
   }
 }

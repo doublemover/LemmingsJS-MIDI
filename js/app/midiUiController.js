@@ -321,6 +321,7 @@ const createMidiUiController = ({
   let localAudio = null;
   let auditionAudio = null;
   let localInstrumentLibrary = null, localInstrumentLibraryLoading = null, localInstrumentTarget = null, localDocumentEpoch = 0;
+  let localInstrumentMigration = null, localMigrationPending = false;
   let masterVolume = DEFAULT_MASTER_VOLUME;
   const auditionSteps = new Map();
   let localGamePreview = null;
@@ -2494,6 +2495,23 @@ const createMidiUiController = ({
     const current = ensureProject(), source = selectedSource(), roleId = document?.getElementById('midiSoundPreviewRole')?.value;
     return current.tracks.find(track => track.id === (roleId || source?.trackId)) || null;
   };
+  const convertLocalInstrumentDefaults = async () => {
+    if (disposed || localMigrationPending) return false;
+    const source = ensureProject(), epoch = localDocumentEpoch; localMigrationPending = true;
+    const button = document?.getElementById('midiLocalInstrumentConvert'); if (button) button.disabled = true;
+    try {
+      const { createMidiLocalInstrumentMigration } = await import('./midi-ui/MidiLocalInstrumentMigration.js');
+      if (disposed || localDocumentEpoch !== epoch || ensureProject() !== source) return false;
+      const fetchSource = window?.fetch ? window.fetch.bind(window) : globalThis.fetch?.bind(globalThis);
+      localInstrumentMigration ||= createMidiLocalInstrumentMigration({ fetch: fetchSource, resourceBudget });
+      setStatus('Preparing authored native defaults…');
+      const converted = await localInstrumentMigration.prepare(source, { isCurrent: () => !disposed && localDocumentEpoch === epoch && ensureProject() === source });
+      if (disposed || localDocumentEpoch !== epoch || ensureProject() !== source) return false;
+      if (converted.changed) commitProject(converted.project);
+      const approximate = converted.plan.entries.filter(entry => entry.notices.length).length;
+      setStatus(converted.changed ? 'Native defaults assigned as one edit. External MIDI programs and event timing are preserved.' + (approximate ? ' ' + approximate + ' tracks use declared native timbre approximations; choose a prepared kit for distinct drum articulations.' : '') : 'Every track already has a selected local instrument.'); return true;
+    } finally { localMigrationPending = false; if (button && !disposed) button.disabled = false; }
+  };
   const openLocalInstrumentLibrary = async () => {
     const source = selectedSource(), track = localInstrumentTrack(); if (!source || !track || disposed) return false;
     if (!auditionAudio) auditionAudio = createLocalAudioOwner('audition');
@@ -2627,6 +2645,7 @@ const createMidiUiController = ({
     setText(document?.getElementById('midiLocalInstrumentName'), localDefinition ? localDefinition.name + ' · revision ' + localDefinition.revision : 'Source preview');
     const clearLocal = document?.getElementById('midiLocalInstrumentClear'); if (clearLocal) clearLocal.hidden = !localDefinition;
     const chooseLocal = document?.getElementById('midiLocalInstrument'); if (chooseLocal) chooseLocal.disabled = !source;
+    const convertLocal = document?.getElementById('midiLocalInstrumentConvert'); if (convertLocal) { convertLocal.hidden = current.tracks.every(track => !!track.instrumentRef); convertLocal.disabled = localMigrationPending; }
     setText(document?.getElementById('midiSoundTitle'), source ? `${eventLabel} sound` : eventLabel);
     setText(document?.getElementById('midiActiveKeySummary'), `Key: ${KEY_ROOT_LABELS[current.global.scale.root] || 'C'} ${SCALE_LABELS[current.global.scale.name] || current.global.scale.name}`);
     setChecked(document?.getElementById('midiSoundEnabled'), source?.enabled);
@@ -2973,6 +2992,7 @@ const createMidiUiController = ({
       renderLocalSummary();
     });
     bindById('midiSoundPreview', 'click', () => testSelectedSound());
+    bindById('midiLocalInstrumentConvert', 'click', () => { void convertLocalInstrumentDefaults().catch(error => { if (!disposed) setStatus(error.message); }); });
     bindById('midiLocalInstrument', 'click', () => { void openLocalInstrumentLibrary().catch(error => { if (!disposed) setStatus(error.message); }); });
     bindById('midiLocalInstrumentClear', 'click', () => { const track = localInstrumentTrack(); if (track) dispatchProjectIntent({ type: 'track.update', trackId: track.id, patch: { instrumentRef: null, instrumentControls: null } }); });
     bindById('midiSoundPreviewRole', 'change', renderSoundEditor);
@@ -3569,6 +3589,7 @@ const createMidiUiController = ({
     workbench?.dispose(); eventClipEditor?.dispose(); gameEventRows.clear();
     localInteraction += 1;
     getLemmings()?.setLocalAudioStopHandler?.(null);
+    localInstrumentMigration?.dispose();
     if (localInstrumentLibrary) void Promise.resolve(localInstrumentLibrary.dispose()).catch(() => {});
     auditionAudio?.dispose?.();
     auditionSteps.clear();
