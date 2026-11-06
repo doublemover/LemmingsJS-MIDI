@@ -46,3 +46,28 @@ native closure is reported.
 The target compiles and links on the development Windows x64 machine. Native
 execution, loopback, callback timing, cross-platform device behavior and DAW
 recording remain reserved for consolidated validation.
+
+Start the paired loopback service with npm run start:native-midi after building.
+The launcher prints a single-use local pairing code, valid for two minutes.
+Enter it only in the application. Local terminal commands pair, revoke and quit
+rotate the code, revoke application sessions and stop the service. Credentials
+are never placed in URLs or persisted. Configure exact comma-separated
+--origins values when the application uses a different address; the default
+grants only localhost:8080 and 127.0.0.1:8080. The socket binds to 127.0.0.1,
+accepts only its literal Host and /midi path, and requires a granted Origin.
+
+For an HTTPS application, supply both --cert and --key for a locally trusted
+WSS endpoint. Browser security settings remain unchanged. A plain HTTP desktop
+development application can use the default loopback WS URL.
+
+NativeMidiBridgeClient exposes explicit connect, enumerate, open, publish,
+sendBatch, cancelExecution and closeGrant operations. Batches use a versioned
+40-byte little-endian header, declared complete UMP words and bounded causal
+metadata. The native process owns scheduling; browser clock samples map
+performance timestamps to its monotonic domain with a bounded freshness and
+uncertainty policy. Queued receipts do not resolve driver-submission promises.
+Reconnect always creates a new session and never replays prior queued work.
+Socket heartbeats cannot replace application heartbeats or device sensing.
+
+The bridge/client are implemented; application routing and final security,
+browser and native integration qualification remain outstanding.
