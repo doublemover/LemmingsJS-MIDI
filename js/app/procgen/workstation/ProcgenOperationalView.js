@@ -1,24 +1,36 @@
+/** @typedef {{ control: HTMLButtonElement, origin: { parent: ParentNode | null, next: ChildNode | null, description: string | null, title: string, disabled: boolean }, label: string }} ControlLease */
+/** @type {WeakMap<HTMLButtonElement, ControlLease>} */
 const controlOwners = new WeakMap();
 
+/** @param {import('./ProcgenOperationalContracts.js').OperationalViewOptions} options */
 export function createProcgenOperationalView({ document, readSnapshot, performAction, cancelOperation = () => false, onStatus = () => {} }) {
+  /** @template {keyof HTMLElementTagNameMap} K @param {K} tag @param {string | null} [text] @param {string} [className] @returns {HTMLElementTagNameMap[K]} */
   const node = (tag, text, className) => { const element = document.createElement(tag); if (text) element.textContent = text; if (className) element.className = className; return element; };
   const element = node('section', null, 'studio-operational'); element.setAttribute('aria-label', 'World, music and output status');
   const atoms = node('div', null, 'studio-operational-atoms'), world = node('span'), music = node('span'), output = node('span'), clock = node('span'); atoms.append(world, music, output, clock);
   const message = node('output', null, 'studio-operational-message'); message.id = 'procgenOperationalMessage'; message.setAttribute('role', 'status'); message.setAttribute('aria-live', 'polite'); message.setAttribute('aria-atomic', 'true');
   const primary = node('button'); primary.type = 'button'; primary.hidden = true;
   const details = node('details', null, 'studio-operational-details'), summary = node('summary', 'Status details'), facts = node('dl'); details.append(summary, facts);
-  const controls = node('div', null, 'studio-operational-actions'), borrowed = [];
+  const controls = node('div', null, 'studio-operational-actions');
+  /** @type {ControlLease[]} */
+  const borrowed = [];
   for (const id of ['procgenListen', 'procgenPanic']) {
-    const control = document.getElementById(id); if (!control) continue;
+    const candidate = document.getElementById(id); if (candidate?.tagName !== 'BUTTON') continue;
+    const control = /** @type {HTMLButtonElement} */ (candidate);
     const previous = controlOwners.get(control), lease = { control, origin: previous?.origin || { parent: control.parentNode, next: control.nextSibling, description: control.getAttribute('aria-describedby'), title: control.title, disabled: control.disabled }, label: previous?.label ?? control.textContent };
     borrowed.push(lease); controlOwners.set(control, lease);
     control.setAttribute('aria-describedby', [lease.origin.description, message.id].filter(Boolean).join(' ')); controls.append(control);
   }
   const operations = node('div', null, 'studio-operation-list'); operations.setAttribute('aria-label', 'Current operations');
   controls.append(primary); element.append(atoms, message, controls, operations, details);
-  let disposed = false, snapshot = null, busy = false;
+  let disposed = false, busy = false;
+  /** @type {import('./ProcgenOperationalContracts.js').OperationalSnapshot | null} */
+  let snapshot = null;
+  /** @param {Element} target @param {string} value */
   const write = (target, value) => { if (target.textContent !== value) target.textContent = value; };
+  /** @type {Map<string, { element: HTMLDivElement, label: HTMLSpanElement, cancel: HTMLButtonElement }>} */
   const operationRows = new Map();
+  /** @param {import('./ProcgenOperationalContracts.js').OperationalSnapshot} current */
   const renderOperations = current => {
     const active = current.operations || [];
     for (const [id, row] of operationRows) if (!active.some(operation => operation.id === id)) { row.element.remove(); operationRows.delete(id); }
@@ -45,9 +57,11 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
   for (const label of ['World rate', 'Musical tempo', 'Browser context', 'Note destination', 'Clock roles', 'Controller evidence', 'Bridge evidence', 'Output pressure', 'Evidence limit']) {
     const title = node('dt', label), value = node('dd'); facts.append(title, value); rows.set(label, value);
   }
+  /** @param {import('./ProcgenOperationalContracts.js').OperationalActionId} id */
   const nativeAction = id => ['listen', 'activate', 'discover'].includes(id);
   const listenLease = borrowed.find(value => value.control.id === 'procgenListen');
   const ownedListen = () => listenLease && controlOwners.get(listenLease.control) === listenLease ? listenLease.control : null;
+  /** @param {import('./ProcgenOperationalContracts.js').OperationalSnapshot | null} current */
   const presentOutput = current => {
     const listen = ownedListen(); if (!listen) return false;
     const action = current?.recoveryAction, native = action && nativeAction(action.id);
@@ -55,6 +69,7 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
     if (current) listen.disabled = current.nativeOutputActionAllowed === false;
     listen.dataset.operationalAction = native ? action.id : 'output-toggle'; return true;
   };
+  /** @param {import('./ProcgenOperationalContracts.js').OperationalSnapshot | null} current */
   const render = current => {
     if (disposed) return;
     if (!current) { write(message, snapshot?.blockedReason.severity === 'error' ? snapshot.blockedReason.message + ' Status refresh is unavailable.' : 'Operational status is unavailable. Use the dedicated controls.'); primary.hidden = true; return; }
@@ -86,6 +101,7 @@ export function createProcgenOperationalView({ document, readSnapshot, performAc
     finally { busy = false; if (!disposed) render(readSnapshot()); }
   });
   return Object.freeze({ element, render,
+    /** @param {string} label */
     presentOutputLabel(label) {
       if (disposed || !ownedListen() || typeof label !== 'string' || label.length > 240) return false;
       listenLease.label = label; return presentOutput(readSnapshot());

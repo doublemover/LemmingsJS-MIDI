@@ -1,7 +1,13 @@
 const summaries = new WeakMap();
+/** @param {unknown} error */
+const errorMessage = error => text(error && typeof error === 'object' && 'message' in error ? error.message : error);
+/** @param {unknown} value @param {string} [fallback] */
 const text = (value, fallback = '') => typeof value === 'string' ? value.slice(0, 240) : fallback;
-const number = value => Number.isFinite(value) && value >= 0 ? value : null;
+/** @param {unknown} value @returns {number | null} */
+const number = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+/** @template T @param {T} value @returns {Readonly<T>} */
 const freeze = value => Object.freeze(value);
+/** @param {NonNullable<import('./ProcgenOperationalContracts.js').OperationalSource['lanes']>} lanes */
 const laneSummary = lanes => {
   if (!Array.isArray(lanes)) return freeze({ count: 0, muted: false, patterns: 0 });
   const cached = summaries.get(lanes); if (cached) return cached;
@@ -10,6 +16,7 @@ const laneSummary = lanes => {
   const value = freeze({ count: lanes.length, muted: lanes.length > 0 && !audible, patterns }); summaries.set(lanes, value); return value;
 };
 
+/** @param {import('./ProcgenOperationalContracts.js').OperationalSource} [source] @returns {import('./ProcgenOperationalContracts.js').OperationalSnapshot} */
 export function createProcgenOperationalSnapshot({ simulation = {}, transport = {}, output = {}, midi = {}, physical = null, lanes = [], storage = {}, recovery = {}, stage = false, identity = '', documentIdentity = identity, documentRevision = 0, operations = [] } = {}) {
   if (typeof identity !== 'string' || identity.length > 1024) throw new Error('Invalid operational source identity.');
   const mix = laneSummary(lanes), hardware = output.selectedBackend === 'midi', audio = output.audio || {}, selectedId = output.selectedOutputId || output.outputId || null;
@@ -19,9 +26,12 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
   const routeState = !hardware ? 'not-selected' : output.enabled && route?.active ? 'active' : output.status === 'starting' ? 'preparing' : selectedId && (route?.available === false || output.failureKind === 'destination-missing') ? 'lost' :
     selectedId ? 'selected' : output.discoveredOutputCount > 0 ? 'discovered' : 'undiscovered';
   const contextState = text(audio.contextState, 'unreported'), permission = text(output.midiPermission, 'unknown');
-  const sensing = midi.inputLiveness || {}, pressure = midi.pressure || null, blockers = [];
+  const sensing = midi.inputLiveness || {}, pressure = midi.pressure || null;
+  /** @type {import('./ProcgenOperationalContracts.js').OperationalBlocker[]} */
+  const blockers = [];
   const observationDomain = text(sensing.observationDomain, 'unreported'), lastTrafficTime = number(sensing.lastTrafficTime), reportedAt = number(transport.timestamp);
   const evidenceAgeMs = observationDomain === 'performance-now' && lastTrafficTime !== null && reportedAt !== null && reportedAt >= lastTrafficTime ? reportedAt - lastTrafficTime : null;
+  /** @param {number} priority @param {import('./ProcgenOperationalContracts.js').OperationalBlockerCode} code @param {string} message @param {import('./ProcgenOperationalContracts.js').OperationalBlocker['action']} [action] */
   const add = (priority, code, message, action = null) => blockers.push({ priority, code, message, action });
   if (storage.error) add(110, 'storage-error', 'Project save failed. The current edits remain unsaved.', ['export', 'Prepare a backup file']);
   if (recovery.state === 'unavailable' || recovery.error) add(105, 'recovery-error', 'Recovery could not be saved. Keep the current project open and prepare a backup.', ['export', 'Prepare a backup file']);
@@ -60,10 +70,11 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
   if (!blockers.length && output.enabled && physical && !mix.patterns && physical.accepted === 0 && physical.rejected === 0 && physical.degraded === 0)
     add(10, 'no-source-events', 'No eligible physical source event has been observed yet. No hidden test note is played.', recovery.lessonAvailable === true ? ['lesson', 'Open an isolated lesson'] : ['inspect-physical', 'Review physical mappings']);
   blockers.sort((left, right) => right.priority - left.priority);
-  const blocker = blockers[0] || { code: 'ready', message: output.enabled ? 'Output admission is enabled. Waiting between events is normal; acoustic delivery is unverified.' : 'Output state is unavailable.', action: null };
+  /** @type {import('./ProcgenOperationalContracts.js').OperationalBlocker} */
+  const blocker = blockers[0] || { priority: 0, code: 'ready', message: output.enabled ? 'Output admission is enabled. Waiting between events is normal; acoustic delivery is unverified.' : 'Output state is unavailable.', action: null };
   let action = blocker.action;
   if (stage && action && ['inspect-midi', 'inspect-clock', 'review-output', 'review-backend', 'inspect-physical', 'inspect-mix', 'lesson', 'activate', 'export', 'startup-fresh'].includes(action[0])) action = ['exit-stage', 'Exit Stage to review'];
-  const conditions = blockers.filter(value => value.priority >= 85 && !['world-preparing', 'output-preparing', 'audio-preparing'].includes(value.code)).map(value => freeze({ code: value.code, message: text(value.message), severity: 'error', priority: value.priority, scope: value.code.startsWith('storage') || value.code.startsWith('recovery') ? 'storage' : 'output', target: JSON.stringify(['storage-error', 'recovery-error', 'world-failed'].includes(value.code) ? [documentIdentity, value.code] : [documentIdentity, value.code, selectedId, route?.connectionEpoch ?? null, midi.inputId || null]), detail: value.code === 'storage-error' ? text(storage.error?.message) : value.code === 'recovery-error' ? text(recovery.error?.message || recovery.error) : '', actionId: stage && value.action ? 'exit-stage' : value.action?.[0] || '', actionLabel: stage && value.action ? 'Exit Stage to review' : value.action?.[1] || '' }));
+  const conditions = blockers.filter(value => value.priority >= 85 && !['world-preparing', 'output-preparing', 'audio-preparing'].includes(value.code)).map(/** @returns {import('./ProcgenOperationalContracts.js').OperationalCondition} */ value => freeze({ code: value.code, message: text(value.message), severity: 'error', priority: value.priority, scope: value.code.startsWith('storage') || value.code.startsWith('recovery') ? 'storage' : 'output', target: JSON.stringify(['storage-error', 'recovery-error', 'world-failed'].includes(value.code) ? [documentIdentity, value.code] : [documentIdentity, value.code, selectedId, route?.connectionEpoch ?? null, midi.inputId || null]), detail: value.code === 'storage-error' ? errorMessage(storage.error) : value.code === 'recovery-error' ? errorMessage(recovery.error) : '', actionId: stage && value.action ? 'exit-stage' : value.action?.[0] || '', actionLabel: stage && value.action ? 'Exit Stage to review' : value.action?.[1] || '' }));
   return freeze({ version: 1, identity, documentIdentity: String(documentIdentity), documentRevision, operations: freeze([...operations]), conditions: freeze(conditions), stage, nativeOutputActionAllowed: simulationState !== 'failed' && (!simulation.preparing || output.enabled) && (!hardware || permission !== 'unavailable') && (!stage || !hardware || output.enabled || !selectedId || action?.[0] === 'discover'),
     simulation: freeze({ state: simulationState, label: simulationState === 'preparing' ? 'World preparing' : simulationState === 'unavailable' ? 'World unavailable' : 'World ' + simulationState,
       requestedSpeed: number(simulation.requestedSpeed), achievedTicksPerSecond: number(simulation.achievedTicksPerSecond), tickDurationMs: number(simulation.tickDurationMs), measurementTime: number(simulation.measurementTime) }),

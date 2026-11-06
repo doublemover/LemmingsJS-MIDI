@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { JSDOM } from 'jsdom';
 import { createProcgenOperationalSnapshot } from '../js/app/procgen/workstation/ProcgenOperationalState.js';
+import { createProcgenOperationView } from '../js/app/procgen/workstation/ProcgenOperationView.js';
 import { createProcgenOperationalView } from '../js/app/procgen/workstation/ProcgenOperationalView.js';
 
 describe('owned operational status presentation', () => {
@@ -59,6 +60,28 @@ describe('owned operational status presentation', () => {
     const button = view.element.querySelector('[data-operational-action=play]'); current = { ...current, identity: 'two' }; button.click();
     expect(calls).to.have.length(0); expect(statuses.at(-1)).to.include('state changed'); button.click(); await Promise.resolve(); expect(calls).to.deep.equal([['play', 'two']]);
     view.dispose(); button.click(); expect(calls).to.have.length(1);
+  });
+  it('leaves non-button placeholder nodes in place and exposes a native recovery button', () => {
+    view.dispose(); document.getElementById('procgenListen').remove(); const placeholder = document.createElement('span'); placeholder.id = 'procgenListen'; document.getElementById('original').append(placeholder);
+    current = createProcgenOperationalSnapshot(); view = createProcgenOperationalView({ document, readSnapshot: () => current, performAction() {} }); document.body.append(view.element); view.render(current);
+    expect(placeholder.parentNode.id).to.equal('original'); expect(view.presentOutputLabel('Listen locally')).to.equal(false); expect(view.element.querySelector('button[data-operational-action=listen]').hidden).to.equal(false);
+  });
+  it('cancels only the current cancelable operation and ignores a removed operation row', () => {
+    const canceled = []; view.dispose(); view = createProcgenOperationalView({ document, readSnapshot: () => current, performAction() {}, cancelOperation: id => canceled.push(id) }); document.body.append(view.element);
+    const operation = (id, phase = 'reading') => createProcgenOperationView({ id, kind: 'import', phase, cancelable: true });
+    current = createProcgenOperationalSnapshot({ operations: [operation('first')] }); view.render(current);
+    const old = view.element.querySelector('[data-operation-id="first"] button');
+    current = createProcgenOperationalSnapshot({ operations: [operation('second')] }); old.click(); expect(canceled).to.have.length(0); expect(old.isConnected).to.equal(false);
+    const active = view.element.querySelector('[data-operation-id="second"] button');
+    current = createProcgenOperationalSnapshot({ operations: [operation('second', 'committing')] }); active.click(); expect(canceled).to.have.length(0); expect(active.hidden).to.equal(true);
+    current = createProcgenOperationalSnapshot({ operations: [operation('second')] }); view.render(current); active.click(); expect(canceled).to.deep.equal(['second']);
+    view.dispose(); active.click(); expect(canceled).to.deep.equal(['second']);
+  });
+  it('does not publish an asynchronous recovery failure to a replaced or disposed source', async () => {
+    let reject; view.dispose(); view = createProcgenOperationalView({ document, readSnapshot: () => current, performAction: () => new Promise((_resolve, fail) => { reject = fail; }), onStatus: text => statuses.push(text) }); document.body.append(view.element); view.render(current);
+    const button = view.element.querySelector('[data-operational-action=play]'); button.click(); expect(button.disabled).to.equal(true); button.click();
+    current = { ...current, identity: 'replacement' }; reject(new Error('old failure')); await Promise.resolve(); await Promise.resolve(); expect(statuses).to.have.length(0); expect(button.disabled).to.equal(false);
+    button.click(); view.dispose(); reject(new Error('retired failure')); await Promise.resolve(); await Promise.resolve(); expect(statuses).to.have.length(0);
   });
   it('retains a critical warning on unavailable refresh and does not create duplicate audio activation controls', () => {
     current = createProcgenOperationalSnapshot({ identity: 'quota', storage: { error: new Error('quota') } }); view.render(current); view.render(null);

@@ -7205,5 +7205,43 @@
       "The 22 native cases are a local Windows Chromium desktop cohort; fresh whole-branch Linux/full-coverage CI follows publication.",
       "No physical MIDI receiver state, acoustic delivery or actual desktop assistive-technology qualification is inferred."
     ]
+  },
+  "continuation460": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "scope": "Type operational sources, published state, commands, operations and native presenter ownership.",
+    "evidence": {
+      "path": "docs/validation/checked-operational-presentation-2026-11-05.json",
+      "bytes": 12720,
+      "sha256": "69992c7a783470fd231a9e31d0fa32a55d592bd7e917136d259c4aca389edda1"
+    },
+    "validation": {
+      "functionalNodeCases": 232,
+      "nativeDesktopCases": 4,
+      "strictInvalidConsumers": 22,
+      "scopedCoverageExitCode": 0,
+      "scopedCoverage": {
+        "lines": 99.06,
+        "functions": 89.47,
+        "branches": 90.65
+      },
+      "formatTypesDependenciesUndefinedProvenance": "passed",
+      "thresholds": "unchanged",
+      "fullLocalSuiteRepeated": false
+    },
+    "source": {
+      "browserPaths": 1296,
+      "browserDigest": "a50d5e827b12497546863fd246d2044e715f6a040c30aea95ea82120c30d3634",
+      "workerFiles": 308,
+      "workerDigest": "0b226c0f0ebbf75d7bc9fe9730a0ca4028ccfdf7aa33e6fb7cf30e00432beb95",
+      "inputPaths": 1656,
+      "byteExact": 1644,
+      "untouchedNewlineMappings": 12
+    },
+    "remaining": [
+      "The new interfaces type the existing observed domain. Numeric times/epochs here are not nominally branded, and readonly types do not establish device capability or physical delivery.",
+      "Opaque native errors remain unknown until narrowed. This is not the complete authored/runtime checkpoint schema and imported-owner audit required by1089.",
+      "Four current-source native cases qualify Windows Chromium desktop behavior; prior22broader native cases retain their separate source-bound receipt. Whole-branch Linux/fullcoverage CI follows publication."
+    ]
   }
 }

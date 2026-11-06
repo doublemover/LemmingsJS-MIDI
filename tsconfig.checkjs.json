@@ -69,6 +69,9 @@
     "js/app/midi-ui/AudioOutputWatch.js",
     "js/app/midi-ui/AudioRuntimeObservation.js",
     "js/app/midi-ui/AudioRuntimeTransition.js",
-    "js/app/midi-ui/AudioRuntimeContracts.d.ts"
+    "js/app/midi-ui/AudioRuntimeContracts.d.ts",
+    "js/app/procgen/workstation/ProcgenOperationalContracts.d.ts",
+    "js/app/procgen/workstation/ProcgenOperationalState.js",
+    "js/app/procgen/workstation/ProcgenOperationalView.js"
   ]
 }

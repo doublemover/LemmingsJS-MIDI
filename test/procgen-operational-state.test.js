@@ -90,6 +90,15 @@ describe('read-only operational blocker and recovery policy', () => {
     input.midi.inputLiveness.observationDomain = 'native-ingress'; expect(createProcgenOperationalSnapshot(input).controller.evidenceAgeMs).to.equal(null);
     input.midi.inputLiveness.observationDomain = 'performance-now'; input.transport.timestamp = 500; expect(createProcgenOperationalSnapshot(input).controller.evidenceAgeMs).to.equal(null);
   });
+  it('keeps opaque host errors bounded without inventing details or losing their blocker', () => {
+    for (const [error, detail] of [[new Error('disk unavailable'), 'disk unavailable'], ['host refused', 'host refused'], [Symbol('opaque'), ''], [{ message: 42 }, ''], [{ message: 'x'.repeat(300) }, 'x'.repeat(240)]]) {
+      for (const owner of ['storage', 'recovery']) {
+        const result = createProcgenOperationalSnapshot({ [owner]: { error } });
+        expect(result.conditions[0]).to.include({ code: owner + '-error', detail, severity: 'error' });
+      }
+    }
+    const ready = createProcgenOperationalSnapshot({ output: { enabled: true }, transport: { playing: true } }); expect(ready.blockedReason).to.include({ code: 'ready', severity: 'info' });
+  });
   it('retains a failed startup blocker without advertising an unavailable recovery or enabling output', () => {
     const input = base(); Object.assign(input.simulation, { failure: 'Asset unavailable', preparing: true, canStartFresh: false });
     const result = createProcgenOperationalSnapshot(input); expect(result.simulation.state).to.equal('failed'); expect(result.blockedReason.code).to.equal('world-failed');
