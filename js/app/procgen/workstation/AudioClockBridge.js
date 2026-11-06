@@ -39,6 +39,18 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
     rebases++;
     return anchor;
   };
+  /** @param {import('./AudioClockContracts.js').AudioFrameAnchorInput} input */
+  const rebaseAtFrame = ({ executionEpoch, scoreEpoch, beat, bpm, audioFrame, reason = 'owned-source-activation-frame' }) => {
+    const context = getContext();
+    if (!runningContext(context) || typeof executionEpoch !== 'string' || !executionEpoch || typeof scoreEpoch !== 'string' || !scoreEpoch || !Number.isFinite(beat) || beat < 0 || !Number.isFinite(bpm) || bpm <= 0 || bpm > 1000000 || !Number.isSafeInteger(audioFrame) || audioFrame < 0) throw new Error('A restored audio anchor needs its actual active frame and matching score execution.');
+    const before = nowMs(), contextSeconds = context.currentTime, after = nowMs();
+    if (!Number.isFinite(before) || !Number.isFinite(after) || after < before || after - before > 20 || Math.abs(audioFrame / context.sampleRate - contextSeconds) > 0.25) throw new Error('The restored activation clock sample is stale or uncertain.');
+    const frameHostMs = (before + after) / 2 + (audioFrame / context.sampleRate - contextSeconds) * 1000;
+    anchor = Object.freeze({ executionEpoch, scoreEpoch, beat, bpm, hostMs: /** @type {import('./AudioClockContracts.js').HostMilliseconds} */ (frameHostMs - presentationDelayMs),
+      contextSeconds: /** @type {import('./AudioClockContracts.js').AudioSeconds} */ (audioFrame / context.sampleRate), correlationHostMs: /** @type {import('./AudioClockContracts.js').HostMilliseconds} */ (frameHostMs),
+      sampleRate: /** @type {import('./AudioClockContracts.js').SampleRateHz} */ (context.sampleRate), uncertaintyMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ ((after - before) / 2), presentationDelayMs, sourceAudioFrame: audioFrame, reason });
+    anchorContext = context; rebases++; return anchor;
+  };
   /** @param {import('./AudioClockContracts.js').ExecutionEpoch} executionEpoch @param {import('./AudioClockContracts.js').ScoreEpoch} scoreEpoch @param {import('./AudioClockContracts.js').TempoBpm} bpm */
   const isAnchored = (executionEpoch, scoreEpoch, bpm) => {
     const context = getContext();
@@ -104,5 +116,5 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
       outputCorrelation });
   };
   const invalidate = () => { anchor = null; anchorContext = null; };
-  return { rebase, isAnchored, toTargetFrame, currentFrame, correlateDisplay, diagnostics, invalidate, getAnchor: () => anchor };
+  return { rebase, rebaseAtFrame, isAnchored, toTargetFrame, currentFrame, correlateDisplay, diagnostics, invalidate, getAnchor: () => anchor };
 }

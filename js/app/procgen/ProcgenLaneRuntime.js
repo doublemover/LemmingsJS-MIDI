@@ -87,9 +87,11 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       isActivated: () => activated && running,
       getOperationalState: () => Object.freeze({ paused, activated, running, clockDriven }),
       setClockDriven(value) { clockDriven = !!value; clockTime = null; elapsed = 0; },
+      anchorClock(time) { const observed = windowRef.performance?.now?.() ?? Date.now(); if (!clockDriven || !running || !activated || paused || !Number.isFinite(time) || !Number.isFinite(observed) || time < observed - 250 || time > observed + 25) throw new Error('The completed-world clock anchor is outside its admitted source window.'); clockTime = time; elapsed = 0; return true; },
       pump(time) {
         if (!clockDriven || !running || !activated) return;
         if (windowRef.document.hidden) { clockTime = null; elapsed = 0; return; }
+        if (!paused && clockTime != null && time < clockTime) { reportActiveCount(); return; }
         if (!paused && clockTime != null) elapsed = advanceProcgenClock(elapsed, Math.max(0, time - clockTime), world.timer.speedFactor,
           () => world.step(time), () => windowRef.performance?.now?.() ?? Date.now());
         clockTime = time; reportActiveCount();

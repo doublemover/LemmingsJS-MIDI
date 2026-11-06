@@ -22,14 +22,14 @@ export function createProcgenTransport(options = {}) {
   const retirement = createProcgenRetirementScope();
   let lastWake = anchorMs, lastClock = null, waitingSince = anchorMs, intervals = [];
   let clockOutput = options.clockOutput || null, reason = 'ready', clockStatus = 'stopped';
-  let outputAdmission = null, clockHorizon = 0, clockStopFailure = null, clockRetirement = null, lastDiscontinuity = null;
+  let outputAdmission = null, clockHorizon = 0, clockStopFailure = null, clockRetirement = null, lastDiscontinuity = null, ownedHold = null, holdSerial = 0, ownedResume = null;
   const beatAt = timestamp => playing && clockSource === 'internal'
     ? Math.min(Number.MAX_SAFE_INTEGER / 24, anchorBeat + Math.max(0, timestamp - anchorMs) * (bpm / 60000)) : anchorBeat;
   const nominalSpeed = () => linked && (speedMode === 'bpm' || clockSource === 'external') ? bpm / 120 : gameSpeed;
   const getState = () => ({ version: 1, playing, timestamp: now(), beat: beatAt(now()), bpm, baseBpm, gameSpeed, speedMode, linked, clockSource, nominalSpeed: nominalSpeed(),
     effectiveSpeed: playing && (clockSource !== 'external' || clockStatus === 'locked')
       ? nominalSpeed() : 0,
-    tempoLocked: clockSource === 'external', clockStatus, reason, lastDiscontinuity });
+    tempoLocked: clockSource === 'external', clockStatus, reason, lastDiscontinuity, ...(ownedResume ? { ownedAudioResume: ownedResume } : {}) });
   const report = () => { const state = getState(); onPosition(state); return state; };
   const speed = () => onSpeed(getState().effectiveSpeed);
   const send = (bytes, timestamp = now(), cleanup = false) => {
@@ -47,7 +47,9 @@ export function createProcgenTransport(options = {}) {
     if ((!admission || clockHorizon > now()) && clearProcgenMidiQueue(clockOutput, admission ? () => admission(true) === true : null)) clockHorizon = 0;
     onFlush(why);
   };
+  const invalidateOwnedHold = reason => { if (ownedHold) { ownedHold.phase = 'invalidated'; ownedHold.reason = reason; ownedHold = null; } ownedResume = null; };
   function halt(why, reset = false) {
+    invalidateOwnedHold(why);
     anchorBeat = reset ? 0 : beatAt(now()); anchorMs = now();
     if (reset) nextPulse = 0;
     const wasPlaying = playing;
@@ -82,7 +84,8 @@ export function createProcgenTransport(options = {}) {
   }
   function play() {
     if (disposed || playing) return getState();
-    playing = true; reason = 'playing'; lastDiscontinuity = null; anchorMs = now(); lastWake = anchorMs; waitingSince = anchorMs;
+    if (ownedHold) throw new Error('Finish or cancel the owned audio continuation before ordinary Play.');
+    ownedResume = null; playing = true; reason = 'playing'; lastDiscontinuity = null; anchorMs = now(); lastWake = anchorMs; waitingSince = anchorMs;
     lastClock = null; intervals = [];
     if (clockSource === 'internal') nextPulse = Math.ceil(anchorBeat * 24 - 1e-9);
     clockStatus = clockSource === 'external' ? 'waiting' : 'internal';
@@ -92,7 +95,7 @@ export function createProcgenTransport(options = {}) {
   }
   function seek(beat) {
     if (disposed) return getState();
-    flush('seek'); anchorBeat = finite(beat, 0, 0, 1e9); anchorMs = now();
+    invalidateOwnedHold('seek'); flush('seek'); anchorBeat = finite(beat, 0, 0, 1e9); anchorMs = now();
     nextPulse = Math.ceil(anchorBeat * 24 - 1e-9); lastClock = null; intervals = [];
     waitingSince = anchorMs;
     send(songPositionBytes(anchorBeat));
@@ -100,6 +103,7 @@ export function createProcgenTransport(options = {}) {
   }
   function configure(settings = {}) {
     if (disposed) return getState();
+    invalidateOwnedHold('transport-configured');
     const nextSource = settings.clockSource === 'external' ? 'external' : settings.clockSource === 'internal' ? 'internal' : clockSource;
     if (nextSource !== clockSource) { halt('clock-source-changed'); nextPulse = Math.ceil(anchorBeat * 24 - 1e-9); }
     const current = beatAt(now());
@@ -150,12 +154,32 @@ export function createProcgenTransport(options = {}) {
     lastClock = timestamp; clockStatus = 'locked'; anchorBeat = nextPulse++ / 24; anchorMs = timestamp; speed();
     onBeat({ beat: anchorBeat, timestamp, bpm, source: 'external' }); report(); return true;
   }
+  const holdForOwnedAudio = () => {
+    if (disposed || !playing || clockSource !== 'internal' || ownedHold || !Number.isSafeInteger(holdSerial + 1)) throw new Error('An owned audio cut requires the active internally clocked performance.');
+    halt('owned-audio-cut');
+    const entry = ownedHold = { id: ++holdSerial, beat: anchorBeat, bpm, nominalSpeed: nominalSpeed(), phase: 'held', reason: null };
+    const current = () => ownedHold === entry && !disposed && !playing && clockSource === 'internal' && bpm === entry.bpm && anchorBeat === entry.beat;
+    return Object.freeze({ schema: 'lemmings-owned-audio-transport-hold/v1', isCurrent: current, metadata: () => Object.freeze({ ...entry }),
+      resumeAt({ hostMs, audioFrame = null, sampleRate = null, maxBackdateMs = 100, beforeResume = () => {} } = {}) {
+        const observedHostMs = now(), delayMs = observedHostMs - hostMs;
+        if (!current() || !Number.isFinite(hostMs) || !Number.isFinite(observedHostMs) || !Number.isFinite(maxBackdateMs) || maxBackdateMs < 0 || maxBackdateMs > 250 || delayMs < -25 || delayMs > maxBackdateMs ||
+            typeof beforeResume !== 'function' || audioFrame !== null && (!Number.isSafeInteger(audioFrame) || audioFrame < 0 || ![44100, 48000, 96000].includes(sampleRate))) throw new Error('The restored activation clock is stale or outside its bounded resume window.');
+        const receipt = Object.freeze({ id: entry.id, hostMs, observedHostMs, delayMs, audioFrame, sampleRate, beat: entry.beat, bpm: entry.bpm, clock: 'owned-audio-frame-to-internal-host', acousticReceipt: false });
+        const acknowledged = beforeResume(receipt); if (acknowledged === false || acknowledged && typeof acknowledged.then === 'function') { if (acknowledged?.then) Promise.resolve(acknowledged).catch(() => {}); throw new Error('Owned continuation resume must acknowledge its source/clock boundary synchronously.'); }
+        if (!current()) throw new Error('The owned continuation changed before transport activation.');
+        entry.phase = 'resumed'; ownedHold = null; ownedResume = receipt; playing = true; reason = 'owned-audio-resumed'; lastDiscontinuity = null; anchorMs = hostMs; lastWake = waitingSince = observedHostMs; lastClock = null; intervals = [];
+        nextPulse = Math.ceil(anchorBeat * 24 - 1e-9); clockStatus = 'internal';
+        if (anchorBeat === 0) send([0xfa]); else { send(songPositionBytes(anchorBeat)); send([0xfb]); }
+        speed(); driver.start(pump); return Object.freeze({ ...receipt, status: 'accepted', stage: 'owned-audio-transport-resumed', state: pump() });
+      },
+      cancel() { if (!current()) return false; halt('owned-audio-cut-canceled'); return true; } });
+  };
   const snapshot = () => ({ ...getState(), playing: false, nextPulse });
   return {
-    configure, update: configure, play, pause: () => halt('paused'), stop: () => halt('stopped', true),
+    configure, update: configure, play, holdForOwnedAudio, pause: () => halt('paused'), stop: () => halt('stopped', true),
     seek, receiveMidi, pump, getState, snapshot,
     diagnostics: () => Object.freeze({ driver: driver.diagnostics?.() ?? null, reason, clockStatus,
-      lastWake, lastClock, waitingSince, clockOutputHorizon: clockHorizon, clockStopFailure }),
+      lastWake, lastClock, waitingSince, ownedAudioHold: ownedHold ? { ...ownedHold } : null, ownedAudioResume: ownedResume, clockOutputHorizon: clockHorizon, clockStopFailure }),
     panic: () => halt('panic'),
     suspend: () => halt('suspended'),
     setClockOutput(port, { preserveExternal = false } = {}) {

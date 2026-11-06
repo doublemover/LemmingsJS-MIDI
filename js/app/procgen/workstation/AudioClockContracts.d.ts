@@ -32,6 +32,7 @@ export interface AudioClockAnchorInput {
   bpm: TempoBpm;
   reason?: string;
 }
+export interface AudioFrameAnchorInput extends Omit<AudioClockAnchorInput, 'hostMs'> { audioFrame: AudioFrame }
 export interface AudioClockAnchor {
   readonly executionEpoch: ExecutionEpoch;
   readonly scoreEpoch: ScoreEpoch;
@@ -44,6 +45,7 @@ export interface AudioClockAnchor {
   readonly uncertaintyMs: DurationMilliseconds;
   readonly presentationDelayMs: DurationMilliseconds;
   readonly reason: string;
+  readonly sourceAudioFrame?: AudioFrame;
 }
 export interface DisplayClockRequest { executionEpoch: ExecutionEpoch; contextEpoch: number }
 export interface DisplayClockCorrelation {
@@ -72,6 +74,7 @@ export interface AudioClockDiagnostics {
 }
 export interface AudioClockBridge {
   rebase(input: AudioClockAnchorInput): AudioClockAnchor;
+  rebaseAtFrame(input: AudioFrameAnchorInput): AudioClockAnchor;
   isAnchored(executionEpoch: ExecutionEpoch, scoreEpoch: ScoreEpoch, bpm: TempoBpm): boolean;
   toTargetFrame(scoreTime: { epoch: ScoreEpoch; beat: ScoreBeats }, executionEpoch: ExecutionEpoch): AudioFrame | null;
   currentFrame(): AudioFrame | null;

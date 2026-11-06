@@ -229,6 +229,12 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     const timing = state.timeTransform ? dispatcher.restoreTimeTransform(state.timeTransform, { executionEpoch }) : null;
     return Object.freeze({ preparedBodies: restored, finiteSources: finite, timeTransform: timing, routing, outputRequested: false });
   };
+  const anchorAudioContinuation = ({ audioFrame = null, bpm = 120 } = {}) => {
+    if (!executionEpoch || !world || typeof world !== 'object' || !('worldId' in world) || !('generation' in world) || !('tickIndex' in world) || typeof world.worldId !== 'string' || typeof world.generation !== 'number' || typeof world.tickIndex !== 'number' || !Number.isSafeInteger(world.tickIndex) || previousWorldId !== world.worldId || previousGeneration !== world.generation) throw new Error('Prepare the matching physical execution before anchoring its restored audio frame.');
+    const score = scoreTimeline.map({ simTick: world.tickIndex });
+    const anchor = clock.rebaseAtFrame({ executionEpoch, scoreEpoch: score.epoch, beat: score.beat, bpm: /** @type {import('./AudioClockContracts.js').TempoBpm} */ (bpm), audioFrame });
+    anchoredEpoch = score.epoch; anchoredBpm = sourceTempoBpm = bpm; effectClockAnchor = null; return anchor;
+  };
   const captureAudioState = (options = {}) => {
     if (!session?.detachAudioState || disposed) throw new Error('The current physical owner cannot capture its audio cone.');
     if (cavityBackend && (cavityBackend.cavityDiagnostics().pending || cavityBackend.cavityDiagnostics().producers)) throw new Error('Finish deferred cavity source admission before capturing its owned audio boundary.');
@@ -435,7 +441,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))
     ]);
   };
-  return { engine, processBatch, stop, dispose, capturePreparedBodyContinuation, prepareRestorationExecution, restorePreparedBodyContinuation, stageAudioRoutingContinuation,
+  return { engine, processBatch, stop, dispose, capturePreparedBodyContinuation, prepareRestorationExecution, restorePreparedBodyContinuation, stageAudioRoutingContinuation, anchorAudioContinuation,
     audioContinuation: Object.freeze({ sources: () => session?.instrumentSources?.() || [], capture: captureAudioState, captureImage: captureAudioImage, encode: options => session?.encodeAudioImage?.(options), prepare: options => session?.prepareAudioContinuation?.(options), prepareImage: options => session?.prepareAudioImageContinuation?.(options), restore: options => session?.restoreAudioState?.({ ...options, route: 'owner-live' }) }),
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
     isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, synchronizePerformance,

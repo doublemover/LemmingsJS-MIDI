@@ -201,7 +201,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let editRevision = 0, savedRevision = -1, lastSavedAt = null, lastStorageError = null;
   const pendingSaveGenerations = new Set(), saveOperations = new Map();
   let savePresentationSerial = 0;
-  let transportStopGeneration = 0;
+  let transportStopGeneration = 0, lastOwnedAudioResumeId = null;
   const historySizes = new WeakMap();
   const physicalHistory = createPhysicalAuthoringHistory({ resourceBudget, maxBytes: Math.max(1048576, Math.min(128 * 1048576, historyBytesLimit)) });
   const simulationCandidates = new Set(); let simulationPreparation = null, simulationCandidateSerial = 0, simulationWorkbench = null, simulationWorkbenchLoading = null;
@@ -596,9 +596,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     onSpeed(speed) { const timer = runtime()?.world?.timer; if (timer) timer.speedFactor = speed; },
     onFlush(reason) {
+      if (reason === 'owned-audio-cut') { ports?.flush(); return; }
       engine?.flush();
       ports?.flush(); router()?.scheduler?.allNotesOff?.();
-      physicalPlayback?.stop();
+      if (reason !== 'owned-audio-cut') physicalPlayback?.stop();
       if (['seek', 'stopped', 'midi-start', 'restored'].includes(reason)) { engine?.reset(); pendingResume = false; }
       else pendingResume = (engine?.getState().beat ?? -1) >= 0;
     },
@@ -616,6 +617,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (position.playing) transport.pause();
         view?.transport(transport.getState()); return;
       }
+      if (position.playing && position.ownedAudioResume && position.ownedAudioResume.id !== lastOwnedAudioResumeId) { runtime()?.lanes?.anchorClock?.(position.ownedAudioResume.hostMs); lastOwnedAudioResumeId = position.ownedAudioResume.id; }
       if (position.playing) runtime()?.lanes?.pump?.(position.timestamp);
       syncWorldSeed(); observeFrame(position.timestamp);
       if (position.bpm !== lastTempo) { lastTempo = position.bpm; ports?.recordTempo(position.bpm, position.beat, position.timestamp); }
