@@ -347,6 +347,13 @@ class BrowserNotePreview {
       outputIdentity: this._createOutputIdentity(id), getState, enable, stop, panic: stop, instrumentSources,
       detachAudioState: (options = {}) => detachAudioState(options), restoreAudioState: (options = {}) => restoreAudioState(options),
       prepareAudioContinuation: async options => { const { prepareOwnedAudioContinuation } = await import('./OwnedAudioContinuation.js'); return prepareOwnedAudioContinuation({ resourceBudget: this._soundMaterialBudget, ...options }); },
+      encodeAudioImage: async options => { const { encodeOwnedAudioImage } = await import('./OwnedAudioImageOwner.js'); return encodeOwnedAudioImage({ resourceBudget: this._soundMaterialBudget, ...options }); },
+      openAudioImage: async options => { const { openOwnedAudioImage } = await import('./OwnedAudioImageOwner.js'); return openOwnedAudioImage({ resourceBudget: this._soundMaterialBudget, ...options }); },
+      prepareAudioImageContinuation: async options => {
+        const cut = await session.api.openAudioImage(options);
+        try { return await session.api.prepareAudioContinuation({ ...options, cut, sources: cut.references().map(row => ({ ...row, pcm: options.materials?.find(material => material.sourceId === row.sourceId)?.pcm ?? null })) }); }
+        finally { const receipt = cut.release(); await receipt?.completion; if (receipt?.outcome && receipt.outcome !== 'complete') throw Object.assign(new Error('Opened audio image retirement remains unresolved.'), { retirement: receipt }); }
+      },
       getAudioContext: () => this.getAudioContext(), getSoundMaterialProvider: () => this.getSoundMaterialProvider(),
       setCaptureContext: ({ worldId, graphRevision, routeRevision, scoreMapping = null } = {}) => {
         if (session.disposed) return false;

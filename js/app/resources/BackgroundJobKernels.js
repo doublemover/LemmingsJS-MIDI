@@ -269,7 +269,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   if (kind === 'snapshot-canonical-data') return runCanonicalSnapshotKernel(kind, input, options);
-  const metadata = await inspectValue(input, options, { allowBinary: ['prepare-owned-effect-cut', 'prepare-owned-source-cut', 'decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
+  const metadata = await inspectValue(input, options, { allowBinary: ['owned-audio-image', 'prepare-owned-effect-cut', 'prepare-owned-source-cut', 'decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
   if (kind === 'encode-preference-pages') {
     if (!Array.isArray(input) || input.length < 1 || input.length > 8) throw problem('invalid-data', 'Preference encoding needs one to eight owned pages.');
     const value = []; let retainedBytes = 4096;
@@ -324,6 +324,16 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const retainedBytes = value.files ? value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144) : value.bytes.byteLength * 2 + 262144;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Native encoded files exceed their admitted retained storage.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+  }
+  if (kind === 'owned-audio-image') {
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current); const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
+    const footprint = metadata.bytes * 3 + metadata.nodes * 128;
+    if (catalog.state !== 'bound-application-engines' || estimatedPeakBytes < footprint + 96 * 1048576 || !['encode', 'decode', 'decode-checkpoint'].includes(input?.mode)) throw problem('invalid-audio-image-contract', 'A portable audio image needs the complete admitted input and exact executing engine inventory.');
+    const { encodeOwnedAudioImage, decodeOwnedAudioImage } = await import('./OwnedAudioImageCodec.js'); guard(signal, current);
+    const codecOptions = { applicationBuildId: catalog.executionIdentity.buildId, descriptors: catalog.descriptors, signal, current, yieldControl, maxWorkingBytes: estimatedPeakBytes - footprint };
+    const value = await (input.mode === 'encode' ? encodeOwnedAudioImage : decodeOwnedAudioImage)(input, codecOptions); guard(signal, current);
+    const output = await inspectValue(value, options, { allowBinary: true }), retainedBytes = output.bytes * 2 + output.nodes * 128 + 262144;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'The audio image exceeds its admitted retained storage.'); return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (kind === 'prepare-owned-effect-cut') {
     if (!input || Object.keys(input).some(key => !['definition', 'metadata', 'components'].includes(key)) || estimatedPeakBytes < metadata.bytes * 5 + 32 * 1048576) throw problem('invalid-contract', 'Effect continuation requires its complete admitted graph image.');

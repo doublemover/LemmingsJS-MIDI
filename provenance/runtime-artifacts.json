@@ -340,6 +340,7 @@
         "js/app/resources/ImpulseResponseAnalysis.js",
         "js/app/resources/InitialBackgroundReservation.js",
         "js/app/resources/NativeOfflineEncoding.js",
+        "js/app/resources/OwnedAudioImageCodec.js",
         "js/app/resources/OwnedControlKernel.js",
         "js/app/resources/OwnedEffectCutPreparation.js",
         "js/app/resources/OwnedPcmSetVerification.js",
@@ -480,8 +481,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 332,
-      "sha256": "89cc4c3894098a37fb3aea392a140e61107a1ed1abeed3ada85d587c14d95c0d"
+      "fileCount": 333,
+      "sha256": "c56926d5ec38be62d2dab989283605c150129baf705a922e5011e7b190cd9cd0"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -901,6 +902,7 @@
         "js/app/resources/ImpulseResponseAnalysis.js",
         "js/app/resources/InitialBackgroundReservation.js",
         "js/app/resources/NativeOfflineEncoding.js",
+        "js/app/resources/OwnedAudioImageCodec.js",
         "js/app/resources/OwnedControlKernel.js",
         "js/app/resources/OwnedEffectCutPreparation.js",
         "js/app/resources/OwnedPcmSetVerification.js",
@@ -1176,8 +1178,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 555,
-      "sha256": "ac784cd5386b551ad2ba197b1e0928b1401527483b8d9f3daffc5ec340e72705"
+      "fileCount": 556,
+      "sha256": "6e4524be556df5057e34ce02222163580cf99b70538b9606eced9d4349b4c84f"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1396,6 +1398,7 @@
         "js/app/resources/LiveInputWarpWorker.js",
         "js/app/resources/LiveInputWarpWorkerEndpoint.js",
         "js/app/resources/NativeOfflineEncoding.js",
+        "js/app/resources/OwnedAudioImageCodec.js",
         "js/app/resources/OwnedControlKernel.js",
         "js/app/resources/OwnedEffectCutPreparation.js",
         "js/app/resources/OwnedPcmSetVerification.js",
@@ -1532,8 +1535,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 340,
-      "sha256": "7b8d2dbf3348a07b63f8c2ef99f77e4380995687009f95d29ed017778adf0a42"
+      "fileCount": 341,
+      "sha256": "ce241dd8ed83ead8888da95f6d7c01202a35834f06e054780a28d96d3d156550"
     }
   ]
 }
