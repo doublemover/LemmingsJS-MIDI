@@ -95,6 +95,48 @@ inline midi::ci::message make_ci_message(Tokens &input) {
                ? midi::ci::make_profile_on_request(source, destination, profile, target)
                : midi::ci::make_profile_off_request(source, destination, profile, target);
   }
+  if (operation == "pe-capabilities") {
+    const auto concurrency = input.number(8);
+    input.finish();
+    if (scope != 127 || !concurrency)
+      throw std::invalid_argument("invalid-pe-capabilities-scope-or-concurrency");
+    return midi::ci::make_property_exchange_capabilities_inquiry(source, destination, concurrency);
+  }
+  if (operation == "pe-chunk") {
+    const auto subtype = input.number(127), request = input.number(127),
+               chunks = input.number(512), index = input.number(512),
+               header_size = input.number(1024);
+    if (scope != 127 || (subtype != 52 && subtype != 54 && subtype != 56 && subtype != 57) ||
+        !chunks || !index || index > chunks || (index != 1 && header_size))
+      throw std::invalid_argument("invalid-pe-chunk-address");
+    std::vector<midi::uint7_t> header;
+    header.reserve(header_size);
+    for (std::size_t offset = 0; offset < header_size; ++offset)
+      header.push_back(static_cast<midi::uint7_t>(input.number(127)));
+    const auto data_size = input.number(maximum_ci_bytes);
+    if (22 + header_size + data_size > maximum_ci_bytes)
+      throw std::invalid_argument("pe-message-capacity");
+    std::vector<midi::uint7_t> data;
+    data.reserve(data_size);
+    for (std::size_t offset = 0; offset < data_size; ++offset)
+      data.push_back(static_cast<midi::uint7_t>(input.number(127)));
+    input.finish();
+    return midi::ci::property_exchange::make_property_data_message(
+        subtype, source, destination, midi::ci::property_exchange::header{header},
+        chunks, index, midi::ci::property_exchange::chunk{data}, request, scope);
+  }
+  if (operation == "pe-status") {
+    const auto subtype = input.number(127), transaction = input.number(127),
+               status = input.number(127), detail = input.number(127);
+    midi::uint7_t details[5]{};
+    for (auto &byte : details) byte = static_cast<midi::uint7_t>(input.number(127));
+    input.finish();
+    if (scope != 127 || (subtype != 125 && subtype != 127) ||
+        (transaction != 52 && transaction != 54 && transaction != 56))
+      throw std::invalid_argument("invalid-pe-status");
+    return subtype == 125 ? midi::ci::make_ack_message(source, destination, scope, transaction, status, detail, details, "")
+                          : midi::ci::make_nak_message(source, destination, scope, transaction, status, detail, details, "");
+  }
   if (operation == "nak") {
     const auto transaction = input.number(127), status = input.number(127),
                detail = input.number(127);
@@ -190,6 +232,32 @@ inline std::string decode_ci(Tokens &input) {
       throw std::invalid_argument("malformed-ci-discovery-reply");
     result += discovery(*view) +
               ",\"functionBlock\":" + std::to_string(view->function_block());
+    known = true;
+    break;
+  }
+  case midi::ci::subtype::property_exchange_capabilities_reply: {
+    const auto view = midi::ci::as<midi::ci::property_exchange_capabilities_view>(message);
+    if (!view) throw std::invalid_argument("malformed-pe-capabilities");
+    result += ",\"maximumRequests\":" + std::to_string(view->maximum_number_of_requests()) +
+              ",\"peVersionMajor\":" + std::to_string(view->pe_version_major()) +
+              ",\"peVersionMinor\":" + std::to_string(view->pe_version_minor());
+    known = true;
+    break;
+  }
+  case midi::ci::subtype::get_property_data_reply:
+  case midi::ci::subtype::set_property_data_reply:
+  case midi::ci::subtype::subscription_inquiry:
+  case midi::ci::subtype::subscription_reply:
+  case midi::ci::subtype::notify: {
+    const auto view = midi::ci::as<midi::ci::property_exchange::property_data_message_view>(message);
+    if (!view || view->header_size() > 1024 || view->number_of_chunks() > 512 ||
+        view->number_of_this_chunk() > 512)
+      throw std::invalid_argument("malformed-or-excessive-pe-message");
+    result += ",\"requestId\":" + std::to_string(view->request_id()) +
+              ",\"totalChunks\":" + std::to_string(view->number_of_chunks()) +
+              ",\"chunkNumber\":" + std::to_string(view->number_of_this_chunk()) +
+              ",\"headerData\":" + ci_data_json(view->header_begin(), view->header_size()) +
+              ",\"propertyData\":" + ci_data_json(view->chunk_begin(), view->chunk_size());
     known = true;
     break;
   }
@@ -336,6 +404,7 @@ inline std::string decode_ci(Tokens &input) {
     result += ",\"transaction\":" + std::to_string(view.transaction()) +
               ",\"statusCode\":" + std::to_string(view.status_code()) +
               ",\"statusData\":" + std::to_string(view.status_data()) +
+              ",\"details\":" + ci_data_json(view.details(), 5) +
               ",\"message\":" + quote(view.message());
     known = true;
     break;

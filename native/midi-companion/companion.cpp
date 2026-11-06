@@ -948,7 +948,7 @@ public:
          ",\"selectedApi\":" + std::to_string(static_cast<int>(api_)) +
          ",\"libremidiRevision\":\"" LIBREMIDI_REVISION
          "\",\"ciCodec\":\"ni-midi2:" NI_MIDI2_REVISION
-         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,"
+         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,"
          "\"clockDomain\":\"companion-steady-microseconds\","
          "\"maximumWordsPerBatch\":4096,\"maximumPendingBatches\":128,"
          "\"queueHorizonUs\":2000000,\"transportBytesPerSecond\":null,"

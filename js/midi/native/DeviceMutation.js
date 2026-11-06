@@ -16,20 +16,21 @@ export function createDeviceMutationOwner({ routes, ci, now = () => performance.
       const scope = ci.state(); let hold;
       try { hold = routes.holdForObservation(scope.outputGrant); } catch (error) { return Object.freeze({ status: 'rejected', reason: error.message }); }
       let resolve; const completion = new Promise(done => { resolve = done; });
-      const transaction = { hold, resolve, scope, operationId: 'device-mutation-' + ++serial, requested: Object.freeze({ ...requested }), started: now(), routeRevision: routes.state().revision };
+      const transaction = { completion, hold, resolve, scope, operationId: 'device-mutation-' + ++serial, requested: Object.freeze({ ...requested }), started: now(), routeRevision: routes.state().revision };
       active = transaction; emit();
-      const current = () => !disposed && active === transaction && ci.state().epoch === scope.epoch && routes.client.session === scope.connectionEpoch && isCurrent();
+      const current = () => !disposed && !transaction.cancelled && active === transaction && ci.state().epoch === scope.epoch && routes.client.session === scope.connectionEpoch && isCurrent();
       try {
         await routes.invalidateDeviceState(scope.outputGrant, 'explicit-device-mutation');
         if (!current()) { finish(transaction, { status: 'cancelled', receiverState: 'unknown', reason: 'Device mutation scope changed' }); return completion; }
         const result = await send(current);
+        await routes.invalidateDeviceState(scope.outputGrant, transaction.cancelled ? 'cancelled-device-mutation' : 'settled-device-mutation');
         if (active === transaction) finish(transaction, current() ? result : { status: 'cancelled', receiverState: 'unknown', reason: 'Device mutation scope changed after submission' });
       } catch (error) { finish(transaction, { status: 'incomplete', receiverState: 'unknown', reason: error.message }); }
       return completion;
     },
     state: () => Object.freeze({ busy: !!active, latest, requested: active?.requested || null }),
     subscribe(listener) { if (disposed || typeof listener !== 'function' || listeners.size >= 8) throw new Error('Device mutation observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
-    cancel() { if (active) finish(active, { status: 'cancelled', receiverState: 'unknown', reason: 'Device mutation cancelled; submitted hardware changes cannot be undone' }); },
-    dispose() { if (disposed) return; disposed = true; if (active) finish(active, { status: 'cancelled', receiverState: 'unknown', reason: 'Device mutation owner retired' }); listeners.clear(); }
+    cancel() { if (active) { active.cancelled = true; emit(); } },
+    dispose() { if (disposed) return active?.completion || Promise.resolve(); disposed = true; if (active) active.cancelled = true; listeners.clear(); return active?.completion || Promise.resolve(); }
   });
 }

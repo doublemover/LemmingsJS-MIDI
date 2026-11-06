@@ -1,3 +1,5 @@
+import { createNativeMidiPropertyView } from './NativeMidiPropertyView.js';
+
 const element = (document, tag, text, className) => { const node = document.createElement(tag); if (text) node.textContent = text; if (className) node.className = className; return node; };
 export function createNativeMidiConnectionView({ document, container, routes, getLanes, getSelectedLaneId, onAssign, onAssignMany, onStatus = () => {} }) {
   if (!container) return { render() {}, dispose() {} };
@@ -153,6 +155,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const reportStatus = element(document, 'output', '', 'midi-status'), reportValues = element(document, 'div'); reportStatus.setAttribute('role', 'status'); reportStatus.setAttribute('aria-live', 'polite');
   const profileStatus = element(document, 'output', '', 'midi-status'); profileStatus.setAttribute('role', 'status'); profileStatus.setAttribute('aria-live', 'polite');
   root.append(controls, routeControls, status, inputStatus, ciStatus, profileStatus, reportStatus, reportValues, message, details); container.append(root);
+  const propertyView = createNativeMidiPropertyView({ document, container: root, routes, getCiSession: ensureCi, getPeerMuid: () => ciPeer.value ? Number(ciPeer.value) : null, onStatus });
   let profileSession = null, profileCi = null, profileUnsubscribe = null;
   let reportSession = null, reportCi = null, reportUnsubscribe = null, ciSession = null, ciUnsubscribe = null, inputTimer = null;
   const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category : ''); };
@@ -183,5 +186,5 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
   bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; });
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
-  return { render, dispose() { unsubscribe(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
+  return { render, dispose() { unsubscribe(); propertyView.dispose(); profileUnsubscribe?.(); profileUnsubscribe = null; ciUnsubscribe?.(); ciUnsubscribe = null; reportUnsubscribe?.(); reportUnsubscribe = null; clearTimeout(inputTimer); inputTimer = null; for (const remove of removers) remove(); root.remove(); } };
 }

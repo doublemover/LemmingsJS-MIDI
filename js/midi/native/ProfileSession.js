@@ -10,12 +10,21 @@ const specifications = Object.freeze({
 export function createProfileSession({ routes, ci, peerMuid, now = () => performance.now(), timeoutMs = 2000 } = {}) {
   const peer = ci.getPeer(peerMuid);
   if (!peer || peer.version !== 2 || !(peer.categories & 4) || routes.client.capabilities?.ciProfileCodecVersion !== 1 || !Number.isFinite(timeoutMs) || timeoutMs < 100 || timeoutMs > 5000) throw new Error('Discover a current Profile Configuration peer using a companion with profile decoding');
-  const identity = ci.state(), records = new Map(), listeners = new Set(), mutation = createDeviceMutationOwner({ routes, ci, now });
+  const settling = new Set(), identity = ci.state(), records = new Map(), listeners = new Set(), mutation = createDeviceMutationOwner({ routes, ci, now });
   let stale = false, disposed = false, active = null, revision = 0, latest = null, retainedBytes = 0;
   const current = () => !disposed && !stale && ci.state().epoch === identity.epoch && !!ci.getPeer(peerMuid);
   const emit = () => { for (const listener of listeners) { try { listener(); } catch {} } };
   const key = (group, scope, id) => [group, scope, profileIdKey(id)].join(':');
-  const finish = result => { if (!active) return; const request = active; active = null; clearTimeout(request.timer); latest = Object.freeze(result); request.resolve(latest); emit(); };
+  const finish = result => {
+    if (!active) return; const request = active; active = null; clearTimeout(request.timer); latest = Object.freeze(result);
+    const outcome = latest, fence = (async () => {
+      if (request.wireExecution && routes.client.session === identity.connectionEpoch && routes.isGrantActive(identity.outputGrant)) {
+        try { const receipt = await routes.client.cancelExecution(identity.outputGrant, request.wireExecution); if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes) throw new Error('Profile transaction cancellation remains unconfirmed'); }
+        catch (error) { routes.quarantineDeviceState(identity.outputGrant, error.message); request.resolve(Object.freeze({ status: 'incomplete', reason: error.message, receiverState: 'unknown' })); return; }
+      }
+      request.resolve(outcome);
+    })(); settling.add(fence); fence.finally(() => { settling.delete(fence); emit(); }).catch(() => {}); emit();
+  };
   const retain = (group, scope, id, changes) => {
     const idKey = profileIdKey(id); if (!idKey || !validScope(scope)) throw new Error('Malformed profile identity or scope');
     const address = key(group, scope, id), prior = records.get(address);
@@ -30,11 +39,11 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
   const request = (operation, { scope, profile = null, target = null, channels = null, isCurrent = () => true }) => {
     if (!current() || active) return Promise.resolve(Object.freeze({ status: 'rejected', reason: 'Profile session is stale or busy' }));
     let resolve; const completion = new Promise(done => { resolve = done; });
-    const entry = { operation, scope, profile, target, channels, resolve, staged: new Map(), group: identity.group, isCurrent };
+    const entry = { operation, wireExecution: operation === 'profile-on' || operation === 'profile-off' ? routes.allocateExecutionEpoch() : null, scope, profile, target, channels, resolve, staged: new Map(), group: identity.group, isCurrent };
     active = entry; entry.timer = setTimeout(() => { if (active === entry) finish({ status: 'timeout', reason: 'No complete matching profile response; receiver state remains unknown' }); }, timeoutMs);
     const parameters = profile ? [...profile, target ?? channels ?? 0] : [];
     const send = operation === 'profile-on' || operation === 'profile-off' ? ci.sendProfileControl : ci.sendReadControl;
-    send(peerMuid, { operation, parameters, deviceScope: scope, isCurrent: () => active === entry && current() && isCurrent() }).catch(error => { if (active === entry) finish({ status: 'incomplete', reason: error.message, receiverState: 'unknown' }); });
+    send(peerMuid, { operation, execution: entry.wireExecution, parameters, deviceScope: scope, isCurrent: () => active === entry && current() && isCurrent() }).catch(error => { if (active === entry) finish({ status: 'incomplete', reason: error.message, receiverState: 'unknown' }); });
     emit(); return completion;
   };
   const invalidate = reason => {
@@ -147,10 +156,10 @@ export function createProfileSession({ routes, ci, peerMuid, now = () => perform
     },
     isBindingCurrent(binding) { const record = records.get(key(binding.group, binding.scope, MPE_PROFILE_ID)); const features = record?.mpeFeatures; return !!(current() && record?.enabled === true && record.freshness === 'current' && record.channels === binding.channels && (record.mpeChannelResponse || 'unknown') === binding.channelResponse && features && ['responseNotifications', 'pitchBend', 'pressure', 'thirdAxis'].every(key => features[key] === binding.features[key])); },
     state: () => Object.freeze({ disposed, stale, inputGrant: identity.inputGrant, outputGrant: identity.outputGrant, peerMuid, connectionEpoch: identity.connectionEpoch, ciEpoch: identity.epoch, group: identity.group, revision,
-      busy: !!active || mutation.state().busy, pending: active ? Object.freeze({ operation: active.operation, scope: active.scope, profile: active.profile }) : null,
+      busy: !!active || settling.size > 0 || mutation.state().busy, pending: active ? Object.freeze({ operation: active.operation, scope: active.scope, profile: active.profile }) : null,
       profiles: Object.freeze([...records.values()]), retainedBytes, latest, mutation: mutation.state() }),
     subscribe(listener) { if (disposed || typeof listener !== 'function' || listeners.size >= 8) throw new Error('Profile observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
     cancel() { if (active) finish({ status: 'cancelled', reason: 'Profile request cancelled', receiverState: 'unknown' }); mutation.cancel(); },
-    dispose() { if (disposed) return; disposed = true; clearInterval(expiryTimer); if (active) finish({ status: 'cancelled', reason: 'Profile owner retired', receiverState: 'unknown' }); mutation.dispose(); unsubscribe(); unsubscribeCi(); unsubscribeMutation(); records.clear(); listeners.clear(); retainedBytes = 0; }
+    dispose() { if (disposed) return; disposed = true; clearInterval(expiryTimer); if (active) finish({ status: 'cancelled', reason: 'Profile owner retired', receiverState: 'unknown' }); mutation.dispose(); unsubscribe(); unsubscribeCi(); unsubscribeMutation(); records.clear(); listeners.clear(); retainedBytes = 0; return Promise.allSettled([...settling]).then(() => {}); }
   });
 }

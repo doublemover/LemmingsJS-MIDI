@@ -193,3 +193,30 @@ updates drive manager expression as bounded coalesced cohort controls. Program
 recall remains a separate device mutation, and MPE never unlocks native per-note
 rotation. Profile loss or changed semantics retires affected owned executions.
 This source implementation is still unqualified against an independent receiver.
+
+
+Property Exchange now has a device-resource panel and owned client. It negotiates
+peer concurrency, loads ResourceList before other resources, supports bounded
+GET/list pagination, explicit full/partial SET and subscription start/end. Results
+retain peer, connection, device revision, resource ID, cache metadata and byte
+provenance. Device replies and subscription updates are immutable observations;
+they do not rewrite the project or echo setters. Partial/notify updates coalesce
+into bounded refresh reads. Resource schemas/references remain inert data.
+
+The client implements the [published Common Rules v1.2](https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-103-UM_v1-2_Common%20Rules_for_MIDI-CI_Property_Exchange.pdf),
+including resource-declared flow control, ACK waits, bounded retries of only the
+most recent SET chunk, timeout extensions and transaction termination. It
+separates device acknowledgement from an asynchronous accepted/unknown result.
+Every request owns a native control execution; cancellation fences its remaining
+chunks before a mutation releases its hold. Unconfirmed cancellation quarantines
+the output grant. Settled writes invalidate intermediate cached observations and
+resource descriptors.
+
+ASCII with escaped Unicode, Mcoded7 and zlib+Mcoded7 are available only when
+advertised by the resource. Wire, decoded, JSON nesting/item, cache, peer, queue,
+subscription and deadline limits are enforced separately. HTML/script/XML/SVG
+media are refused; binary data remains opaque. The native codec constructs and
+validates PE frames with NI views while the application owns JSON and transaction
+policy. Device/peer conformance, compression fixtures, musical deadline and memory
+qualification remain deferred to the consolidated validation pass. This is not a
+claim that a hardware patch or parameter has been independently verified.

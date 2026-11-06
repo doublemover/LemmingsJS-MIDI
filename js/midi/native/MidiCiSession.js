@@ -26,14 +26,14 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
     if (disposed || status === 'stale') return; status = 'stale'; reason = message; epoch++; clearTimeout(discoveryTimer); discoveryTimer = null;
     discovery?.reject(new Error(message)); discovery = null; clearPending(new Error(message)); receive.length = receiveBytes = 0; void cancelOwnedExecution(execution); emit();
   };
-  const send = (operation, { destinationMuid = BROADCAST, deviceScope = scope, parameters = [], sourceMuid = localMuid, isCurrent = () => true } = {}) => {
-    const ownedEpoch = epoch, ownedExecution = execution;
+  const send = (operation, { destinationMuid = BROADCAST, deviceScope = scope, parameters = [], sourceMuid = localMuid, requestExecution = null, isCurrent = () => true } = {}) => {
+    const ownedEpoch = epoch, ownedExecution = requestExecution ?? execution;
     const task = sendTail.then(async () => {
       if (!current() || epoch !== ownedEpoch || !isCurrent()) throw new Error('MIDI-CI request or session retired');
       const encoded = await routes.client.encodeCi(outputGrant, { group, operation, sourceMuid, destinationMuid, scope: deviceScope, parameters });
       if (!current() || epoch !== ownedEpoch || !isCurrent()) throw new Error('MIDI-CI request or session retired');
       const maximum = Math.min(2048, destinationMuid === BROADCAST ? maximumMessageBytes : peers.get(destinationMuid)?.maximumMessageBytes ?? maximumMessageBytes);
-      if (!Array.isArray(encoded.bytes) || encoded.bytes.length > maximum || !Array.isArray(encoded.words) || encoded.words.length > 1024) throw new Error('MIDI-CI message exceeds negotiated capacity');
+      if (!Array.isArray(encoded.bytes) || encoded.bytes.length + 2 > maximum || !Array.isArray(encoded.words) || encoded.words.length > 1024) throw new Error('MIDI-CI message exceeds negotiated capacity');
       for (let offset = 0; offset < encoded.words.length; offset += 256) {
         if (!current() || epoch !== ownedEpoch || !isCurrent()) throw new Error('MIDI-CI request or session retired');
         const words = encoded.words.slice(offset, offset + 256), provenance = Object.freeze({ schema: 'lemmings-midi-ci-transaction/v1', sessionEpoch: ownedEpoch, operation, sourceMuid, destinationMuid, group, scope: deviceScope });
@@ -134,17 +134,22 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
     if (event.grant !== inputGrant) return;
     if (event.event === 'ingress-loss') { stale(event.reason); return; }
     if (event.event !== 'native-payload' || event.message.kind !== 'sysex7' || !(input.groupMask & 1 << event.message.group) || event.message.payload[0] !== 126 || event.message.payload[2] !== 13) return;
-    const payload = event.message.payload; if (payload.length > maximumMessageBytes || receive.length >= 2048 || receiveBytes + payload.length * 2 + 512 > 1048576) { stale('MIDI-CI receive capacity exceeded'); return; }
+    const payload = event.message.payload; if (payload.length + 2 > maximumMessageBytes || receive.length >= 2048 || receiveBytes + payload.length * 2 + 512 > 1048576) { stale('MIDI-CI receive capacity exceeded'); return; }
     const bytes = payload.length * 2 + 512; receive.push({ payload, bytes, group: event.message.group }); receiveBytes += bytes; if (!receiveRunning) receiveTail = drain();
   });
   return Object.freeze({
     discover, invalidate: stale,
     getPeer(muid) { const peer = peers.get(muid); return current() && peer?.state === 'discovered' && now() - peer.lastVerifiedMs <= 300000 ? peer : null; },
     sendReadControl(peerMuid, { operation, parameters = [], deviceScope = scope, isCurrent = () => true }) { const peer = peers.get(peerMuid); if (!current() || peer?.state !== 'discovered' || peer.version !== 2 || now() - peer.lastVerifiedMs > 300000 || !['message-report', 'profile-inquiry', 'profile-details'].includes(operation)) return Promise.reject(new Error('Unsupported or stale CI read operation')); const category = operation === 'message-report' ? 16 : 4; if (!(peer.categories & category)) return Promise.reject(new Error('Device did not advertise this CI category')); return send(operation, { destinationMuid: peerMuid, deviceScope, parameters, isCurrent }); },
-    sendProfileControl(peerMuid, { operation, parameters = [], deviceScope = scope, isCurrent = () => true }) {
+    sendProfileControl(peerMuid, { operation, parameters = [], deviceScope = scope, execution: requestExecution = null, isCurrent = () => true }) {
       const peer = peers.get(peerMuid);
       if (!current() || peer?.state !== 'discovered' || peer.version !== 2 || !(peer.categories & 4) || !['profile-on', 'profile-off'].includes(operation) || now() - peer.lastVerifiedMs > 300000) return Promise.reject(new Error('Unsupported or stale CI profile mutation'));
-      return send(operation, { destinationMuid: peerMuid, parameters, deviceScope, isCurrent });
+      return send(operation, { destinationMuid: peerMuid, parameters, deviceScope, requestExecution, isCurrent });
+    },
+    sendPropertyControl(peerMuid, { operation, parameters = [], execution: requestExecution = null, isCurrent = () => true }) {
+      const peer = peers.get(peerMuid);
+      if (!current() || peer?.state !== 'discovered' || peer.version !== 2 || !(peer.categories & 8) || !['pe-capabilities', 'pe-chunk', 'pe-status'].includes(operation) || now() - peer.lastVerifiedMs > 300000) return Promise.reject(new Error('Unsupported or stale Property Exchange operation'));
+      return send(operation, { destinationMuid: peerMuid, parameters, deviceScope: 127, requestExecution, isCurrent });
     },
     subscribeProtocol(observer) { if (disposed || typeof observer !== 'function' || protocolObservers.size >= 8) throw new Error('CI protocol observer capacity'); protocolObservers.add(observer); return () => protocolObservers.delete(observer); },
     enqueueObservation(observation) { if (!current() || receive.length >= 2048 || receiveBytes + 528 > 1048576) { stale('CI ordered observation queue exceeded'); return false; } receive.push({ observation, bytes: 528 }); receiveBytes += 528; if (!receiveRunning) receiveTail = drain(); return true; },
