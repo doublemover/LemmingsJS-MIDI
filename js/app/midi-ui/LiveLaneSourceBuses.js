@@ -66,7 +66,7 @@ export function createLiveLaneSourceBuses({ context, resources, owner, generatio
     } catch (error) { try { retireBus(bus); } catch (retirementError) { error.retirement = retirementError; } throw error; }
   };
   return Object.freeze({
-    laneToken,
+    laneToken, captureIdentityTokens: () => Object.freeze([...laneTokens].map(entry => Object.freeze([...entry]))),
     declare(laneIds) {
       if (!Array.isArray(laneIds) || laneIds.length > 1024 || laneIds.some(id => !validId(id)) || new Set(laneIds).size !== laneIds.length) throw new TypeError('Lane source identities must be unique and bounded.');
       if (!active()) throw new Error('The source owner is unavailable.');

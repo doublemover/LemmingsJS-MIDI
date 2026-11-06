@@ -7737,5 +7737,30 @@
         "hash": "25be13961f8fddbb423ebd4eed5d2a0b99a46db35e9103af569dbfaf45f8e3f6"
       }
     ]
+  },
+  "continuation475": {
+    "date": "2026-11-06",
+    "agent": "rook",
+    "issues": [
+      1138,
+      971,
+      1089
+    ],
+    "scope": "Implement worker-owned preparation of detached source continuations and complete captured lane/performance ownership metadata.",
+    "implementation": [
+      "New worker-only prepare-owned-source-cut operation reconstructs the exact pinned source kernel and applies the existing strict snapshot restorer away from the audio callback. It requires the active executing engine artifact and parameter schema, exact patch hash, sample rate, graph identity and verified immutable PCM/source banks.",
+      "Preparation reconciles kernel future commands and active/pending voice slots against captured producer sequences, epoch/token ownership and original semantic voice identity. It recomputes authored onset and held macro/variation/physical composition rather than trusting saved effective-control labels.",
+      "The prepared result returns exclusively owned snapshot bytes, source ABI/frame and a transport checksum. This is runtime preparation code for the continuation feature; the job has not been executed as validation during this frontloaded development pass.",
+      "Capture now retains the complete lane-token identity inventory, numeric epoch frontier, current authored macro controls and source control baselines needed to continue an existing voice without a new onset."
+    ],
+    "validation": {
+      "format": "passed",
+      "functionalTests": "deferred until the remaining feature code is complete",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Stage the prepared source into a new sink epoch with bounded restore work, frame/token rebinding and explicit activation.",
+      "Coordinate canonical checkpoint plus whole-graph effect continuation and expose seek/clone publication."
+    ]
   }
 }

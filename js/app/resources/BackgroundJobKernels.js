@@ -260,7 +260,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   if (kind === 'snapshot-canonical-data') return runCanonicalSnapshotKernel(kind, input, options);
-  const metadata = await inspectValue(input, options, { allowBinary: ['decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
+  const metadata = await inspectValue(input, options, { allowBinary: ['prepare-owned-source-cut', 'decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
   if (kind === 'encode-preference-pages') {
     if (!Array.isArray(input) || input.length < 1 || input.length > 8) throw problem('invalid-data', 'Preference encoding needs one to eight owned pages.');
     const value = []; let retainedBytes = 4096;
@@ -314,6 +314,18 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const value = await encodeNativeOfflineRender(input, { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes }); guard(signal, current);
     const retainedBytes = value.files ? value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144) : value.bytes.byteLength * 2 + 262144;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Native encoded files exceed their admitted retained storage.');
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+  }
+  if (kind === 'prepare-owned-source-cut') {
+    if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'metadata', 'bytes', 'pcm'].includes(key)) || estimatedPeakBytes < metadata.bytes * 2 + 64 * 1048576) throw problem('invalid-contract', 'Source continuation requires its admitted bounded preparation contract.');
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
+    const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
+    if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key])) throw problem('engine-identity-unbound', 'Source continuation requires its exact executing artifact.');
+    const { prepareOwnedSourceCut } = await import('./OwnedSourceCutPreparation.js'); guard(signal, current);
+    const value = await prepareOwnedSourceCut({ ...input, descriptor }, { signal, yieldControl, maxWorkingBytes: estimatedPeakBytes - metadata.bytes }); guard(signal, current);
+    value.applicationBuildId = catalog.executionIdentity.buildId;
+    const retainedBytes = value.bytes.length + canonicalDataText(value.metadata, { maxBytes: 4 * 1048576, maxNodes: 200000 }).bytes.length * 4 + 65536;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Prepared continuation exceeds its admitted result.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (kind === 'render-sound-controls') {

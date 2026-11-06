@@ -550,7 +550,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       baseFrequency: frequency / 2 ** (offset / 1200), mixPan: patch.pan01, patchRevision: patch.revision, patchId: patch.id,
       stringT60Seconds: parameters.stringT60Seconds, bodyT60Seconds: parameters.bodyT60Seconds, sourceParameters: parameters,
       sourceChannels: source.requiresPCMSet ? pcmDescriptor.banks.some(bank => bank.channels === 2) ? 2 : 1 : pcmDescriptor?.channels || 1,
-      onsetPerformance: performance, performanceIdentity: captureInstrumentPerformanceIdentity(intent), performanceFrame: targetFrame,
+      currentPerformanceControls: performance?.controls || null, onsetPerformance: performance, performanceIdentity: captureInstrumentPerformanceIdentity(intent), performanceFrame: targetFrame,
       performanceValues: parameters, expressionPan: expression.pan01 ?? 0, panFrame: targetFrame, velocityGain: intent.velocity01 * patch.gain01,
       performancePlan: patch.performance, continuousBase: performance?.continuousBase, sourceValues: parameters,
       physicalCauses: isExtended ? new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []) : null, physicalFrame: targetFrame,
@@ -699,7 +699,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       if (performance.values[id] !== voice.performanceValues[id]) expression[id] = performance.values[id];
     }
     const result = Object.keys(expression).length ? update(voiceId, expression, targetFrame, executionEpoch, performance.smoothingMs / 1000, true) : Object.freeze({ status: 'accepted', stage: 'unchanged', outputRequested: false });
-    if (result.status === 'accepted') { voice.performanceValues = performance.values; voice.continuousBase = performance.continuousBase; voice.sourceValues = performance.values; voice.performanceFrame = targetFrame; }
+    if (result.status === 'accepted') { voice.currentPerformanceControls = performance.controls; voice.performanceValues = performance.values; voice.continuousBase = performance.continuousBase; voice.sourceValues = performance.values; voice.performanceFrame = targetFrame; }
     return Object.freeze({ ...result, performance, acousticReceipt: false });
   };
   const updateLaneMix = (voiceId, mix, frame, epoch = 'live', laneId = undefined) => {
@@ -813,12 +813,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     getBindings() {
       for (const voice of voices.values()) voice.stateCutPending = true;
       return { engineId, runtime, patchId: patch.id, patchRevision: patch.revision, parameters: patch.parameters, sourceBank: pcmDescriptor,
-        commandSequence: sequence, packetSequence, slotTokens: [...slotTokens], epochs: [...epochs], leases: [...leases], cancellations: [...cancelled],
+        commandSequence: sequence, packetSequence, nextEpoch, laneIdentities: laneRegistry?.captureIdentityTokens() || [], slotTokens: [...slotTokens], epochs: [...epochs], leases: [...leases], cancellations: [...cancelled],
         inFlight: [...inFlight.values()].map(item => ({ opcode: item.opcode, frame: item.frame, sequence: item.sequence, voiceId: item.voiceId, data: item.data })),
         voices: [...voices.values()].map(voice => ({ slot: voice.slot, slotToken: voice.slotToken, voiceId: voice.voiceId, epochToken: voice.epochToken,
           executionEpoch: voice.semanticEpoch, generation: voice.semanticGeneration, start: voice.start, releaseAt: voice.releaseAt, end: voice.end, releaseSeconds: voice.release, released: voice.released,
           initialLeaseEndFrame: voice.initialLeaseEndFrame, requestedLeaseEndFrame: voice.requestedLeaseEndFrame, effectiveLeaseEndFrame: voice.effectiveLeaseEndFrame, pendingLeases: [...voice.pendingLeases],
-          onsetPerformance: voice.onsetPerformance, performanceIdentity: voice.performanceIdentity, performanceValues: voice.performanceValues, performanceFrame: voice.performanceFrame,
+          currentPerformanceControls: voice.currentPerformanceControls, sourceParameters: voice.sourceParameters, stringT60Seconds: voice.stringT60Seconds, bodyT60Seconds: voice.bodyT60Seconds, onsetPerformance: voice.onsetPerformance, performanceIdentity: voice.performanceIdentity, performanceValues: voice.performanceValues, performanceFrame: voice.performanceFrame,
           continuousBase: voice.continuousBase, physicalCauses: voice.physicalCauses ? [...voice.physicalCauses.values()] : [], physicalFrame: voice.physicalFrame,
           baseFrequency: voice.baseFrequency, velocityGain: voice.velocityGain, expressionPan: voice.expressionPan, mixPan: voice.mixPan, panFrame: voice.panFrame,
           sourceValues: voice.sourceValues, audioLaneId: voice.audioLaneId, onsetLaneToken: voice.onsetLaneToken, sourceChannels: voice.sourceChannels,

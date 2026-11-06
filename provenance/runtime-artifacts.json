@@ -338,6 +338,7 @@
         "js/app/resources/OwnedResourceReservation.js",
         "js/app/resources/OwnedSourceBankComputation.js",
         "js/app/resources/OwnedSourceBankData.js",
+        "js/app/resources/OwnedSourceCutPreparation.js",
         "js/app/resources/OwnedStretchCore.js",
         "js/app/resources/ResonatorMorphReference.js",
         "js/app/resources/ResourceBudget.js",
@@ -458,8 +459,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 312,
-      "sha256": "25be13961f8fddbb423ebd4eed5d2a0b99a46db35e9103af569dbfaf45f8e3f6"
+      "fileCount": 313,
+      "sha256": "7ad2c93c4e56404512a842fe69313c300cc918810b728185079b84a772b79655"
     },
     {
       "id": "lemmings-timing-worker-source",
