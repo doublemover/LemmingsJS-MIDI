@@ -449,6 +449,7 @@
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
         "js/midi/content/TextureTravel.js",
+        "js/midi/content/TimeTransform.js",
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
         "js/midi/content/WindModel.js",
@@ -471,8 +472,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 325,
-      "sha256": "2c9457c29425dc808c03cf27332cc1ac5ebeb6a8d82d861d37e2695cc9b6a288"
+      "fileCount": 326,
+      "sha256": "d0e90d9867dddcd8d017ba962cbb050b7a35f926c62c71dc40b8dc619523fe8b"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -539,6 +540,7 @@
         "js/midi/content/PercussionRoleIntent.js",
         "js/midi/content/PianoPerformanceIntent.js",
         "js/midi/content/ScoreContext.js",
+        "js/midi/content/TimeTransform.js",
         "js/midi/native/DeviceControllerCohort.js",
         "js/midi/native/DeviceMutation.js",
         "js/midi/native/DeviceParameter.js",
@@ -596,8 +598,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 75,
-      "sha256": "625ba7feab944dec477d9f6aca6b577340f2f4e4bbfcd73b96d799f775528942"
+      "fileCount": 76,
+      "sha256": "fc470ac897d1b853eb6435c1fb9efcc3e6ddaaa0d5f975efe3b5d126a9cd19a3"
     }
   ]
 }

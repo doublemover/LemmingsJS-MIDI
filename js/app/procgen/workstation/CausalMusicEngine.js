@@ -105,7 +105,7 @@ const validateCausalInstrumentGraph = value => {
 };
 
 const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline = null, onIntentProvenance = null,
-  getLaneState = () => ({ available: true }), getActivityOutputState = () => ({ status: 'unobserved' }), getOnsetControls = () => undefined, getPercussionPolicy = () => null, getOrchestralPolicy = () => null, getPianoPolicy = () => null, getPianoControls = () => null, getScoreContextPolicy = () => null, getPhysicalControlKinds = () => [], getPerformanceState = () => null,
+  getLaneState = () => ({ available: true }), getActivityOutputState = () => ({ status: 'unobserved' }), getOnsetControls = () => undefined, getPercussionPolicy = () => null, getOrchestralPolicy = () => null, getPianoPolicy = () => null, getPianoControls = () => null, getScoreContextPolicy = () => null, getTimeTransformPolicy = () => null, getPhysicalControlKinds = () => [], getPerformanceState = () => null,
   maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024, resourceBudget = null, world = null } = {}) => {
   if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
   if (onIntentProvenance !== null && typeof onIntentProvenance !== 'function') throw new TypeError('Invalid intent provenance observer.');
@@ -154,6 +154,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const tonalOffset = !fact?.tonalExpression ? active.get(voiceId)?.tonalOffset || 0 : 0;
     const onsetControls = kind === 'begin' ? getOnsetControls(fact?.laneId, { worldId: batch.worldId, generation: voiceGeneration, actorId: fact?.actorId ?? null }) : null;
     const velocity01 = Number.isFinite(fact?.velocity01) ? fact.velocity01 : Math.min(1, instrument.velocity01 * (Number.isFinite(fact?.velocityScale) ? fact.velocityScale : 1));
+    const timeTransformPolicy = kind === 'begin' ? getTimeTransformPolicy(fact?.laneId) : null;
     const scoreContextPolicy = kind === 'begin' ? getScoreContextPolicy(fact?.laneId) : null;
     const pianoPerformance = kind === 'begin' ? createPianoPerformanceIntent(getPianoPolicy(fact?.laneId), getPianoControls(fact?.laneId), { velocity01, expression, swarm: fact?.swarm, sourceActionId: fact?.actionInstanceId }) : null;
     const orchestralArticulation = kind === 'begin' ? createOrchestralArticulationIntent(getOrchestralPolicy(fact?.laneId), { action: fact?.action, strength01: velocity01, sourceActionId: fact?.actionInstanceId }) : null;
@@ -173,7 +174,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       scoreTime: Object.freeze({ ...(scoreTimeline?.map(timeFor(batch, fact)) || timeFor(batch, fact)), sourceTimeMs: batch.sourceTimeMs ?? null,
         sourceTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null }),
       pitch: Object.freeze(pitch), ...(tonal?.state ? { tonalState: tonal.state } : {}),
-      ...(fact?.tonalSourceBatchId ? { tonalSourceBatchId: fact.tonalSourceBatchId } : {}), ...(fact?.mappingEdit ? { mappingEdit: Object.freeze(fact.mappingEdit) } : {}), velocity01, ...(scoreContextPolicy ? { scoreContextPolicy } : {}), ...(pianoPerformance ? { pianoPerformance } : {}), ...(orchestralArticulation ? { orchestralArticulation } : {}), ...(percussionHit ? { percussionHit } : {}),
+      ...(fact?.tonalSourceBatchId ? { tonalSourceBatchId: fact.tonalSourceBatchId } : {}), ...(fact?.mappingEdit ? { mappingEdit: Object.freeze(fact.mappingEdit) } : {}), velocity01, ...(timeTransformPolicy ? { timeTransformPolicy } : {}), ...(scoreContextPolicy ? { scoreContextPolicy } : {}), ...(pianoPerformance ? { pianoPerformance } : {}), ...(orchestralArticulation ? { orchestralArticulation } : {}), ...(percussionHit ? { percussionHit } : {}),
       expression: Object.freeze({ ...expression, ...(Number.isFinite(expression.pitchOffsetCents) && tonalOffset ? { pitchOffsetCents: expression.pitchOffsetCents + tonalOffset } : {}) }), role: instrument.role, route: instrument.route, terminationReason: reason,
       ...(instrument.preparedBodyStrike ? { preparedBodyStrike: instrument.preparedBodyStrike, graphRevision: graph.revision } : {}),
       ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),

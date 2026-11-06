@@ -66,6 +66,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   /** @type {import('./AudioClockContracts.js').ExecutionEpoch | null} */
   let executionEpoch = null;
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
+  let sourceTempoBpm = null;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, pendingAdmissions = 0, leaseFailures = 0;
   let surfaceBodies = null, sceneMorph = null;
   const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectClockAnchor = null;
@@ -121,12 +122,12 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   let cavityBackend = null;
   try { if (initialCavityBody && backend) cavityBackend = createCavitySourceAdmission({ backend, getBody: () => cavityBody, getContext: () => audio?.getAudioContext?.(), resourceBudget }); }
   catch (error) { disposed = true; error.retirement = retirement.retire([{ name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }, ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))]); throw error; }
-  const dispatcher = createCausalIntentDispatcher({
+  const dispatcher = createCausalIntentDispatcher({ resourceBudget, getTempoBpm: () => sourceTempoBpm ?? scoreTimeline.currentSegment?.().tempoBpm ?? null,
     sinks: [...(backend ? [{ id: 'physical-browser-audio', route: 'local', backend: cavityBackend || backend, timeDomain: 'audio-sample-frames', getAdmissionIdentity: () => ({ connectionEpoch: backend.executionIncarnation?.() ?? null, routeRevision: routed?.routeRevision() ?? 0 }) }] : []), ...(bodyBackend ? [{ id: 'physical-shared-body', route: 'prepared-body', backend: bodyBackend, timeDomain: 'audio-sample-frames', getAdmissionIdentity: () => ({ connectionEpoch: bodyBackend.executionIncarnation?.() ?? null, routeRevision: routed?.routeRevision() ?? 0 }) }] : []), ...additionalOutputs.flatMap(output => output.sinks)],
     executionEpoch: () => executionEpoch,
     toTargetFrame: (scoreTime, batch, intent, sink) => sink.toTargetFrame ? sink.toTargetFrame(scoreTime, batch, intent) : permitted() && (!initialMorphMechanism || sceneMorph?.isPrepared()) && (!initialCavityBody || cavityBody?.canEmit(intent) || intent.kind === 'begin' && cavityBody?.qualification(intent)) ? clock.toTargetFrame(scoreTime, executionEpoch) : null,
     latePolicy: context => context.sink.latePolicy ? context.sink.latePolicy(context) : audioLatePolicy(context),
-    onReceipt: receipt => { if ((!receipt.targetTimeDomain || receipt.targetTimeDomain === 'audio-sample-frames') && Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) { effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); effectCapture.flush(); } latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.receiptVersion == null || receipt.receiptVersion === 1 || receipt.previousAdmissionStatus === 'deferred') { if (receipt.previousAdmissionStatus === 'deferred') pendingAdmissions--; if (receipt.status === 'accepted') accepted++; else if (receipt.status === 'degraded') degraded++; else if (receipt.status === 'deferred') pendingAdmissions++; else rejected++; } onReceipt(receipt); }
+    onReceipt: receipt => { if (receipt.status !== 'rejected' && (!receipt.targetTimeDomain || receipt.targetTimeDomain === 'audio-sample-frames') && Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) { effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.targetFrame ?? receipt.sourceTargetFrame, executionEpoch }); effectCapture.flush(); } latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.receiptVersion == null || receipt.receiptVersion === 1 || receipt.previousAdmissionStatus === 'deferred') { if (receipt.previousAdmissionStatus === 'deferred') pendingAdmissions--; if (receipt.status === 'accepted') accepted++; else if (receipt.status === 'degraded') degraded++; else if (receipt.status === 'deferred') pendingAdmissions++; else rejected++; } onReceipt(receipt); }
   });
   const captureEffect = effectCapture.capture;
   let unsubscribeEffectReceipts = null;
@@ -231,6 +232,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes(), getActorTimbreLocks()),
     getOnsetControls: (laneId, identity) => actorTimbreControls((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity),
+    getTimeTransformPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.timeTransform || null,
     getScoreContextPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.scoreContext || null,
     getPianoPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.piano || null,
     getPianoControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.pianoControls || null,
@@ -292,6 +294,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   /** @param {import('./PhysicalPlaybackContracts.js').PhysicalBatchSource} batch @param {{bpm?: number, playing?: boolean, position?: import('./PhysicalPlaybackContracts.js').PhysicalScorePosition | null}} options */
   const processBatch = (batch, { bpm, playing = true, position = null } = {}) => {
     if (disposed || !playing) return Object.freeze([]);
+    sourceTempoBpm = bpm;
     if (!permitted() && session?.getState().enabled) stop();
     armEnabled = true;
     const nextEpoch = /** @type {import('./AudioClockContracts.js').ExecutionEpoch} */ (`${batch.worldId}:${batch.generation}:${executionSerial}`);

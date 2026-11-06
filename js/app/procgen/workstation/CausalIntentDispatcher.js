@@ -1,3 +1,5 @@
+import { createTimeTransformOwner } from '../../../midi/content/TimeTransform.js';
+import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { retainSampleSelectionReceipt } from '../../../midi/content/SampleInstrumentMap.js';
 import { createCausalSinkAdmissions } from './CausalSinkAdmissions.js';
@@ -14,8 +16,8 @@ const createStrictLiveFramePolicy = ({ nowFrame } = {}) => {
 };
 
 const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoch = () => 'live', latePolicy = null,
-  onReceipt = () => {}, oneShotTailSeconds = 0.08, releaseSeconds = 0.04, historyLimit = 1024, maxPendingAdmissions = 128, receiptCapacity = 4096 } = {}) => {
-  if (typeof toTargetFrame !== 'function' || typeof executionEpoch !== 'function' ||
+  onReceipt = () => {}, getTempoBpm = () => null, resourceBudget = null, oneShotTailSeconds = 0.08, releaseSeconds = 0.04, historyLimit = 1024, maxPendingAdmissions = 128, receiptCapacity = 4096 } = {}) => {
+  if (typeof toTargetFrame !== 'function' || typeof executionEpoch !== 'function' || typeof getTempoBpm !== 'function' ||
       (latePolicy != null && typeof latePolicy !== 'function') ||
       !Array.isArray(sinks) || sinks.some(sink => typeof sink?.id !== 'string' || !sink.id ||
         typeof sink.route !== 'string' || !sink.route || !sink.backend || sink.enabled != null && typeof sink.enabled !== 'function' ||
@@ -29,7 +31,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     if (!routes.has(sink.route)) routes.set(sink.route, []);
     routes.get(sink.route).push(sink);
   }
-  const history = Array(historyLimit), executions = new Map();
+  const history = Array(historyLimit), executions = new Map(), timingOwner = createTimeTransformOwner({ mode: 'live', cacheLimit: 1024 }); let timingLease = null;
   let disposed = false, historyCursor = 0, historyCount = 0, sourceWorld = null, sourceGeneration = null;
   const retirement = createProcgenRetirementScope();
   const record = receipt => {
@@ -77,6 +79,13 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     sourceWorld = batch.worldId ?? null; sourceGeneration = batch.generation; admissions.sweep();
     const receipts = [], rawEpoch = executionEpoch(), epoch = typeof rawEpoch === 'string' && rawEpoch ? rawEpoch : null;
     for (const intent of intents) {
+      let timing = null, timingError = null;
+      try {
+        if (intent?.version !== 1 || intent.generation !== batch.generation || intent.worldId != null && batch.worldId != null && intent.worldId !== batch.worldId) throw Object.assign(new Error('Invalid physical intent'), { code: 'invalid-intent' });
+        if (!timingLease && intent?.timeTransformPolicy?.mode !== 'literal' && intent?.timeTransformPolicy?.strength01 > 0) timingLease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-groove-owner', kind: 'bounded-groove-lifecycle-and-decision-metadata-estimate', category: 'audio', bytes: 48 * 1048576 });
+        timing = timingOwner.apply(intent, intent?.timeTransformPolicy, { tempoBpm: getTempoBpm(intent, batch), executionEpoch: epoch || 'unavailable' });
+      } catch (error) { timingError = error.code || 'time-transform-unavailable'; }
+
       const targets = routes.get(intent?.route) || [null];
       for (const sink of targets) {
         if (sink?.enabled) { let enabled = false; try { enabled = sink.enabled() === true; } catch {} if (!enabled) continue; }
@@ -86,7 +95,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           eventId: intent?.eventId ?? (intent?.sourceEventIds?.length === 1 ? intent.sourceEventIds[0] : null),
           connectionEpoch: route?.connectionEpoch ?? null, routeRevision: route?.routeRevision ?? null,
           intentId: intent?.intentId ?? null, batchId: batch.batchId, generation: intent?.generation ?? null,
-          voiceId: intent?.voiceId ?? null, sourceEventIds: Object.freeze(Array.isArray(intent?.sourceEventIds) ? [...intent.sourceEventIds] : []),
+          ...(timing?.receipt ? { timeTransform: timing.receipt } : {}), ...(timingError ? { timeTransformFailure: timingError } : {}), voiceId: intent?.voiceId ?? null, sourceEventIds: Object.freeze(Array.isArray(intent?.sourceEventIds) ? [...intent.sourceEventIds] : []),
           sinkId: sink?.id ?? intent?.route ?? null, executionEpoch: epoch,
           ...(sink?.timeDomain ? { targetTimeDomain: sink.timeDomain } : {}) };
         if (!epoch) { receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: 'execution-epoch-unavailable' })); continue; }
@@ -96,10 +105,10 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         }
         if (!sink) { receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: 'route-unavailable' })); continue; }
         if (!route) { receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: 'sink-identity-unavailable' })); continue; }
-        let frame;
-        try { frame = toTargetFrame(intent.scoreTime, batch, intent, sink); } catch { frame = null; }
+        if (timingError && intent.kind !== 'end') { receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: timingError })); continue; }
+        let frame, sourceTargetFrame;
+        try { sourceTargetFrame = toTargetFrame(intent.scoreTime, batch, intent, sink); frame = timing?.scoreTime && timing.scoreTime !== intent.scoreTime ? toTargetFrame(timing.scoreTime, batch, intent, sink) : sourceTargetFrame; } catch { frame = null; }
         if (!Number.isSafeInteger(frame) || frame < 0) { receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: 'clock-unavailable' })); continue; }
-        const sourceTargetFrame = frame;
         let repair = null;
         if (latePolicy) {
           let decision;
@@ -116,7 +125,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         const reservation = admissions.reserve();
         if (!reservation) { receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: 'admission-capacity' })); continue; }
         let outcome, admitted = null; const acknowledgements = [];
-        const admissionContext = Object.freeze({ acknowledge(update) {
+        const admissionContext = Object.freeze({ timeTransform: timing?.receipt || null, acknowledge(update) {
           if (!admitted) { if (acknowledgements.length >= 8) return false; acknowledgements.push(Object.freeze({ ...update })); return true; }
           return admissions.acknowledgeCurrent(admitted, update);
         } });
@@ -156,6 +165,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     return Object.freeze(receipts);
   };
   const cancelGeneration = (generation, epoch = executionEpoch()) => {
+    if (sourceGeneration === generation) { timingOwner.reset(); timingLease?.release(); timingLease = null; }
     admissions.sweep('generation-cancelled', receipt => receipt.generation === generation && receipt.executionEpoch === epoch);
     const actions = [];
     for (const sink of sinks) {
@@ -166,7 +176,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     }
     return createProcgenRetirementScope().retire(actions);
   };
-  const diagnostics = () => Object.freeze({ disposed, receiptCount: historyCount, receipts: Object.freeze(Array.from({ length: historyCount }, (_, index) => history[(historyCursor - historyCount + historyLimit + index) % historyLimit])), admissions: admissions.snapshot() });
+  const diagnostics = () => Object.freeze({ timeTransform: timingOwner.diagnostics(), disposed, receiptCount: historyCount, receipts: Object.freeze(Array.from({ length: historyCount }, (_, index) => history[(historyCursor - historyCount + historyLimit + index) % historyLimit])), admissions: admissions.snapshot() });
   const renewExecutionLease = (generation, epoch, untilFrame) => {
     if (disposed || !Number.isSafeInteger(untilFrame) || untilFrame < 0) return Object.freeze({ status: 'rejected', reason: 'invalid-execution-lease' });
     const outcomes = [];
@@ -183,7 +193,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     return retirement.retire(sinks.flatMap(sink => {
       const current = executions.get(sink.id);
       return current ? [{ name: sink.id + '-execution', run: () => retireCurrent(sink, current) }] : [];
-    }).concat({ name: 'dispatch-state', run: () => { executions.clear(); history.fill(undefined); historyCount = historyCursor = 0; } }));
+    }).concat({ name: 'dispatch-state', run: () => { timingOwner.reset(); timingLease?.release(); timingLease = null; executions.clear(); history.fill(undefined); historyCount = historyCursor = 0; } }));
   };
   const observeDisplaySamples = (sinkId, listener, options = {}) => {
     const sink = sinks.find(candidate => candidate.id === sinkId), current = executions.get(sinkId);

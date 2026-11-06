@@ -8,6 +8,7 @@ export interface PlaybackLaneSource {
   readonly id: string;
   readonly instrumentRef?: { readonly packHash: string; readonly definitionHash: string } | null;
   readonly instrumentControls?: unknown;
+  readonly timeTransform?: unknown;
   readonly scoreContext?: unknown;
   readonly piano?: unknown;
   readonly pianoControls?: unknown;
@@ -66,7 +67,7 @@ export type IntentProvenance =
 export interface PhysicalPlaybackOptions {
   audio: Partial<ReturnType<typeof createBrowserNotePreview>> | null;
   getGraph: () => PlaybackGraphSource;
-  scoreTimeline: { map(time: { simTick: number }): PhysicalScorePosition };
+  scoreTimeline: { map(time: { simTick: number }): PhysicalScorePosition; currentSegment?(): { readonly tempoBpm: number } };
   now: () => HostMilliseconds;
   renderer?: PlaybackDisplayPort | null;
   resourceBudget?: ReturnType<typeof createResourceBudget> | null;
