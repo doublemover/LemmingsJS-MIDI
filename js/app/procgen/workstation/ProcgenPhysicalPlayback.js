@@ -1,4 +1,6 @@
 import { actorTimbreControls, EMPTY_ACTOR_TIMBRE_LOCKS } from '../../../midi/content/InstrumentActorLocks.js';
+import { meterQuarterLength } from '../../../midi/project/MidiMusicalPosition.js';
+import { INSTRUMENT_SWITCH_MODES } from '../../../midi/content/InstrumentSwitchPolicy.js';
 import { createSceneMorphMechanism } from './SceneMorphMechanism.js';
 import { createSceneCavityBody } from './SceneCavityBody.js';
 import { createCavitySourceAdmission } from './CavitySourceAdmission.js';
@@ -59,7 +61,20 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   catch { routingUnavailable = 'audio-routing-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Audio admission cannot stop the world. */ } }
   const backend = routingUnavailable ? null : routed?.backend || nativeBackend;
   let laneInstruments = null;
-  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, getCatalog: getInstrumentCatalog, onState: onInstrumentState, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider() }); }
+  try { if (routed) laneInstruments = createLaneInstrumentPreparation({ session, routed, getCatalog: getInstrumentCatalog, onState: onInstrumentState, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider(),
+    getLane: laneId => getLanes().find(lane => lane.id === laneId), getSwitchFrame: policy => {
+      const context = audio.getAudioContext(), anchor = clock.getAnchor();
+      if (!context || context.state !== 'running') throw new Error('Enable live audio before switching held notes.');
+      const minimum = Math.ceil((context.currentTime + 0.08) * context.sampleRate);
+      if (policy.boundary === 'immediate') return minimum;
+      if (!anchor || anchor.executionEpoch !== executionEpoch || anchor.sampleRate !== context.sampleRate) throw new Error('A running score/audio clock is required for beat or bar switching.');
+      const span = policy.boundary === 'next-bar' ? meterQuarterLength(getScoreContext()?.meter) : 1;
+      const nowBeat = anchor.beat + ((minimum / context.sampleRate - anchor.contextSeconds) * 1000 + anchor.correlationHostMs - anchor.hostMs - anchor.presentationDelayMs) * anchor.bpm / 60000;
+      const beat = (Math.floor(nowBeat / span + 1e-12) + 1) * span;
+      const frame = clock.toTargetFrame({ epoch: anchor.scoreEpoch, beat: /** @type {import('./AudioClockContracts.js').ScoreBeats} */ (beat) }, executionEpoch);
+      if (!Number.isSafeInteger(frame) || frame < minimum) throw new Error('The selected score boundary is outside the live scheduling horizon. Choose Immediate.');
+      return frame;
+    } }); }
   catch { routingUnavailable = 'audio-preparation-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Preparation cannot stop physics. */ } }
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ (presentationDelayMs), maxHorizonMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ (5000) });
@@ -375,7 +390,8 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, synchronizePerformance,
     performanceView: laneId => Object.freeze({ status: lastPerformancePublication?.status || 'unavailable', acousticReceipt: false, outcomes: Object.freeze((lastPerformancePublication?.outcomes || []).filter(outcome => outcome.laneId === laneId)) }), travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: externalEnabled() || permitted() && !!session?.getState().enabled }),
     bindPreparedSurface, preparedSurfaceDefinitions: () => getGraph().preparedSurfaces || [], preparedSurfaceBodies: () => { surfaceBodies?.prune(); return surfaceBodies?.state() || null; }, prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
-    instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: Object.freeze(['new-notes-only']), unsupported: Object.freeze({ 'crossfade-held': 'No realized cross-renderer held-state transfer adapter is installed.' }) }),
+    instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: INSTRUMENT_SWITCH_MODES,
+      boundaries: Object.freeze(['immediate', 'next-beat', 'next-bar']), heldFidelity: 'new-realizations;no-phase-or-sample-cursor-transfer', overlap: 'admitted-before-outgoing-release', fallback: 'new-notes-only' }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),

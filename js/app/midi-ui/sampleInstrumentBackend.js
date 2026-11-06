@@ -1,4 +1,5 @@
 import { createVoiceLaneMix, validVoiceLaneMix } from './VoiceLaneMix.js';
+import { createRendererPublicationOwner } from './RendererPublicationOwner.js';
 import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { sampleRegionRate as rateFor, sampleRegionArticulation } from './NativeSamplePlan.js';
 import { DECODER_VERSION } from './AudioAssetRef.js';
@@ -24,10 +25,13 @@ const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: 
 // Region selection belongs to the content map. This renderer snapshots exactly
 // one resolved source-frame region at onset and never rerolls it at release.
 export function createSampleInstrumentBackend(preview, owner = null, { resolveRegion = null, gateMode = 'owned', clockMode = 'realtime',
-  smoothingSeconds = 0.008, maxControlEvents = 128, traceLimit = 128 } = {}) {
+  smoothingSeconds = 0.008, maxControlEvents = 128, traceLimit = 128, publicationMuted = false } = {}) {
+  if (typeof publicationMuted !== 'boolean') throw new TypeError('Invalid renderer publication mode.');
   if (resolveRegion != null && typeof resolveRegion !== 'function' || !['owned', 'bounded'].includes(gateMode) || !['realtime', 'offline'].includes(clockMode) || !finite(smoothingSeconds, 0, 1) ||
       !integer(maxControlEvents, 1, 4096) || !integer(traceLimit, 0, 4096)) throw new TypeError('Invalid sample audio backend options.');
   const voices = new Map(), leases = new Map(), cancelled = new Set(), traces = [];
+  let publication = null;
+  const publicationFor = () => { const context = preview.getAudioContext(); if (publication && publication.context !== context) { if (publication.context.state !== 'closed' && voices.size) throw new Error('Retire the prior renderer context before publication.'); const receipt = publication.dispose({ producerRetired: true }); if (receipt.outcome !== 'complete') throw Object.assign(new Error('Prior publication retirement is unresolved.'), { retirement: receipt }); publication = null; } return publication ||= createRendererPublicationOwner({ context, resources: preview._audioResources, owner, generation: preview._generation, initiallyMuted: publicationMuted, maxGates: 128 }); };
   const retirement = createProcgenRetirementScope();
   let prepared = null, revision = 0, disposed = false, cancellationHistoryFull = false, errors = 0, sequence = 0, expiryTimer = null, rebuildingChokes = false;
   let preparationFault = null, pendingPreparations = 0;
@@ -254,7 +258,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       releaseAt: Math.min(hardEnd - prepared.parameters.releaseSeconds, nextChoke), overrides,
       cost: renderCost, patchVoices: voices.values(), patchLimit: prepared.maxVoices });
     if (!admission.accepted) return reject(admission.reason, intent.voiceId);
-    const allocations = [], components = []; let pressureGain, pan, voice, laneMix;
+    const allocations = [], components = []; let pressureGain, publicationGain, voicePublication, pan, voice, laneMix;
     try {
       for (let n = 0; n < renderCost; n++) allocations.push(preview._audioResources.reserveNativeVoice(owner, intent.generation));
       for (const selected of [region, region.releaseRegion].filter(Boolean)) {
@@ -273,7 +277,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, value: intent.laneMix });
       pressureGain = context.createGain(); pan = context.createStereoPanner?.() || null;
       for (const component of components) component.gain.connect(pressureGain);
-      pressureGain.connect(pan || laneMix.input); pan?.connect(laneMix.input);
+      voicePublication = publicationFor(); publicationGain = voicePublication.addGate();
+      pressureGain.connect(publicationGain); publicationGain.connect(pan || laneMix.input); pan?.connect(laneMix.input);
       voice = { owner, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127, id: ++preview._voiceSequence,
         start, end: hardEnd, hardEnd, releaseAt: hardEnd - values.releaseSeconds, released: false, renderCost, startedAt: start, priority: 1, laneIndex: intent.laneId ?? 0,
         main: components[0], child: components[1] || null, components, gain: components[0].gain, pressureGain, pan, laneMix, nativeNodesOwnedByBackend: true,
@@ -291,7 +296,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
           return createProcgenRetirementScope().retire([
             { name: 'native-sources', run: () => { native = createProcgenRetirementScope().retire([
               ...components.map((component, index) => ({ name: 'source-' + index, run: () => retireComponent(component) })),
-              { name: 'lane-mix', run: () => laneMix?.dispose() }, { name: 'pressure-gain', run: () => pressureGain.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
+              { name: 'lane-mix', run: () => laneMix?.dispose() }, { name: 'publication-gate', run: () => voicePublication?.removeGate(publicationGain) }, { name: 'pressure-gain', run: () => pressureGain.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
             ]); return native; } },
             ...allocations.map((allocation, index) => ({ name: `allocation-${index}`, run: () => releaseAudioResourceAfterRetirement(allocation, native) })),
             { name: 'observation', run: () => { trace({ status: 'ended', voiceId: intent.voiceId, generation: intent.generation, executionEpoch, reason }); armExpiry(); } },
@@ -323,7 +328,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         const receipt = construction.retire([
           { name: 'native-sources', run: () => { native = createProcgenRetirementScope().retire([
             ...components.map((component, index) => ({ name: 'source-' + index, run: () => retireComponent(component) })),
-            { name: 'lane-mix', run: () => laneMix?.dispose() }, { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
+            { name: 'lane-mix', run: () => laneMix?.dispose() }, { name: 'publication-gate', run: () => voicePublication?.removeGate(publicationGain) }, { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
           ]); return native; } },
           ...allocations.map((allocation, index) => ({ name: 'allocation-' + index, run: () => releaseAudioResourceAfterRetirement(allocation, native) }))
         ]);
@@ -491,7 +496,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     engineId: 'native-sample', engineVersion: 1, capabilities, gateMode, clockMode, smoothingSeconds, sampleMap: prepared?.mapResolver ? { mapId: prepared.mapResolver.map.mapId, revision: prepared.mapResolver.map.revision, zones: prepared.mapResolver.map.zones.length } : null, activeVoices: voices.size,
     reservedSources: [...voices.values()].reduce((sum, voice) => sum + voice.renderCost, 0), patchId: prepared?.id ?? null, patchRevision: prepared?.revision ?? null,
     deliveryErrors: errors, cancelledGenerations: cancelled.size, cancellationHistoryFull, pendingPreparations, maximumPendingPreparations: 2,
-    preparedResourceRetirement: retirementSummary(preparationFault), evidenceClass: 'native-scheduling-api', appliedFrame: null, acousticReceipt: false,
+    publication: publication?.diagnostics() || null, preparedResourceRetirement: retirementSummary(preparationFault), evidenceClass: 'native-scheduling-api', appliedFrame: null, acousticReceipt: false,
     ...(includeTraces ? { traces: Object.freeze([...traces]) } : {}),
     ...(includeVoices ? { voices: Object.freeze([...voices.values()].map(voice => Object.freeze({ voiceId: voice.playback.voiceId,
       onsetId: voice.playback.onsetId ?? null, actorId: voice.playback.actorId ?? null, owner, generation: voice.semanticGeneration, executionEpoch: voice.semanticEpoch,
@@ -506,6 +511,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     return retirement.retire([
       { name: 'admission', run: () => { disposed = true; } }, { name: 'owner-stop', run: onOwnerStop },
       ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'sample-backend-disposed') })),
+      { name: 'publication-owner', run: () => publication?.dispose({ producerRetired: retirement.getReceipt().resources.filter(resource => resource.name.startsWith('voice-')).every(resource => resource.status === 'completed') }) },
       { name: 'prepared-samples', run: () => releasePrepared(prepared) },
       ...[...retiredPrepared].map((value, index) => ({ name: 'retired-prepared-samples-' + index, run: () => value.retirement })),
       { name: 'patch', run: () => { prepared = null; } }
@@ -513,7 +519,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
   };
   return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updateLaneMix, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, executionEpoch = 'live') => cancelGenerationWithReceipt(generation, executionEpoch).count || 0,
-    renderDiagnostics, onOwnerStop, dispose }, {
+    setRendererPublication: (gain01, frame) => { if (disposed) throw new Error('This renderer has retired.'); return publicationFor().schedule(gain01, frame); },
+    sourceCaptureStatus: () => Object.freeze({ mode: 'unsupported-native-hidden-state', quiescent: voices.size === 0 }), renderDiagnostics, onOwnerStop, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epoch => !preview._retirementFaults?.has(owner) && ![...voices.values()].some(voice => voice.semanticEpoch === epoch),
     isVoiceSettled: (voiceId, epoch) => !preview._retirementFaults?.has(owner) && !voices.has(keyFor(epoch, voiceId)),

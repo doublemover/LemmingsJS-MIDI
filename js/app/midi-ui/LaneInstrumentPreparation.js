@@ -3,13 +3,15 @@ import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { resolveOwnedArticulationPolicy } from './OwnedArticulationPolicy.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
+import { laneInstrumentSwitchPolicy } from '../../midi/content/InstrumentSwitchPolicy.js';
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'SoundContentError', code });
 const keyFor = reference => reference.packHash + ':' + reference.definitionHash;
 const failureCode = error => typeof error?.code === 'string' && error.code.length ? error.code.slice(0, 128) : error?.name === 'AbortError' ? 'preparation-canceled' : 'preparation-failed';
 let nextPreparationOwner = 0;
 
-export function createLaneInstrumentPreparation({ session, routed, getCatalog = getNativeInstrumentCatalog, onState = () => {}, maxLanes = 1024, resourceBudget = null, getMaterialProvider = null } = {}) {
+export function createLaneInstrumentPreparation({ session, routed, getCatalog = getNativeInstrumentCatalog, onState = () => {}, maxLanes = 1024, resourceBudget = null, getMaterialProvider = null,
+  getLane = () => null, getSwitchFrame = null } = {}) {
   if (!session?.createInstrumentBackend || !routed?.assign || typeof getCatalog !== 'function' || typeof onState !== 'function' || !Number.isSafeInteger(maxLanes) || maxLanes < 1 || maxLanes > 1024) throw new TypeError('Invalid lane preparation owner.');
   const pending = new Set(), laneRequests = new Map(), observed = new Map(), observedReferences = new Map(), failures = new Map(), unknown = new Set(), queued = new Map();
   const metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: 'lane-instruments-' + (++nextPreparationOwner), kind: 'lane-instrument-inputs', category: 'audio', bytes: 4096 });
@@ -17,20 +19,22 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
     (nextPending + unknown.size) * 2 * 1048576);
   const retirement = createProcgenRetirementScope(); let disposed = false, serial = 0, pumping = null;
   const report = (laneId, state, code = null) => { if (disposed) return; try { onState(Object.freeze({ laneId, state, code })); } catch { /* Views cannot publish instruments. */ } };
-  const prepare = async (laneId, raw, { signal: externalSignal, retainPrevious = false } = {}) => {
+  const prepare = async (laneId, raw, { signal: externalSignal, retainPrevious = false, switchLane = null } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || unknown.size || pending.size >= 2) throw failure('instrument-preparation-capacity', 'Lane instrument preparation is unavailable or busy.');
     if (typeof laneId !== 'string' || !laneId || laneId.length > 160) throw new TypeError('Invalid lane identity.');
     const reference = validateSoundContentReference(raw);
     if (!reference) throw failure('invalid-sound-reference', 'Lane preparation needs a pinned instrument definition.');
-    const key = keyFor(reference);
-    if (!routed.canAssign(key)) throw failure('instrument-retirement-capacity', 'Prior held voices still occupy renderer capacity.');
+    const key = keyFor(reference), policy = laneInstrumentSwitchPolicy(switchLane || getLane(laneId), reference.definition);
+    const gated = policy.mode !== 'new-notes-only' || policy.boundary !== 'immediate', runtimeKey = gated ? key + '@switch:' + (serial + 1) : key;
+    if (routed.hasPendingSwitch?.(laneId)) throw failure('instrument-boundary-pending', 'A committed patch switch is already scheduled. Its accepted score boundary remains fixed.');
+    if (!routed.canAssign(runtimeKey)) throw failure('instrument-retirement-capacity', 'Prior held voices still occupy renderer capacity. Choose New notes only to avoid held overlap.');
     if (!Number.isSafeInteger(serial + 1)) throw failure('instrument-identity-exhausted', 'Lane instrument preparation identity is exhausted.');
-    if (retainPrevious && typeof routed.retainAssignment !== 'function') throw failure('instrument-rollback-unavailable', 'This renderer cannot retain its previous lane assignment.');
+    if ((retainPrevious || gated) && typeof routed.retainAssignment !== 'function') throw failure('instrument-rollback-unavailable', 'This renderer cannot retain its previous lane assignment.');
     reserveInputs(0, pending.size + 1);
     let complete; const previousKey = observed.get(laneId), previousReference = observedReferences.get(laneId);
     let previousAssignment, pin;
-    try { previousAssignment = retainPrevious ? routed.retainAssignment(laneId) : null; pin = routed.retain(key); }
+    try { previousAssignment = retainPrevious || gated ? routed.retainAssignment(laneId) : null; pin = gated ? null : routed.retain(key); }
     catch (error) { previousAssignment?.release(); reserveInputs(); throw error; }
     const operation = { id: ++serial, laneId, referenceKey: key, controller: new AbortController(), backend: null, material: null, pin, rollbackFailed: false, committed: false, accepted: false, assignmentReceipt: null,
       retired: false, preparing: true, retirement: null, nativeRetirement: null, completion: new Promise(resolve => { complete = resolve; }) };
@@ -42,6 +46,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       externalSignal?.removeEventListener('abort', cancel); pending.delete(operation); if (laneRequests.get(laneId) === operation) laneRequests.delete(laneId);
       operation.retirementScope = createProcgenRetirementScope();
       operation.retirement = operation.retirementScope.retire([
+        { name: 'silent-switch-cancellation', run: () => !operation.accepted ? operation.switchPlan?.cancel() : null },
         { name: 'previous-assignment-rollback', run: () => { if (operation.committed && !operation.accepted && previousAssignment) { let result; try { result = previousAssignment.restore(operation.assignmentReceipt); } catch (error) { operation.rollbackFailed = true; throw error; } if (result.status === 'restored') { if (previousKey === undefined) observed.delete(laneId); else observed.set(laneId, previousKey); if (previousReference === undefined) observedReferences.delete(laneId); else observedReferences.set(laneId, previousReference); report(laneId, 'restored'); } return result; } } },
         { name: 'previous-assignment-pin', run: () => { if (operation.rollbackFailed) throw failure('retirement-unknown', 'Previous renderer remains pinned after an unacknowledged rollback.'); return previousAssignment?.release(); } },
         { name: 'candidate-pin', run: () => operation.pin?.release() },
@@ -74,8 +79,8 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       if (!operation.pin) {
         if (resolution.patch.engineId === 'native-sample') {
           if (!session.createSampleInstrumentBackend) throw failure('sample-adapter-unavailable', 'This lane session cannot prepare mapped samples.');
-          operation.backend = await session.createSampleInstrumentBackend({ gateMode: 'owned' });
-        } else operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(resolution.patch.engineId) ? await session.createWorkletInstrumentBackend({ engineId: resolution.patch.engineId }) : session.createInstrumentBackend({ gateMode: 'owned', engineId: resolution.patch.engineId }); check();
+          operation.backend = await session.createSampleInstrumentBackend({ gateMode: 'owned', publicationMuted: gated });
+        } else operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(resolution.patch.engineId) ? await session.createWorkletInstrumentBackend({ engineId: resolution.patch.engineId, publicationMuted: gated }) : session.createInstrumentBackend({ gateMode: 'owned', engineId: resolution.patch.engineId, publicationMuted: gated }); check();
       } else operation.backend = operation.pin.backend;
       const ready = await operation.backend.prepare(resolution, operation.material?.assets || []); check(); if (ready?.status !== 'ready') throw failure(ready?.reason || 'preparation-rejected', 'Lane renderer rejected the pinned patch.');
       if (operation.material) {
@@ -85,12 +90,22 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       }
       check(); operation.preparing = false;
       const { releaseSeconds, oneShotTailSeconds } = resolveOwnedArticulationPolicy(resolution.patch);
-      return Object.freeze({ reference,
+      const accept = () => {
+        check(); if (!operation.committed || operation.retired) throw failure('candidate-not-published', 'Only a live committed candidate can be accepted.');
+        const outcome = operation.switchPlan?.accept(); operation.accepted = true; release(); report(laneId, outcome?.status === 'degraded' ? 'switch-degraded' : 'ready', outcome?.status === 'degraded' ? 'outgoing-switch-release-failed' : null);
+        return outcome || reference;
+      };
+      return Object.freeze({ reference, policy,
+        validateCommit() { check(); operation.switchPlan?.validate(); },
         commit() {
           check(); if (operation.retired || operation.committed) throw failure('candidate-retired', 'Lane instrument candidate was retired or already committed.');
-          operation.assignmentReceipt = routed.assign(laneId, key, operation.backend, { releaseSeconds, oneShotTailSeconds, bodyId: resolution.patch.id, macroIds: (resolution.patch.macros || []).map(macro => macro.id) }); operation.committed = true;
-          observed.set(laneId, key); observedReferences.set(laneId, raw); failures.delete(laneId); if (!retainPrevious) { operation.accepted = true; release(); report(laneId, 'ready'); } return reference;
-        }, accept() { check(); if (!operation.committed || operation.retired) throw failure('candidate-not-published', 'Only a live committed candidate can be accepted.'); operation.accepted = true; release(); report(laneId, 'ready'); return reference; }, release });
+          operation.assignmentReceipt = routed.assign(laneId, runtimeKey, operation.backend, { instrumentKey: key, releaseSeconds, oneShotTailSeconds, bodyId: resolution.patch.id, macroIds: (resolution.patch.macros || []).map(macro => macro.id) }); operation.committed = true;
+          if (gated) {
+            if (typeof getSwitchFrame !== 'function' || typeof routed.stageSwitch !== 'function') throw failure('switch-clock-unavailable', 'This owner cannot schedule an authored score boundary.');
+            operation.switchPlan = routed.stageSwitch(laneId, operation.assignmentReceipt, policy, getSwitchFrame(policy), previousAssignment);
+          }
+          observed.set(laneId, key); observedReferences.set(laneId, raw); failures.delete(laneId); if (!retainPrevious) accept(); return reference;
+        }, accept, release });
     } catch (error) {
       const publish = !disposed && !signal.aborted && laneRequests.get(laneId) === operation;
       operation.preparing = false; const receipt = release();

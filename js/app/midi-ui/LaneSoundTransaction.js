@@ -4,7 +4,7 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'SoundTransactionError', code });
 const fingerprint = lane => JSON.stringify([lane?.family, lane?.role, lane?.patch, lane?.instrumentRef?.packHash,
-  lane?.instrumentRef?.definitionHash, lane?.instrumentControls, lane?.soundChangePolicy]);
+  lane?.instrumentRef?.definitionHash, lane?.instrumentControls, lane?.soundChangePolicy, lane?.soundChangeBoundary, lane?.soundChangeFadeSeconds]);
 let nextOwner = 0;
 
 export function createLaneSoundTransaction({ getSource, prepare, publish, resourceBudget = null, onState = () => {} } = {}) {
@@ -45,6 +45,7 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
     try { check(operation); } catch (error) { cancelOperation(operation, error.message); throw error; }
     publishing = true; let acceptAttempted = false;
     try {
+      operation.prepared.validateCommit?.();
       const result = publish(operation.laneId, operation.reference, operation.patch);
       if (result === false) throw failure('sound-publication-rejected', 'The sound edit was not admitted.');
       const selected = getSource(operation.laneId).lane?.instrumentRef;
@@ -68,7 +69,8 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
     patch = Object.freeze({ ...patch });
     const source = getSource(laneId); laneId ||= source.selectedLaneId;
     if (!source.available || !source.lane || source.selectedLaneId !== laneId) throw failure('sound-source-unavailable', source.reason || 'Finish the world/history/take operation before selecting sound.');
-    if (source.lane.soundChangePolicy !== 'new-notes-only') throw failure('sound-policy-unsupported', 'Held crossfade is not supported. Choose the named new-notes-only policy; the world will not change.');
+    if (hold && (source.lane.soundChangePolicy !== 'new-notes-only' || source.lane.soundChangeBoundary && source.lane.soundChangeBoundary !== 'immediate'))
+      throw failure('held-preview-needs-cue', 'Use PRELISTEN for an isolated audition of held-note or score-boundary switching. Temporary incoming-event preview uses New notes only.');
     if (!Number.isSafeInteger(serial + 1)) throw failure('sound-identity-exhausted', 'Sound transaction identity exhausted.');
     cancelOperation(active, 'A newer sound selection superseded this candidate.');
     if (operations.size >= 2) throw failure('sound-preparation-capacity', 'Wait for the canceled sound preparation to acknowledge retirement.');
@@ -82,7 +84,7 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
     report('preparing', operation);
     try {
       check(operation); if (typeof candidate === 'function') { operation.sourceCandidate = await candidate(operation.controller.signal); check(operation); operation.reference = validateSoundContentReference({ ...operation.sourceCandidate.reference, definition: operation.sourceCandidate.definition || operation.sourceCandidate.reference?.definition }); }
-      operation.prepared = await prepare(laneId, operation.reference, { signal: operation.controller.signal, retainPrevious: true }); operation.preparing = false; check(operation);
+      operation.prepared = await prepare(laneId, operation.reference, { signal: operation.controller.signal, retainPrevious: true, switchLane: source.lane }); operation.preparing = false; check(operation);
       operation.prepared.commit(); preview = operation;
       if (!hold) return commit(operation);
       report('preview', operation);

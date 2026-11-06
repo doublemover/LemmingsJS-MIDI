@@ -1,3 +1,4 @@
+import { validateInstrumentSwitchPolicy, instrumentSwitchFidelity } from '../../midi/content/InstrumentSwitchPolicy.js';
 import { createInstrumentExecutionLifecycle } from './InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
@@ -14,11 +15,11 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       !Number.isSafeInteger(maxLanes) || maxLanes < 1 || maxLanes > 1024 || typeof requiredInstrumentKey !== 'function' || [getPerformanceControls, resolveSharedTopologyBody, onTopologyBody].some(callback => callback != null && typeof callback !== 'function')) throw new TypeError('Invalid routed instrument owner.');
   if ([defaultReleaseSeconds, defaultOneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid default release policy.');
   const defaults = { key: 'default', backend: defaultBackend, retirement: null, assignedLanes: 0, releaseSeconds: defaultReleaseSeconds, oneShotTailSeconds: defaultOneShotTailSeconds },
-    children = new Map([['default', defaults]]), assignments = new Map(), assignmentVersions = new Map(), executions = new Map(), voices = new Map();
+    children = new Map([['default', defaults]]), assignments = new Map(), assignmentVersions = new Map(), executions = new Map(), voices = new Map(), switches = new Map();
   const retirement = createProcgenRetirementScope(), displayObservers = new Set();
   const metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: 'routed-instruments-' + (++nextRouter), kind: 'routed-instrument-metadata', category: 'audio', bytes: 4096 });
   const metadataBytes = ({ lanes = 0, renderers = 0, voices: extraVoices = 0, epochs = 0, displays = 0 } = {}) => 4096 +
-    (assignments.size + lanes) * 512 + (children.size + renderers) * 17408 + (voices.size + extraVoices) * 512 +
+    (assignments.size + lanes) * 512 + (children.size + renderers) * 17408 + (voices.size + extraVoices) * 4096 +
     (executions.size + epochs) * (maxChildren * 256 + 1024) + (displayObservers.size + displays) * (maxChildren * 128 + 1024);
   const reserveMetadata = extra => metadata.resize(metadataBytes(extra));
   let disposed = false, voiceCursor = voices.entries(), collected = 0, routeRevision = 0, assignmentSerial = 0, displayContext = null;
@@ -36,7 +37,8 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     for (let index = 0; index < limit && voices.size; index++) {
       let item = voiceCursor.next(); if (item.done) { voiceCursor = voices.entries(); item = voiceCursor.next(); if (item.done) break; }
       const [key, voice] = item.value;
-      if (stateFor(voice.child, voice.execution, voice.voiceId)?.voiceSettled === true) { voices.delete(key); collected++; }
+      voice.prior = (voice.prior || []).filter(part => stateFor(part.child, part.execution, voice.voiceId)?.voiceSettled !== true);
+      if (!voice.prior.length && stateFor(voice.child, voice.execution, voice.voiceId)?.voiceSettled === true) { voices.delete(key); collected++; }
     }
   };
   const childSettled = child => {
@@ -62,6 +64,8 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     return child.retirement;
   };
   const collect = () => {
+    const context = getContext(), frame = Math.ceil((context?.currentTime || 0) * (context?.sampleRate || 1));
+    for (const [lane, plan] of switches) if (plan.accepted && frame >= plan.frame) { switches.delete(lane); plan.previousPin?.release(); }
     collectVoices();
     for (const child of children.values()) if (child !== defaults && !child.pins && !child.assignedLanes && !child.retirementScope && childSettled(child)) retireChild(child);
     if (!disposed && metadataBytes() < metadata.receipt().declaredBytes) reserveMetadata();
@@ -79,6 +83,25 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     }
     return execution.children.get(child);
   };
+  const realizeHeld = (child, voice, policy, frame) => {
+    const execution = executionFor(child, voice.epoch, voice.intent.generation); if (!execution) throw new Error('The incoming held execution could not be admitted.');
+    const controls = getPerformanceControls(voice.laneId, voice.sourceLaneId, voice.performanceIdentity) || { macros: {} };
+    const performanceControls = { ...controls, macros: Object.fromEntries(Object.entries(controls.macros || {}).filter(([id]) => child.macroIds.includes(id))) };
+    const intent = { ...voice.intent, expression: { ...voice.expression }, performanceControls, laneMix: getLaneMix(voice.laneId, voice.sourceLaneId), audioLaneId: voice.laneId,
+      voiceTransition: policy.mode === 'crossfade-held' ? { kind: 'crossfade', seconds: policy.fadeSeconds, fromVoiceId: voice.voiceId } : null };
+    const outcome = child.backend.begin(intent, frame, execution);
+    if (outcome?.status !== 'accepted') throw Object.assign(new Error('Incoming held realization rejected: ' + (outcome?.reason || 'renderer-unavailable') +
+      '. Keep the old patch or choose New notes only to avoid overlap.'), { code: outcome?.reason || 'switch-overlap-unavailable' });
+    return { voice, execution, articulation: outcome.articulation || child, intent };
+  };
+  const publishHeld = (child, row, policy, frame) => {
+    const voice = row.voice, prior = { child: voice.child, execution: voice.execution, articulation: voice.articulation, startFrame: voice.startFrame, untilFrame: frame };
+    let outcome; try { outcome = prior.child.backend.end(voice.voiceId, { seconds: policy.fadeSeconds, transitionPolicy: 'crossfade' }, frame, prior.execution); }
+    catch (error) { outcome = reject(error.code || 'outgoing-switch-release-failed'); }
+    voice.prior.push(prior); voice.child = child; voice.execution = row.execution; voice.startFrame = frame; voice.articulation = row.articulation;
+    voice.intent = row.intent; voice.performanceInput = JSON.stringify(row.intent.performanceControls?.macros || {});
+    return outcome;
+  };
   const begin = (intent, targetFrame, epoch) => {
     if (disposed) return reject('disposed');
     if (!Number.isSafeInteger(intent?.generation) || intent.generation < 0 || typeof intent.voiceId !== 'string' || !intent.voiceId || intent.voiceId.length > 512) return reject('invalid-intent');
@@ -86,9 +109,10 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (voices.size >= maxVoices) collectVoices(voices.size);
     if (voices.size >= maxVoices || voices.has(keyFor(epoch, intent?.voiceId))) return reject('routed-voice-capacity-or-duplicate');
     let lane; try { lane = resolveLane(intent.laneId); } catch { return reject('lane-unavailable'); }
-    const assigned = assignments.get(lane), child = assigned || defaults; if (child.blocked) return reject(child.reason);
+    const assigned = assignments.get(lane), plan = switches.get(lane), beforeBoundary = plan?.accepted && targetFrame < plan.frame;
+    const child = beforeBoundary ? plan.previous || defaults : assigned || defaults; if (child.blocked) return reject(child.reason);
     let expected; try { expected = requiredInstrumentKey(lane, intent.laneId); } catch { return reject('lane-requirement-unavailable'); }
-    if (expected && assigned?.key !== expected) return reject('pinned-instrument-not-prepared');
+    if (expected && (beforeBoundary ? assigned?.instrumentKey : child.instrumentKey || child.key) !== expected) return reject('pinned-instrument-not-prepared');
     let sharedBody = null;
     if (intent.topologyBinding && (intent.topologyBinding.bodyId !== child.bodyId || intent.topologyBinding.dampingMacroId && !child.macroIds?.includes(intent.topologyBinding.dampingMacroId))) {
       try { sharedBody = resolveSharedTopologyBody?.(intent, targetFrame); } catch {}
@@ -99,21 +123,35 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     const laneMix = getLaneMix(lane, intent.laneId); if (!laneMix) return reject('lane-unavailable');
     if (laneMix.muted || laneMix.soloSuppressed || laneMix.gain === 0) return reject(laneMix.muted ? 'lane-muted' : laneMix.soloSuppressed ? 'lane-solo-suppressed' : 'lane-zero-gain');
     const outcome = child.backend.begin({ ...intent, laneMix, audioLaneId: lane }, targetFrame, execution);
-    if (outcome?.status === 'accepted') voices.set(keyFor(epoch, intent.voiceId), { child, execution, epoch, laneId: lane, sourceLaneId: intent.laneId, mix: laneMix, mixFault: false, voiceId: intent.voiceId, articulation: outcome.articulation || child, startFrame: targetFrame, performanceIdentity: Object.freeze({ worldId: intent.worldId, generation: intent.generation, actorId: intent.actorId, onsetId: intent.onsetId }), performanceInput: JSON.stringify(intent.performanceControls?.macros || {}) });
+    if (outcome?.status === 'accepted') voices.set(keyFor(epoch, intent.voiceId), { child, execution, epoch, laneId: lane, sourceLaneId: intent.laneId, mix: laneMix, mixFault: false, voiceId: intent.voiceId, articulation: outcome.articulation || child, startFrame: targetFrame, intent, expression: { ...intent.expression }, observations: new Map(), prior: [], ended: false, performanceIdentity: Object.freeze({ worldId: intent.worldId, generation: intent.generation, actorId: intent.actorId, onsetId: intent.onsetId }), performanceInput: JSON.stringify(intent.performanceControls?.macros || {}) });
+    if (outcome?.status === 'accepted' && beforeBoundary && plan.policy.mode !== 'new-notes-only') {
+      try { const row = realizeHeld(plan.child, voices.get(keyFor(epoch, intent.voiceId)), plan.policy, plan.frame); const release = publishHeld(plan.child, row, plan.policy, plan.frame);
+        if (release?.status !== 'accepted') return Object.freeze({ ...outcome, switchStatus: 'degraded', switchReason: release?.reason || 'outgoing-switch-release-failed' });
+      } catch (error) { return Object.freeze({ ...outcome, switchStatus: 'degraded', switchReason: error.code || 'incoming-switch-overlap-rejected' }); }
+    }
     if (sharedBody) try { onTopologyBody?.(Object.freeze({ status: outcome?.status || 'rejected', stage: 'shared-topology-body-excitation', intentId: intent.intentId, sourceEventIds: intent.sourceEventIds, generation: intent.generation, voiceId: intent.voiceId, targetFrame, topologyBody: Object.freeze({ ...sharedBody }), acousticReceipt: false })); } catch {}
     return outcome;
+  };
+  const callPart = (voice, part, method, value, frame, rampSeconds) => {
+    const renderer = part.child.backend;
+    if (method === 'end' && value?.transitionPolicy !== 'crossfade' && part.articulation.releaseSeconds != null) value = { ...value, seconds: part.articulation.releaseSeconds,
+      ...(value?.mode === 'one-shot' && value.durationSource !== 'physical-interval' && part.articulation.oneShotTailSeconds != null ? { tailSeconds: part.articulation.oneShotTailSeconds } : {}) };
+    if (typeof renderer[method] !== 'function') return ['updatePhysical', 'updateCanonicalTravel', 'updateSampleTravel'].includes(method) ?
+      Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' }) : reject('held-control-unavailable');
+    return renderer[method](voice.voiceId, value, method === 'end' ? frame : Math.max(frame, part.startFrame), part.execution, rampSeconds);
   };
   const voiceCall = (method, voiceId, value, frame, epoch, rampSeconds) => {
     if (disposed) return reject('disposed'); const voice = voices.get(keyFor(epoch, voiceId));
     if (!voice) return reject('voice-unavailable');
-    if (method === 'end' && value?.transitionPolicy !== 'crossfade' && voice.articulation.releaseSeconds != null) value = { ...value, seconds: voice.articulation.releaseSeconds,
-      ...(value?.mode === 'one-shot' && value.durationSource !== 'physical-interval' && voice.articulation.oneShotTailSeconds != null ? { tailSeconds: voice.articulation.oneShotTailSeconds } : {}) };
-    if (method === 'updateCanonicalTravel' && typeof voice.child.backend.updateCanonicalTravel !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-canonical-travel-binding' });
-    if (method === 'updateSampleTravel' && typeof voice.child.backend.updateSampleTravel !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-sample-travel-binding' });
-    if (method === 'updateSamplePosition' && typeof voice.child.backend.updateSamplePosition !== 'function') return reject('sample-position-unavailable');
-    if (method === 'updatePerformance' && typeof voice.child.backend.updatePerformance !== 'function') return reject('held-performance-unavailable');
-    if (method === 'updatePhysical' && typeof voice.child.backend.updatePhysical !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' });
-    return voice.child.backend[method](voiceId, value, frame, voice.execution, rampSeconds);
+    const outcome = callPart(voice, voice, method, value, frame, rampSeconds);
+    const prior = (voice.prior || []).filter(part => frame < part.untilFrame && stateFor(part.child, part.execution, voiceId)?.voiceSettled !== true);
+    const outcomes = prior.map(part => callPart(voice, part, method, value, frame, rampSeconds));
+    if (outcome?.status === 'accepted') {
+      if (method === 'end') voice.ended = true;
+      else if (method === 'update') voice.expression = { ...voice.expression, ...value };
+      else voice.observations.set(method, { value, rampSeconds });
+    }
+    return outcomes.some(row => row?.status !== 'accepted') ? Object.freeze({ ...outcome, status: 'degraded', reason: 'outgoing-switch-control-rejected', outgoing: Object.freeze(outcomes) }) : outcome;
   };
   const applyMix = (voice, frame, laneId = voice.laneId, sourceLaneId = voice.sourceLaneId) => {
     if (!Number.isSafeInteger(frame) || frame < 0) return reject('lane-mix-clock-unavailable');
@@ -137,10 +175,10 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     collectVoices(maxVoices); const outcomes = [];
     for (const voice of voices.values()) {
       let input, expected; try { input = getPerformanceControls(voice.laneId, voice.sourceLaneId, voice.performanceIdentity); expected = requiredInstrumentKey(voice.laneId, voice.sourceLaneId); } catch { outcomes.push(Object.freeze({ laneId: voice.laneId, status: 'rejected', reason: 'performance-source-unavailable' })); continue; }
-      if (input == null || expected && expected !== voice.child.key) continue;
+      if (input == null || expected && expected !== (voice.child.instrumentKey || voice.child.key)) continue;
       const key = JSON.stringify(input.macros || {}); if (key === voice.performanceInput) continue;
       let result; try { result = voice.child.backend.updatePerformance?.(voice.voiceId, input, Math.max(frame, voice.startFrame), voice.execution); } catch { result = null; }
-      if (result?.status === 'accepted') voice.performanceInput = key;
+      if (result?.status === 'accepted') { voice.performanceInput = key; voice.observations.set('updatePerformance', { value: input }); }
       outcomes.push(Object.freeze({ voiceId: voice.voiceId, laneId: voice.laneId, status: result?.status || 'rejected', stage: result?.stage || 'none', reason: result?.reason || (result ? null : 'held-performance-unavailable'), sequence: result?.sequence ?? null, acousticReceipt: false }));
     }
     return Object.freeze({ status: outcomes.every(value => value.status === 'accepted') ? 'accepted' : 'degraded', outcomes: Object.freeze(outcomes) });
@@ -190,7 +228,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     },
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count,
     capabilities: Object.freeze({ routedInstruments: true, independentSamePitch: true, ownedGates: true, renderAcknowledgment: false }),
-    renderDiagnostics: (options = {}) => { collect(); return Object.freeze({ children: children.size, assignments: assignments.size, retainedVoices: voices.size,
+    renderDiagnostics: (options = {}) => { collect(); return Object.freeze({ children: children.size, assignments: assignments.size, retainedVoices: voices.size, pendingSwitches: switches.size,
       maxLanes, maxChildren, maxVoices, metadata: metadata.receipt(), collectedVoices: collected, routeRevision, displayObservers: displayObservers.size, displayFailures: [...displayObservers].reduce((sum, observer) => sum + observer.failures, 0),
       unknownRetirement: [...children.values()].filter(child => child.retirement?.outcome === 'partial').length,
       renderers: Object.freeze([...children.values()].map(child => Object.freeze({ key: child.key, assignedLanes: child.assignedLanes, retirement: child.retirement?.outcome || null,
@@ -200,12 +238,12 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
         ...[...displayObservers].map((observer, index) => ({ name: 'display-' + index, run: observer.release })),
         ...[...children.values()].map(child => ({ name: child.key, run: () => retireChild(child) }))]) },
       { name: 'routing-metadata', run: async () => { await sources.completion; if (sources.outcome !== 'complete') throw new Error('Routed renderer metadata still has unresolved owners.');
-        assignments.clear(); assignmentVersions.clear(); voices.clear(); executions.clear(); displayObservers.clear(); metadata.release(); } }
+        switches.clear(); assignments.clear(); assignmentVersions.clear(); voices.clear(); executions.clear(); displayObservers.clear(); metadata.release(); } }
     ]); }
   };
   const lifecycle = createInstrumentExecutionLifecycle(backend, { getContext, getGeneration,
     isSettled: epoch => { const execution = executions.get(epoch); return !execution || [...execution.children].every(([child, handle]) => stateFor(child, handle)?.settled === true); },
-    isVoiceSettled: (voiceId, epoch) => { const voice = voices.get(keyFor(epoch, voiceId)); return !voice || stateFor(voice.child, voice.execution, voiceId)?.voiceSettled === true; },
+    isVoiceSettled: (voiceId, epoch) => { const voice = voices.get(keyFor(epoch, voiceId)); return !voice || [voice, ...(voice.prior || [])].every(part => stateFor(part.child, part.execution, voiceId)?.voiceSettled === true); },
     forget: epoch => {
       const execution = executions.get(epoch);
       const receipt = createProcgenRetirementScope().retire(execution ? [...execution.children].map(([child, handle]) => ({ name: child.key, run: () => {
@@ -218,19 +256,65 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   });
   return Object.freeze({ backend: lifecycle.api,
     canAssign(key) { collect(); const child = children.get(key); return !disposed && (child ? !child.retirementScope : children.size < maxChildren); },
-    assign(lane, key, renderer, { releaseSeconds = null, oneShotTailSeconds = null, bodyId = null, macroIds = [] } = {}) {
+    assign(lane, key, renderer, { releaseSeconds = null, oneShotTailSeconds = null, bodyId = null, macroIds = [], instrumentKey = key } = {}) {
       if (!validLane(lane) || typeof key !== 'string' || !key || key.length > 256 || key === 'default' || disposed || !renderer?.inspectExecution) throw new TypeError('Invalid lane instrument assignment.');
+      if (typeof instrumentKey !== 'string' || !instrumentKey || instrumentKey.length > 256) throw new TypeError('Invalid pinned renderer identity.');
       if ([releaseSeconds, oneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid authored release policy.');
       if (bodyId != null && (typeof bodyId !== 'string' || bodyId.length > 128) || !Array.isArray(macroIds) || macroIds.length > 4 || macroIds.some(id => typeof id !== 'string' || id.length > 128)) throw new TypeError('Invalid prepared body identity.');
       collect(); if (!assignments.has(lane) && assignments.size >= maxLanes) throw new Error('Routed lane capacity exceeded.'); let child = children.get(key);
-      if (child && (child.backend !== renderer || child.retirementScope || child.bodyId !== bodyId || JSON.stringify(child.macroIds) !== JSON.stringify(macroIds)) || !child && children.size >= maxChildren) throw new Error('Lane instrument replacement exceeds retained renderer capacity.');
+      if (child && (child.backend !== renderer || child.retirementScope || child.instrumentKey !== instrumentKey || child.bodyId !== bodyId || JSON.stringify(child.macroIds) !== JSON.stringify(macroIds)) || !child && children.size >= maxChildren) throw new Error('Lane instrument replacement exceeds retained renderer capacity.');
       if (!Number.isSafeInteger(assignmentSerial + 1)) throw new Error('Lane assignment identity exhausted.');
       reserveMetadata({ lanes: assignments.has(lane) ? 0 : 1, renderers: child ? 0 : 1 });
-      if (!child) { child = { key, backend: renderer, retirement: null, assignedLanes: 0, pins: 0, releaseSeconds, oneShotTailSeconds, bodyId, macroIds: [...macroIds] }; children.set(key, child);
+      if (!child) { child = { key, instrumentKey, backend: renderer, retirement: null, assignedLanes: 0, pins: 0, releaseSeconds, oneShotTailSeconds, bodyId, macroIds: [...macroIds] }; children.set(key, child);
         if (displayContext) { try { renderer.setDisplayContext?.(displayContext); } catch { /* Presentation cannot prevent prepared sound assignment. */ } }
       }
       const previous = assignments.get(lane);
       if (previous !== child) { if (previous && !previous.blocked) previous.assignedLanes--; child.assignedLanes++; routeRevision++; } assignments.set(lane, child); assignmentVersions.set(lane, ++assignmentSerial); return Object.freeze({ laneId: lane, key, revision: assignmentSerial });
+    },
+    hasPendingSwitch(lane) { collect(); return switches.has(lane); },
+    stageSwitch(lane, receipt, policyRaw, frame, previousPin) {
+      const policy = validateInstrumentSwitchPolicy(policyRaw), child = assignments.get(lane), context = getContext();
+      if (disposed || switches.has(lane) || !context || context.state !== 'running' || !Number.isSafeInteger(frame) ||
+          frame < Math.ceil(context.currentTime * context.sampleRate) || frame > Math.ceil((context.currentTime + 5) * context.sampleRate) ||
+          child?.key !== receipt?.key || assignmentVersions.get(lane) !== receipt.revision || typeof child.backend.setRendererPublication !== 'function') throw new Error('The staged renderer or score boundary is unavailable.');
+      const previous = previousPin?.key ? children.get(previousPin.key) : defaults, selected = [], staged = [];
+      collectVoices(maxVoices);
+      if (policy.mode !== 'new-notes-only') for (const voice of voices.values()) if (voice.laneId === lane && !voice.ended && voice.startFrame < frame &&
+          stateFor(voice.child, voice.execution, voice.voiceId)?.voiceSettled !== true) selected.push(voice);
+      const plan = { frame, policy, child, previous, previousPin: null, accepted: false, canceled: false, retirement: null };
+      const cancel = () => {
+        if (plan.accepted || plan.canceled) return plan.retirement?.getReceipt();
+        plan.canceled = true; switches.delete(lane);
+        plan.retirement = createProcgenRetirementScope();
+        return plan.retirement.retire([...new Map(staged.map(row => [row.execution, row])).values()].map((row, index) => ({ name: 'silent-incoming-' + index,
+          run: () => child.backend.cancelGenerationWithReceipt(row.voice.intent.generation, row.execution)?.retirement })));
+      };
+      switches.set(lane, plan);
+      try {
+        for (const voice of selected) {
+          const row = realizeHeld(child, voice, policy, frame); staged.push(row);
+          for (const [method, observation] of voice.observations) if (method !== 'updatePerformance' && typeof child.backend[method] === 'function') {
+            const result = child.backend[method](voice.voiceId, observation.value, frame, row.execution, observation.rampSeconds);
+            if (result?.status !== 'accepted') throw new Error('Incoming held control rejected: ' + (result?.reason || method));
+          }
+        }
+      } catch (error) { const retirement = cancel(); if (retirement?.outcome !== 'complete') error.retirement = retirement; throw error; }
+      const validate = () => {
+        if (disposed || plan.canceled || plan.accepted || getContext() !== context || context.state !== 'running' || switches.get(lane) !== plan ||
+            assignments.get(lane) !== child || assignmentVersions.get(lane) !== receipt.revision || Math.ceil(context.currentTime * context.sampleRate) > frame) throw new Error('The staged patch boundary expired or its owner changed.');
+      };
+      return Object.freeze({ policy, targetFrame: frame, fidelity: instrumentSwitchFidelity(policy), validate, cancel,
+        accept() {
+          validate();
+          child.backend.setRendererPublication(1, frame);
+          plan.accepted = true;
+          if (previous && !previous.retirementScope) { previous.pins = (previous.pins || 0) + 1; let released = false;
+            plan.previousPin = { release() { if (!released) { released = true; previous.pins--; } } }; }
+          const outcomes = [];
+          for (const row of staged) outcomes.push(publishHeld(child, row, policy, frame));
+          return Object.freeze({ status: outcomes.every(row => row?.status === 'accepted') ? 'accepted' : 'degraded', stage: 'authored-instrument-switch-submitted',
+            policy, targetFrame: frame, heldVoices: staged.length, fidelity: instrumentSwitchFidelity(policy), evidence: 'API-admission;not-rendered-or-acoustic-proof', outcomes: Object.freeze(outcomes) });
+        } });
     },
     find: key => children.get(key)?.retirementScope ? null : children.get(key)?.backend || null,
     retain(key) { const child = children.get(key); if (!child || child.retirementScope || disposed) return null; child.pins = (child.pins || 0) + 1; let released = false;
