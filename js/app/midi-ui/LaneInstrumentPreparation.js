@@ -138,6 +138,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
           definitionHash: reference.definitionHash, engineRequirement: reference.engineRequirement, reason: selection.reason, automatic: selection.automatic }) });
     } });
   const synchronizeRealizationInput = async laneId => {
+    if (disposed) throw failure('owner-retired', 'Lane realization admission has retired.');
     const lane = getLane(laneId), reference = lane?.instrumentRef;
     const previous = realizationRequests.get(laneId); previous?.abort();
     const controller = new AbortController(); realizationRequests.set(laneId, controller);
@@ -211,7 +212,9 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       return retirement.retire([{ name: 'realization-admission', run: () => realizationRetirement = realizations.dispose() },
         { name: 'realization-inventories', run: async () => { await realizationRetirement.completion; await Promise.allSettled([...realizationReads]);
           if (realizationRetirement.outcome !== 'complete') throw failure('retirement-unknown', 'Realization inventories still have an unresolved consumer.');
-          return createProcgenRetirementScope().retire([...realizationInventories].map(([laneId, inventory]) => ({ name: laneId, run: inventory.release }))); } },
+          const receipt = createProcgenRetirementScope().retire([...realizationInventories].map(([laneId, inventory]) => ({ name: laneId, run: inventory.release })));
+          await receipt.completion; if (receipt.outcome === 'complete') { realizationInventories.clear(); realizationRequests.clear(); }
+          return receipt; } },
         { name: 'accepted-candidates', run: () => candidates = createProcgenRetirementScope().retire(accepted
           .map((operation, index) => ({ name: 'candidate-' + index, run: () => operation.release() }))) },
         { name: 'preparation-metadata', run: async () => { await candidates.completion; if (candidates.outcome !== 'complete') throw failure('retirement-unknown', 'Lane preparation metadata has unresolved candidates.');

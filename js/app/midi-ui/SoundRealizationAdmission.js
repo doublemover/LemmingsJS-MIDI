@@ -41,7 +41,7 @@ export function createSoundRealizationAdmission({ prepare, qualifyAutomatic = ()
     if (automatic) {
       qualification = qualifyAutomatic(Object.freeze({ group: row.group, profile, fromProfileId: row.effective, sampleRate: telemetry.sampleRate, contextEpoch: telemetry.contextEpoch }));
       if (!qualification || qualification.automaticAdmission !== true || qualification.definitionHash !== profile.definitionHash ||
-          qualification.engineArtifactHash !== profile.engineRequirement.artifactHash || qualification.sampleRate !== telemetry.sampleRate ||
+          qualification.engineArtifactHash !== profile.engineRequirement.artifactHash || qualification.sampleRate !== telemetry.sampleRate || qualification.contextEpoch !== telemetry.contextEpoch ||
           !identity(qualification.measurementId)) throw failure('realization-unqualified', 'This exact profile has no runtime-owned qualification for automatic adaptation.');
     }
     const controller = new AbortController(), abort = () => controller.abort(row.controller.signal.reason);

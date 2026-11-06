@@ -10917,3 +10917,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Extend all three finite Quarry routes with explicit return-duck and tape-color variants, preserving the original source patches, actual route-end pickup causes, admitted junctions and release gestures. Each scene pins its exact saved rack/recipe and remains dry until an explicit prepared THROW. Ducking follows the real owner signal; saturation and echoes remain audio state rather than new physical notes.
 - Let private scene rehearsal realize the supported owned detector/mapping/modulated-gain/nonlinear graph alongside gain/delay. Enforce bounded complete graph state, declared latency and tail ceilings. Include/verify latency frames and policy in the source-bound rehearsal manifest instead of claiming zero latency for the nonlinear path.
 - Native spring/IR and shared room bodies retain their separate live/preparation and reconstruction boundaries; these new scene variants do not claim those adapters or unperformed numerical/listening qualification. Formatting/static checks only; functional qualification stays deferred.
+
+
+### 2026-11-06 — Rook continuation528: shared realization inventories at lane scale
+
+- Share each immutable verified profile group and its exact references across lane consumers, indexed by pack/definition identity. Charge one bounded group image plus separately reserved consumer metadata; support up to 2048 independently canceled consumers over 32 live groups instead of charging a complete group for every lane. Retire the group only after the final consumer, retain unknown ownership and resolve concurrent completed reads against the same image.
+- Keep automatic qualification context-specific as well as artifact/rate-specific. Refuse late profile work after its lane owner retires and clear retired inventory references only after acknowledged consumer completion.
+- No functional suite or browser campaign is run. The final consolidated pass will exercise these implementations together with the remainder of the backlog.

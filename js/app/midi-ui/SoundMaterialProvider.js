@@ -20,7 +20,9 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
   registry ||= createSoundContentRegistry({ resourceBudget: budget });
   const resources = createAudioResourceLeases({ resourceBudget: budget, ownerPrefix: 'sound-material-' + (++nextProvider) });
   const metadata = resources.reserve({ kind: 'wave-metadata-cache', bytes: maxEntries * 1024 });
-  const formats = new Map(), sources = new Map(), pending = new Set(), loans = new Set(), encodedLoans = new Set(), realizationLoans = new Set(), faults = new Set();
+  const formats = new Map(), sources = new Map(), pending = new Set(), loans = new Set(), encodedLoans = new Set(), realizationLoans = new Set(),
+    realizationInventories = new Set(), realizationIndex = new Map(), faults = new Set();
+  let realizationMetadata = null;
   const retirement = createProcgenRetirementScope(); let disposed = false, sequence = 0;
   const generateSource = async (file, signal) => {
     const original = getProceduralSoundMaterial(file); if (!original) return null;
@@ -239,9 +241,34 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
     })(); pending.add(operation);
     try { return await operation.completion; } finally { pending.delete(operation); }
   };
+  const retainRealizations = entry => {
+    if (!entry.data || disposed || faults.size || realizationLoans.size >= 2048) throw failure('realization-inventory-unavailable', 'The verified realization inventory is unavailable or busy.');
+    realizationMetadata ||= resources.reserve({ kind: 'realization-consumer-metadata', bytes: 2048 * 512 });
+    entry.consumers++;
+    let loan;
+    const retirement = createProcgenRetirementScope();
+    loan = Object.freeze({ get value() { if (!entry.data || disposed || retirement.getReceipt()) throw failure('owner-retired', 'The realization inventory loan retired.'); return entry.data; },
+      release() {
+        const receipt = retirement.retire([{ name: 'realization-inventory-consumer', run: () => {
+          entry.consumers--;
+          if (!entry.consumers) {
+            entry.storage.release();
+            for (const key of entry.keys) if (realizationIndex.get(key) === entry) realizationIndex.delete(key);
+            realizationInventories.delete(entry); entry.data = null;
+          }
+          realizationLoans.delete(loan);
+        } }]);
+        if (receipt.outcome !== 'complete') faults.add(receipt); return receipt;
+      } });
+    realizationLoans.add(loan); return loan;
+  };
   const borrowRealizations = async (raw, { engineDescriptors = [], signal } = {}) => {
     const reference = validateSoundContentReference(raw);
-    if (!reference || disposed || faults.size || realizationLoans.size >= 32) throw failure('realization-inventory-unavailable', 'The verified realization inventory is unavailable or busy.');
+    signal?.throwIfAborted();
+    if (!reference || disposed || faults.size || realizationLoans.size >= 2048) throw failure('realization-inventory-unavailable', 'The verified realization inventory is unavailable or busy.');
+    const requestKey = reference.packHash + ':' + reference.definitionHash, existing = realizationIndex.get(requestKey);
+    if (existing) return retainRealizations(existing);
+    if (realizationInventories.size >= 32) throw failure('realization-inventory-capacity', 'The shared authored profile group capacity is full.');
     const storage = resources.reserve({ kind: 'verified-realization-inventory', estimateBytes: 2 * 1048576, consumerOwned: true });
     let source = null, data = null, loan = null;
     try {
@@ -258,17 +285,21 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       });
       data = freezeData(cloneData({ group, references }, { maxBytes: 2 * 1048576, maxNodes: 131072 }));
       source.release(); source = null;
-      const retirement = createProcgenRetirementScope();
-      loan = Object.freeze({ get value() { if (!data || disposed || retirement.getReceipt()) throw failure('owner-retired', 'The realization inventory loan retired.'); return data; },
-        release() { const receipt = retirement.retire([{ name: 'realization-inventory', run: () => { data = null; storage.release(); realizationLoans.delete(loan); } }]); if (receipt.outcome !== 'complete') faults.add(receipt); return receipt; } });
-      realizationLoans.add(loan); return loan;
+      const concurrent = realizationIndex.get(requestKey);
+      if (concurrent) { storage.release(); return retainRealizations(concurrent); }
+      if (realizationInventories.size >= 32) throw failure('realization-inventory-capacity', 'The shared authored profile group capacity is full.');
+      const entry = { data, storage, consumers: 0, keys: data.references.map(item => reference.packHash + ':' + item.reference.definitionHash) };
+      loan = retainRealizations(entry);
+      realizationInventories.add(entry); for (const key of entry.keys) realizationIndex.set(key, entry);
+      return loan;
     } catch (error) {
       try { source?.release(); storage.release(); } catch (retirementError) { storage.retainUnknown(retirementError); error.retirementError = retirementError; }
       throw error;
     }
   };
   return Object.freeze({ acquire, acquireImpulse, borrowRealizations, borrowEncoded: (file, { signal } = {}) => borrowBlob(file, null, signal),
-    diagnostics: () => Object.freeze({ pending: pending.size, loans: loans.size, encodedLoans: encodedLoans.size, realizationLoans: realizationLoans.size, formats: formats.size, faults: faults.size, loader: loader.diagnostics(), resources: resources.diagnostics(), disposed }),
+    diagnostics: () => Object.freeze({ pending: pending.size, loans: loans.size, encodedLoans: encodedLoans.size, realizationLoans: realizationLoans.size, realizationInventories: realizationInventories.size,
+      maximumRealizationConsumers: 2048, maximumRealizationGroups: 32, formats: formats.size, faults: faults.size, loader: loader.diagnostics(), resources: resources.diagnostics(), disposed }),
     dispose() {
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
       for (const operation of pending) operation.controller.abort(failure('owner-retired', 'Sound material owner retired.'));
