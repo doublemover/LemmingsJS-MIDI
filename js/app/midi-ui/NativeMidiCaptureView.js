@@ -41,13 +41,14 @@ export function createNativeMidiCaptureView({ document, container, routes, getGr
   const save = button('Save exact native SDK capture', async () => {
     const lease = await routes.outputCapture.snapshot({ isCurrent: () => !disposed });
     try {
+      if (disposed) return;
       const blob = nativeUmpCaptureBlob(lease.snapshot), url = URL.createObjectURL(blob), link = element('a'); link.href = url; link.download = 'lemmings-native-sdk-output.nativeump'; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 0); onStatus('Saved exact SDK words, acceptance flags and native call intervals. This is an observation artifact, not a standards MIDI Clip.');
     } finally { lease.release(); }
   });
   const prepareClip = button('Prepare submitted MIDI2 Clip', async () => {
     releasePrepared(); const selected = selectionRevision, selectedGroup = getGroup(); preparation = new AbortController();
-    try { prepared = await routes.exportSubmittedClip({ sourceLayer: 'driver-submitted', timeProjection: 'native-SDK-call-start', metadataPolicy: metadataPolicy.value, scope: scope.value, group: selectedGroup, ...(declareTempo.checked ? { initialTempoBpm: Number(initialTempo.value) } : {}), allowIncomplete: incomplete.checked, allowBaselineDependentRelative: relative.checked }, { signal: preparation.signal, current: () => !disposed && selected === selectionRevision && (scope.value !== 'selected-group' || getGroup() === selectedGroup), onProgress: progress => { clipStatus.textContent = 'Preparing submitted Clip · ' + progress.completedUnits + '/' + progress.totalUnits; } }); onStatus('Submitted Clip prepared. Review its coverage, scope, timing and loss report before saving.'); }
+    try { const artifact = await routes.exportSubmittedClip({ sourceLayer: 'driver-submitted', timeProjection: 'native-SDK-call-start', metadataPolicy: metadataPolicy.value, scope: scope.value, group: selectedGroup, ...(declareTempo.checked ? { initialTempoBpm: Number(initialTempo.value) } : {}), allowIncomplete: incomplete.checked, allowBaselineDependentRelative: relative.checked }, { signal: preparation.signal, current: () => !disposed && selected === selectionRevision && (scope.value !== 'selected-group' || getGroup() === selectedGroup), onProgress: progress => { clipStatus.textContent = 'Preparing submitted Clip · ' + progress.completedUnits + '/' + progress.totalUnits; } }); if (disposed || selected !== selectionRevision || scope.value === 'selected-group' && getGroup() !== selectedGroup) { artifact.release(); return; } prepared = artifact; onStatus('Submitted Clip prepared. Review its coverage, scope, timing and loss report before saving.'); }
     finally { preparation = null; }
   });
   const saveClip = button('Save prepared MIDI2 Clip', () => download(prepared.bytes, 'application/octet-stream', 'lemmings-native-submitted.midi2'));

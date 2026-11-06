@@ -10736,3 +10736,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Preserve accepted channel words, high-resolution values and supported score context. Exclude transport/control-plane/other-scope data with counts; retain omitted original tempo/meter values in the digest-bound attribution sidecar. Never include unconfirmed writes as accepted output or manufacture note releases.
 - Offer an explicitly derived fixed-seconds projection with tempo/meter omission, or strict single-group original-context projection at qualified clock/bar boundaries. Measure actual piecewise render-time quantization error, preserve source ordering, pin multipart text to one event time and coalesce its equal-time clockstamps.
 - Require explicit incomplete-range and baseline-dependent relative replay selections. Prepare reviewable files under bounded cancellable workspace/artifact leases; provide separate Clip and attribution saves. Formatting and critical/boundary type checks pass; functional/independent-reader qualification remains deferred.
+
+
+### 2026-11-06 — Rook continuation505: typed controller release policies
+
+- Add bounded native registration of complete CC/CC-pair/RPN/NRPN release transactions, with dedicated policy identities on owned performance batches. Registration itself does not change a device or arm cleanup; only accepted or uncertain matching writes do.
+- Track partial MIDI1 selector/data progress and clear only touched selectors when no data write reached the receiver. Retire one policy with its queued dependent work and exact scoped cleanup; keep unknown note/controller cleanup separate. Reserve release admission for owned Note Offs, pedal-zero writes and registered exact resets.
+- Carry policy identities through versioned binary metadata, bridge commands and bounded browser coalescing without treating diagnostic provenance as authority. Keep edge-triggered toggle automation explicitly baseline-dependent, including absolute carriers; an observed trigger level is not the latched receiver property.
+- Release late capture-view snapshot/artifact leases when disposal or selection changes win. Native compilation/linking passes; formatting only otherwise, with functional qualification deferred. Shared actor aggregation and source release integration follow next.

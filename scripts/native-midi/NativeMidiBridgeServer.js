@@ -59,7 +59,7 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     if (row.session !== client.session || !binary && row.protocol !== NATIVE_MIDI_BRIDGE_PROTOCOL) throw new Error('Bridge session or protocol mismatch');
     if (binary) {
       if (!client.grants.has(row.grant) || client.grants.get(row.grant).direction !== 'output') throw new Error('Writable endpoint grant required');
-      return call(client, requestId, 'B', [row.grant, row.execution, row.deadlineUs, row.priority, row.words.length, ...row.words.map(word => word.toString(16))], { priority: row.priority === 0, provenance: row.provenance });
+      return call(client, requestId, 'B', [row.grant, row.execution, row.deadlineUs, row.priority, row.words.length, ...row.words.map(word => word.toString(16)), ...(row.leasePolicyIds.length ? ['leases', row.leasePolicyIds.length, ...row.leasePolicyIds] : [])], { priority: row.priority === 0, provenance: row.provenance });
     }
     switch (row.action) {
     case 'heartbeat': client.lastHeartbeat = performance.now(); return call(client, requestId, 'H', [], { priority: true });
@@ -74,6 +74,12 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     case 'close': if (!client.grants.has(uint(row.grant))) throw new Error('Endpoint grant required'); return call(client, requestId, 'X', [row.grant], { priority: true });
     case 'cancel': if (!client.grants.has(uint(row.grant)) || !uint(row.execution)) throw new Error('Owned execution required'); return call(client, requestId, 'C', [row.grant, row.execution], { priority: true });
     case 'revalidateGroups': if (!client.grants.has(uint(row.grant))) throw new Error('Owned connection required'); return call(client, requestId, 'G', [uint(row.inventoryEpoch), row.grant, uint(row.groupMask, 65535)]);
+    case 'controllerPolicy': {
+      const grant = client.grants.get(uint(row.grant)); if (!grant || grant.direction !== 'output' || peer.ready?.controllerCleanupVersion !== 1) throw new Error('Owned output with native controller cleanup support required');
+      if (row.operation === 'retire') { if (!uint(row.policy)) throw new Error('Controller policy identity required'); return call(client, requestId, 'F', [row.grant, 'retire', row.policy], { priority: true }); }
+      if (row.operation !== 'register' || !Array.isArray(row.resetWords) || !row.resetWords.length || row.resetWords.length > 6) throw new Error('Complete typed controller reset required');
+      return call(client, requestId, 'F', [row.grant, 'register', row.resetWords.length, ...row.resetWords.map(word => uint(word).toString(16))]);
+    }
     case 'jrMode': { const grant = client.grants.get(uint(row.grant)); if (!grant || grant.direction !== 'output' || !(grant.permissions & 8) || typeof row.enabled !== 'boolean') throw new Error('Explicit endpoint-control output required for JR policy'); return call(client, requestId, 'J', [row.grant, Number(row.enabled)]); }
     case 'streamEncode': {
       const grant = client.grants.get(uint(row.grant));

@@ -102,6 +102,11 @@ export class NativeMidiBridgeClient {
     return Object.freeze({ inventoryEpoch, endpoints: Object.freeze(endpoints.map(row => Object.freeze({ ...row, connectionEpoch: this.#session }))) });
   }
   revalidateGroups(grant, { inventoryEpoch, groupMask }) { return this.#request('revalidateGroups', { grant, inventoryEpoch, groupMask }); }
+  registerControllerPolicy(grant, resetWords) {
+    if (this.#capabilities?.controllerCleanupVersion !== 1) return Promise.reject(beforeSubmission('Native controller cleanup support is required'));
+    return this.#request('controllerPolicy', { grant, operation: 'register', resetWords });
+  }
+  retireControllerPolicy(grant, policy) { return this.#request('controllerPolicy', { grant, operation: 'retire', policy }, { priority: true }); }
   setJrMode(grant, enabled) { return this.#request('jrMode', { grant, enabled }); }
   encodeStream(grant, { operation, parameters = [] }) { return this.#request('streamEncode', { grant, operation, parameters }); }
   decodeStream(grant, words) { return this.#request('streamDecode', { grant, words }); }
@@ -116,12 +121,13 @@ export class NativeMidiBridgeClient {
   publish({ name = 'Lemmings Performance', direction = 'output', groupMask, permissions = 0 }) { return this.#request('publish', { name, direction, groupMask, permissions }); }
   closeGrant(grant) { return this.#request('close', { grant }, { priority: true }); }
   cancelExecution(grant, execution) { return this.#request('cancel', { grant, execution }, { priority: true }); }
-  sendBatch({ grant, execution, targetTimeMs, priority = 1, words, provenance = {}, onReceipt }) {
+  sendBatch({ grant, execution, targetTimeMs, priority = 1, words, provenance = {}, leasePolicyIds = [], onReceipt }) {
     if (!this.#grants.has(grant) || this.#grants.get(grant).direction !== 'output') return Promise.reject(beforeSubmission('Native output grant required'));
+    if (leasePolicyIds.length && this.#capabilities?.controllerCleanupVersion !== 1) return Promise.reject(beforeSubmission('Native controller cleanup support is required'));
     const clock = this.clockStatus(); if (clock.status !== 'synchronized') return Promise.reject(beforeSubmission('Native clock is stale or uncertain'));
     const now = this.now(); if (!Number.isFinite(targetTimeMs) || targetTimeMs > now + 1950 || priority !== 0 && targetTimeMs < now - 50) return Promise.reject(beforeSubmission('Native target outside scheduling horizon'));
     const deadlineUs = Math.round(targetTimeMs * 1000 + clock.offsetUs);
-    return this.#request('send', {}, { priority: priority === 0, binary: { grant, execution, deadlineUs, priority, words, provenance }, onReceipt });
+    return this.#request('send', {}, { priority: priority === 0, binary: { grant, execution, deadlineUs, priority, words, provenance, leasePolicyIds }, onReceipt });
   }
   #retire(reason) {
     const socket = this.#socket; if (!socket && !this.#connect) return; this.#socket = null; clearInterval(this.#timer); this.#timer = null;

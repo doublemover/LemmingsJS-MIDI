@@ -3,6 +3,7 @@
 #include "MidiCiCodec.hpp"
 #include "UmpStreamCodec.hpp"
 #include "NativeBatch.hpp"
+#include "NativeControllerRelease.hpp"
 #include "NativeJrTiming.hpp"
 #include "NativePedalOwnership.hpp"
 #include "NativeIo.hpp"
@@ -101,9 +102,11 @@ struct Grant {
   std::map<NoteKey, OwnedNote> notes;
   std::set<std::uint32_t> cancelled;
   std::uint64_t ingress_sequence{}, filtered{}, malformed{}, cleanup_unknown{}, cleanup_note_unknown{}, cleanup_control_unknown{};
+  std::map<std::uint32_t, ControllerReleasePolicy> controller_policies;
+  std::map<std::uint32_t, ControllerReleaseLease> controller_leases;
   std::array<std::uint32_t, 1536> owned_pedals{};
   std::uint16_t owned_pedal_count{};
-  bool has_owned_pedals() const { return owned_pedal_count != 0; }
+  bool has_owned_controls() const { return owned_pedal_count != 0 || !controller_leases.empty(); }
   stdx::error write(const std::uint32_t *words, std::size_t count) {
 #if defined(LIBREMIDI_WINMIDI)
     if (windows)
@@ -133,7 +136,7 @@ class Companion {
   std::map<std::uint32_t, std::uint64_t> sessions_;
   BatchQueue batches_;
   std::uint32_t next_endpoint_{}, next_grant_{}, latest_session_{},
-      inventory_epoch_{};
+      inventory_epoch_{}, next_controller_policy_{}, controller_policy_count_{};
   std::uint64_t batch_ordinal_{}, active_notes_{}, pending_note_ons_{};
   bool backend_ready_{}, stopping_{};
   IngressBlock incoming_{};
@@ -264,7 +267,7 @@ class Companion {
     if (timing.failed) throw std::runtime_error("jr-clock-failed-reopen-endpoint");
     if (timing.enabled != (mode != 0)) {
       for (const auto &[grant_id, peer] : grants_) if (!peer.retiring && peer.timing == owner.timing) {
-        if (!peer.notes.empty() || peer.has_owned_pedals() || batches_.has_grant(grant_id))
+        if (!peer.notes.empty() || peer.has_owned_controls() || batches_.has_grant(grant_id))
           throw std::runtime_error("stop-all-owned-endpoint-scopes-before-jr-policy-change");
       }
       timing.enabled = mode != 0; timing.stamp_valid = false;
@@ -412,12 +415,45 @@ class Companion {
       throw std::runtime_error("device-grant-retired");
     return found->second;
   }
+  void reap_controller_release(Grant &owner, std::uint32_t id) {
+    const auto lease = owner.controller_leases.find(id);
+    if (lease != owner.controller_leases.end() && !lease->second.active && !lease->second.selector_dirty && !lease->second.pending) owner.controller_leases.erase(lease);
+    const auto policy = owner.controller_policies.find(id);
+    if (policy != owner.controller_policies.end() && policy->second.retired && !owner.controller_leases.contains(id)) { owner.controller_policies.erase(policy); --controller_policy_count_; }
+  }
+  void account_controller_release(Grant &owner, const PendingBatch &batch, std::size_t offset, bool uncertain) {
+    const auto start = std::lower_bound(batch.controller_actions.begin(), batch.controller_actions.end(), offset, [](const auto &action, auto offset) { return action.offset < offset; });
+    for (auto at = start; at != batch.controller_actions.end() && at->offset == offset; ++at) {
+      const auto found = owner.controller_leases.find(at->policy); if (found == owner.controller_leases.end()) continue;
+      auto &lease = found->second;
+      if (at->selector_touch) lease.selector_dirty = true;
+      if (at->arm) lease.active = true;
+      if (!uncertain) { if (at->disarm) lease.active = false; if (at->selector_clear) lease.selector_dirty = false; }
+    }
+  }
+  bool cleanup_controller_release(Grant &owner, std::uint32_t id) {
+    const auto found = owner.controller_leases.find(id); if (found == owner.controller_leases.end() || (!found->second.active && !found->second.selector_dirty)) return false;
+    auto &lease = found->second; const auto policy_at = owner.controller_policies.find(id); if (policy_at == owner.controller_policies.end()) return true;
+    const auto policy = policy_at->second; bool confirmed = true;
+    try {
+      NativeJrEnvelope envelope{}; confirmed = timing_prefix(owner, now_us(), lease.execution, 0, envelope, true);
+      const auto first = lease.active ? 0u : policy.count - 2u;
+      for (std::size_t offset = first; offset < policy.count;) {
+        const auto count = ump::word_counts[policy.reset[offset] >> 28];
+        if (observed_write(owner, {policy.reset.data() + offset, count}, lease.execution, 0, "owned-controller-cleanup").is_set()) { confirmed = false; break; }
+        offset += count;
+      }
+    } catch (...) { confirmed = false; }
+    if (confirmed) lease.active = lease.selector_dirty = false;
+    return !confirmed;
+  }
   void release_pending(const PendingBatch &batch) {
     if (pending_note_ons_ >= batch.note_ons.size())
       pending_note_ons_ -= batch.note_ons.size();
     const auto found = grants_.find(batch.grant);
     if (found == grants_.end())
       return;
+    for (const auto id : batch.controller_policies) { const auto lease = found->second.controller_leases.find(id); if (lease != found->second.controller_leases.end() && lease->second.pending) --lease->second.pending; reap_controller_release(found->second, id); }
     for (const auto &key : batch.note_ons) {
       const auto note = found->second.notes.find(key);
       if (note == found->second.notes.end())
@@ -443,6 +479,7 @@ class Companion {
 
   CleanupCount cleanup(Grant &owner, std::uint32_t execution = 0) {
     CleanupCount unknown;
+    for (auto at = owner.controller_leases.begin(); at != owner.controller_leases.end();) { const auto id = at->first, owned_execution = at->second.execution; ++at; if (!execution || owned_execution == execution) { if (cleanup_controller_release(owner, id)) ++unknown.controls; reap_controller_release(owner, id); } }
     for (std::size_t index = 0; index < owner.owned_pedals.size() && owner.owned_pedal_count; ++index) {
       const auto lease = owner.owned_pedals[index]; if (!lease || (execution && lease != execution)) continue;
       const auto words = pedal_release(index); const auto count = index >= 768 ? 2u : 1u;
@@ -540,7 +577,7 @@ class Companion {
          ",\"cleanupUnconfirmedNotes\":" + std::to_string(unknown.notes) + ",\"cleanupUnconfirmedControls\":" + std::to_string(unknown.controls) +
          ",\"nativeCloseConfirmed\":" + (closed ? "true" : "false") + "}");
     if (closed) {
-      const auto timing_key = owner.timing_key; grants_.erase(found);
+      const auto timing_key = owner.timing_key; controller_policy_count_ -= static_cast<std::uint32_t>(owner.controller_policies.size()); grants_.erase(found);
       if (timing_key && std::none_of(grants_.begin(), grants_.end(), [&](const auto &row) { return row.second.timing_key == timing_key; })) jr_states_.erase(timing_key);
     }
     return {closed, unknown.total(), unknown.notes, unknown.controls};
@@ -678,6 +715,7 @@ class Companion {
     for (std::size_t index = 0; index < count; ++index)
       batch.words.push_back(
           static_cast<std::uint32_t>(input.number(0xffffffffu, 16)));
+    const auto extension = input.take(); if (!extension.empty()) { if (extension != "leases") throw std::invalid_argument("unsupported-batch-extension"); const auto count = input.number(64); std::set<std::uint32_t> seen; for (std::size_t index = 0; index < count; ++index) { const auto id = static_cast<std::uint32_t>(input.number()); if (!id || !seen.insert(id).second) throw std::invalid_argument("invalid-controller-policy-identity"); batch.controller_policies.push_back(id); } }
     input.finish();
     auto &owner = grant(session, batch.grant);
     if (owner.jr_required && batch.priority != Priority::release) throw std::runtime_error("windows-endpoint-requires-platform-unsupported-jr");
@@ -705,9 +743,11 @@ class Companion {
     const auto validated = ump::validate_batch(batch.words);
     if (validated.error.code)
       throw std::invalid_argument(validated.error.code);
+    if (!batch.controller_policies.empty() && batch.priority == Priority::control) throw std::invalid_argument("manual-control-cannot-acquire-performance-cleanup");
+    prepare_controller_release_actions(batch, owner.controller_policies);
     if (stream_configuration) {
       if (!owner.timing || validated.packets.size() != 1) throw std::invalid_argument("stream-configuration-must-be-isolated");
-      for (const auto &[other_id, other] : grants_) if (other.timing == owner.timing && (!other.notes.empty() || other.has_owned_pedals() || batches_.has_grant(other_id))) throw std::runtime_error("endpoint-has-other-owned-voices-or-queued-work");
+      for (const auto &[other_id, other] : grants_) if (other.timing == owner.timing && (!other.notes.empty() || other.has_owned_controls() || batches_.has_grant(other_id))) throw std::runtime_error("endpoint-has-other-owned-voices-or-queued-work");
     }
     auto channels = owner.channels;
     for (const auto &packet : validated.packets) {
@@ -717,8 +757,11 @@ class Companion {
         throw std::invalid_argument("packet-outside-device-grant");
       const auto type = words[0] >> 28;
       const auto mutation = note_mutation(words);
-      if (batch.priority == Priority::release && (!mutation || mutation->begin))
-        throw std::invalid_argument("release-priority-requires-note-off");
+      if (batch.priority == Priority::release && (!mutation || mutation->begin)) {
+        const auto pedal = pedal_mutation(words); bool owned_reset = pedal && !pedal->active && owner.owned_pedals[pedal->index] == batch.execution;
+        for (const auto &range : batch.controller_resets) if (packet.offset >= range.offset && packet.offset < range.offset + range.words) { const auto lease = owner.controller_leases.find(range.policy); owned_reset = lease != owner.controller_leases.end() && lease->second.execution == batch.execution && (lease->second.active || lease->second.pending); if (owned_reset) break; }
+        if (!owned_reset) throw std::invalid_argument("release-priority-requires-owned-note-off-or-controller-reset");
+      }
       if (type == 2 || type == 4) {
         auto &channel =
             channels[((words[0] >> 24) & 15) * 16 + ((words[0] >> 16) & 15)];
@@ -733,9 +776,11 @@ class Companion {
       throw std::runtime_error("native-owned-note-capacity");
     if (const auto failure = batches_.can_admit(batch))
       throw std::runtime_error(failure);
+    std::vector<std::uint32_t> inserted_controllers;
     std::vector<NoteKey> inserted;
-    inserted.reserve(batch.note_ons.size());
+    inserted.reserve(batch.note_ons.size()); inserted_controllers.reserve(batch.controller_policies.size());
     try {
+      for (const auto id : batch.controller_policies) { const auto [at, created] = owner.controller_leases.try_emplace(id, ControllerReleaseLease{batch.execution, 0, false, false}); if (created) inserted_controllers.push_back(id); else if (at->second.execution != batch.execution) throw std::runtime_error("controller-owned-by-another-execution"); }
       for (const auto &key : batch.note_ons) {
         const auto [at, created] =
             owner.notes.try_emplace(key, OwnedNote{batch.execution, 0, 0});
@@ -745,10 +790,12 @@ class Companion {
           throw std::runtime_error("note-owned-by-another-execution");
       }
     } catch (...) {
+      for (const auto id : inserted_controllers) owner.controller_leases.erase(id);
       for (const auto &key : inserted)
         owner.notes.erase(key);
       throw;
     }
+    for (const auto id : batch.controller_policies) ++owner.controller_leases.at(id).pending;
     for (const auto &key : batch.note_ons)
       ++owner.notes.at(key).pending;
     pending_note_ons_ += batch.note_ons.size();
@@ -815,13 +862,16 @@ class Companion {
         }
         entered_driver = true;
         const auto result = self.observed_write(owner, {words, count}, batch.execution, batch.request, "batch-packet");
-        if (!result.is_set() && !owner.fence->fault.load())
+        if (!result.is_set() && !owner.fence->fault.load()) {
+          self.account_controller_release(owner, batch, static_cast<std::size_t>(words - batch.words.data()), false);
           self.account_packet(owner, {words, count}, false, batch.priority != Priority::control);
+        }
         if (!result.is_set() && owner.fence->fault.load())
           return std::errc::io_error;
         return result;
       }
     } sender{*this, owner, batch};
+    if (batch.priority == Priority::release) for (const auto &range : batch.controller_resets) { const auto lease = owner.controller_leases.find(range.policy); if (lease == owner.controller_leases.end() || lease->second.execution != batch.execution || !lease->second.active) { release_pending(batch); error(batch.request, batch.session, "controller-reset-not-owned-at-dispatch"); return; } }
     const auto began = now_us();
     if (batch.priority != Priority::release && batch.deadline + 50000 < began) {
       release_pending(batch);
@@ -834,6 +884,7 @@ class Companion {
         result.failed_packet_unconfirmed && sender.entered_driver;
     if (uncertain) {
       const auto offset = result.failure_word_offset;
+      account_controller_release(owner, batch, offset, true);
       account_packet(owner,
                      std::span<const std::uint32_t>{batch.words}.subspan(
                          offset, ump::word_counts[batch.words[offset] >> 28]),
@@ -1052,6 +1103,33 @@ class Companion {
         }
         reply(request, session, operation == "K" ? "ci-encoded" : "ci-decoded",
               operation == "K" ? encode_ci(input) : decode_ci(input));
+      } else if (operation == "F") {
+        const auto id = static_cast<std::uint32_t>(input.number()); const auto action = input.take();
+        auto &owner = grant(session, id); if (owner.input) throw std::invalid_argument("controller-policy-needs-output");
+        if (action == "register") {
+          const auto count = input.number(6); std::array<std::uint32_t, 6> words{};
+          for (std::size_t index = 0; index < count; ++index) words[index] = static_cast<std::uint32_t>(input.number(0xffffffffu, 16)); input.finish();
+          auto policy = controller_release_policy({words.data(), static_cast<std::size_t>(count)});
+          for (std::size_t offset = 0; offset < count;) { const auto size = ump::word_counts[words[offset] >> 28]; if (!permits_packet({words.data() + offset, size}, owner.groups, owner.flags)) throw std::invalid_argument("controller-policy-outside-owned-group"); offset += size; }
+          std::uint32_t existing{};
+          for (const auto &[policy_id, previous] : owner.controller_policies) if (controller_release_overlaps(previous, policy)) {
+            if (!previous.retired && previous.identity == policy.identity && previous.count == policy.count && previous.reset == policy.reset) existing = policy_id;
+            else throw std::runtime_error("controller-release-policy-address-conflict");
+          }
+          if (!existing) {
+            if (owner.controller_policies.size() >= 256 || controller_policy_count_ >= 4096 || next_controller_policy_ == 0xffffffffu) throw std::runtime_error("controller-release-policy-capacity");
+            policy.id = ++next_controller_policy_; owner.controller_policies.emplace(policy.id, policy); ++controller_policy_count_; existing = policy.id;
+          }
+          reply(request, session, "registered-controller-policy", "\"grant\":" + std::to_string(id) + ",\"policy\":" + std::to_string(existing) + ",\"armed\":false");
+        } else if (action == "retire") {
+          const auto policy_id = static_cast<std::uint32_t>(input.number()); input.finish();
+          const auto found = owner.controller_policies.find(policy_id); if (found == owner.controller_policies.end()) throw std::invalid_argument("controller-release-policy-not-owned");
+          found->second.retired = true;
+          cancel_batches([&](const auto &batch) { return batch.grant == id && std::find(batch.controller_policies.begin(), batch.controller_policies.end(), policy_id) != batch.controller_policies.end(); }, "controller-policy-retired");
+          const bool unknown = cleanup_controller_release(owner, policy_id); reap_controller_release(owner, policy_id); flush_egress();
+          reply(request, session, "retired-controller-policy", "\"grant\":" + std::to_string(id) + ",\"policy\":" + std::to_string(policy_id) + ",\"cleanupUnconfirmedControls\":" + (unknown ? "1" : "0"));
+          if (unknown) retire_grant(id, "controller-policy-cleanup-uncertain");
+        } else throw std::invalid_argument("unknown-controller-policy-operation");
       } else if (operation == "J") {
         set_jr_mode(request, session, input);
       } else if (operation == "R" || operation == "T") {
@@ -1194,7 +1272,7 @@ public:
          ",\"selectedApi\":" + std::to_string(static_cast<int>(api_)) +
          ",\"libremidiRevision\":\"" LIBREMIDI_REVISION
          "\",\"ciCodec\":\"ni-midi2:" NI_MIDI2_REVISION
-         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,\"jrEncoderVersion\":1,\"ownedPedalCleanupVersion\":1,\"groupRetirementVersion\":1,"
+         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,\"jrEncoderVersion\":1,\"ownedPedalCleanupVersion\":1,\"groupRetirementVersion\":1,\"controllerCleanupVersion\":1,"
          "\"clockDomain\":\"companion-steady-microseconds\","
          "\"nativeJrAllowed\":" + std::string(api_ == libremidi::API::WINDOWS_MIDI_SERVICES ? "false" : "true") +
          ",\"endpointDiscoveryOwner\":\"" + std::string(api_ == libremidi::API::WINDOWS_MIDI_SERVICES ? "os" : "companion") + "\"," +

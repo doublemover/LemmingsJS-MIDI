@@ -62,12 +62,24 @@ inline bool permits_packet(std::span<const std::uint32_t> words,
   }
   return true;
 }
+struct ControllerReleaseAction {
+  std::size_t offset{};
+  std::uint32_t policy{};
+  bool arm{}, disarm{}, selector_touch{}, selector_clear{};
+};
+struct ControllerReleaseRange {
+  std::size_t offset{}, words{};
+  std::uint32_t policy{};
+};
 struct PendingBatch {
   std::uint32_t request{}, session{}, grant{}, execution{};
   std::uint64_t deadline{}, ordinal{};
   Priority priority = Priority::performance;
   std::vector<std::uint32_t> words;
   std::vector<NoteKey> note_ons;
+  std::vector<std::uint32_t> controller_policies;
+  std::vector<ControllerReleaseAction> controller_actions;
+  std::vector<ControllerReleaseRange> controller_resets;
 };
 class BatchQueue {
   std::vector<PendingBatch> queue_;

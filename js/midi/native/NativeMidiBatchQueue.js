@@ -1,4 +1,5 @@
 import { parseWords } from '../protocol/UmpPacketCodec.js';
+import { validateControllerPolicyIds } from './NativeMidiBridgeProtocol.js';
 
 const failure = reason => Object.assign(new Error(reason), { notSubmitted: true });
 export function createNativeMidiBatchQueue({ client, maximumWords = 65536, maximumBatches = 128, maximumJobs = 4096, maximumBytes = 8 * 1048576 } = {}) {
@@ -31,7 +32,7 @@ export function createNativeMidiBatchQueue({ client, maximumWords = 65536, maxim
     const provenance = Object.freeze({ schema: 'lemmings-native-intent-batch/v1', worldId: first.worldId, generation: first.generation, batchId: first.batchId,
       intents: group.jobs.length, receiptMapping: 'owned-browser-packet-ranges', sourceOrder: first.sourceOrder ?? null });
     let receipt;
-    try { receipt = await client.sendBatch({ grant: group.grant, execution: group.execution, targetTimeMs: group.targetTimeMs, priority: group.priority, words, provenance,
+    try { receipt = await client.sendBatch({ grant: group.grant, execution: group.execution, targetTimeMs: group.targetTimeMs, priority: group.priority, words, provenance, leasePolicyIds: [...group.leasePolicyIds],
       onReceipt: row => { for (const job of group.jobs) notify(job, receiptFor(group, job, row)); } }); }
     catch (error) { receipt = error.receipt || { kind: 'error', reason: error.message, failedPacketUnconfirmed: error.notSubmitted !== true }; }
     settle(group, receipt); return receipt.kind === 'driver-submitted';
@@ -51,22 +52,24 @@ export function createNativeMidiBatchQueue({ client, maximumWords = 65536, maxim
     }
   };
   return Object.freeze({
-    enqueue({ grant, execution, targetTimeMs, priority = 1, words, provenance, onReceipt }) {
+    enqueue({ grant, execution, targetTimeMs, priority = 1, words, provenance, leasePolicyIds = [], onReceipt }) {
       if (closed || !Number.isSafeInteger(grant) || grant < 1 || !Number.isSafeInteger(execution) || execution < 1 || !Number.isFinite(targetTimeMs) || !Number.isInteger(priority) || priority < 0 || priority > 2) return { status: 'rejected', reason: 'native-batch-owner-unavailable' };
-      let owned, metadata, packetEnds, bytes;
+      let owned, metadata, packetEnds, bytes, policies;
       try {
         if (typeof SharedArrayBuffer === 'function' && words?.buffer instanceof SharedArrayBuffer) throw failure('Shared native batch words');
+        policies = validateControllerPolicyIds(leasePolicyIds);
         owned = Array.from(words); const packets = parseWords(owned, { maximumWords: 4096, preserveUnknown: false }); if (!packets.length) throw failure('Empty native batch');
         let offset = 0; packetEnds = packets.map(packet => offset += packet.wordCount);
-        const json = JSON.stringify(provenance); if (!json || json.length > 8192) throw failure('Native causal metadata capacity'); metadata = Object.freeze(JSON.parse(json)); bytes = 512 + owned.length * 8 + json.length * 2;
+        const json = JSON.stringify(provenance); if (!json || json.length > 8192) throw failure('Native causal metadata capacity'); metadata = Object.freeze(JSON.parse(json)); bytes = 512 + owned.length * 8 + json.length * 2 + policies.length * 16;
       } catch (error) { return { status: 'rejected', reason: error.message }; }
       const key = JSON.stringify([client.session, grant, execution, targetTimeMs, priority, metadata.worldId, metadata.generation, metadata.batchId]);
-      let group = tails.get(key); if (group && (group.wordCount + owned.length > 4096 || group.jobs.length >= 1024)) group = null;
+      let group = tails.get(key); if (group && (group.wordCount + owned.length > 4096 || group.jobs.length >= 1024 || new Set([...group.leasePolicyIds, ...policies]).size > 64)) group = null;
       if (queuedWords + owned.length > maximumWords - (priority === 0 ? 0 : 4096) || jobs >= maximumJobs || retainedBytes + bytes > maximumBytes ||
           !group && groups.size >= maximumBatches - (priority === 0 ? 0 : 8)) return { status: 'rejected', reason: 'native-batch-capacity' };
-      if (!group) { group = { key, session: client.session, grant, execution, targetTimeMs, priority, wordCount: 0, retainedBytes: 0, jobs: [], submitted: false, started: false, settled: false }; groups.add(group); tails.set(key, group); }
+      if (!group) { group = { key, session: client.session, grant, execution, targetTimeMs, priority, wordCount: 0, retainedBytes: 0, jobs: [], leasePolicyIds: new Set(), submitted: false, started: false, settled: false }; groups.add(group); tails.set(key, group); }
       let resolve; const completion = new Promise(done => { resolve = done; });
       group.jobs.push({ offset: group.wordCount, words: owned, packetEnds, provenance: metadata, onReceipt, resolve }); group.wordCount += owned.length; group.retainedBytes += bytes;
+      for (const id of policies) group.leasePolicyIds.add(id);
       queuedWords += owned.length; jobs++; retainedBytes += bytes;
       if (!flushPending) { flushPending = true; queueMicrotask(flush); }
       return Object.freeze({ status: 'accepted', stage: 'browser-owned-batch', completion });

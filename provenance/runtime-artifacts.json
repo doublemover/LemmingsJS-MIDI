@@ -572,6 +572,7 @@
         "native/midi-companion/IngressHandoff.hpp",
         "native/midi-companion/MidiCiCodec.hpp",
         "native/midi-companion/NativeBatch.hpp",
+        "native/midi-companion/NativeControllerRelease.hpp",
         "native/midi-companion/NativeIo.hpp",
         "native/midi-companion/NativeJrTiming.hpp",
         "native/midi-companion/NativePedalOwnership.hpp",
@@ -585,8 +586,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 70,
-      "sha256": "8552dee78efb3cff86415309b940e03bebbfcefd185a7cd0fc2b645cca9467c9"
+      "fileCount": 71,
+      "sha256": "50aac97939bf289031f5a476d42b65aee31f8b985ef78ad9987397565b198cf8"
     }
   ]
 }
