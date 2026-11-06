@@ -133,7 +133,7 @@ export function createMidiCiSession({ routes, inputGrant, outputGrant, group, sc
   };
   const unsubscribe = routes.input.subscribe(event => {
     if (event.grant !== inputGrant) return;
-    if (event.event === 'ingress-loss') { stale(event.reason); return; }
+    if (event.event === 'ingress-loss' || event.event === 'ingress-groups-retired' && event.groupMask & 1 << group) { stale(event.reason); return; }
     if (event.event !== 'native-payload' || event.message.kind !== 'sysex7' || !(input.groupMask & 1 << event.message.group) || event.message.payload[0] !== 126 || event.message.payload[2] !== 13) return;
     const payload = event.message.payload; if (payload.length + 2 > maximumMessageBytes || receive.length >= 2048 || receiveBytes + payload.length * 2 + 512 > 1048576) { stale('MIDI-CI receive capacity exceeded'); return; }
     const bytes = payload.length * 2 + 512; receive.push({ payload, bytes, group: event.message.group }); receiveBytes += bytes; if (!receiveRunning) receiveTail = drain();

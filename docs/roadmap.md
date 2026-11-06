@@ -10704,3 +10704,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add per-group route revision fences and retire only executions dependent on changed function-block spans. Keep unaffected groups, programs, MPE managers and profile parts active. A changed span requires explicit route reactivation after cleanup.
 - Scope Stream function-block changes/removals to the union of old/new groups; retain endpoint-wide retirement for protocol/global capability changes. This supplies browser ownership; native OS metadata narrowing and explicit group revalidation follow next.
 - Formatting only; functional qualification remains deferred.
+
+
+### 2026-11-06 — Rook continuation501: native metadata group narrowing and explicit revalidation
+
+- Compare OS endpoint-wide protocol/capability identity separately from per-group function-block semantics. Narrow only changed native group permissions, cancel complete dependent executions and clean their owned notes/controllers, preserving unaffected groups and open endpoint handles.
+- Publish scoped retirement receipts and reuse confirmed native cleanup at the browser owner. Preserve cross-group MPE dependency retirement; retain whole-grant retirement for removal, global protocol change or uncertain cleanup.
+- Add explicit current-inventory group revalidation limited to the original grant, with conflict checks and a connection control. Revalidation grants no automatic lane/CI reactivation. Refresh OS metadata read-only, discard only affected multipart input state, and invalidate only dependent CI/controller baselines.
+- Native compilation/linking passes. Formatting only otherwise; functional, hotplug and device qualification remains deferred. Continue release leases, remaining score metadata and coordinated graph restoration before the final validation batch.

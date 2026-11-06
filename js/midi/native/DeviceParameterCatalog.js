@@ -9,18 +9,20 @@ const intentSignature = mapping => JSON.stringify([mapping.stableId, mapping.sig
 const result = (status, reason = null, fields = {}) => Object.freeze({ status, reason, ...fields });
 export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid } = {}) {
   const scope = ci.state(), initialPeer = ci.getPeer(peerMuid), listeners = new Set(), values = new Map(), active = new Map(), wireParameters = new Map(), mutations = createMidiControllerMutations({ maximumEntries: 512 }), automation = [];
-  let capturing = false, automationBytes = 0, mutationSequence = 0;
+  let capturing = false, automationBytes = 0, mutationSequence = 0, observedGroupRevisions = null;
+  const parameterScopes = new Map();
   if (!initialPeer || properties.state().ciEpoch !== scope.epoch) throw new Error('Choose a current discovered Property Exchange peer');
   let closing = false, writeCompletion = Promise.resolve(), finishWrite = null;
   let disposed = false, loading = false, generation = 0, parameters = [], revision = 0, deviceRevision = null, latest = null, writing = false, disposal = null;
-  const currentRevision = () => routes.state().grants.find(row => row.grant === scope.outputGrant)?.deviceRevision ?? null;
+  const grantState = () => routes.grantState?.(scope.outputGrant) || routes.state().grants.find(row => row.grant === scope.outputGrant);
+  const currentRevision = () => grantState()?.deviceRevision ?? null;
   const current = () => !disposed && !closing && routes.isGrantActive(scope.outputGrant) && ci.state().epoch === scope.epoch && !!ci.getPeer(peerMuid) && !properties.state().stale;
   const ready = () => current() && deviceRevision === currentRevision() && !properties.state().resourcesStale;
   const emit = () => { for (const listener of listeners) { try { listener(); } catch {} } };
   const valueKey = (parameter, note) => parameter.stableId + ':' + (parameter.scope === 'note' ? note : '-');
   const baseline = (parameter, note = null) => values.get(valueKey(parameter, note)) || Object.freeze({ known: false, value: null, revision: 0, reason: 'not-observed', pending: false });
   const wireKey = parameter => JSON.stringify([parameter.propertyChannel, parameter.ctrlType, parameter.ctrlIndex]);
-  const mutationAddress = parameter => { const target = address(parameter); return target && ['rpn', 'nrpn'].includes(parameter.ctrlType) ? { endpointId: 'native-grant:' + scope.outputGrant + ':peer:' + peerMuid, connectionEpoch: scope.connectionEpoch, group: target.group, channel: target.channel + 1, kind: parameter.ctrlType === 'rpn' ? 'registered' : 'assignable', bank: parameter.ctrlIndex[0], index: parameter.ctrlIndex[1] } : null; };
+  const mutationAddress = (parameter, previousTarget = null) => { const target = previousTarget || address(parameter); return target && ['rpn', 'nrpn'].includes(parameter.ctrlType) ? { endpointId: 'native-grant:' + scope.outputGrant + ':peer:' + peerMuid, connectionEpoch: scope.connectionEpoch, group: target.group, channel: target.channel + 1, kind: parameter.ctrlType === 'rpn' ? 'registered' : 'assignable', bank: parameter.ctrlIndex[0], index: parameter.ctrlIndex[1] } : null; };
   const observe = (parameter, value, { note = null, delta = null, origin = 'device-input', packet = null } = {}) => {
     const key = valueKey(parameter, note), previous = baseline(parameter, note);
     if (!values.has(key) && values.size >= 4096) return;
@@ -84,7 +86,18 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
     if (!current()) { invalidate('Device controller resource peer is stale'); return; }
     if (!loading && event?.record && ['AllCtrlList', 'ChCtrlList', 'CtrlMapList', 'ChannelList'].includes(event.record.resource)) invalidate('Device controller metadata changed; review mappings again');
   });
-  const removeRoutes = routes.subscribe(() => { if (deviceRevision != null && currentRevision() !== deviceRevision) invalidate('Device state changed; rediscover controllers'); });
+  const removeRoutes = routes.subscribe(() => {
+    if (deviceRevision != null && currentRevision() !== deviceRevision) { invalidate('Device state changed; rediscover controllers'); return; }
+    const next = grantState()?.groupRevisions; if (!next || next === observedGroupRevisions) return;
+    if (observedGroupRevisions) for (const parameter of parameters) {
+      const previous = parameterScopes.get(parameter.stableId), target = address(parameter);
+      if (![previous?.group, target?.group].some(group => group != null && next[group] !== observedGroupRevisions[group])) continue;
+      for (const candidate of [previous, target]) { const controller = candidate && mutationAddress(parameter, candidate); if (controller) mutations.invalidate(controller); }
+      for (const [key, value] of values) if (key.startsWith(parameter.stableId + ':')) values.set(key, Object.freeze({ ...value, known: false, value: null, localValue: null, rawAccumulator: null, pending: false, reason: 'device-controller-group-changed', revision: ++revision }));
+      for (const [key, claim] of active) if (claim.mapping.stableId === parameter.stableId) active.delete(key);
+    }
+    observedGroupRevisions = next; emit();
+  });
   const api = Object.freeze({
     async load({ resource = 'AllCtrlList', propertyChannel = null, resId = null } = {}) {
       if (loading || writing || !current()) return result('rejected', 'Device controller discovery is busy or stale');
@@ -101,7 +114,7 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
         for (const id of ids) { const map = await getRecord('CtrlMapList', { resId: id }, owned); maps.set(id, normalizeControllerMap(map.data)); }
         const next = normalizeDeviceParameters(record.data, { resource, resId, channel: propertyChannel, mapValues: maps, revision: record.revision });
         if (JSON.stringify(next).length > 1048576) throw new Error('Aggregate controller descriptor capacity');
-        parameters = next; wireParameters.clear(); for (const parameter of next) { const key = wireKey(parameter), siblings = wireParameters.get(key) || []; siblings.push(parameter); wireParameters.set(key, siblings); } values.clear(); mutations.clear(); deviceRevision = currentRevision(); latest = result('ok', null, { count: next.length }); return latest;
+        parameters = next; wireParameters.clear(); for (const parameter of next) { const key = wireKey(parameter), siblings = wireParameters.get(key) || []; siblings.push(parameter); wireParameters.set(key, siblings); } values.clear(); mutations.clear(); parameterScopes.clear(); for (const parameter of next) parameterScopes.set(parameter.stableId, address(parameter)); observedGroupRevisions = grantState()?.groupRevisions || null; deviceRevision = currentRevision(); latest = result('ok', null, { count: next.length }); return latest;
       } catch (error) { parameters = []; deviceRevision = null; latest = result('incomplete', error.message); return latest; }
       finally { loading = false; emit(); }
     },
@@ -221,7 +234,7 @@ export function createDeviceParameterCatalog({ routes, ci, properties, peerMuid 
     baseline: (stableId, note = null) => { const parameter = parameterFor(stableId); return parameter ? baseline(parameter, note) : Object.freeze({ known: false, revision: 0, reason: 'missing-parameter' }); },
     state: () => Object.freeze({ disposed, stale: !ready(), loading, writing, peerMuid, outputGrant: scope.outputGrant, parameters, activeBindings: active.size, revision, latest, capturing, automationRecords: automation.length, automationBytes, controllerOwner: mutations.diagnostics() }),
     subscribe(listener) { if (disposed || listeners.size >= 8 || typeof listener !== 'function') throw new Error('Controller observer capacity'); listeners.add(listener); return () => listeners.delete(listener); },
-    dispose() { if (disposal) return disposal; closing = true; generation++; active.clear(); removeInput(); removeCi(); removeProperties(); removeRoutes(); disposal = writeCompletion.then(() => { disposed = true; parameters = []; values.clear(); wireParameters.clear(); mutations.dispose(); automation.length = automationBytes = 0; listeners.clear(); }); return disposal; }
+    dispose() { if (disposal) return disposal; closing = true; generation++; active.clear(); removeInput(); removeCi(); removeProperties(); removeRoutes(); disposal = writeCompletion.then(() => { disposed = true; parameters = []; values.clear(); wireParameters.clear(); parameterScopes.clear(); mutations.dispose(); automation.length = automationBytes = 0; listeners.clear(); }); return disposal; }
   });
   return api;
 }

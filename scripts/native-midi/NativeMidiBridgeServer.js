@@ -37,8 +37,9 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     if (client.pending >= (priority ? 64 : 56)) throw Object.assign(new Error('Browser native request capacity'), { notSubmitted: true }); ++client.pending;
     try {
       const row = await peer.request(operation, client.session, fields, { priority, onQueued: receipt => send(client, { ...receipt, requestId, provenance }) });
-      if (row.kind === 'opened') client.grants.set(row.grant, Object.freeze({ direction: row.direction, groupMask: row.groupMask, permissions: row.permissions }));
+      if (row.kind === 'opened') client.grants.set(row.grant, Object.freeze({ direction: row.direction, groupMask: row.groupMask, originalGroupMask: row.originalGroupMask ?? row.groupMask, permissions: row.permissions }));
       if (row.kind === 'closed') client.grants.delete(row.grant);
+      if (row.kind === 'revalidated-groups' && client.grants.has(row.grant)) client.grants.set(row.grant, Object.freeze({ ...client.grants.get(row.grant), groupMask: row.groupMask }));
       if (!client.retired) send(client, { ...row, requestId, provenance });
       return row;
     } finally { --client.pending; }
@@ -72,6 +73,7 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     }
     case 'close': if (!client.grants.has(uint(row.grant))) throw new Error('Endpoint grant required'); return call(client, requestId, 'X', [row.grant], { priority: true });
     case 'cancel': if (!client.grants.has(uint(row.grant)) || !uint(row.execution)) throw new Error('Owned execution required'); return call(client, requestId, 'C', [row.grant, row.execution], { priority: true });
+    case 'revalidateGroups': if (!client.grants.has(uint(row.grant))) throw new Error('Owned connection required'); return call(client, requestId, 'G', [uint(row.inventoryEpoch), row.grant, uint(row.groupMask, 65535)]);
     case 'jrMode': { const grant = client.grants.get(uint(row.grant)); if (!grant || grant.direction !== 'output' || !(grant.permissions & 8) || typeof row.enabled !== 'boolean') throw new Error('Explicit endpoint-control output required for JR policy'); return call(client, requestId, 'J', [row.grant, Number(row.enabled)]); }
     case 'streamEncode': {
       const grant = client.grants.get(uint(row.grant));
@@ -128,6 +130,7 @@ export async function createNativeMidiBridgeServer({ executable, port = 8765, or
     const target = row.session ? sessions.get(row.session) : null, recipients = target ? [target] : row.session ? [] : [...sessions.values()];
     for (const client of recipients) {
       if (row.event === 'grant-retired') client.grants.delete(row.grant);
+      if (row.event === 'grant-groups-retired' && client.grants.has(row.grant)) client.grants.set(row.grant, Object.freeze({ ...client.grants.get(row.grant), groupMask: row.groupMask }));
       if (!send(client, row, row.event === 'ingress') && row.event === 'ingress') send(client, { event: 'ingress-loss', session: client.session, grant: row.grant, reason: 'browser-ingress-pressure' });
       if (row.event === 'session-retired') revoke(client, 'native-session-retired');
     }

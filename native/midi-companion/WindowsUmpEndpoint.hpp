@@ -13,7 +13,8 @@ namespace lemmings::companion {
 namespace win_midi = winrt::Microsoft::Windows::Devices::Midi2;
 struct WindowsEndpointInfo {
   std::string device, name, manufacturer, transport;
-  std::string metadata_json{}, metadata_shape{};
+  std::string metadata_json{}, metadata_shape{}, endpoint_shape{};
+  std::array<std::string, 16> group_shapes{};
   bool groups_known{}, jr_required{};
   std::uint16_t input_groups{}, output_groups{};
 };
@@ -52,7 +53,7 @@ inline std::vector<WindowsEndpointInfo> windows_endpoints() {
     const auto protocols = (declared.SupportsMidi10Protocol ? 1u : 0u) | (declared.SupportsMidi20Protocol ? 2u : 0u);
     const auto extensions = (configuration.SendJitterReductionTimestamps ? 1u : 0u) | (configuration.ReceiveJitterReductionTimestamps ? 2u : 0u);
     const auto supported_jr = (declared.SupportsSendingJitterReductionTimestamps ? 1u : 0u) | (declared.SupportsReceivingJitterReductionTimestamps ? 2u : 0u);
-    struct Block { unsigned number; std::string shape, record; };
+    struct Block { unsigned number; std::string shape, record; std::uint16_t span{}; };
     std::vector<Block> blocks;
     const auto function_blocks = endpoint.GetDeclaredFunctionBlocks();
     if (function_blocks.Size() > 32) throw std::runtime_error("windows-function-block-capacity");
@@ -64,17 +65,19 @@ inline std::vector<WindowsEndpointInfo> windows_endpoints() {
         ",\"active\":" + (block.IsActive() ? "true" : "false") +
         ",\"direction\":" + std::to_string(static_cast<unsigned>(block.Direction())) +
         ",\"midi1\":" + std::to_string(static_cast<unsigned>(block.RepresentsMidi10Connection())) +
-        ",\"uiHint\":" + std::to_string(static_cast<unsigned>(block.UIHint())) +
         ",\"firstGroup\":" + std::to_string(block.FirstGroup().Index()) +
         ",\"groupCount\":" + std::to_string(block.GroupCount()) +
         ",\"ciVersion\":" + std::to_string(block.MidiCIMessageVersionFormat()) +
         ",\"maximumSysex8Streams\":" + std::to_string(block.MaxSystemExclusive8Streams());
-      blocks.push_back({number, shape + "}", shape + ",\"name\":" + quote(winrt::to_string(block.Name())) + "}"});
+      const auto first = static_cast<unsigned>(block.FirstGroup().Index()), count = static_cast<unsigned>(block.GroupCount());
+      const auto span = block.IsActive() && count && first < 16 && first + count <= 16 ? static_cast<std::uint16_t>(((1u << count) - 1u) << first) : std::uint16_t{};
+      blocks.push_back({number, shape + "}", shape + ",\"uiHint\":" + std::to_string(static_cast<unsigned>(block.UIHint())) + ",\"name\":" + quote(winrt::to_string(block.Name())) + "}", span});
     }
     std::sort(blocks.begin(), blocks.end(), [](const auto &a, const auto &b) { return a.number < b.number; });
     std::string shapes = "[", records = "[";
     for (const auto &block : blocks) { if (shapes.size() > 1) { shapes += ','; records += ','; } shapes += block.shape; records += block.record; }
     shapes += ']'; records += ']';
+    for (const auto &block : blocks) for (unsigned group = 0; group < 16; ++group) if (block.span & (1u << group)) info.group_shapes[group] += block.shape;
     const auto terminal_blocks = endpoint.GetGroupTerminalBlocks();
     if (function_blocks.Size() == 0)
       for (const auto &block : terminal_blocks) collect(block);
@@ -89,6 +92,7 @@ inline std::vector<WindowsEndpointInfo> windows_endpoints() {
       ",\"activeProtocol\":" + (config_known && (protocol == 1 || protocol == 2) ? std::to_string(protocol) : "null") +
       ",\"activeExtensions\":" + (config_known ? std::to_string(extensions) : "null");
     info.jr_required = config_known && (extensions & 2);
+    info.endpoint_shape = std::to_string(info_known) + ':' + std::to_string(config_known) + ':' + std::to_string(declared.SpecificationVersionMajor) + ':' + std::to_string(declared.SpecificationVersionMinor) + ':' + std::to_string(protocols) + ':' + std::to_string(supported_jr) + ':' + std::to_string(declared.HasStaticFunctionBlocks) + ':' + std::to_string(protocol) + ':' + std::to_string(extensions);
     info.metadata_shape = base + ",\"functionBlocks\":" + shapes + "}";
     info.metadata_json = base + ",\"functionBlocks\":" + records + "}";
 

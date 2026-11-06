@@ -39,17 +39,27 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
   let disposal = null, notificationPending = false, executionSequence = 0, revision = 0, traceWords = 0, omittedTrace = 0, disposed = false, inventory = null;
   const notify = () => { revision++; if (notificationPending) return; notificationPending = true; queueMicrotask(() => { notificationPending = false; if (disposed) return; for (const listener of listeners) { try { listener(); } catch {} } }); };
   const current = route => route && (route.groupRevisions || [[route.group, 0]]).every(([group, revision]) => (grants.get(route.grant)?.groupMask & 1 << group) && (grants.get(route.grant)?.groupRevisions?.[group] || 0) === revision) && (!patchClaims.has(route.outputId) || patchClaims.get(route.outputId).current()) && (!profileClaims.has(route.outputId) || profileClaims.get(route.outputId).current()) && grants.has(route.grant) && route.connectionEpoch === client.session && route.deviceRevision === grants.get(route.grant)?.deviceRevision && client.state === 'connected';
-  const descriptor = (receipt, endpoint = null) => Object.freeze({ ...receipt, deviceRevision: 0, groupRevisions: Object.freeze(new Array(16).fill(0)), logicalDestination: globalThis.crypto.randomUUID(), endpoint, connectionEpoch: client.session });
+  const descriptor = (receipt, endpoint = null) => Object.freeze({ ...receipt, originalGroupMask: receipt.originalGroupMask ?? receipt.groupMask, deviceRevision: 0, groupRevisions: Object.freeze(new Array(16).fill(0)), logicalDestination: globalThis.crypto.randomUUID(), endpoint, connectionEpoch: client.session });
   const unsubscribeInput = ingress.subscribe(event => { for (const listener of listeners) { try { listener(event); } catch {} } });
   const unsubscribe = client.subscribe(event => {
     if (event.event === 'grant-retired') { ingress.revoke(event.grant, event.reason); grants.delete(event.grant); forgetControllerChanges(event.grant); for (const session of ciSessions) if (session.state().outputGrant === event.grant) session.invalidate(event.reason || 'CI output grant retired'); notify(); }
     else if (event.event === 'state' && event.state === 'disconnected') { ingress.clearGrants(); grants.clear(); controllerChanges.clear(); groupInvalidations.clear(); inventory = null; notify(); }
     else if (event.event === 'ports-changed') { inventory = null; notify(); }
+    else if (event.event === 'grant-groups-retired' || event.event === 'receipt' && event.kind === 'revalidated-groups') updateGrantGroups(event);
     else if (event.event === 'native-driver-observation') acceptDriverObservation(event);
     else if (event.event === 'ingress') ingress.acceptColumns(event);
     else if (event.event === 'ingress-loss') ingress.markLoss(event);
     else if (event.event === 'receipt' && event.kind === 'heartbeat') ingress.poll();
   });
+  const updateGrantGroups = event => {
+    const owner = grants.get(event.grant), revalidated = event.kind === 'revalidated-groups', removed = revalidated ? 0 : event.retiredGroupMask;
+    if (!owner || !Number.isInteger(event.groupMask) || event.groupMask < 0 || event.groupMask > 65535 || event.groupMask & ~owner.originalGroupMask || !revalidated && (!Number.isInteger(removed) || removed < 1 || removed > 65535 || event.groupMask !== (owner.groupMask & ~removed))) { client.disconnect(); return; }
+    grants.set(event.grant, Object.freeze({ ...owner, groupMask: event.groupMask, endpointMetadata: event.endpointMetadata || owner.endpointMetadata }));
+    if (owner.direction === 'input') ingress.updateGroups(event.grant, event.groupMask, { revalidated });
+    if (removed) void api.invalidateDeviceGroups(event.grant, removed, event.reason || 'native-group-scope-retired', { nativeRetirement: event }).catch(error => api.quarantineDeviceState(event.grant, error.message));
+    for (const registry of endpointRegistries.values()) { const state = registry.state(); if ((state.inputGrant === event.grant || state.outputGrant === event.grant) && event.endpointMetadata) registry.refreshMetadata(event.endpointMetadata); }
+    notify();
+  };
   const unsupportedTiming = owner => client.capabilities?.nativeJrAllowed === false && !!(owner?.endpointMetadata?.activeExtensions & 2);
   const acceptDriverObservation = row => {
     const safe = value => Number.isSafeInteger(value) && value >= 0;
@@ -117,14 +127,14 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       }); deviceInvalidations.set(grant, completion); return completion;
     },
     grantState: grant => grants.get(grant) || null,
-    invalidateDeviceGroups(grant, groupMask, reason) {
+    invalidateDeviceGroups(grant, groupMask, reason, { nativeRetirement = null } = {}) {
       const owner = grants.get(grant); if (!owner || !Number.isInteger(groupMask) || groupMask < 1 || groupMask > 65535) return Promise.resolve();
       const key = grant + ':' + groupMask; if (groupInvalidations.has(key)) return groupInvalidations.get(key).completion;
       const revisions = owner.groupRevisions.map((value, group) => value + Number(!!(groupMask & 1 << group)));
       grants.set(grant, Object.freeze({ ...owner, groupRevisions: Object.freeze(revisions), groupStateReason: reason }));
       for (const session of ciSessions) { const state = session.state(); if ((state.outputGrant === grant || state.inputGrant === grant) && groupMask & 1 << state.group) session.invalidate(reason); }
       for (const [session, report] of reportSessions) if (session.state().outputGrant === grant && groupMask & 1 << session.state().group) report.invalidateOutput(grant, reason);
-      const completion = Promise.allSettled([...performanceOwners].map(owner => owner.invalidateGroups?.(grant, groupMask) ?? owner.invalidateGrant?.(grant))).then(results => {
+      const completion = Promise.allSettled([...performanceOwners].map(owner => owner.invalidateGroups?.(grant, groupMask, nativeRetirement) ?? owner.invalidateGrant?.(grant))).then(results => {
         const failures = results.filter(row => row.status === 'rejected'); if (failures.length) throw new AggregateError(failures.map(row => row.reason), 'Affected native groups remain unconfirmed'); groupInvalidations.delete(key); notify();
       }); groupInvalidations.set(key, { grant, groupMask, completion }); notify(); return completion;
     },
@@ -202,6 +212,11 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       if (disposed || receipt.connectionEpoch != null && receipt.connectionEpoch !== client.session) throw new Error('Native route owner retired');
       if (receipt.direction === 'input') ingress.register(receipt);
       grants.set(receipt.grant, descriptor(receipt, endpoint)); notify(); return grants.get(receipt.grant);
+    },
+    async revalidateGroups(grant, groupMask) {
+      const owner = grants.get(grant); if (disposed || client.capabilities?.groupRetirementVersion !== 1 || !inventory || !owner || owner.virtual || !Number.isInteger(groupMask) || groupMask < 0 || groupMask > 65535 || groupMask & ~owner.originalGroupMask) throw new Error('Refresh devices and select a subset of the original owned groups');
+      await Promise.all([...groupInvalidations.values()].filter(row => row.grant === grant).map(row => row.completion));
+      const receipt = await client.revalidateGroups(grant, { inventoryEpoch: inventory.inventoryEpoch, groupMask }); if (receipt.kind !== 'revalidated-groups') throw new Error('Native group revalidation was not acknowledged'); return grants.get(grant);
     },
     async publish(options) { if (disposed) throw new Error('Native routing owner retired'); const receipt = await client.publish(options); if (disposed) throw new Error('Native route owner retired'); if (receipt.direction === 'input') ingress.register(receipt); grants.set(receipt.grant, descriptor(receipt)); notify(); return grants.get(receipt.grant); },
     async prepareOutput(grant) { if (unsupportedTiming(grants.get(grant))) throw new Error('Windows MIDI Services cannot supply this endpoint’s required JR timestamps'); if (!api.isGrantActive(grant)) throw new Error('Choose a current native output'); for (const registry of endpointRegistries.values()) if (registry.state().outputGrant === grant) await registry.prepareOutput(); },

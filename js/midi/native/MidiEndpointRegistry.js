@@ -103,14 +103,22 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
     if (receive.length >= 64 || queueBytes + entry.bytes > 16384) { lose('Endpoint metadata receive capacity'); return; }
     receive.push(entry); queueBytes += entry.bytes; if (!receiving) receiveTail = drain();
   });
+  const applyOsMetadata = seed => {
+    if (seed?.source !== 'windows-midi-services-declared' || !Array.isArray(seed.functionBlocks) || seed.functionBlocks.length > 32) throw new Error('OS function-block metadata is unavailable or excessive');
+    const next = new Map();
+    for (const row of seed.functionBlocks) { const block = validateBlock(row); if (next.has(block.number)) throw new Error('Duplicate OS function block'); next.set(block.number, block); }
+    if (seed.umpMajor != null) setInfo(seed, seed.source);
+    let affected = 0;
+    for (const [number, old] of blocks) { const replacement = next.get(number); if (!replacement || semanticBlock(old) !== semanticBlock(replacement)) affected |= mask(old) | (replacement ? mask(replacement) : 0); }
+    blocks.clear(); names.clear(); for (const [number, block] of next) { blocks.set(number, block); if (block.name) names.set(number, block.name); }
+    if (affected) invalidateRoutes('OS-function-block-layout-changed', affected);
+    if (seed.activeProtocol != null && (configuration?.protocol !== seed.activeProtocol || configuration?.extensions !== seed.activeExtensions)) setConfiguration(seed.activeProtocol, seed.activeExtensions, seed.source);
+    onMetadata();
+  };
   const seed = output.endpointMetadata;
   if (seed?.source === 'windows-midi-services-declared') {
-    try {
-      if (seed.umpMajor != null) setInfo(seed, seed.source);
-      if (!Array.isArray(seed.functionBlocks) || seed.functionBlocks.length > 32) throw new Error('OS function-block metadata capacity');
-      for (const row of seed.functionBlocks) { const block = validateBlock(row); if (blocks.has(block.number)) throw new Error('Duplicate OS function block'); blocks.set(block.number, block); if (block.name) names.set(block.number, block.name); }
-      if (seed.activeProtocol != null) setConfiguration(seed.activeProtocol, seed.activeExtensions, seed.source);
-    } catch (error) { info = configuration = null; blocks.clear(); names.clear(); reason = 'OS endpoint metadata is incomplete: ' + error.message; }
+    try { applyOsMetadata(seed); }
+    catch (error) { info = configuration = null; blocks.clear(); names.clear(); reason = 'OS endpoint metadata is incomplete: ' + error.message; }
   }
   const send = (operation, parameters, wireExecution, owns = current) => {
     const task = sendTail.then(async () => {
@@ -130,6 +138,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
     catch (error) { routes.quarantineDeviceState(outputGrant, error.message); throw error; }
   };
   const api = Object.freeze({
+    refreshMetadata(seed) { if (!current()) return; try { applyOsMetadata(seed); } catch (error) { reason = error.message; emit(); } },
     async discover() {
       if (routes.client.capabilities?.endpointDiscoveryOwner === 'os') return Object.freeze({ status: complete() ? 'ok' : 'incomplete', evidence: info?.source || 'os-managed', reason: complete() ? null : 'Windows endpoint metadata is incomplete; refresh native devices when its discovery completes' });
       if (!current() || discovery || now() - lastDiscoveryMs < 2000 || routes.client.capabilities?.umpStreamCodecVersion !== 1) return Object.freeze({ status: 'rejected', reason: 'Endpoint discovery is stale, busy or rate limited' });

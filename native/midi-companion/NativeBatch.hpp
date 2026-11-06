@@ -6,6 +6,7 @@
 #include <map>
 #include <optional>
 #include <span>
+#include <set>
 #include <tuple>
 #include <vector>
 namespace lemmings::companion {
@@ -132,6 +133,15 @@ public:
   std::uint64_t next_deadline(std::uint64_t fallback) const {
     return queue_.empty() ? fallback
                           : std::min(fallback, queue_.front().deadline);
+  }
+  std::set<std::uint32_t> executions_for_groups(std::uint32_t grant, std::uint16_t groups) const {
+    std::set<std::uint32_t> result;
+    for (const auto &batch : queue_) if (batch.grant == grant) for (std::size_t offset = 0; offset < batch.words.size();) {
+      const auto word = batch.words[offset], type = word >> 28;
+      if (type != 0 && type != 15 && (groups & (1u << ((word >> 24) & 15)))) { result.insert(batch.execution); break; }
+      offset += ump::word_counts[type];
+    }
+    return result;
   }
   bool has_grant(std::uint32_t id) const { return std::any_of(queue_.begin(), queue_.end(), [&](const auto &batch) { return batch.grant == id; }); }
   std::size_t pending_words() const { return words_; }

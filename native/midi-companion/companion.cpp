@@ -71,7 +71,8 @@ struct Endpoint {
   bool input{}, windows{}, groups_known{}, jr_required{};
   std::uint16_t groups{};
   std::string identity, name, device_name, port_name, windows_device;
-  std::string endpoint_metadata, metadata_shape;
+  std::string endpoint_metadata, metadata_shape, endpoint_shape;
+  std::array<std::string, 16> group_shapes{};
   libremidi::input_port in;
   libremidi::output_port out;
 };
@@ -84,7 +85,7 @@ struct Framer {
 struct Grant {
   std::uint32_t id{}, session{}, endpoint{};
   bool input{}, retiring{}, virtual_port{}, jr_required{};
-  std::uint16_t groups{};
+  std::uint16_t groups{}, original_groups{};
   std::uint32_t flags{};
   std::string name;
   std::shared_ptr<IngressFence> fence;
@@ -350,7 +351,7 @@ class Companion {
             row.identity =
                 field(device.device) + (input ? ":input" : ":output");
             row.groups_known = device.groups_known; row.jr_required = device.jr_required;
-            row.endpoint_metadata = device.metadata_json; row.metadata_shape = device.metadata_shape;
+            row.endpoint_metadata = device.metadata_json; row.metadata_shape = device.metadata_shape; row.endpoint_shape = device.endpoint_shape; row.group_shapes = device.group_shapes;
             row.groups = input ? device.input_groups : device.output_groups;
             next.push_back(std::move(row));
           }
@@ -386,16 +387,17 @@ class Companion {
       row.association = peer->token;
     }
     std::vector<std::uint32_t> removed;
-    for (const auto &[id, grant] : grants_)
-      if (grant.endpoint &&
-          std::none_of(next.begin(), next.end(), [&](const auto &row) {
-            const auto old = std::find_if(endpoints_.begin(), endpoints_.end(), [&](const auto &previous) { return previous.token == grant.endpoint; });
-            return row.token == grant.endpoint && (!row.groups_known || (grant.groups & ~row.groups) == 0) &&
-                   (old == endpoints_.end() || old->metadata_shape == row.metadata_shape);
-          }))
-        removed.push_back(id);
-    for (const auto id : removed)
-      retire_grant(id, "endpoint-removed");
+    std::vector<std::tuple<std::uint32_t, std::uint16_t, std::string>> changed_groups;
+    for (const auto &[id, owner] : grants_) if (owner.endpoint) {
+      const auto next_row = std::find_if(next.begin(), next.end(), [&](const auto &row) { return row.token == owner.endpoint; });
+      const auto old = std::find_if(endpoints_.begin(), endpoints_.end(), [&](const auto &row) { return row.token == owner.endpoint; });
+      if (next_row == next.end() || (old != endpoints_.end() && old->endpoint_shape != next_row->endpoint_shape)) { removed.push_back(id); continue; }
+      std::uint16_t affected = next_row->groups_known ? static_cast<std::uint16_t>(owner.groups & ~next_row->groups) : 0;
+      if (old != endpoints_.end()) for (unsigned group = 0; group < 16; ++group) if ((owner.groups & (1u << group)) && old->group_shapes[group] != next_row->group_shapes[group]) affected |= static_cast<std::uint16_t>(1u << group);
+      if (affected) changed_groups.emplace_back(id, affected, next_row->endpoint_metadata);
+    }
+    for (const auto &[id, groups, metadata] : changed_groups) retire_groups(id, groups, metadata);
+    for (const auto id : removed) retire_grant(id, "endpoint-removed-or-global-protocol-changed");
     endpoints_ = std::move(next);
     if (inventory_epoch_ == 0xffffffffu)
       throw std::runtime_error("inventory-epoch-exhausted");
@@ -477,6 +479,29 @@ class Companion {
     flush_egress();
     return unknown;
   }
+  void retire_groups(std::uint32_t id, std::uint16_t groups, const std::string &metadata) {
+    const auto found = grants_.find(id); if (found == grants_.end()) return;
+    auto &owner = found->second; groups &= owner.groups; if (!groups) return; flush_ingress();
+    auto affected = batches_.executions_for_groups(id, groups);
+    for (unsigned address = 0; address < owner.channels.size(); ++address) if ((groups & (1u << (address / 16))) && owner.channels[address]) affected.insert(owner.channels[address]);
+    if (owner.cancelled.size() + affected.size() > 4096) { retire_grant(id, "group-retirement-identity-capacity"); return; }
+    owner.groups &= static_cast<std::uint16_t>(~groups);
+    owner.cancelled.insert(affected.begin(), affected.end());
+    cancel_batches([&](const auto &batch) { return batch.grant == id && affected.contains(batch.execution); }, "endpoint-group-layout-changed");
+    CleanupCount unknown;
+    for (const auto execution : affected) {
+      const auto result = cleanup(owner, execution); unknown.notes += result.notes; unknown.controls += result.controls;
+      for (auto &channel : owner.channels) if (channel == execution) channel = 0;
+    }
+    std::string executions = "[";
+    for (const auto execution : affected) { if (executions.size() > 1) executions += ','; executions += std::to_string(execution); }
+    executions += ']';
+    emit("{\"event\":\"grant-groups-retired\",\"session\":" + std::to_string(owner.session) + ",\"grant\":" + std::to_string(id) +
+         ",\"groupMask\":" + std::to_string(owner.groups) + ",\"retiredGroupMask\":" + std::to_string(groups) + ",\"originalGroupMask\":" + std::to_string(owner.original_groups) +
+         ",\"executions\":" + executions + ",\"cleanupUnconfirmedNotes\":" + std::to_string(unknown.notes) + ",\"cleanupUnconfirmedControls\":" + std::to_string(unknown.controls) +
+         ",\"endpointMetadata\":" + (metadata.empty() ? "null" : metadata) + ",\"reason\":\"endpoint-group-layout-changed\"}");
+    if (unknown.total()) retire_grant(id, "group-cleanup-uncertain");
+  }
   GrantRetirement retire_grant(std::uint32_t id,
                                               std::string_view reason) {
     const auto found = grants_.find(id);
@@ -554,7 +579,7 @@ class Companion {
     value.endpoint = endpoint ? endpoint->token : 0;
     value.input = input;
     value.virtual_port = !endpoint;
-    value.groups = groups;
+    value.groups = value.original_groups = groups;
     value.flags = flags;
     value.jr_required = endpoint && endpoint->jr_required;
     if (!input) { value.timing_key = endpoint ? endpoint->token : (1ULL << 32) | value.id; auto &timing = jr_states_[value.timing_key]; if (!timing) timing = std::make_shared<NativeJrTiming>(); value.timing = timing; }
@@ -623,7 +648,7 @@ class Companion {
                 ",\"endpointToken\":" + std::to_string(owner.endpoint) +
                 ",\"endpointAssociationToken\":" + (endpoint && endpoint->association ? std::to_string(endpoint->association) : "null") +
                 ",\"direction\":" + quote(input ? "input" : "output") +
-                ",\"groupMask\":" + std::to_string(groups) +
+                ",\"groupMask\":" + std::to_string(groups) + ",\"originalGroupMask\":" + std::to_string(groups) +
                 ",\"permissions\":" + std::to_string(flags) +
                 ",\"virtual\":" + (owner.virtual_port ? "true" : "false") +
                 ",\"wireFormat\":\"ump\",\"sourcePrecision\":\"unknown\","
@@ -1067,6 +1092,18 @@ class Companion {
         if (!groups)
           throw std::invalid_argument("virtual-endpoint-requires-group-span");
         open(request, session, nullptr, direction, groups, flags, name);
+      } else if (operation == "G") {
+        const auto inventory = input.number(); const auto id = static_cast<std::uint32_t>(input.number());
+        const auto groups = static_cast<std::uint16_t>(input.number(65535)); input.finish();
+        auto &owner = grant(session, id);
+        if (inventory != inventory_epoch_ || owner.virtual_port || (groups & ~owner.original_groups)) throw std::invalid_argument("refresh-and-select-original-owned-group-scope");
+        const auto endpoint = std::find_if(endpoints_.begin(), endpoints_.end(), [&](const auto &row) { return row.token == owner.endpoint; });
+        if (endpoint == endpoints_.end() || !endpoint->groups_known || (groups & ~endpoint->groups)) throw std::runtime_error("group-scope-not-currently-advertised");
+        const auto added = static_cast<std::uint16_t>(groups & ~owner.groups);
+        for (const auto &[other_id, other] : grants_) if (other_id != id && other.endpoint == owner.endpoint && !owner.input && !other.input && (added & other.groups)) throw std::runtime_error("revalidated-group-owned-by-another-grant");
+        owner.groups |= added;
+        reply(request, session, "revalidated-groups", "\"grant\":" + std::to_string(id) + ",\"groupMask\":" + std::to_string(owner.groups) + ",\"addedGroupMask\":" + std::to_string(added) +
+              ",\"originalGroupMask\":" + std::to_string(owner.original_groups) + ",\"endpointMetadata\":" + (endpoint->endpoint_metadata.empty() ? "null" : endpoint->endpoint_metadata));
       } else if (operation == "B")
         enqueue(input, request, session);
       else if (operation == "C") {
@@ -1157,7 +1194,7 @@ public:
          ",\"selectedApi\":" + std::to_string(static_cast<int>(api_)) +
          ",\"libremidiRevision\":\"" LIBREMIDI_REVISION
          "\",\"ciCodec\":\"ni-midi2:" NI_MIDI2_REVISION
-         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,\"jrEncoderVersion\":1,\"ownedPedalCleanupVersion\":1,"
+         "\",\"ciMaximumMessageBytes\":2048,\"ciMessageReportCodecVersion\":1,\"ciProfileCodecVersion\":1,\"ciPropertyCodecVersion\":1,\"umpStreamCodecVersion\":1,\"jrEncoderVersion\":1,\"ownedPedalCleanupVersion\":1,\"groupRetirementVersion\":1,"
          "\"clockDomain\":\"companion-steady-microseconds\","
          "\"nativeJrAllowed\":" + std::string(api_ == libremidi::API::WINDOWS_MIDI_SERVICES ? "false" : "true") +
          ",\"endpointDiscoveryOwner\":\"" + std::string(api_ == libremidi::API::WINDOWS_MIDI_SERVICES ? "os" : "companion") + "\"," +

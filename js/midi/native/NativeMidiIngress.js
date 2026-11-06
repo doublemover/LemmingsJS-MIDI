@@ -36,9 +36,14 @@ export function createNativeMidiIngress({ now = () => performance.now(), maximum
     scope(grant) { const owner = grants.get(grant); return owner ? Object.freeze({ session: owner.session, grant: owner.grant, ingressEpoch: owner.epoch, groupMask: owner.groupMask, permissions: owner.permissions, jr: owner.jr.state() }) : null; },
     register(receipt) {
       if (retired || receipt.direction !== 'input' || !safe(receipt.grant) || !receipt.grant || !safe(receipt.session) || !receipt.session || !Number.isInteger(receipt.groupMask) || receipt.groupMask < 0 || receipt.groupMask > 65535 || !Number.isInteger(receipt.permissions) || receipt.permissions < 0 || receipt.permissions > 15 || grants.size >= maximumGrants || grants.has(receipt.grant)) throw new Error('Invalid native ingress grant');
-      const owner = { session: receipt.session, grant: receipt.grant, groupMask: receipt.groupMask, permissions: receipt.permissions, timestampMode: receipt.timestampMode,
+      const owner = { session: receipt.session, grant: receipt.grant, groupMask: receipt.groupMask, permissions: receipt.permissions, timestampMode: receipt.timestampMode, originalGroupMask: receipt.originalGroupMask ?? receipt.groupMask,
         epoch: 1, nextSequence: null, claim: null, jr: createIncomingJrContext({ configured: receipt.endpointMetadata?.activeExtensions == null ? null : !!(receipt.endpointMetadata.activeExtensions & 1), evidence: receipt.endpointMetadata?.source || 'unknown' }), collector: createUmpPayloadCollector({ maximumStreams: 8, maximumMessageBytes: 65536, maximumTotalBytes: 131072, maximumPackets: 2048, timeoutMs: 5000, now }) };
       grants.set(receipt.grant, owner);
+    },
+    updateGroups(grant, groupMask, { revalidated = false } = {}) {
+      const owner = grants.get(grant); if (!owner || !Number.isInteger(groupMask) || groupMask < 0 || groupMask > 65535 || groupMask & ~owner.originalGroupMask || !revalidated && groupMask & ~owner.groupMask) throw new Error('Invalid native input group revision');
+      const removed = owner.groupMask & ~groupMask; owner.groupMask = groupMask; owner.collector.discardGroups(removed);
+      if (removed) { if (owner.claim && owner.claim.groupMask & removed) owner.claim = null; emit({ event: 'ingress-groups-retired', session: owner.session, grant, groupMask: removed, reason: 'endpoint-group-layout-changed' }); }
     },
     configureJr(grant, enabled, evidence) { const owner = grants.get(grant); if (!owner) throw new Error('Choose a current incoming JR scope'); owner.jr.configure(enabled, evidence); },
     revoke(grant, reason = 'input-grant-retired') { const owner = grants.get(grant); if (!owner) return; loss(owner, reason); grants.delete(grant); },
@@ -79,17 +84,18 @@ export function createNativeMidiIngress({ now = () => performance.now(), maximum
           } catch (error) { loss(owner, error.message); }
         }
         if (owner.epoch !== event.ingressEpoch) continue;
-        if (owner.claim && (category === 'channel-observation' || entry.packet.kind === 'system' && ['quarterFrame', 'songPosition', 'songSelect'].includes(entry.packet.status))) {
+        if (owner.claim && owner.claim.groupMask & 1 << entry.packet.group && (category === 'channel-observation' || entry.packet.kind === 'system' && ['quarterFrame', 'songPosition', 'songSelect'].includes(entry.packet.status))) {
           const claim = owner.claim; if (now() > claim.deadline || ++claim.packets > claim.maximumPackets) loss(owner, 'isolated-observation-capacity-or-timeout');
           else { try { claim.consume(Object.freeze({ ...event, category: 'isolated-state-observation', observationToken: claim.token })); } catch { loss(owner, 'isolated-observation-consumer-failed'); } }
         } else emit(event);
       }
       return true;
     },
-    claimObservations(grant, { token, consume, quiescent, timeoutMs = 2000, maximumPackets = 1024 }) {
+    claimObservations(grant, { token, consume, quiescent, timeoutMs = 2000, maximumPackets = 1024, groupMask = 65535 }) {
       const owner = grants.get(grant);
       if (!owner || owner.claim || quiescent !== true || typeof token !== 'string' || !token || token.length > 128 || typeof consume !== 'function' || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 5000 || !Number.isSafeInteger(maximumPackets) || maximumPackets < 1 || maximumPackets > 4096) throw new Error('An explicit quiescent observation scope is required');
-      owner.claim = { token, consume, deadline: now() + timeoutMs, maximumPackets, packets: 0 }; return Object.freeze({ grant, session: owner.session, ingressEpoch: owner.epoch, token });
+      if (!Number.isInteger(groupMask) || groupMask < 1 || groupMask > 65535) throw new Error('Invalid isolated observation groups');
+      owner.claim = { token, consume, groupMask, deadline: now() + timeoutMs, maximumPackets, packets: 0 }; return Object.freeze({ grant, session: owner.session, ingressEpoch: owner.epoch, token });
     },
     releaseObservations(scope) { const owner = grants.get(scope?.grant); if (!owner || owner.session !== scope.session || owner.epoch !== scope.ingressEpoch || owner.claim?.token !== scope.token) return false; owner.claim = null; return true; },
     poll() {

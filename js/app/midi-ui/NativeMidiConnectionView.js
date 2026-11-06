@@ -47,6 +47,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const publishInput = button('Publish control input', async () => { const grant = await routes.publish({ name: publicationName.value + ' Control', direction: 'input', groupMask: groupMask(), permissions: permissions() }); selectedGrant = grant.grant; message.textContent = 'Separate control input published under its own grant.'; });
   const active = select('Owned connection', routeControls);
   const revoke = button('Revoke connection / unpublish', async () => { if (!active.value) throw new Error('Select an owned connection'); await routes.closeGrant(Number(active.value)); message.textContent = 'Connection revoked; owned notes cleaned up by the companion.'; }, routeControls, true);
+  const revalidate = button('Revalidate the requested groups on this owned connection', async () => { const id = Number(active.value); await routes.enumerate(); const receipt = await routes.revalidateGroups(id, groupMask()); message.textContent = 'Owned groups revalidated against current metadata. Explicitly rebind affected lanes and discover any retired CI scope again.'; selectedGrant = receipt.grant; }, routeControls);
   const lane = select('Lane', routeControls), group = select('Group', routeControls), channel = select('Channel', routeControls), protocol = select('Requested channel protocol', routeControls), sharing = select('Channel ownership', routeControls);
   for (let value = 0; value < 16; value++) { const a = element(document, 'option', String(value + 1)); a.value = String(value); group.append(a); const b = a.cloneNode(true); channel.append(b); }
   for (const [value, label] of [['midi2', 'MIDI2 · receiver support unverified'], ['midi1-in-ump', 'MIDI1 in UMP · reduced expression']]) { const option = element(document, 'option', label); option.value = value; protocol.append(option); }
@@ -197,6 +198,8 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     const state = routes.state(), connected = !!state.connectionEpoch, writable = state.grants.some(row => row.direction === 'output');
     for (const node of buttons) node.disabled = busy;
     connect.disabled ||= connected; disconnect.disabled = !connected; refresh.disabled ||= !connected; open.disabled ||= !connected || !state.inventory; publish.disabled ||= !connected; publishInput.disabled ||= !connected;
+    const selected = state.grants.find(row => row.grant === (selectedGrant || Number(active.value)));
+    revalidate.disabled ||= !selected || selected.virtual || routes.client.capabilities?.groupRetirementVersion !== 1 || !(selected.originalGroupMask & ~selected.groupMask);
     switchBackend.disabled ||= !connected || !!state.grants.length; revoke.disabled = !state.grants.length; assign.disabled ||= !writable; all.disabled ||= !writable; exportTrace.disabled ||= !state.traceRecords; exportInput.disabled ||= !state.ingress.receivedPackets; renderInput();
     status.textContent = state.state + (connected ? ' · native UMP · ' + state.grants.length + ' owned connections · clock ' + state.clock.status : ' · local audio remains available');
     const capabilities = routes.client.capabilities;

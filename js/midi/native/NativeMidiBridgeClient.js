@@ -55,10 +55,12 @@ export class NativeMidiBridgeClient {
           this.#requests.delete(row.requestId); clearTimeout(pending.timeout);
           if (row.kind === 'opened') this.#grants.set(row.grant, Object.freeze({ ...row, connectionEpoch: this.#session }));
           if (row.kind === 'closed') this.#grants.delete(row.grant);
+          if (row.kind === 'revalidated-groups' && this.#grants.has(row.grant)) this.#grants.set(row.grant, Object.freeze({ ...this.#grants.get(row.grant), groupMask: row.groupMask, endpointMetadata: row.endpointMetadata }));
           if (row.kind === 'backend') { this.#capabilities = Object.freeze({ ...this.#capabilities, backendReady: row.ready, selectedApi: row.api }); this.#setState(row.ready ? 'connected' : 'native-backend-unavailable'); }
           pending.onReceipt?.(Object.freeze(row));
           if (row.kind === 'error') pending.reject(Object.assign(new Error(row.reason), { receipt: row })); else pending.resolve(Object.freeze(row));
         } else if (row.event === 'grant-retired') this.#grants.delete(row.grant);
+        else if (row.event === 'grant-groups-retired' && this.#grants.has(row.grant)) this.#grants.set(row.grant, Object.freeze({ ...this.#grants.get(row.grant), groupMask: row.groupMask, endpointMetadata: row.endpointMetadata }));
         else if (row.event === 'unavailable' || row.event === 'session-retired' || row.event === 'fatal') { this.#emit(row); this.#retire(row.reason || row.state || row.event); return; }
         this.#emit(row);
       } catch (error) { this.#retire(error.message); }
@@ -99,6 +101,7 @@ export class NativeMidiBridgeClient {
     } while (cursor !== null);
     return Object.freeze({ inventoryEpoch, endpoints: Object.freeze(endpoints.map(row => Object.freeze({ ...row, connectionEpoch: this.#session }))) });
   }
+  revalidateGroups(grant, { inventoryEpoch, groupMask }) { return this.#request('revalidateGroups', { grant, inventoryEpoch, groupMask }); }
   setJrMode(grant, enabled) { return this.#request('jrMode', { grant, enabled }); }
   encodeStream(grant, { operation, parameters = [] }) { return this.#request('streamEncode', { grant, operation, parameters }); }
   decodeStream(grant, words) { return this.#request('streamDecode', { grant, words }); }

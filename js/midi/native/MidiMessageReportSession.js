@@ -69,7 +69,7 @@ export function createMidiMessageReportSession({ routes, ci, store: suppliedStor
     const transaction = { scope, deviceScope: channel == null ? 126 : channel, requested, sent, probe, phase: 'requested', messages: 0, bytes: 0, started: now(), editRevision: store.editRevision(), reported: null, values: null };
     try {
       hold = routes.holdForObservation(state.outputGrant);
-      claim = routes.input.claimObservations(state.inputGrant, { token: 'message-report-' + ++serial, quiescent, maximumPackets: maximumMessages, timeoutMs,
+      claim = routes.input.claimObservations(state.inputGrant, { token: 'message-report-' + ++serial, groupMask: 1 << state.group, quiescent, maximumPackets: maximumMessages, timeoutMs,
         consume: event => ci.enqueueObservation(event) });
     } catch (error) { if (hold) routes.releaseObservation(hold); return Promise.resolve(Object.freeze({ status: 'rejected', reason: error.message })); }
     let resolve; const completion = new Promise(done => { resolve = done; }); transaction.resolve = resolve; transaction.claim = claim; transaction.hold = hold;

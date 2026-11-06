@@ -21,7 +21,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
   if (!['primary', 'auxiliary'].includes(mode)) throw new Error('Invalid native sink role');
   const batches = createNativeMidiBatchQueue({ client: routes.client });
   const invalidatingGrants = new Map();
-  const invalidateGroups = (grant, groupMask = 65535) => {
+  const invalidateGroups = (grant, groupMask = 65535, nativeRetirement = null) => {
     const scopeKey = grant + ':' + groupMask; if (invalidatingGrants.has(scopeKey)) return invalidatingGrants.get(scopeKey);
     const completion = (async () => {
       const results = await Promise.allSettled([...executions.values()].map(async state => {
@@ -29,6 +29,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
         const ids = new Set(owned.map(([, row]) => row.execution)), retiredMask = owned.reduce((mask, [, row]) => mask | row.groupMask, 0);
         for (const [, row] of owned) batches.cancelExecution(grant, row.execution);
         await Promise.all(owned.map(async ([, row]) => {
+          if (nativeRetirement && !nativeRetirement.cleanupUnconfirmedNotes && !nativeRetirement.cleanupUnconfirmedControls && nativeRetirement.executions?.includes(row.execution)) return;
           const receipt = await routes.client.cancelExecution(grant, row.execution);
           if (receipt.kind !== 'cancelled-execution' || receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls) throw new Error('Native group-change cleanup remains unconfirmed');
         }));
