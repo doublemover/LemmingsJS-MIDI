@@ -72,6 +72,9 @@
     "js/app/midi-ui/AudioRuntimeContracts.d.ts",
     "js/app/procgen/workstation/ProcgenOperationalContracts.d.ts",
     "js/app/procgen/workstation/ProcgenOperationalState.js",
-    "js/app/procgen/workstation/ProcgenOperationalView.js"
+    "js/app/procgen/workstation/ProcgenOperationalView.js",
+    "js/app/resources/ResourceBudgetContracts.d.ts",
+    "js/app/resources/ResourceBudget.js",
+    "js/app/resources/ResourceRetirement.js"
   ]
 }

@@ -7402,5 +7402,43 @@
       "Consolidated final validation of the authored model and fresh-document regression cases.",
       "Extend the coupled corpus through imports, named operation read/quiescence phases, MIDI Thru/UMP/Active Sensing and native-device retirement; controlled owner adapters are not native-device qualification."
     ]
+  },
+  "continuation465": {
+    "date": "2026-11-05",
+    "agent": "rook",
+    "issues": [
+      1089,
+      1120,
+      1234
+    ],
+    "scope": "Check synchronous resource admission, exact inspection, eviction and detached ownership observations.",
+    "implementation": [
+      "The actual shared budget and retirement helper join critical checkJs, with typed token/owner/generation/revision requests, synchronous adapter acknowledgments, exact nullable inspection and deep readonly accounting/owner diagnostics. Internal reservation, eviction and accounting maps retain concrete shapes.",
+      "Nested category snapshots are frozen as well as their container. Unsupported Promise-returning eviction callbacks are counted as failures and cannot grant admission; rejection is consumed.",
+      "An unsupported asynchronous exact-token inspection remains unknown during initial rollback and consumes rejection without releasing the shared guard. Retry requires actual synchronous absence or release confirmation.",
+      "Strict negative consumers cover missing tokens/bytes/generation, wrong scalar units, async admission/release/inspection/eviction and deep snapshot mutation. Regression sources cover snapshot immutability and both resolved/rejected unsupported async frontiers."
+    ],
+    "validation": {
+      "format": "passed",
+      "criticalTypes": "passed including strict deliberate mismatch fixture",
+      "functionalTests": "intentionally deferred until remaining backlog development is implemented per user instruction",
+      "regressionSources": [
+        "test/resource-budget.test.js",
+        "test/initial-background-reservation.test.js",
+        "test/types/resource-budget-boundaries.ts"
+      ],
+      "nativeExecution": "not run",
+      "fullSuiteExecution": "not run",
+      "ci": "automatic CI is left alone; not inspected or managed"
+    },
+    "workerBinding": {
+      "files": 312,
+      "sha256": "6748471dc8191671eb0e24a5e664d196db9aea4290b4d63760d1c16c9ff7c2d8",
+      "inventory": "all 312 existing paths retained; byte hash updated for implemented runtime changes"
+    },
+    "remaining": [
+      "Consolidated final runtime/native validation remains pending. No new functional pass or exact-source closure qualification is claimed.",
+      "Broader authored/runtime checkpoint schemas, nominal identities, imported-owner coverage and dependency-direction audit remain under1089."
+    ]
   }
 }

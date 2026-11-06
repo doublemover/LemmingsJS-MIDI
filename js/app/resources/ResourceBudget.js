@@ -1,8 +1,11 @@
+import { isAsyncResourceAcknowledgement } from './ResourceRetirement.js';
+
 const DEFAULT_LIMIT_BYTES = 512 * 1024 * 1024;
 const COST_FACTORS = Object.freeze({ canvas: 1.5, pixels: 1, asset: 1, audio: 1.25,
   checkpoint: 1, export: 2, candidate: 1.25, other: 1 });
 
 export class ResourceBudgetError extends Error {
+  /** @param {string} category @param {number} requestedBytes @param {number} availableBytes */
   constructor(category, requestedBytes, availableBytes) {
     super(`${category} needs ${requestedBytes} accounted bytes; ${availableBytes} are available.`);
     this.name = 'ResourceBudgetError'; this.category = category;
@@ -12,12 +15,22 @@ export class ResourceBudgetError extends Error {
 
 // Synchronous admission makes a reservation visible before the caller starts
 // allocating. Native/GPU overhead remains an estimate and is reported as such.
+/** @param {import('./ResourceBudgetContracts.js').ResourceBudgetOptions} [options] @returns {import('./ResourceBudgetContracts.js').ResourceBudget} */
 export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFactors = COST_FACTORS, now = () => globalThis.performance?.now?.() ?? Date.now() } = {}) {
   if (typeof now !== 'function' || !Number.isSafeInteger(limitBytes) || limitBytes < 4096) throw new RangeError('Invalid resource budget.');
-  const entries = new Map(), evictors = new Map(), categoryCurrent = new Map(), categoryPeaks = new Map();
+  /** @type {Map<import('./ResourceBudgetContracts.js').ResourceToken, { token: import('./ResourceBudgetContracts.js').ResourceToken, owner: string, generation: number, revision: number, category: string, bytes: number, cost: number, pinned: boolean, reloadable: boolean, unreleased: boolean }>} */
+  const entries = new Map();
+  /** @type {Map<string, import('./ResourceBudgetContracts.js').ResourceEvictorObservation & { callback: import('./ResourceBudgetContracts.js').ResourceEvictionCallback, order: number, lastTurn: number }>} */
+  const evictors = new Map();
+  /** @type {Map<string, number>} */
+  const categoryCurrent = new Map();
+  /** @type {Map<string, number>} */
+  const categoryPeaks = new Map();
   let accountedBytes = 0, residentBytes = 0, estimatedOverheadBytes = 0, peakAccountedBytes = 0;
   let reservations = 0, denials = 0, evictions = 0, retired = false, evicting = false, revision = 0, evictionTurn = 0;
-  let admissionDurationMs = 0, peakAdmissionDurationMs = 0, categoryPeakCoverage = 'complete';
+  let admissionDurationMs = 0, peakAdmissionDurationMs = 0;
+  /** @type {import('./ResourceBudgetContracts.js').ResourceBudgetDiagnostics['categoryPeakCoverage']} */
+  let categoryPeakCoverage = 'complete';
   const categoryChange = (category, bytes) => { const next = (categoryCurrent.get(category) || 0) + bytes; if (next) categoryCurrent.set(category, next); else categoryCurrent.delete(category);
     if (categoryPeaks.has(category) || categoryPeaks.size < 256) categoryPeaks.set(category, Math.max(categoryPeaks.get(category) || 0, next)); else categoryPeakCoverage = 'truncated-at-256-categories'; };
   const nextRevision = () => { if (!Number.isSafeInteger(revision + 1)) throw new Error('Resource lease revision exhausted.'); return ++revision; };
@@ -26,6 +39,7 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
     if (!Number.isFinite(factor) || factor < 1 || factor > 16) throw new RangeError('Invalid resource estimate factor.');
     const cost = Math.ceil(bytes * factor); if (!Number.isSafeInteger(cost)) throw new RangeError('Resource estimate exceeds exact accounting range.'); return cost;
   };
+  /** @param {Partial<import('./ResourceBudgetContracts.js').ResourceReservationRequest>} [request] @returns {import('./ResourceBudgetContracts.js').ResourceReservation} */
   const reserveInternal = ({ token, owner, generation = 0, kind = 'other', category = kind, bytes,
     previousBytes = null, cache = false, pinned = !cache, reloadable = cache, unreleased = false } = {}) => {
     if (retired) throw new Error('Resource budget is retired.');
@@ -46,7 +60,9 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
         for (const entry of ordered) {
           if (evictors.get(entry.owner) !== entry) continue;
           const beforeEntries = entries.size, beforeBytes = accountedBytes; entry.calls++; entry.lastTurn = ++evictionTurn;
-          try { entry.callback({ neededBytes: accountedBytes + delta - limitBytes, category, owner, targetRevision: expected?.revision ?? null, evictionPriority: entry.priority }); }
+          try { const result = entry.callback({ neededBytes: accountedBytes + delta - limitBytes, category, owner, targetRevision: expected?.revision ?? null, evictionPriority: entry.priority });
+            if (isAsyncResourceAcknowledgement(result)) { Promise.resolve(result).catch(() => {}); throw new Error('Resource eviction callbacks must be synchronous.'); }
+          }
           catch { entry.failures++; }
           const removed = Math.max(0, beforeEntries - entries.size), reclaimed = Math.max(0, beforeBytes - accountedBytes);
           evictions += removed; entry.evictions += removed; entry.reclaimedBytes += reclaimed; if (!reclaimed) entry.misses++;
@@ -74,7 +90,9 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
       unreleased: !!unreleased });
   };
   const clock = () => { try { const value = now(); return Number.isFinite(value) ? value : 0; } catch { return 0; } };
+  /** @param {import('./ResourceBudgetContracts.js').ResourceReservationRequest} input */
   const reserve = input => { const start = clock(); try { return reserveInternal(input); } finally { const elapsed = Math.max(0, clock() - start); if (Number.isFinite(elapsed)) { admissionDurationMs += elapsed; peakAdmissionDurationMs = Math.max(peakAdmissionDurationMs, elapsed); } } };
+  /** @param {Partial<import('./ResourceBudgetContracts.js').ResourceReleaseRequest>} [request] */
   const release = ({ token, owner, generation = null, revision: expectedRevision = null } = {}) => {
     const entry = entries.get(token);
     if (!entry || owner != null && owner !== entry.owner || generation != null && generation !== entry.generation || expectedRevision != null && expectedRevision !== entry.revision) return false;
@@ -82,11 +100,13 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
     estimatedOverheadBytes -= entry.cost - entry.bytes;
     return true;
   };
+  /** @param {Partial<Pick<import('./ResourceBudgetContracts.js').ResourceReleaseRequest, 'token' | 'owner'>>} [request] @returns {import('./ResourceBudgetContracts.js').ResourceReservationInspection | null} */
   const inspectReservation = ({ token, owner } = {}) => {
     const entry = entries.get(token);
     if (!entry || owner != null && owner !== entry.owner) return null;
     return Object.freeze({ owner: entry.owner, generation: entry.generation, revision: entry.revision, category: entry.category, bytes: entry.bytes, accountedBytes: entry.cost, pinned: entry.pinned, unreleased: entry.unreleased });
   };
+  /** @param {{ token?: import('./ResourceBudgetContracts.js').ResourceToken, owner?: string, generation?: number, toOwner?: string, toGeneration?: number, revision?: number | null }} [request] */
   const transfer = ({ token, owner, generation, toOwner, toGeneration = generation, revision: expectedRevision = null } = {}) => {
     const entry = entries.get(token);
     if (!entry || entry.owner !== owner || entry.generation !== generation || expectedRevision != null && expectedRevision !== entry.revision ||
@@ -95,12 +115,15 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
     return Object.freeze({ token, owner: toOwner, generation: toGeneration, revision: leaseRevision, category: entry.category,
       bytes: entry.bytes, accountedBytes: entry.cost });
   };
+  /** @param {string} owner @param {import('./ResourceBudgetContracts.js').ResourceEvictionCallback} callback @param {{priority?: number}} [options] */
   const registerEvictor = (owner, callback, { priority = 0 } = {}) => {
     if (retired || typeof owner !== 'string' || !owner || owner.length > 256 || typeof callback !== 'function' || evictors.has(owner) || evictors.size >= 1024 || !Number.isSafeInteger(priority) || Math.abs(priority) > 16) throw new TypeError('Invalid resource evictor.');
     const entry = { owner, callback, priority, order: ++evictionTurn, lastTurn: 0, calls: 0, failures: 0, misses: 0, evictions: 0, reclaimedBytes: 0 }; evictors.set(owner, entry);
     return () => { if (evictors.get(owner) === entry) evictors.delete(owner); };
   };
+  /** @returns {import('./ResourceBudgetContracts.js').ResourceBudgetDiagnostics} */
   const diagnostics = () => {
+    /** @type {Record<string, import('./ResourceBudgetContracts.js').ResourceCategoryUsage>} */
     const categories = Object.create(null);
     let unreleasedEstimatedBytes = 0;
     for (const entry of entries.values()) {
@@ -113,10 +136,11 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
     return Object.freeze({ limitBytes, accountedBytes, residentBytes, estimatedOverheadBytes, unreleasedEstimatedBytes,
       peakAccountedBytes, reservations, denials, evictions, retired, admissionDurationMs, peakAdmissionDurationMs, queueWaitMs: 0, admissionPolicy: 'synchronous-reject-or-admit',
       categoryPeakCoverage, categoryPeaks: Object.freeze(Object.fromEntries(categoryPeaks)), evictionPolicy: 'priority-then-least-recently-served',
-      evictionOwners: Object.freeze([...evictors.values()].map(entry => Object.freeze({ owner: entry.owner, priority: entry.priority, calls: entry.calls, failures: entry.failures, misses: entry.misses, evictions: entry.evictions, reclaimedBytes: entry.reclaimedBytes }))), categories: Object.freeze(categories) });
+      evictionOwners: Object.freeze([...evictors.values()].map(entry => Object.freeze({ owner: entry.owner, priority: entry.priority, calls: entry.calls, failures: entry.failures, misses: entry.misses, evictions: entry.evictions, reclaimedBytes: entry.reclaimedBytes }))), categories: Object.freeze(Object.fromEntries(Object.entries(categories).map(([category, usage]) => [category, Object.freeze(usage)]))) });
   };
   const inspectOwners = ({ maximum = 64 } = {}) => {
     if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 256) throw new RangeError('Invalid resource owner inspection bound.');
+    /** @type {Map<string, import('./ResourceBudgetContracts.js').ResourceOwnerObservation>} */
     const owners = new Map(); let omittedEntries = 0, omittedAccountedBytes = 0;
     for (const entry of entries.values()) { const key = entry.owner + ':' + entry.generation; let value = owners.get(key);
       if (!value && owners.size >= maximum) { omittedEntries++; omittedAccountedBytes += entry.cost; continue; }
@@ -124,7 +148,7 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
       value.entries++; value.residentBytes += entry.bytes; value.accountedBytes += entry.cost; value.pinned += Number(entry.pinned); value.unreleased += Number(entry.unreleased);
     }
     const ordered = [...owners.values()].sort((a, b) => b.accountedBytes - a.accountedBytes || a.owner.localeCompare(b.owner) || a.generation - b.generation);
-    return Object.freeze({ status: omittedEntries ? 'truncated' : 'complete', omittedEntries, omittedAccountedBytes, owners: Object.freeze(ordered.map(Object.freeze)) });
+    return Object.freeze({ status: omittedEntries ? 'truncated' : 'complete', omittedEntries, omittedAccountedBytes, owners: Object.freeze(ordered.map(owner => Object.freeze(owner))) });
   };
   const retire = () => { retired = true; evictors.clear(); return diagnostics(); };
   return { reserve, release, inspectReservation, transfer, registerEvictor, diagnostics, inspectOwners, retire };

@@ -1,6 +1,10 @@
+/** @param {unknown} value @returns {value is PromiseLike<unknown>} */
+export function isAsyncResourceAcknowledgement(value) {
+  return value !== null && (typeof value === 'object' || typeof value === 'function') && 'then' in value && typeof value.then === 'function';
+}
 export function requireSynchronousResourceAcknowledgement(value, label = 'Resource retirement') {
-  if (value === false || value && typeof value.then === 'function') {
-    if (value?.then) Promise.resolve(value).catch(() => {});
+  if (value === false || isAsyncResourceAcknowledgement(value)) {
+    if (isAsyncResourceAcknowledgement(value)) Promise.resolve(value).catch(() => {});
     throw Object.assign(new Error(`${label} did not acknowledge synchronously.`), { name: 'ResourceOwnershipError' });
   }
 }

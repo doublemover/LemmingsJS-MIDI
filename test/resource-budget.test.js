@@ -114,3 +114,23 @@ describe('bounded shared resource owner inspection', () => {
     const complete = budget.inspectOwners(); expect(complete.status).to.equal('complete'); expect(complete.owners.reduce((sum, owner) => sum + owner.accountedBytes, 0)).to.equal(budget.diagnostics().accountedBytes); expect(complete.owners[0]).not.to.have.property('token');
   });
 });
+
+describe('synchronous resource boundary observations', () => {
+  it('deep-freezes detached category and owner accounting', () => {
+    const budget = createResourceBudget({ limitBytes: 4096 }), token = {};
+    budget.reserve({ token, owner: 'active', category: 'other', bytes: 1024 });
+    const value = budget.diagnostics(), owners = budget.inspectOwners();
+    expect(Object.isFrozen(value.categories.other)).to.equal(true); expect(() => { value.categories.other.accountedBytes = 0; }).to.throw(TypeError);
+    expect(Object.isFrozen(owners.owners[0])).to.equal(true); expect(() => { owners.owners[0].residentBytes = 0; }).to.throw(TypeError);
+    budget.release({ token }); expect(value.categories.other.accountedBytes).to.equal(1024); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  for (const rejects of [false, true]) it('contains an unsupported asynchronous evictor ' + (rejects ? 'rejection' : 'resolution') + ' without granting admission', async () => {
+    const budget = createResourceBudget({ limitBytes: 4096 }); let invoked = 0;
+    budget.reserve({ token: {}, owner: 'active', bytes: 4000 });
+    budget.registerEvictor('async', () => { invoked++; return rejects ? Promise.reject(new Error('Delayed eviction failure')) : Promise.resolve(true); });
+    expect(() => budget.reserve({ token: {}, owner: 'waiting', bytes: 1000 })).to.throw(ResourceBudgetError);
+    await new Promise(resolve => setImmediate(resolve));
+    expect(invoked).to.equal(1); expect(budget.diagnostics()).to.include({ residentBytes: 4000, denials: 1 });
+    expect(budget.diagnostics().evictionOwners[0]).to.include({ calls: 1, failures: 1, misses: 1, reclaimedBytes: 0 });
+  });
+});

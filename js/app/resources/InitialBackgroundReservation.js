@@ -1,3 +1,5 @@
+import { isAsyncResourceAcknowledgement } from './ResourceRetirement.js';
+
 const ownershipError = message => Object.assign(new Error(message), { name: 'ResourceOwnershipError' });
 
 export function createInitialBackgroundReservation({ budgets, request, identity, onPending, onReleased }) {
@@ -14,7 +16,11 @@ export function createInitialBackgroundReservation({ budgets, request, identity,
       for (const entry of [...entries].reverse()) {
         if (!entry.attempted || entry.closed) continue;
         const result = await entry.release.call(entry.budget, { token: request.token, owner: request.owner });
-        if (result === false && (typeof entry.inspect !== 'function' || entry.inspect.call(entry.budget, { token: request.token, owner: request.owner }) !== null)) throw ownershipError('Initial background reservation retirement was not acknowledged.');
+        if (result === false) {
+          const inspection = typeof entry.inspect === 'function' ? entry.inspect.call(entry.budget, { token: request.token, owner: request.owner }) : undefined;
+          if (isAsyncResourceAcknowledgement(inspection)) Promise.resolve(inspection).catch(() => {});
+          if (inspection !== null) throw ownershipError('Initial background reservation retirement was not acknowledged.');
+        }
         entry.closed = true;
       }
       phase = 'released'; reason = null; onReleased(owner); return snapshot();
@@ -26,7 +32,7 @@ export function createInitialBackgroundReservation({ budgets, request, identity,
       for (const entry of entries) {
         entry.attempted = true;
         const acknowledgment = entry.reserve.call(entry.budget, request);
-        if (acknowledgment && typeof acknowledgment.then === 'function') {
+        if (isAsyncResourceAcknowledgement(acknowledgment)) {
           entry.pending = Promise.resolve(acknowledgment).then(() => {}, () => {});
           throw ownershipError('Background resource admission must acknowledge synchronously.');
         }

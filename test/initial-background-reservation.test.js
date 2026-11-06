@@ -67,3 +67,16 @@ describe('initial background reservation ownership', () => {
     expect(budget.inspectReservation({ token: {} })).to.equal(null); expect(budget.inspectReservation({ token, owner: 'other' })).to.equal(null); budget.release({ token, owner: 'one' }); expect(budget.inspectReservation({ token })).to.equal(null);
   });
 });
+
+describe('unsupported asynchronous exact reservation inspection', () => {
+  for (const rejects of [false, true]) it('contains ' + (rejects ? 'rejection' : 'resolution') + ' and retains uncertainty until synchronous confirmation', async () => {
+    const shared = createResourceBudget(); let exact = false, inspections = 0;
+    const wrapped = { reserve() { throw new Error('Unconfirmed reservation'); }, release() { return false; }, inspectReservation() { inspections++; return exact ? null : rejects ? Promise.reject(new Error('Delayed inspection failure')) : Promise.resolve(null); } };
+    const service = createBackgroundWorkerAdmission({ resourceBudget: shared });
+    const error = await refusal(service.acquire({ ...request, budgetAdapter: wrapped }));
+    expect(await error.backgroundRetirementCompletion).to.include({ phase: 'failed-or-unknown' }); await flush();
+    expect(inspections).to.equal(1); expect(shared.diagnostics().residentBytes).to.equal(8192); expect(service.diagnostics().failedAdmissionRetirements).to.equal(1);
+    exact = true; expect(await error.retryBackgroundAdmissionRetirement()).to.include({ phase: 'released' });
+    expect(shared.diagnostics().residentBytes).to.equal(0); expect(service.diagnostics().failedAdmissionRetirements).to.equal(0); service.dispose();
+  });
+});

@@ -28,3 +28,19 @@ on retirement or failed preparation. This initial envelope does not measure
 subsequent terrain growth. Asset, audio, and checkpoint allocations still need
 integration and combined-scene qualification before the full #1162 memory
 outcome can be claimed.
+
+The checkJs boundary is declared in
+`js/app/resources/ResourceBudgetContracts.d.ts`. A leaf adapter acknowledges
+reserve/release synchronously; an exact-token inspection is either an immutable
+owned reservation or explicit `null` for absence. A Promise is never admission
+or proof of absence. Initial background admission captures adapter methods before
+calling them, retains attempted allocations through rollback and keeps the shared
+charge until external uncertainty retires. Defensive rollback can join an
+unexpected asynchronous release without advertising async admission support.
+
+Eviction callbacks run synchronously and must release actual owned reservations
+before returning. A returned Promise is counted as a failed callback and its
+rejection is contained; its eventual result cannot grant the waiting admission.
+Diagnostics detach and freeze nested category, eviction and bounded owner
+observations. They report accounting and estimated pressure, not native-resource
+retirement or acoustic/device delivery.
