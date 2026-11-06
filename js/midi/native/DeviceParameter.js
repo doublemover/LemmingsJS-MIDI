@@ -50,9 +50,13 @@ export function normalizeControllerMap(data) {
   const seen = new Set();
   return Object.freeze(data.map(row => { if (!u32(row?.value) || !text(row.title) || seen.has(row.value)) throw new Error('Malformed or duplicate controller-map value'); seen.add(row.value); return Object.freeze({ value: row.value, title: row.title }); }).sort((a, b) => a.value - b.value));
 }
-export function quantizeDeviceParameter(parameter, value) {
+export function quantizeDeviceParameter(parameter, value, { projectEnumeration = false } = {}) {
   if (!u32(value) || value < parameter.minimum || value > parameter.maximum) throw new Error('Parameter value is outside its declared carrier range');
-  if (parameter.type === 'enum') { if (!parameter.enumValues.some(row => row.value === value)) throw new Error('Choose an advertised enumeration value'); return value; }
+  if (parameter.type === 'enum') {
+    if (parameter.enumValues.some(row => row.value === value)) return value;
+    if (!projectEnumeration || !parameter.enumValues.length) throw new Error('Choose an advertised enumeration value');
+    let nearest = parameter.enumValues[0].value; for (const row of parameter.enumValues) if (Math.abs(row.value - value) < Math.abs(nearest - value)) nearest = row.value; return nearest;
+  }
   if (parameter.type === 'momentary' || parameter.type === 'toggle') return value < parameter.minimum + (parameter.maximum - parameter.minimum) / 2 ? parameter.minimum : parameter.maximum;
   if (parameter.stepCount) return Math.round(Math.round(value / 0xffffffff * (parameter.stepCount - 1)) * 0xffffffff / (parameter.stepCount - 1));
   const quantum = 2 ** (32 - parameter.sourceResolution);

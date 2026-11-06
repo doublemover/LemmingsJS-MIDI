@@ -61,3 +61,8 @@ does not prove receiver acceptance or acoustic output.
 Native UMP transport, PE-derived descriptors, isolated MIDI-CI state reports and
 live expressive input mapping retain their separate ownership and availability.
 This implementation supplies no guessed remote baseline or implicit device grant.
+
+
+Native discovered RPN/NRPN parameters now use the same ordered raw32 mutation owner. PE significant bits and adapter step/enum projection do not replace its full accumulator. Each manual submission is serialized and recorded separately; pressure rejects visibly before another send. Device reports/input, connection/state changes and autonomous physical mappings invalidate relevant leases. Local-authored expected state can advance after a complete native SDK submission, while receiver value remains unknown until observed. Split transmit/recognize resource rows share observations by actual controller identity.
+
+The device-control panel can capture up to 512 gestures / 1 MiB, including hardware input and accepted/rejected native writes. Records separate original operation/words from resolved absolute replay. Captures containing unknown-baseline relative replay require explicit inclusion, and a relative-only destination does not acquire absolute replay capability. The typed replay entry point revalidates the current descriptor, exact owned target and explicit stopped boundary; the panel can apply the last captured value. This controller capture is separate from the native wire trace and from the physical take journal; it does not introduce an independent musical clock.

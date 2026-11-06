@@ -10681,3 +10681,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Preview the exact current CI/output destination, state revisions, byte size and device-wide impact before mutation. Hold all owned native outputs at a stopped boundary, invalidate affected instrument state, and compare bounded State readback before reporting restoration.
 - Apply the normative State resource defaults, retain PE compression/byte limits, and keep unversioned, rejected, acknowledged-only, mismatched and verified-readback outcomes distinct. No vendor payload is executed.
 - Formatting only; functional and device qualification remains deferred. Continue ordered relative-controller integration, release leases, incoming JR context, group retirement and coordinated graph restoration before the consolidated validation pass.
+
+
+### 2026-11-06 — Rook continuation498: native ordered gestures and resolved controller capture
+
+- Connect PE-derived native registered/assignable controls to the existing raw32 mutation owner. Preserve each saturating signed increment and residual across receiver-resolution, step and enumeration projection; use explicit verified absolute lowering for MIDI1 rather than CC96/97.
+- Keep local requested accumulation separate from last observed/unknown receiver values. Retire leases on device edits, discovery/state changes and physical mapping takeover; reconcile separate transmit/recognize descriptors for the same wire control. Late SDK receipts cannot replace a newer device observation.
+- Add bounded ordered capture for native hardware movements and submitted control edits, resolved absolute replay records plus original gesture diagnostics, causal IDs and a typed replay entry point. Unknown-baseline relative sending remains available only when explicitly recognized; raw replay/export requires explicit baseline-dependent selection. Add capture/export and last-value replay controls.
+- Formatting only; no functional tests. Continue the remaining production features before consolidated qualification.

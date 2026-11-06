@@ -553,6 +553,7 @@
         "js/midi/native/PropertyChunkTransfer.js",
         "js/midi/native/PropertyClient.js",
         "js/midi/native/PropertyDataCodec.js",
+        "js/midi/protocol/MidiControllerMutations.js",
         "native/midi-codec/UmpBatchGuard.hpp",
         "native/midi-codec/dependencies.json",
         "native/midi-companion/CMakeLists.txt",
@@ -573,8 +574,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 60,
-      "sha256": "e79d709dd625651532a6ec36341181f97551df1af8503cf5a887a3168bffe61f"
+      "fileCount": 61,
+      "sha256": "2132311a2384fbbbb27f700877240436b6b63d3b9a06563ae9dff3151318fdce"
     }
   ]
 }
