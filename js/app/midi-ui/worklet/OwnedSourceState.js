@@ -6,7 +6,7 @@ import { FRICTION_MODEL_LIMITS } from '../../../midi/content/FrictionModel.js';
 import { validateOwnedTextureState } from './OwnedTextureState.js';
 import { TEXTURE_EXCITER_LIMITS } from '../../../midi/content/TextureExciter.js';
 import { resolveCircularSpectrum } from '../../../midi/content/CircularSpectrum.js';
-import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState } from './OwnedSineState.js';
+import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState, writeOwnedKernelStateChunks, writeOwnedStateArrayChunks, OWNED_STATE_CHUNK_BYTES } from './OwnedSineState.js';
 import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, SEED_LAYER_LAYOUT, TEXTURE_LAYOUT, FRICTION_LAYOUT, WIND_LAYOUT } from '../OwnedSourceLayout.js';
 
 export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v4-held-gain';
@@ -66,7 +66,7 @@ export function ownedSourceStateBytes(kernel) {
 const viewFor = (kernel, bytes, profile) => {
   if (!(bytes instanceof Uint8Array) || !(bytes.buffer instanceof ArrayBuffer) || bytes.length !== sizeFor(kernel, profile) || bytes.length > MAX_BYTES)
     fail('Owned state requires one exclusively owned exact-size transfer buffer.');
-  const arrays = [kernel.queue, kernel.voice, kernel.mix, kernel.laneRoutes, kernel.pendingLanes, kernel.active, kernel.receipts, kernel.counters, ...profile.arrays.map(key => kernel.source[key]),
+  const arrays = [kernel.queue, kernel.voice, kernel.gainControl, kernel.mix, kernel.laneRoutes, kernel.pendingLanes, kernel.active, kernel.receipts, kernel.counters, ...profile.arrays.map(key => kernel.source[key]),
     ...(kernel.source.bank?.planes || []), ...(profile.kind === 9 ? kernel.source.cloud.bank.planes : []), ...([5, 9].includes(profile.kind) ? kernel.source.pcm.flat() : kernel.source.pcm || []), ...([5, 9].includes(profile.kind) ? [kernel.source.configuration] : [])];
   if (arrays.some(array => array.buffer === bytes.buffer)) fail('State transfer buffer aliases active DSP or immutable source storage.');
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -210,4 +210,25 @@ export function restoreOwnedSourceState(kernel, source, identity) {
   for (const array of data.arrays) for (let i = 0; i < array.target.length; i++) array.target[i] = array.get(i);
   kernel.source.rehydrateState?.(kernel.active);
   return Object.freeze({ ...cut, abi: OWNED_SOURCE_STATE_ABI, engineId: profile.id, sourceMemory: 'independent-mutable-copy', checksum: view.getUint32(252, true) });
+}
+
+export function* writeOwnedSourceStateChunks(kernel, destination, identity) {
+  const profile = profileFor(kernel), view = viewFor(kernel, destination, profile), coreBytes = ownedKernelStateBytes(kernel);
+  if (kernel.source.synchronizeStateChunks) yield* kernel.source.synchronizeStateChunks(); else kernel.source.synchronizeState?.();
+  for (let at = 0; at < HEADER; at++) destination[at] = 0;
+  const cut = yield* writeOwnedKernelStateChunks(kernel, destination.subarray(HEADER, HEADER + coreBytes), identity);
+  for (const [at, value] of [[0, 0x3153444c], [4, 2], [8, destination.length], [12, coreBytes], [16, profile.kind], [20, kernel.width], [24, profile.arrays.length], [28, profile.scalars.length]]) view.setUint32(at, value, true);
+  for (let index = 0; index < profile.arrays.length; index++) view.setUint32(32 + index * 4, kernel.source[profile.arrays[index]].byteLength, true);
+  if ([5, 9].includes(profile.kind)) view.setUint32(44, kernel.source.configuration.length, true);
+  identities(view, kernel.source, true); let offset = HEADER + coreBytes;
+  for (const key of profile.scalars) { const value = kernel.source[key]; if (!Number.isFinite(value)) fail('Cannot capture nonfinite source scalar state.'); view.setFloat64(offset, value, true); offset += 8; } yield;
+  for (const key of profile.arrays) { const array = kernel.source[key]; yield* writeOwnedStateArrayChunks(destination, offset, array); offset += array.byteLength; }
+  if ([5, 9].includes(profile.kind)) yield* writeOwnedStateArrayChunks(destination, offset, kernel.source.configuration);
+  let crc = 0xffffffff;
+  for (let start = 0; start < destination.length; start += OWNED_STATE_CHUNK_BYTES) {
+    for (let index = start, end = Math.min(destination.length, start + OWNED_STATE_CHUNK_BYTES); index < end; index++) crc = crc >>> 8 ^ crcTable[(crc ^ (index >= 252 && index < 256 ? 0 : destination[index])) & 255];
+    yield;
+  }
+  view.setUint32(252, (crc ^ 0xffffffff) >>> 0, true);
+  return Object.freeze({ ...cut, abi: OWNED_SOURCE_STATE_ABI, engineId: profile.id, bytes: destination.length, immutableAssets: 'pinned-assets-excluded-from-mutable-cut', validation: 'captured-awaiting-independent-validation' });
 }

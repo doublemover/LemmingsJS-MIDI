@@ -149,3 +149,36 @@ export function restoreOwnedSineState(kernel, source, identity) {
   if (kernel.width !== WIDTH || kernel.source) fail('Sine state requires the exact sine source profile.');
   return restoreOwnedKernelState(kernel, source, identity);
 }
+
+export const OWNED_STATE_CHUNK_BYTES = 32768;
+export function* writeOwnedStateArrayChunks(destination, offset, array, count = array.length) {
+  const width = array.BYTES_PER_ELEMENT, view = new DataView(destination.buffer, destination.byteOffset, destination.byteLength), step = OWNED_STATE_CHUNK_BYTES / width;
+  for (let start = 0; start < count; start += step) {
+    const end = Math.min(count, start + step);
+    for (let index = start; index < end; index++) {
+      const value = array[index]; if (!Number.isFinite(value)) fail('Cannot capture nonfinite DSP storage.');
+      const at = offset + index * width;
+      if (array instanceof Float64Array) view.setFloat64(at, value, true);
+      else if (array instanceof Float32Array) view.setFloat32(at, value, true);
+      else if (array instanceof Uint32Array) view.setUint32(at, value, true);
+      else if (array instanceof Uint8Array) view.setUint8(at, value);
+      else fail('Unsupported DSP transfer storage.');
+    }
+    yield;
+  }
+}
+export function* writeOwnedKernelStateChunks(kernel, destination, identity) {
+  const { WIDTH, VOICE, ACTIVE, MIX, COUNTERS, RECEIPT, LANES, PENDING, GAIN, bytes: length } = layoutFor(kernel.width);
+  inspectKernel(kernel); inspectIdentity(identity); const view = viewFor(destination, length);
+  if ([kernel.queue, kernel.voice, kernel.gainControl, kernel.mix, kernel.laneRoutes, kernel.pendingLanes, kernel.active, kernel.counters, kernel.receipts].some(array => array.buffer === destination.buffer)) fail('DSP transfer storage aliases active kernel state.');
+  for (let at = 0; at < destination.length; at += OWNED_STATE_CHUNK_BYTES) { destination.fill(0, at, Math.min(destination.length, at + OWNED_STATE_CHUNK_BYTES)); yield; }
+  view.setUint32(0, 0x31534e4c, true); view.setUint32(4, 5, true); view.setUint32(8, length, true); view.setUint32(12, kernel.maxVoices, true);
+  view.setFloat64(16, kernel.sampleRate, true); view.setFloat64(24, kernel.lastFrame, true); view.setFloat64(32, kernel.lastPacket, true);
+  view.setUint32(40, kernel.queueLength, true); view.setUint32(44, kernel.receiptCount, true); view.setUint32(48, kernel.nonfinite, true); view.setUint32(52, Number(kernel.panicPending), true);
+  for (let field = 0; field < identityFields.length; field++) for (let index = 0; index < 32; index++) view.setUint8(56 + field * 32 + index, parseInt(identity[identityFields[field]].slice(index * 2, index * 2 + 2), 16));
+  view.setUint32(120, identity.graphRevision, true); view.setUint32(124, kernel.width === 18 ? 0 : kernel.width, true); yield;
+  for (const [at, array, count] of [[QUEUE, kernel.queue, kernel.queueLength * WIDTH], [VOICE, kernel.voice], [ACTIVE, kernel.active], [MIX, kernel.mix], [COUNTERS, kernel.counters],
+    [RECEIPT, kernel.receipts, kernel.receiptCount * RECEIPT_WIDTH], [LANES, kernel.laneRoutes], [PENDING, kernel.pendingLanes], [GAIN, kernel.gainControl]]) yield* writeOwnedStateArrayChunks(destination, at, array, count);
+  return Object.freeze({ abi: SINE_STATE_ABI, frame: kernel.lastFrame, bytes: length, sampleRate: kernel.sampleRate, maxVoices: kernel.maxVoices,
+    futureCommands: kernel.queueLength, pendingReceipts: kernel.receiptCount, equivalence: 'same-artifact-rate-and-profile', validation: 'captured-awaiting-independent-validation', ...identity });
+}

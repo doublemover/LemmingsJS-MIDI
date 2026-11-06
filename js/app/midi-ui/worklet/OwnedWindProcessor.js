@@ -30,6 +30,6 @@ export class OwnedWindKernel extends OwnedSineKernel {
 }
 export class OwnedWindProcessor extends OwnedSineProcessor {
   createKernel(rate, voices) { return new OwnedWindKernel(rate, Math.min(voices, WIND_LAYOUT.voices)); }
-  runtimeIdentity() { return { engineId: 'worklet-wind', engineVersion: 1, runtimeABI: 'owned-wind-f64-command-v2', buildId: 'owned-wind-v3-held-macros', restoration: 'exactSnapshot' }; }
+  runtimeIdentity() { return { engineId: 'worklet-wind', engineVersion: 1, runtimeABI: 'owned-wind-f64-command-v2', buildId: 'owned-wind-v3-held-macros-source-cut', restoration: 'exactSnapshot' }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-wind-v1', OwnedWindProcessor);

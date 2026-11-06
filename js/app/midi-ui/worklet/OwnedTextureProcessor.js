@@ -37,6 +37,6 @@ export class OwnedTextureKernel extends OwnedSineKernel {
 }
 export class OwnedTextureProcessor extends OwnedSineProcessor {
   createKernel(rate, voices) { return new OwnedTextureKernel(rate, Math.min(voices, TEXTURE_LAYOUT.voices)); }
-  runtimeIdentity() { return { engineId: 'worklet-texture', engineVersion: 1, runtimeABI: 'owned-texture-f64-command-v2', buildId: 'owned-texture-v4-held-macros', restoration: 'exactSnapshot' }; }
+  runtimeIdentity() { return { engineId: 'worklet-texture', engineVersion: 1, runtimeABI: 'owned-texture-f64-command-v2', buildId: 'owned-texture-v4-held-macros-source-cut', restoration: 'exactSnapshot' }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-texture-v1', OwnedTextureProcessor);

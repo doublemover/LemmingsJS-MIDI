@@ -7669,14 +7669,73 @@
       "Four choir macros, four granular macros and three spectral macros become held controls in explicit new recipe revisions. Spectral release and transient/exciter/algorithm controls stay onset-only. Worklet runtime identities and snapshot ABIs change to include independent gain-ramp state."
     ],
     "validation": {
-      "format": "pending",
-      "criticalTypes": "pending",
+      "format": "passed",
+      "criticalTypes": "passed",
       "functionalTests": "deferred with the rest of feature development per user instruction",
       "ci": "automatic; not inspected or managed"
     },
     "remaining": [
       "Qualify actual target application, replay, smoothing and snapshot continuity in the consolidated runtime/render/browser batch.",
       "Complete live DSP state transfer and effect continuation, then remaining protocol and creative-tool features."
+    ],
+    "runtimeSourceUpdates": [
+      {
+        "id": "lemmings-background-job-worker",
+        "files": 312,
+        "overlap": [
+          "js/app/midi-ui/NativeInstrumentSchema.js",
+          "js/app/midi-ui/OwnedSourceProfiles.js",
+          "js/app/midi-ui/worklet/OwnedChoirProcessor.js",
+          "js/app/midi-ui/worklet/OwnedFrictionProcessor.js",
+          "js/app/midi-ui/worklet/OwnedGranularProcessor.js",
+          "js/app/midi-ui/worklet/OwnedPluckProcessor.js",
+          "js/app/midi-ui/worklet/OwnedSampleProcessor.js",
+          "js/app/midi-ui/worklet/OwnedSeedLayerProcessor.js",
+          "js/app/midi-ui/worklet/OwnedSineProcessor.js",
+          "js/app/midi-ui/worklet/OwnedSineState.js",
+          "js/app/midi-ui/worklet/OwnedSourceState.js",
+          "js/app/midi-ui/worklet/OwnedSpectrumProcessor.js",
+          "js/app/midi-ui/worklet/OwnedTextureProcessor.js",
+          "js/app/midi-ui/worklet/OwnedWindProcessor.js",
+          "js/midi/content/InstrumentPerformance.js"
+        ],
+        "hash": "c3f82a0e644580274246d83f4c86341abf2f20c5718f799c6404e89494de457d"
+      }
+    ]
+  },
+  "continuation474": {
+    "date": "2026-11-06",
+    "agent": "rook",
+    "issues": [
+      1138,
+      987,
+      1089
+    ],
+    "scope": "Add bounded live source-state capture over the actual worklet MessagePort and retain execution bindings without serializing browser node references.",
+    "implementation": [
+      "The prepared source advertises a pinned state-transfer ABI. Detachment fences new source commands, flushes admitted producer commands, freezes the source at a render boundary and writes the exact existing snapshot format in bounded 32 KiB bulk steps. Larger sample cursor scalar synchronization is chunked separately. Mutable source state remains frozen while transfer progresses; other owners continue rendering.",
+      "Capture buffers are reserved before allocation and transferred rather than cloned. A consumer-owned lease covers the returned source cut and bounded host metadata. Cancellation, timeout and owner/context change retain the charge until transferred buffer return or confirmed processor retirement. Completed detachment waits for old renderer retirement before resolving the leased capsule.",
+      "The capsule retains pinned engine/patch/graph identity, source frame, future kernel commands, stable slot tokens and host semantic/execution/performance/physical-cause bindings. Final host capture follows kernel receipts and is filtered against actual active/future source tokens. It contains no AudioNode references.",
+      "Source cuts are explicitly captured-awaiting-independent-validation and exclude effects. Native sources continue to require their declared reconstruction/semantic policy; this does not advertise a complete take seek or whole-graph restoration.",
+      "Independent held-gain kernel storage is charged as exact typed bytes, and source/core state transfer rejects aliases to that storage."
+    ],
+    "validation": {
+      "format": "passed",
+      "criticalTypes": "passed",
+      "functionalTests": "deferred until feature development is complete per user instruction",
+      "ci": "automatic; not inspected or managed"
+    },
+    "remaining": [
+      "Consume/validate the detached capsule in a staged continuation owner with new sink epoch and source/audio frame mapping.",
+      "Coordinate multi-source cuts with the canonical semantic checkpoint and journal cursor, then integrate held effect restoration and seek/clone publication.",
+      "Qualify DSP equivalence, audible transitions, latency and memory in the consolidated batch."
+    ],
+    "runtimeSourceUpdates": [
+      {
+        "id": "lemmings-background-job-worker",
+        "fileCount": 312,
+        "hash": "25be13961f8fddbb423ebd4eed5d2a0b99a46db35e9103af569dbfaf45f8e3f6"
+      }
     ]
   }
 }

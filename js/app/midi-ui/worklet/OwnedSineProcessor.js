@@ -1,7 +1,7 @@
 // Owned voice/command storage with a sine reference and fixed source adapters.
 // Storage is fixed at construction; process() inspects the supplied block size.
-import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState } from './OwnedSourceState.js';
-import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState } from './OwnedSineState.js';
+import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState, writeOwnedSourceStateChunks } from './OwnedSourceState.js';
+import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState, writeOwnedKernelStateChunks, OWNED_STATE_CHUNK_BYTES } from './OwnedSineState.js';
 import { SINE_LAYOUT, LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL, LIVE_LANE_ID_LIMIT } from '../OwnedSourceLayout.js';
 const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
 const PERFORMANCE_GAIN = 65536;
@@ -12,6 +12,7 @@ const DISPLAY_PROTOCOL = 1, DISPLAY_WIDTH = 20, DISPLAY_VOICES = 32, DISPLAY_STA
 class OwnedSineKernel {
   stateByteLength() { return this.source ? ownedSourceStateBytes(this) : ownedKernelStateBytes(this); }
   snapshotInto(destination, identity) { return this.source ? writeOwnedSourceState(this, destination, identity) : writeOwnedSineState(this, destination, identity); }
+  stateChunks(destination, identity) { return this.source ? writeOwnedSourceStateChunks(this, destination, identity) : writeOwnedKernelStateChunks(this, destination, identity); }
   restoreFrom(source, identity) { return this.source ? restoreOwnedSourceState(this, source, identity) : restoreOwnedSineState(this, source, identity); }
   constructor(sampleRate, maxVoices = MAX_VOICES, { source = null, width = WIDTH } = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000 ||
@@ -370,7 +371,7 @@ const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES, options?.processorOptions);
-    this.retired = false;
+    this.retired = false; this.stateCut = null;
     this.laneRouteCount = 0; this.laneTapEnabled = new Uint8Array(LIVE_LANE_TAP_LIMIT); this.routeBarriers = new Float64Array(LIVE_LANE_TAP_LIMIT); this.routeBarrierCount = 0;
     this.laneTaps = options?.processorOptions?.laneTapProtocol === LIVE_LANE_TAP_PROTOCOL ? { routeMode: 'mask', routes: new Uint16Array(MAX_VOICES), tokens: new Uint32Array(MAX_VOICES), laneTokens: new Uint32Array(LIVE_LANE_TAP_LIMIT),
       channels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]), preChannels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]) } : null;
@@ -381,9 +382,25 @@ class OwnedSineProcessor extends ProcessorBase {
     this.port.onmessage = event => {
       const data = event.data;
       if (data?.type === 'retire-processor' && data.protocol === PROTOCOL && data.retirementProtocol === 1 && Number.isSafeInteger(data.retirementId) && data.retirementId > 0) {
-        const frame = this.kernel.lastFrame; this.retired = true; this.kernel = null; this.laneTaps = null; this.port.onmessage = null;
+        const frame = this.kernel.lastFrame; this.retired = true; this.stateCut = null; this.kernel = null; this.laneTaps = null; this.port.onmessage = null;
         this.port.postMessage({ type: 'processor-retired', protocol: PROTOCOL, retirementProtocol: 1, retirementId: data.retirementId, stage: 'processor-state-released', frame, renderingContinues: false }); return;
       }
+      if (data?.type === 'source-state-offer' && data.stateTransferProtocol === 1 && Number.isSafeInteger(data.requestId) && data.requestId > 0) {
+        if (this.stateCut) { this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: data.requestId, reason: 'source-state-transfer-busy' }); return; }
+        try {
+          const bytes = this.kernel.stateByteLength(); if (bytes > 16 * 1048576 || !data.identity || !/^[a-f0-9]{64}$/.test(data.identity.engineArtifactHash) || !/^[a-f0-9]{64}$/.test(data.identity.patchDefinitionHash) || !Number.isSafeInteger(data.identity.graphRevision) || data.identity.graphRevision < 0 || data.identity.graphRevision > 0xffffffff) throw new Error('source-state-identity-or-size');
+          this.stateCut = { phase: 'offered', requestId: data.requestId, identity: Object.freeze({ ...data.identity }), bytes, destination: null, iterator: null };
+          this.port.postMessage({ type: 'source-state-offered', stateTransferProtocol: 1, requestId: data.requestId, bytes, chunkBytes: OWNED_STATE_CHUNK_BYTES });
+        } catch { this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: data.requestId, reason: 'source-state-offer-refused' }); } return;
+      }
+      if (data?.type === 'source-state-begin' && data.stateTransferProtocol === 1 && this.stateCut?.phase === 'offered' && data.requestId === this.stateCut.requestId && data.bytes instanceof Uint8Array && data.bytes.buffer instanceof ArrayBuffer && !data.bytes.byteOffset && data.bytes.length === this.stateCut.bytes && data.bytes.buffer.byteLength === data.bytes.length) {
+        this.stateCut.destination = data.bytes; this.stateCut.phase = 'pending'; return;
+      }
+      if (data?.type === 'source-state-cancel' && data.stateTransferProtocol === 1 && this.stateCut?.requestId === data.requestId) {
+        const cut = this.stateCut; this.stateCut = cut.phase === 'offered' ? null : { phase: 'detached', requestId: cut.requestId };
+        this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: cut.requestId, reason: 'source-state-transfer-cancelled', ...(cut.destination ? { bytes: cut.destination } : {}) }, cut.destination ? [cut.destination.buffer] : []); return;
+      }
+      if (this.stateCut && this.stateCut.phase !== 'offered') { this.port.postMessage({ type: 'source-state-fenced', stateTransferProtocol: 1, requestId: this.stateCut.requestId }); return; }
       if (data?.type === 'commands' && data.protocol === PROTOCOL) this.kernel.accept(data.data, data.count, data.packetSequence);
       else if (data?.type === 'panic') {
         this.kernel.panicPending = true; this.kernel.receipt(SCHEDULED, 0, -1, 0, this.kernel.lastFrame, 2);
@@ -407,13 +424,13 @@ class OwnedSineProcessor extends ProcessorBase {
       else this.port.postMessage({ type: 'protocol-error', protocol: PROTOCOL });
       this.flushReceipts();
     };
-    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, retirementProtocol: 1, ...this.runtimeIdentity(),
+    this.port.postMessage({ type: 'ready', protocol: PROTOCOL, retirementProtocol: 1, stateTransferProtocol: 1, stateChunkBytes: OWNED_STATE_CHUNK_BYTES, maxStateBytes: 16 * 1048576, ...this.runtimeIdentity(),
       laneTapProtocol: this.laneTaps ? LIVE_LANE_TAP_PROTOCOL : null, maxLaneTaps: this.laneTaps ? LIVE_LANE_TAP_LIMIT : 0,
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
   }
   createKernel(rate, voices) { return new OwnedSineKernel(rate, voices); }
-  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v8-held-macros' }; }
+  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v8-held-macros-source-cut' }; }
   flushDisplay() {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;
@@ -436,6 +453,26 @@ class OwnedSineProcessor extends ProcessorBase {
   }
   process(_inputs, outputs) {
     if (this.retired) { for (const output of outputs) for (const channel of output) channel.fill(0); return false; }
+    if (this.stateCut && this.stateCut.phase !== 'offered') {
+      for (const output of outputs) for (const channel of output) channel.fill(0);
+      const cut = this.stateCut;
+      if (cut.phase === 'pending') {
+        this.flushReceipts(); cut.phase = 'copying'; cut.iterator = this.kernel.stateChunks(cut.destination, cut.identity);
+        cut.tokens = new Uint32Array(MAX_VOICES);
+        for (let slot = 0; slot < this.kernel.maxVoices; slot++) if (this.kernel.active[slot]) cut.tokens[slot] = this.kernel.voice[slot * 28 + 2];
+        for (let index = 0; index < this.kernel.queueLength; index++) { const at = index * this.kernel.width; if (this.kernel.queue[at + 3] === BEGIN) cut.tokens[this.kernel.queue[at + 4]] = this.kernel.queue[at + 5]; }
+      }
+      if (cut.phase === 'copying') try {
+        const step = cut.iterator.next(); if (step.done) {
+          const bytes = cut.destination; this.stateCut = { phase: 'detached', requestId: cut.requestId };
+          this.port.postMessage({ type: 'source-state-complete', stateTransferProtocol: 1, requestId: cut.requestId, bytes, cut: step.value, voiceTokens: cut.tokens, sourceClock: 'frozen-at-detached-block-boundary' }, [bytes.buffer, cut.tokens.buffer]);
+        }
+      } catch {
+        const bytes = cut.destination; this.stateCut = { phase: 'detached', requestId: cut.requestId };
+        this.port.postMessage({ type: 'source-state-error', stateTransferProtocol: 1, requestId: cut.requestId, reason: 'source-state-copy-failed', bytes }, [bytes.buffer]);
+      }
+      return true;
+    }
     const output = outputs[0];
     if (!output?.[0]) return true;
     if (this.laneTaps && this.laneRouteCount) for (let index = 0; index < LIVE_LANE_TAP_LIMIT; index++) {

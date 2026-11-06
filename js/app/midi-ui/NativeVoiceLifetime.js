@@ -3,6 +3,7 @@ import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 import { truncateNativeEnvelope } from './NativeAdsrEnvelope.js';
 export function nativeVoiceFinished(voice) {
   const now = this._context?.currentTime ?? 0;
+  if (voice.stateCutPending && !voice.kernelEnded) return false;
   if (voice.isFinished) return voice.isFinished(now);
   return voice.end <= now || (voice.released && voice.releaseLevel === 0 && voice.releaseAt <= now) || (voice.sustain === 0 && now >= voice.start + voice.attack + voice.decay);
 }

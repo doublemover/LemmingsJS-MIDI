@@ -21,6 +21,10 @@ local MIDI1/program/noise facade is removed. Explicit native default conversion
 preserves event mapping semantics and external programs with approximation
 receipts. Continue with held performance controls and live DSP restoration;
 #973 still needs the consolidated backend/render/native qualification.
+Held macros now reach existing native/worklet voices through execution-scoped controls,
+including smoothed gain, additive pan and supported source parameters. New choir,
+spectral and granular recipe revisions expose these controls in the performer UI.
+Continue with live DSP source/effect state transfer and remaining protocol features.
 Implementation details and unvalidated scope are recorded in the implementation
 ledger; recent feature commits do not imply rendered or browser qualification.
 

@@ -37,7 +37,7 @@ export class OwnedSeedLayerSource {
     this.sourceGain = 0.9 / (3 * this.reader.maximumL1 * Math.max(1, ...this.descriptor.banks.map(bank => bank.peak)));
     this.cloudInputGain = 0.9 / (GRANULAR_LAYOUT.grains * this.cloud.sourceGain * Math.max(1, this.cloud.descriptor.peak));
     this.cloudOutputGain = this.body ? 0.75 : 1 / 3;
-    this.configuration = canonicalDataText({ profile: 'owned-seed-layers-v2-held-macros', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
+    this.configuration = canonicalDataText({ profile: 'owned-seed-layers-v2-held-macros-source-cut', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
     this.stereo = this.ownsEnvelope = this.cancelQueuedOnForcedEnd = true; this.maxUpdateMask = this.contactDriven ? 2047 : 1023;
     this.leftSample = this.rightSample = 0;
   }
@@ -169,7 +169,7 @@ export class OwnedSeedLayerKernel extends OwnedSineKernel {
 }
 export class OwnedSeedLayerProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedSeedLayerKernel(rate, options?.pcm, options?.samplePatch, Math.min(voices, SEED_LAYER_LAYOUT.voices), options?.sourceBank, options?.auxiliarySourceBanks); }
-  runtimeIdentity() { const source = this.kernel.source; return { engineId: 'worklet-seed-layers', engineVersion: 1, runtimeABI: 'owned-seed-layers-f64-command-v1', buildId: 'owned-seed-layers-v2-held-macros', sourceBankHash: source.bank.hash,
+  runtimeIdentity() { const source = this.kernel.source; return { engineId: 'worklet-seed-layers', engineVersion: 1, runtimeABI: 'owned-seed-layers-f64-command-v1', buildId: 'owned-seed-layers-v2-held-macros-source-cut', sourceBankHash: source.bank.hash,
     auxiliarySourceBankHashes: { 'grain-window-v1': source.cloud.bank.hash }, pcmBankHash: source.descriptor.bankHash, samplePlanIdentity: source.plan.identity }; }
 }
-if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-seed-layers-v2-held-macros', OwnedSeedLayerProcessor);
+if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-seed-layers-v2-held-macros-source-cut', OwnedSeedLayerProcessor);

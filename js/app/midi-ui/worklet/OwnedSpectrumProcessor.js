@@ -120,6 +120,6 @@ export class OwnedSpectrumKernel extends OwnedSineKernel {
 }
 export class OwnedSpectrumProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedSpectrumKernel(rate, Math.min(voices, SPECTRUM_VOICES), options?.sourceBank); }
-  runtimeIdentity() { return { engineId: 'worklet-spectrum', engineVersion: 1, runtimeABI: 'owned-spectrum-f64-command-v1', buildId: 'owned-spectrum-v10-held-macros', sourceBankHash: this.kernel.source.bank.hash }; }
+  runtimeIdentity() { return { engineId: 'worklet-spectrum', engineVersion: 1, runtimeABI: 'owned-spectrum-f64-command-v1', buildId: 'owned-spectrum-v10-held-macros-source-cut', sourceBankHash: this.kernel.source.bank.hash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-spectrum-v1', OwnedSpectrumProcessor);

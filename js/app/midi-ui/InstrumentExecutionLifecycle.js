@@ -165,6 +165,7 @@ export function createInstrumentExecutionLifecycle(backend, { isSettled, isVoice
     ...(typeof backend.updatePhysical === 'function' ? { updatePhysical: (...args) => call('updatePhysical', args, 3) } : {}),
     renewExecutionLease: (...args) => call('renewExecutionLease', args, 1, args[0]),
     cancelGenerationWithReceipt, cancelGeneration: (...args) => cancelGenerationWithReceipt(...args).count || 0,
+    ...(typeof backend.detachSourceState === 'function' ? { detachSourceState: options => backend.detachSourceState(options) } : {}),
     ...(typeof backend.inspectSourceState === 'function' ? { inspectSourceState: () => backend.inspectSourceState() } : {}),
     renderDiagnostics: options => Object.freeze({ ...backend.renderDiagnostics(options), executions: diagnostics() }),
     onOwnerStop: () => createProcgenRetirementScope().retire([
