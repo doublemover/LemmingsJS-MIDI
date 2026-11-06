@@ -51,6 +51,7 @@ export function createMidiEndpointRegistry({ routes, inputGrant, outputGrant, no
     const changed = configuration && (configuration.protocol !== protocol || configuration.extensions !== extensions);
     timingReady = false;
     configuration = Object.freeze({ protocol, extensions, jrSends: !!(extensions & 1), jrReceives: !!(extensions & 2), source, observedHostMs: now() });
+    routes.input.configureJr(inputGrant, configuration.jrSends, source);
     if (pendingConfiguration) finishConfiguration({ status: pendingConfiguration.protocol === protocol && pendingConfiguration.extensions === extensions ? 'ok' : 'refused',
       receiverState: 'stream-configuration-notified', configuration, reason: pendingConfiguration.protocol === protocol && pendingConfiguration.extensions === extensions ? null : 'Endpoint selected a different Stream configuration' });
     else if (changed) invalidateRoutes('active-stream-configuration-changed');

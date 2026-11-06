@@ -535,6 +535,7 @@
         "js/midi/native/DeviceStateBank.js",
         "js/midi/native/DeviceStateObservation.js",
         "js/midi/native/DrumProfileAdapter.js",
+        "js/midi/native/IncomingJrContext.js",
         "js/midi/native/MidiCiSession.js",
         "js/midi/native/MidiEndpointRegistry.js",
         "js/midi/native/MidiMessageReportSession.js",
@@ -574,8 +575,8 @@
         "scripts/native-midi/NativeMidiBridgeServer.js",
         "scripts/native-midi/NativeMidiProcess.js"
       ],
-      "fileCount": 61,
-      "sha256": "2132311a2384fbbbb27f700877240436b6b63d3b9a06563ae9dff3151318fdce"
+      "fileCount": 62,
+      "sha256": "4bbcba0559287b4dd89d2c66c8a0d7309fa618b3acff3bee45246dc8669a9f52"
     }
   ]
 }

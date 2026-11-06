@@ -174,7 +174,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     getLane: () => getLanes().find(row => row.id === lane.value), getWireTarget: () => ({ grant: Number(active.value), group: Number(group.value), channel: Number(channel.value), protocol: protocol.value }), onSaveMappings: onSaveParameterMappings, onStatus });
   let profileSession = null, profileCi = null, profileUnsubscribe = null;
   let reportSession = null, reportCi = null, reportUnsubscribe = null, ciSession = null, ciUnsubscribe = null, inputTimer = null;
-  const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category : ''); };
+  const renderInput = () => { const input = routes.input.state(); inputStatus.textContent = input.receivedPackets + ' native input packets · ' + input.losses + ' loss boundaries' + (input.lastObservation ? ' · ' + input.lastObservation.category + (input.lastObservation.jrTiming ? ' · JR ' + input.lastObservation.jrTiming.status + ' · ' + input.lastObservation.jrTiming.reason : '') : ''); };
   let operationSerial = 0, busy = false, selectedGrant = null, inventoryEpoch = null, laneSignature = '';
   const percussionView = createNativeMidiPercussionView({ document, container: root, routes, getLane: () => getLanes().find(row => row.id === lane.value),
     getWireTarget: () => ({ grant: Number(active.value), group: Number(group.value), channel: Number(channel.value), protocol: protocol.value }), getProfileSession: ensureProfile, getProfileRecord: selectedProfile,

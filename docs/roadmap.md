@@ -10689,3 +10689,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Keep local requested accumulation separate from last observed/unknown receiver values. Retire leases on device edits, discovery/state changes and physical mapping takeover; reconcile separate transmit/recognize descriptors for the same wire control. Late SDK receipts cannot replace a newer device observation.
 - Add bounded ordered capture for native hardware movements and submitted control edits, resolved absolute replay records plus original gesture diagnostics, causal IDs and a typed replay entry point. Unknown-baseline relative sending remains available only when explicitly recognized; raw replay/export requires explicit baseline-dependent selection. Add capture/export and last-value replay controls.
 - Formatting only; no functional tests. Continue the remaining production features before consolidated qualification.
+
+
+### 2026-11-06 — Rook continuation499: incoming JR context
+
+- Track negotiated incoming JR Clock/Timestamp state per native input grant, preserving 16-bit wire values, sender epochs, wrap, simultaneous-message context and receive order. Retire context on ingress loss, clock expiry, regression or configuration replacement.
+- Attach bounded sender-time reconstruction and native arrival estimates to packet/payload traces without replacing backend timestamps, score time or physical onsets. Explicitly retain unknown one-way delay and absolute uncertainty; out-of-window/unconfigured timestamps remain unknown.
+- Consume current endpoint configuration as read-only evidence and expose JR status in input diagnostics. Windows negotiation remains OS-owned. Formatting only; no functional/device execution. Continue group-scoped retirement and remaining production work.
