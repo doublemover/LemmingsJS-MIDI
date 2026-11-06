@@ -1,5 +1,5 @@
 import { hashData, freezeData } from '../../../core/CanonicalData.js';
-import { createQuarryEcho, validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
+import { createQuarryEcho, createQuarryDuck, createQuarryTape, validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
 import { validateSceneTerrainLayout } from '../SceneTerrainLayout.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { normalizeWorkerLimits } from '../ProcgenWorkerLimits.js';
@@ -26,7 +26,7 @@ export async function createDubQuarryScores({ sourceHash, descriptor, signal } =
       modulations: [], sampleRefs: [], causalBindings: [], voicePolicy: { maxVoices: 4, steal: 'reject' }, mix: { gain01: 0.35, pan01: 0 }, macros: [{ id: 'damp', name: 'DAMP', mode: 'onset-only', default01: (1.5 - decay) / 1.4, smoothingMs: 0, perceptualDirection: 'Higher DAMP shortens the string T60 on later physical arrivals; the source route is unchanged.', targets: [{ parameter: 'stringT60Seconds', unit: 's', minimum: 1.5, maximum: 0.1, curve: 'linear', composition: 'replace', clamp: true }] }] } }));
   }
   const dependencies = await Promise.all(['MotionCommitted', 'PickupCrossing'].map(async id => ({ kind: 'physical-observation', id, revision: 1, hash: await hashData({ buildId: sourceHash, observation: id, physicalBatch: 1, policy: 'quarry-actual-arrivals-v1' }), description: 'Actual swept physical arrivals and safe route outcomes, never a bass pattern timer' })));
-  dependencies.push({ kind: 'renderer', id: 'owned-static-scene-delay-rack', revision: 1, hash: await hashData({ buildId: sourceHash, profile: 'gain-delay-only;explicit-static-prefix;four-second-preview-tail' }), description: 'Saved owned echo defaults, explicit live preparation/THROW and separately bounded private rehearsal tail' });
+  dependencies.push({ kind: 'renderer', id: 'owned-static-scene-delay-rack', revision: 1, hash: await hashData({ buildId: sourceHash, profile: 'owned-gain-delay-detector-mapping-modulation-nonlinear;explicit-static-prefix;four-second-preview-tail' }), description: 'Saved owned echo, return-duck and tape graphs with explicit live preparation/THROW, declared latency and bounded private rehearsal tail' });
   const output = [];
   for (const route of DUB_QUARRY_ROUTES) {
     signal?.throwIfAborted(); const lanes = [0, 1, 2], gateX = [96, route.width - 160, 160], layout = validateSceneTerrainLayout({ schema: 'lemmings-scene-terrain/v1', id: 'terrain.dub-quarry.' + route.id, revision: 1, width: route.width, laneHeight: 96, lanes: lanes.map(laneId => ({ laneId, regions: [
@@ -42,6 +42,23 @@ export async function createDubQuarryScores({ sourceHash, descriptor, signal } =
       causalMappings: { version: 1, revision: 1, pickups, instruments: lanes.map(laneId => ({ id: 'dub-quarry-arrival-' + laneId, sourceKind: 'PickupCrossing', pickupId: pickups[laneId].id, sourceLanes: [laneId], pitchCents: pitches[laneId], velocity01: 0.6, role: roles[laneId] + '-arrival', route: 'local' })) }, patchRefs: lanes.map(laneId => ({ laneId: 'dub-quarry-lane-' + laneId, reference: references[laneId] })), mix: lanes.map(laneId => ({ laneId: 'dub-quarry-lane-' + laneId, gain: 0.45, pan: [0, 36, -36][laneId], mute: false, solo: false })), initialTransport: { playing: false, bpm: 120, gameSpeed: 3, speedMode: 'bpm' }, tutorialRef: null,
       expectedLandmarks: [{ id: 'physical-reply', observationKind: 'PickupCrossing', sourceObjectId: 'dub-quarry-reply', consequence: 'A dry reply is caused by the actual actor arriving at the fixed route-end pickup. It is independent of audio echo delay.', help: 'Compare the three route widths and change one safe junction. Inspect the source actor and crossing cause before using THROW.' }, { id: 'audio-echo', observationKind: 'PickupCrossing', sourceObjectId: 'dub-quarry-bass', consequence: 'An explicitly prepared rack repeats only admitted source audio. Repeats are effect state and never create musical or physical onset facts.', help: 'Prepare saved Quarry Echo defaults explicitly, then hold/release THROW. Cancel, focus loss and Panic use the existing momentary effect owner. With no new physical arrivals only the admitted tail remains.' }], requirements: { required: dependencies, optional: [], substitutableWithNamedApproximation: [] }, credits: [{ name: 'LemmingsJS-MIDI', role: 'Original finite route score, pluck palette and explicit Quarry Echo defaults', source: null }], cost: { lanes: 3, maximumVoices: 12, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing', 'travel', 'terrain'], density: 'sparse', lessonLevel: 0 });
     output.push({ scene, recipe, recipeHash, dependencies });
+    for (const variant of [
+      { id: 'duck', title: 'return duck', create: createQuarryDuck, explanation: 'The same dry owner input drives a peak detector. A negative envelope mapping ducks only the stored echo return while fresh attacks pass dry; the return recovers over the declared release. This is signal-derived ducking, without a second note or rhythm clock.' },
+      { id: 'tape', title: 'tape color', create: createQuarryTape, explanation: 'The send passes through the owned cubic/ADAA preamp before the damped echo. Open Quarry Echo to perform AGE and tape-glide TIME. Saturation colors admitted source audio; it does not generate a new actor attack or claim a physical tape model.' }
+    ]) {
+      signal?.throwIfAborted();
+      const graph = variant.create({ delaySeconds: route.echoSeconds, feedback: 0.3, send01: 0, return01: 0.2, mode: 'glide' });
+      const variantRecipe = validatePerformanceSceneRecipe({ ...recipe, id: recipe.id + '.' + variant.id,
+        initialEffectRack: validateOwnerEffectRack({ schema: 'lemmings-owner-effect-rack/v1', graph, bypass: 'active' }) });
+      const variantHash = await hashData(variantRecipe), variantScene = validatePerformanceScene({ ...scene, id: 'dub-quarry.' + route.id + '.pluck-' + variant.id,
+        title: 'Dub Quarry · ' + route.title + ' · ' + variant.title, worldRecipeRef: { id: variantRecipe.id, revision: variantRecipe.revision, hash: variantHash },
+        description: 'The original finite bass/reply/wood physical score with an explicitly prepared ' + variant.title + ' rack. ' + variant.explanation +
+          ' Load saved defaults, prepare the rack, then hold THROW. Its saved send starts at zero; private rehearsal uses those exact static defaults. Release stops new input and preserves the bounded return. The same route-end pickups own all onsets. Device cost, numerical character and listening remain unqualified.',
+        expectedLandmarks: [...scene.expectedLandmarks, { id: 'quarry-' + variant.id, observationKind: 'PickupCrossing', sourceObjectId: 'dub-quarry-bass',
+          consequence: variant.explanation, help: 'Compare the same real arrivals with the plain echo. Prepare saved defaults explicitly and hold/release THROW; effect repeats have no new physical onset identity.' }],
+        credits: [{ name: 'LemmingsJS-MIDI', role: 'Original finite route and owned ' + variant.title + ' performance recipe', source: null }] });
+      output.push({ scene: variantScene, recipe: variantRecipe, recipeHash: variantHash, dependencies });
+    }
   }
   return output;
 }

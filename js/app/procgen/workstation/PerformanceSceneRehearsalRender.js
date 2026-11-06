@@ -131,7 +131,7 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
       for (let frame = first; frame < end; frame++) { graph.sample(frame < sourceFrames ? Math.fround(left[frame]) : 0, frame < sourceFrames ? Math.fround(right[frame]) : 0); left[frame] = graph.leftSample; right[frame] = graph.rightSample; }
       await yieldControl();
     }
-    effectReceipt = { definitionHash: await hashData(effects.rack.graph, { maxBytes: 65536, maxNodes: 8192 }), graphHash: graph.hash, sourceFrames, tailFrames: effects.previewTailFrames, declaredMaximumTailFrames: effects.plan.maximumTailFrames, tailTruncatedByPreviewBound: effects.previewTailFrames < effects.plan.maximumTailFrames, tailPolicy: 'four-second-preview-bound-after-source-output;full-rack-tail-remains-explicit', controls: 'authored-static-defaults;no-replayed-throw-gestures', semanticOnsetsAdded: 0, acousticReceipt: false };
+    effectReceipt = { latencyFrames: effects.plan.latencyFrames, latencyPolicy: effects.rack.graph.latencyPolicy, definitionHash: await hashData(effects.rack.graph, { maxBytes: 65536, maxNodes: 8192 }), graphHash: graph.hash, sourceFrames, tailFrames: effects.previewTailFrames, declaredMaximumTailFrames: effects.plan.maximumTailFrames, tailTruncatedByPreviewBound: effects.previewTailFrames < effects.plan.maximumTailFrames, tailPolicy: 'four-second-preview-bound-after-source-output;full-rack-tail-remains-explicit', controls: 'authored-static-defaults;no-replayed-throw-gestures', semanticOnsetsAdded: 0, acousticReceipt: false };
     graph.panic(); check();
   }
   const pcm = new Uint8Array(outputFrames * 8), view = new DataView(pcm.buffer); let peak = 0, squares = 0;
