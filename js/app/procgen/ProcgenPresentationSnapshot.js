@@ -43,10 +43,10 @@ const procgenScreenToWorld = (snapshot, clientX, clientY) => {
   return { x: snapshot.originX + point.x / snapshot.logicalSize.width * snapshot.viewWidth,
     y: row.sourceY + (point.y - row.destinationY) / row.destinationHeight * row.sourceHeight, lane: row.lane, projectionRevision: snapshot.projectionRevision };
 };
-const procgenWorldToScreen = (snapshot, x, y, lane = null) => {
+const procgenWorldToScreen = (snapshot, x, y, lane = null, { clip = true } = {}) => {
   if (!snapshot || !Number.isFinite(x) || !Number.isFinite(y)) return null;
   const row = snapshots.get(snapshot)?.rowsByLane.get(lane ?? Math.floor(y / snapshot.laneHeight));
-  if (!row || x < snapshot.originX || x > snapshot.originX + snapshot.viewWidth || y < row.sourceY || y > row.sourceY + row.sourceHeight) return null;
+  if (!row || clip && (x < snapshot.originX || x > snapshot.originX + snapshot.viewWidth || y < row.sourceY || y > row.sourceY + row.sourceHeight)) return null;
   const logicalX = (x - snapshot.originX) / snapshot.viewWidth * snapshot.logicalSize.width;
   const logicalY = row.destinationY + (y - row.sourceY) / row.sourceHeight * row.destinationHeight;
   return { x: snapshot.rect.left + logicalX / snapshot.logicalSize.width * snapshot.rect.width,

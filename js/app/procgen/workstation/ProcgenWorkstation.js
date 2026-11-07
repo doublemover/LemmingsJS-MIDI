@@ -2422,6 +2422,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       deliverPrepared(); return artifact.metadata();
       } finally { computed?.release(); }
     },
+    acousticOverlayMap: () => runtime()?.world?.physicalAuthoring?.graph?.acousticMap || null,
     acousticFieldState: options => physicalPlayback?.spatialState(options) || null,
     openAcousticFields() {
       const identity = () => ({ documentEpoch: documentGeneration, worldId: runtime()?.world?.worldId || null, generation: runtime()?.world?.generation ?? null, graphRevision: project.procgen.physicalGraph.revision, laneId: selected().id });

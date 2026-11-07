@@ -9,6 +9,7 @@ import { createAudioRuntimeSettingsView } from '../../midi-ui/AudioRuntimeSettin
 import { createLaneDisplaySnapshot, LANE_DISPLAY_PAGES } from './LaneDisplaySnapshot.js';
 import { createLaneDisplayView } from './LaneDisplayView.js';
 import { createCausalPhysicalHistoryView } from './CausalPhysicalHistoryView.js';
+import { createAcousticFieldOverlay } from './AcousticFieldOverlay.js';
 import { createCausalVisualView } from './CausalVisualView.js';
 import { describeCausalReperformance } from './CausalRuntimeIdentity.js';
 import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
@@ -233,7 +234,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const detachRenderer = () => {
     const renderer = attachedRenderer; attachedRenderer = null;
     releaseMotion();
-    causalView.bind(null);
+    causalView.bind(null); acousticOverlay.bind(null);
     if (!renderer) return;
     const lease = rendererLeases.get(renderer);
     if (lease?.owner !== owner) return;
@@ -319,6 +320,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   laneDisplayDialog.append(node('h2', 'Lane display evidence'), laneDisplayDetails, button('Close lane display', () => laneDisplayDialog.close())); presentationRoot.append(laneDisplayDialog);
   const causalView = createCausalVisualView({ document, stage, actions: fullscreenMenu, parent: presentationRoot, resourceBudget, getDocumentIdentity,
     read: readLaneDisplayValues, invalidate: () => laneMixSurface.invalidate() });
+  const acousticOverlay = createAcousticFieldOverlay({ document, window, stage, actions: fullscreenMenu, resourceBudget, displayScheduler, getMap: () => handlers.acousticOverlayMap?.() || null, getState: () => handlers.acousticFieldState?.() || null });
   const stageModeButton = button('Stage mode', () => handlers.stage?.(), 'Protect live performance and prepare an explicit NEXT score');
   stageModeButton.textContent = 'Stage'; stageModeButton.setAttribute('aria-label', 'Stage mode');
   const fullscreenExit = button('Exit fullscreen', fullscreenCommand); fullscreenExit.id = 'studioFullscreenExit'; fullscreenExit.hidden = true;
@@ -1206,9 +1208,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         const previous = rendererLeases.get(renderer);
         previous?.relinquish();
         rendererLeases.set(renderer, { owner, baseLayout: previous ? previous.baseLayout : renderer.workstationLayout,
-          baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { superseded = true; releaseMotion(); cancelPresentationGestures('view-replaced'); causalView.bind(null); attachedRenderer = null; } });
+          baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { superseded = true; releaseMotion(); cancelPresentationGestures('view-replaced'); causalView.bind(null); acousticOverlay.bind(null); attachedRenderer = null; } });
         attachedRenderer = renderer;
-        causalView.bind(renderer);
+        causalView.bind(renderer); acousticOverlay.bind(renderer);
         bindMotion(renderer.motionPolicy || null);
       }
       renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; handlers.canvasToolAuthorityChanged?.(); if (changed || rendererChanged) renderer.resize({ width: Math.max(1, Math.floor(width * dpr)), height: Math.max(1, Math.floor(height * dpr)) });
@@ -1741,6 +1743,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'lane-mix-controls', run: () => { for (const control of [...laneMixControls.values(), ...lanePanControls.values()]) control.dispose(); laneMixControls.clear(); lanePanControls.clear(); retainedLaneDrafts.clear(); } },
         { name: 'lane-displays', run: () => { for (const display of laneDisplays.values()) display.dispose(); laneDisplays.clear(); laneDisplayPages.clear(); laneDisplayDialog.close(); laneDisplayDialog.remove(); } },
         { name: 'physical-context-help', run: () => physicalHelp?.dispose() },
+        { name: 'world-acoustic-overlay', run: () => acousticOverlay.dispose() },
         { name: 'causal-visual-view', run: () => causalView.dispose() },
         { name: 'physical-history-view', run: () => physicalHistoryView?.dispose() },
         { name: 'physical-compose-view', run: () => composeView?.dispose() },
