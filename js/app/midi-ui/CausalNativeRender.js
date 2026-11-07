@@ -1,3 +1,4 @@
+import { prepareCapturedMaterialReadout } from './CapturedMaterialReadout.js';
 import { planCausalSourceRender } from './CausalOwnedRender.js';
 import { renderNativeOfflineGraph, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 
@@ -5,7 +6,8 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
   maxWorkingBytes = 512 * 1048576 } = {}) {
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(input?.descriptor?.engineId)) throw new Error('Choose an available native causal render source.');
   signal?.throwIfAborted();
-  const plan = await planCausalSourceRender({ ...input, signal, maxPlanningBytes: maxWorkingBytes }); signal?.throwIfAborted();
+  const materialReadout = input.capturedMaterials ? await prepareCapturedMaterialReadout(input.revoice, input.descriptor, { signal }) : null;
+  const plan = await planCausalSourceRender({ ...input, materialReadout, signal, maxPlanningBytes: maxWorkingBytes }); signal?.throwIfAborted();
   const nativeEffects = !!plan.effectPlan, nativeReturns = nativeEffects ? plan.effectReturnNodeIds.length : 0;
   if (plan.stemLaneIds.length + nativeReturns > 15) throw Object.assign(new Error('Native convolution shares a 32-channel simultaneous tap budget: choose at most fifteen dry lanes plus shared returns.'), { code: 'native-convolution-tap-capacity' });
   const nativeBytes = plan.outputEnd * (2 + (plan.stemLaneIds.length + nativeReturns) * 2) * 4;
@@ -19,12 +21,12 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
   for (const event of plan.events) {
     if (event.frame >= plan.outputEnd) continue;
     const voice = event.voice, original = originals.get(event.intentId);
-    events.push({ kind: event.kind, frame: event.frame, voiceId: voice.begin.voiceId, executionEpoch: 'offline-voice-' + voice.order, laneId: event.laneId ?? voice.laneId,
+    events.push({ ...(voice.materialVariantKey ? { sourceKey: voice.materialVariantKey } : {}), kind: event.kind, frame: event.frame, voiceId: voice.begin.voiceId, executionEpoch: 'offline-voice-' + voice.order, laneId: event.laneId ?? voice.laneId,
       intent: event.kind === 'begin' ? voice.begin : null, expression: event.kind === 'update' ? original.expression || {} : null,
       releaseFrame: voice.releaseAt ?? plan.outputEnd + 1, releaseSeconds: voice.parameters.releaseSeconds });
   }
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, stemLaneIds } = plan;
-  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds, panicFrame: input.panicFrame ?? null, assets: input.nativeAssets || [],
+  const native = await renderNativeOfflineGraph({ patch: plan.patch, ...(materialReadout ? { sourceVariants: [...materialReadout.variants.values()].map(variant => ({ key: variant.key, patch: variant.patch })) } : {}), events, frames: outputEnd, sampleRate, stemLaneIds, panicFrame: input.panicFrame ?? null, assets: input.nativeAssets || [],
     ...(nativeEffects ? { effectGraph: plan.effectPlan.definition, effectReturnNodeIds: plan.effectReturnNodeIds } : {}) },
   { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission, getMaterialProvider, jobs, isCurrent });
   try {
@@ -38,13 +40,14 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
         truncated: [...plan.voices.values()].some(voice => voice.end > outputEnd) || plan.effectTailTruncated, effectTailBoundFrames: plan.effectPlan?.maximumTailFrames ?? 0 },
       effectGraph: plan.effectPlan ? { definition: plan.effectPlan.definition, hash: plan.effectHash, processingRevisions: plan.effectPlan.processingRevisions, latencyFrames: plan.effectPlan.latencyFrames,
         maximumTailFrames: plan.effectPlan.maximumTailFrames, sourceBindings: plan.effectSourceBindings, controls: 'explicit-authored-defaults-not-replayed-live-gestures', scope: 'one-full-shared-owner-sum' } : null,
+      ...(materialReadout ? { capturedMaterials: materialReadout.receipt } : {}),
       definitionHash: plan.definitionHash, patchId: plan.patch.id, patchRevision: plan.patch.revision,
       engineRequirement: Object.fromEntries(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].map(key => [key, plan.descriptor[key]])), applicationBuildId: plan.applicationBuildId,
       commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases, derivedLaneTransfers: plan.derivedLaneTransfers,
         scheduledNativeCalls: native.receipt.submitted, nativeAppliedFrames: 'not-reported-by-native-api', peakVoices: plan.peakVoices },
       realization: { scope: 'new-local-native-source-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
         smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldPolicy: plan.owned.requiresNativeAssets ? 'selected-region-varispeed-duration-capped-at-four-seconds' : 'per-onset-effective-native-source-parameters',
-        sourcePerformanceControls: 'captured-controls-retained-explicit-new-target-controls-and-recorded-onset-physical-causes-applied',
+        sourcePerformanceControls: materialReadout ? 'captured-material-per-onset-controls-and-recorded-physical-causes' : 'captured-controls-retained-explicit-new-target-controls-and-recorded-onset-physical-causes-applied',
         sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), continuousPhysicalBindings: 'not-supported-by-these-native-sources' },
         sourceBank: input.materialDescriptor || null, sourceResampling: plan.owned.requiresNativeAssets ? 'native-varispeed-source-rate-conversion' : 'none', normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded',
         nativeSourceProfile: { indexLimitedOnsets, omittedModes, qualification: 'native-source-register-plans-not-measured-alias-or-listening-evidence' } },

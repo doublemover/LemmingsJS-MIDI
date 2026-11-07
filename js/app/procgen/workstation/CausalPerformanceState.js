@@ -1,3 +1,4 @@
+import { validateMaterialPalette } from '../../../midi/content/MaterialPalette.js';
 import { validateTimeTransform } from '../../../midi/content/TimeTransform.js';
 import { validateActorTimbreLocks, actorTimbreControls } from '../../../midi/content/InstrumentActorLocks.js';
 import { validateScoreContextPolicy } from '../../../midi/content/ScoreContext.js';
@@ -18,12 +19,12 @@ const fail = () => { throw new TypeError('Invalid causal lane performance state.
 const keys = (value, allowed) => plain(value) && Object.keys(value).every(key => allowed.includes(key));
 const identifier = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const lane = value => {
-  if (!keys(value, ['id', 'sourceIndex', 'controls', 'physicalSourceKinds', 'mix', 'percussion', 'orchestral', 'piano', 'pianoControls', 'organ', 'organControls', 'scoreContext', 'timeTransform']) || !identifier(value.id) || !Number.isSafeInteger(value.sourceIndex) || value.sourceIndex < 0 || value.sourceIndex >= 1024 ||
+  if (!keys(value, ['id', 'sourceIndex', 'materialPalette', 'controls', 'physicalSourceKinds', 'mix', 'percussion', 'orchestral', 'piano', 'pianoControls', 'organ', 'organControls', 'scoreContext', 'timeTransform']) || !identifier(value.id) || !Number.isSafeInteger(value.sourceIndex) || value.sourceIndex < 0 || value.sourceIndex >= 1024 ||
       !Array.isArray(value.physicalSourceKinds) || value.physicalSourceKinds.length > INSTRUMENT_PHYSICAL_SOURCE_KINDS.length ||
       new Set(value.physicalSourceKinds).size !== value.physicalSourceKinds.length || value.physicalSourceKinds.some(kind => !INSTRUMENT_PHYSICAL_SOURCE_KINDS.includes(kind))) fail();
   if (value.controls?.actorTimbreLocks != null) fail();
   if (value.mix != null && (!keys(value.mix, ['gain', 'pan', 'mute', 'solo']) || !Number.isFinite(value.mix.gain) || value.mix.gain < 0 || value.mix.gain > 2 || !Number.isFinite(value.mix.pan) || Math.abs(value.mix.pan) > 127 || typeof value.mix.mute !== 'boolean' || typeof value.mix.solo !== 'boolean')) fail();
-  return Object.freeze({ id: value.id, sourceIndex: value.sourceIndex, ...(value.mix ? { mix: Object.freeze({ ...value.mix }) } : {}), ...(value.timeTransform ? { timeTransform: validateTimeTransform(value.timeTransform) } : {}), ...(value.scoreContext ? { scoreContext: validateScoreContextPolicy(value.scoreContext) } : {}), ...(value.organ ? { organ: validateOrganRotaryPolicy(value.organ) } : {}), ...(value.organControls ? { organControls: validateOrganRotaryControls(value.organControls) } : {}), ...(value.piano ? { piano: validatePianoPerformancePolicy(value.piano) } : {}), ...(value.pianoControls ? { pianoControls: validatePianoPartControls(value.pianoControls) } : {}), ...(value.orchestral ? { orchestral: validateOrchestralArticulationPolicy(value.orchestral) } : {}), ...(value.percussion ? { percussion: validatePercussionIntentPolicy(value.percussion) } : {}), controls: validateInstrumentControls(value.controls), physicalSourceKinds: Object.freeze([...value.physicalSourceKinds].sort()) });
+  return Object.freeze({ id: value.id, sourceIndex: value.sourceIndex, ...(value.materialPalette ? { materialPalette: validateMaterialPalette(value.materialPalette) } : {}), ...(value.mix ? { mix: Object.freeze({ ...value.mix }) } : {}), ...(value.timeTransform ? { timeTransform: validateTimeTransform(value.timeTransform) } : {}), ...(value.scoreContext ? { scoreContext: validateScoreContextPolicy(value.scoreContext) } : {}), ...(value.organ ? { organ: validateOrganRotaryPolicy(value.organ) } : {}), ...(value.organControls ? { organControls: validateOrganRotaryControls(value.organControls) } : {}), ...(value.piano ? { piano: validatePianoPerformancePolicy(value.piano) } : {}), ...(value.pianoControls ? { pianoControls: validatePianoPartControls(value.pianoControls) } : {}), ...(value.orchestral ? { orchestral: validateOrchestralArticulationPolicy(value.orchestral) } : {}), ...(value.percussion ? { percussion: validatePercussionIntentPolicy(value.percussion) } : {}), controls: validateInstrumentControls(value.controls), physicalSourceKinds: Object.freeze([...value.physicalSourceKinds].sort()) });
 };
 export function validateCausalPerformanceState(value) {
   if (validatedPerformance.has(value)) return value;
@@ -35,13 +36,13 @@ export function validateCausalPerformanceState(value) {
 }
 export function captureCausalPerformanceState(lanes, actorTimbreLocks) {
   if (!Array.isArray(lanes) || lanes.length > 1024) fail();
-  return validateCausalPerformanceState({ version: 1, actorTimbreLocks, lanes: lanes.map((entry, sourceIndex) => ({ id: entry.id, sourceIndex, controls: entry.instrumentControls || {}, mix: { gain: entry.gain ?? 1, pan: entry.pan ?? 0, mute: !!entry.mute, solo: !!entry.solo },
+  return validateCausalPerformanceState({ version: 1, actorTimbreLocks, lanes: lanes.map((entry, sourceIndex) => ({ id: entry.id, sourceIndex, ...(entry.materialPalette ? { materialPalette: entry.materialPalette } : {}), controls: entry.instrumentControls || {}, mix: { gain: entry.gain ?? 1, pan: entry.pan ?? 0, mute: !!entry.mute, solo: !!entry.solo },
     ...(entry.timeTransform ? { timeTransform: entry.timeTransform } : {}), ...(entry.scoreContext ? { scoreContext: entry.scoreContext } : {}), ...(entry.organ ? { organ: entry.organ } : {}), ...(entry.organControls ? { organControls: entry.organControls } : {}), ...(entry.piano ? { piano: entry.piano } : {}), ...(entry.pianoControls ? { pianoControls: entry.pianoControls } : {}), ...(entry.orchestral ? { orchestral: entry.orchestral } : {}), ...(entry.percussion ? { percussion: entry.percussion } : {}), physicalSourceKinds: causalLanePhysicalControlKinds(entry) })) });
 }
 export function diffCausalLanePerformance(before, after, ids) {
   const capture = (lanes, id) => {
     const entry = procgenLane(lanes, id); if (!entry) return null;
-    return lane({ id, sourceIndex: procgenLaneIndex(lanes).get(id), controls: entry.instrumentControls || {}, mix: { gain: entry.gain ?? 1, pan: entry.pan ?? 0, mute: !!entry.mute, solo: !!entry.solo },
+    return lane({ id, sourceIndex: procgenLaneIndex(lanes).get(id), ...(entry.materialPalette ? { materialPalette: entry.materialPalette } : {}), controls: entry.instrumentControls || {}, mix: { gain: entry.gain ?? 1, pan: entry.pan ?? 0, mute: !!entry.mute, solo: !!entry.solo },
       ...(entry.timeTransform ? { timeTransform: entry.timeTransform } : {}), ...(entry.scoreContext ? { scoreContext: entry.scoreContext } : {}), ...(entry.organ ? { organ: entry.organ } : {}), ...(entry.organControls ? { organControls: entry.organControls } : {}), ...(entry.piano ? { piano: entry.piano } : {}), ...(entry.pianoControls ? { pianoControls: entry.pianoControls } : {}), ...(entry.orchestral ? { orchestral: entry.orchestral } : {}), ...(entry.percussion ? { percussion: entry.percussion } : {}), physicalSourceKinds: causalLanePhysicalControlKinds(entry) });
   };
   const upserts = [], removed = [];

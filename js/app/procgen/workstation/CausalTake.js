@@ -1,4 +1,5 @@
 import { validateMappedBodyPreparation } from '../../../midi/content/PreparedSurface.js';
+import { captureCausalMaterialSources } from './CausalMaterialSources.js';
 import { captureRevoiceLaneRouting } from './CausalLaneRouting.js';
 import { validateEffectPerformance } from '../../../midi/content/EffectPerformance.js';
 import { cloneJournalData, canonicalJournalText, freezeJournalData, journalError } from './CausalJournalCanonical.js';
@@ -267,11 +268,12 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
     }
     const initialBoundary = firstSequence === 1 && generation == null && !manifest.prefix && range.firstTick === manifest.coverage?.sourceRange?.firstTick;
     const laneRouting = initialBoundary ? captureRevoiceLaneRouting(slice.records, manifest.boundaryState?.['instrument-performance'] || manifest.initialCheckpoint?.engine?.performanceInputs, manifest.coverage?.available?.stateKinds?.includes('instrument-performance') === true && queryCausalCoverage({ coverage: manifest.coverage, range, kind: 'instrument-performance', generation }).status === 'known-covered' && queryCausalCoverage({ coverage: manifest.coverage, range, kind: 'input-observation', generation }).status === 'known-covered') : null;
+    const materialSources = initialBoundary ? captureCausalMaterialSources(slice.records, manifest.boundaryState?.['instrument-performance'] || manifest.initialCheckpoint?.engine?.performanceInputs, laneRouting?.covered === true) : null;
     return await workspace.publish({ version: 1, operation: 'sound-only-revoice', takeId, takeRevision: slice.takeRevision,
       sourceCanonicalHash: manifest.canonicalHash, sourceVersions: manifest.sourceVersions, sourceState: manifest.state, sourceComplete: manifest.complete,
       finalBoundaryState: manifest.stopBoundaryState || null, executionEpoch, soundPatch: patch,
       ...(includeEffects ? { effectEvents, effectCoverage: { captured: manifest.coverage?.available?.stateKinds?.includes('effect-performance') === true, gaps: (manifest.coverage?.gaps || []).filter(gap => ['effect-performance', 'all'].includes(gap.kind)) } } : {}),
-      ...(laneRouting ? { laneRouting } : {}), ...(bodyCommands.length ? { bodyCommands, bodyPreparationPolicy: includeEffects ? 'captured-effect-commands-required;no-remapping-physical-facts' : 'source-only-revoice-excludes-prepared-body-output' } : {}), intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
+      ...(laneRouting ? { laneRouting } : {}), ...(materialSources ? { materialSources } : {}), ...(bodyCommands.length ? { bodyCommands, bodyPreparationPolicy: includeEffects ? 'captured-effect-commands-required;no-remapping-physical-facts' : 'source-only-revoice-excludes-prepared-body-output' } : {}), intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
       boundary: { status: initialBoundary ? 'captured-initial-state' : 'requires-state-reconstruction',
         state: initialBoundary ? manifest.boundaryState : null, sourceOnsetsSynthesized: false },
       sourceRecords: { firstSequence: slice.records[0]?.sequence ?? null, lastSequence: slice.records.at(-1)?.sequence ?? null, count: slice.records.length },

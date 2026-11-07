@@ -35,7 +35,8 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const number = (name, value, max) => { const input = node('input'); input.type = 'number'; input.min = '0'; input.max = String(max); input.step = '0.001'; input.value = String(value); input.setAttribute('aria-label', name); return label(name, input); };
   const first = number('Start seconds from capture', 0, 120), last = number('End seconds from capture', 1, 120), tailSeconds = number('Maximum tail seconds', 4, 4);
   const select = (name, choices) => { const element = node('select'); element.setAttribute('aria-label', name); for (const [value, text] of choices) { const option = node('option', text); option.value = value; element.append(option); } return label(name, element); };
-  const sourceModel = select('Render source model', CAUSAL_RENDER_SOURCES.map(source => [source.id, source.label])); sourceModel.value = 'worklet-sine';
+  const sourceChoices = [...CAUSAL_RENDER_SOURCES.map(source => [source.id, source.label]), ['captured-materials', 'Captured material bodies · saved contact choices']];
+  const sourceModel = select('Render source model', sourceChoices); sourceModel.value = 'worklet-sine';
   const instrumentInfo = node('p'); instrumentInfo.setAttribute('aria-label', 'Saved render instrument');
   const captureInstrument = raw => {
     if (raw || instrumentWorkspace) {
@@ -53,12 +54,13 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     }
     const previous = sourceModel.value; sourceModel.replaceChildren();
     for (const model of CAUSAL_RENDER_SOURCES) { const option = node('option', model.label); option.value = model.id; option.disabled = NATIVE_OFFLINE_SOURCE_IDS.includes(model.id) && typeof globalThis.OfflineAudioContext !== 'function'; sourceModel.append(option); }
+    const materialsOption = node('option', 'Captured material bodies · saved contact choices'); materialsOption.value = 'captured-materials'; materialsOption.disabled = typeof globalThis.OfflineAudioContext !== 'function'; sourceModel.append(materialsOption);
     if (instrumentReference) {
       const definition = instrumentReference.definition, name = typeof definition.name === 'string' ? definition.name : instrumentReference.patchId;
       const option = node('option', 'Saved instrument · ' + name + ' @' + instrumentReference.revision + (instrumentSupported ? '' : ' · renderer unavailable'));
       option.value = 'saved-instrument'; option.disabled = !instrumentSupported; sourceModel.append(option);
     }
-    sourceModel.value = previous === 'saved-instrument' && instrumentSupported || CAUSAL_RENDER_SOURCES.some(model => model.id === previous) ? previous : 'worklet-sine';
+    sourceModel.value = previous === 'captured-materials' || previous === 'saved-instrument' && instrumentSupported || CAUSAL_RENDER_SOURCES.some(model => model.id === previous) ? previous : 'worklet-sine';
   };
   const rate = select('Render sample rate', [['44100', '44.1 kHz'], ['48000', '48 kHz'], ['96000', '96 kHz']]); rate.value = '48000';
   const tail = select('Render end policy', [['exact-crop', 'Exact crop'], ['bounded-natural', 'Captured releases with bounded tails'], ['boundary-release', 'Derive releases at the end boundary']]);
@@ -94,11 +96,12 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     const captured = restore.value === 'initial-owned-image';
     if (!seekOwner || !source || (captured ? !source.ownedImageAvailable : source.unavailable) || loading || rendering() || picker || delivery) throw new Error('Choose a complete saved take and available isolated audio before seeking.');
     const saved = sourceModel.value === 'saved-instrument', model = CAUSAL_RENDER_SOURCES.find(model => model.id === sourceModel.value), selected = source, serial = loadSerial, selectedModel = sourceModel.value;
-    if (!captured && (saved ? !instrumentReference || !instrumentSupported : !model)) throw new Error('Choose an available render source before seeking.');
+    const materials = sourceModel.value === 'captured-materials';
+    if (!captured && !materials && (saved ? !instrumentReference || !instrumentSupported : !model)) throw new Error('Choose an available render source before seeking.');
     const sampleRate = captured ? source.ownedRate : Number(rate.value), startSeconds = Math.round(Number(seekPosition.value) * sampleRate) / sampleRate, seconds = Number(seekWindow.value), endSeconds = Math.min(120, captured ? source.ownedSeconds : source.seconds, startSeconds + seconds);
     if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 3 || !Number.isFinite(startSeconds) || startSeconds < 0 || endSeconds <= startSeconds) throw new Error('Choose a cursor inside the captured range and a preview window up to three seconds.');
     const effects = captured ? {} : prepareCausalEffectSelection({ preset: effect.value, send01: Number(effectSend.value), includeReturn: false, rack: effect.value === 'saved-owner' ? getSavedRack() : null, sampleRate });
-    const receipt = await seekOwner.seek({ ...(captured ? {} : { definition: saved ? instrumentReference.definition : model.definition, materialReference: saved ? instrumentReference : null }), takeId: source.takeId, takeRevision: source.revision, sampleRate, startSeconds, endSeconds,
+    const receipt = await seekOwner.seek({ ...(captured ? {} : materials ? { capturedMaterials: true } : { definition: saved ? instrumentReference.definition : model.definition, materialReference: saved ? instrumentReference : null }), takeId: source.takeId, takeRevision: source.revision, sampleRate, startSeconds, endSeconds,
       timeTransformMode: timingMode.value, restorationMode: restore.value, includeRack: capturedRack.checked, ...effects, isCurrent: () => !disposed && serial === loadSerial && source === selected && sourceModel.value === selectedModel });
     if (receipt.status === 'superseded' || receipt.status === 'canceled') return receipt;
     say('Private seek prepared at ' + receipt.startSeconds.toFixed(3) + ' s using ' + receipt.restoration.mode + '. Original physical events and the live world are unchanged.'); return receipt;
@@ -131,12 +134,13 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     if (restore.value === 'initial-owned-image') return prepareCapturedWav();
     if (!source || loading || rendering() || picker || delivery) return;
     const saved = sourceModel.value === 'saved-instrument', model = CAUSAL_RENDER_SOURCES.find(model => model.id === sourceModel.value);
-    if (saved ? !instrumentReference || !instrumentSupported : !model) throw new Error('Choose an available render source.');
+    const materials = sourceModel.value === 'captured-materials';
+    if (!materials && (saved ? !instrumentReference || !instrumentSupported : !model)) throw new Error('Choose an available render source.');
     preparing = true; paint();
     try {
       if (effect.value !== 'none') effectWorkspace ||= createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-render-effect-selection', kind: 'render-effect-selection', category: 'audio', bytes: 512 * 1024 });
       const effects = prepareCausalEffectSelection({ preset: effect.value, send01: Number(effectSend.value), includeReturn: effectReturn.checked, rack: effect.value === 'saved-owner' ? getSavedRack() : null, sampleRate: Number(rate.value) });
-      await owner.prepare({ definition: saved ? instrumentReference.definition : model.definition, materialReference: saved ? instrumentReference : null, takeId: source.takeId, takeRevision: source.revision, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value),
+      await owner.prepare({ ...(materials ? { capturedMaterials: true } : { definition: saved ? instrumentReference.definition : model.definition, materialReference: saved ? instrumentReference : null }), takeId: source.takeId, takeRevision: source.revision, sampleRate: Number(rate.value), startSeconds: Number(first.value), endSeconds: Number(last.value),
         tail: { mode: tail.value, maxSeconds: Number(tailSeconds.value) }, includeAllLaneStems: stems.checked, timeTransformMode: timingMode.value, extendGrooveOutput: groovePadding.checked, restorationMode: restore.value, ...effects });
       displayComparison = null; say('Rendered WAV files are prepared. Choose a file and a delivery action; the original take is unchanged.');
     } finally { preparing = false; paint(); }
@@ -250,11 +254,12 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     compareTimbre.disabled = busy || loading || picker || !!delivery || !source || !!source.unavailable || !timbrePairs || !!timbre.unknownRetirement || effect.value !== 'none' || tail.value !== 'exact-crop';
     compareBodies.disabled = busy || loading || picker || !!delivery || !source || !!source.unavailable || !!body.unknownRetirement || !!graft.unknownRetirement || tail.value !== 'exact-crop';
     cancelRender.disabled = !preparing && !rendered.active && !comparison.active && !printState?.readyToPrint; first.disabled = last.disabled = sourceModel.disabled = rate.disabled = tail.disabled = stems.disabled = busy || loading;
-    const selectedEngine = sourceModel.value === 'saved-instrument' ? instrumentReference?.engineRequirement.engineId : sourceModel.value;
+    const selectedEngine = sourceModel.value === 'captured-materials' ? 'native-modal' : sourceModel.value === 'saved-instrument' ? instrumentReference?.engineRequirement.engineId : sourceModel.value;
     const nativeRestore = !capturedPolicy && (NATIVE_OFFLINE_SOURCE_IDS.includes(selectedEngine) || effect.value === 'captured-controls');
     sourceModel.disabled ||= capturedPolicy; rate.disabled ||= capturedPolicy; tail.disabled ||= capturedPolicy; stems.disabled ||= capturedPolicy;
     const hasEffects = effect.value !== 'none';
     effect.disabled = busy || loading || capturedPolicy; effectReturn.disabled = busy || loading || !hasEffects; effectSend.disabled = effectReturn.disabled || effect.value === 'captured-controls';
+    instrumentInfo.textContent = sourceModel.value === 'captured-materials' ? 'Uses exact saved body definitions, contact classification, articulation, strike site and per-onset controls from a fully captured material-only take. Native audio is reconstructed from history; unavailable source evidence stops preparation.' : instrumentReference ? 'Saved instrument: ' + instrumentReference.patchId + ' @' + instrumentReference.revision : 'Choose an explicit new source or captured material bodies.';
     effectInfo.textContent = !hasEffects ? 'Dry source graph. No creative effect graph is added.' :
       effect.value === 'captured-controls' ? 'Revoices captured controls with cleared initial memory. Changing owned bodies retain recorded input ramps and bounded tails, with at most two graphs at once. Older transitions without timing evidence, native convolution, external donors and body-only lifecycle commands may be unavailable. This does not reconstruct original live PCM.' : 'Creates a new realization with a constant authored send. Live effect gestures are not replayed. Dry lanes and shared return come from one full graph; final protection is excluded. Native convolution bodies require their offline adapter.';
     tailSeconds.max = hasEffects ? '30' : '4'; if (Number(tailSeconds.value) > Number(tailSeconds.max)) tailSeconds.value = tailSeconds.max;
