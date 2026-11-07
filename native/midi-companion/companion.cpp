@@ -72,7 +72,7 @@ struct Endpoint {
   bool input{}, windows{}, groups_known{}, jr_required{};
   std::uint16_t groups{};
   std::string identity, name, device_name, port_name, windows_device;
-  std::string endpoint_metadata, metadata_shape, endpoint_shape;
+  std::string endpoint_metadata, metadata_shape, endpoint_shape, transport_json;
   std::array<std::string, 16> group_shapes{};
   libremidi::input_port in;
   libremidi::output_port out;
@@ -348,6 +348,7 @@ class Companion {
             row.input = input;
             row.windows = true;
             row.windows_device = device.device;
+            row.transport_json = "{\"source\":\"windows-midi-services\",\"id\":" + quote(device.transport_id) + ",\"code\":" + quote(device.transport) + ",\"sessionOwner\":\"os\"}";
             row.name = row.device_name = device.name;
             row.port_name =
                 input ? "Native input / control" : "Native output / control";
@@ -683,6 +684,7 @@ class Companion {
       reply(request, session, "opened",
             "\"grant\":" + std::to_string(id) +
                 ",\"endpointToken\":" + std::to_string(owner.endpoint) +
+                ",\"transport\":" + (endpoint && !endpoint->transport_json.empty() ? endpoint->transport_json : "null") +
                 ",\"endpointAssociationToken\":" + (endpoint && endpoint->association ? std::to_string(endpoint->association) : "null") +
                 ",\"direction\":" + quote(input ? "input" : "output") +
                 ",\"groupMask\":" + std::to_string(groups) + ",\"originalGroupMask\":" + std::to_string(groups) +
@@ -1032,6 +1034,7 @@ class Companion {
               ",\"name\":" + quote(row.name) +
               ",\"deviceName\":" + quote(row.device_name) +
               ",\"portName\":" + quote(row.port_name) +
+              ",\"transport\":" + (row.transport_json.empty() ? "null" : row.transport_json) +
               ",\"direction\":" + quote(row.input ? "input" : "output") +
               ",\"groupMask\":" +
               (row.groups_known ? std::to_string(row.groups) : "null") +

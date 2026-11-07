@@ -102,7 +102,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
     latestReceipt = Object.freeze({ ...provenance, sinkId: 'physical-native-midi' + (mode === 'auxiliary' ? '-controls' : '') + ':' + intent.route, executionEpoch: entry.state.epoch,
       connectionEpoch: entry.route.connectionEpoch, routeRevision: entry.route.routeRevision, outputId: entry.route.outputId,
       status: receipt.kind === 'queued' ? 'accepted' : successful ? entry.losses.length ? 'degraded' : 'accepted' : 'rejected', stage: receipt.kind === 'queued' ? 'queued' : successful ? 'driver-submitted' : receipt.acceptedWords ? 'driver-submitted-prefix' : 'rejected-before-send',
-      acknowledgement: receipt.kind, certainty: receipt.failedPacketUnconfirmed ? 'unconfirmed-packet' : receipt.acceptedWords ? 'driver-accepted-prefix' : 'not-submitted',
+      acknowledgement: receipt.kind, transportProfile: entry.route.transportProfile || null, transportEvidence: entry.route.transportProfile?.kind === 'os-managed-network-midi2' ? 'native-driver-submission;network-peer-receipt-and-link-timing-unobserved' : 'native-driver-submission', certainty: receipt.failedPacketUnconfirmed ? 'unconfirmed-packet' : receipt.acceptedWords ? 'driver-accepted-prefix' : 'not-submitted',
       receipt, losses: Object.freeze(entry.losses), targetTimeDomain: 'performance-microseconds', submittedAtMs: now() });
     if (successful) admission?.acknowledge?.({ ackState: 'driver-submitted', acknowledgedTime: now(), acknowledgementTimeDomain: 'performance-ms' });
     try { onReceipt(latestReceipt); } catch {}

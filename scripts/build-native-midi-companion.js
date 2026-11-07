@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -23,11 +23,17 @@ async function sdkArchive() {
   try { await fs.writeFile(temporary, bytes, { flag: 'wx' }); await fs.rename(temporary, target); } finally { await fs.rm(temporary, { force: true }); }
   return target;
 }
+function windowsCompiler(command) {
+  const result = spawnSync('where.exe', [command], { encoding: 'utf8', windowsHide: true, shell: false });
+  const resolved = result.status === 0 && result.stdout.split(/\r?\n/).map(value => value.trim()).find(Boolean);
+  if (!resolved || !path.isAbsolute(resolved)) throw new Error('Install ' + command + ' on PATH before building the native companion.');
+  return path.normalize(resolved).replaceAll('\\', '/');
+}
 export async function buildNativeMidiCompanion() {
   await fs.mkdir(nativeMidiBuildDirectory, { recursive: true });
   const options = ['-S', path.join(root, 'native/midi-companion'), '-B', nativeMidiBuildDirectory, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release'];
   if (process.env.CXX) options.push('-DCMAKE_CXX_COMPILER=' + process.env.CXX);
-  else if (process.platform === 'win32') options.push('-DCMAKE_CXX_COMPILER=clang++', '-DCMAKE_C_COMPILER=clang');
+  else if (process.platform === 'win32') options.push('-DCMAKE_CXX_COMPILER=' + windowsCompiler('clang++'), '-DCMAKE_C_COMPILER=' + windowsCompiler('clang'));
   if (process.platform === 'win32') options.push('-DLIBREMIDI_WINMIDI_HEADERS_ZIP=' + await sdkArchive());
   await execute('cmake', options); await execute('cmake', ['--build', nativeMidiBuildDirectory, '--target', 'lemmings-midi-companion', '--parallel', '2']);
   console.log('Built ' + nativeMidiExecutable + '. Device and transport qualification remains separate.'); return nativeMidiExecutable;

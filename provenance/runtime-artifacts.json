@@ -4,14 +4,17 @@
     "browserMidi": "vendored WebMidi.js 3.1.12; MIDI 1 byte output",
     "nativeUmp": "optional source-built libremidi companion; explicit paired endpoint grants; runtime and receiver qualification pending",
     "audioRuntime": "first-party Web Audio local preview",
-    "optionalAudioBank": "none selected or shipped"
+    "optionalAudioBank": "none selected or shipped",
+    "networkMidi2": "explicit OS-managed Windows NET2UDP endpoints; no application UDP session engine; independent-peer/link qualification pending"
   },
   "workerSources": [
     "js/app/procgen/survey/ProcgenSurveyReplaySession.js",
     "js/app/procgen/workstation/ProcgenTimingDriver.js",
     "js/app/resources/BackgroundJobService.js",
     "js/app/procgen/ProcgenSimulationHost.js",
-    "js/app/midi-ui/BufferedWarpVoiceOwner.js"
+    "js/app/midi-ui/BufferedWarpVoiceOwner.js",
+    "js/app/procgen/ProcgenOwnedAudioOutputRealm.js",
+    "js/app/procgen/ProcgenOwnedAudioOutputWorker.js"
   ],
   "components": [
     {
@@ -615,7 +618,7 @@
         "scripts/native-midi/NativeMidiProcess.js"
       ],
       "fileCount": 76,
-      "sha256": "7ef82d369f53d48aa75d41686d1f83498b3f7b3e984ac978931420dc146f3bdc"
+      "sha256": "0a49c8b28cb05044e3e1ebac414b05bd162cb83af5c4703da4548d045e1104cd"
     },
     {
       "id": "lemmings-authoritative-simulation-worker",
@@ -1168,6 +1171,7 @@
         "js/midi/native/MpeProfileAdapter.js",
         "js/midi/native/NativeClockMapping.js",
         "js/midi/native/NativeControllerPolicies.js",
+        "js/midi/native/NativeEndpointTransport.js",
         "js/midi/native/NativeMidiBatchQueue.js",
         "js/midi/native/NativeMidiBridgeClient.js",
         "js/midi/native/NativeMidiBridgeProtocol.js",
@@ -1222,8 +1226,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 593,
-      "sha256": "2a36f6443508eeb4b4f1aae2885c5604c6b9539d2cd17a872d2cc977ddb6135b"
+      "fileCount": 594,
+      "sha256": "790c99ab95760fe6df6233944e4953b1cd5d1daeda8e14eabd5b1c603a7acc30"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1645,6 +1649,7 @@
         "js/midi/native/MpeProfileAdapter.js",
         "js/midi/native/NativeClockMapping.js",
         "js/midi/native/NativeControllerPolicies.js",
+        "js/midi/native/NativeEndpointTransport.js",
         "js/midi/native/NativeMidiBatchQueue.js",
         "js/midi/native/NativeMidiBridgeClient.js",
         "js/midi/native/NativeMidiBridgeProtocol.js",
@@ -1669,8 +1674,8 @@
         "js/midi/protocol/UmpPayloadCollector.js",
         "js/runtime/ActiveExecutionIdentity.js"
       ],
-      "fileCount": 68,
-      "sha256": "0f34b26e145b20986592e7b38100c9a7e2ac797a70a401f5d4e70c8907390a59"
+      "fileCount": 69,
+      "sha256": "5582b4289813d18f62091a963fbdcee5cd2d49364efa497992f5258e9be43c28"
     },
     {
       "id": "lemmings-independent-owned-audio-output",
@@ -2110,7 +2115,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 424,
-      "sha256": "b30c33a386d329c32d833d52e2146866c2cb47d9e1a9cd5586cdb820781eb5b7"
+      "sha256": "aa9fc1474fc3decf9d83a43d14df83a01d6bdc05429e229712f272d18cafd30f"
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { inspectNativeEndpointTransport, OS_NETWORK_MIDI2_CONSENT } from '../../../midi/native/NativeEndpointTransport.js';
 import { defaultTimeTransform, validateTimeTransform, hasActiveTimeTransform } from '../../../midi/content/TimeTransform.js';
 import { createProcgenNoticeView } from './ProcgenNoticeView.js';
 import { createProcgenOperationalView } from './ProcgenOperationalView.js';
@@ -196,7 +197,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const operationalSurface = displayScheduler.register({ id: 'workstation-operational', element: operationalView.element, intervalMs: 100,
     write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); audioSettings.render(); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); refreshProjectStatus(); } }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
-  let nativePairingDraft = '', nativeAddressDraft = (window.location?.protocol === 'https:' ? 'wss:' : 'ws:') + '//127.0.0.1:8765/midi', nativeEndpointDraft = '', nativeGrantDraft = '', nativeGroupMaskDraft = 1, nativeProtocolDraft = 'midi2', nativeApiDraft = '';
+  let nativePairingDraft = '', nativeAddressDraft = (window.location?.protocol === 'https:' ? 'wss:' : 'ws:') + '//127.0.0.1:8765/midi', nativeEndpointDraft = 0, nativeGrantDraft = '', nativeGroupMaskDraft = 1, nativeProtocolDraft = 'midi2', nativeApiDraft = '';
+  let nativeNetworkReviewKey = null, nativeNetworkReviewed = false;
   let physicalHistoryView = null, physicalHistoryViewError = null, simulationPreview = null, simulationPreviewError = null;
   let harmonyView = null, harmonyFactory = null, harmonyPreparing = null, harmonyError = null;
   const owner = {};
@@ -905,9 +907,17 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           const inventory = native.realm?.inventory, endpoints = Array.isArray(inventory?.endpoints) ? inventory.endpoints.filter(row => row.direction === 'output').slice(0, 1024) : [];
           if (endpoints.length) {
             if (!endpoints.some(row => row.endpointToken === nativeEndpointDraft)) nativeEndpointDraft = endpoints[0].endpointToken;
-            const endpoint = select(endpoints.map(row => [row.endpointToken, row.name || row.endpointToken]), nativeEndpointDraft, value => { nativeEndpointDraft = value; }, 'Reviewed native output'); endpoint.disabled = nativeBusy; labeled('Native output endpoint', endpoint, setup);
+            const endpoint = select(endpoints.map(row => [row.endpointToken, (row.name || row.endpointToken) + (inspectNativeEndpointTransport(row).kind === 'os-managed-network-midi2' ? ' · Network MIDI 2 (OS)' : '')]), nativeEndpointDraft, value => { nativeEndpointDraft = Number(value); nativeNetworkReviewed = false; renderInspector(); }, 'Reviewed native output'); endpoint.disabled = nativeBusy; labeled('Native output endpoint', endpoint, setup);
             const groups = input(nativeGroupMaskDraft, value => { nativeGroupMaskDraft = Number(value); }, { min: 1, max: 65535, step: 1 }); groups.disabled = nativeBusy; labeled('Output group mask · bits 0–15', groups, setup);
-            const grant = button('Grant selected worker output', () => handlers.openNativeSimulationOutput?.({ inventoryEpoch: inventory.inventoryEpoch, endpointToken: nativeEndpointDraft, groupMask: nativeGroupMaskDraft })); grant.disabled = nativeBusy; setup.append(grant);
+            const selectedEndpoint = endpoints.find(row => row.endpointToken === Number(nativeEndpointDraft)), network = inspectNativeEndpointTransport(selectedEndpoint).kind === 'os-managed-network-midi2',
+              reviewKey = String(native.realm?.connectionEpoch) + ':' + inventory.inventoryEpoch + ':' + nativeEndpointDraft;
+            if (nativeNetworkReviewKey !== reviewKey) { nativeNetworkReviewKey = reviewKey; nativeNetworkReviewed = false; }
+            if (network) {
+              const review = input(nativeNetworkReviewed, value => { nativeNetworkReviewed = value; renderInspector(); }, { type: 'checkbox' }); review.disabled = nativeBusy;
+              labeled('Use this reviewed OS-managed network session without app-verified authentication or encryption', review, setup);
+              setup.append(node('p', 'Network MIDI 2 · NET2UDP. Approve/configure the peer in Windows Network MIDI Setup. Peer address, invitation state, authentication, encryption, loss and network RTT are unavailable through this pinned endpoint API. App grant closure leaves the OS-managed session configuration in place.', 'studio-hint'));
+            }
+            const grant = button('Grant selected worker output', () => handlers.openNativeSimulationOutput?.({ inventoryEpoch: inventory.inventoryEpoch, endpointToken: nativeEndpointDraft, groupMask: nativeGroupMaskDraft, networkConsent: nativeNetworkReviewed ? OS_NETWORK_MIDI2_CONSENT : null })); grant.disabled = nativeBusy || network && !nativeNetworkReviewed; setup.append(grant);
           }
           const grants = native.realm?.grants?.filter(row => row.direction === 'output') || [];
           if (grants.length) {

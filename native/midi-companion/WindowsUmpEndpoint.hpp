@@ -12,7 +12,7 @@
 namespace lemmings::companion {
 namespace win_midi = winrt::Microsoft::Windows::Devices::Midi2;
 struct WindowsEndpointInfo {
-  std::string device, name, manufacturer, transport;
+  std::string device, name, manufacturer, transport, transport_id;
   std::string metadata_json{}, metadata_shape{}, endpoint_shape{};
   std::array<std::string, 16> group_shapes{};
   bool groups_known{}, jr_required{};
@@ -28,7 +28,9 @@ inline std::vector<WindowsEndpointInfo> windows_endpoints() {
     WindowsEndpointInfo info{winrt::to_string(endpoint.EndpointDeviceId()),
                              winrt::to_string(endpoint.Name()),
                              winrt::to_string(supplied.ManufacturerName),
-                             winrt::to_string(supplied.TransportCode)};
+                             winrt::to_string(supplied.TransportCode),
+                             winrt::to_string(winrt::to_hstring(supplied.TransportId))};
+    if (info.transport.size() > 64 || info.transport_id.size() > 128) throw std::runtime_error("windows-transport-identity-capacity");
     const auto collect = [&](const auto &block) {
       using Direction = decltype(block.Direction());
       const auto first = static_cast<unsigned>(block.FirstGroup().Index()),
@@ -92,7 +94,7 @@ inline std::vector<WindowsEndpointInfo> windows_endpoints() {
       ",\"activeProtocol\":" + (config_known && (protocol == 1 || protocol == 2) ? std::to_string(protocol) : "null") +
       ",\"activeExtensions\":" + (config_known ? std::to_string(extensions) : "null");
     info.jr_required = config_known && (extensions & 2);
-    info.endpoint_shape = std::to_string(info_known) + ':' + std::to_string(config_known) + ':' + std::to_string(declared.SpecificationVersionMajor) + ':' + std::to_string(declared.SpecificationVersionMinor) + ':' + std::to_string(protocols) + ':' + std::to_string(supported_jr) + ':' + std::to_string(declared.HasStaticFunctionBlocks) + ':' + std::to_string(protocol) + ':' + std::to_string(extensions);
+    info.endpoint_shape = info.transport_id + ":" + info.transport + ":" + std::to_string(info_known) + ':' + std::to_string(config_known) + ':' + std::to_string(declared.SpecificationVersionMajor) + ':' + std::to_string(declared.SpecificationVersionMinor) + ':' + std::to_string(protocols) + ':' + std::to_string(supported_jr) + ':' + std::to_string(declared.HasStaticFunctionBlocks) + ':' + std::to_string(protocol) + ':' + std::to_string(extensions);
     info.metadata_shape = base + ",\"functionBlocks\":" + shapes + "}";
     info.metadata_json = base + ",\"functionBlocks\":" + records + "}";
 

@@ -1,3 +1,4 @@
+import { assertNativeTransportGrant, inspectNativeEndpointTransport } from './NativeEndpointTransport.js';
 import { hashData } from '../../core/CanonicalData.js';
 import { validateNativeRouteIntent } from './NativeRouteIntent.js';
 import { createNativeControllerPolicies } from './NativeControllerPolicies.js';
@@ -46,7 +47,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
   const controllerPolicies = createNativeControllerPolicies({ client, isGrantActive: grant => !disposed && grants.get(grant)?.connectionEpoch === client.session, onFailure: (grant, reason) => api.quarantineDeviceState(grant, reason) });
   const notify = () => { revision++; if (notificationPending) return; notificationPending = true; queueMicrotask(() => { notificationPending = false; if (disposed) return; for (const listener of listeners) { try { listener(); } catch {} } }); };
   const current = route => route && (route.groupRevisions || [[route.group, 0]]).every(([group, revision]) => (grants.get(route.grant)?.groupMask & 1 << group) && (grants.get(route.grant)?.groupRevisions?.[group] || 0) === revision) && (!patchClaims.has(route.outputId) || patchClaims.get(route.outputId).current()) && (!profileClaims.has(route.outputId) || profileClaims.get(route.outputId).current()) && grants.has(route.grant) && route.connectionEpoch === client.session && route.deviceRevision === grants.get(route.grant)?.deviceRevision && client.state === 'connected';
-  const descriptor = (receipt, endpoint = null) => Object.freeze({ ...receipt, originalGroupMask: receipt.originalGroupMask ?? receipt.groupMask, deviceRevision: 0, groupRevisions: Object.freeze(new Array(16).fill(0)), logicalDestination: globalThis.crypto.randomUUID(), endpoint, connectionEpoch: client.session });
+  const descriptor = (receipt, endpoint = null) => Object.freeze({ ...receipt, originalGroupMask: receipt.originalGroupMask ?? receipt.groupMask, deviceRevision: 0, groupRevisions: Object.freeze(new Array(16).fill(0)), logicalDestination: globalThis.crypto.randomUUID(), endpoint, transport: inspectNativeEndpointTransport(endpoint || receipt), connectionEpoch: client.session });
   const unsubscribeInput = ingress.subscribe(event => {
     const context = event.event === 'native-packet' ? event.packet?.scoreContext : event.event === 'native-payload' && event.message?.kind === 'flex-text' ? { kind: 'text', value: { text: event.message.text, bank: event.message.bank, status: event.message.status } } : null;
     if (context) { const scope = event.packet || event.message, key = JSON.stringify([event.grant, scope.group, scope.address, scope.channel ?? null, context.kind, context.value.bank ?? null, context.value.status ?? null]);
@@ -121,7 +122,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
     if (previous && previous.laneIds.some(id => id !== laneId) && (previous.sharing !== 'shared-ensemble' || sharing !== 'shared-ensemble')) throw new Error('Native channel belongs to another lane; choose sharing explicitly');
     const laneIds = Object.freeze([...new Set([...(previous?.laneIds || []), laneId])]);
     const route = Object.freeze({ outputId, grant, connectionEpoch: owner.connectionEpoch, routeRevision, logicalDestination: owner.logicalDestination, deviceRevision: owner.deviceRevision, group, channel, protocol, sharing, laneIds,
-      groupRevisions: Object.freeze([[group, owner.groupRevisions[group]]]), receiverProtocol: 'unverified', transport: 'native-ump', independentSamePitchVoices: false });
+      groupRevisions: Object.freeze([[group, owner.groupRevisions[group]]]), receiverProtocol: 'unverified', transport: 'native-ump', transportProfile: owner.transport, independentSamePitchVoices: false });
     return route;
   };
   const bind = options => { const route = buildRoute(options); revision = route.routeRevision; profileClaims.delete(route.outputId); patchClaims.delete(route.outputId); routes.set(route.outputId, route); notify(); return route; };
@@ -297,6 +298,7 @@ export function createNativeMidiRoutes({ client = new NativeMidiBridgeClient(), 
       if (disposed || !inventory || inventory.inventoryEpoch !== options.inventoryEpoch) throw new Error('Refresh and select a current native endpoint');
       const endpoint = inventory.endpoints.find(row => row.endpointToken === options.endpointToken);
       if (!endpoint) throw new Error('Select a native endpoint');
+      assertNativeTransportGrant(endpoint, options);
       const receipt = await client.open(options);
       if (disposed || receipt.connectionEpoch != null && receipt.connectionEpoch !== client.session) throw new Error('Native route owner retired');
       if (receipt.direction === 'input') ingress.register(receipt);

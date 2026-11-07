@@ -1,3 +1,4 @@
+import { inspectNativeEndpointTransport, OS_NETWORK_MIDI2_CONSENT } from '../../midi/native/NativeEndpointTransport.js';
 import { createNativeMidiCaptureView } from './NativeMidiCaptureView.js';
 import { createNativeMidiScoreContextView } from './NativeMidiScoreContextView.js';
 import { createNativeMidiOrganView } from './NativeMidiOrganView.js';
@@ -30,6 +31,8 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const disconnect = button('Disconnect companion', () => routes.disconnect(), controls, true);
   const backend = select('Native backend'), switchBackend = button('Select backend', async () => { await routes.client.selectBackend(Number(backend.value)); await routes.enumerate(); });
   const endpoint = select('Native device'), refresh = button('Refresh native devices', () => routes.enumerate());
+  const networkReview = checkbox('Use this reviewed OS-managed network session without app-verified authentication or encryption'), networkStatus = element(document, 'p', '', 'midi-help');
+  networkStatus.setAttribute('aria-live', 'polite'); let networkReviewKey = null;
   const uncertaintyBudget = input('Clock uncertainty budget (µs)', '25000', 'number'), nativeLookahead = input('Maximum native output lookahead (ms)', '1950', 'number');
   uncertaintyBudget.min = '100'; uncertaintyBudget.max = '25000'; uncertaintyBudget.step = '100'; nativeLookahead.min = '25'; nativeLookahead.max = '1950'; nativeLookahead.step = '1';
   const timingPolicy = button('Apply timing budget with performance stopped', async () => { await routes.setTimingPolicy({ maximumUncertaintyUs: Number(uncertaintyBudget.value), maximumLookaheadMs: Number(nativeLookahead.value) }); message.textContent = 'Timing budget applied and clock recalibrated. Rebind affected native lanes before the next performance.'; });
@@ -44,7 +47,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const permissions = () => Number(sysex.checked) | Number(timing.checked) << 1 | Number(sensing.checked) << 2 | Number(control.checked) << 3;
   const open = button('Grant selected device', async () => {
     const snapshot = routes.state(); if (!endpoint.value) throw new Error('Select a native input or output first');
-    const grant = await routes.open({ inventoryEpoch: snapshot.inventory.inventoryEpoch, endpointToken: Number(endpoint.value), groupMask: groupMask(), permissions: permissions() }); selectedGrant = grant.grant;
+    const grant = await routes.open({ inventoryEpoch: snapshot.inventory.inventoryEpoch, endpointToken: Number(endpoint.value), groupMask: groupMask(), permissions: permissions(), networkConsent: networkReview.checked ? OS_NETWORK_MIDI2_CONSENT : null }); selectedGrant = grant.grant;
     message.textContent = grant.direction === 'input' ? 'Input granted. Native packets retain source timestamps and precision provenance.' : 'Output granted. Assign a lane before sending.';
   });
   const publicationName = input('Published endpoint name', 'Lemmings Performance');
@@ -192,7 +195,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
   const ciStatus = element(document, 'output', '', 'midi-status'); ciStatus.setAttribute('role', 'status'); ciStatus.setAttribute('aria-live', 'polite');
   const reportStatus = element(document, 'output', '', 'midi-status'), reportValues = element(document, 'div'); reportStatus.setAttribute('role', 'status'); reportStatus.setAttribute('aria-live', 'polite');
   const profileStatus = element(document, 'output', '', 'midi-status'); profileStatus.setAttribute('role', 'status'); profileStatus.setAttribute('aria-live', 'polite');
-  root.append(controls, routeControls, status, inputStatus, ciStatus, profileStatus, reportStatus, reportValues, message, details); container.append(root);
+  root.append(controls, networkStatus, routeControls, status, inputStatus, ciStatus, profileStatus, reportStatus, reportValues, message, details); container.append(root);
   const endpointView = createNativeMidiEndpointView({ document, container: root, routes, getOutputGrant: () => Number(active.value) || null, onStatus });
   const propertyView = createNativeMidiPropertyView({ document, container: root, routes, getCiSession: ensureCi, getPeerMuid: () => ciPeer.value ? Number(ciPeer.value) : null, onStatus });
   const patchView = createNativeMidiPatchView({ document, container: root, routes, getCiSession: ensureCi, getPeerMuid: () => ciPeer.value ? Number(ciPeer.value) : null, getLaneId: () => lane.value,
@@ -238,7 +241,13 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     options(ciInput, state.grants.filter(row => row.direction === 'input' && (row.permissions & 1)).map(row => [row.grant, row.endpoint?.name || 'Published control input']), 'Choose a SysEx input'); showCi();
     if (capabilities && backend.options.length !== capabilities.compiledApis.length + 1) options(backend, capabilities.compiledApis.map(api => [api.id, api.name]), 'Choose backend');
     if (capabilities && !backend.value) backend.value = String(capabilities.selectedApi);
-    if (state.inventory?.inventoryEpoch !== inventoryEpoch) { inventoryEpoch = state.inventory?.inventoryEpoch ?? null; options(endpoint, (state.inventory?.endpoints || []).map(row => [row.endpointToken, row.name + ' · device #' + row.endpointToken + ' · ' + row.direction + (row.groupMask == null ? ' · group support unknown' : ' · groups ' + Array.from({ length: 16 }, (_, i) => row.groupMask & 1 << i ? i + 1 : null).filter(Boolean).join(','))]), 'Choose a native device'); }
+    if (state.inventory?.inventoryEpoch !== inventoryEpoch) { inventoryEpoch = state.inventory?.inventoryEpoch ?? null; options(endpoint, (state.inventory?.endpoints || []).map(row => [row.endpointToken, row.name + (inspectNativeEndpointTransport(row).kind === 'os-managed-network-midi2' ? ' · Network MIDI 2 (OS)' : '') + ' · device #' + row.endpointToken + ' · ' + row.direction + (row.groupMask == null ? ' · group support unknown' : ' · groups ' + Array.from({ length: 16 }, (_, i) => row.groupMask & 1 << i ? i + 1 : null).filter(Boolean).join(','))]), 'Choose a native device'); }
+    const selectedEndpoint = state.inventory?.endpoints.find(row => row.endpointToken === Number(endpoint.value)), transport = inspectNativeEndpointTransport(selectedEndpoint), network = transport.kind === 'os-managed-network-midi2';
+    const reviewKey = String(state.connectionEpoch) + ':' + state.inventory?.inventoryEpoch + ':' + endpoint.value;
+    if (networkReviewKey !== reviewKey) { networkReview.checked = false; networkReviewKey = reviewKey; }
+    networkReview.parentElement.hidden = !network; networkReview.disabled = busy || !connected;
+    networkStatus.hidden = !network; networkStatus.textContent = network ? 'Network MIDI 2 · OS-managed NET2UDP. Configure and approve the peer in Windows Network MIDI Setup. Peer address, pending invitations, authentication, encryption, packet loss and link RTT are not observed by this pinned endpoint adapter. Closing the app grant does not remove the OS session. New endpoint/bridge generations require fresh review.' : '';
+    open.disabled ||= network && !networkReview.checked;
     options(active, state.grants.map(row => [row.grant, (row.endpoint?.name || 'Published ' + row.direction) + ' · connection #' + row.grant + ' · ' + row.direction]), 'Choose an owned connection');
     if (selectedGrant && state.grants.some(row => row.grant === selectedGrant)) active.value = String(selectedGrant);
     const lanes = getLanes(), signature = lanes.map(value => value.id + ':' + value.name).join('|');
@@ -246,6 +255,7 @@ export function createNativeMidiConnectionView({ document, container, routes, ge
     endpointView.render(); propertyView.render(); patchView.render(); parameterView.render(); percussionView.render(); articulationView.render(); pianoView.render(); organView.render(); scoreContextView.render(); captureView.render();
   }
   bindEvent(root, 'toggle', () => { if (root.open) render(); });
+  bindEvent(endpoint, 'change', render); bindEvent(networkReview, 'change', render);
   bindEvent(active, 'change', () => { selectedGrant = Number(active.value) || null; reconnectPlan = null; reconnectPage = 0; render(); });
   for (const picker of [lane, group, channel, protocol, ciInput, ciPeer]) bindEvent(picker, 'change', render);
   const unsubscribe = routes.subscribe(event => { if (!root.open) return; if (!event) render(); else if (inputTimer == null) inputTimer = setTimeout(() => { inputTimer = null; if (root.open) { renderInput(); scoreContextView.render(); exportInput.disabled = busy || !routes.input.state().receivedPackets; } }, 50); }); render();
