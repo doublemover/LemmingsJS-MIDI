@@ -10,7 +10,7 @@ import { createSoundSeedGraftRecipe } from '../../midi/content/SoundSeedGraftRec
 import { createSoundSeedModalRecipe } from '../../midi/content/SoundSeedModalRecipe.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
-import { createSoundContentReader } from './SoundContentReader.js';
+import { createSoundContentReader, borrowSoundContentStage } from './SoundContentReader.js';
 import { createSoundContentRegistry } from './SoundContentRegistry.js';
 import { createSoundContentInstallation } from './SoundContentInstallation.js';
 import { SOUND_ARCHIVE_FORMAT, SOUND_ARCHIVE_MAGIC } from './SoundContentArchive.js';
@@ -133,6 +133,14 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
     const receipt = await installation.install(current.stage, { signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent() });
     current.installed = true; check(); phase = 'durable'; return receipt;
   });
+  const saveSceneSource = ({ isCurrent = () => true } = {}) => run('retaining-reviewed-fit-for-scene', async (operation, check) => {
+    if (!current || current.contract.transform !== 'modal-body' || !isCurrent()) throw fail('Prepare the exact reviewed modal body before retaining its scene source.');
+    await installation.install(current.stage, { referenceOnly: true, signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent() }); check(); if (!isCurrent()) throw fail('The reviewed fit target changed.');
+    const lease = borrowSoundContentStage(current.stage);
+    try { const patch = lease.prepared.patches.find(row => row.identity === current.identity); if (!patch) throw fail('The exact fitted patch is unavailable.');
+      return freezeData({ reference: { schema: 'lemmings-sound-reference/v1', packHash: lease.prepared.contentHash, patchId: patch.definition.id, revision: patch.definition.revision, definitionHash: patch.definitionHash, definition: patch.archivedDefinition, engineRequirement: patch.engineRequirement, assetHashes: [...patch.dependencies].sort() }, contract: current.contract, storage: 'verified-durable-reference;no-audition-or-lane-application' });
+    } finally { lease.release(); }
+  });
   const apply = ({ isCurrent = () => true } = {}) => run('applying-to-selected-lane', async (operation, check) => {
     if (!current) throw fail('Prepare this seed first.'); if (current.targetIdentity && current.targetIdentity !== targetIdentity()) throw fail('The motion mapping document or selected lane changed. Prepare its exact target again.');
     if (!isCurrent()) throw fail('The seed application target changed.');
@@ -141,7 +149,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
   });
   const stop = () => { active?.controller.abort(fail('Sound seed operation canceled.')); installation.stop(); };
   const clear = async () => { stop(); await active?.promise.catch(() => {}); if (unknown.size) throw fail('Seed instrument retirement remains unresolved.'); discard(current); current = null; phase = 'no-patch'; error = null; report(); };
-  return Object.freeze({ prepare, audition, install, apply, stop, clear, state,
+  return Object.freeze({ prepare, audition, install, saveSceneSource, apply, stop, clear, state,
     dispose() {
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); const stopped = Promise.resolve(active?.promise).catch(() => {});
       const installationFinished = stopped.then(async () => { const receipt = installation.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw fail('Seed audition retirement remains unresolved.'); });

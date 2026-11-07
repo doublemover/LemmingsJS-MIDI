@@ -625,6 +625,7 @@
         "js/midi/content/EnvelopeDetectorProfile.js",
         "js/midi/content/EnvelopeMappingProfile.js",
         "js/midi/content/FiniteFmExciterProfile.js",
+        "js/midi/content/FoundBellSourceReceipt.js",
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
         "js/midi/content/GestureSoundDescriptor.js",
@@ -735,8 +736,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 581,
-      "sha256": "c9031a13b5265b307f60fbfb6587248b926015e2398a8dfbf6f49a8219ba4492",
+      "fileCount": 582,
+      "sha256": "1ad9f0723065661763a92b880a4311f5e14b416ac531c4c0aa8fcdc8466140ef",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1351,6 +1352,7 @@
         "js/midi/content/EnvelopeDetectorProfile.js",
         "js/midi/content/EnvelopeMappingProfile.js",
         "js/midi/content/FiniteFmExciterProfile.js",
+        "js/midi/content/FoundBellSourceReceipt.js",
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
         "js/midi/content/GestureSoundDescriptor.js",
@@ -1494,8 +1496,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 614,
-      "sha256": "e77118ec8fc5ff0d2250ef9a86f6a802533978d1404f376518e3b400522959ae",
+      "fileCount": 615,
+      "sha256": "d279cb5fc8103182856aee1abfe3a570411b0d4ca5fadcd9b91666c62980db65",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1996,6 +1998,7 @@
         "js/midi/content/EnvelopeDetectorProfile.js",
         "js/midi/content/EnvelopeMappingProfile.js",
         "js/midi/content/FiniteFmExciterProfile.js",
+        "js/midi/content/FoundBellSourceReceipt.js",
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
         "js/midi/content/GestureSoundDescriptor.js",
@@ -2103,8 +2106,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 592,
-      "sha256": "707b5347fd74411bad78f3c366e1c21b35bae728b722f8d339cf63f561570e92",
+      "fileCount": 593,
+      "sha256": "218d7a3eba6a0630515958433b43d39be8db7636763b2d003552a4300d29c10b",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2752,6 +2755,7 @@
         "js/midi/content/EnvelopeDetectorProfile.js",
         "js/midi/content/EnvelopeMappingProfile.js",
         "js/midi/content/FiniteFmExciterProfile.js",
+        "js/midi/content/FoundBellSourceReceipt.js",
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
         "js/midi/content/GestureSoundDescriptor.js",
@@ -2871,8 +2875,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 665,
-      "sha256": "815d829a6ab3445abc868bfa59dba0e4e74c889fb0ffac743f364dc0ece2bbdb",
+      "fileCount": 666,
+      "sha256": "8c526a14494b7e64de8a72fb555f9568f116c1f88da81638b05e3752eda8f95a",
       "inventoryScope": "first-party-artifact"
     }
   ]

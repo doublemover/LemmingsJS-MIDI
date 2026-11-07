@@ -10,7 +10,7 @@ export async function createSoundSeedModalRecipe({ manifest, assetHash, byteLeng
     fail('Selected modes exceed this native body’s 0.125–16 frequency ratios or 0.03–2.5 s amplitude T60. Edit/select modes explicitly; no hidden decay or frequency clamping is applied.');
   const longestT60 = Math.max(...modes.map(mode => mode.t60Seconds)), amplitudeSum = modes.reduce((sum, mode) => sum + mode.amplitude, 0);
   if (!(amplitudeSum > 1e-10)) fail('Selected modes have no usable fitted amplitude.');
-  const contract = freezeData({ ...base.contract, transform: 'modal-body', modalFit: { recipe: modalFit.recipe, estimate: modalFit.estimate },
+  const contract = freezeData({ ...base.contract, transform: 'modal-body', modalFit: { recipe: modalFit.recipe, estimate: modalFit.estimate }, sourceFit: modalFit,
     playbackMeaning: 'new-excitation-damped-sine-approximation;original-stereo-phases-remain-in-analysis-only', calibrationHz: rootHz, normalization: 'fixed-selected-mode-L1',
     warnings: [...base.contract.warnings, 'This playable approximation uses new sine-bank excitation. It does not reproduce original phase, stereo pickup geometry or the true material.'] });
   const encoded = canonicalDataText(contract, { maxBytes: 262144, maxNodes: 32768 }), contractHash = await hashDataText(encoded.text), id = 'seed.modal.' + contractHash.slice(0, 24), source = structuredClone(base.source), recipe = source.recipes[0];

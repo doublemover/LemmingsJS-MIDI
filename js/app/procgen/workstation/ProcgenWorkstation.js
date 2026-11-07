@@ -2171,7 +2171,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const ensureSoundSeedLab = () => { if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound authoring ownership is unavailable.'); return soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, getPlayback: () => physicalPlayback, resourceBudget, jobs: backgroundJobs,
-    displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }), onOfferTimbreTuningFit: (fit, options) => handlers.offerTimbreTuningFit(fit, options),
+    displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }), onOfferTimbreTuningFit: (fit, options) => handlers.offerTimbreTuningFit(fit, options), onPrepareFoundBell: (prepared, options) => handlers.prepareFoundBell(prepared, options),
     getTravelMappings: () => { const lane = project.procgen.lanes.findIndex(value => value.id === selected().id); return (runtime()?.world.physicalAuthoring?.graph?.instruments || []).filter(value => { const a = value.articulation; return value.route === 'local' && (!value.sourceLanes || value.sourceLanes.includes(lane)) && (value.sourceKind === 'ContactSpanBegan' && value.causeKind === 'support' && value.contactTravel?.lifetimeScope === 'contactSpan' || value.sourceKind === 'MotionCommitted' && a?.sustain && a.lifetimeScope === 'actorJourney' && a.metric === 'axis-projection' && ['signedX', 'signedY'].includes(a.orientation) && a.phaseMode === 'direction-reversing'); }); }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status }); };
   const getOperationalSnapshot = () => {
     const world = runtime()?.world, laneRuntime = runtime()?.lanes?.getOperationalState?.(), output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState(), position = transport.getState(), metrics = legacy.getOperationalMetrics?.();
@@ -2339,6 +2339,21 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     analyzeTimbreTuningDraft: options => timbreTuningBench?.analyze(options),
     prepareTimbreTuningPair: options => timbreTuningBench?.prepare(options),
     commitTimbreTuningPair: () => timbreTuningBench?.commit(),
+    prepareFoundBell: async (prepared, { signal = null, isCurrent = () => true } = {}) => {
+      signal?.throwIfAborted();
+      const identity = sceneBaseIdentity(), parent = [...(prepared.contract?.ancestry || [])].reverse().find(entry => entry.originKind === 'OFFLINE REVOICE');
+      if (!parent?.takeId) throw new Error('Found Bell needs a frozen revoice of its saved one-contact source take. General fitted-body authoring remains available for other material.');
+      const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs }), workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'found-bell-source-proof', kind: 'one-contact-source-query-and-retained-receipt', category: 'candidate', bytes: 4 * 1048576 }); let metadata = null, source = null;
+      try {
+        const { prepareFoundBellSourceReceipt } = await import('../../../midi/content/FoundBellSourceReceipt.js');
+        metadata = await borrowCausalTake(journal, parent.takeId, { signal }); source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs: backgroundJobs, takeId: parent.takeId, takeRevision: parent.takeRevision, soundPatch: { id: 'found-bell-source-inspection', revision: 1 }, executionEpoch: 'found-bell-source-inspection', limit: 8192, maxIntents: 32768, maxBytes: 4 * 1048576, signal });
+        signal?.throwIfAborted(); if (disposed || !isCurrent() || sceneBaseIdentity() !== identity) throw new Error('The document changed during Found Bell source inspection.');
+        const receipt = await prepareFoundBellSourceReceipt({ contract: prepared.contract, manifest: metadata.value, revoice: source.value });
+        await openPerformanceScenes({ showBrowser: false }); signal?.throwIfAborted(); if (disposed || !isCurrent() || sceneBaseIdentity() !== identity) throw new Error('The document changed during Found Bell assembly.');
+        const row = await sceneCatalog.addFoundBell(prepared, receipt, { signal }); signal?.throwIfAborted(); if (disposed || !isCurrent() || sceneBaseIdentity() !== identity) throw new Error('The document changed before the Found Bell lesson was selected.');
+        sceneBrowser.open({ sceneId: row.id }); return row;
+      } finally { let failure = null; for (const loan of [source, metadata]) if (loan) { try { retireCausalRead(loan); } catch (error) { failure ||= error; } } workspace.release(); if (failure) throw failure; }
+    },
     offerTimbreTuningFit: async (fit, options) => {
       const owner = await getTimbreTuningBench(), source = timbreTuningSource();
       if (!source.lane || source.lane.mode === 'pattern') throw new Error('Select a physical voice before offering a fitted paired spectrum.');

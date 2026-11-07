@@ -15,10 +15,10 @@ import { createInstrumentDisplayScheduler } from '../resources/InstrumentDisplay
 import { deliverArtifactToAnchor } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createSoundSeedLabView({ document, window, audio, getPlayback = () => null, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], coreMaterial: suppliedCoreMaterial = null, onOfferTimbreTuningFit = null, onStatus = () => {} } = {}) {
+export function createSoundSeedLabView({ document, window, audio, getPlayback = () => null, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], coreMaterial: suppliedCoreMaterial = null, onOfferTimbreTuningFit = null, onPrepareFoundBell = null, onStatus = () => {} } = {}) {
   const listeners = [], modeListeners = [], fitOfferButtons = [], retirement = createProcgenRetirementScope();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
-  let streamingMaterial, streamingAudition, streamingFingerprint = null;
+  let streamingMaterial, streamingAudition, streamingFingerprint = null, foundBellController = null;
   let analysis, instrument, derived, warp, coreMaterial, warpDraft = -1, warpRevision = 0, preparedWarpRevision = -1, warpParentSelection = null, composition, compositionDraft = -1, compositionRevision = 0, preparedCompositionRevision = -1, modal, rebuild, surface, offeredSource = null, offeredSerial = 0, rebuildPlan = null, branchDrawn = null, modalSelection = null, modalRevision = 0, preparedModalRevision = -1, modalDraft = -1, modalDrawn = null, modalParentSelection = null, editableModes = [], selectedModes = new Set(), derivedSelection = null, derivedDraft = -1, derivedDrawn = null, disposed = false, active = null, draft = 0, candidateDraft = -1, recipeDraft = 0, compiledDraft = -1, drawn = null, sourceSelection = 0;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
   const listen = (element, event, handler) => { element.addEventListener(event, handler); listeners.push(() => element.removeEventListener(event, handler)); };
@@ -87,8 +87,8 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   const compositionCurrent = () => compositionDraft === draft && preparedCompositionRevision === compositionRevision;
   const warpCurrent = () => { const value = warp?.state().analysis, parent = derivedCandidate(warpParentSelection); return warpDraft === draft && preparedWarpRevision === warpRevision && !!value && parent?.metadata().assetReady && value.parentAssetHash === parent.metadata().assetHash && (warpParentSelection !== 'component-composition' || compositionCurrent()) && (!warpParentSelection || warpParentSelection === 'component-composition' || derivedDraft === draft); };
   const chosenCandidate = () => modalSelection ? modal.component(modalSelection) : derivedCandidate(derivedSelection);
-  const invalidateModal = () => { modalRevision++; compiledDraft = -1; rebuildPlan = null; rebuild.stop(); modal.cancel(); instrument.stop(); refresh(); };
-  const invalidateTrim = () => { streamingAudition?.stop(); streamingMaterial?.clear(); streamingFingerprint = null; rebuildPlan = null; rebuild.stop(); modalSelection = null; modalDraft = -1; modal.cancel(); warp.cancel(); warpDraft = -1; derivedSelection = null; derivedDraft = -1; derived.cancel(); composition.cancel(); compositionDraft = -1; draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
+  const invalidateModal = () => { foundBellController?.abort(new Error('The reviewed fit changed.')); modalRevision++; compiledDraft = -1; rebuildPlan = null; rebuild.stop(); modal.cancel(); instrument.stop(); refresh(); };
+  const invalidateTrim = () => { foundBellController?.abort(new Error('The frozen source changed.')); streamingAudition?.stop(); streamingMaterial?.clear(); streamingFingerprint = null; rebuildPlan = null; rebuild.stop(); modalSelection = null; modalDraft = -1; modal.cancel(); warp.cancel(); warpDraft = -1; derivedSelection = null; derivedDraft = -1; derived.cancel(); composition.cancel(); compositionDraft = -1; draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
   const invalidateRecipe = () => { rebuildPlan = null; rebuild.stop(); recipeDraft++; compiledDraft = -1; instrument.stop(); refresh(); };
   const refreshTravelButton = button('Refresh committed travel mappings', () => { refreshTravelChoices(); invalidateRecipe(); });
   listen(transform, 'change', refreshTravelChoices);
@@ -233,7 +233,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   }));
   const auditionBranch = button('Audition derived branch', run(() => rebuild.audition())), saveBranch = button('Save derived branch locally', run(() => rebuild.install())), applyBranch = button('Apply derived branch to selected lane', run(() => rebuild.apply()));
   const discardBranch = button('Discard candidate branch', run(() => rebuild.clear()));
-  const close = () => { sourceSelection++; streamingMaterial.cancel(); streamingAudition.stop(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); root.hidden = true; };
+  const close = () => { foundBellController?.abort(new Error('Seed Lab closed.')); sourceSelection++; streamingMaterial.cancel(); streamingAudition.stop(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); root.hidden = true; };
   button('Close seed dock', close);
   function resetRange() {
     const source = analysis.state().source; first.value = '0'; end.value = String(Math.min(source.sourceFrames, Math.floor(source.sampleRate * 1.5), Math.floor(15 * 1048576 / 8)));
@@ -327,7 +327,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   for (const input of [transform, pitch, rootPitch, graftBody, textureKind, travelMapping, travelScale]) listen(input, 'change', invalidateRecipe);
   listen(transform, 'change', refreshTravelChoices);
   for (const input of [zoom, viewFirst]) listen(input, 'change', refresh);
-  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { streamingMaterial.cancel(); streamingAudition.stop(); morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); } });
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { foundBellController?.abort(new Error('Found Bell preparation canceled.')); streamingMaterial.cancel(); streamingAudition.stop(); morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); } });
   const morphPane = createResonatorMorphView({ document, window, audio, getPlayback, resourceBudget, jobs });
   for (const index of [0, 1]) { const offer = node('button', 'Offer reviewed fit to MORPH ' + (index ? 'B' : 'A')); offer.type = 'button'; offer.disabled = true; fitOfferButtons.push(offer); listen(offer, 'click', () => { if (disposed || active) return; const fit = modal.state().analysis; if (!fit || modalDraft !== draft || preparedModalRevision !== modalRevision) { say('Prepare the current reviewed fit before offering an endpoint.'); return; } const ids = [...selectedModes]; active = Promise.resolve().then(() => morphPane.offerEndpointSource(index, 'fitted', fit, ids.length ? { modeIds: ids } : {})).then(() => say('Fitted endpoint offered with unknown interaction signatures. Author and review explicit couplings in MORPH.')).catch(error => say(error.message)).finally(() => { active = null; refresh(); }); refresh(); }); bodyPage.append(offer); }
 
@@ -340,6 +340,17 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
       active = Promise.resolve().then(() => { if (revision !== draft || fitRevision !== modalRevision) throw new Error('The reviewed fit changed before offer.'); return onOfferTimbreTuningFit(fit, { modeIds: ids, referenceHz, selectionRevision: fitRevision + 1 }); })
         .then(() => say('Reviewed modes offered as an estimated spectrum draft. Exact original/reconstruction/residual and fit revision are retained. Tuning stays independently authored; prepare/commit remains explicit.'))
         .catch(error => say(error.message)).finally(() => { active = null; refresh(); }); refresh();
+    }); bodyPage.append(offer);
+  }
+  if (typeof onPrepareFoundBell === 'function') {
+    const offer = node('button', 'Prepare Found Bell · three new contacts'); offer.type = 'button'; offer.disabled = true; fitOfferButtons.push(offer);
+    listen(offer, 'click', () => {
+      if (disposed || active) return; const fit = modal.state().analysis, candidate = derivedCandidate(modalParentSelection);
+      if (!fit || modalDraft !== draft || preparedModalRevision !== modalRevision || !candidate?.metadata().assetReady || fit.parentAssetHash !== candidate.metadata().assetHash || pitch.value !== 'pitched' || !rootPitch.value.trim() || !Number.isFinite(Number(rootPitch.value))) { say('Review/refit the current source modes and declare their independent root before preparing Found Bell.'); return; }
+      const controller = new AbortController(); foundBellController = controller;
+      const revision = draft, fitRevision = modalRevision, recipeRevision = recipeDraft, target = JSON.stringify(getTargetIdentity()), current = () => !controller.signal.aborted && !disposed && revision === draft && fitRevision === modalRevision && recipeRevision === recipeDraft && target === JSON.stringify(getTargetIdentity());
+      active = Promise.resolve().then(async () => { await instrument.prepare(candidate, { transform: 'modal-body', modalFit: fit, pitch: { mode: 'pitched', rootCents: Number(rootPitch.value) }, isCurrent: current }); const prepared = await instrument.saveSceneSource({ isCurrent: current }); if (!current()) throw new Error('The reviewed Found Bell source changed.'); await onPrepareFoundBell(prepared, { signal: controller.signal, isCurrent: current }); if (!disposed) root.hidden = true; })
+        .catch(error => say(error.message)).finally(() => { if (foundBellController === controller) foundBellController = null; active = null; refresh(); }); refresh();
     }); bodyPage.append(offer);
   }
   root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, anatomy, cause, advanced, bodyPage, morphPane.element, rebuildPage, actions);
@@ -358,7 +369,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   rebuild = createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, coreMaterial, indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, onApply, onState: refresh,
     getTargetIdentity: () => ({ target: getTargetIdentity(), draft, recipeDraft, modalRevision, offeredSerial }), onReveal: () => { if (!disposed) { root.hidden = false; refresh(); } } });
   async function loadSource(source) {
-    if (disposed) return; const selection = ++sourceSelection; root.hidden = false; streamingMaterial.cancel(); streamingMaterial.clear(); streamingFingerprint = null; const stopped = streamingAudition.stop(); await stopped.completion; if (stopped.outcome !== 'complete') throw new Error('The previous streaming preview has unresolved output ownership.'); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop();
+    if (disposed) return; foundBellController?.abort(new Error('A different seed source was selected.')); const selection = ++sourceSelection; root.hidden = false; streamingMaterial.cancel(); streamingMaterial.clear(); streamingFingerprint = null; const stopped = streamingAudition.stop(); await stopped.completion; if (stopped.outcome !== 'complete') throw new Error('The previous streaming preview has unresolved output ownership.'); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop();
     await instrument.clear(); await rebuild.clear(); rebuildPlan = null; await modal.clear(); await warp.clear(); warpDraft = -1; warpParentSelection = null; modalSelection = null; modalDraft = -1; await composition.clear(); compositionDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1; if (selection !== sourceSelection || disposed) return;
     await analysis.selectSource(source); if (selection !== sourceSelection || disposed) return; resetRange(); root.scrollIntoView?.({ block: 'nearest' }); first.focus(); say('Choose an exact parent-frame range. The original source is retained by its capture or render owner.');
   }
@@ -370,9 +381,9 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
     if (disposed) return; refreshTravelChoices(); if (analysis.candidate()?.metadata().assetReady) { offeredSource = source; offeredSerial++; rebuild.stop(); rebuildPlan = null; root.hidden = false; rebuildPage.open = true; refresh(); say('New source offered. The current frozen material is unchanged.'); return; }
     await active?.catch(() => {}); await loadSource(source);
   }, state: () => Object.freeze({ morph: morphPane.state(), analysis: analysis.state(), derived: derived.state(), warp: warp.state(), warpSource: coreMaterial.state(), streaming: streamingMaterial.state(), streamingAudition: streamingAudition.state(), warpCurrent: warpCurrent(), composition: composition.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
-  suspend() { streamingMaterial.cancel(); streamingAudition.stop(); morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); },
+  suspend() { foundBellController?.abort(new Error('Seed Lab suspended.')); streamingMaterial.cancel(); streamingAudition.stop(); morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop(); },
   dispose() {
-    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sourceSelection++; streamingMaterial.cancel(); streamingAudition.stop(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop();
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; foundBellController?.abort(new Error('Seed Lab retired.')); sourceSelection++; streamingMaterial.cancel(); streamingAudition.stop(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); warp.cancel(); rebuild.stop(); instrument.stop();
     const retire = async owner => { const receipt = owner.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Seed material retains unresolved producers or readers.'); };
     const stopped = Promise.resolve(active).catch(() => {}), instrumentFinished = stopped.then(() => retire(instrument)), rebuildFinished = instrumentFinished.then(() => retire(rebuild)), modalFinished = rebuildFinished.then(() => retire(modal)), compositionFinished = modalFinished.then(() => retire(warp)).then(() => retire(composition)), derivedFinished = compositionFinished.then(() => retire(derived)), analysisFinished = derivedFinished.then(() => retire(analysis));
     const streamingFinished = stopped.then(async () => { await retire(streamingAudition); await retire(streamingMaterial); });
