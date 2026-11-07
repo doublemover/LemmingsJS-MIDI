@@ -2103,3 +2103,31 @@ Expired attacks and stale expression updates refuse admission; releases remain d
 Native desktop fixtures observe committed batches, the public clock correlations and durable sink outcomes, then independently recompute each original target. They distinguish local finite PCM from declared MIDI API submissions and inspect actual timestamp arguments at the MIDI stub boundary. Controlled source walls/stall thresholds produce ordinary cohort restart without posing actors or injecting epochs. These are timing/ownership checks; receiver and acoustic behavior remain separate.
 
 Project load failures belong to the open project picker. The load callback propagates its original storage/worker/preparation failure to that owner's live feedback, which remains available for retry. A background preference-write error may update its own status without replacing the picker failure or publishing an unprepared world. Cancelled or stale selection callbacks still cannot adopt a candidate.
+
+## Engine-stack decision and common comparison (#975)
+
+The implementation selects the lightweight native Web Audio backend plus the original owned source/effect kernels. Both use the shared semantic owner, event clock, resource and lifecycle contracts. Immutable application descriptors pin renderer versions and transitive source artifacts; names alone cannot authorize a backend. Optional source banks, sound material and stretch assets remain lazy.
+
+| Candidate | Decision | Evidence and limits |
+| --- | --- | --- |
+| Native Web Audio and original owned kernels | Selected implementation; current qualification pending | Shared context, stable owned voice IDs, floating controls and causal offline replay. Requested16/32/64 voices are admitted or explicitly refused; capacity is never silently increased. |
+| Faust stock polyphonic adapter | Unselected at1c0d17a7bb4a047a4a08cb34a0bc6a3ee2019b67 | Inspected channel/pitch note API does not establish independently owned historical voice handles. A mono-instance bank or voice-handle extension would need its own adapter/evidence. |
+| SpessaSynth stock MIDI adapter | Unselected at40f9be2014a0312bc2fec14f215cb90510876a4e | Inspected channel/key note-off and MIDI-style controllers do not establish independent local expression/release-velocity semantics. |
+| Tone helpers | Unselected | No additional required role is demonstrated beyond the selected native/owned stack. No global Transport is introduced. This is not a measured performance rejection or a current version claim. |
+| Signalsmith Stretch1.3.2 | Separate optional core role | Existing a670068d9aeb64913331d5cc29337b19a457a7df core is byte-verified64,494-byte WASM behind the owned adapter. The mutable upstream JS scheduler is not executed. Source-build reproducibility and runtime/device qualification have separate limits. |
+
+The pinned primary API evidence is [Faust](https://github.com/grame-cncm/faustwasm/blob/1c0d17a7bb4a047a4a08cb34a0bc6a3ee2019b67/src/FaustWebAudioDsp.ts) and [SpessaSynth](https://github.com/spessasus/spessasynth_lib/blob/40f9be2014a0312bc2fec14f215cb90510876a4e/src/synthesizer/basic/basic_synthesizer.ts). These are inspected adapter decisions, not runtime measurements of uninstalled alternatives. No Faust, SpessaSynth or Tone dependency/bank was added to the lockfile. Exact optional core bytes/source binding are in OwnedStretchCoreIdentity.js. Original laboratory recipes retain NOASSERTION.
+
+The default command prints its bounded plan without rendering:
+
+    npm run qualify:engine-stack -- --name=rook
+
+After development, the explicit runtime campaign command is:
+
+    npm run qualify:engine-stack -- --name=rook --execute=true --browser=chromium --traces=<captured-physical-fixtures.json> --out-dir=temp/engine-stack-<new-run>
+
+The command compares six exact shipped native/owned entries through the existing shared backend/renderer. Common authored inputs cover pluck gates, sustained bends, drum bursts, independent same-pitch expression/end times and an actual Quarry echo tail at16/32/64 requested voices. Capacity refusals remain negative admission rows. Authored controls do not count as captured physical evidence; missing sparse/medium/dense real fixtures keep the aggregate partial.
+
+Results retain source snapshots, common plans/cases, WAVs and gesture descriptor receipts. Transfer inventory sums separately gzip-compressed verified source modules per renderer closure; shared modules are counted per candidate. HTTP headers, generated banks, cache reuse and device transfers are excluded.
+
+Offline planning/assets/render/encoding wall times and reserved workspace bounds are distinct from real-time cost. Live block/queue p99, first usable live note, observed memory, device latency and subjective quality stay unknown until their separate campaign. Offline time is not substituted for those columns. No current comparison results were generated during the frontloaded development pass.

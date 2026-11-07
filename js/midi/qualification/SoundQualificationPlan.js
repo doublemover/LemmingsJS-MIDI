@@ -1,3 +1,4 @@
+import { createQuarryEcho } from '../content/DubQuarryRack.js';
 import { validateInstrumentPatchV2 } from '../content/InstrumentPatchV2.js';
 import { validateInstrumentControls } from '../content/InstrumentPerformance.js';
 import { canonicalDataText, hashData, freezeData } from '../../core/CanonicalData.js';
@@ -36,11 +37,11 @@ export async function admitRecordedSoundFixture(value) {
     fail('recorded fixtures require covered immutable real-world facts, checkpoints and semantic hashes; no silent substitute.');
   return freezeData(structuredClone(value));
 }
-export async function createSoundQualificationPlan({ definition, descriptor, traces = [], applicationBuildId, source, sampleRates = SOUND_QUALIFICATION_PROFILE.sampleRates, includeMacroGrid = true } = {}) {
+export async function createSoundQualificationPlan({ definition, descriptor, traces = [], applicationBuildId, source, sampleRates = SOUND_QUALIFICATION_PROFILE.sampleRates, includeMacroGrid = true, includeEngineStack = false } = {}) {
   const patch = validateInstrumentPatchV2(definition, descriptor), definitionHash = await hashData(definition);
   if (!/^[a-f0-9]{64}$/.test(applicationBuildId) || source?.definitionHash !== definitionHash || source.patchIdentity !== patch.id + '@' + patch.revision ||
       !/^[a-f0-9]{64}$/.test(source.contentHash) || !Array.isArray(sampleRates) || !sampleRates.length || sampleRates.length > 3 || new Set(sampleRates).size !== sampleRates.length ||
-      sampleRates.some(rate => !SOUND_QUALIFICATION_PROFILE.sampleRates.includes(rate)) || !Array.isArray(traces) || traces.length > 3 || typeof includeMacroGrid !== 'boolean') fail('unbound source, rates or trace inventory.');
+      sampleRates.some(rate => !SOUND_QUALIFICATION_PROFILE.sampleRates.includes(rate)) || !Array.isArray(traces) || traces.length > 3 || typeof includeMacroGrid !== 'boolean' || typeof includeEngineStack !== 'boolean') fail('unbound source, rates or trace inventory.');
   const tolerance = SOUND_QUALIFICATION_PROFILE.tolerance[descriptor.engineId]; if (!tolerance) fail('the engine has no declared qualification tolerance profile.');
   const recorded = []; for (const trace of traces) recorded.push(await admitRecordedSoundFixture(trace));
   if (new Set(recorded.map(value => value.density)).size !== recorded.length) fail('density fixtures must be distinct source-bound captures.');
@@ -50,10 +51,11 @@ export async function createSoundQualificationPlan({ definition, descriptor, tra
   for (const note of SOUND_QUALIFICATION_PROFILE.notes) for (const velocity of SOUND_QUALIFICATION_PROFILE.velocities) for (const gateSeconds of SOUND_QUALIFICATION_PROFILE.gatesSeconds)
     fixtures.push(await createAuthoredNoteQualificationFixture({ note, velocity, gateSeconds }));
   fixtures.push(...recorded);
+  if (includeEngineStack) fixtures.push(...await createEngineStackQualificationFixtures());
   const control = fixtures.find(value => value.note === 60 && value.velocity === 64 && value.gateSeconds === 1.2), calibration = [control, ...(recorded.find(value => value.density === 'medium') ? [recorded.find(value => value.density === 'medium')] : [])];
   const overBudget = await createAuthoredNoteQualificationFixture({ note: 60, velocity: 64, gateSeconds: 1.2, voices: Math.min(257, patch.voicePolicy.maxVoices + 1) }); fixtures.push(overBudget);
   for (const sampleRate of sampleRates) {
-    for (const fixture of fixtures) if (fixture !== overBudget) add(fixture, { sampleRate });
+    for (const fixture of fixtures) if (fixture !== overBudget) add(fixture, { sampleRate, ...(fixture.voices > patch.voicePolicy.maxVoices ? { role: 'negative-voice-budget', expected: 'admission-rejection' } : {}) });
     if (patch.variation) for (const fixture of recorded) {
       add(fixture, { sampleRate, role: 'identity-zero', controls: { variationAmount01: 0 } });
       add(fixture, { sampleRate, role: 'identity-reroll', controls: { variationSeed: patch.variation.seed === 2147483647 ? -2147483648 : patch.variation.seed + 1 } });
@@ -70,9 +72,34 @@ export async function createSoundQualificationPlan({ definition, descriptor, tra
   if (cases.length > SOUND_QUALIFICATION_PROFILE.maximumCases) fail('case budget exceeded.');
   const value = { schema: 'lemmings-sound-qualification-plan/v1', definitionHash, source, descriptor, definition, applicationBuildId,
     profile: SOUND_QUALIFICATION_PROFILE, tolerance, fixtures, cases, macroIntents: patch.macros.map(macro => ({ id: macro.id, mode: macro.mode, default01: macro.default01, intent: macro.perceptualDirection, targets: macro.targets })),
-    coverage: { requiredPhysicalDensities: ['sparse', 'medium', 'dense'], providedPhysicalDensities: recorded.map(value => value.density), missingPhysicalDensities: ['sparse', 'medium', 'dense'].filter(id => !recorded.some(value => value.density === id)),
+    coverage: { engineStack: includeEngineStack ? { revision: 'identical-owned-semantic-workloads-v1', voiceCounts: [16, 32, 64], kinds: ['pluck', 'sustained-bend', 'drum-burst', 'per-note-expression', 'effect-tail'], scope: 'identical-inputs;explicit-capacity-refusals;offline-PCM-not-live-device-cost' } : null, requiredPhysicalDensities: ['sparse', 'medium', 'dense'], providedPhysicalDensities: recorded.map(value => value.density), missingPhysicalDensities: ['sparse', 'medium', 'dense'].filter(id => !recorded.some(value => value.density === id)),
       pairedGrid: includeMacroGrid ? 'finite-5x5-points-only-no-continuum-proof' : 'not-requested', qualityTier: descriptor.engineId + '@' + descriptor.engineVersion,
       identityVariation: patch.variation ? recorded.length ? 'same-recorded-trace-zero-and-reroll' : 'requires-recorded-fixtures' : 'not-authored',
       panic: 'separate-backend-conformance-required', listening: 'not-run' } };
   canonicalDataText(value, { maxBytes: 16 * 1048576, maxNodes: 1048576 }); return freezeData({ ...value, planHash: await hashData(value) });
+}
+
+export async function createEngineStackQualificationFixtures() {
+  const fixtures = [];
+  for (const voices of [16, 32, 64]) for (const kind of ['pluck', 'sustained-bend', 'drum-burst', 'per-note-expression', 'effect-tail']) {
+    const gateSeconds = kind === 'pluck' || kind === 'drum-burst' ? 0.04 : 1.2, base = await createAuthoredNoteQualificationFixture({ note: 60, velocity: 64, gateSeconds, voices }),
+      source = JSON.parse(canonicalDataText(base.revoice).text), original = source.intents, intents = [];
+    const event = (intent, seconds, suffix = '') => ({ ...intent, intentId: kind + ':' + intent.intentId + suffix, voiceId: intent.voiceId + suffix, onsetId: intent.onsetId + suffix,
+      velocity01: 0.6 / voices, scoreTime: { ...intent.scoreTime, sourceTimeMs: seconds * 1000 } });
+    for (const intent of original) intents.push(event(intent, intent.scoreTime.sourceTimeMs / 1000));
+    if (kind === 'drum-burst') for (let burst = 1; burst <= 3; burst++) for (const intent of original) intents.push(event(intent, intent.scoreTime.sourceTimeMs / 1000 + burst * 0.08, ':burst' + burst));
+    if (kind === 'sustained-bend' || kind === 'per-note-expression') for (let index = 0; index < voices; index++) {
+      const begin = intents.find(intent => intent.kind === 'begin' && intent.actorId === index);
+      for (const [step, seconds] of [0.2, 0.45, 0.7, 0.95].entries()) { if (kind === 'per-note-expression' && index < voices / 2 && seconds >= 0.55) continue; intents.push({ ...event(begin, seconds), kind: 'update', intentId: kind + ':update:' + index + ':' + step,
+        expression: { pressure01: step % 2 ? 0.8 : 0.25, pan01: kind === 'per-note-expression' ? index % 2 ? 0.6 : -0.6 : 0, pitchOffsetCents: kind === 'sustained-bend' ? (index % 2 ? -1 : 1) * [35, -20, 0, 12][step] : 0 } }); }
+      if (kind === 'per-note-expression' && index < voices / 2) intents.find(intent => intent.kind === 'end' && intent.actorId === index).scoreTime.sourceTimeMs = 550;
+    }
+    intents.sort((a, b) => a.scoreTime.sourceTimeMs - b.scoreTime.sourceTimeMs || Number(b.kind === 'end') - Number(a.kind === 'end') || (a.intentId < b.intentId ? -1 : a.intentId > b.intentId ? 1 : 0));
+    const effectGraph = kind === 'effect-tail' ? createQuarryEcho({ send01: 0.25 }) : null,
+      sourceCanonicalHash = await hashData({ schema: 'lemmings-engine-stack-fixture/v1', revision: 1, voices, kind, intents, effectGraph });
+    source.intents = intents; source.sourceCanonicalHash = sourceCanonicalHash; source.takeId = 'engine-stack:' + sourceCanonicalHash; source.sourceVersions = { fixture: 'identical-owned-semantic-workloads-v1' };
+    fixtures.push(freezeData({ ...base, id: 'engine-stack-' + kind + '-' + voices, revoice: source, fixtureHash: await hashData(source), effectGraph,
+      engineStack: { kind, requestedVoices: voices, samePitchIdentity: true, commonAggregateVelocity: 0.6, source: 'authored-semantic-controls-not-recorded-physics' } }));
+  }
+  return freezeData(fixtures);
 }
