@@ -78,6 +78,7 @@ export interface PhysicalPlaybackOptions {
   isPlaybackEnabled?: () => boolean;
   initialMorphMechanism?: unknown;
   initialCavityBody?: unknown;
+  initialPreparedSurface?: unknown;
   continuationStaging?: boolean;
   presentationDelayMs?: number;
   documentEpoch?: string;

@@ -32,8 +32,8 @@ export function createPreparedSurfaceBodyOwner({ documentEpoch, inventory, apply
     if (receipt?.status !== 'accepted' || receipt.graphDefinitionHash !== body.identity.graphDefinitionHash || receipt.targetFrame !== targetFrame) throw new Error('The exact prepared body did not acknowledge native control submission.');
     lastTargetFrame = Math.max(lastTargetFrame, targetFrame + bindingFrameOffset); return receipt;
   };
-  const bind = async ({ surfaceId, surfaceRevision, surfaceMap, nodeId = 'skin', preparationKinds = null, lossMaskIds = null, executionEpoch, worldId: boundWorld, generation: boundGeneration, expected: route }) => {
-    if (disposed || blocked) throw blocked || new Error('Prepared surface bindings have retired.'); prune(); const request = ++serial;
+  const bind = async ({ surfaceId, surfaceRevision, surfaceMap, nodeId = 'skin', preparationKinds = null, lossMaskIds = null, executionEpoch, worldId: boundWorld, generation: boundGeneration, expected: route, isCurrent = () => true }) => {
+    if (disposed || blocked || !isCurrent()) throw blocked || new Error('Prepared surface bindings have retired or changed.'); prune(); const request = ++serial;
     if (execution !== null && (execution !== executionEpoch || worldId !== boundWorld || generation !== boundGeneration)) throw new Error('Retire the previous prepared execution before binding another.');
     const target = inventory().find(body => body.active && body.nodeId === nodeId && body.ownerRouteRevision === route?.ownerRouteRevision && body.graphDefinitionHash === route.graphDefinitionHash);
     if (!target || target.quarantined) throw new Error('The exact prepared body is unavailable or its retained-body limit is full.');
@@ -43,7 +43,7 @@ export function createPreparedSurfaceBodyOwner({ documentEpoch, inventory, apply
     const identity = await preparedBodyIdentity({ documentEpoch, executionEpoch, worldId: boundWorld, generation: boundGeneration, surfaceId, surfaceRevision, surfaceMap,
       owner: target.owner, ownerGeneration: target.ownerGeneration, ownerRouteRevision: target.ownerRouteRevision, graphDefinitionHash: target.graphDefinitionHash, nodeId, processorRevision: target.processorRevision });
     const currentTarget = inventory().find(body => body.active && targetKey(body) === targetKey(identity));
-    if (disposed || serial !== request || !currentTarget) throw new Error('A later body preparation superseded this binding.');
+    if (disposed || serial !== request || !currentTarget || !isCurrent()) throw new Error('A later body preparation superseded this binding.');
     if (bodies.has(identity.bodyInstanceId)) return bodies.get(identity.bodyInstanceId).identity;
     if (currentTarget.lossMasks?.some(mask => mask.target01 !== 0 || mask.pendingFuture)) throw new Error('Release the authored manual mode-loss controls and finish future manual automation before assigning physical contact owners.');
     if (Object.values(currentTarget.pickupGrid?.controls || {}).some(control => control.pendingFuture)) throw new Error('Finish future manual pickup automation before assigning observed contact owners.');
