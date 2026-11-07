@@ -389,6 +389,7 @@
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
         "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
+        "js/app/procgen/workstation/PreparedSurfaceBodyOwner.js",
         "js/app/procgen/workstation/ProcgenCheckpoint.js",
         "js/app/procgen/workstation/ProcgenCheckpointProvenance.js",
         "js/app/procgen/workstation/ProcgenInspectionWorld.js",
@@ -410,6 +411,7 @@
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/ScenePreparedSurface.js",
+        "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -731,8 +733,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 577,
-      "sha256": "c1387a59680e12f8a5e9e6614ddc58b34e4b5d21f9a446d52c857c0e79ddc0ac",
+      "fileCount": 579,
+      "sha256": "ea1cc0efd443d56c074e1da0204dc76288d750c15e231b599c3d7be5a09b60bc",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1113,6 +1115,7 @@
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
         "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
+        "js/app/procgen/workstation/PreparedSurfaceBodyOwner.js",
         "js/app/procgen/workstation/ProcgenCheckpoint.js",
         "js/app/procgen/workstation/ProcgenCheckpointProvenance.js",
         "js/app/procgen/workstation/ProcgenInspectionWorld.js",
@@ -1132,6 +1135,7 @@
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/ScenePreparedSurface.js",
+        "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -1486,8 +1490,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 610,
-      "sha256": "de7757eac31bf6591f54eeae9ae22f10a2fd9a2aee534af604f0d7536e75d1ff",
+      "fileCount": 612,
+      "sha256": "75bdc27a8faeebd51e9aaf95d05aa13d918f5931141a46f2ea2079d6c6893f5f",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1748,6 +1752,7 @@
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
         "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
+        "js/app/procgen/workstation/PreparedSurfaceBodyOwner.js",
         "js/app/procgen/workstation/ProcgenCheckpoint.js",
         "js/app/procgen/workstation/ProcgenCheckpointProvenance.js",
         "js/app/procgen/workstation/ProcgenInspectionWorld.js",
@@ -1767,6 +1772,7 @@
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/ScenePreparedSurface.js",
+        "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -2091,8 +2097,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 588,
-      "sha256": "0f671284c30309fd4dba6535cb1d7559cdbbed33f2f5f3c9a4a4651fe589517c",
+      "fileCount": 590,
+      "sha256": "9c74b35cc72ade3b5733936c81fb18ed29dad032f651f78173b5a4b463d0da19",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2499,6 +2505,7 @@
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
         "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
+        "js/app/procgen/workstation/PreparedSurfaceBodyOwner.js",
         "js/app/procgen/workstation/ProcgenCheckpoint.js",
         "js/app/procgen/workstation/ProcgenCheckpointProvenance.js",
         "js/app/procgen/workstation/ProcgenInspectionWorld.js",
@@ -2518,6 +2525,7 @@
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/ScenePreparedSurface.js",
+        "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -2855,8 +2863,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 661,
-      "sha256": "a18861c360ee42d709d62113855b6ba5388e6c645587f9c78bf84004f8ab8606",
+      "fileCount": 663,
+      "sha256": "68b504abda83ecfff15350520b345405c84b2d6dd0b2cbda1346565629c4ea5c",
       "inventoryScope": "first-party-artifact"
     }
   ]
