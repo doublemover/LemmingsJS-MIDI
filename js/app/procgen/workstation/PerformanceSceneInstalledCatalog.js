@@ -1,3 +1,4 @@
+import { createGlacierWeatherScores } from './GlacierWeatherScore.js';
 import { createFoundBellScore } from './FoundBellScore.js';
 import { createResonanceTerrariumScores } from './ResonanceTerrariumScore.js';
 import { createPocketFoundryScore } from './PocketFoundryScore.js';
@@ -29,7 +30,7 @@ import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 // Larger named performances still need their authored geometry and qualification.
 export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal } = {}) {
   signal?.throwIfAborted(); const catalog = await getCatalog(); signal?.throwIfAborted();
-  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(); let nurseryPending = false, foundryPending = false, foundBellPending = false;
+  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(), preparedWeather = new Map(); let nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
   if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return Object.freeze({ registry, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } });
   const sourceHash = catalog.executionIdentity.buildId, descriptor = catalog.descriptors.find(value => value.engineId === 'worklet-sine');
   const put = (kind, id, revision, hash, storage = 'installed-runtime') => { const value = { kind, id, revision, hash, status: 'available', storage }; available.set(sceneDependencyKey(value), freezeData(value)); };
@@ -179,6 +180,13 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
       try {
         const item = await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedNurseries.set(key, row); requestSignal?.throwIfAborted(); return row;
       } finally { nurseryPending = false; }
+    },
+    async addGlacierWeather(prepared, { signal: requestSignal } = {}) {
+      requestSignal?.throwIfAborted(); const key = prepared.reference.definitionHash;
+      if (preparedWeather.has(key)) return preparedWeather.get(key);
+      if (weatherPending || preparedWeather.size >= 8) throw new Error('Finish this weather preparation; at most eight captured seed palettes are retained.'); weatherPending = true;
+      try { const items = await createGlacierWeatherScores({ sourceHash, choirDescriptor: choir, granularDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-granular'), prepared, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWeather.set(key, rows); requestSignal?.throwIfAborted(); return rows; }
+      finally { weatherPending = false; }
     },
     async addFoundBell(prepared, sourceReceipt, { signal: requestSignal } = {}) {
       requestSignal?.throwIfAborted(); const key = sourceReceipt.receiptHash + ':' + prepared.reference.definitionHash;

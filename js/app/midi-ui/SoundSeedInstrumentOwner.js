@@ -134,7 +134,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
     current.installed = true; check(); phase = 'durable'; return receipt;
   });
   const saveSceneSource = ({ isCurrent = () => true } = {}) => run('retaining-reviewed-fit-for-scene', async (operation, check) => {
-    if (!current || current.contract.transform !== 'modal-body' || !isCurrent()) throw fail('Prepare the exact reviewed modal body before retaining its scene source.');
+    if (!current || !['modal-body', 'ice-dust'].includes(current.contract.transform) || !isCurrent()) throw fail('Prepare an exact reviewed modal body or captured Ice Dust source before retaining its scene source.');
     await installation.install(current.stage, { referenceOnly: true, signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent() }); check(); if (!isCurrent()) throw fail('The reviewed fit target changed.');
     const lease = borrowSoundContentStage(current.stage);
     try { const patch = lease.prepared.patches.find(row => row.identity === current.identity); if (!patch) throw fail('The exact fitted patch is unavailable.');

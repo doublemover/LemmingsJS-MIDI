@@ -2171,7 +2171,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const ensureSoundSeedLab = () => { if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound authoring ownership is unavailable.'); return soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, getPlayback: () => physicalPlayback, resourceBudget, jobs: backgroundJobs,
-    displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }), onOfferTimbreTuningFit: (fit, options) => handlers.offerTimbreTuningFit(fit, options), onPrepareFoundBell: (prepared, options) => handlers.prepareFoundBell(prepared, options),
+    displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }), onOfferTimbreTuningFit: (fit, options) => handlers.offerTimbreTuningFit(fit, options), onPrepareFoundBell: (prepared, options) => handlers.prepareFoundBell(prepared, options), onPrepareGlacierWeather: (prepared, options) => handlers.prepareGlacierWeather(prepared, options),
     getTravelMappings: () => { const lane = project.procgen.lanes.findIndex(value => value.id === selected().id); return (runtime()?.world.physicalAuthoring?.graph?.instruments || []).filter(value => { const a = value.articulation; return value.route === 'local' && (!value.sourceLanes || value.sourceLanes.includes(lane)) && (value.sourceKind === 'ContactSpanBegan' && value.causeKind === 'support' && value.contactTravel?.lifetimeScope === 'contactSpan' || value.sourceKind === 'MotionCommitted' && a?.sustain && a.lifetimeScope === 'actorJourney' && a.metric === 'axis-projection' && ['signedX', 'signedY'].includes(a.orientation) && a.phaseMode === 'direction-reversing'); }); }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status }); };
   const getOperationalSnapshot = () => {
     const world = runtime()?.world, laneRuntime = runtime()?.lanes?.getOperationalState?.(), output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState(), position = transport.getState(), metrics = legacy.getOperationalMetrics?.();
@@ -2339,6 +2339,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     analyzeTimbreTuningDraft: options => timbreTuningBench?.analyze(options),
     prepareTimbreTuningPair: options => timbreTuningBench?.prepare(options),
     commitTimbreTuningPair: () => timbreTuningBench?.commit(),
+    prepareGlacierWeather: async (prepared, { signal = null, isCurrent = () => true } = {}) => {
+      signal?.throwIfAborted(); const identity = sceneBaseIdentity(), workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'glacier-weather-source', kind: 'captured-weather-scene-reference-handoff', category: 'candidate', bytes: 2 * 1048576 });
+      try {
+        await openPerformanceScenes({ showBrowser: false }); signal?.throwIfAborted(); if (disposed || !isCurrent() || sceneBaseIdentity() !== identity) throw new Error('The captured weather source or document changed.');
+        const rows = await sceneCatalog.addGlacierWeather(prepared, { signal }); signal?.throwIfAborted(); if (disposed || !isCurrent() || sceneBaseIdentity() !== identity) throw new Error('The document changed before the weather palette was selected.');
+        sceneBrowser.open({ sceneId: rows[0].id }); return rows;
+      } finally { workspace.release(); }
+    },
     prepareFoundBell: async (prepared, { signal = null, isCurrent = () => true } = {}) => {
       signal?.throwIfAborted();
       const identity = sceneBaseIdentity(), parent = [...(prepared.contract?.ancestry || [])].reverse().find(entry => entry.originKind === 'OFFLINE REVOICE');

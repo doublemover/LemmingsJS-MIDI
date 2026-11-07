@@ -47,7 +47,7 @@ const schemas = freezeData({
     .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(
       [parameter('position01', 0, 1, 0.5, 'normalized'), parameter('densityHz', 0, 48, 12, 'Hz'), parameter('grainMilliseconds', 20, 140, 70, 'ms'),
         parameter('spread01', 0, 1, 0.2, 'normalized'), parameter('activity01', 0, 1, 0, 'normalized'), parameter('tone01', 0, 1, 0.7, 'normalized')]
-        .map(spec => Object.freeze({ ...spec, causalLiveSafe: true })), parameter('freezePosition', 0, 1, 0, 'enum', true), envelope(0.01, 0.1, 0.8, 0.5)),
+        .map(spec => Object.freeze({ ...spec, causalLiveSafe: true })), Object.freeze({ ...parameter('freezePosition', 0, 1, 0, 'enum', true), liveSafe: true }), envelope(0.01, 0.1, 0.8, 0.5)),
   'worklet-spectrum': [parameter('sourceMode', 0, 2, 0, 'enum', true),
     parameter('circularPeriodRatio', 1, 3, 2, 'ratio'), parameter('circularReferenceHz', 1, 20000, 55, 'Hz'), parameter('circularCenterHz', 20, 20000, 700, 'Hz'),
     parameter('circularWidthOctaves', 0.25, 3, 1.2, 'octaves'), parameter('circularLowHz', 20, 10000, 80, 'Hz'), parameter('circularHighHz', 40, 20000, 8000, 'Hz'),
