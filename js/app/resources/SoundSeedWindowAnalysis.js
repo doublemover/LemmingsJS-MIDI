@@ -1,3 +1,4 @@
+import { cropCausalOnsetCoverage } from '../../midi/content/CausalOnsetCoverage.js';
 import { canonicalDataText, freezeData, hashData } from '../../core/CanonicalData.js';
 import { encodeOwnedAudioWav } from '../midi-ui/OwnedAudioWav.js';
 
@@ -97,7 +98,7 @@ export async function analyzeSoundSeedWindow(input, { signal, current = () => tr
     bakedEffects: origin.schema === 'lemmings-master-pcm/v1' ? 'all-original-master-effects-and-protection' : origin.effectGraph?.hash ?? origin.bakedEffects ?? 'none-declared',
     regeneration: 'requires-separately-retained-original-source;not-required-to-play-frozen-PCM' }];
   const manifest = freezeData({ schema: 'lemmings-sound-seed/v1', revision: SOUND_SEED_ANALYSIS_REVISION, frames, sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', tap: 'frozen-source-region-with-explicit-fades',
-    rawPcmHash, pcmHash, bakedEffects: origin.schema === 'lemmings-master-pcm/v1' ? 'all-original-master-effects-and-protection' : origin.effectGraph?.hash ?? origin.bakedEffects ?? 'none-declared', normalization: 'none', dither: 'none-float-output', fades: { inFrames: fadeIn, outFrames: fadeOut, law }, coverage, ancestry,
+    rawPcmHash, pcmHash, causalOnsets: cropCausalOnsetCoverage(origin.causalOnsets, firstFrame, endFrame), bakedEffects: origin.schema === 'lemmings-master-pcm/v1' ? 'all-original-master-effects-and-protection' : origin.effectGraph?.hash ?? origin.bakedEffects ?? 'none-declared', normalization: 'none', dither: 'none-float-output', fades: { inFrames: fadeIn, outFrames: fadeOut, law }, coverage, ancestry,
     statistics: { rawPeak, peak, rawRms: Math.sqrt(rawSquares / (frames * 2)), rms: Math.sqrt(squares / (frames * 2)), rawClippedSamples: rawClipping, clippedSamples: clipping,
       stereoCorrelation: ll > 0 && rr > 0 ? Math.max(-1, Math.min(1, lr / Math.sqrt(ll * rr))) : null, silence: rawPeak < 1e-8 },
     bakedCausePolicy: 'sample-transients-are-original-ancestry;each-new-trigger-retains-its-own-semantic-onset', physicalTakeEvidence: false,

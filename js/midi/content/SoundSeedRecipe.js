@@ -1,6 +1,7 @@
+import { cropCausalOnsetCoverage } from './CausalOnsetCoverage.js';
 import { canonicalDataText, freezeData, hashDataText } from '../../core/CanonicalData.js';
 
-export const SOUND_SEED_RECIPE_REVISION = 'frozen-seed-recipes-v1';
+export const SOUND_SEED_RECIPE_REVISION = 'frozen-seed-recipes-v2-causal-onsets';
 export const SOUND_SEED_TRANSFORMS = Object.freeze(['hammer-seed', 'ice-dust', 'route-relic']);
 const fail = message => { throw new TypeError('Sound seed recipe: ' + message); };
 const quantity = (value, unit) => ({ value, unit });
@@ -17,6 +18,8 @@ export async function createSoundSeedRecipe({ manifest, assetHash, byteLength, t
       !SOUND_SEED_TRANSFORMS.includes(transform) || !pitch || !['pitched', 'unpitched'].includes(pitch.mode) || Object.keys(pitch).some(key => !['mode', 'rootCents'].includes(key))) fail('Select a complete frozen material region and a supported transform. Missing/unknown source coverage cannot become playable verified material.');
   if (pitch.mode === 'pitched' ? !Number.isFinite(pitch.rootCents) || pitch.rootCents < 2400 || pitch.rootCents > 9600 : pitch.rootCents != null) fail('Declare an editable root pitch or Unpitched without a fictional root.');
   if (transform === 'ice-dust' && pitch.mode === 'unpitched') fail('Ice dust currently requires a declared root pitch for its varispeed granular renderer. Unpitched material remains available to the sampler recipes.');
+  if (manifest.causalOnsets != null && (manifest.causalOnsets.frames !== manifest.frames || manifest.causalOnsets.sampleRate !== manifest.sampleRate)) fail('The onset annotation uses a different frozen frame domain.');
+  const causalOnsets = cropCausalOnsetCoverage(manifest.causalOnsets, 0, manifest.frames);
   const duration = manifest.frames / manifest.sampleRate, warnings = [];
   if (manifest.statistics?.silence) warnings.push('Selected PCM is silent.');
   if (manifest.statistics?.clippedSamples) warnings.push('Selected PCM contains clipping; no normalization or repair was applied.');
@@ -25,7 +28,7 @@ export async function createSoundSeedRecipe({ manifest, assetHash, byteLength, t
   if (manifest.bakedEffects !== 'none-declared') warnings.push('Original effects are printed into this PCM. This recipe adds no creative effect graph; review the destination lane sends before applying.');
   const contract = freezeData({ schema: 'lemmings-sound-seed-recipe/v1', algorithmRevision: SOUND_SEED_RECIPE_REVISION, assetHash, frames: manifest.frames, sampleRate: manifest.sampleRate,
     parentAssetHash: manifest.ancestry.at(-1).completeParentArtifactHash, sourceTakeRefs: manifest.ancestry.map(entry => ({ takeId: entry.takeId, revision: entry.takeRevision, manifestHash: entry.parentManifestHash, immutableSourceRef: entry.immutableSourceRef })),
-    regionFrames: [0, manifest.frames], transform, pitchDeclaration: pitch, printedEffects: manifest.bakedEffects, ancestry: manifest.ancestry, coverage: manifest.coverage,
+    regionFrames: [0, manifest.frames], causalOnsets, transform, pitchDeclaration: pitch, printedEffects: manifest.bakedEffects, ancestry: manifest.ancestry, coverage: manifest.coverage,
     loop: 'disabled', newOnsets: 'new-actor-owns-playback;old-events-are-baked-ancestry-only', regeneration: 'requires-separately-retained-original-source', rightsClosure: 'retained-origin-annotations;redistribution-not-asserted', warnings });
   const encoded = canonicalDataText(contract, { maxBytes: 262144, maxNodes: 32768 }), contractHash = await hashDataText(encoded.text), suffix = contractHash.slice(0, 24), recipeId = 'seed.' + suffix;
   const rights = kind => ({ kind, creator: 'Local sound-seed author', sourceUrl: 'urn:lemmings:sound-seed:' + assetHash, licenseId: 'NOASSERTION', licenseUrl: null,

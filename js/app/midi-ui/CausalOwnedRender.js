@@ -1,3 +1,4 @@
+import { createCausalOnsetCoverage } from '../../midi/content/CausalOnsetCoverage.js';
 import { ownedGraphCutWorkspaceBytes, OWNED_STATE_BUNDLE_ABI, OWNED_STATE_BUNDLE_HEADER, writeOwnedStateBundle, readOwnedStateBundle } from './worklet/OwnedStateBundle.js';
 import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/content/SampleTraversal.js';
 import { acceptsSampleCursorSegment } from '../../midi/content/SampleCursorProfile.js';
@@ -440,6 +441,8 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   signal?.throwIfAborted(); effects?.assertHealthy();
   const common = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
     takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash,
+    causalOnsets: createCausalOnsetCoverage({ voices: plan.voices.values(), firstFrame, frames: outputFrames, sampleRate, takeId: plan.source.takeId,
+      takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, panicFrame: panicApplied ? panicFrame : null }),
     ...(plan.laneRoutingReceipt ? { sourceLaneRouting: plan.laneRoutingReceipt } : {}), sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,
     sourceEvidence: 'provided-covered-semantic-snapshot', sourceOriginMs: plan.sourceOriginMs, timeDomain: 'captured-source-time', inputRange: { startSeconds: plan.startSeconds, endSeconds: plan.endSeconds },
     timing: plan.timing, ...(plan.timbreTuningReadoutReceipt ? { timbreTuningReadout: plan.timbreTuningReadoutReceipt } : {}),
@@ -477,7 +480,9 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   for (let index = 0; index < pcm.length; index++) {
     const lane = index > 0 && index <= stemLaneIds.length, returnNodeId = index > stemLaneIds.length ? plan.effectReturnNodeIds[index - 1 - stemLaneIds.length] : null;
     signal?.throwIfAborted(); const { squares, ...stats } = statistics[index], manifest = { ...common, tap: lane ? 'captured-lane-dry' : returnNodeId ? 'shared-effect-node-output' : effects ? 'complete-owned-effect-graph-pre-master' : plan.owned.id === 'worklet-sine' ? 'complete-sine-graph-pre-master' : 'complete-owned-source-graph-pre-master',
-      laneId: lane ? stemLaneIds[index - 1] : null, returnNodeId, pcmHash: await digest(pcm[index]), statistics: { ...stats, rms: Math.sqrt(squares / (outputFrames * 2)) } };
+      laneId: lane ? stemLaneIds[index - 1] : null, returnNodeId,
+      causalOnsets: returnNodeId ? null : lane ? createCausalOnsetCoverage({ voices: plan.voices.values(), firstFrame, frames: outputFrames, sampleRate, takeId: plan.source.takeId,
+        takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, laneId: stemLaneIds[index - 1], panicFrame: panicApplied ? panicFrame : null }) : common.causalOnsets, pcmHash: await digest(pcm[index]), statistics: { ...stats, rms: Math.sqrt(squares / (outputFrames * 2)) } };
     signal?.throwIfAborted(); files.push({ name: lane ? 'lane-' + index : returnNodeId ? 'effect-' + returnNodeId : 'master', bytes: encodeCausalRenderWave(pcm[index], outputFrames, sampleRate, manifest), manifest });
   }
   return { manifest: common, files };

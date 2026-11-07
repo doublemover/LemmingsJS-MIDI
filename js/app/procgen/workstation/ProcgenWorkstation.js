@@ -382,6 +382,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return { documentEpoch: documentGeneration, worldId: world?.worldId, generation: world?.generation, tick: world?.tickIndex,
       assists: world?.assists, graph: world?.physicalAuthoring?.graph || value.procgen.physicalGraph, releaseGesture: world?.population?.releaseGesture,
       soundIdentity: value.procgen.lanes.map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|'),
+      causalTakeId: causalTake?.status().takeId ?? null,
       soundReferences: value.procgen.lanes.filter(lane => lane.instrumentRef).map(lane => ({ laneId: lane.id, definitionHash: lane.instrumentRef.definitionHash,
         packHash: lane.instrumentRef.packHash, patchId: lane.instrumentRef.patchId, revision: lane.instrumentRef.revision })) };
   };
@@ -2674,8 +2675,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         candidate.accept(); return Object.freeze({ status: 'committed', laneId: lane.id, paletteId: candidate.palette.id, undoEntries: 1 });
       } finally { if (!published) candidate.release(); }
     },
-    /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean, compatibilityReceipt?: object}} options */
-    applyInstalledInstrument(candidate, { signal, hold = false, isCurrent, compatibilityReceipt = null } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, patch: { gestureCompatibilityReceipt: compatibilityReceipt }, laneId: selected().id }); },
+    /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean, compatibilityReceipt?: object, sourceEvidence?: object}} options */
+    async applyInstalledInstrument(candidate, { signal, hold = false, isCurrent, compatibilityReceipt = null, sourceEvidence = null } = {}) {
+      const laneId = selected().id, sourceDocument = documentGeneration, committed = await soundTransactions.select(candidate, { signal, hold, isCurrent, patch: { gestureCompatibilityReceipt: compatibilityReceipt }, laneId });
+      if (!hold && sourceEvidence && sourceDocument === documentGeneration) { const reference = procgenLane(project.procgen.lanes, laneId)?.instrumentRef;
+        if (reference?.definitionHash === candidate.reference.definitionHash) physicalLessonView?.observeMaterial({ ...sourceEvidence, laneId, definitionHash: reference.definitionHash,
+          packHash: reference.packHash, patchId: reference.patchId, revision: reference.revision, assetHashes: reference.assetHashes }, lessonContext()); }
+      return committed;
+    },
     getLaneRealizationState: laneId => physicalPlayback?.laneRealizationState(laneId) || null,
     openPhysicalMappings() {
       if (!resourceBudget || !physicalPlayback) throw new Error('The physical parameter owner is unavailable.');

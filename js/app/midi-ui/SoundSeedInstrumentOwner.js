@@ -145,7 +145,8 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
     if (!current) throw fail('Prepare this seed first.'); if (current.targetIdentity && current.targetIdentity !== targetIdentity()) throw fail('The motion mapping document or selected lane changed. Prepare its exact target again.');
     if (!isCurrent()) throw fail('The seed application target changed.');
     const source = current, candidate = installation.applyCandidate(source.stage, source.identity); check();
-    await onApply(candidate, { signal: operation.controller.signal, isCurrent }); check(); if (source.targetIdentity) source.targetIdentity = targetIdentity(); phase = 'applied'; return freezeData({ state: 'applied', assetHash: source.assetHash, patchIdentity: source.identity });
+    await onApply(candidate, { signal: operation.controller.signal, isCurrent, sourceEvidence: { kind: 'saved-seed-applied', assetHash: source.assetHash,
+      transform: source.contract.transform, causalOnsets: source.contract.causalOnsets ?? null, durable: source.installed === true, bakedCausePolicy: 'new-actor-owns-playback;old-events-are-baked-ancestry-only' } }); check(); if (source.targetIdentity) source.targetIdentity = targetIdentity(); phase = 'applied'; return freezeData({ state: 'applied', assetHash: source.assetHash, patchIdentity: source.identity });
   });
   const stop = () => { active?.controller.abort(fail('Sound seed operation canceled.')); installation.stop(); };
   const clear = async () => { stop(); await active?.promise.catch(() => {}); if (unknown.size) throw fail('Seed instrument retirement remains unresolved.'); discard(current); current = null; phase = 'no-patch'; error = null; report(); };

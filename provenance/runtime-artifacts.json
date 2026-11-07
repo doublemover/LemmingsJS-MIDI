@@ -625,6 +625,7 @@
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/BundledSoundMaterial.js",
         "js/midi/content/BundledSoundSources.js",
+        "js/midi/content/CausalOnsetCoverage.js",
         "js/midi/content/CircuitWorkshopProfile.js",
         "js/midi/content/CircularSpectrum.js",
         "js/midi/content/DrumKitDefinition.js",
@@ -760,8 +761,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 606,
-      "sha256": "ddf4160d6d4973cd4854877b34e0ac9ec0bdb6de6cecbb0f57074bb7f176b9ee",
+      "fileCount": 607,
+      "sha256": "8a4c44583e65710172c4ef87d9310924563d6928a2f19950a7b0714ae43dc46d",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1376,6 +1377,7 @@
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/BundledSoundMaterial.js",
         "js/midi/content/BundledSoundSources.js",
+        "js/midi/content/CausalOnsetCoverage.js",
         "js/midi/content/CircuitWorkshopProfile.js",
         "js/midi/content/CircularSpectrum.js",
         "js/midi/content/DrumKitDefinition.js",
@@ -1544,8 +1546,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 639,
-      "sha256": "1fc4978ab249cd4abbc18d56ad1078129fe21f3dc03c5237336c669c0b1b2856",
+      "fileCount": 640,
+      "sha256": "34794bd7c045ed2b3c73247ede751f6f2b2b6a08930d9036bca727289e3902a5",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2047,6 +2049,7 @@
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/BundledSoundMaterial.js",
         "js/midi/content/BundledSoundSources.js",
+        "js/midi/content/CausalOnsetCoverage.js",
         "js/midi/content/CircuitWorkshopProfile.js",
         "js/midi/content/CircularSpectrum.js",
         "js/midi/content/DrumKitDefinition.js",
@@ -2179,8 +2182,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 618,
-      "sha256": "52a30ca7fe61afb68242f6930356de2a20f43d0ecf4301a8f532858e7ead0f4c",
+      "fileCount": 619,
+      "sha256": "a953d257e7d6d14534deb0801dc44382fb2e9559b2cc6d0fe1a3748d420cba14",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2830,6 +2833,7 @@
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/BundledSoundMaterial.js",
         "js/midi/content/BundledSoundSources.js",
+        "js/midi/content/CausalOnsetCoverage.js",
         "js/midi/content/CircuitWorkshopProfile.js",
         "js/midi/content/CircularSpectrum.js",
         "js/midi/content/DrumKitDefinition.js",
@@ -2973,8 +2977,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 691,
-      "sha256": "ad42443f3dda8306a337dfbbd87daa5310942fa62610db53e0a3ce1c94f98dc9",
+      "fileCount": 692,
+      "sha256": "63829c30be803b0250bc2a86a30fed7d9141cd37e1d83af03c0727c6d5e45884",
       "inventoryScope": "first-party-artifact"
     }
   ]
