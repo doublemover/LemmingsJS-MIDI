@@ -66,11 +66,18 @@ export async function queryGestureSounds(input, { signal, current = () => true, 
       if (take.initialVoices !== 'empty') { state = 'requires-reconstruction'; reasons.push('The selected take begins with held or unknown voice ancestry.'); }
       else if (take.coverage !== 'known-covered') { state = 'unknown'; unknown.push('The selected immutable intent coverage is incomplete or unknown.'); }
       else {
-        const missing = required.filter(kind => !take.retainedSourceKinds.includes(kind));
+        const missing = required.filter(kind => !take.retainedSourceKinds.includes(kind)), controls = candidate.requiredControls || [], evidence = candidate.requiredEvidence || [],
+          missingEvidence = evidence.filter(kind => !take.controlCoverage?.complete || !take.controlVoices?.length || take.controlVoices.some(voice => !(voice.evidence || []).includes(kind))), incompleteControls = controls.filter(control => {
+            const voices = take.controlVoices || [], field = control.sourceKind + '.' + control.payloadField;
+            return !take.controlCoverage?.complete || !voices.length || voices.some(voice => !(voice[control.mode === 'continuous' ? 'continuous' : 'onset'] || []).includes(field));
+          });
+        for (const control of incompleteControls) if (!missing.includes(control.sourceKind)) missing.push(control.sourceKind);
+        if (missingEvidence.length && !missing.length) { state = 'unknown'; unknown.push('The selected take lacks retained ' + missingEvidence.join(', ') + '; any topology/contact/path reconstruction requires a separate qualified operation.'); }
         if (missing.length) {
           if (take.factsCovered && missing.every(kind => take.availableFactKinds.includes(kind))) { state = 'requires-reinterpretation'; reasons.push('Missing retained controls ' + missing.join(', ') + '; actual archived facts may support a separate explicit reinterpretation.'); }
           else { state = take.factsCovered ? 'unsupported' : 'unknown'; reasons.push('The selected note/control history does not retain required ' + missing.join(', ') + '. No control curve is invented.'); }
-        } else if (required.length) constraints.push('Required control kinds are retained; exact payload/precision remains subject to ordinary revoice admission.');
+        } else if (required.length) constraints.push('Every inspected voice retains the required typed onset/update controls; exact output precision remains subject to ordinary revoice admission.');
+        if (take.controlCoverage?.complete === false) { state = 'unknown'; unknown.push('The bounded voice-control inspection is censored; no all-voice compatibility claim is made.'); }
       }
     }
     rows.push({ patchReceipt: { packHash: candidate.packHash, definitionHash: candidate.definitionHash, patchIdentity: candidate.identity, engineRequirement: candidate.engineRequirement, qualityRevision: candidate.qualityRevision }, identity: candidate.identity, name: candidate.name || candidate.identity, state, reasons, unknown, constraints, preparation: candidate.preparation, assetBytes: candidate.assetBytes ?? null,

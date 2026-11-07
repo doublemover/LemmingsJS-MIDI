@@ -271,7 +271,8 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         return { identity: patch.identity, name: definition.name, packHash: lease.prepared.contentHash, definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement,
           capabilities: engine?.capabilities || {}, qualityRevision: engine ? engine.engineId + '@' + engine.engineVersion : 'unavailable',
           preparation: !engine || plan.missingReferences.length || plan.missingAssetBytes.length && !installed ? 'requirements-unavailable' : 'unknown',
-          assetBytes: plan.missingReferences.length ? null : plan.requiredBytes, requiredSourceKinds: [...new Set(required)].sort(), tags: definition.tags || [] };
+          assetBytes: plan.missingReferences.length ? null : plan.requiredBytes, requiredControls: (definition.causalBindings || []).filter(binding => binding.enabled !== false).map(({ sourceKind, payloadField, mode }) => ({ sourceKind, payloadField, mode })),
+          requiredEvidence: [...(definition.parameters.sourceMode === 2 && definition.parameters.circularControlMode === 1 ? ['canonical-contact-coordinate'] : []), ...(definition.parameters.sourceMode === 2 && definition.parameters.circularControlMode === 2 ? ['retained-route-travel'] : []), ...(definition.parameters.frictionRequireSegments === 1 || definition.parameters.textureRequireSegments === 1 || definition.parameters.circularRequireSegments === 1 ? ['retained-motion-segments'] : [])], requiredSourceKinds: [...new Set(required)].sort(), tags: definition.tags || [] };
       }); } finally { lease.release(); }
     },
     onSelect: (identity, receipt) => { if (!stage || ![...select.options].some(option => option.value === identity)) throw new Error('The suggested exact revision is no longer staged.'); selectedGestureReceipt = receipt; selectedGestureTakeIdentity = getGestureTakeIdentity(); selection = select.value = identity; rights.checked = false; render(); },

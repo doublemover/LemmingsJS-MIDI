@@ -34,14 +34,15 @@ export function createGestureSoundBrowserView({ document, jobs, resourceBudget, 
   const search = node('button', 'Search staged exact revisions'), stop = node('button', 'Cancel gesture search'); search.type = stop.type = 'button'; stop.addEventListener('click', cancel);
   search.addEventListener('click', () => run(async (token, current) => {
     const candidates = await getCandidates(); if (!current()) throw new Error('The sound stage changed before query.');
-    const selectedTake = take.checked && getTake ? await getTake({ signal: token.controller.signal }) : null; if (!current()) throw new Error('The selected take changed before query.');
-    const query = { schema: 'lemmings-sound-query/v1', gesture: gesture.value, minimumHoldSeconds: Number(hold.value), requirePerVoicePitch: bend.checked, preparedOnly: ready.checked, authoredTags: tags.value.split(',').map(value => value.trim()).filter(Boolean), maximumResults: 8,
-        ...Object.fromEntries([['maximumAttackSeconds', attack], ['gateSeconds', gate], ['pitchHz', pitch]].flatMap(([key, input]) => optional(input) == null ? [] : [[key, optional(input)]])) },
-      input = { candidates, descriptors: descriptors?.value.descriptors || [], query, take: selectedTake }; let candidate = null;
-    try { candidate = await jobs.compute({ kind: 'query-gesture-sounds', ownerId: 'sound-library-gesture-query', ownerEpoch: token.serial, sourceRevision: token.identity,
-      inputBytes: canonicalDataText(input, { maxBytes: 16 * 1048576, maxNodes: 1000000 }).bytes.length, maxBytes: 16 * 1048576, maxNodes: 1000000, estimatedPeakBytes: 192 * 1048576, deadlineMs: 60000, signal: token.controller.signal, budgetAdapter: resourceBudget, isCurrent: current, prepareInput: () => input });
-    if (!current()) throw new Error('The sound or take source changed during query.'); result?.release(); result = candidate; candidate = null; resultIdentity = token.identity; paint(); report('Compatibility is ranked separately from authored taste. Missing or stale measurements remain unknown. Choose explicitly; audition still prepares the current backend.');
-    } finally { candidate?.release(); }
+    const selectedTakeLoan = take.checked && getTake ? await getTake({ signal: token.controller.signal }) : null, selectedTake = selectedTakeLoan?.value || selectedTakeLoan; let candidate = null;
+    try { if (!current()) throw new Error('The selected take changed before query.');
+      const query = { schema: 'lemmings-sound-query/v1', gesture: gesture.value, minimumHoldSeconds: Number(hold.value), requirePerVoicePitch: bend.checked, preparedOnly: ready.checked, authoredTags: tags.value.split(',').map(value => value.trim()).filter(Boolean), maximumResults: 8,
+          ...Object.fromEntries([['maximumAttackSeconds', attack], ['gateSeconds', gate], ['pitchHz', pitch]].flatMap(([key, input]) => optional(input) == null ? [] : [[key, optional(input)]])) },
+        input = { candidates, descriptors: descriptors?.value.descriptors || [], query, take: selectedTake };
+      candidate = await jobs.compute({ kind: 'query-gesture-sounds', ownerId: 'sound-library-gesture-query', ownerEpoch: token.serial, sourceRevision: token.identity,
+        inputBytes: canonicalDataText(input, { maxBytes: 16 * 1048576, maxNodes: 1000000 }).bytes.length, maxBytes: 16 * 1048576, maxNodes: 1000000, estimatedPeakBytes: 192 * 1048576, deadlineMs: 60000, signal: token.controller.signal, budgetAdapter: resourceBudget, isCurrent: current, prepareInput: () => input });
+      if (!current()) throw new Error('The sound or take source changed during query.'); result?.release(); result = candidate; candidate = null; resultIdentity = token.identity; paint(); report('Compatibility is ranked separately from authored taste. Missing or stale measurements remain unknown. Choose explicitly; audition still prepares the current backend.');
+    } finally { candidate?.release(); selectedTakeLoan?.release?.(); }
   }).catch(error => report(error.message)));
   for (const input of [gesture, attack, hold, gate, pitch, tags, take, bend, ready]) input.addEventListener('input', () => { cancel(); resultIdentity = null; paint(); });
   function paint() {

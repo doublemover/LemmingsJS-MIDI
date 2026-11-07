@@ -2551,18 +2551,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     async gestureSoundTake({ signal } = {}) {
       const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
       if (!takeId || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish and select a saved physical take, or explicitly query calibration fixtures without a take.');
-      const identity = handlers.gestureSoundTakeIdentity(), journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs }); let metadata = null, source = null;
+      const identity = handlers.gestureSoundTakeIdentity(), journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+      const workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'gesture-take-coverage', kind: 'bounded-per-voice-source-control-coverage', category: 'candidate', bytes: 4 * 1048576 }); let handedOff = false, metadata = null, source = null;
       try {
         metadata = await borrowCausalTake(journal, takeId, { signal }); const manifest = metadata.value;
         source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs: backgroundJobs, takeId, takeRevision: manifest.revision, soundPatch: { id: 'gesture-query-inspection', revision: 1 }, executionEpoch: 'gesture-query-inspection', limit: 8192, maxIntents: 32768, maxBytes: 4 * 1048576, signal });
         signal?.throwIfAborted(); if (identity !== handlers.gestureSoundTakeIdentity() || source.value.sourceCanonicalHash !== manifest.canonicalHash) throw new Error('The selected take changed during compatibility inspection.');
-        const { queryCausalCoverage } = await import('./CausalCoverage.js'); signal?.throwIfAborted();
-        const retained = new Set(); for (const intent of source.value.intents) if (intent.performanceCause?.evidence === 'completed-world-fact') retained.add(intent.performanceCause.sourceKind);
-        const coverage = manifest.coverage, factsCovered = coverage?.sourceRange ? queryCausalCoverage({ coverage, kind: 'physical-facts', range: coverage.sourceRange }).status === 'known-covered' : false;
-        return { takeId, revision: manifest.revision, canonicalHash: manifest.canonicalHash, coverage: source.value.coverage.status === 'known-covered' ? 'known-covered' : 'unknown',
-          initialVoices: Array.isArray(manifest.boundaryState?.voices) ? manifest.boundaryState.voices.length ? 'held' : 'empty' : 'unknown', retainedSourceKinds: [...retained].sort(),
-          availableFactKinds: [...(coverage?.available?.factKinds || [])].sort(), factsCovered };
-      } finally { let failure = null; for (const loan of [source, metadata]) if (loan) { try { retireCausalRead(loan); } catch (error) { failure ||= error; } } if (failure) throw failure; }
+        const { summarizeGestureTakeCoverage } = await import('../../../midi/content/GestureTakeCoverage.js'); signal?.throwIfAborted();
+        const value = await summarizeGestureTakeCoverage({ manifest, revoice: source.value }, { signal, current: () => identity === handlers.gestureSoundTakeIdentity(), yieldControl: () => new Promise(resolve => window.setTimeout(resolve, 0)) });
+        handedOff = true; return Object.freeze({ value, release: () => workspace.release() });
+      } finally { let failure = null; for (const loan of [source, metadata]) if (loan) { try { retireCausalRead(loan); } catch (error) { failure ||= error; } } if (!handedOff || failure) workspace.release(); if (failure) throw failure; }
     },
     openSoundLibrary() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Sound library resource ownership is unavailable.'); return; }
