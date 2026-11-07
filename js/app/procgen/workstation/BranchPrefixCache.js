@@ -74,7 +74,7 @@ export function createBranchPrefixCache({ resourceBudget, maximumBytes = 8 * MiB
     if (!natural(throughTick)) throw error('Choose a completed target tick for prefix lookup.');
     const identity = identityOf(source), inputTexts = inputsOf(inputs, throughTick), bucket = await lookupDigest(identity); check(signal);
     let entry = null;
-    for (const id of buckets.get(bucket) || []) { const candidate = entries.get(id); if (candidate.identity !== identity || candidate.boundary.tick > throughTick || candidate.inputs.length > inputTexts.length || candidate.inputs.some((input, index) => input !== inputTexts[index])) continue;
+    for (const id of buckets.get(bucket) || []) { const candidate = entries.get(id); if (candidate.identity !== identity || candidate.boundary.tick > throughTick || candidate.inputs.length > inputTexts.length || candidate.inputs.some((input, index) => input !== inputTexts[index]) || candidate.inputs.length < inputs.length && inputs[candidate.inputs.length].tick < candidate.boundary.tick) continue;
       if (!entry || candidate.boundary.tick > entry.boundary.tick || candidate.boundary.tick === entry.boundary.tick && candidate.id < entry.id) entry = candidate;
     }
     if (!entry || readers.size >= 2) { counters.misses++; counters.lookupMs += Math.max(0, now() - started); return null; }

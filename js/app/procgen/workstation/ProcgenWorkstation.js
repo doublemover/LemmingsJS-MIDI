@@ -66,6 +66,7 @@ import { createProcgenWorldInspector } from './ProcgenWorldInspector.js';
 import { createProcgenRetirementScope, afterProcgenRetirement } from '../ProcgenRetirement.js';
 import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
+import { createPhysicalMusicStudyWorkbench } from './PhysicalMusicStudyWorkbench.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
 import { createInstrumentMacroGestures } from '../../midi-ui/InstrumentMacroGestures.js';
@@ -1422,6 +1423,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       physicalState: physicalPlayback?.engine.snapshot() || null,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } });
   };
+  let physicalMusicStudyWorkbench = null;
+  const physicalMusicSourceIdentity = () => { const world = runtime()?.world, clock = transport.getState(); return JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId, world?.generation, world?.tickIndex, clock.playing, clock.bpm, clock.nominalSpeed]); };
+  const getPhysicalMusicStudyWorkbench = () => physicalMusicStudyWorkbench ||= createPhysicalMusicStudyWorkbench({ jobs: backgroundJobs, resourceBudget, getSourceIdentity: physicalMusicSourceIdentity,
+    onChange: () => view?.render(),
+    captureSource: async ({ signal }) => {
+      if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback || simulationWorkbench?.state().active || causalWorkbench?.state().active) throw new Error('Pause the physical project and finish active takes, branches and world operations before composition.');
+      const world = runtime().world, sourceProject = project, revision = projectRevision, capsule = await capturePhysicalHistory(world, sourceProject, signal);
+      try { const session = capsule.session(), clock = transport.getState();
+        return { input: { projectRevision: revision, rootPath: new URL('../../../../', import.meta.url).href, sourceVersions: causalRuntimeSourceVersions(world, sourceProject.procgen.physicalGraph.revision),
+          source: { world: session.world, engine: session.physicalState, timeline: session.physicalTimeline, performance: captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
+            authoring: { graph: world.physicalAuthoring.graph, instances: world.physicalAuthoring.instances, junctions: world.physicalJunctions.definitions },
+            replay: { version: 2, playing: true, bpm: clock.bpm, scoreTimeline: true, nominalSpeed: clock.nominalSpeed } } }, release: () => { if (!capsule.discard()) throw new Error('The composition source capsule could not retire.'); } };
+      } catch (error) { capsule.discard(); throw error; }
+    }, applyContinuation: (snapshot, receipt) => adoptPhysicalContinuation(snapshot, { branchOrigin: { ...receipt, mode: 'finite-musical-goal;fresh-real-physics-replay;first-boundary-paused' } }) });
   const capturePhysicalHistory = async (sourceWorld, sourceProject, signal) => {
     const sourceGeneration = documentGeneration, sourceTick = sourceWorld.tickIndex;
     return physicalHistory.capture(sourceWorld, sourceProject, (checkpoint, capturedProject) => createProcgenSession({ name: savedName, project: capturedProject, settings: clone(settingsFor(capturedProject)), executionIdentity: continuationExecutionIdentity(), world: checkpoint,
@@ -2236,6 +2251,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
+    physicalMusicSource() { const world = runtime()?.world; if (!world) return null; const population = world.population, gesture = population.releaseGesture;
+      return { worldId: world.worldId, generation: world.generation, tick: world.tickIndex, width: world.width, height: world.height, leftEdgeX: world.leftEdgeX, graph: project.procgen.physicalGraph,
+        actorIds: world.actors.filter(actor => !actor.removed && !actor.disabled && !actor.failureReason && !actor.terminalReason).map(actor => actor.id), assists: world.assists,
+        finiteCrew: !world.cohorts || !population.pendingReleaseGesture && !population.adaptive && (gesture?.paused === true || population.gestureRun?.remaining === 0),
+        tickDurationMs: 60 / transport.getState().nominalSpeed, bpm: transport.getState().bpm };
+    },
+    physicalMusicStudyState: () => physicalMusicStudyWorkbench?.state() || null,
+    startPhysicalMusicStudy: input => getPhysicalMusicStudyWorkbench().start(input),
+    cancelPhysicalMusicStudy: () => physicalMusicStudyWorkbench?.cancel(),
+    selectPhysicalMusicCandidate: id => getPhysicalMusicStudyWorkbench().select(id),
+    applyPhysicalMusicCandidate: () => getPhysicalMusicStudyWorkbench().apply(),
     openPhysicalScene() { physicalDomainEditor ||= createPhysicalDomainEditor({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, saveGraph: graph => dispatch({ type: 'procgen/physicalGraph', graph }), getInspection: () => ({ terrainRevision: runtime()?.world?.terrainRevision ?? null, preparedSurfaces: physicalPlayback?.engine.diagnostics().preparedSurfaces, bodyBindings: physicalPlayback?.preparedSurfaceBodies(), swarm: physicalPlayback?.engine.diagnostics().swarm, cargo: physicalPlayback?.engine.diagnostics().cargo, physical: physicalPlayback?.engine.physicalAnalysis() }), onStatus: status }); physicalDomainEditor.open(); },
     openPhysicalFeedback() { physicalFeedbackView ||= createPhysicalFeedbackView({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, getState: () => physicalFeedback?.diagnostics(), save: feedback => dispatch({ type: 'procgen/physicalGraph', graph: { ...project.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1, feedback } }), arm: () => handlers.armPhysicalFeedback(), disarm: () => physicalFeedback?.disarm(), mute: (id, muted) => physicalFeedback?.muteLayer(id, muted), capture: input => handlers.captureInterventionLayer(input), onStatus: status }); physicalFeedbackView.open(); },
     armPhysicalFeedback() { if (!physicalFeedback || worldBusy || pendingHistory || physicalAuthoringAbort) throw new Error('No writable live physical world.'); if (!Number.isSafeInteger(++feedbackEpoch)) throw new Error('Feedback epoch exhausted.'); return physicalFeedback.arm({ mode: 'live', epoch: `live:${documentGeneration}:${runtime().world.generation}:${runtime().world.tickIndex}:${feedbackEpoch}` }); },
@@ -3085,6 +3111,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'storage-readers', run: () => storageReaders.retire([
           { name: 'causal-take', run: async () => { if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'workstation-disposed' }); await discardOwnedCausalArm({ restoreSemantic: false }); } },
           { name: 'causal-workbench', run: () => causalWorkbench?.dispose() },
+          { name: 'physical-music-composition', run: () => physicalMusicStudyWorkbench?.dispose() },
           { name: 'simulation-workbench', run: async () => { const receipt = simulationWorkbench?.dispose(); await receipt?.completion; if (receipt && receipt.outcome !== 'complete') throw new Error('The simulation output generation is still owned.'); await nativeSimulationLoading?.catch(() => {}); return nativeSimulationWorkbench?.dispose(); } },
           { name: 'archive-exports', run: () => archiveExportTasks.size ? Promise.allSettled([...archiveExportTasks]) : null }
         ]) },

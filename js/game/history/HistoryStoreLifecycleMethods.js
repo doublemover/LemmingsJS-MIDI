@@ -154,7 +154,8 @@ const historyStoreLifecycleMethods = {
     }
   },
 
-  captureReplayBaseline(game = this.game) {
+  captureReplayBaseline(game) {
+    if (game === undefined) game = this.game;
     if (!game) return;
     this.captureBaseline(game);
     const tickIndex = game.getGameTimer?.()?.tickIndex ?? this.timer?.tickIndex ?? 0;

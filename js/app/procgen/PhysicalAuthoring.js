@@ -21,9 +21,10 @@ const preparePhysicalAuthoringConfiguration = (world, graph, instances = []) => 
   } };
 };
 const normalizePhysicalAuthoringCommand = (world, input) => {
-  if (!plain(input) || input.version !== 1 || !identity(input.transactionId) || !integer(input.expectedRevision) || !integer(input.expectedJunctionRevision) || !identity(input.expectedGraphDigest) || !['fragment-place', 'terrain-and-graph'].includes(input.operation) || input.instanceId != null && !identity(input.instanceId)) throw new Error('Invalid atomic physical authoring command.');
-  const graph = validateCausalInstrumentGraph(input.graph), instances = validateFragmentInstances(input.instances), junctions = validateProjectJunctions(input.junctions), terrain = normalizeTerrainCommand(input.terrain);
-  if (terrain.transactionId !== input.transactionId || terrain.generation !== world.generation) throw new Error('Physical authoring target identity or graph revision is stale.');
+  if (!plain(input) || input.version !== 1 || !identity(input.transactionId) || !integer(input.expectedRevision) || !integer(input.expectedJunctionRevision) || !identity(input.expectedGraphDigest) || !['fragment-place', 'terrain-and-graph', 'graph-only'].includes(input.operation) || input.instanceId != null && !identity(input.instanceId)) throw new Error('Invalid atomic physical authoring command.');
+  const graph = validateCausalInstrumentGraph(input.graph), instances = validateFragmentInstances(input.instances), junctions = validateProjectJunctions(input.junctions), terrain = input.operation === 'graph-only' ? null : normalizeTerrainCommand(input.terrain);
+  if (input.operation === 'graph-only' && (input.terrain != null || JSON.stringify(instances) !== JSON.stringify(world.physicalAuthoring.instances) || JSON.stringify(junctions) !== JSON.stringify(world.physicalJunctions.definitions))) throw new Error('A graph-only transaction preserves terrain, fragment instances and junction definitions.');
+  if (terrain && (terrain.transactionId !== input.transactionId || terrain.generation !== world.generation)) throw new Error('Physical authoring target identity or graph revision is stale.');
   if (input.operation === 'fragment-place' && (!input.instanceId || !instances.some(instance => instance.id === input.instanceId))) throw new Error('Fragment instance is missing or already placed.');
   const assets = input.requiredAssets || []; if (!Array.isArray(assets) || assets.length > 64 || assets.some(hash => typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))) throw new Error('Invalid physical authoring source dependencies.');
   const result = { version: 1, operation: input.operation, transactionId: input.transactionId, expectedRevision: input.expectedRevision, expectedJunctionRevision: input.expectedJunctionRevision, expectedGraphDigest: input.expectedGraphDigest,
@@ -39,7 +40,7 @@ const preparePhysicalAuthoringCommand = (world, input) => {
   if (command.requiredAssets.some(hash => !assets.includes(hash))) return { status: 'rejected', reason: 'authoring-source-mismatch' };
   if (!Number.isSafeInteger(state.revision + 1) || !Number.isSafeInteger(junctionState.revision + 1)) throw new RangeError('Physical authoring revision exhausted.');
   for (const definition of command.junctions) { const prior = junctionState.definitions.find(value => value.id === definition.id); if (prior && JSON.stringify(prior) !== JSON.stringify(definition) && definition.revision <= prior.revision) throw new Error('Changed junction requires a newer revision.'); }
-  const topology = prepareTerrainTopologyConfiguration(world, command.graph.topologyRegions || []), terrain = planTerrainCommand(command.terrain, world);
+  const topology = prepareTerrainTopologyConfiguration(world, command.graph.topologyRegions || []), terrain = command.terrain ? planTerrainCommand(command.terrain, world) : { status: 'prepared' };
   if (terrain.status !== 'prepared') return { status: 'rejected', reason: terrain.reason, counts: terrain.counts };
   const nextActual = new Map([...junctionState.actual].filter(([id, actual]) => command.junctions.some(definition => definition.id === id && definition.revision === actual.authoringRevision)));
   const junctionsChanged = JSON.stringify(command.junctions) !== JSON.stringify(junctionState.definitions);
@@ -47,7 +48,7 @@ const preparePhysicalAuthoringCommand = (world, input) => {
     lastApplied: freeze({ transactionId: command.transactionId, operation: command.operation, instanceId: command.instanceId, generation: world.generation, tick: world.tickIndex, revision: state.revision + 1, graphRevision: command.graph.revision }) };
   return { status: 'prepared', command, terrain, commit() {
     if (!world._stepping || !world.soundEvents._tick || world.physicalAuthoring !== state || world.physicalJunctions !== junctionState || state.revision !== command.expectedRevision || junctionState.revision !== command.expectedJunctionRevision || digestPlan(state.graph) !== command.expectedGraphDigest) throw new Error('Physical authoring publication is stale.');
-    const publication = prepareTerrainPublication(terrain, world); if (publication.status !== 'prepared') return publication;
+    const publication = command.terrain ? prepareTerrainPublication(terrain, world) : { status: 'prepared', commit: () => ({ status: 'accepted', reason: 'graph-only', edit: null }) }; if (publication.status !== 'prepared') return publication;
     // Admit all interpreter owners before the first authoritative terrain write.
     const admission = preparePhysicalGraphAdmission(world, command.graph);
     try { admission.commit(); } catch (error) { try { admission.cancel(); } catch (retirementError) { error.retirementError = retirementError; } throw error; }

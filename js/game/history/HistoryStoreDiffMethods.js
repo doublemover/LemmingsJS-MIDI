@@ -394,6 +394,7 @@ const historyStoreDiffMethods = {
     this._gameState = nextGame;
   },
 
+  /** @param {{selectedSkill: number, cheatMode: boolean, skills: number[]} | null} previous */
   _readSkills(skills, previous = null) {
     if (!skills) return null;
     const source = Array.isArray(skills.skills) ? skills.skills : [];
@@ -476,6 +477,7 @@ const historyStoreDiffMethods = {
         && a.frameTime === b.frameTime;
   },
 
+  /** @param {{finalGameState: number} | null} previous */
   _readGameState(game, previous = null) {
     if (!game) return null;
     if (previous && previous.finalGameState === game.finalGameState) return previous;

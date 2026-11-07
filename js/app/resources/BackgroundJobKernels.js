@@ -19,6 +19,13 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'physical-music-study') {
+    const { runPhysicalMusicStudy } = await import('../procgen/workstation/PhysicalMusicStudy.js'); guard(signal, current);
+    const study = await runPhysicalMusicStudy(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
+    let sensitivity = null; if (study.mode === 'sensitivity') { const { summarizePhysicalMusicSensitivity } = await import('../procgen/workstation/PhysicalMusicSensitivity.js'); sensitivity = summarizePhysicalMusicSensitivity(study); }
+    const value = { study, sensitivity }, size = canonicalDataText(value, { maxBytes, maxNodes }).bytes.length;
+    return { value, inputBytes: canonicalDataText(input, { maxBytes, maxNodes }).bytes.length, nodes: 64, retainedBytes: size * 6 + 1048576 };
+  }
   if (kind === 'encode-physical-take-midi') {
     const { encodePhysicalTakeMidi } = await import('../procgen/workstation/PhysicalTakeMidiProjection.js'); guard(signal, current);
     const value = await encodePhysicalTakeMidi(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
