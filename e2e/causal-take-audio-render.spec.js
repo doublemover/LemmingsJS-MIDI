@@ -101,9 +101,10 @@ test('a prepared real-time print realizes a frozen physical take in a silent pri
   const before = await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex, contexts: window.printAudioContexts.length, takeId: window.__PROCGEN_STUDIO__.handlers.causalTakeState().last.takeId }));
   await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.openCausalAudioRender());
   const dialog = page.getByRole('dialog', { name: 'Render causal take owned-source revoice', exact: true });
-  await dialog.getByLabel('Start seconds from capture').fill('0.1'); await dialog.getByLabel('End seconds from capture').fill('1.5');
+  await dialog.getByLabel('Start seconds from capture').fill('4.1'); await dialog.getByLabel('End seconds from capture').fill('5.5');
   await dialog.getByRole('button', { name: 'Prepare real-time print · saved live instrument', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getCausalAudioRenderState().realtimePrint?.readyToPrint)).toBe(true);
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getCausalAudioRenderState().realtimePrint.plan.intents)).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.printAudioContexts.length)).toBe(before.contexts);
   await dialog.getByRole('button', { name: 'Start real-time print · stop live browser output', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getCausalAudioRenderState().realtimePrint?.phase), { timeout: 60000 }).toBe('prepared');
@@ -112,7 +113,7 @@ test('a prepared real-time print realizes a frozen physical take in a silent pri
   const bytes = await readFile(filename), view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength); let manifest = null, pcm = null;
   for (let at = 12; at < bytes.length;) { const id = bytes.subarray(at, at + 4).toString(), size = view.getUint32(at + 4, true); if (id === 'lmjs') manifest = JSON.parse(bytes.subarray(at + 8, at + 8 + size).toString()); if (id === 'data') pcm = bytes.subarray(at + 8, at + 8 + size); at += 8 + size + size % 2; }
   const { createHash } = await import('node:crypto');
-  expect(manifest).toMatchObject({ schema: 'lemmings-causal-audio-render/v1', mode: 'real-time-intent-print', takeId: before.takeId, sampleRate: 48000, frames: 67200, timelineZeroSourceFrame: 4800, exactEndSourceFrame: 72000, fileState: 'complete-private-digital-capture', originalRecordMutated: false, acousticReceipt: false });
+  expect(manifest).toMatchObject({ schema: 'lemmings-causal-audio-render/v1', mode: 'real-time-intent-print', takeId: before.takeId, sampleRate: 48000, frames: 67200, timelineZeroSourceFrame: 196800, exactEndSourceFrame: 264000, fileState: 'complete-private-digital-capture', originalRecordMutated: false, acousticReceipt: false });
   expect(manifest.capture).toMatchObject({ tap: 'post-protection-private-capture-only-browser-graph', monitorOutput: 'capture-only', terminalAcknowledged: true, gaps: [], microphone: false, externalMidiAudio: false });
   expect(manifest.capture.endFrameExclusive - manifest.capture.sourceStartFrame).toBe(67200); expect(manifest.realization.peak).toBeGreaterThan(0); expect(manifest.pcmHash).toBe(createHash('sha256').update(pcm).digest('hex'));
   const after = await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex, playing: window.__PROCGEN_STUDIO__.transport.getState().playing, contexts: window.printAudioContexts.length, closed: window.printAudioContexts.at(-1).state, midi: window.printMidiRequests, microphone: window.printMicrophoneRequests, faults: window.__PROCGEN_STUDIO__.getCausalAudioRenderState().realtimePrint.unresolvedRetirement }));

@@ -6,9 +6,11 @@ import { encodeBackgroundSnapshotPages } from '../js/app/resources/BackgroundSna
 
 describe('bounded single-lane independent simulation profile (#1291)', () => {
   it('admits the documented simultaneous source/output/viewport footprint without raising the default limit', () => {
-    const profile = procgenSimulationProfile('single-lane-v1'), budget = createResourceBudget(), baseline = {}, worker = {}, viewport = {};
-    budget.reserve({ token: baseline, owner: 'existing-paused-source-and-private-output', bytes: 512 * 1048576 - 311156495, category: 'checkpoint' });
+    const profile = procgenSimulationProfile('single-lane-v1'), budget = createResourceBudget(), baseline = {}, sourceCapsule = {}, worker = {}, viewport = {};
+    budget.reserve({ token: baseline, owner: 'existing-paused-source-and-private-output', bytes: 512 * 1048576 - 311156495 - 8454144, category: 'checkpoint' });
+    budget.reserve({ token: sourceCapsule, owner: 'physical-source-capsule', bytes: 8454144, category: 'checkpoint' });
     budget.reserve({ token: worker, owner: 'single-lane-worker', bytes: profile.aggregateBytes, category: 'candidate' });
+    budget.release({ token: sourceCapsule });
     budget.reserve({ token: viewport, owner: 'paused-and-live-viewports', bytes: 8 * 1048576, category: 'checkpoint' });
     expect(budget.diagnostics().accountedBytes).to.be.lessThan(budget.diagnostics().limitBytes);
     expect(profile.aggregateBytes).to.be.at.least(profile.workerLimitBytes + profile.checkpointPeakBytes);

@@ -95,11 +95,16 @@ export function createCausalTakeRealtimePrint({ journal, resourceBudget, jobs, g
         const receipt = value => { if (['rejected','faulted'].includes(value?.status)) admissionFailure ||= fail('The selected live print engine refused an original intent: '+(value.reason||value.stage)); };
         dispatcher = createCausalIntentDispatcher({ resourceBudget, sinks: [{ id: 'private-print', route: 'local', backend: routed.backend, timeDomain: 'audio-sample-frames' }], executionEpoch: () => plan.epoch, toTargetFrame: (score,batch,intent) => origin+plan.eventsById.get(intent.intentId), latePolicy: createStrictLiveFramePolicy({ nowFrame: () => Math.ceil(context.currentTime*plan.sampleRate) }), onReceipt: receipt });
         plan.eventsById = new Map(plan.events.map(event => [event.intent.intentId,event.frame]));
-        let cursor = 0; phase = 'printing-in-real-time'; report();
+        let cursor = 0, leaseUntil = -1, previousFrame = -1; phase = 'printing-in-real-time'; report();
         while (true) {
           check(); const captured = capture.state(); if (['ready','partial','failed'].includes(captured.state)) { captureResult = captured; break; } if (context.state !== 'running') throw fail('The private print context was suspended.');
           const nowFrame = Math.ceil(context.currentTime*plan.sampleRate), horizon = nowFrame+Math.ceil(plan.sampleRate*0.2), batch = { version: 1, worldId: plan.worldId, generation: plan.generation, batchId: plan.epoch+':'+cursor };
-          const renewed = dispatcher.renewExecutionLease(plan.generation, plan.epoch, nowFrame+plan.sampleRate); if (renewed.status !== 'accepted') throw fail('The private engine did not renew its owned execution lease: ' + renewed.outcomes.map(outcome => outcome.reason || outcome.status).join(', ') + '.');
+          if (!Number.isSafeInteger(nowFrame) || nowFrame < previousFrame) throw fail('The private print clock is unavailable or moved backwards.'); previousFrame = nowFrame;
+          const until = nowFrame + plan.sampleRate;
+          if (until > leaseUntil) {
+            const renewed = dispatcher.renewExecutionLease(plan.generation, plan.epoch, until); if (renewed.status !== 'accepted') throw fail('The private engine did not renew its owned execution lease: ' + renewed.outcomes.map(outcome => outcome.reason || outcome.status).join(', ') + '.');
+            leaseUntil = until;
+          }
           while (cursor <plan.events.length && origin+plan.events[cursor].frame <= horizon) {
             const event = plan.events[cursor++]; if (origin+event.frame <nowFrame) throw fail('The main-thread print feeder missed an original target frame. The partial capture is retained.');
             const printed = { ...event.intent, timeTransformPolicy: null, route: 'local', laneId: 'print', audioLaneId: 'print' };

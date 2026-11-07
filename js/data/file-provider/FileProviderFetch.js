@@ -379,7 +379,8 @@ const fileProviderFetchMethods = {
   },
 
   loadString(url, opts = {}) {
-    return this._loadResource('text', this._appendCacheBust(url), '', opts);
+    const relative = this.rootPath && typeof url === 'string' && !/^(?:[a-z][a-z0-9+.-]*:|\/)/i.test(url) && !url.startsWith(this.rootPath);
+    return this._loadResource('text', relative ? this._buildUrl(url, null) : this._appendCacheBust(url), '', opts);
   },
 
   async resolveAsset(locator, opts = {}) {

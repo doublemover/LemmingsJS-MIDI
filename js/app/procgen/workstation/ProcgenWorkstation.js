@@ -1488,13 +1488,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     onChange: () => view?.render(),
     captureSource: async ({ signal }) => {
       if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback || macroGestures.diagnostics().active || soundTransactions.diagnostics().active || simulationWorkbench?.state().active || causalWorkbench?.state().active) throw new Error('Pause the physical project and finish active takes, branches and world operations before composition.');
-      const world = runtime().world, sourceProject = project, revision = projectRevision, capsule = await capturePhysicalHistory(world, sourceProject, signal);
-      try { const session = capsule.session(), clock = transport.getState();
+      const world = runtime().world, sourceProject = project, revision = projectRevision, identity = physicalMusicSourceIdentity(), persistenceHold = holdBackgroundPersistence(); let capsule = null, transferred = false;
+      try {
+        await persistenceHold.completion; signal.throwIfAborted();
+        if (identity !== physicalMusicSourceIdentity()) throw new Error('The composition source changed while background persistence was retiring.');
+        capsule = await capturePhysicalHistory(world, sourceProject, signal); const session = capsule.session(), clock = transport.getState(); transferred = true;
         return { input: { projectRevision: revision, rootPath: new URL('../../../../', import.meta.url).href, sourceVersions: causalRuntimeSourceVersions(world, sourceProject.procgen.physicalGraph.revision),
           source: { world: session.world, engine: session.physicalState, timeline: session.physicalTimeline, executionPolicy: session.executionIdentity.simulationExecutionPolicy, performance: captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
             authoring: { graph: world.physicalAuthoring.graph, instances: world.physicalAuthoring.instances, junctions: world.physicalJunctions.definitions },
-            replay: { version: 2, playing: true, bpm: clock.bpm, scoreTimeline: true, nominalSpeed: clock.nominalSpeed } } }, release: () => { if (!capsule.discard()) throw new Error('The composition source capsule could not retire.'); } };
-      } catch (error) { capsule.discard(); throw error; }
+            replay: { version: 2, playing: true, bpm: clock.bpm, scoreTimeline: true, nominalSpeed: clock.nominalSpeed } } }, release: () => { if (!capsule.discard()) throw new Error('The composition source capsule could not retire.'); persistenceHold.release(); } };
+      } catch (error) { if (capsule && !capsule.discard()) { transferred = true; throw Object.assign(new Error('The composition source capsule could not retire.'), { cause: error }); } transferred = false; throw error; }
+      finally { if (!transferred) persistenceHold.release(); }
     }, applyContinuation: (_snapshot, receipt, proposal) => applyReviewedPhysicalInputs(receipt, proposal) });
   const capturePhysicalHistory = async (sourceWorld, sourceProject, signal) => {
     const sourceGeneration = documentGeneration, sourceTick = sourceWorld.tickIndex, sourceFeedback = sourceWorld.physicalFeedback, sourceController = physicalFeedback, sourceArmed = physicalFeedback?.isArmed() === true, policy = simulationExecutionPolicy();

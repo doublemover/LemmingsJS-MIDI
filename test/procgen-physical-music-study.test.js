@@ -1,3 +1,4 @@
+import { PHYSICAL_MUSIC_STUDY_PEAK_BYTES } from '../js/app/procgen/workstation/PhysicalMusicStudyWorkbench.js';
 import { expect } from 'chai';
 import { canonicalDataText, hashDataText } from '../js/core/CanonicalData.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
@@ -14,6 +15,7 @@ import { evaluatePhysicalMusicGoal } from '../js/app/procgen/workstation/Physica
 import { runPhysicalMusicStudy } from '../js/app/procgen/workstation/PhysicalMusicStudy.js';
 import { summarizePhysicalMusicSensitivity } from '../js/app/procgen/workstation/PhysicalMusicSensitivity.js';
 
+const runWorkbenchProfileStudy = (input, options) => runPhysicalMusicStudy(input, { estimatedPeakBytes: PHYSICAL_MUSIC_STUDY_PEAK_BYTES, ...options });
 const build = 'a'.repeat(64), executionIdentity = { activeExecution: 'bound', buildId: build, closureDigest: 'b'.repeat(64), harnessVersion: 1, stateSchema: 2, assetDigest: 'c'.repeat(64), capabilityProfile: 'browser-background-jobs' };
 const mutable = value => JSON.parse(JSON.stringify(value));
 const traceRows = study => study.rows.map(row => ({ id: row.id, status: row.status, metrics: row.metrics, traceHash: row.traceHash, continuationHash: row.continuationHash, verification: row.verification }));
@@ -38,7 +40,7 @@ describe('real physical musical-goal composition', function() {
   it('finds120/160 from real crossings, agrees with a cache-off search and keeps the original source unchanged', async () => {
     const fixture = await setup(), before = await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(fixture.world));
     try {
-      const goal = createPhysicalMusicStarterGoal(), run = cacheEnabled => runPhysicalMusicStudy({ ...fixture.input, goal, cacheEnabled }, { createWorld: fixture.createWorld, executionIdentity });
+      const goal = createPhysicalMusicStarterGoal(), run = cacheEnabled => runWorkbenchProfileStudy({ ...fixture.input, goal, cacheEnabled }, { createWorld: fixture.createWorld, executionIdentity });
       const cached = await run(true), baseline = await run(false);
       expect(cached.status).to.equal('qualified'); expect(cached.selected.verification.matched).to.equal(true);
       expect(cached.rows.find(row => row.id === cached.selected.candidateId).values['right-wall-0']).to.equal(81);
@@ -51,7 +53,7 @@ describe('real physical musical-goal composition', function() {
   });
   it('reports121 as unmatched only in its fully enumerated seven-value wall domain', async () => {
     const fixture = await setup();
-    try { const result = await runPhysicalMusicStudy({ ...fixture.input, goal: createPhysicalMusicStarterGoal({ unreachable: true }) }, { createWorld: fixture.createWorld, executionIdentity });
+    try { const result = await runWorkbenchProfileStudy({ ...fixture.input, goal: createPhysicalMusicStarterGoal({ unreachable: true }) }, { createWorld: fixture.createWorld, executionIdentity });
       expect(result.status).to.equal('no-match-in-finite-domain'); expect(result.coverage.completeDomain).to.equal(true); expect(result.rows).to.have.length(7);
       expect(result.rows.map(row => row.metrics.periods[0].meanTicks)).to.deep.equal([114, 116, 118, 120, 122, 124, 126]);
       expect(result.rows.every(row => !row.metrics.requestedMetricsMet)).to.equal(true); expect(result.coverage.claim).to.include('no-continuum-or-universal');
@@ -59,7 +61,7 @@ describe('real physical musical-goal composition', function() {
   });
   it('samples118/120/122 without interpolating unsafe or untested worlds', async () => {
     const fixture = await setup();
-    try { const result = await runPhysicalMusicStudy({ ...fixture.input, mode: 'sensitivity', goal: createPhysicalMusicStarterGoal() }, { createWorld: fixture.createWorld, executionIdentity }), report = summarizePhysicalMusicSensitivity(result);
+    try { const result = await runWorkbenchProfileStudy({ ...fixture.input, mode: 'sensitivity', goal: createPhysicalMusicStarterGoal() }, { createWorld: fixture.createWorld, executionIdentity }), report = summarizePhysicalMusicSensitivity(result);
       expect(report.samples.map(sample => sample.periods[0].meanTicks)).to.deep.equal([118, 120, 122]); expect(report.domain.completeFiniteGrid).to.equal(true);
       expect(report.edges.every(edge => edge.continuousSafetyClaim === false && edge.continuousDerivativeClaim === false)).to.equal(true);
       expect(report.samples.every(sample => sample.safetyFailures.length === 0)).to.equal(true); expect(result.selected).to.equal(null);
@@ -75,7 +77,7 @@ describe('real physical musical-goal composition', function() {
     const fixture = await setup(), goal = mutable(createPhysicalMusicStarterGoal());
     goal.allowedEdits = [{ id: 'late-builder', kind: 'worker-tick', actorId: fixture.world.actors[0].id, skillType: 'builder', values: Array.from({ length: 64 }, (_, index) => 401 + index) }];
     goal.skillInventory.builder = 1;
-    try { const result = await runPhysicalMusicStudy({ ...fixture.input, mode: 'sensitivity', goal }, { createWorld: fixture.createWorld, executionIdentity });
+    try { const result = await runWorkbenchProfileStudy({ ...fixture.input, mode: 'sensitivity', goal }, { createWorld: fixture.createWorld, executionIdentity });
       expect(result.rows).to.have.length(64); expect(result.rows.every(row => row.completed === true), result.rows.find(row => row.reason)?.reason).to.equal(true);
       expect(result.rows.every(row => row.trace.causeKinds.includes('sfx:builder-step'))).to.equal(true);
       const retained = canonicalDataText(result.rows, { maxBytes: 4 * 1048576, maxNodes: 1 + 64 * 32768 });

@@ -16,7 +16,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   const effective = node('span', 'parameter-knob-effective'), pickup = node('span', 'parameter-knob-pickup'), error = node('output', 'parameter-knob-error'), textConflict = node('div', 'parameter-knob-text-conflict');
   const help = node('span', 'parameter-knob-help'); help.id = 'parameter-help-' + (++helpSerial);
   let observedEffective = null, observedPickup = null;
-  const updateHelp = () => { help.textContent = parameterHelpText(descriptor, { effectiveValue: observedEffective, pickupValue: observedPickup, readOnly, pending }); };
+  const updateHelp = () => { const text = parameterHelpText(descriptor, { effectiveValue: observedEffective, pickupValue: observedPickup, readOnly, pending }); if (help.textContent !== text) help.textContent = text; };
   cap.setAttribute('aria-describedby', help.id); entry.setAttribute('aria-describedby', help.id); root.append(help); updateHelp();
   textConflict.hidden = true; const actionButtons = [], conflictButtons = new Map();
   root.dataset.presentation = presentation;

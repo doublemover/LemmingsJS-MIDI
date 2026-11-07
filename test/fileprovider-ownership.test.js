@@ -3,7 +3,7 @@ import { createHash, webcrypto } from 'node:crypto';
 import { FileProvider } from '../js/data/FileProvider.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 
-function fixture(options = {}) {
+function fixture(options = {}, rootPath = '/assets/') {
   const requests = [];
   class Xhr {
     constructor() { requests.push(this); this.status = 0; }
@@ -13,11 +13,30 @@ function fixture(options = {}) {
     getResponseHeader() { return null; }
     respond(status, value) { this.status = status; this.response = value; this.onload?.(); }
   }
-  const provider = new FileProvider('/assets/', { XMLHttpRequest: Xhr, indexedDB: null, localStorage: null, crypto: webcrypto, ...options });
+  const provider = new FileProvider(rootPath, { XMLHttpRequest: Xhr, indexedDB: null, localStorage: null, crypto: webcrypto, ...options });
   return { provider, requests };
 }
 
 describe('FileProvider request and byte ownership', () => {
+
+  for (const root of ['https://app.test/dist/browser/pinned/', '/dist/browser/pinned/', './', '']) it('resolves relative worker text through its configured root ' + (root || '(none)') + ' (#1292)', async () => {
+    const { provider, requests } = fixture({ cacheBustRevision: 'pinned-text' }, root);
+    try {
+      for (const path of ['config.json', 'assets/procgen/terrain-recipes.json']) {
+        const pending = provider.loadString(path); await new Promise(resolve => setImmediate(resolve));
+        assert.equal(requests.at(-1).url, root + path + '?rev=pinned-text'); requests.at(-1).respond(200, '{}'); assert.equal(await pending, '{}');
+      }
+    } finally { provider.dispose(); }
+  });
+  it('preserves explicit absolute and origin-relative text URLs inside a rooted worker provider (#1292)', async () => {
+    const { provider, requests } = fixture({}, 'https://app.test/dist/browser/pinned/');
+    try {
+      for (const url of ['https://assets.test/book.json', '/shared/config.json', '//assets.test/book.json']) {
+        const pending = provider.loadString(url); await new Promise(resolve => setImmediate(resolve));
+        assert.equal(requests.at(-1).url, url); requests.at(-1).respond(200, '{}'); assert.equal(await pending, '{}');
+      }
+    } finally { provider.dispose(); }
+  });
   it('retires a canceled cache probe before it can send a network request', async () => {
     const { provider, requests } = fixture({ indexedDB: { open() {} } });
     let finishProbe;

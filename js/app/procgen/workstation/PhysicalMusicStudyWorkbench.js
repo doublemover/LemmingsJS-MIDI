@@ -4,6 +4,8 @@ import { validatePhysicalMusicGoal } from './PhysicalMusicGoal.js';
 import { getActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
+export const PHYSICAL_MUSIC_STUDY_PEAK_BYTES = 352 * 1048576;
+
 export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captureSource, getSourceIdentity, applyContinuation, onChange = () => {} } = {}) {
   if (!jobs?.compute || typeof captureSource !== 'function' || typeof getSourceIdentity !== 'function' || typeof applyContinuation !== 'function') throw new TypeError('Composition requires the owned background service and reversible physical publication.');
   const retirement = createProcgenRetirementScope(), partialStorage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'physical-music-study-progress', kind: 'bounded-completed-sample-receipts', category: 'candidate', bytes: 2 * 1048576 }); let partial = null;
@@ -28,7 +30,7 @@ export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captur
         capsule = await captureSource({ signal: controller.signal }); controller.signal.throwIfAborted(); if (!isCurrent()) throw new Error('The source changed during composition capture.');
         const input = { ...capsule.input, mode, goal, operationEpoch: ownerEpoch, ...(comparisonPolicy ? { comparisonPolicy } : {}), applicationBuildId: getActiveExecutionIdentity('browser-background-jobs').buildId }, inputBytes = canonicalDataText(input, { maxBytes: 4 * 1048576, maxNodes: 300000 }).bytes.length;
         result = await jobs.compute({ kind: 'physical-music-study', ownerId: 'physical-music-compose', ownerEpoch, sourceRevision: sourceIdentity, inputBytes,
-          estimatedPeakBytes: 384 * 1048576, maxBytes: 16 * 1048576, deadlineMs: 180000, signal: controller.signal, budgetAdapter: resourceBudget, isCurrent,
+          estimatedPeakBytes: PHYSICAL_MUSIC_STUDY_PEAK_BYTES, maxBytes: 16 * 1048576, deadlineMs: 180000, signal: controller.signal, budgetAdapter: resourceBudget, isCurrent,
           prepareInput: () => input, onProgress: value => { const { partial: receipt, ...presentation } = value; progress = presentation;
             if (receipt) { try { canonicalDataText(receipt, { maxBytes: 262144, maxNodes: 16384 }); partial = freezeData(receipt); } catch { /* Keep the preceding admitted receipt; oversized progress does not retain uncharged data. */ } } publish(); } });
         controller.signal.throwIfAborted(); if (!isCurrent()) throw new Error('The completed study belongs to a stale source.');

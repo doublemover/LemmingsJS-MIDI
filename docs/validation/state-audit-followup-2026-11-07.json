@@ -382,5 +382,109 @@
       1292
     ],
     "ci": "no workflow runs returned at first remote commit snapshot"
+  },
+  "desktopGroupedFollowthrough": {
+    "continuation": 672,
+    "sourceParent": "cca0cb6f",
+    "sourceSha256": {
+      "js/data/file-provider/FileProviderFetch.js": "b1fa5b1be970228312df03ad60d2d96b43d53a4c3b67f66ba3e41a364f626ddf",
+      "js/app/controls/ParameterKnob.js": "49148911ad96ae321e26ce32231e3c2edeb3d291e21fed67aefa73c128163159",
+      "js/app/midi-ui/CausalTakeRealtimePrint.js": "d90655f8ca005569a01ee430d964347173e92ca8830996a36c48e19993b2be4a",
+      "js/app/procgen/ProcgenSimulationProfiles.js": "283145deb4c852af38fb7a58e9ece9431843794b33a53050097f4d661f4252c9",
+      "js/app/procgen/workstation/PhysicalMusicStudyWorkbench.js": "0ff18564b1d7dc8bdbec06cc7e5ddb933e2ec0fb5fe4d2e0efef1e1ef40bb1b4",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "8aefb5fc08b0dc7ac141f791a6f4e93b1a316e1a5d4568ea25cd435187405073"
+    },
+    "node": {
+      "suites": 21,
+      "tests": 341,
+      "passes": 341,
+      "pending": 0,
+      "failures": 0,
+      "start": "2026-11-07T20:04:52.059Z",
+      "end": "2026-11-07T20:06:41.487Z",
+      "duration": 109428
+    },
+    "coverage": {
+      "scoped": true,
+      "checkCoverage": false,
+      "total": {
+        "lines": {
+          "total": 4166,
+          "covered": 3117,
+          "skipped": 0,
+          "pct": 74.81
+        },
+        "statements": {
+          "total": 4166,
+          "covered": 3117,
+          "skipped": 0,
+          "pct": 74.81
+        },
+        "functions": {
+          "total": 608,
+          "covered": 370,
+          "skipped": 0,
+          "pct": 60.85
+        },
+        "branches": {
+          "total": 2853,
+          "covered": 1895,
+          "skipped": 0,
+          "pct": 66.42
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "browser": {
+      "buildId": "7257eb0fe6b268c81fc5e25c601eb67305b35b3892bac110d041398b1cd34769",
+      "selected": 149,
+      "previouslyPassingExcluded": 398,
+      "stats": {
+        "startTime": "2026-11-07T20:05:43.669Z",
+        "duration": 1149153.1949999998,
+        "expected": 120,
+        "skipped": 7,
+        "unexpected": 22,
+        "flaky": 0
+      },
+      "jsonSha256": "131bbc184f24484e9e63ed0a2c6b3314bb38355fdf79b33b86037c64fdfbff57",
+      "confirmedPassing": [
+        "Private real-time print returns exact owned PCM and closes native context",
+        "Knob native DPR1 and DPR2 gestures preserve zero redundant child-list writes",
+        "Combined-output cancellation retains truthful partial clock receipt",
+        "Replacement review opens its exact owned JSON input"
+      ],
+      "remainingGroups": [
+        "Independent worker: constrained terrain decode admission and headless ParticleTable Buffer reference",
+        "Composition: foreground resource owner overlap before admission",
+        "Ten live-clock cleanup fixtures assume one native sink; runtime declares two",
+        "Actual history BFCache inhibited by no-store server policy",
+        "Legacy pattern/sound-selection fixture contract and sound-library audition capacity",
+        "Gesture teardown and browser zoom boot failures require trace classification"
+      ]
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "passed:15 components/2774 files",
+      "lint": "passed",
+      "undefined": "passed",
+      "releaseReadiness": "passed",
+      "dependencyAudit": "0 vulnerabilities",
+      "diffWhitespace": "passed before final fixture/config edits"
+    },
+    "pendingIssues": [
+      1289,
+      1291,
+      1292,
+      1293,
+      1294
+    ],
+    "note": "No second complete Node suite. 341/341 grouped Node cases pass; remaining native failures are explicit. Profile changes preserve bounded refusal and do not establish full worker/composition qualification."
   }
 }

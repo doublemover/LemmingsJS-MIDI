@@ -83,13 +83,14 @@ test('structural maximum lane count refuses an overlapping large import before f
   try {
     sampler.mark('1024-lane-overlap-refusal');
     result = await page.evaluate(async () => {
-      const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world, original = studio.capture(), checkpoint = JSON.stringify(original.world), project = studio.getProject();
+      const { captureProcgenCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpoint.js');
+      const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world, checkpoint = JSON.stringify(captureProcgenCheckpoint(world)), project = studio.getProject();
       const before = { resources: studio.getResourceDiagnostics(), document: JSON.stringify(studio.getDocumentState()), history: JSON.stringify(studio.handlers.historyState()) };
-      const text = JSON.stringify(original), file = new File([text, ' '.repeat(48 * 1048576 - new TextEncoder().encode(text).length)], 'structural-maximum-overlap.json', { type: 'application/json' });
+      const text = '{}', file = new File([text, ' '.repeat(48 * 1048576 - new TextEncoder().encode(text).length)], 'structural-maximum-overlap.json', { type: 'application/json' });
       let reads = 0; const stream = file.stream.bind(file); Object.defineProperty(file, 'stream', { value: () => { reads++; return stream(); } });
       const started = performance.now(), accepted = await studio.handlers.import(file), durationMs = performance.now() - started;
       return { profile: { lanes: 1024, fileBytes: file.size, paused: true, audioEnabled: studio.getPlaybackState().enabled }, accepted, reads, durationMs, beforeResources: before.resources,
-        sameWorld: world === window.__PROCGEN_LANES__.world, sameCheckpoint: checkpoint === JSON.stringify(studio.capture().world), sameProject: project === studio.getProject(),
+        sameWorld: world === window.__PROCGEN_LANES__.world, sameCheckpoint: checkpoint === JSON.stringify(captureProcgenCheckpoint(world)), sameProject: project === studio.getProject(),
         sameDocument: before.document === JSON.stringify(studio.getDocumentState()), sameHistory: before.history === JSON.stringify(studio.handlers.historyState()),
         operationRetired: studio.getOperationState() === null, resources: studio.getResourceDiagnostics(), status: document.querySelector('.studio-status')?.textContent };
     });

@@ -7,6 +7,18 @@ import { TestDocument } from './helpers/test-dom.js';
 const descriptor = { id: 'pitch', name: 'Pitch', quantity: 'pitch-offset', unit: 'cents', min: -1200, max: 1200, step: 10, fineStep: 1, defaultValue: 0, detents: [0] };
 const event = (type, extra = {}) => ({ type, preventDefault() {}, stopPropagation() {}, ...extra });
 describe('typed parameter control transactions', () => {
+
+  it('preserves help text under repeated observations while still publishing changed accessibility context (#1294)', () => {
+    const document = new TestDocument(), knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit() {} });
+    const help = knob.element.children.find(child => child.className === 'parameter-knob-help'); let text = help.textContent, writes = 0;
+    Object.defineProperty(help, 'textContent', { configurable: true, get: () => text, set(value) { text = value; writes++; } });
+    for (let frame = 0; frame < 60; frame++) knob.setState({ value: 0 });
+    expect(writes).to.equal(0); const before = text;
+    knob.setObservations({ effectiveValue: 300, pickupValue: 50 }); expect(text).not.to.equal(before); expect(writes).to.equal(1);
+    for (let frame = 0; frame < 60; frame++) knob.setObservations({ effectiveValue: 300, pickupValue: 50 });
+    expect(writes).to.equal(1); const observed = text; knob.setState({ isReadOnly: true, isPending: true });
+    expect(text).not.to.equal(observed); expect(writes).to.equal(2); knob.dispose();
+  });
   it('round-trips logarithmic positions and refuses empty/nonfinite values without inventing zero', () => {
     const value = normalizeParameterDescriptor({ ...descriptor, min: 20, max: 20000, defaultValue: 440, unit: 'Hz', scale: 'logarithmic', detents: [] });
     for (const fraction of [0, 0.1, 0.5, 1]) expect(parameterUnitPosition(value, parameterValueAt(value, fraction))).to.be.closeTo(fraction, 1e-12);

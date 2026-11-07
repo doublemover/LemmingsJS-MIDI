@@ -140,9 +140,17 @@ for (const mode of ['both', 'midi-refused', 'audio-suspended', 'cancel-before-su
       }
       if (result.masterObservation) {
         const observation = result.masterObservation;
-        expect(observation.manifest).toMatchObject({ state: 'Ready', terminalAcknowledged: true, gaps: [], nativeRetirement: 'complete' });
+        expect(observation.manifest).toMatchObject({ terminalAcknowledged: true, gaps: [], nativeRetirement: 'complete' });
+        const interruptedClock = mode === 'cancel-before-submit' && observation.manifest.state === 'Partial';
+        if (interruptedClock) {
+          expect(observation.manifest.stopReason).toBe('noncontiguous-render-clock');
+          const clock = observation.manifest.clockDiscontinuity; expect(clock.actualFrame).toBeLessThan(clock.expectedFrame);
+          expect(clock.expectedFrame - clock.actualFrame).toBe(clock.frames); expect(clock.frames).toBeGreaterThan(0);
+        } else {
+          expect(observation.manifest.state).toBe('Ready');
+          expect(observation.manifest.endFrameExclusive).toBeGreaterThanOrEqual(observation.throughFrame);
+        }
         expect(observation.manifest.sourceStartFrame).toBeLessThanOrEqual(audio.targetFrame);
-        expect(observation.manifest.endFrameExclusive).toBeGreaterThanOrEqual(observation.throughFrame);
         expect(observation.samples).toBe(observation.manifest.timelineFrames * 2); expect(observation.finite).toBe(true); expect(observation.wavBytes).toBe(observation.artifactBytes);
         if (mode === 'both') expect(observation.peak).toBeGreaterThan(0);
       }

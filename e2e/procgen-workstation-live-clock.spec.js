@@ -145,7 +145,9 @@ for (const backend of ['audio', 'midi']) for (const scenario of ['rates-pause-st
   await page.locator('#procgenPanic').click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().activeNotes)).toBe(0);
   const stopped = await page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics());
   const frames = assertLiveFrames(actual, backend);
-  expect(stopped.externalOutputs.every(output => output.ownedVoices === 0)).toBe(true);
+  const standardMidi = stopped.externalOutputs.filter(output => Object.hasOwn(output, 'ownedVoices')), nativeMidi = stopped.externalOutputs.filter(output => !Object.hasOwn(output, 'ownedVoices'));
+  expect(standardMidi).toHaveLength(1); expect(standardMidi[0].ownedVoices).toBe(0);
+  expect(nativeMidi.length).toBeGreaterThan(0); for (const output of nativeMidi) expect(output).toMatchObject({ enabled: false, executions: 0, queue: { pendingBatches: 0, pendingWords: 0, pendingJobs: 0 } });
   if (backend === 'audio') { expect(live.opens).toBe(1); expect(live.nonfinite).toBe(false); expect(live.peak).toBeGreaterThan(1e-8); expect(live.midi.requests).toBe(scenario === 'external-clock' ? 1 : 0); }
   else { expect(live.opens).toBe(0); expect(live.midi.requests).toBe(setupRequests); expect(setupRequests).toBeGreaterThan(0); expect(setupRequests).toBeLessThanOrEqual(scenario === 'external-clock' ? 2 : 1); const notes = live.midi.messages.filter(message => (message.bytes[0] & 0xf0) === 0x90 && message.bytes[2]); expect(notes.length).toBeGreaterThan(0); expect(notes.every(message => Number.isFinite(message.requestedTimestampMs))).toBe(true); }
   if (scenario === 'catch-up') {
