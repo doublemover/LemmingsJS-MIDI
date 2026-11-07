@@ -5,11 +5,12 @@ const integer = value => Number.isSafeInteger(value) && value >= 0;
 const record = (value, keys) => value && Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).every(key => keys.includes(key));
 export function validatePreparedSurfaceMap(raw) {
   const p = cloneData(raw, { maxBytes: 8192, maxNodes: 128 }), b = p?.bounds;
-  if (!record(p, ['id', 'revision', 'regionInstanceId', 'sourceEditRevision', 'boundTopologyRevision', 'bounds']) || !text(p.id, 128) || !text(p.regionInstanceId, 256) ||
-      !integer(p.revision) || !integer(p.sourceEditRevision) || !integer(p.boundTopologyRevision) || !record(b, ['x1', 'x2', 'y1', 'y2']) ||
+  if (!record(p, ['id', 'revision', 'regionInstanceId', 'sourceEditRevision', 'boundTopologyRevision', 'bounds', 'geometryPolicy']) || !text(p.id, 128) || !text(p.regionInstanceId, 256) ||
+      p.geometryPolicy != null && p.geometryPolicy !== 'fixed-authored-world-map' || !integer(p.revision) || !integer(p.sourceEditRevision) || !integer(p.boundTopologyRevision) || !record(b, ['x1', 'x2', 'y1', 'y2']) ||
       ![b.x1, b.x2, b.y1, b.y2].every(value => Number.isFinite(value) && Math.abs(value) <= 1e9) || b.x2 <= b.x1 || b.y2 <= b.y1) throw new TypeError('Invalid named world-to-normalized surface map.');
   return freezeData(p);
 }
+export const preparedSurfaceMapCoversRevision = (map, revision) => integer(revision) && (map.geometryPolicy === 'fixed-authored-world-map' || map.boundTopologyRevision === revision);
 export function projectPreparedSurfacePoint(map, point) {
   const b = map.bounds;
   if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x < b.x1 || point.x > b.x2 || point.y < b.y1 || point.y > b.y2) throw new RangeError('The observed point is outside the prepared surface map.');
@@ -26,10 +27,10 @@ export async function preparedBodyIdentity(raw) {
 export function validateMappedBodyPreparation(raw) {
   const p = cloneData(raw, { maxBytes: 32768, maxNodes: 1024 });
   if (!record(p, ['schema', 'commandId', 'batchId', 'stage', 'operation', 'kind', 'surfaceId', 'mapId', 'mapRevision', 'mappingId', 'mappingRevision', 'preparationSlot', 'beginPolicy', 'contactSpanId', 'actorId', 'worldId', 'generation',
-    'sourceTick', 'sourceSequence', 'sourceEventIds', 'sourceKind', 'sourceEditRevision', 'boundTopologyRevision', 'position', 'radius01', 'amount01', 'scoreTime', 'reason', 'lossMaskId']) ||
+    'sourceTick', 'sourceSequence', 'sourceEventIds', 'sourceKind', 'sourceEditRevision', 'boundTopologyRevision', 'observedSurfaceRevision', 'position', 'radius01', 'amount01', 'scoreTime', 'reason', 'lossMaskId']) ||
       p.schema !== 'lemmings-mapped-body-preparation/v1' || p.stage !== 'physical-mapping-output-not-audio-admission' || !text(p.commandId, 1024) || !text(p.batchId) || !['begin', 'update', 'end'].includes(p.operation) || !['touch', 'pickup-left', 'pickup-right', 'mode-loss'].includes(p.kind) ||
       !text(p.surfaceId, 128) || !text(p.mapId, 128) || !integer(p.mapRevision) || !text(p.mappingId, 128) || !integer(p.mappingRevision) || !text(p.preparationSlot, 128) || !['observed-span-begin', 'current-observed-contact'].includes(p.beginPolicy) || !text(p.contactSpanId) ||
-      !integer(p.actorId) || !text(p.worldId) || !integer(p.generation) || !integer(p.sourceTick) || !integer(p.sourceSequence) || !integer(p.sourceEditRevision) || !integer(p.boundTopologyRevision) ||
+      !integer(p.actorId) || !text(p.worldId) || !integer(p.generation) || !integer(p.sourceTick) || !integer(p.sourceSequence) || !integer(p.sourceEditRevision) || !integer(p.boundTopologyRevision) || p.observedSurfaceRevision != null && !integer(p.observedSurfaceRevision) ||
       !Array.isArray(p.sourceEventIds) || !p.sourceEventIds.length || p.sourceEventIds.length > 128 || p.sourceEventIds.some(value => !text(value)) ||
       !['ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded', 'ActorTerminated', 'coverage-ended', 'mapping-changed'].includes(p.sourceKind) ||
       !p.scoreTime || Object.getPrototypeOf(p.scoreTime) !== Object.prototype || p.reason != null && !text(p.reason) || (p.kind === 'mode-loss' ? !text(p.lossMaskId, 96) : p.lossMaskId != null)) throw new TypeError('Invalid mapped prepared-body command or fact ancestry.');

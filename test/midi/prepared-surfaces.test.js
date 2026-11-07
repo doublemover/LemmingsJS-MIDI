@@ -159,3 +159,21 @@ describe('mapped shared-surface preparation ownership', () => {
     const invalid = surface(); invalid.heldContactPolicy = 'both'; expect(() => validatePreparedSurfaceDefinitions([invalid])).to.throw(); f.owner.dispose();
   });
 });
+
+
+describe('fixed authored body coordinate guides', () => {
+  it('retains actual contact revisions while preserving the same fixed authored map', () => {
+    const value = surface(); value.surfaceMap.geometryPolicy = 'fixed-authored-world-map'; const mapping = createPreparedSurfaceMapping(); mapping.configure([value]);
+    const first = mapping.consume(batch(1, [fact(1, 'ContactSpanBegan')]), { scoreTimeFor }); expect(first.commands[0].observedSurfaceRevision).to.equal(0);
+    const next = mapping.consume(batch(2, [fact(2, 'ContactSpanUpdated', { surfaceRevision: 7 })], { terrainRevisionAfter: 7 }), { scoreTimeFor });
+    expect(next.commands).to.have.length(1); expect(next.commands[0]).to.include({ operation: 'update', observedSurfaceRevision: 7, boundTopologyRevision: 0, mapRevision: 0 });
+    const restored = createPreparedSurfaceMapping(); restored.configure([value]); restored.restore(mapping.snapshot());
+    const ended = batch(3, [fact(3, 'ContactSpanEnded', { surfaceRevision: 8 })], { terrainRevisionAfter: 8 }); expect(restored.consume(ended, { scoreTimeFor })).to.deep.equal(mapping.consume(ended, { scoreTimeFor }));
+  });
+  it('keeps topology-bound surfaces strict and releases unknown fixed-map support', () => {
+    const strict = createPreparedSurfaceMapping(); strict.configure([surface()]); strict.consume(batch(1, [fact(1, 'ContactSpanBegan')]), { scoreTimeFor });
+    expect(strict.consume(batch(2, [fact(2, 'ContactSpanUpdated', { surfaceRevision: 1 })]), { scoreTimeFor }).commands[0].operation).to.equal('end');
+    const value = surface(); value.surfaceMap.geometryPolicy = 'fixed-authored-world-map'; const fixed = createPreparedSurfaceMapping(); fixed.configure([value]); fixed.consume(batch(1, [fact(1, 'ContactSpanBegan')]), { scoreTimeFor });
+    expect(fixed.consume(batch(2, [fact(2, 'ContactSpanUpdated', { surfaceRevision: null })]), { scoreTimeFor }).commands[0].operation).to.equal('end');
+  });
+});

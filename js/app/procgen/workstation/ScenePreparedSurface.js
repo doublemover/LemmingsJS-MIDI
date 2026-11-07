@@ -1,4 +1,5 @@
 import { canonicalDataText, cloneData, freezeData } from '../../../core/CanonicalData.js';
+import { preparedSurfaceMapCoversRevision } from '../../../midi/content/PreparedSurface.js';
 import { prepareEffectGraphRevision } from '../../../midi/content/EffectGraphRevision.js';
 import { validatePreparedSurfaceDefinitions } from './physical/PreparedSurfaceMapping.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -20,7 +21,7 @@ export function validateScenePreparedSurface(raw) {
 export function validateScenePreparedSurfaceMapping(raw, graph) {
   const mechanism = validateScenePreparedSurface(raw), surfaces = validatePreparedSurfaceDefinitions(graph.preparedSurfaces), surface = surfaces.find(row => row.id === mechanism.surfaceId);
   const membrane = mechanism.graph.nodes.some(node => node.kind === 'rectangular-membrane');
-  if (surfaces.length !== 1 || !surface || !graph.instruments.length || graph.instruments.some(instrument => membrane ? instrument.route !== 'prepared-body' || instrument.preparedBodyStrike?.surfaceId !== surface.id || instrument.preparedBodyStrike.surfaceRevision !== surface.revision : instrument.route !== 'local' || !['ContactSpanBegan', 'ContactResolved'].includes(instrument.sourceKind))) throw fail('The score must bind finite membrane strikes or actual local bar exciters to its one exact shared surface.');
+  if (surfaces.length !== 1 || !surface || !graph.instruments.length || graph.instruments.some(instrument => membrane ? instrument.route !== 'prepared-body' || instrument.preparedBodyStrike?.surfaceId !== surface.id || instrument.preparedBodyStrike.surfaceRevision !== surface.revision : instrument.route !== 'local' || !(['ContactSpanBegan', 'ContactResolved'].includes(instrument.sourceKind) || surface.surfaceMap.geometryPolicy === 'fixed-authored-world-map' && instrument.sourceKind === 'TerrainWorkCommitted' && instrument.workChangePolicy === 'solid' && instrument.changedOnly === true))) throw fail('The score must bind finite membrane strikes or actual local bar exciters to its one exact shared surface.');
   return mechanism;
 }
 let ordinal = 0;
@@ -72,7 +73,7 @@ export function createScenePreparedSurface({ mechanism: raw, getGraph, prepareGr
     observe(batch, executionEpoch) {
       if (disposed || unknown) return;
       const surface = getGraph().preparedSurfaces?.find(row => row.id === mechanism.surfaceId), topology = batch.terrainRevisionAfter ?? batch.snapshot?.terrainRevision;
-      const key = surface && surface.surfaceMap.boundTopologyRevision === topology ? canonicalDataText({ surface, executionEpoch, worldId: batch.worldId, generation: batch.generation }).text : null;
+      const key = surface && preparedSurfaceMapCoversRevision(surface.surfaceMap, topology) ? canonicalDataText({ surface, executionEpoch, worldId: batch.worldId, generation: batch.generation }).text : null;
       if (key === source?.key || key === null && source === null) return;
       restoredContext = null; version++; pending?.controller.abort(fail('A newer surface binding superseded preparation.')); source = key ? { key, executionEpoch, worldId: batch.worldId, generation: batch.generation } : null;
       error = source ? null : 'surface-map-topology-unavailable';

@@ -1,3 +1,5 @@
+import { createEffectSourceSampler } from '../../midi-ui/EffectSourceBindings.js';
+import { sceneEffectSourceBindings } from './SceneEffectRack.js';
 import { canonicalDataText, freezeData, hashData } from '../../../core/CanonicalData.js';
 import { prepareEffectGraphRevision, effectGraphHash } from '../../../midi/content/EffectGraphRevision.js';
 import { validateMappedBodyPreparation, preparedBodyIdentity } from '../../../midi/content/PreparedSurface.js';
@@ -51,6 +53,7 @@ export async function renderScenePreparedSurfaceRehearsal({ prepared, left, righ
   const owner = createPreparedSurfaceBodyOwner({ documentEpoch: body.documentEpoch, inventory: () => [body], toFrame: scoreTime => prepared.frameFor({ scoreTime }),
     apply(id, values, frame) { if (frame !== graph.frame) throw fail('The preparation missed its exact owned render frame.'); const receipt = graph.update(id, values); return { ...receipt, status: 'accepted', targetFrame: frame }; },
     panicBody() { graph.panic(); return { status: 'accepted' }; } });
+  const sourceBindings = sceneEffectSourceBindings({ plan }, []), sampler = createEffectSourceSampler(sourceBindings, [], []);
   let cursor = 0, controls = 0, strikes = 0;
   try {
     await owner.bind({ surfaceId: body.surfaceId, surfaceRevision: body.surfaceRevision, surfaceMap: body.surfaceMap, nodeId, preparationKinds: body.preparationKinds, lossMaskIds: body.lossMasks.map(mask => mask.id), executionEpoch, worldId: body.worldId, generation: body.generation, expected: route });
@@ -62,13 +65,13 @@ export async function renderScenePreparedSurfaceRehearsal({ prepared, left, righ
           if (event.kind === 'strike') { graph.enqueueBodyStrike(nodeId, event.strike.command); strikes++; }
           else { const receipt = owner.consume(event.command, executionEpoch); if (receipt.status !== 'accepted') throw fail('A real mapped preparation was declined: ' + receipt.reason); controls++; }
         }
-        graph.sample(frame < sourceFrames ? Math.fround(left[frame]) : 0, frame < sourceFrames ? Math.fround(right[frame]) : 0); left[frame] = graph.leftSample; right[frame] = graph.rightSample;
+        const sourceLeft = frame < sourceFrames ? Math.fround(left[frame]) : 0, sourceRight = frame < sourceFrames ? Math.fround(right[frame]) : 0; graph.sample(sourceLeft, sourceRight, sampler.fill(sourceLeft, sourceRight, frame), sampler.present); left[frame] = graph.leftSample; right[frame] = graph.rightSample;
       }
       graph.assertHealthy(); await yieldControl();
     }
     const health = graph.diagnostics(), bodyState = (profile.finite ? health.membraneStates : health.sympatheticStates)[0];
     if (cursor !== events.length || !bodyState || bodyState.faults || bodyState.muted || profile.finite && (bodyState.strikes.applied !== strikes || bodyState.strikes.ended !== strikes || bodyState.strikes.rejected || bodyState.strikes.queued || bodyState.strikes.activeExciters)) throw fail('The private shared body faulted or omitted a finite source/control.');
-    return freezeData({ kind: 'observed-prepared-surface', strategy: profile.strategy, bodyCount: 1, modeCount: profile.modeCount, graphHash: graph.hash, bodyInstanceId: body.bodyInstanceId,
+    return freezeData({ kind: 'observed-prepared-surface', sourceBindings, geometryPolicy: body.surfaceMap.geometryPolicy || 'source-topology-bound', strategy: profile.strategy, bodyCount: 1, modeCount: profile.modeCount, graphHash: graph.hash, bodyInstanceId: body.bodyInstanceId,
       surfaceId: body.surfaceId, surfaceRevision: body.surfaceRevision, mapId: body.surfaceMap.id, mapRevision: body.surfaceMap.revision, scheduleHash: prepared.scheduleHash, sourceOnsets: prepared.sourceOnsets,
       finiteStrikes: strikes, preparationCommands: controls, semanticOnsetsAdded: 0, faults: bodyState.faults, sourceFrames, tailFrames: plan.maximumTailFrames,
       tailPolicy: 'hold-last-observed-preparation;declared-body-tail;panic-at-deadline', historicalPerformanceEvidence: false, acousticReceipt: false, applicationEvidence: 'exact-frame-owned-offline-kernel;not-live-processor-acknowledgement' });

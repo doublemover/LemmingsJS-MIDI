@@ -1,3 +1,4 @@
+import { createWorkshopSharedBodyScores } from './WorkshopSharedBodyScore.js';
 import { createPreparedWorkshopScores } from './PreparedWorkshopScore.js';
 import { createWorkshopCourierScores } from './WorkshopCourierScore.js';
 import { createRescueAirCrewScores } from './RescueAirCrewScore.js';
@@ -183,7 +184,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   const texture = catalog.descriptors.find(value => value.engineId === 'worklet-texture');
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
   if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
-  if (modalWorkshopScores.length) await registerAuthoredScores(await createWorkshopCourierScores({ sourceHash, scores: modalWorkshopScores, signal }));
+  if (modalWorkshopScores.length) { await registerAuthoredScores(await createWorkshopCourierScores({ sourceHash, scores: modalWorkshopScores, signal })); await registerAuthoredScores(await createWorkshopSharedBodyScores({ sourceHash, scores: modalWorkshopScores, signal })); }
   const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
   if (modal?.maximumVoices >= 16 && spectrum?.maximumVoices >= 4) await registerAuthoredScores(await createWorkshopInteractionScores({ sourceHash, modalDescriptor: modal, spectrumDescriptor: spectrum, signal }));
   if (glassOrbitScores.length) { await registerAuthoredScores(await createGlassOrbitTrellisScores({ sourceHash, scores: glassOrbitScores, signal })); await registerAuthoredScores(await createGlassOrbitMetamorphicScores({ sourceHash, scores: glassOrbitScores, signal })); }

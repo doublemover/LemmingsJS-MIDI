@@ -1,6 +1,6 @@
 import { captureContinuationRecord } from '../CooperativeContinuationCapture.js';
 import { cloneData, freezeData, canonicalDataText } from '../../../../core/CanonicalData.js';
-import { validatePreparedSurfaceMap, validateMappedBodyPreparation, projectPreparedSurfacePoint } from '../../../../midi/content/PreparedSurface.js';
+import { validatePreparedSurfaceMap, validateMappedBodyPreparation, projectPreparedSurfacePoint, preparedSurfaceMapCoversRevision } from '../../../../midi/content/PreparedSurface.js';
 
 const id = value => typeof value === 'string' && /^[a-zA-Z][a-zA-Z0-9._:-]{0,47}$/.test(value);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
@@ -45,7 +45,7 @@ export function createPreparedSurfaceMapping() {
       batchId: batch.batchId, stage: 'physical-mapping-output-not-audio-admission', operation, kind: preparation.kind, surfaceId: surface.id, mapId: map.id, mapRevision: map.revision,
       mappingId: surface.id + '.' + preparation.id, mappingRevision: surface.revision, preparationSlot: preparation.id, beginPolicy: preparation.beginPolicy, contactSpanId: record.contactSpanId, actorId: record.actorId,
       worldId: record.worldId, generation: record.generation, sourceTick: batch.tick, sourceSequence: fact?.causalSequence ?? (reason === 'mapping-changed' || reason === 'execution-ended' ? batch.facts[0]?.causalSequence : batch.facts.at(-1)?.causalSequence) ?? Math.max(0, last.sequence),
-      sourceEventIds: eventIds, sourceKind: fact?.kind || (reason === 'mapping-changed' ? 'mapping-changed' : 'coverage-ended'), sourceEditRevision: map.sourceEditRevision, boundTopologyRevision: map.boundTopologyRevision,
+      sourceEventIds: eventIds, sourceKind: fact?.kind || (reason === 'mapping-changed' ? 'mapping-changed' : 'coverage-ended'), sourceEditRevision: map.sourceEditRevision, boundTopologyRevision: map.boundTopologyRevision, ...(map.geometryPolicy === 'fixed-authored-world-map' ? { observedSurfaceRevision: fact?.surfaceRevision ?? record.observedSurfaceRevision ?? null } : {}),
       position: ending ? null : { ...fact.anchor }, radius01: ending || preparation.kind !== 'touch' ? null : preparation.radius01, amount01: ending || !['touch', 'mode-loss'].includes(preparation.kind) ? null : preparation.amount01,
       ...(preparation.kind === 'mode-loss' ? { lossMaskId: preparation.lossMaskId } : {}),
       scoreTime: scoreTimeFor(batch, fact), reason });
@@ -69,14 +69,14 @@ export function createPreparedSurfaceMapping() {
         const key = keyFor(surface, preparation, fact), record = held.get(key);
         const qualifies = fact.worldId === batch.worldId && fact.generation === batch.generation && typeof fact.spanId === 'string' && fact.spanId.length <= 512 && fact.spanId.length > 0 &&
           typeof fact.eventId === 'string' && fact.eventId.length > 0 && fact.eventId.length <= 512 && integer(fact.actorId) && fact.observedTick === batch.tick && fact.physicalPayload?.evidence === 'completed-support-cell' && fact.causeKind === 'support' &&
-          fact.surfaceRevision === surface.surfaceMap.boundTopologyRevision && preparation.sourceLanes.includes(fact.laneId) && preparation.actions.includes(fact.action);
+          preparedSurfaceMapCoversRevision(surface.surfaceMap, fact.surfaceRevision) && preparation.sourceLanes.includes(fact.laneId) && preparation.actions.includes(fact.action);
         let point = false; if (qualifies) { try { projectPreparedSurfacePoint(surface.surfaceMap, fact.anchor); point = true; } catch {} }
         if (!qualifies || !point || record && record.actorId !== fact.actorId) { if (record) end(key, record, fact, 'unknown-or-foreign-contact'); declined++; continue; }
         if (!record && fact.kind !== 'ContactSpanBegan' && preparation.beginPolicy !== 'current-observed-contact') continue;
         if (!record && held.size >= MAX_HELD || output.length >= MAX_COMMANDS - MAX_HELD) { failed = true; capped++; break; }
         const next = record || { surface, surfaceKey: surfaceKeys.get(surface.id), preparation, contactSpanId: fact.spanId, actorId: fact.actorId, worldId: batch.worldId, generation: batch.generation };
         output.push(commandFor(batch, next, fact, record ? 'update' : 'begin', scoreTimeFor));
-        next.position = { ...fact.anchor }; next.sourceEventIds = [fact.eventId]; next.observedTick = batch.tick; next.sourceSequence = fact.causalSequence; held.set(key, next); observed.add(key);
+        next.position = { ...fact.anchor }; if (surface.surfaceMap.geometryPolicy === 'fixed-authored-world-map') next.observedSurfaceRevision = fact.surfaceRevision; next.sourceEventIds = [fact.eventId]; next.observedTick = batch.tick; next.sourceSequence = fact.causalSequence; held.set(key, next); observed.add(key);
       }
       if (failed) break;
     }
@@ -92,7 +92,7 @@ export function createPreparedSurfaceMapping() {
     for (const record of p.held) {
       const surface = definitions.find(surface => surface.id === record.surface?.id), preparation = surface?.preparations.find(preparation => preparation.id === record.preparation?.id);
       if (!surface || !preparation || record.surfaceKey !== surfaceKeys.get(surface.id) || canonicalDataText(record.preparation).text !== canonicalDataText(preparation).text || record.key !== keyFor(surface, preparation, { spanId: record.contactSpanId }) || next.has(record.key) ||
-          !integer(record.actorId) || record.worldId !== p.cursor.worldId || record.generation !== p.cursor.generation || record.observedTick !== p.cursor.tick || !integer(record.sourceSequence) || record.sourceSequence > p.cursor.sequence ||
+          surface.surfaceMap.geometryPolicy === 'fixed-authored-world-map' && !integer(record.observedSurfaceRevision) || !integer(record.actorId) || record.worldId !== p.cursor.worldId || record.generation !== p.cursor.generation || record.observedTick !== p.cursor.tick || !integer(record.sourceSequence) || record.sourceSequence > p.cursor.sequence ||
           !Array.isArray(record.sourceEventIds) || !record.sourceEventIds.length || record.sourceEventIds.length > 128 || record.sourceEventIds.some(id => typeof id !== 'string' || !id || id.length > 512)) throw new Error('Invalid held prepared-contact continuation.');
       projectPreparedSurfacePoint(surface.surfaceMap, record.position); next.set(record.key, { ...record, surface, preparation });
     }
