@@ -190,6 +190,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       const frequency = frequencyFor(intent.pitch);
       const channel = preview._channel(0, owner), release = values.releaseSeconds;
       laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, spatialState: intent.spatialState || null, value: intent.laneMix });
+      if (intent.acousticMaterialState && intent.acousticMaterialState.mapHash !== laneMix.spatialMapHash) throw new Error('The acoustic material body and prepared spatial map differ.');
       oscillator = fmPlan ? createNativeFmSourceOwner(context, fmPlan, start) : modalPlan ? createNativeModalSourceOwner(context, modalPlan, start) : context.createOscillator();
       if (sourcePlan) oscillator.prepare(); gain = context.createGain(); macroGain = context.createGain();
       pressureGain = context.createGain();

@@ -224,13 +224,15 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
     if (!previous || previous.mode === 'pattern') throw new Error('Select a physical contact lane for the prepared material palette.');
     const palette = validateMaterialPalette(action.palette), reference = palette.references.find(reference => reference.patchId === 'material.unclassified'), baseMap = createOriginalMaterialResponseMap({ articulation: action.articulation, site01: action.site01 }); let matched = 0;
     const instruments = procgen.physicalGraph.instruments.map(instrument => {
-      if (instrument.sourceLanes && !instrument.sourceLanes.includes(index) || !['ContactSpanBegan', 'ContactResolved', 'TerrainWorkCommitted'].includes(instrument.sourceKind)) return instrument;
+      const contact = ['ContactSpanBegan', 'ContactResolved', 'TerrainWorkCommitted'].includes(instrument.sourceKind), zone = instrument.spatialAttachment?.materialMode === 'zone-response';
+      if (instrument.sourceLanes && !instrument.sourceLanes.includes(index) || !contact && !zone) return instrument;
       if (!instrument.sourceLanes || instrument.sourceLanes.some(lane => lane !== index)) throw new Error('Scope the contact mapping to this lane explicitly before applying its material palette.');
       if (instrument.route !== 'local' || instrument.response || instrument.articulation || instrument.contactTravel || instrument.preparedBodyStrike || instrument.topologyRegionId || instrument.sampleGesture || instrument.sampleKitId) throw new Error('This contact already owns another body/sample interpretation. Choose a separate direct local contact mapping.');
       matched++; const prior = instrument.materialResponse, revision = prior ? prior.revision + 1 : 1;
-      return { ...instrument, ...(instrument.sourceKind === 'TerrainWorkCommitted' ? { workChangePolicy: 'solid', changedOnly: true } : {}), materialResponse: validateMaterialResponseMap({ ...baseMap, id: 'material-lane-' + index, revision }) };
+      return { ...instrument, ...(zone ? { spatialAttachment: { ...instrument.spatialAttachment, articulation: baseMap.articulation, site01: baseMap.site01 } } : {}),
+        ...(instrument.sourceKind === 'TerrainWorkCommitted' ? { workChangePolicy: 'solid', changedOnly: true } : {}), ...(contact ? { materialResponse: validateMaterialResponseMap({ ...baseMap, id: 'material-lane-' + index, revision }) } : {}) };
     });
-    if (!matched) throw new Error('Add a lane-scoped local support, wall contact or solid-work mapping before applying the material palette.');
+    if (!matched) throw new Error('Add a lane-scoped local contact, solid-work or explicit acoustic-zone response mapping before applying the material palette.');
     const physicalGraph = validateCausalInstrumentGraph({ ...procgen.physicalGraph, revision: procgen.physicalGraph.revision + 1, instruments }), next = createProcgenLane(index, { ...previous, revision: previous.revision + 1,
         instrumentRef: reference, instrumentPatchId: reference.patchId, materialPalette: palette, instrumentControls: { macros: {} }, soundChangePolicy: 'new-notes-only', soundChangeBoundary: 'immediate', soundQualityPolicy: 'manual', linkedThemePresetId: null }, previous), lanes = procgen.lanes.map((lane, at) => at === index ? next : lane);
     inheritProcgenLaneIndex(procgen.lanes, lanes); return { ...project, procgen: { ...procgen, lanes, physicalGraph } };
@@ -356,9 +358,11 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
 function clearLaneMaterialInterpretation(graph, index, bump = true) {
   let changed = false;
   const instruments = graph.instruments.map(instrument => {
-    if (!instrument.materialResponse || instrument.sourceLanes && !instrument.sourceLanes.includes(index)) return instrument;
+    const zone = instrument.spatialAttachment?.materialMode === 'zone-response';
+    if (!instrument.materialResponse && !zone || instrument.sourceLanes && !instrument.sourceLanes.includes(index)) return instrument;
     if (!instrument.sourceLanes || instrument.sourceLanes.some(lane => lane !== index)) throw new Error('Separate the shared material contact mapping before changing one lane source.');
-    changed = true; const { materialResponse, ...ordinary } = instrument; return ordinary;
+    changed = true; const { materialResponse, ...ordinary } = instrument;
+    if (zone) { const { materialMode, articulation, site01, ...attachment } = instrument.spatialAttachment; ordinary.spatialAttachment = attachment; } return ordinary;
   });
   return changed ? validateCausalInstrumentGraph({ ...graph, revision: graph.revision + Number(bump), instruments }) : graph;
 }

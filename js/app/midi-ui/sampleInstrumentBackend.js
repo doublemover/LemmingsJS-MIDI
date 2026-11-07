@@ -275,6 +275,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       }
       const channel = preview._channel(0, owner), values = prepared.parameters;
       laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, spatialState: intent.spatialState || null, value: intent.laneMix });
+      if (intent.acousticMaterialState && intent.acousticMaterialState.mapHash !== laneMix.spatialMapHash) throw new Error('The acoustic material body and prepared spatial map differ.');
       pressureGain = context.createGain(); pan = context.createStereoPanner?.() || null;
       for (const component of components) component.gain.connect(pressureGain);
       voicePublication = publicationFor(); publicationGain = voicePublication.addGate();

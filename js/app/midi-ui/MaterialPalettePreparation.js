@@ -70,7 +70,7 @@ export function createMaterialPalettePreparation({ getCatalog, getContext, prepa
     },
     retry(lanes, options) { failures.clear(); for (const group of groups.values()) group.error = group.errorContext = null; return this.ensure(lanes, options); },
     resolve(intent, paletteRaw) {
-      if (disposed || unknown || !paletteRaw) return null; const group = groups.get(paletteRaw.identityHash), material = intent.materialState;
+      if (disposed || unknown || !paletteRaw) return null; const group = groups.get(paletteRaw.identityHash), material = intent.acousticMaterialState || intent.materialState;
       if (!group?.published || !group.ready || group.context !== getContext() || !material) return null;
       const entry = group.entries.find(entry => entry.patchId === material.patchId), key = entry && assignment(entry.id); return key ? Object.freeze({ key, instrumentKey: entry.instrumentRef.packHash + ':' + entry.instrumentRef.definitionHash, patchId: entry.patchId }) : null;
     },

@@ -1,3 +1,5 @@
+import { createAcousticMaterialSelection } from '../../../midi/content/AcousticMaterialSelection.js';
+import { materialArticulationControls } from '../../../midi/content/MaterialPalette.js';
 import { createWorldSpatialControl } from './WorldSpatialControl.js';
 import { canonicalDataText } from '../../../core/CanonicalData.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -24,8 +26,11 @@ export function createCausalSpatialPlayback({ getGraph, world, session, getSourc
         if (!ready || onsets++ >= capacity) { report(envelope({ kind: 'onset', status: 'rejected', intentId: intent.intentId, voiceId: intent.voiceId, reason: !ready ? 'acoustic-map-not-prepared' : 'spatial-onset-capacity' })); return { ...intent, spatialUnavailable: !ready ? 'acoustic-map-not-prepared' : 'spatial-onset-capacity' }; }
         const fact = intent.sourceEventIds.map(id => facts.get(id)).find(Boolean), observation = mapper.state({ voiceId: intent.voiceId, actorId: intent.actorId, attachment, sourcePosition: pointFor(fact) });
         if (observation.status !== 'complete') { report(envelope({ kind: 'onset', status: 'rejected', intentId: intent.intentId, voiceId: intent.voiceId, reason: observation.reason })); return { ...intent, spatialUnavailable: observation.reason }; }
-        report(envelope({ kind: 'onset', status: 'requested', intentId: intent.intentId, voiceId: intent.voiceId, mapHash, state: observation.state }));
-        return { ...intent, spatialState: observation.state, spatialSourceFrame: toFrame(intent.scoreTime) };
+        let acousticMaterialState = null;
+        if (attachment.materialMode === 'zone-response') try { acousticMaterialState = createAcousticMaterialSelection({ map: activeMap, state: observation.state, mapHash, intent, sourceEventId: fact?.eventId || intent.sourceEventIds[0], articulation: attachment.articulation || intent.materialState?.articulation || 'hard', site01: attachment.site01 ?? intent.materialState?.site01 ?? 0.5 }); } catch (error) { report(envelope({ kind: 'onset', status: 'rejected', intentId: intent.intentId, voiceId: intent.voiceId, reason: error.message })); return { ...intent, spatialUnavailable: 'acoustic-material-response-unavailable' }; }
+        const performanceControls = acousticMaterialState ? { ...intent.performanceControls, macros: { ...materialArticulationControls(acousticMaterialState), ...intent.performanceControls?.macros } } : intent.performanceControls;
+        report(envelope({ kind: 'onset', status: 'requested', intentId: intent.intentId, voiceId: intent.voiceId, mapHash, state: observation.state, ...(acousticMaterialState ? { acousticMaterialState, performanceControls } : {}) }));
+        return { ...intent, performanceControls, spatialState: observation.state, spatialSourceFrame: toFrame(intent.scoreTime), ...(acousticMaterialState ? { acousticMaterialState } : {}) };
       });
     },
     after() {

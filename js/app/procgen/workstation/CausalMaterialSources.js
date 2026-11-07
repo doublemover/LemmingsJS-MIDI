@@ -7,7 +7,7 @@ export function captureCausalMaterialSources(records, initial, covered) {
   for (const record of records) {
     if (record.kind === 'input-observation' && record.payload?.kind === 'instrument-performance') state.apply(record.payload.change);
     else if (record.kind === 'musical-intents') for (const intent of record.payload.intents) {
-      if (intent.kind !== 'begin' || !intent.materialState) continue;
+      if (intent.kind !== 'begin') continue;
       const lanes = state.snapshot().lanes, lane = typeof intent.laneId === 'number' ? lanes[intent.laneId] : lanes.find(lane => lane.id === intent.laneId), palette = lane?.materialPalette;
       if (!palette) continue;
       if (onsets.length >= 8192 || !palettes.has(palette.identityHash) && palettes.size >= 3) throw new Error('Captured material sources exceed the bounded palette/onset inventory.');

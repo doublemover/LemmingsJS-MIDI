@@ -169,11 +169,11 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       if (selectedGestureReceipt && selectedGestureTakeIdentity !== getGestureTakeIdentity()) throw new Error('Search the changed take again before keeping its compatibility receipt.');
       await onApply(candidate, { signal: operation.controller.signal, compatibilityReceipt: selectedGestureReceipt }); check(operation); setStatus('Instrument applied to the ' + targetLabel + '.'); });
   });
-  const materialControls = node('fieldset'), materialLegend = node('legend', 'Verified contact materials'), materialArticulation = node('select'), materialSite = node('input');
+  const materialControls = node('fieldset'), materialLegend = node('legend', 'Prepared material bodies'), materialArticulation = node('select'), materialSite = node('input');
   materialArticulation.setAttribute('aria-label', 'Material contact articulation'); for (const id of ['hard', 'soft', 'muted']) { const option = node('option', id); option.value = id; materialArticulation.append(option); }
   materialSite.type = 'number'; materialSite.min = '0'; materialSite.max = '1'; materialSite.step = '0.01'; materialSite.value = '0.5'; materialSite.setAttribute('aria-label', 'Authored normalized strike site');
-  const materialApply = node('button', 'Apply contact material palette'); materialApply.type = 'button'; materialControls.hidden = typeof onApplyMaterialPalette !== 'function';
-  materialControls.append(materialLegend, node('p', 'Prepare Struck materials, then choose the contact articulation and authored strike site. Verified wood, stone, glass and metal tags select their bodies. Untagged or unavailable provenance uses Unclassified. Existing voices keep their onset body.'), materialArticulation, materialSite, materialApply);
+  const materialApply = node('button', 'Apply material body palette'); materialApply.type = 'button'; materialControls.hidden = typeof onApplyMaterialPalette !== 'function';
+  materialControls.append(materialLegend, node('p', 'Prepare Struck materials, then choose articulation and strike site. Contact mappings use verified material tags with an Unclassified fallback. Explicit zone-response mappings use the authored world region. Existing voices keep their onset body.'), materialArticulation, materialSite, materialApply);
   on(materialApply, 'click', () => run(async operation => {
     if (!stage || typeof onApplyMaterialPalette !== 'function' || !materialSite.checkValidity()) throw failure('Prepare the full original material family and choose a normalized strike site.');
     const target = getMaterialTargetIdentity(), references = [], lease = stage.borrow();
