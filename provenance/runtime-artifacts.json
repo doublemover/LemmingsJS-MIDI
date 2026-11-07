@@ -483,6 +483,7 @@
         "js/app/resources/StreamingWarpMaterial.js",
         "js/app/resources/StreamingWarpPatchMaterial.js",
         "js/app/resources/StretchCoreImageAbi.js",
+        "js/app/resources/TimbreTuningAnalysis.js",
         "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
         "js/commands/CommandLemmingsAction.js",
@@ -681,6 +682,8 @@
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
         "js/midi/content/TextureTravel.js",
+        "js/midi/content/TimbreTuningCompiler.js",
+        "js/midi/content/TimbreTuningSet.js",
         "js/midi/content/TimeTransform.js",
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
@@ -724,8 +727,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 570,
-      "sha256": "b79bcf7e1c39447a2ce70546cf56e9bae8bf2cb291572bdfcb64fc3d1917d3e9",
+      "fileCount": 573,
+      "sha256": "c8c0474aefb7967b2f840881a8086ec268d0a4299f28bcd7dcc84fd079cc868f",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1198,6 +1201,7 @@
         "js/app/resources/StreamingWarpMaterial.js",
         "js/app/resources/StreamingWarpPatchMaterial.js",
         "js/app/resources/StretchCoreImageAbi.js",
+        "js/app/resources/TimbreTuningAnalysis.js",
         "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
         "js/commands/CommandLemmingsAction.js",
@@ -1396,6 +1400,8 @@
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
         "js/midi/content/TextureTravel.js",
+        "js/midi/content/TimbreTuningCompiler.js",
+        "js/midi/content/TimbreTuningSet.js",
         "js/midi/content/TimeTransform.js",
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
@@ -1472,8 +1478,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 603,
-      "sha256": "a2ed4dbdf57f1cd8121d4964359dfd3b70d2d218d251f7a71c97e0cd06641473",
+      "fileCount": 606,
+      "sha256": "9cd30ecf76030e269f1195aaa6b988d510f52f88b18ce67dfe392a52626ed908",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1832,6 +1838,7 @@
         "js/app/resources/StreamingWarpMaterial.js",
         "js/app/resources/StreamingWarpPatchMaterial.js",
         "js/app/resources/StretchCoreImageAbi.js",
+        "js/app/resources/TimbreTuningAnalysis.js",
         "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
         "js/commands/CommandLemmingsAction.js",
@@ -2029,6 +2036,8 @@
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
         "js/midi/content/TextureTravel.js",
+        "js/midi/content/TimbreTuningCompiler.js",
+        "js/midi/content/TimbreTuningSet.js",
         "js/midi/content/TimeTransform.js",
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
@@ -2070,8 +2079,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 581,
-      "sha256": "ea5d7d528f7c87025fea75853b7a2f472660c23c05a6283454fbd1bcc6a3184b",
+      "fileCount": 584,
+      "sha256": "ba8b64b5f10ed12a9cecbeb0c8a5928b5db8dc683242a11be4fb61570e4231d4",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2577,6 +2586,7 @@
         "js/app/resources/StreamingWarpMaterial.js",
         "js/app/resources/StreamingWarpPatchMaterial.js",
         "js/app/resources/StretchCoreImageAbi.js",
+        "js/app/resources/TimbreTuningAnalysis.js",
         "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
         "js/commands/CommandLemmingsAction.js",
@@ -2775,6 +2785,8 @@
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
         "js/midi/content/TextureTravel.js",
+        "js/midi/content/TimbreTuningCompiler.js",
+        "js/midi/content/TimbreTuningSet.js",
         "js/midi/content/TimeTransform.js",
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
@@ -2827,8 +2839,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 654,
-      "sha256": "40978d8961a0f50c6826a6019d9b6ba0e85363f4166084bf31fc27ecbca13ca0",
+      "fileCount": 657,
+      "sha256": "a0cefaaaf9a46c779391dd7172874e7aa957b4af90f37b6cd7900c302936856b",
       "inventoryScope": "first-party-artifact"
     }
   ]

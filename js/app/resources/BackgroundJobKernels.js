@@ -19,6 +19,22 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'analyze-timbre-tuning-set' || kind === 'compile-timbre-tuning-set') {
+    const { stampTimbreTuningSet } = await import('../../midi/content/TimbreTuningSet.js'); guard(signal, current);
+    const set = await stampTimbreTuningSet(input.set); guard(signal, current); let value;
+    if (kind === 'analyze-timbre-tuning-set') {
+      const { analyzeTimbreTuningSet } = await import('./TimbreTuningAnalysis.js');
+      value = await analyzeTimbreTuningSet({ ...input, set }, { signal, current, onProgress, yieldControl });
+    } else {
+      const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'), { compileTimbreTuningSet } = await import('../../midi/content/TimbreTuningCompiler.js');
+      const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
+      if (catalog.state !== 'bound-application-engines') throw problem('engine-identity-unbound', 'Pair preparation requires the executing immutable spectrum renderer.');
+      value = await compileTimbreTuningSet(set, { descriptor: catalog.descriptors.find(entry => entry.engineId === set.renderer.engineId), sampleRate: input.sampleRate, signal });
+    }
+    guard(signal, current); const encoded = canonicalDataText(value, { maxBytes, maxNodes }), retainedBytes = encoded.bytes.length * 6;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'The spectrum/tuning result exceeds its admitted storage.');
+    return { value, inputBytes: canonicalDataText(input, { maxBytes, maxNodes }).bytes.length, nodes: encoded.nodes, retainedBytes };
+  }
   if (kind === 'physical-music-study') {
     const { runPhysicalMusicStudy } = await import('../procgen/workstation/PhysicalMusicStudy.js'); guard(signal, current);
     const study = await runPhysicalMusicStudy(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
