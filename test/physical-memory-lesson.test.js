@@ -34,7 +34,8 @@ describe('physical frozen-memory lesson', () => {
     expect(outbound.state.phase).to.equal('await-memory-rest'); expect(outbound.intents.filter(intent => intent.kind === 'begin')).to.have.length(1);
     const rest = lesson.observe(packet(2, 16, 16));
     expect(rest.state.phase).to.equal('observe-memory-return'); expect(rest.state.journey.restObserved).to.equal(true);
-    const returned = lesson.observe(packet(3, 16, 8));
+    const returnBatch = packet(3, 16, 8); returnBatch.facts[0].causalSequence = 99;
+    const returned = lesson.observe(returnBatch);
     expect(returned.state.phase).to.equal('physical-evidence-observed'); expect(returned.intents.filter(intent => intent.kind === 'begin')).to.have.length(0);
     expect(returned.state.changed[0].voiceId).to.equal(outbound.state.baseline[0].voiceId);
     expect(returned.state.journey).to.include({ requestedSourceFrame: 8, declaredMetric: 'axis-projection', orientation: 'signedX' });

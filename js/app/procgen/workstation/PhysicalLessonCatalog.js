@@ -59,5 +59,17 @@ export async function createInstalledPhysicalLessons(catalog) {
     permittedActions: ['apply-saved-seed', 'finite-release', 'play-pause', 'inspect-source-region'],
     success: { kind: 'move-memory', mappingIds: ['bow-orchard-travel-0'], minimumActors: 1, minimumTravelPixels: 16 },
     resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
+  const bodySetup = resolve('three-hands.skin-8');
+  if (bodySetup) lessons.push(validatePhysicalLessonDefinition({ schema: 'lemmings-physical-lesson/v1', id: 'lesson.body-keeps-the-ring', version: 1, title: 'A body keeps the ring',
+    setupScene: await reference(bodySetup), zeroNoteScene,
+    prediction: 'Predict whether removing the striker also removes the shared body. Distinguish the actor’s life, its finite exciter and the body’s existing decay.',
+    intervention: 'Explicitly enable a supported local output before the top actor reaches the prepared skin. Observe one actual support strike. Remove only that top-lane striker through the ordinary physical controls, or observe its real departure. Keep the prepared surface and other actors unchanged; inspect the original body instance and any remaining sound.',
+    expectedPhysicalEvidence: 'One source-linked support strike with an actual prepared body identity, the striker’s real ActorTerminated fact and absent snapshot entry, and that same body still resident afterward without another striker onset.',
+    expectedMusicalDifference: 'The finite actor/exciter ends independently of the shared body. Existing body decay can outlive the striker; removing an actor is not a new strike or a command to erase another owner’s tail.',
+    audibleEvidence: 'Retained body residency is not measured ringing energy. Backend acceptance and your report of a tail are separate; muted output or an already decayed body cannot be graded as heard.',
+    hint: 'If the strike arrives before body preparation, perform another fresh contact after explicit audio enable. A replaced, missing or quarantined body, repeated striker attack or timer alone cannot establish the retained-body comparison. Touch damping removes energy; releasing it does not restore energy already lost.',
+    permittedActions: ['finite-release', 'play-pause', 'remove-striker', 'inspect-prepared-body'],
+    success: { kind: 'body-outlives-actor', surfaceId: 'three-hands-surface', mappingIds: ['three-hands-striker'], minimumActors: 1 },
+    resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
   return Object.freeze(lessons);
 }

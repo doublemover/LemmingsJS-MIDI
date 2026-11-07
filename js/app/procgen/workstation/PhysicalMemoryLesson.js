@@ -68,7 +68,7 @@ export function createMemoryLessonObservation({ definition, graph, releaseGestur
         if (!startedNow && intent.kind === 'begin' && intent.actorId === track.actorId) throw new Error('A second onset cannot stand in for the original held voice’s return.');
         if (intent.voiceId !== track.voiceId || intent.actorId !== track.actorId) continue;
         if (intent.kind === 'begin' && track.sequence >= travel.sourceSequence || travel.scopeInstanceId !== track.scope ||
-            travel.sourceSequence !== track.sequence + 1 || Math.abs(from - track.to) > 1e-8) throw new Error('The held source lost a continuous signed-travel boundary; no missing distance was inferred.');
+            travel.sourceSequence <= track.sequence || Math.abs(from - track.to) > 1e-8) throw new Error('The held source lost a continuous signed-travel boundary; no missing distance was inferred.');
         track.sequence = travel.sourceSequence; track.to = to;
         coordinate = (to - seed.binding.originPixels) * seed.binding.framesPerWorldPixel;
         const record = { intentId: intent.intentId, batchId: batch.batchId, actorId: intent.actorId, sourceEventIds: [...intent.sourceEventIds],

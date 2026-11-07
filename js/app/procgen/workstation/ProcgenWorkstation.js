@@ -378,8 +378,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     onState: () => { view?.macroState?.(); physicalMappingsView?.invalidate(); publishHeldMacros(); } });
   const effectiveSoundLanes = lanes => macroGestures.lanes(soundTransactions.lanes(lanes));
   const lessonContext = (value = project) => {
-    const world = runtime()?.world;
-    return { documentEpoch: documentGeneration, worldId: world?.worldId, generation: world?.generation, tick: world?.tickIndex,
+    const world = runtime()?.world, bodies = physicalLessonView?.usesBodyEvidence() ? physicalPlayback?.preparedBodyAnatomy().surfaces?.bodies || [] : [];
+    return { preparedBodyResidency: bodies.map(body => ({ bodyInstanceId: body.bodyInstanceId, surfaceId: body.surfaceId, active: body.active, quarantined: body.quarantined, graphDefinitionHash: body.graphDefinitionHash })), documentEpoch: documentGeneration, worldId: world?.worldId, generation: world?.generation, tick: world?.tickIndex,
       assists: world?.assists, graph: world?.physicalAuthoring?.graph || value.procgen.physicalGraph, releaseGesture: world?.population?.releaseGesture,
       soundIdentity: value.procgen.lanes.map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|'),
       causalTakeId: causalTake?.status().takeId ?? null,

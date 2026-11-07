@@ -1,4 +1,5 @@
 import { ADVANCED_PHYSICAL_LESSONS, createAdvancedPhysicalLessonObservation } from './PhysicalLessonObservation.js';
+import { createBodyTailLessonObservation } from './PhysicalBodyTailLesson.js';
 import { createMemoryLessonObservation } from './PhysicalMemoryLesson.js';
 import { createFossilLessonObservation } from './PhysicalFossilLesson.js';
 import { createKeptSoundLessonObservation } from './PhysicalKeptSoundLesson.js';
@@ -42,7 +43,8 @@ export function createPhysicalLessonSession({ progress, onState = () => {} } = {
         if (typeof currentSound !== 'string' || !currentSound || currentSound.length > 16384) return fail('The effective setup sound identity is unavailable.');
         soundIdentity = currentSound;
         try {
-          if (definition.success.kind === 'move-memory') journey = createMemoryLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists });
+          if (definition.success.kind === 'body-outlives-actor') journey = createBodyTailLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists });
+          else if (definition.success.kind === 'move-memory') journey = createMemoryLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists });
           else if (definition.success.kind === 'hear-fossil') journey = createFossilLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists });
           else if (definition.success.kind === 'make-and-keep') journey = createKeptSoundLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists });
           else if (ADVANCED_PHYSICAL_LESSONS.includes(definition.success.kind)) advanced = createAdvancedPhysicalLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists, junctionDefinitions });
@@ -54,7 +56,7 @@ export function createPhysicalLessonSession({ progress, onState = () => {} } = {
     },
     predict(value) { if (!disposed && journey && ['predict-next-contact', 'predict-memory'].includes(phase)) { const observed = journey.predictNext(value); phase = observed.phase; reason = observed.reason; report(); return; } if (disposed || phase !== 'predict' || typeof value !== 'string' || !value.trim() || value.length > 512) throw new TypeError('Write a short prediction before observing the baseline.'); prediction = value.trim(); phase = definition.success.kind === 'move-memory' ? 'prepare-memory' : 'observe-baseline'; report(); },
     observe({ batch, intents = [], receipts = [], context } = {}) {
-      if (disposed || !binding || !['observe-zero-control', 'observe-baseline', 'perform-intervention', 'perform-timbre', 'physical-evidence-observed', 'keep-sound', 'await-project-save', 'await-project-reopen', 'predict-next-contact', 'observe-next-contact', 'prepare-fossil', 'observe-fossil-contacts', 'prepare-memory', 'predict-memory', 'observe-memory-outbound', 'await-memory-rest', 'observe-memory-return'].includes(phase)) return false;
+      if (disposed || !binding || !['observe-zero-control', 'observe-baseline', 'perform-intervention', 'perform-timbre', 'physical-evidence-observed', 'keep-sound', 'await-project-save', 'await-project-reopen', 'predict-next-contact', 'observe-next-contact', 'prepare-fossil', 'observe-fossil-contacts', 'prepare-memory', 'predict-memory', 'observe-memory-outbound', 'await-memory-rest', 'observe-memory-return', 'remove-striker'].includes(phase)) return false;
       if (journey && phase === 'await-project-reopen' && context?.documentEpoch !== binding.documentEpoch) return false;
       if (!context || context.documentEpoch !== binding.documentEpoch || batch?.worldId !== binding.worldId || batch?.generation !== binding.generation) return fail('The lesson world or document changed. Reset to a fresh control.');
       if (batch.version !== 1 || !integer(batch.tick) || !Array.isArray(batch.facts) || batch.facts.length > 8192 || !Array.isArray(intents) || intents.length > 8192 || batch.completeness?.status !== 'complete' || batch.completeness.dropped !== 0 || batch.terminalGenerationTransition) return fail('This batch is incomplete or terminal; no lesson success was inferred.');
@@ -96,7 +98,7 @@ export function createPhysicalLessonSession({ progress, onState = () => {} } = {
       for (const receipt of receipts) observeReceipt(receipt, context.documentEpoch); report(); return true;
     },
     observeMaterial(receipt, context) {
-      if (disposed || !binding || !journey || context?.documentEpoch !== binding.documentEpoch ||
+      if (disposed || !binding || !journey?.material || context?.documentEpoch !== binding.documentEpoch ||
           context.worldId !== binding.worldId || context.generation !== binding.generation) return false;
       try {
         const observed = journey.material(receipt, context); if (!observed) return false;
