@@ -1,3 +1,4 @@
+import { createRescueResonantScores } from './RescueResonantScore.js';
 import { createWorkshopToolScores } from './WorkshopToolScore.js';
 import { createQuarryJourneyScores } from './QuarryJourneyScore.js';
 import { createGlassOrbitOrchestrations } from './GlassOrbitOrchestration.js';
@@ -178,7 +179,9 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   if (fm?.capabilities.worldSpatialControl && fm.capabilities.sharedAcousticZoneSends && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitOrchestrations({ sourceHash, scores: glassOrbitScores, spectrumDescriptor: spectrum, signal }));
   if (spectrum?.maximumVoices >= 8) await registerAuthoredScores(await createBentLadderScores({ sourceHash, descriptor: spectrum, signal }));
   if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
-  for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) await registerAuthoredScores(await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }));
+  for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) {
+    const scores = await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }); await registerAuthoredScores(scores); await registerAuthoredScores(await createRescueResonantScores({ sourceHash, scores, signal }));
+  }
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     getEmbeddedAsset(hash) { return embeddedAssets.get(hash) || null; },
     async addWorkshopTool(reference, { signal: requestSignal } = {}) {

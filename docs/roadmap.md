@@ -11634,3 +11634,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Share the strict finite-graft contract with Nursery, preserve EXCITE/BODY/DAMP/MIX preparation and exact source-rate assets, and expose the handoff in the score browser. Candidate failure preserves the current world; catalog assembly is bounded, cancellable and scoped to the selected document/graft.
 - Correct native source inventory semantics: each independent native patch is checked against its own descriptor limit, while the aggregate declared scene bound and eventual live resource admission remain separate. This also admits the existing converging native-modal work score without treating three independent sources as one shared worklet pool.
 - Functional/native/audio/browser/performance and listening campaigns remain deferred.
+
+### Continuation 619 — Rescue shared Resonant crew
+
+- Add nine shared Resonant crew orchestrations across the existing wooden/choir/modal sources and crossing/unresolved/loss outcomes. Exact three-member cohort, terrain, finite release, skill station and verified outcome rules stay intact. All declared real source audio drives one root of an original four-body220/275/330/440Hz sparse network; coupling adds no semantic attacks or success evidence.
+- Version world-point sympathetic anchors separately from pickup-bound maps. The v2 contract declares the complete exact local instrument inventory, prevents hidden omitted input sources and never fabricates pickups to justify body positions. Live state and private rehearsal receipts retain that inventory with their existing shared-body ownership and complete tails.
+- Functional, native/audio, browser, performance and listening campaigns remain deferred.

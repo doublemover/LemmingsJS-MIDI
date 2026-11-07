@@ -102,7 +102,7 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
         graph.assertHealthy(); const health = graph.diagnostics().sympatheticStates[0]; if (!health || health.bodies.length !== sympathetic.bodyCount) throw failure('The private network omitted a persistent body.'); maximumBodyEnergy = Math.max(maximumBodyEnergy, ...health.bodies.map(body => body.energy)); await yieldControl();
       }
       const health = graph.diagnostics().sympatheticStates[0]; if (health.faults || health.muted) throw failure('The owned network faulted during its declared tail.');
-      bodyReceipt = { kind: 'anchored-sympathetic-network', strategy: sympathetic.strategy, bodyCount: sympathetic.bodyCount, modeCount: sympathetic.modeCount, graphHash: graph.hash, mapHash: await hashData(sympathetic.mechanism), rootBody: sympathetic.mechanism.rootBody, anchors: sympathetic.mechanism.anchors,
+      bodyReceipt = { kind: 'anchored-sympathetic-network', strategy: sympathetic.strategy, bodyCount: sympathetic.bodyCount, modeCount: sympathetic.modeCount, graphHash: graph.hash, mapHash: await hashData(sympathetic.mechanism), rootBody: sympathetic.mechanism.rootBody, anchors: sympathetic.mechanism.anchors, ...(sympathetic.mechanism.sourceInstrumentIds ? { sourceInstrumentIds: sympathetic.mechanism.sourceInstrumentIds } : {}),
         sourceOnsets: source.intents.filter(intent => intent.kind === 'begin').length, semanticOnsetsAdded: 0, faults: health.faults, modeledMaximumBodyEnergy: maximumBodyEnergy, sourceFrames, tailFrames: bodyPlan.maximumTailFrames, tailPolicy: 'declared-complete-network-tail;no-replayed-live-macro-gestures', historicalPerformanceEvidence: false, acousticReceipt: false };
     } finally { graph.panic(); }
   }
