@@ -1,3 +1,4 @@
+import { normalizeProcgenViewport } from './ProcgenPausedProjection.js';
 import { procgenSimulationProfile } from './ProcgenSimulationProfiles.js';
 import { freezeData } from '../../core/CanonicalData.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
@@ -13,7 +14,7 @@ export { attachProcgenSimulationOutput, attachProcgenNativeSimulationOutput } fr
 let activeHosts = 0;
 export const prepareInProcessProcgenSimulationHost = options => prepareProcgenSimulationRealm(options);
 export async function prepareWorkerProcgenSimulationHost({ manifest: input, resourceBudget, Worker = globalThis.Worker, MessageChannel = globalThis.MessageChannel,
-  requiredPorts = [], consume = null, onState = () => {}, signal, timers = globalThis } = {}) {
+  requiredPorts = [], consume = null, onState = () => {}, onViewport = () => {}, signal, timers = globalThis } = {}) {
   validateSimulationManifest(input); signal?.throwIfAborted();
   const execution = getActiveExecutionIdentity();
   if (execution.activeExecution !== 'bound' || typeof Worker !== 'function' || typeof MessageChannel !== 'function' || !resourceBudget ||
@@ -27,7 +28,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
   activeHosts++;
   const scope = createProcgenRetirementScope({ deadlineMs: 15000 }), requests = new Map(), projections = new Set(), controller = new AbortController();
   let worker = null, consumer = null, retired = false, confirmed = false, disposed = false, failure = null, latestState = null, requestSerial = 0,
-    inputAck = null, checkpointReceiver = null, checkpointRequestId = null, checkpointTransfer = null, inputProducer = null, terminateError = null, portsTransferred = false, readyResolve, readyReject, retiredResolve;
+    inputAck = null, checkpointReceiver = null, checkpointRequestId = null, checkpointTransfer = null, inputProducer = null, terminateError = null, portsTransferred = false, readyResolve, readyReject, retiredResolve, liveViewport = null, viewportSerial = 0, viewportFailure = null;
   const ready = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; }); ready.catch(() => {});
   const retirementAck = new Promise(resolve => { retiredResolve = resolve; });
   const check = () => { controller.signal.throwIfAborted(); if (disposed || failure) throw failure || simulationFailure('worker-retired', 'The simulation owner retired.'); };
@@ -67,11 +68,37 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
     try { value = await request('project', { viewport }); check(); if (released) throw simulationFailure('projection-retired', 'The viewport owner retired during preparation.'); return projection; }
     catch (error) { projection.release(); throw error; }
   };
+  const returnViewportFrame = message => { const cells = message.value?.cells; if (cells instanceof Uint8Array && cells.buffer instanceof ArrayBuffer && cells.byteLength) try { send('viewport-ack', { watchId: message.watchId, sequence: message.sequence, cells }, [cells.buffer]); } catch {} };
+  const watchViewport = async (viewport = {}) => {
+    check(); if (liveViewport || !latestState || !Number.isSafeInteger(viewportSerial + 1)) throw simulationFailure('viewport-owner', 'Keep one admitted live viewport owner.');
+    viewportFailure = null; const selected = normalizeProcgenViewport(viewport, latestState.laneCount, true), storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'live-viewport:' + manifest.ownerId, kind: 'exclusive-worker-frame-receiver', category: 'checkpoint', bytes: 4 * 1048576 });
+    const entry = liveViewport = { id: ++viewportSerial, storage, viewport: selected, frame: null, sequence: 0, phase: 'preparing', failure: null, maximumCaptureMs: 0 };
+    try { const receipt = await request('watch-viewport', { watchId: entry.id, viewport: selected }); check(); if (receipt?.status === 'refused') { entry.storage.release(); liveViewport = null; throw simulationFailure('viewport-refused', receipt.reason); } entry.phase = 'watching'; return receipt; }
+    catch (error) { entry.failure = viewportFailure = error.message; if (!disposed && !failure && liveViewport === entry) { entry.storage.release(); liveViewport = null; } throw error; }
+  };
+  const stopViewport = async () => {
+    const entry = liveViewport; if (!entry) return false; entry.phase = 'stopping'; entry.frame?.release();
+    await request('stop-viewport'); if (liveViewport === entry) { entry.storage.release(); liveViewport = null; } return true;
+  };
+  const consumeViewport = message => {
+    const entry = liveViewport;
+    if (!entry || disposed || message.watchId !== entry.id || ['stopping', 'unavailable'].includes(entry.phase)) { returnViewportFrame(message); return; }
+    try {
+      const value = message.value, view = value?.viewport;
+      if (entry.frame || message.sequence !== entry.sequence + 1 || !['lemmings-paused-world-projection/v1', 'lemmings-completed-world-projection/v1'].includes(value?.schema) || !Number.isSafeInteger(value.tick) || value.tick < 0 || !Number.isSafeInteger(value.generation) || value.generation < 0 || value.worldId !== latestState?.worldId || typeof value.paused !== 'boolean' || !(value.cells instanceof Uint8Array) || value.cells.byteOffset || value.cells.byteLength !== value.cells.buffer.byteLength || value.cells.length !== entry.viewport.pixelWidth * entry.viewport.pixelHeight || view?.pixelWidth !== entry.viewport.pixelWidth || view?.pixelHeight !== entry.viewport.pixelHeight || !Array.isArray(value.actors) || value.actors.length > 4096) throw simulationFailure('viewport-invalid', 'The optional visual frame differs from its owned source, sequence or inventory.');
+      freezeData(value.actors); freezeData(view); Object.freeze(value); entry.sequence = message.sequence; entry.maximumCaptureMs = message.maximumCaptureMs;
+      let released = false; const reader = Object.freeze({ read() { if (released) throw simulationFailure('viewport-retired', 'The completed visual frame reader retired.'); return value; },
+        release() { if (released) return false; released = true; if (entry.frame === reader) entry.frame = null; returnViewportFrame(message); return true; } }); entry.frame = reader;
+      try { onViewport(); } catch {}
+    } catch (error) { entry.failure = viewportFailure = error.message; entry.phase = 'unavailable'; returnViewportFrame(message); Promise.resolve().then(stopViewport).catch(() => {}); try { onViewport(); } catch {} }
+  };
   const receive = event => {
     const message = event.data;
     if (retired || !isSimulationEnvelope(message, manifest)) return;
     try {
       if (message.type === 'retired') { confirmed = message.outcome === 'complete'; retiredResolve(message); return; }
+      if (message.type === 'viewport-frame') { consumeViewport(message); return; }
+      if (message.type === 'viewport-unavailable') { if (liveViewport?.id === message.watchId) { liveViewport.failure = viewportFailure = message.reason; liveViewport.phase = 'unavailable'; Promise.resolve().then(stopViewport).catch(() => {}); try { onViewport(); } catch {} } return; }
       if (disposed) return;
       if (message.type === 'failed') { fail(simulationFailure(message.error?.code || 'worker-failed', message.error?.message || 'The authoritative worker paused after failure.')); return; }
       if (message.type === 'input-ack') { if (!inputAck || inputAck.sequence !== message.sequence) throw simulationFailure('input-ack-invalid', 'A worker initialization acknowledgment is out of order.'); const pending = inputAck; inputAck = null; pending.resolve(); return; }
@@ -120,7 +147,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
     return scope.retire([
       { name: 'worker-producer', run: () => producerRetirement },
       { name: 'required-main-consumer', run: () => consumerRetirement },
-      { name: 'worker-listeners', run: async () => { await Promise.allSettled([producerRetirement]); signal?.removeEventListener('abort', abort); worker?.removeEventListener('message', receive); checkpointReceiver?.dispose(); checkpointReceiver = null; } },
+      { name: 'worker-listeners', run: async () => { await Promise.allSettled([producerRetirement]); signal?.removeEventListener('abort', abort); worker?.removeEventListener('message', receive); if (liveViewport) { liveViewport.frame?.release(); liveViewport.storage.release(); liveViewport = null; } checkpointReceiver?.dispose(); checkpointReceiver = null; } },
       { name: 'retained-projections', run: () => { for (const projection of [...projections]) projection.release(); } },
       { name: 'worker-budget', run: async () => {
         await Promise.all([producerRetirement, consumerRetirement]);
@@ -176,8 +203,9 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       check(); input = null; send('input-end', { sequence });
     })(); await inputProducer; await timeout(ready, 180000, 'The authoritative world did not finish preparation.'); check();
     return Object.freeze({ mode: 'worker', identity: Object.freeze({ ...manifest }), state: () => latestState, pause: () => request('pause'), resume: () => request('resume'),
+      watchViewport, stopViewport, liveProjection: () => liveViewport?.frame || null, releaseLiveProjection: () => liveViewport?.frame?.release() || false, viewportState: () => liveViewport ? { active: liveViewport.phase === 'watching', phase: liveViewport.phase, failure: liveViewport.failure, sequence: liveViewport.sequence, frameHeld: !!liveViewport.frame, maximumCaptureMs: liveViewport.maximumCaptureMs } : { active: false, phase: 'off', failure: viewportFailure },
       project, detachCheckpoint, captureRecoveryCheckpoint, advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
-      diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null, retainedProjections: projections.size, checkpointHandoff: checkpointTransfer ? checkpointTransfer.released ? 'released' : checkpointTransfer.published ? 'independently-owned' : 'waiting-for-producer-retirement' : null,
+      diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null, retainedProjections: projections.size, liveViewport: liveViewport ? { phase: liveViewport.phase, sequence: liveViewport.sequence, failure: liveViewport.failure } : null, checkpointHandoff: checkpointTransfer ? checkpointTransfer.released ? 'released' : checkpointTransfer.published ? 'independently-owned' : 'waiting-for-producer-retirement' : null,
         buildId: execution.buildId, resourceProfile: profile, defaultEnabled: false, performanceQualification: 'required-before-default', reservation: reservation.receipt() }), dispose });
   } catch (error) { const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
 }

@@ -1,7 +1,7 @@
 export interface SimulationManifest {
   schema: 'lemmings-authoritative-simulation/v1'; ownerId: string; ownerEpoch: number; documentRevision: number;
   rootPath: string; resourceProfile?: 'balanced-v1' | 'compact-v1'; checkpoint: unknown; semantic: unknown; timeline: unknown; graph: unknown; performance: unknown;
-  bpm: number; playing: boolean; scoreTimeline: boolean;
+  bpm: number; nominalSpeed?: number; playing: boolean; scoreTimeline: boolean;
 }
 export interface SimulationState {
   readonly phase: string; readonly paused: boolean; readonly worldId: string; readonly generation: number;
@@ -20,6 +20,8 @@ export interface SimulationPacket {
 export interface SimulationHost {
   readonly mode: 'worker'; readonly identity: Readonly<{ ownerId: string; ownerEpoch: number; documentRevision: number }>; state(): SimulationState | null;
   pause(): Promise<unknown>; resume(): Promise<unknown>; advance(steps: number): Promise<unknown>;
+  watchViewport(viewport?: { x?: number; firstLane?: number; laneCount?: number; width?: number; pixelWidth?: number; pixelHeight?: number }): Promise<unknown>;
+  stopViewport(): Promise<boolean>; liveProjection(): { read(): Readonly<Record<string, unknown>>; release(): boolean } | null; releaseLiveProjection(): boolean; viewportState(): { active: boolean; phase: string; failure: string | null; sequence?: number; maximumCaptureMs?: number };
   project(viewport?: { x?: number; firstLane?: number; laneCount?: number; width?: number; pixelWidth?: number; pixelHeight?: number }): Promise<{ read(): Readonly<Record<string, unknown>>; release(): boolean }>;
   captureRecoveryCheckpoint(): Promise<{ schema: string; receipt(): Readonly<Record<string, unknown>> | null; read(): Readonly<Record<string, unknown>>; release(): boolean }>;
   detachCheckpoint(): Promise<{ schema: string; receipt(): Readonly<Record<string, unknown>> | null; read(): Readonly<Record<string, unknown>>; release(): boolean }>;
@@ -29,7 +31,7 @@ export interface SimulationHost {
 export interface SimulationHostOptions {
   manifest: SimulationManifest; resourceBudget: unknown; signal?: AbortSignal;
   requiredPorts?: MessagePort[]; consume?: ((packet: SimulationPacket) => unknown | Promise<unknown>) | null;
-  onState?: (state: SimulationState) => void; Worker?: typeof Worker; MessageChannel?: typeof MessageChannel;
+  onState?: (state: SimulationState) => void; onViewport?: () => void; Worker?: typeof Worker; MessageChannel?: typeof MessageChannel;
 }
 export function prepareWorkerProcgenSimulationHost(options: SimulationHostOptions): Promise<SimulationHost>;
 export function attachProcgenSimulationOutput(options: Readonly<Record<string, unknown>>): { state(): Readonly<Record<string, unknown>>; dispose(): SimulationRetirement };

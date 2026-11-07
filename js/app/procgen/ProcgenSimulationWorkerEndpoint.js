@@ -1,3 +1,4 @@
+import { normalizeProcgenViewport } from './ProcgenPausedProjection.js';
 import { procgenSimulationProfile } from './ProcgenSimulationProfiles.js';
 import { createResourceBudget } from '../resources/ResourceBudget.js';
 import { createBackgroundSnapshotReceiver, encodeBackgroundSnapshotPages, backgroundSnapshotTransfers } from '../resources/BackgroundSnapshotPages.js';
@@ -12,9 +13,24 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
   const controller = new AbortController(); let profile = procgenSimulationProfile(), budget = null;
   let manifest = null, receiver = null, inputSequence = 0, host = null, phase = 'new', timer = null, pumping = null, lastTime = null, elapsed = 0,
     transferStorage = null, inputStorage = null, inputLimit = null, consumers = [], outputAck = null, closing = null, activeRequest = false,
-    preparingWork = null, activeWork = null, stateSequence = 0, statePending = 0, nextState = null;
+    preparingWork = null, activeWork = null, stateSequence = 0, statePending = 0, nextState = null, visual = null, visualTask = null, visualSerial = 0;
   const send = (type, fields = {}, transfers = []) => postMessage(simulationEnvelope(manifest, type, fields), transfers);
   const publishState = state => { nextState = state; if (statePending || phase === 'closed' || phase === 'retiring') return; statePending = ++stateSequence; send('state', { state: nextState, sequence: statePending }); nextState = null; };
+  const maybeProject = async () => {
+    const entry = visual;
+    if (!entry?.enabled || visualTask || entry.inFlight || !entry.buffer || now() - entry.lastAt < 250) return;
+    visualTask = (async () => {
+      let projection = null; const started = now();
+      try {
+        projection = await host.project(entry.viewport, { signal: controller.signal, allowRunning: true, cellBuffer: entry.buffer, isCurrent: () => visual === entry && entry.enabled });
+        if (visual !== entry || !entry.enabled || phase !== 'ready') return;
+        const value = projection.read(); entry.lastAt = now(); entry.maximumCaptureMs = Math.max(entry.maximumCaptureMs, entry.lastAt - started); entry.buffer = null; entry.inFlight = ++entry.sequence;
+        send('viewport-frame', { watchId: entry.id, sequence: entry.inFlight, value, maximumCaptureMs: entry.maximumCaptureMs }, [value.cells.buffer]);
+      } catch (error) { if (visual === entry && !controller.signal.aborted) { entry.enabled = false; send('viewport-unavailable', { watchId: entry.id, reason: String(error.message).slice(0, 512) }); } }
+      finally { projection?.release(); }
+    })(); try { await visualTask; } finally { visualTask = null; }
+  };
+  const stopViewport = async () => { const entry = visual; if (!entry) return; entry.enabled = false; await visualTask; if (visual === entry) visual = null; entry.buffer = null; entry.storage.release(); };
   const pauseTimer = () => { if (timer !== null) timers.clearTimeout(timer); timer = null; lastTime = null; elapsed = 0; };
   const failure = error => {
     if (phase === 'closed' || phase === 'retiring') return;
@@ -63,7 +79,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
     pumping = (async () => {
       const started = now(); let count = 0;
       while (phase === 'ready' && !host.state().paused && elapsed >= host.state().tickDurationMs && count < 8) {
-        elapsed -= host.state().tickDurationMs; await host.advance({ steps: 1, timestamp: time, signal: controller.signal }); count++;
+        elapsed -= host.state().tickDurationMs; await host.advance({ steps: 1, timestamp: time, signal: controller.signal }); count++; await maybeProject();
         if (now() - started >= 8) break;
       }
       if (elapsed > 1000) throw simulationFailure('simulation-backlog', 'Authoritative ticks cannot meet the admitted backlog bound; pause rather than skip physical work.');
@@ -74,7 +90,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
     outputAck?.reject(simulationFailure('checkpoint-retired', 'The checkpoint stream retired.')); outputAck = null;
     closing = (async () => {
       if (preparingWork) await Promise.allSettled([preparingWork]);
-      if (pumping) await pumping; if (activeWork) await Promise.allSettled([activeWork]);
+      if (pumping) await pumping; await stopViewport(); if (activeWork) await Promise.allSettled([activeWork]);
       const receipt = host?.dispose(); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') throw simulationFailure('retirement-unknown', 'The authoritative world retained unresolved ownership.'); }
       receiver?.dispose(); receiver = null;
       const unresolved = consumers.some(consumer => !consumer.buffer || consumer.pending);
@@ -120,6 +136,8 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
       }
       if (!isSimulationEnvelope(request, manifest)) throw simulationFailure('host-envelope-stale', 'A simulation request belongs to a different document or generation.');
       if (request.type === 'dispose') return retire();
+      if (request.type === 'stop-viewport') { await stopViewport(); send('response', { requestId: request.requestId, value: { status: 'viewport-retired' } }); return; }
+      if (request.type === 'viewport-ack') { const entry = visual; if (entry && request.watchId === entry.id && request.sequence === entry.inFlight && request.cells instanceof Uint8Array && !request.cells.byteOffset && request.cells.byteLength === request.cells.buffer.byteLength && request.cells.length === entry.viewport.pixelWidth * entry.viewport.pixelHeight && !entry.buffer) { entry.buffer = request.cells; entry.inFlight = 0; } return; }
       if (request.type === 'state-ack') { if (request.sequence === statePending) { statePending = 0; if (nextState) publishState(nextState); } return; }
       if (request.type === 'checkpoint-ack') { if (!outputAck || request.sequence !== outputAck.sequence) throw simulationFailure('checkpoint-ack-invalid', 'A checkpoint acknowledgment does not match its packet.'); const pending = outputAck; outputAck = null; pending.resolve(); return; }
       if (phase === 'receiving') {
@@ -141,8 +159,14 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
       activeWork = (async () => {
         let value;
         if (request.type === 'resume') { value = host.resume(); lastTime = null; elapsed = 0; schedule(); }
-        else if (request.type === 'advance') { if (!host.state().paused) throw simulationFailure('step-needs-pause', 'Manual stepping requires a paused host.'); const packet = await host.advance({ steps: request.steps, timestamp: now(), signal: controller.signal }); value = { state: host.state(), sequence: packet.sequence }; }
+        else if (request.type === 'advance') { if (!host.state().paused) throw simulationFailure('step-needs-pause', 'Manual stepping requires a paused host.'); const packet = await host.advance({ steps: request.steps, timestamp: now(), signal: controller.signal }); await maybeProject(); value = { state: host.state(), sequence: packet.sequence }; }
         else if (request.type === 'command') value = host.submit(request.command);
+        else if (request.type === 'watch-viewport') {
+          if (visual || !simulationInteger(request.watchId, 1) || request.watchId <= visualSerial) throw simulationFailure('viewport-owner', 'Retire the prior live viewport owner before starting another.');
+          let storage; try { const viewport = normalizeProcgenViewport(request.viewport, host.state().laneCount, true); storage = createOwnedResourceReservation({ budget, owner: 'worker-live-viewport', kind: 'exclusive-visual-frame-pool', category: 'checkpoint', bytes: 4 * 1048576 });
+            visualSerial = request.watchId; visual = { id: request.watchId, viewport, storage, buffer: new Uint8Array(viewport.pixelWidth * viewport.pixelHeight), sequence: 0, inFlight: 0, enabled: true, lastAt: -Infinity, maximumCaptureMs: 0 };
+            value = { status: 'watching-completed-frames', watchId: request.watchId, viewport, maximumHz: 4, policy: 'one-exclusive-frame;visual-latest-wins;never-a-required-causal-consumer' }; } catch (error) { storage?.release(); value = { status: 'refused', reason: String(error.message).slice(0, 512) }; }
+        } else if (request.type === 'stop-viewport') { await stopViewport(); value = { status: 'viewport-retired' }; }
         else if (request.type === 'project') {
           if (pumping) await pumping;
           const projection = await host.project(request.viewport, { signal: controller.signal });

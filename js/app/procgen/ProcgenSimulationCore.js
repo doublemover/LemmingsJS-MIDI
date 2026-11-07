@@ -6,18 +6,19 @@ import { createOwnedResourceReservation } from '../resources/OwnedResourceReserv
 import { createProcgenRetirementScope } from './ProcgenRetirement.js';
 
 export function createProcgenSimulationCore({ world, engine = null, clock = null, scoreTimeline = false, bpm = 120, playing = true,
-  documentRevision = 0, requiredConsumer = () => {}, onState = () => {}, getPerformance = () => null, applyPerformance = null,
+  documentRevision = 0, nominalSpeed = world?.timer?.speedFactor > 0 ? world.timer.speedFactor : 1, requiredConsumer = () => {}, onState = () => {}, getPerformance = () => null, applyPerformance = null,
   resourceBudget = null, disposeWorld = null, now = () => performance.now() } = {}) {
   if (!world?.soundEvents?.onBatch || typeof world.step !== 'function' || world._stepping || !simulationInteger(documentRevision) ||
-      ![requiredConsumer, onState, getPerformance, now].every(value => typeof value === 'function') || !Number.isFinite(bpm) || bpm <= 0 || bpm > 1000000)
+      ![requiredConsumer, onState, getPerformance, now].every(value => typeof value === 'function') || !Number.isFinite(bpm) || bpm <= 0 || bpm > 1000000 || !Number.isFinite(nominalSpeed) || nominalSpeed <= 0 || nominalSpeed > 1000000)
     throw new TypeError('A simulation host needs one authoritative completed world and required causal consumer.');
+  world.timer.speedFactor = nominalSpeed;
   const scope = createProcgenRetirementScope(), producers = createProcgenRetirementScope(), storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'authoritative-simulation',
     kind: 'command-receipts-and-causal-admission', category: 'live', bytes: 8 * 1048576 });
   const commands = new Map(); let commandFrontier = 0, sequence = 0, paused = true, disposed = false, failed = null, pending = null, capturing = false,
     projecting = false, collecting = null, listenerError = null, latest = null, ticks = 0, deadlineMisses = 0, maximumStepMs = 0, maximumConsumerMs = 0, deliveryAgeMs = 0;
   const state = () => Object.freeze({ mode: 'authoritative', phase: disposed ? 'retiring' : failed ? 'failed-paused' : projecting ? 'projecting' : capturing ? 'checkpointing' : pending ? 'causal-backpressure' : paused ? 'paused' : 'running',
     paused, failure: failed ? Object.freeze({ code: failed.code || 'simulation-failed', message: failed.message }) : null,
-    worldId: world.worldId, laneCount: world.laneCount, laneHeight: world.laneHeight, worldWidth: world.width, generation: world.generation, tick: world.tickIndex, sequence, documentRevision, commandFrontier, tickDurationMs: 60 / world.timer.speedFactor,
+    worldId: world.worldId, laneCount: world.laneCount, laneHeight: world.laneHeight, worldWidth: world.width, generation: world.generation, tick: world.tickIndex, sequence, documentRevision, commandFrontier, tickDurationMs: 60 / world.timer.speedFactor, nominalSpeed: world.timer.speedFactor, effectiveSpeed: paused ? 0 : world.timer.speedFactor,
     commandReceipts: commands.size, pendingCausalBatches: pending ? 1 : 0, ticks, deadlineMisses, maximumStepMs, maximumConsumerMs, deliveryAgeMs,
     evidence: 'completed-authoritative-ticks;output-consumer-acceptance-is-not-acoustic-evidence' });
   const publish = () => { try { onState(state()); } catch {} };
@@ -84,10 +85,10 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
       applyPerformance(value); documentRevision = revision; publish(); return state(); },
     setTransport(value) { check(); if (!paused || !value || !Number.isFinite(value.bpm) || value.bpm <= 0 || value.bpm > 1000000 || typeof value.playing !== 'boolean') throw simulationFailure('transport-boundary', 'Change the host transport at a paused completed boundary.'); bpm = value.bpm; playing = value.playing; return state(); },
     latestSnapshot: () => latest,
-    async project(viewport = {}, { signal, isCurrent = () => true } = {}) {
-      check(); if (!paused) throw simulationFailure('projection-needs-pause', 'Pause at a completed tick before requesting its immutable collision/actor viewport.');
+    async project(viewport = {}, { signal, isCurrent = () => true, allowRunning = false, cellBuffer = null } = {}) {
+      check(); if (!paused && !allowRunning) throw simulationFailure('projection-needs-pause', 'Pause at a completed tick before requesting its immutable collision/actor viewport.');
       projecting = true; capturing = true; publish();
-      try { return await captureProcgenPausedProjection(world, { ...viewport, resourceBudget, signal, isCurrent: () => !disposed && !failed && isCurrent() }); }
+      try { return await captureProcgenPausedProjection(world, { ...viewport, sourcePaused: paused, cellBuffer, ...(allowRunning ? { yieldControl: () => Promise.resolve() } : {}), resourceBudget, signal, isCurrent: () => !disposed && !failed && isCurrent() }); }
       finally { projecting = false; capturing = false; publish(); }
     },
     async checkpoint({ signal, isCurrent = () => true, onSlice, maxGraphBytes = 128 * 1048576, maxSemanticBytes = 32 * 1048576 } = {}) {
@@ -99,7 +100,7 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
         const semantic = engine ? await engine.snapshotCooperative({ signal, onSlice, maxBytes: maxSemanticBytes, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation }) : null;
         return Object.freeze({ world: checkpoint, engine: semantic, timeline: clock?.snapshot() || null, performance: getPerformance(),
           authoring: cloneData({ graph: world.physicalAuthoring?.graph || null, instances: world.physicalAuthoring?.instances || [], junctions: world.physicalJunctions?.definitions || [] }, { maxBytes: 4 * 1048576, maxNodes: 262144 }),
-          replay: Object.freeze({ version: 2, playing, bpm, scoreTimeline }), boundary: state() });
+          replay: Object.freeze({ version: 2, playing, bpm, scoreTimeline, nominalSpeed: world.timer.speedFactor }), boundary: state() });
       } finally { capturing = false; publish(); }
     },
     fail,

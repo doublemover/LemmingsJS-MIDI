@@ -1428,7 +1428,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } }),
     { signal, isCurrent: () => !disposed && runtime()?.world === sourceWorld && project === sourceProject && documentGeneration === sourceGeneration && sourceWorld.tickIndex === sourceTick && !transport.getState().playing });
   };
-  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, resourceProfile = /** @type {'compact-v1' | 'balanced-v1'} */ ('compact-v1'), requiredPorts = [], consume = null, onState = () => {}, signal = null } = {}) => {
+  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, resourceProfile = /** @type {'compact-v1' | 'balanced-v1'} */ ('compact-v1'), requiredPorts = [], consume = null, onState = () => {}, onViewport = () => {}, signal = null } = {}) => {
     if (disposed || !resourceBudget || simulationPreparation || simulationCandidates.size >= 2 || worldBusy || pendingHistory || physicalAuthoringAbort ||
         causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback) throw new Error('Prepare a worker candidate from an exclusive paused physical project boundary.');
     const sourceWorld = runtime()?.world, sourceProject = project, sourceGeneration = documentGeneration, sourceTick = sourceWorld?.tickIndex,
@@ -1442,11 +1442,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (!isCurrent()) throw new Error('The source changed before authoritative host preparation.');
         const source = capsule.session(), { prepareWorkerProcgenSimulationHost } = await import('../ProcgenSimulationHost.js'); controller.signal.throwIfAborted();
         if (!source.physicalState || !isCurrent()) throw new Error('This source has no current semantic continuation.');
-        candidate = await prepareWorkerProcgenSimulationHost({ resourceBudget, signal: controller.signal, requiredPorts, consume, onState,
+        candidate = await prepareWorkerProcgenSimulationHost({ resourceBudget, signal: controller.signal, requiredPorts, consume, onState, onViewport,
           manifest: { schema: 'lemmings-authoritative-simulation/v1', ownerId: 'workstation-candidate-' + (++simulationCandidateSerial), ownerEpoch: sourceGeneration,
             documentRevision: projectRevision, resourceProfile, rootPath, checkpoint: source.world, semantic: source.physicalState, timeline: source.physicalTimeline,
             graph: sourceProject.procgen.physicalGraph, performance: captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
-            bpm: transport.getState().bpm, playing: true, scoreTimeline: true } });
+            bpm: transport.getState().bpm, nominalSpeed: transport.getState().nominalSpeed, playing: true, scoreTimeline: true } });
         if (!isCurrent()) throw new Error('The source changed while its worker candidate was preparing.');
         simulationCandidates.add(candidate); const owned = candidate; candidate = null;
         return Object.freeze({ ...owned, async detachCheckpoint() { const checkpoint = await owned.detachCheckpoint(); simulationCandidates.delete(owned); return checkpoint; }, dispose() { const receipt = owned.dispose(); receipt.completion.then(() => { if (receipt.outcome === 'complete') simulationCandidates.delete(owned); }); return receipt; } });
@@ -2526,7 +2526,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     assignNativeSimulationLanes: safe(/** @param {{grant:number,protocol:'midi1'|'midi2'}} options */ async options => (await getNativeSimulationWorkbench()).assign(options)),
     closeNativeSimulationOutput: safe(async () => nativeSimulationWorkbench?.close()),
     simulationWorkbenchState: () => simulationWorkbench?.state() || { phase: simulationWorkbenchLoading ? 'loading' : 'idle', active: false, checkpointHeld: false, checkpointReceipt: null, busy: !!simulationWorkbenchLoading, worker: null, counts: null, failure: null, output: 'off' },
-    simulationWorkbenchProjection: () => simulationWorkbench?.projection() || null, startSimulationWorkbench: safe(startSimulationWorkbench),
+    simulationWorkbenchProjection: () => simulationWorkbench?.projection() || null, releaseSimulationVisualFrame: () => simulationWorkbench?.releaseVisualFrame() || false, startSimulationWorkbench: safe(startSimulationWorkbench),
     advanceSimulationWorkbench: safe(() => simulationWorkbench?.advance(32)), pauseSimulationWorkbench: safe(() => simulationWorkbench?.pause()), resumeSimulationWorkbench: safe(() => simulationWorkbench?.resume()),
     retainSimulationRecovery: safe(() => simulationWorkbench?.retainRecovery()), recoverSimulationCheckpoint: safe(() => simulationWorkbench?.recoverCheckpoint()), setSimulationRecovery: safe(/** @param {boolean} value */ (value = false) => simulationWorkbench?.setAutomaticRecovery(value)),
     detachSimulationCheckpoint: safe(() => simulationWorkbench?.detachCheckpoint()), publishWorkerContinuation: safe(publishWorkerContinuation), workerContinuationOrigin: () => lastWorkerPublication,

@@ -6,7 +6,7 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
   let directOutput = null, host = null, checkpoint = null, sourceIdentity = null, projection = null, pending = null, closing = null, disposed = false, phase = 'idle', failure = null, timer = null, viewport = {}, notifications = 0;
   const counts = { batches: 0, facts: 0, intents: 0, bodyCommands: 0, lastSequence: 0, lastTick: null, generation: null };
   const state = () => Object.freeze({ phase, busy: !!pending || !!closing, active: !!host || !!directOutput, checkpointHeld: !!checkpoint, checkpointReceipt: checkpoint?.receipt() || null, worker: host?.state() || null, failure,
-    recovery: recovery?.receipt() || null, automaticRecovery: automaticRecovery && !directOutput, recoveryNotice, unresolvedRecovery: recoveryFaults.size, counts: Object.freeze({ ...counts }), output: directOutput ? 'independent-native-worker' : 'off', nativeOutput: directOutput?.state() || null, journal: 'not-recording', mainWorld: 'retained-paused', defaultEnabled: false, performanceQualification: 'awaiting-consolidated-parity-and-latency-validation', notifications });
+    recovery: recovery?.receipt() || null, automaticRecovery: automaticRecovery && !directOutput, recoveryNotice, unresolvedRecovery: recoveryFaults.size, counts: Object.freeze({ ...counts }), liveViewport: host?.viewportState?.() || { active: false, phase: 'off', failure: null }, output: directOutput ? 'independent-native-worker' : 'off', nativeOutput: directOutput?.state() || null, journal: 'not-recording', mainWorld: 'retained-paused', defaultEnabled: false, performanceQualification: 'awaiting-consolidated-parity-and-latency-validation', notifications });
   const report = () => { if (disposed) return; notifications++; try { onState(state()); } catch {} };
   const scheduleReport = () => { scheduleRecovery(); if (disposed || timer !== null) return; timer = timers.setTimeout(() => { timer = null; report(); }, 250); };
   const run = (name, work) => {
@@ -21,7 +21,7 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
   };
   const start = (options = {}) => run('preparing-worker', async operation => {
     if (host || checkpoint || directOutput) throw new Error('Close or adopt the current worker candidate/checkpoint before preparing another.');
-    sourceIdentity = getSourceIdentity();
+    sourceIdentity = getSourceIdentity(); recoveryNotice = null;
     let candidate = null, outputCandidate = null;
     try {
       for (const key of Object.keys(counts)) counts[key] = ['lastTick', 'generation'].includes(key) ? null : 0;
@@ -31,10 +31,12 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
         counts.batches++; counts.facts += packet.batch.facts.length; counts.intents += packet.intents.length; counts.bodyCommands += packet.bodyCommands.length;
         counts.lastSequence = packet.sequence; counts.lastTick = packet.batch.tick; counts.generation = packet.batch.generation;
         scheduleReport(); return { accepted: true, evidence: options.nativeOutput ? 'complete-canonical-packet-observed;independent-native-consumer-required;not-recording' : 'complete-canonical-packet-observed;output-and-recording-disabled' };
-      }, onState(value) { if (value?.failure) { failure = value.failure; phase = 'failed-paused'; } scheduleReport(); } });
+      }, onViewport: scheduleReport, onState(value) { if (value?.failure) { failure = value.failure; phase = 'failed-paused'; } scheduleReport(); } });
       operation.controller.signal.throwIfAborted();
       if (outputCandidate) await outputCandidate.attach(candidate.identity); operation.controller.signal.throwIfAborted();
-      await replaceProjection(candidate, options.viewport || {}); operation.controller.signal.throwIfAborted(); host = candidate; candidate = null; directOutput = outputCandidate; outputCandidate = null; recoveryOriginTick = host.state()?.tick || 0; recoveryNotice = null; phase = 'paused'; return state();
+      await replaceProjection(candidate, options.viewport || {}); operation.controller.signal.throwIfAborted();
+      try { await candidate.watchViewport({ ...viewport, pixelWidth: 256, pixelHeight: 128 }); } catch (error) { if (candidate.state()?.failure) throw error; recoveryNotice = 'Live viewport unavailable: ' + error.message; } operation.controller.signal.throwIfAborted();
+      host = candidate; candidate = null; directOutput = outputCandidate; outputCandidate = null; recoveryOriginTick = host.state()?.tick || 0; phase = 'paused'; return state();
     } finally { try { if (candidate) { projection?.release(); projection = null; const receipt = candidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { host = candidate; throw Object.assign(new Error('Worker candidate retirement is unresolved.'), { retirement: receipt }); } } } finally { if (outputCandidate) { const receipt = outputCandidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { directOutput = outputCandidate; throw Object.assign(new Error('Independent native source preparation retirement is unresolved.'), { retirement: receipt }); } } } }
   });
   const retainRecovery = () => directOutput ? pause() : run('retaining-worker-recovery', async operation => {
@@ -63,13 +65,13 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
     if (directOutput) { const outputReceipt = directOutput.dispose(); await outputReceipt.completion; if (outputReceipt.outcome !== 'complete') throw new Error('Native output retirement remains unconfirmed.'); directOutput = null; }
     host = null; checkpoint = recovery; recovery = null; failure = null; recoveryNotice = null; phase = 'checkpoint-held'; return state();
   });
-  const advance = (steps = 32) => run('stepping-worker', async operation => {
+  const advance = (steps = 32) => directOutput ? Promise.reject(new Error('Run independent native output in real time. Manual stepping belongs to the output-off candidate.')) : run('stepping-worker', async operation => {
     if (!host || !host.state()?.paused || !Number.isSafeInteger(steps) || steps < 1 || steps > 64) throw new Error('Step one to sixty-four ticks in a paused worker candidate.');
     await host.advance(steps); operation.controller.signal.throwIfAborted(); await replaceProjection(host); phase = 'paused'; return state();
   });
   const pause = () => directOutput ? run('parking-native-performance', async operation => { if (!host) throw new Error('The native worker source is unavailable.'); await host.pause(); operation.controller.signal.throwIfAborted(); return parkCheckpoint(operation); }) : run('pausing-worker', async operation => { if (!host) throw new Error('Prepare a worker candidate first.'); await host.pause(); operation.controller.signal.throwIfAborted(); await replaceProjection(host); phase = 'paused'; return state(); });
   const resume = () => run('starting-worker', async () => { if (!host) throw new Error('Prepare a worker candidate first.'); await host.resume(); phase = 'running'; return state(); });
-  const project = (options = {}) => run('projecting-worker', async () => { if (!host || !host.state()?.paused) throw new Error('Pause the worker before selecting its completed viewport.'); await replaceProjection(host, options); phase = 'paused'; return state(); });
+  const project = (options = {}) => run('projecting-worker', async () => { if (!host || !host.state()?.paused) throw new Error('Pause the worker before selecting its completed viewport.'); await replaceProjection(host, options); await host.stopViewport(); try { await host.watchViewport({ ...viewport, pixelWidth: 256, pixelHeight: 128 }); } catch (error) { if (host.state()?.failure) throw error; recoveryNotice = 'Live viewport unavailable: ' + error.message; } phase = 'paused'; return state(); });
   const parkCheckpoint = async operation => {
     if (!host || !host.state()?.paused || checkpoint) throw new Error('Pause a current worker candidate before detaching its physical checkpoint.');
     projection?.release(); projection = null;
@@ -98,7 +100,7 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
     })().catch(error => { failure = { code: 'worker-retirement-unknown', message: error.message }; phase = 'recovery-required'; throw error; }).finally(() => { closing = null; report(); }); return closing;
   };
   return Object.freeze({ state, start, advance, pause, resume, project, detachCheckpoint, publishCheckpoint, retainRecovery, recoverCheckpoint,
-    setAutomaticRecovery(value) { if (disposed || typeof value !== 'boolean' || directOutput && value) throw new Error('Choose an explicit worker recovery policy.'); automaticRecovery = value; if (!value && recoveryTimer !== null) { timers.clearTimeout(recoveryTimer); recoveryTimer = null; } scheduleRecovery(); report(); return value; }, close, projection: () => projection?.read() || null,
+    setAutomaticRecovery(value) { if (disposed || typeof value !== 'boolean' || directOutput && value) throw new Error('Choose an explicit worker recovery policy.'); automaticRecovery = value; if (!value && recoveryTimer !== null) { timers.clearTimeout(recoveryTimer); recoveryTimer = null; } scheduleRecovery(); report(); return value; }, close, projection: () => host && !host.state()?.paused ? host.liveProjection?.()?.read() || null : projection?.read() || null, releaseVisualFrame: () => host?.releaseLiveProjection?.() || false,
     cancel() { if (!pending) return false; pending.controller.abort(new Error('Worker preparation canceled.')); return true; },
     dispose() { return createProcgenRetirementScope().retire([{ name: 'worker-simulation-workbench', run: () => close({ retire: true, urgent: true }) }]); } });
 }

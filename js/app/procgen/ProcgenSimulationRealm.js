@@ -27,7 +27,7 @@ export async function prepareProcgenSimulationRealm({ manifest, resourceBudget, 
       getPianoControls: source => performance.getPianoControls(source), getOrchestralPolicy: source => performance.getOrchestralPolicy(source),
       getPercussionPolicy: source => performance.getPercussionPolicy(source), getPhysicalControlKinds: source => performance.getPhysicalControlKinds(source) });
     engine.restore(manifest.semantic); signal?.throwIfAborted();
-    core = createProcgenSimulationCore({ world, engine, clock, resourceBudget, documentRevision: manifest.documentRevision,
+    core = createProcgenSimulationCore({ world, engine, clock, nominalSpeed: manifest.nominalSpeed ?? (world.timer.speedFactor > 0 ? world.timer.speedFactor : 1), resourceBudget, documentRevision: manifest.documentRevision,
       scoreTimeline: manifest.scoreTimeline, playing: manifest.playing, bpm: manifest.bpm, requiredConsumer, onState,
       getPerformance: () => performance.snapshot(), applyPerformance: value => { const next = createCausalPerformanceState(value.performance), nextGraph = validateCausalInstrumentGraph(value.graph); performance = next; graph = nextGraph; },
       disposeWorld: () => candidate.dispose() });
