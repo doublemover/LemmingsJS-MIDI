@@ -27,7 +27,8 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
   const check = () => { if (disposed || failed || capturing || pending || collecting) throw failed || simulationFailure('host-unavailable', 'The simulation owner is paused for retirement, capture or required causal acknowledgment.'); };
   const listener = batch => {
     try {
-      if (!collecting || batch.worldId !== world.worldId || batch.generation !== world.generation || collecting.length >= 2) throw simulationFailure('batch-boundary', 'The world published outside its host-owned completed step.');
+      const transition = batch.terminalGenerationTransition, terminal = collecting?.length === 0 && transition?.from === batch.generation && transition.to === world.generation && batch.tick === world.tickIndex;
+      if (!collecting || batch.worldId !== world.worldId || batch.generation !== world.generation && !terminal || collecting.length >= 2) throw simulationFailure('batch-boundary', 'The world published outside its host-owned completed step.');
       const scoreTime = scoreTimeline ? clock.observe(batch, { bpm }) : null;
       const intents = playing && engine ? engine.processBatch(batch) : [];
       const packet = Object.freeze({ sequence: ++sequence, documentRevision, batch, intents, scoreTime, tempoBpm: bpm,

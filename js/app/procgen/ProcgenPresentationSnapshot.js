@@ -88,7 +88,7 @@ const createProcgenPresentationSnapshot = ({ worldId, generation, tick, terrainR
   }
   acceptedEntities.sort(compareEntities);
   const snapshot = Object.freeze({ worldId, generation, physicalTick: tick, terrainRevision, revision, projectionRevision, layoutKey, laneHeight, originX, viewWidth,
-    rect: Object.freeze({ ...rect }), backingSize: Object.freeze({ ...backingSize }), logicalSize: Object.freeze({ ...logicalSize }),
+    rect: Object.freeze({ left: rect.left, top: rect.top, width: rect.width, height: rect.height }), backingSize: Object.freeze({ ...backingSize }), logicalSize: Object.freeze({ ...logicalSize }),
     rows: Object.freeze(acceptedRows), entities: Object.freeze(acceptedEntities), truncated: entities.length > maxEntities,
     capabilities: Object.freeze({ inspect: true, edit: false }) });
   const memberships = [...bins.values()].reduce((sum, bin) => sum + bin.length, 0);

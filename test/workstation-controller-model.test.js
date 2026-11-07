@@ -1,3 +1,5 @@
+import { createProcgenWorkstation } from '../js/app/procgen/workstation/ProcgenWorkstation.js';
+import { setup } from './helpers/workstation-fixture.js';
 import { expect } from 'chai';
 import { generateControllerTrace, replayControllerTrace } from './support/workstation-controller-model.js';
 
@@ -5,6 +7,10 @@ describe('coupled document, history, save and transport controller reference', f
   this.timeout(30000);
   for (const seed of [1, 17, 101, 997, 4201, 9991186, 0xc47a31, 0x7fffffff]) it('preserves document/history/transport owners across mixed actions seed=' + seed, async () => {
     const result = await replayControllerTrace(generateControllerTrace(seed, { steps: 48 })); expect(result).to.include({ valid: true, complete: true });
+  });
+  it('keeps an acknowledged save clean after a refused candidate without inventing accepted edits (#1271)', async () => {
+    const trace = [{ kind: 'save', id: 'held', name: 'Held save' }, { kind: 'new-refused', seed: 91 }, { kind: 'settle-save', id: 'held', outcome: 'success' }, { kind: 'dispose' }];
+    expect(await replayControllerTrace(trace)).to.include({ valid: true, complete: true, generations: 0, documents: 1 });
   });
   it('preserves a newer paused document and its history when a prior save acknowledges late', async () => {
     const trace = [{ kind: 'gain', value: 0.5 }, { kind: 'play' }, { kind: 'save', id: 'old', name: 'Older project' }, { kind: 'new', seed: 91 }, { kind: 'pause' }, { kind: 'gain', value: 0.75 },
@@ -62,4 +68,35 @@ describe('coupled controller import read and publication reference', function() 
     const trace = ['a', 'b', 'c'].map((id, index) => ({ kind: 'import', id, seed: index + 51, gain: 0.5, name: id }));
     expect(await replayControllerTrace(trace)).to.include({ valid: false, step: 2 });
   });
+});
+
+
+describe('world replacement transport ownership (#1268)', function() {
+  const fixtureForBootBinding = () => {
+    let studio;
+    return setup({ physicalOnly: true, workstationFactory: options => {
+      studio = createProcgenWorkstation({ ...options, restart: async request => { const result = await options.restart(request); if (result !== false) { studio.beforeRestart(); studio.bindRuntime({ session: request.session }); } return result; } }); return studio;
+    } });
+  };
+  const awaitRestart = async fixture => { for (let turn = 0; !fixture.restarts.length && turn < 64; turn++) await new Promise(resolve => setImmediate(resolve)); expect(fixture.restarts).to.have.length(1); };
+  for (const action of ['new', 'replay']) {
+    it('keeps paused ' + action + ' paused after refusal and a successful retry', async () => {
+      const fixture = fixtureForBootBinding(); fixture.studio.bindRuntime(); fixture.studio.transport.pause(); const prior = fixture.runtime.world;
+      try {
+        fixture.failRestart(true); expect(await fixture.studio.handlers[action]()).to.equal(false); expect(fixture.runtime.world).to.equal(prior); expect(fixture.studio.transport.getState().playing).to.equal(false);
+        fixture.failRestart(false); expect(await fixture.studio.handlers[action]()).to.equal(true); expect(fixture.runtime.world).not.to.equal(prior); expect(fixture.studio.transport.getState().playing).to.equal(false);
+      } finally { await fixture.studio.dispose().completion; }
+    });
+    for (const refuse of [false, true]) it('preserves Pause during pending ' + action + ' when preparation ' + (refuse ? 'fails' : 'succeeds'), async () => {
+      const fixture = fixtureForBootBinding(); fixture.studio.bindRuntime(); fixture.studio.play(); const release = fixture.holdRestart(); fixture.failRestart(refuse);
+      const pending = fixture.studio.handlers[action]();
+      try { await awaitRestart(fixture); fixture.studio.transport.pause(); release(); expect(await pending).to.equal(!refuse); expect(fixture.studio.transport.getState().playing).to.equal(false); }
+      finally { release(); await pending; await fixture.studio.dispose().completion; }
+    });
+    it('resumes playing ' + action + ' only when its resume ownership remains current', async () => {
+      const fixture = fixtureForBootBinding(); fixture.studio.bindRuntime(); fixture.studio.play();
+      try { expect(await fixture.studio.handlers[action]()).to.equal(true); expect(fixture.studio.transport.getState().playing).to.equal(true); }
+      finally { await fixture.studio.dispose().completion; }
+    });
+  }
 });

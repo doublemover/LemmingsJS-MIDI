@@ -30,6 +30,28 @@ const retirement = world => {
 const retired = async core => { const receipt = core.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); };
 
 describe('authoritative simulation generation delivery', () => {
+  it('admits the sealed predecessor after the real world has advanced generation and keeps the clock ordered (#1267)', async () => {
+    const world = { worldId: 'sealed-generation', generation: 1, tickIndex: 10, timer: { speedFactor: 1 }, soundEvents: { onBatch: new EventHandler() },
+        step() {
+          this.tickIndex++; const previous = this.generation; if (this.tickIndex === 11) this.generation++;
+          const emit = (generation, terminalGenerationTransition = null) => this.soundEvents.onBatch.trigger({ version: 1, worldId: this.worldId, generation, tick: this.tickIndex, sourceTimeMs: this.tickIndex * 60, tickDurationMs: 60, facts: [], snapshot: { tick: this.tickIndex, generation }, terminalGenerationTransition });
+          if (previous !== this.generation) emit(previous, { from: previous, to: this.generation });
+          emit(this.generation);
+        } }, clock = createProcgenPhysicalScoreClock(), received = [];
+    const core = createProcgenSimulationCore({ world, clock, scoreTimeline: true, requiredConsumer: packet => { received.push(packet.batch.generation); return { accepted: true }; } });
+    try {
+      core.step(100); core.step(160);
+      expect(received).to.deep.equal([1, 2, 2]); expect(core.state()).to.include({ tick: 12, generation: 2, pendingCausalBatches: 0, failure: null });
+      expect(clock.snapshot()).to.include({ generation: 2, lastTick: 12 }); expect(clock.snapshot().timeline.epochs).to.have.length(2);
+    } finally { await retired(core); }
+  });
+  it('rejects an undeclared predecessor instead of treating every stale generation as a reset (#1267)', async () => {
+    const world = boundaryWorld(); world.step = function() { this.tickIndex++; this.generation++;
+      this.soundEvents.onBatch.trigger({ version: 1, worldId: this.worldId, generation: this.generation - 1, tick: this.tickIndex, facts: [], snapshot: {} }); };
+    const received = [], core = createProcgenSimulationCore({ world, requiredConsumer: packet => { received.push(packet); return { accepted: true }; } });
+    try { expect(() => core.step(100)).to.throw('outside its host-owned completed step'); expect(received).to.have.length(0); expect(core.state()).to.include({ phase: 'failed-paused', paused: true }); }
+    finally { await retired(core); }
+  });
   it('delivers both completed batches once and refuses reentrant physics while the consumer runs', async () => {
     const world = boundaryWorld(), received = [];
     const core = createProcgenSimulationCore({ world, requiredConsumer(packet) {

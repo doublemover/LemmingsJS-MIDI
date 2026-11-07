@@ -30,18 +30,18 @@ const check = (rate, voices, maximum, maxRate = 384000) => {
 };
 export function pluckSourceBytes(rate, voices = PLUCK_LAYOUT.voices) {
   check(rate, voices, PLUCK_LAYOUT.voices); const stride = Math.ceil(rate / PLUCK_LAYOUT.delayFloorHz) + PLUCK_LAYOUT.delayMargin;
-  return stride * voices * 4 + stride * 8 + voices * PLUCK_LAYOUT.state * 8 + PLUCK_LAYOUT.displayVoices * PLUCK_LAYOUT.displayWidth * 16;
+  return stride * voices * 4 + stride * 8 + voices * PLUCK_LAYOUT.state * 8 + PLUCK_LAYOUT.displayVoices * PLUCK_LAYOUT.displayWidth * 8;
 }
 export function choirSourceBytes(rate, voices = CHOIR_LAYOUT.voices) {
-  check(rate, voices, CHOIR_LAYOUT.voices); return CHOIR_LAYOUT.tableSamples * 4 + voices * (CHOIR_LAYOUT.state + CHOIR_LAYOUT.bands * CHOIR_LAYOUT.bandState) * 8 + CHOIR_LAYOUT.displayVoices * CHOIR_LAYOUT.displayWidth * 16;
+  check(rate, voices, CHOIR_LAYOUT.voices); return CHOIR_LAYOUT.tableSamples * 4 + voices * (CHOIR_LAYOUT.state + CHOIR_LAYOUT.bands * CHOIR_LAYOUT.bandState) * 8 + CHOIR_LAYOUT.displayVoices * CHOIR_LAYOUT.displayWidth * 8;
 }
 export function spectrumSourceBytes(rate, voices = SPECTRUM_LAYOUT.voices) {
   check(rate, voices, SPECTRUM_LAYOUT.voices);
-  return (SPECTRUM_LAYOUT.tableSamples + SPECTRUM_LAYOUT.sineSamples + SPECTRUM_LAYOUT.frameSamples) * 4 + voices * (SPECTRUM_LAYOUT.state + SPECTRUM_LAYOUT.drawbars + SPECTRUM_LAYOUT.partials * SPECTRUM_LAYOUT.partialState) * 8 + SPECTRUM_LAYOUT.displayVoices * SPECTRUM_LAYOUT.displayWidth * 16;
+  return (SPECTRUM_LAYOUT.tableSamples + SPECTRUM_LAYOUT.sineSamples + SPECTRUM_LAYOUT.frameSamples) * 4 + voices * (SPECTRUM_LAYOUT.state + SPECTRUM_LAYOUT.drawbars + SPECTRUM_LAYOUT.partials * SPECTRUM_LAYOUT.partialState) * 8 + SPECTRUM_LAYOUT.displayVoices * SPECTRUM_LAYOUT.displayWidth * 8;
 }
 export function granularSourceBytes(rate, voices = GRANULAR_LAYOUT.voices) {
   check(rate, voices, GRANULAR_LAYOUT.voices, 192000); if (!Number.isInteger(rate)) throw new RangeError('Invalid granular source rate.');
-  return GRANULAR_LAYOUT.windowSamples * 4 + voices * (GRANULAR_LAYOUT.cloudState + GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState) * 8 + GRANULAR_LAYOUT.displayVoices * GRANULAR_LAYOUT.displayWidth * 16;
+  return GRANULAR_LAYOUT.windowSamples * 4 + voices * (GRANULAR_LAYOUT.cloudState + GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState) * 8 + GRANULAR_LAYOUT.displayVoices * GRANULAR_LAYOUT.displayWidth * 8;
 }
 export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices, zones = SAMPLE_LAYOUT.zones) {
   check(rate, voices, SAMPLE_LAYOUT.voices, 96000);

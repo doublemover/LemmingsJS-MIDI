@@ -33,7 +33,7 @@ describe('owned artificial formant choir', () => {
   it('keeps deterministic independent breath and oscillator state across render block sizes', () => {
     const a = render(191, 64), b = render(191, 257), other = render(192, 128);
     expect([...a.output]).to.deep.equal([...b.output]); expect([...other.output]).not.to.deep.equal([...a.output]);
-    const source = new OwnedChoirSource(96000); expect(source.state.byteLength + source.table.byteLength + source.bands.byteLength).to.equal(choirSourceBytes(96000));
+    const source = new OwnedChoirSource(96000); expect(source.state.byteLength + source.table.byteLength + source.bands.byteLength + source.displayData.byteLength).to.equal(choirSourceBytes(96000));
     expect(a.output.some(value => Math.abs(value) > 0.00001)).to.equal(true);
   });
   it('moves vowels and size independently of pitch without another onset or seed reset', () => {

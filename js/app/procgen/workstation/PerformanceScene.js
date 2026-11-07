@@ -18,7 +18,8 @@ const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const keys = (value, allowed) => value && Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).every(key => allowed.includes(key));
 const reference = value => keys(value, ['id', 'revision', 'hash']) && id(value.id) && integer(value.revision, 1, 2147483647) && hash(value.hash);
 const requirementKinds = ['world-source', 'asset', 'engine', 'physical-observation', 'harmonic-field', 'quality-profile', 'renderer', 'held-source'];
-const requirement = value => keys(value, ['id', 'kind', 'revision', 'hash', 'description']) && id(value.id) && requirementKinds.includes(value.kind) && integer(value.revision, 1, 2147483647) && hash(value.hash) && text(value.description, 512);
+const assetId = value => text(value, 512) && value.split('/').every(part => /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(part) && part !== '.' && part !== '..');
+const requirement = value => keys(value, ['id', 'kind', 'revision', 'hash', 'description']) && (value.kind === 'asset' ? id(value.id) || assetId(value.id) : id(value.id)) && requirementKinds.includes(value.kind) && integer(value.revision, 1, 2147483647) && hash(value.hash) && text(value.description, 512);
 export const sceneDependencyKey = value => [value.kind, value.id, value.revision, value.hash].join(':');
 
 export function validatePerformanceScene(raw) {

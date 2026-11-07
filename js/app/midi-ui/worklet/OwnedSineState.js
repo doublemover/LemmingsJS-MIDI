@@ -1,11 +1,11 @@
-import { LIVE_LANE_ID_LIMIT } from '../OwnedSourceLayout.js';
+import { LIVE_LANE_ID_LIMIT, OWNED_SOURCE_COMMAND_WIDTHS } from '../OwnedSourceLayout.js';
 export const SINE_STATE_ABI = 'owned-sine-state-le-v4-held-gain';
 const WIDTH = 18, CAPACITY = 512, VOICES = 64, VOICE_WIDTH = 28, RECEIPTS = 2048, RECEIPT_WIDTH = 6;
 const QUEUE = 128, VOICE = QUEUE + CAPACITY * WIDTH * 8, ACTIVE = VOICE + VOICES * VOICE_WIDTH * 8;
 const MIX = ACTIVE + VOICES, COUNTERS = MIX + VOICES * 6 * 8, RECEIPT = COUNTERS + 8 * 4;
 export const SINE_STATE_BYTES = RECEIPT + RECEIPTS * RECEIPT_WIDTH * 8 + VOICES * 9 * 8;
 const layoutFor = width => {
-  if (![18, 24, 26, 33, 40, 48, 56, 73, 80, 82, 84].includes(width)) throw new Error('Unknown owned kernel state width.');
+  if (!OWNED_SOURCE_COMMAND_WIDTHS.includes(width)) throw new Error('Unknown owned kernel state width.');
   const voice = QUEUE + CAPACITY * width * 8, active = voice + VOICES * VOICE_WIDTH * 8, mix = active + VOICES, counters = mix + VOICES * 6 * 8, receipt = counters + 8 * 4;
   const lanes = receipt + RECEIPTS * RECEIPT_WIDTH * 8, pending = lanes + VOICES * 5 * 8;
   const gain = pending + VOICES * 2 * 8;

@@ -3,12 +3,21 @@ import { createOriginalAcousticMap, createOriginalAcousticZone } from '../js/mid
 import { compileAcousticMap } from '../js/midi/content/AcousticMap.js';
 import { createWorldSpatialControl } from '../js/app/procgen/workstation/WorldSpatialControl.js';
 import { spatialSourcePoint, createCausalSpatialPlayback } from '../js/app/procgen/workstation/CausalSpatialPlayback.js';
+import { validateSpatialState, validateSpatialAttachment } from '../js/midi/content/SpatialState.js';
 import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 
 const zones = () => ['felt', 'glass'].map((id, index) => createOriginalAcousticZone({ zoneId: id, materialResponseId: id, priority: 0, worldRegion: { kind: 'rectangle', bounds: { x1: index * 64, x2: 128 + index * 64, y1: 0, y2: 96 } } }));
 const batch = (tick = 1) => ({ worldId: 'acoustic-test-world', generation: 1, tick, sourceTimeMs: tick * 12, tickDurationMs: 12, completeness: { status: 'complete' }, snapshot: { terrainRevision: 1, actors: [{ actorId: 7, x: 80, y: 70, laneId: 0 }] } });
 
 describe('committed world acoustic controls (deferred grouped qualification)', () => {
+  it('normalizes immutable spatial snapshots repeatedly and admits safe sanitized attachment records (#1270)', () => {
+    const control = createWorldSpatialControl(), map = createOriginalAcousticMap({ listener: { x: 64, y: 70 }, zones: zones() }); control.configure(map); control.observe(batch());
+    const input = { voiceId: 'immutable-observation', actorId: 7, attachment: Object.assign(Object.create(null), { kind: 'actor' }) }, first = control.state(input).state, original = JSON.stringify(first);
+    expect(validateSpatialState(Object.freeze({ ...first }))).to.deep.equal(first); expect(validateSpatialState(first)).to.equal(first); expect(Object.isFrozen(first.sourceAttachment)).to.equal(true);
+    const later = batch(2); later.snapshot.actors[0].x = 100; control.observe(later); expect(control.state(input).state.sourceWorldPosition.x).to.equal(100); expect(JSON.stringify(first)).to.equal(original);
+    expect(validateSpatialAttachment(Object.assign(Object.create(null), { kind: 'persistent-body', bodyId: 'room', position: Object.assign(Object.create(null), { x: 10, y: 20 }) }))).to.deep.equal({ kind: 'persistent-body', bodyId: 'room', position: { x: 10, y: 20 } });
+    expect(() => validateSpatialAttachment(Object.create({ kind: 'actor' }))).to.throw('explicitly');
+  });
   it('keeps camera changes out of fixed-listener controls and separates actor from fixed strike attachment', () => {
     let camera = { x: 10, y: 10 }; const control = createWorldSpatialControl({ getCameraPosition: () => camera }), map = createOriginalAcousticMap({ listener: { x: 64, y: 70 }, zones: zones() }); control.configure(map); control.observe(batch());
     const fixed = { voiceId: 'strike', actorId: 7, attachment: { kind: 'struck-point' }, sourcePosition: { x: 40, y: 70 } }, first = control.state(fixed).state; camera = { x: 4000, y: -2000 }; control.observe(batch()); expect(control.state(fixed).state).to.deep.equal(first);

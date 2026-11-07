@@ -53,7 +53,7 @@ const nativeComponents = descriptor => {
   } : descriptor.engineId === 'worklet-seed-layers' ? {
     exciter: ['pitchRatio', 'rootHz', 'reverse', 'transientGain01', 'residualGain01', 'residualT60Seconds'], resonator: ['sustainedGain01', 'position01', 'densityHz', 'grainMilliseconds', 'spread01', 'activity01', 'tone01', 'freezePosition'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-granular' ? {
-    exciter: ['pitchRatio', 'regionStart01', 'regionEnd01', 'motionRequired', 'reverse', 'rootHz'],
+    exciter: ['pitchRatio', 'regionStart01', 'regionEnd01', 'motionRequired', 'reverse', 'rootHz', 'maximumGrainChildren'],
     resonator: ['position01', 'densityHz', 'grainMilliseconds', 'spread01', 'activity01', 'tone01', 'freezePosition'],
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-spectrum' ? {

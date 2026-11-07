@@ -480,7 +480,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!disposed && !persistenceReadHolds.size && recoveryState === 'pending') scheduleRecovery();
     } });
   };
-  const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false, restoringWorld = false } = {}) => {
+  const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false, restoringWorld = false, worldPreparation = false } = {}) => {
     if (simulationWorkbench?.state().output !== undefined && simulationWorkbench.state().output !== 'off' && simulationWorkbench.state().active) throw new Error('Park or close the independent worker performance before changing its physical project.');
     if (physicalAuthoringAbort && !restoringWorld) throw new Error('Physical authoring owns this paused project boundary.');
     if (ownedCausalArm && !['complete', 'discarded', 'failed'].includes(ownedCausalArm.state().phase) && !(ownedCausalArm.state().phase === 'activating-world' && ['procgen/launched', 'procgen/launchedBatch'].includes(renderAction?.type))) throw new Error('Finish or discard the retained owned sound-state transaction before editing its project.');
@@ -507,7 +507,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const previous = project.procgen.junctions?.find(prior => prior.id === value.id); if (!previous || equal(previous, value) || value.revision > previous.revision) return value;
       if (!Number.isSafeInteger(previous.revision + 1)) throw new Error('Junction revision exhausted.'); return { ...value, revision: previous.revision + 1 };
     }) } };
-    const junctionProposal = junctionsChanged && runtime()?.world ? prepareProjectJunctions(runtime().world, next.procgen.junctions || []) : null;
+    const junctionProposal = !worldPreparation && junctionsChanged && runtime()?.world ? prepareProjectJunctions(runtime().world, next.procgen.junctions || []) : null;
     if (!restoringWorld && project.procgen.physicalGraph !== next.procgen.physicalGraph) for (const collection of ['harmonicFields', 'topologyRegions']) {
       const previous = project.procgen.physicalGraph[collection] || [], values = next.procgen.physicalGraph[collection];
       if (!values) continue;
@@ -524,7 +524,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     const publishedProject = sealMidiProjectSnapshot(isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next))));
     const authoringChanged = graphChanged || project.procgen.fragmentInstances !== next.procgen.fragmentInstances && !equal(project.procgen.fragmentInstances || [], next.procgen.fragmentInstances || []);
-    const authoringProposal = authoringChanged ? runtime()?.world?.preparePhysicalAuthoring?.(next.procgen.physicalGraph, next.procgen.fragmentInstances || []) : null;
+    const authoringProposal = !worldPreparation && authoringChanged ? runtime()?.world?.preparePhysicalAuthoring?.(next.procgen.physicalGraph, next.procgen.fragmentInstances || []) : null;
     authoringProposal?.admit();
     try {
       if (!restoringWorld && graphChanged && !equal(project.procgen.physicalGraph.feedback, next.procgen.physicalGraph.feedback)) physicalFeedback?.disarm();
@@ -550,15 +550,18 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     project = publishedProject;
     if (document) getPointerGestureArbiter(document).revalidate();
     engine?.cancelPendingAdmissions();
-    projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix(); publishHeldMacros();
-    if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
-    editRevision++; storageStatus(); refreshSceneCue();
+    projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile();
+    if (!worldPreparation || restoringWorld) {
+      physicalPlayback?.synchronizeLaneMix(); publishHeldMacros();
+      if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
+    }
+    if (!worldPreparation) editRevision++; storageStatus(); refreshSceneCue();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
     if (!procgenLane(project.procgen.lanes, state.laneId)) state.laneId = project.procgen.lanes[0].id;
     state.slot = Math.max(0, Math.min(3, state.slot || 0));
     state.step = Math.max(0, Math.min((selected().patterns?.[state.slot]?.length || 1) - 1, state.step || 0));
     if (!fromLegacy) setLegacyProject(project);
-    if (!runtimeUnchanged) ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
+    if (!runtimeUnchanged && (!worldPreparation || restoringWorld)) ports?.configure({ schedulerConfig: projectToMidiConfig(project) });
     persist();
     if (!transport.getState().playing) scheduleRecovery();
     if (render) {
@@ -836,7 +839,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
       causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'transport-reset-during-take' });
     }
-    transport.pause(); ports.flush(); physicalPlayback?.stop(); return transport.snapshot();
+    if (transport.getState().playing) transport.pause(); ports.flush(); physicalPlayback?.stop(); return transport.snapshot();
   };
   const causalBoundary = () => {
     const physical = physicalPlayback?.engine.snapshot();
@@ -1255,8 +1258,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     previewRouterBinding?.release(); attachedPreviewRouter = next; previewRouterBinding = binding;
     next?.resetClock?.({ preserveGamePhrases: true });
   };
-  /** @param {{session?: import('./ProcgenBoundaryContracts.js').SessionBindingSource, historyRestore?: boolean}} options */
-  const bindRuntime = ({ session, historyRestore = false } = {}) => {
+  /** @param {{session?: import('./ProcgenBoundaryContracts.js').SessionBindingSource, historyRestore?: boolean, autoplay?: boolean}} options */
+  const bindRuntime = ({ session, historyRestore = false, autoplay = !startupCommitted } = {}) => {
     if (disposed) return null;
     let sessionIdentity = null;
     if (session) { sessionIdentity = sessionIdentities.get(session); if (!sessionIdentity) { sessionIdentity = Object.freeze({}); sessionIdentities.set(session, sessionIdentity); } }
@@ -1422,7 +1425,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
         onRevealLane: lane => view?.revealLane?.(project.procgen.lanes[lane]?.id), onSelection: () => view?.renderInspector?.() });
       if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
-      if (!session && !pendingResume && !project.procgen.sceneOrigin && (startupCommitted || !coldHistoryReturn)) play();
+      if (autoplay && !session && !pendingResume && !project.procgen.sceneOrigin && (startupCommitted || !coldHistoryReturn)) play();
       if (!startupCommitted && coldHistoryReturn) status('Page restored paused. Press Play to resume.');
       if (!startupCommitted && startupPlan.mode === 'document') {
         documentId = startupPlan.sourceIdentity.id; documentRevision = startupPlan.sourceIdentity.revision;
@@ -2095,40 +2098,45 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const previous = project, oldSettings = settingsFor(), previousTransport = transport.getState(), previousPatterns = engine.snapshot();
     const priorHistory = new Set(undo), previousRedo = [...redo];
     const previousRuntime = runtime();
-    let completed = false, rolledBack = false, staged = previous, candidateSettings = oldSettings;
+    let completed = false, rolledBack = false, staged = previous, candidateSettings = oldSettings, resumeStopGeneration = transportStopGeneration, acceptedWorldEdit = false;
+    const acceptWorldEdit = () => { if (!acceptedWorldEdit) { acceptedWorldEdit = true; editRevision++; storageStatus(); } };
+    const mayResume = () => previousTransport.playing && resumeStopGeneration === transportStopGeneration;
+    const ownTransportStop = action => {
+      const current = mayResume(); action(); if (current) resumeStopGeneration = transportStopGeneration;
+    };
     const preferenceHold = preferenceWriter?.suspend();
     try {
       if (preferenceHold) await preferenceHold.completion; lease.signal.throwIfAborted();
-      beforeRestart();
+      ownTransportStop(() => beforeRestart());
       if (Object.keys(worldSettings).some(key => key !== 'hazardSpacing') || worldSettings.hazardSpacing != null &&
       (!Number.isFinite(worldSettings.hazardSpacing) || worldSettings.hazardSpacing < 80 || worldSettings.hazardSpacing > 1024)) throw new Error('Invalid world recipe patch.');
       const source = projectNext || project;
       const freshPlan = fresh ? resolveProcgenStartupIntent({ search: '?startup=fresh', seed }) : null;
       const next = freshPlan?.project || { ...source, procgen: { ...source.procgen, seed } };
-      if (fresh) { Object.assign(legacy.settings, freshPlan.worldOptions); transport.configure({ ...freshPlan.transport, baseBpm: 120 }); legacy.setSpeed(freshPlan.worldOptions.speed); lastLegacySpeed = legacy.settings.speed; }
+      if (fresh) { Object.assign(legacy.settings, freshPlan.worldOptions); ownTransportStop(() => transport.configure({ ...freshPlan.transport, baseBpm: 120 })); legacy.setSpeed(freshPlan.worldOptions.speed); lastLegacySpeed = legacy.settings.speed; }
       candidateSettings = settingsFor(next, { ...(freshPlan?.worldOptions || {}), ...worldSettings });
       pendingWorldSettings = candidateSettings;
-      syncProject(next, { history }); staged = project;
+      syncProject(next, { history, worldPreparation: true }); staged = project;
       Object.assign(legacy.settings, candidateSettings);
       const restarted = await restart({ lease });
       if (!ownsOperation(lease)) return false;
       if (restarted === false) throw new Error('World preparation was canceled.');
       lease.reportPhase('committing');
-      acceptWorldSettings(candidateSettings);
+      acceptWorldEdit(); acceptWorldSettings(candidateSettings);
       if (fresh) {
         documentGeneration++; savedName = 'Untitled session'; documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null;
         undo.length = 0; redo.length = 0; lastHistoryGroup = null; physicalHistory.clear(); trimHistory();
       }
-      engine.reset(); transport.stop(); pendingResume = false;
+      engine.reset(); ownTransportStop(() => transport.stop()); pendingResume = false;
       if (fresh) ports.configure({ recording: false });
-      bindRuntime();
+      bindRuntime({ autoplay: false });
       if (fresh) { view?.recording?.(false, recordingViewState(ports.getState())); storageStatus(); }
-      if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); completed = true; return true;
+      if (mayResume()) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); completed = true; return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
       if (runtime() !== previousRuntime) {
         transport.pause(); ports.flush(); suppressPersistence = false;
-        acceptWorldSettings(candidateSettings);
+        acceptWorldEdit(); acceptWorldSettings(candidateSettings);
         status('The rebuilt world is paused after a presentation error. Export a recovery copy before continuing.');
         throw error;
       }
@@ -2141,15 +2149,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         historySizes.set(value, historyBytes(entry)); return value;
       });
       const hadConcurrentHistory = undo.some(entry => !priorHistory.has(entry) && entry !== previous);
-      syncProject(restored, { history: false, render: false });
+      syncProject(restored, { history: false, render: false, restoringWorld: true, worldPreparation: true });
       undo.splice(0, undo.length, ...rebased);
       if (!hadConcurrentHistory) redo.splice(0, redo.length, ...previousRedo);
       trimHistory();
       acceptWorldSettings(oldSettings); Object.assign(legacy.settings, oldSettings);
       lastLegacySpeed = legacy.settings.speed;
-      transport.restore(previousTransport); engine.restore(previousPatterns); pendingResume = true;
+      ownTransportStop(() => transport.restore(previousTransport)); engine.restore(previousPatterns); pendingResume = true;
       rolledBack = true;
-      if (previousTransport.playing) play();
+      if (mayResume()) play();
       try { view?.render(); } catch { /* Rollback authority remains recoverable without its presentation. */ }
       throw error;
     } finally { pendingWorldSettings = null; worldBusy = false; finishOperation(lease, completed ? 'committed' : runtime() !== previousRuntime ? 'committed-with-error' : lease.signal.aborted ? 'canceled' : 'failed'); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); preferenceHold?.release(); }

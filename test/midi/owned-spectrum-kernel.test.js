@@ -10,7 +10,7 @@ class OwnedSpectrumSource extends RealSpectrumSource { constructor(rate, voices)
 const begin = (mode = 0, rate = 48000, seed = 193) => {
   const command = new Float64Array(SPECTRUM_WIDTH);
   command.set([1, 0, 1, BEGIN, 0, 1, 220, 0.5, 1, 0, 48, 240, 0.8, 240, 0, 0, rate * 8, 1, seed, mode, 16, 0.4, 0.5, 0.8, mode ? 2 : 0]);
-  for (let index = 0; index < 16; index++) { command[25 + index] = index + 1; command[41 + index] = 1 / (index + 1); command[57 + index] = mode ? 1 / (1 + index * 0.2) : 1; } return command;
+  for (let index = 0; index < 16; index++) { command[25 + index] = index + 1; command[41 + index] = 1 / (index + 1); command[57 + index] = mode ? 1 / (1 + index * 0.2) : 1; } command[76] = 0.2; command[77] = 2; return command;
 };
 describe('owned spectral-frame and additive source', () => {
   it('retains 16 closed phase-aligned frames and exact typed allocation inventories', () => {
@@ -18,7 +18,7 @@ describe('owned spectral-frame and additive source', () => {
     for (let frame = 0; frame < 16; frame++) for (let level = 0; level < 5; level++) {
       const offset = (frame * 5 + level) * 2049; expect(SPECTRUM_TABLES[offset]).to.equal(0); expect(SPECTRUM_TABLES[offset + 2048]).to.equal(0);
     }
-    const source = new OwnedSpectrumSource(48000); expect(source.state.byteLength + source.partials.byteLength + source.tables.byteLength + source.sine.byteLength + source.frames.byteLength).to.equal(spectrumSourceBytes(48000));
+    const source = new OwnedSpectrumSource(48000); expect(source.state.byteLength + source.partials.byteLength + source.tables.byteLength + source.sine.byteLength + source.frames.byteLength + source.drawbars.byteLength + source.displayData.byteLength).to.equal(spectrumSourceBytes(48000));
   });
   it('preserves deterministic owned phases through block-size changes, independent actor offsets and scan reversals', () => {
     for (const mode of [0, 1]) {

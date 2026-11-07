@@ -34,7 +34,7 @@ describe('owned preallocated plucked-string kernel', () => {
   });
   it('allocates an exact bounded source inventory and admits excitation by absolute 128-frame buckets', () => {
     const source = new OwnedPluckSource(96000);
-    expect(source.buffer.byteLength + source.scratch.byteLength + source.state.byteLength).to.equal(pluckSourceBytes(96000));
+    expect(source.buffer.byteLength + source.scratch.byteLength + source.state.byteLength + source.displayData.byteLength).to.equal(pluckSourceBytes(96000));
     const kernel = new OwnedPluckKernel(384000), packet = new Float64Array(16 * PLUCK_WIDTH);
     for (let slot = 0; slot < 16; slot++) { const event = begin({ slot, token: slot + 1, rate: 384000 }); event[6] = 50; packet.set(event, slot * PLUCK_WIDTH); }
     kernel.accept(packet, 16, 1); kernel.render(new Float32Array(1), null, 0);

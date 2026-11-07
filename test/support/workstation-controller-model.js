@@ -1,3 +1,4 @@
+import { captureCausalPerformanceState } from '../../js/app/procgen/workstation/CausalPerformanceState.js';
 import assert from 'node:assert/strict';
 import { createTestBackgroundJobs } from '../helpers/background-worker.js';
 import { setup } from '../helpers/workstation-fixture.js';
@@ -116,6 +117,7 @@ export async function replayControllerTrace(trace, { checkBudget = () => {}, wor
       if (command.kind === 'import') {
         const expected = model.imports.get(command.id), job = { ...expected, returned: false, reading: false }; importJobs.set(command.id, job);
         const payload = structuredClone(importTemplate); payload.name = job.name; payload.project.procgen.seed = job.seed; payload.project.procgen.lanes[0].gain = job.gain; payload.world.seed = job.seed; payload.settings.seed = job.seed;
+        if (payload.physicalState) payload.physicalState.performanceInputs = captureCausalPerformanceState(payload.project.procgen.lanes, payload.project.procgen.actorTimbreLocks);
         job.payload = payload;
         job.promise = fixture.studio.handlers.import({ text: () => { job.reading = true; return new Promise((resolve, reject) => { job.resolve = resolve; job.reject = reject; }); } }).then(value => { job.returned = true; job.value = value; }, error => { job.returned = true; job.error = error; });
         await settle(() => job.reading || job.returned); assert.ok(job.reading, 'controller-model:import-read-boundary');
