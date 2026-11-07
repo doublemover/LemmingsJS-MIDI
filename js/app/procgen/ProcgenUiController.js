@@ -85,7 +85,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     if (byId('procgenMidiDevice')) byId('procgenMidiDevice').hidden = !midi;
   };
   let local;
-  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true, resourceBudget,
+  const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true, getRoutingMode: () => physicalControlOwner?.localRoutingMode?.() || 'game-events', resourceBudget,
     onStateChange: () => local?.localStateChanged() });
   local = createProcgenMidiOutput({ local: preview, resourceBudget, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi, loadWebMidi: () => loadDeferredWebMidi({ document, window }),
     backend: settings.output, canActivate: () => physicalControlOwner?.canActivateOutput?.() ?? true, onStateChange: state => { renderOutput(state); physicalControlOwner?.outputChanged?.(); }, onDevicesChange: (ports, selectedId) => {

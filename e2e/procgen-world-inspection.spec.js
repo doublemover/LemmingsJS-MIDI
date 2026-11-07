@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { inspectLane } from './helpers/workstationDock.js';
 
 const ready = async page => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -30,7 +31,11 @@ for (const deviceScaleFactor of [1, 2]) test.describe(`world inspection at DPR $
     await page.mouse.click(target.x, target.y);
     const selected = await page.evaluate(() => window.__PROCGEN_STUDIO__.getWorldInspector().getState().selection);
     expect(selected.actorId).toBe(target.actorId); expect(selected.generation).toBe(target.generation);
-    await page.getByRole('button', { name: 'Clear selection', exact: true }).click();
+    await inspectLane(page, 'Selection');
+    const inspection = page.getByRole('region', { name: 'World inspection', exact: true });
+    await inspection.getByRole('button', { name: 'Reveal selected', exact: true }).click();
+    await page.waitForFunction(id => window.__PROCGEN_LANES__.renderer.presentation.getSnapshot()?.entities.some(entity => entity.id === id), target.id);
+    await inspection.getByRole('button', { name: 'Clear selection', exact: true }).click();
     const entry = page.locator('.studio-world-entities button').filter({ hasText: `Actor ${target.actorId} ·` }).first();
     await entry.focus(); await page.keyboard.press('Enter');
     expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getWorldInspector().getState().selection.actorId)).toBe(target.actorId);

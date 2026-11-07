@@ -90,6 +90,28 @@ const setup = (options = {}) => {
 
 describe('local game note preview', function() {
   before(loadLocalInstrumentFixture);
+
+  it('unlocks physical-only output without assigning classic instruments or attaching a game router (#1290)', async () => {
+    const state = setup({ getRoutingMode: () => 'physical' }); state.source = { enabled: false, sfx: {} };
+    expect(await state.local.start()).to.equal(true); expect(state.local.getState()).to.include({ enabled: true, status: 'live' });
+    expect(state.view.midiPreviewRouter).to.equal(null); expect(state.audio.calls.some(call => call.type === 'begin')).to.equal(false);
+    expect(state.local.suspendGame()).to.equal(true); expect(await state.local.resumeGame()).to.equal(true);
+    expect(state.view.midiPreviewRouter).to.equal(null); state.local.stop(); expect(state.local.getState().enabled).to.equal(false); await state.local.dispose();
+  });
+  it('requires explicit reactivation after a live routing-mode change and retires its old game router (#1290)', async () => {
+    let mode = 'game-events'; const state = setup({ getRoutingMode: () => mode });
+    expect(await state.local.start()).to.equal(true); const oldRouter = state.view.midiPreviewRouter; expect(oldRouter).not.to.equal(null);
+    mode = 'physical'; state.local.syncConfig(); expect(state.local.getState().enabled).to.equal(false); expect(state.view.midiPreviewRouter).to.equal(null);
+    expect(await state.local.start()).to.equal(true); expect(state.view.midiPreviewRouter).to.equal(null);
+    mode = 'game-events'; state.local.syncConfig(); expect(state.local.getState().enabled).to.equal(false);
+    expect(await state.local.start()).to.equal(true); expect(state.view.midiPreviewRouter).not.to.equal(oldRouter); await state.local.dispose();
+  });
+  it('does not publish a routing mode replaced during audio unlock (#1290)', async () => {
+    let mode = 'physical'; const state = setup({ getRoutingMode: () => mode }), unlock = state.audio.waitForUnlock();
+    const pending = state.local.start(); mode = 'game-events'; unlock.resolve(true);
+    expect(await pending).to.equal(false); expect(state.local.getState().enabled).to.equal(false); expect(state.view.midiPreviewRouter).to.equal(null);
+    expect(await state.local.start()).to.equal(true); expect(state.view.midiPreviewRouter).not.to.equal(null); await state.local.dispose();
+  });
   it('refuses an unassigned local instrument and admits a later assigned retry', async () => {
     const state = setup(); state.source = { enabled: false, sfx: { [SoundEffectIds.SPAWN]: { note: 60 } } };
     expect(await state.local.start()).to.equal(false); expect(state.local.getState()).to.include({ enabled: false, status: 'error' });

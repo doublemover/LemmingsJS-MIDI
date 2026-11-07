@@ -1503,7 +1503,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } }),
     { signal, isCurrent: () => !disposed && runtime()?.world === sourceWorld && project === sourceProject && documentGeneration === sourceGeneration && sourceWorld.tickIndex === sourceTick && sourceWorld.physicalFeedback === sourceFeedback && physicalFeedback === sourceController && (physicalFeedback?.isArmed() === true) === sourceArmed && !transport.getState().playing });
   };
-  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, resourceProfile = /** @type {'compact-v1' | 'balanced-v1'} */ ('compact-v1'), requiredPorts = [], consume = null, onState = () => {}, onViewport = () => {}, signal = null, continuation = null } = {}) => {
+  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, resourceProfile = /** @type {'compact-v1' | 'balanced-v1' | 'single-lane-v1' | null} */ (null), requiredPorts = [], consume = null, onState = () => {}, onViewport = () => {}, signal = null, continuation = null } = {}) => {
     if (disposed || !resourceBudget || simulationPreparation || simulationCandidates.size >= 2 || worldBusy || pendingHistory || physicalAuthoringAbort ||
         causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback) throw new Error('Prepare a worker candidate from an exclusive paused physical project boundary.');
     const sourceWorld = runtime()?.world, sourceProject = project, sourceGeneration = documentGeneration, sourceTick = sourceWorld?.tickIndex, sourceFeedback = sourceWorld?.physicalFeedback, sourceArmed = physicalFeedback?.isArmed() === true,
@@ -1522,7 +1522,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         }
         candidate = await prepareWorkerProcgenSimulationHost({ resourceBudget, signal: controller.signal, requiredPorts, consume, onState, onViewport,
           manifest: { schema: 'lemmings-authoritative-simulation/v1', ownerId: 'workstation-candidate-' + (++simulationCandidateSerial), ownerEpoch: sourceGeneration,
-            documentRevision: projectRevision, resourceProfile, rootPath, checkpoint: source.world, semantic: source.physicalState, timeline: source.physicalTimeline,
+            documentRevision: projectRevision, resourceProfile: resourceProfile || (sourceWorld.laneCount === 1 ? 'single-lane-v1' : 'compact-v1'), rootPath, checkpoint: source.world, semantic: source.physicalState, timeline: source.physicalTimeline,
             executionPolicy: continuation?.executionPolicy || live.executionIdentity.simulationExecutionPolicy, graph: continuation?.authoring.graph || sourceProject.procgen.physicalGraph, performance: continuation?.performance || captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
             bpm: continuation?.replay.bpm || transport.getState().bpm, nominalSpeed: continuation?.replay.nominalSpeed || transport.getState().nominalSpeed, playing: true, scoreTimeline: true } });
         if (!isCurrent()) throw new Error('The source changed while its worker candidate was preparing.');
@@ -3277,6 +3277,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const canWorldShortcut = action => !disposed && (action === 'restartLevel' ? !stageSession?.active() :
     action === 'nuke' || action === 'nukeInstant' ? !stageSession?.active() && !!runtime()?.world && !worldBusy && !causalTakeStart && !causalTakeStop : true);
   const releasePhysicalControls = legacy.setPhysicalControlOwner?.({
+    localRoutingMode: () => project.procgen.lanes.some(lane => lane.mode === 'pattern') ? 'game-events' : 'physical',
     presentOutputLabel: label => !disposed && view?.presentOutputLabel?.(label) === true,
     getRecipeSpeed: () => transport.getState().gameSpeed, canActivateOutput: () => !stageSession?.active(), canShortcut: canWorldShortcut,
     getShareExportDescriptor, prepareShareExport, revealPreparedExport: () => view?.revealPreparedExport?.(),

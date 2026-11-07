@@ -762,7 +762,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 607,
-      "sha256": "7a7fdd13afb3c602b2accffa6ebf67a128f60230ab41c78d5bce52ba08d1412b",
+      "sha256": "3f801f5217f4e9b817a2edbe93d7c5e32af58a5ef748c57e3334ed219c08b005",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -776,10 +776,11 @@
         "js/app/procgen/workstation/ProcgenTimingDriver.js"
       ],
       "files": [
-        "js/app/procgen/workstation/ProcgenTimingDriver.js"
+        "js/app/procgen/workstation/ProcgenTimingDriver.js",
+        "js/app/procgen/workstation/ProcgenTimingWorker.js"
       ],
-      "fileCount": 1,
-      "sha256": "b60fa0011a6f0f62db23aa2f193b3e9609b6184c576f197d3d81c1cf50cc6718",
+      "fileCount": 2,
+      "sha256": "ce253aff74b86016e04402204525d70c28181603ff8af1aeab9789aaf4f012dc",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1547,7 +1548,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 640,
-      "sha256": "955de22094ef168699a96d9a33e7f5d04db4e8dc43d9b703a63e379e3297139c",
+      "sha256": "0a4bec9428a9252b199a44beb67ffdae46c7b787caa03ed5962cf1b407629a3e",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2183,7 +2184,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 619,
-      "sha256": "a3981405692bfcf1b8080fe66bc5d532e509086ba76cb33b4a80b9fc7fad1df7",
+      "sha256": "d4e6f1a795e28bbe953344653712f40ebd429f35eb851bf15929b2e7bee0481d",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2269,7 +2270,7 @@
         "js/runtime/ActiveExecutionIdentity.js"
       ],
       "fileCount": 70,
-      "sha256": "0c73e71a54dc4b0af70f1f8a9a46f23f3bfb8dc7d3b0789e769a4b01752f3d7c",
+      "sha256": "911b6c2cc359786f776da89db024fafd58afb32760740ca282cc2bd3e474ed3f",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2978,7 +2979,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 692,
-      "sha256": "ff763f0a2640cf62de7d599b206c649e278f6254f6ebb50e1ac91d29f144c6ed",
+      "sha256": "75b247c94934f4b3d1b790490e1f5d207e1260203ade0cf1ac76580e2d412642",
       "inventoryScope": "first-party-artifact"
     }
   ]

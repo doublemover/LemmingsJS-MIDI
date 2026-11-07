@@ -93,5 +93,216 @@
     ".tmp/rook-full-669-followup.json": "4c6f21b6c6b5e83b1df21b93cffe1e167b243d3b6c6b4b3a625f062661221eab",
     ".tmp/rook-full-669-study-packed.json": "ede7e2be199d4cb3138bcb8bbf453ec2a0d354268d4ede1cd46d9fbeab07926f",
     ".tmp/rook-669-coverage/coverage-summary.json": "88b4437ca01cd3df4003355f9e224d295c5a517499c1007302722575e81042a5"
+  },
+  "desktopFollowthrough": {
+    "continuation": 670,
+    "sourceParent": "4b73c0a4cfbe90d7e8e787336cb09660d0248f7d",
+    "issues": [
+      1285,
+      1286,
+      1287,
+      1288,
+      1289,
+      1290,
+      1291
+    ],
+    "sourceSha256": {
+      "js/app/controls/AnchoredControlPosition.js": "012b9ed63ceb3fb21648e7f4c73893dbab24c7908cdc3b615daf601704c3064d",
+      "js/app/midi-ui/CausalTakeAudioRenderView.js": "4bd0c638d06efad045bc9c58bd47aace7f3611056d989b8192dfa24693c1c1ca",
+      "js/app/midi-ui/CausalTakeRealtimePrint.js": "b83c90db0b737a7f441b161495fadaae8cc6bfdc06e6c9425f3b3af98d63ff9f",
+      "js/app/midi-ui/MidiLocalInstrumentMigration.js": "1e805f1552d6b3da66217a149c4c3429740008d051b3bfd92e8610901ce5424a",
+      "js/app/midi-ui/localGamePreview.js": "6082e725eff7647e1d8dcb995b236fdd0f9cac4e34d2820567525022f72f48e7",
+      "js/app/procgen/ProcgenSimulationProfiles.js": "18126f3ec8b32bc3b709d644fe117fb579b98650a6b69c045fea067a1f548d62",
+      "js/app/procgen/ProcgenSimulationProtocol.js": "d419802a1065ac74c73243a09deda23eed12e33abd258e8f964ee4437b11581e",
+      "js/app/procgen/ProcgenUiController.js": "0653fb1c708d9bf234a305d14a0d0a38b1efd38bd938863a151a595568f80656",
+      "js/app/procgen/workstation/ProcgenTimingDriver.js": "2be17d6da065cc2b363fea344a483591c5584a52a40d05c5f3c460dba0843aeb",
+      "js/app/procgen/workstation/ProcgenTimingWorker.js": "9caadeaefc5617ae4753190fb1f249c14457ca85fe46a0ad2387751d50622c68",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "fbbd08042ed88ef52be4085689bd5bc1a8d70811ef95ee946bf7958f7658d851",
+      "js/app/resources/BackgroundJobKernels.js": "c86d00967d7ec521d6b586e496527588da7584435e878d58ef51b42aea1f7d1a"
+    },
+    "node": {
+      "initial": {
+        "suites": 19,
+        "tests": 265,
+        "passes": 264,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-07T19:19:00.090Z",
+        "end": "2026-11-07T19:19:31.776Z",
+        "duration": 31686
+      },
+      "followup": {
+        "suites": 1,
+        "tests": 3,
+        "passes": 3,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T19:21:34.315Z",
+        "end": "2026-11-07T19:21:34.324Z",
+        "duration": 9
+      },
+      "remainingFailures": 0,
+      "uniqueCurrentCases": 265,
+      "note": "The initial sole failure was the new structural-byte-capacity fixture using a binary payload; corrected text fixture passes. No second complete Node suite was run."
+    },
+    "coverage": {
+      "scope": "single-lane profile plus simulation protocol admission, not repository-wide coverage",
+      "profileLines": 100,
+      "combined": {
+        "lines": {
+          "total": 50,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 66
+        },
+        "statements": {
+          "total": 50,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 66
+        },
+        "functions": {
+          "total": 8,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 50
+        },
+        "branches": {
+          "total": 19,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 89.47
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "commandExit": 1,
+      "note": "All three tests pass. The isolated report inherits repository-wide coverage thresholds; unexercised general protocol encoders make that threshold inappropriate for this tiny admission cohort. Existing full protocol/core suites passed in the grouped run."
+    },
+    "browser": {
+      "baseline": {
+        "schema": "rook-interrupted-browser-checkpoint/v1",
+        "buildId": "83b8364fb83e288f81a63eb016b312f442c6a9cbb3e25bd1eaa0098ca651ec1e",
+        "completedPassing": 249,
+        "excludedPassing": 221,
+        "failures": [
+          {
+            "ordinal": 104,
+            "case": "[desktop] › e2e\\main-audio-runtime-transitions.spec.js:108:1 › built desktop audio settings preserve the authored project and reprepare the physical output after replacement @boundary (26.5s)"
+          },
+          {
+            "ordinal": 133,
+            "case": "[desktop] › e2e\\midi-workflow.spec.js:48:1 › local game listening remains independent of WebMIDI permission and stops cleanly @boundary (16.0s)"
+          },
+          {
+            "ordinal": 164,
+            "case": "[desktop] › e2e\\procgen-world-inspection.spec.js:28:3 › world inspection at DPR 1 › matches actual cropped source art with pointer and keyboard inspection without issuing edits (30.8s)"
+          },
+          {
+            "ordinal": 165,
+            "case": "[desktop] › e2e\\procgen-world-inspection.spec.js:28:3 › world inspection at DPR 2 › matches actual cropped source art with pointer and keyboard inspection without issuing edits (31.3s)"
+          },
+          {
+            "ordinal": 186,
+            "case": "[desktop] › e2e\\spatial-sounds.spec.js:11:1 › pan mode persists, live local audio is 48 kHz and studio restores focus (14.7s)"
+          },
+          {
+            "ordinal": 191,
+            "case": "[workstation] › e2e\\causal-take-audio-render.spec.js:11:59 › an immutable worker renders a real captured physical phrase and dry stem without enabling live audio or hardware @boundary (1.2m)"
+          },
+          {
+            "ordinal": 192,
+            "case": "[workstation] › e2e\\causal-take-audio-render.spec.js:11:59 › an immutable worker renders a real captured physical phrase and dry stem without enabling live audio or hardware with owned seed-state receipts @boundary (1.3m)"
+          },
+          {
+            "ordinal": 193,
+            "case": "[workstation] › e2e\\causal-take-audio-render.spec.js:70:1 › a prepared real-time print realizes a frozen physical take in a silent private context and preserves the paused world @boundary (1.2m)"
+          },
+          {
+            "ordinal": 210,
+            "case": "[workstation] › e2e\\procgen-lane-display.spec.js:64:1 › paging real desktop lane displays bounds mounted rows and restores the manual page without replaying output @boundary (34.5s)"
+          },
+          {
+            "ordinal": 222,
+            "case": "[workstation] › e2e\\procgen-operational-status.spec.js:111:1 › a real suspended browser context updates paused status and requires explicit resume without MIDI access @boundary (9.0s)"
+          },
+          {
+            "ordinal": 251,
+            "case": "[workstation] › e2e\\procgen-workstation-authoritative-audio.spec.js:10:1 › explicit owned worker performance advances through a desktop UI stall and parks with its private native context closed @boundary @workstation-local-audio @workstation-physical-music (53.3s)"
+          },
+          {
+            "ordinal": 252,
+            "case": "[workstation] › e2e\\procgen-workstation-axis-rulers.spec.js:19:1 › accepted world ruler follows native pan and zoom while paused musical position and physical history stay fixed @boundary (31.7s)"
+          },
+          {
+            "ordinal": 254,
+            "case": "[workstation] › e2e\\procgen-workstation-axis-rulers.spec.js:45:1 › recorded source and ordinal rulers remain historical after live tempo and camera changes @boundary (31.4s)"
+          },
+          {
+            "ordinal": 261,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Clay chamber size 8 @boundary @workstation-physical-music (15.7s)"
+          },
+          {
+            "ordinal": 262,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Clay chamber size 16 @boundary @workstation-physical-music (16.7s)"
+          },
+          {
+            "ordinal": 263,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Throat duet size 8 throat 0 @boundary @workstation-physical-music (16.2s)"
+          },
+          {
+            "ordinal": 264,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Throat duet size 8 throat 1 @boundary @workstation-physical-music (17.0s)"
+          },
+          {
+            "ordinal": 265,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Crumbled chimes size 8 @boundary @workstation-physical-music (17.8s)"
+          },
+          {
+            "ordinal": 266,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Crumbled chimes size 16 @boundary @workstation-physical-music (16.6s)"
+          },
+          {
+            "ordinal": 267,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:36:55 › native changing cavity retains tails and exact captured history: Clay chamber @boundary @workstation-physical-music (18.3s)"
+          },
+          {
+            "ordinal": 268,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:36:55 › native changing cavity retains tails and exact captured history: Throat duet @boundary @workstation-physical-music (16.2s)"
+          }
+        ],
+        "plannedCases": 547,
+        "interrupted": true,
+        "reason": "Frontload grouped confirmed source fixes; run unexecuted and affected cases together afterwards."
+      },
+      "current": {
+        "buildId": "e77068610b0baffacda633a510ae1e4cef9438886fad730d28f5d0d006aaf560",
+        "files": 1555,
+        "bytes": 36705463,
+        "plannedCases": 326,
+        "excludedAlreadyPassingUnaffectedCases": 221,
+        "status": "running",
+        "finalJson": ".tmp/rook-grouped-670-browser.json",
+        "scope": "native Chromium, desktop minimum1920x1080; no mobile qualification"
+      }
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": {
+        "components": 15,
+        "files": 2774
+      },
+      "diffWhitespace": "passed"
+    },
+    "publication": {
+      "issues": "implemented; final native validation pending",
+      "ci": "pending",
+      "oneShotCompleteSuiteGreen": false
+    }
   }
 }

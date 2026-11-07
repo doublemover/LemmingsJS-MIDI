@@ -6,6 +6,18 @@ import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
 describe('causal intent sink dispatch', () => {
+
+  it('returns an aggregate accepted/rejected lease receipt for private print consumers (#1289)', async () => {
+    let accepted = true; const execution = {}, backend = { registerExecution: () => ({ status: 'accepted', execution }), renewExecutionLease: (generation, handle, until) => {
+      expect(generation).to.equal(1); expect(handle).to.equal(execution); expect(until).to.equal(96000);
+      return accepted ? { status: 'accepted' } : { status: 'rejected', reason: 'gate-lease-refused' };
+    } };
+    const dispatcher = createCausalIntentDispatcher({ sinks: [{ id: 'private-print', route: 'local', backend }], executionEpoch: () => 'print', toTargetFrame: () => 0 });
+    expect(dispatcher.renewExecutionLease(1, 'print', 96000)).to.deep.equal({ status: 'accepted', outcomes: [{ status: 'accepted' }] });
+    accepted = false;
+    expect(dispatcher.renewExecutionLease(1, 'print', 96000)).to.deep.equal({ status: 'rejected', outcomes: [{ status: 'rejected', reason: 'gate-lease-refused' }] });
+    await dispatcher.dispose().completion; expect(dispatcher.renewExecutionLease(1, 'print', 96000).status).to.equal('rejected');
+  });
   it('delivers physical updates through the owned execution and distinguishes unsupported semantic observations', () => {
     const calls = [], cause = { sourceKind: 'MotionCommitted', eventId: 'fact', evidence: 'completed-world-fact', values: { displacementPixels: { value: 4, unit: 'world-pixel' } } };
     const intent = { version: 1, kind: 'update', voiceId: 'v', intentId: 'physical', generation: 1, route: 'local', sourceEventIds: ['fact'], scoreTime: {}, expression: {}, performanceCause: cause };

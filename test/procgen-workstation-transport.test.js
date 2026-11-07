@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { createProcgenTransport } from '../js/app/procgen/workstation/ProcgenTransport.js';
 import { createProcgenTimingDriver } from '../js/app/procgen/workstation/ProcgenTimingDriver.js';
 import { runInNewContext } from 'node:vm';
+import { readFileSync } from 'node:fs';
 
 function fixture(options = {}) {
   let time = 0, callback = null;
@@ -201,12 +202,15 @@ describe('ProcGen workstation independent transport', () => {
 });
 
 describe('ProcGen background timing driver', () => {
-  it('acknowledges a single worker wake, detects failure, and revokes its Blob URL', () => {
-    const created = [], revoked = [], signals = [];
-    class FakeWorker { constructor(url) { this.url = url; this.messages = []; created.push(this); } postMessage(value) { this.messages.push(value); } terminate() { this.terminated = true; } }
-    const host = { Worker: FakeWorker, Blob: class {}, performance: { now: () => 30 },
-      URL: { createObjectURL: () => 'blob:clock', revokeObjectURL: value => revoked.push(value) } };
+  it('uses its pinned module worker, acknowledges a single wake, and contains runtime failure (#1285)', () => {
+    const created = [], signals = [];
+    class FakeWorker { constructor(url, options) { this.url = url; this.options = options; this.messages = []; created.push(this); } postMessage(value) { this.messages.push(value); } terminate() { this.terminated = true; } }
+    const host = { Worker: FakeWorker, performance: { now: () => 30 },
+      Blob: class { constructor() { throw new Error('Dynamic worker source is forbidden.'); } },
+      URL: { createObjectURL() { throw new Error('Blob workers are forbidden.'); }, revokeObjectURL() { throw new Error('No dynamic URL is owned.'); } } };
     const driver = createProcgenTimingDriver({ host }); driver.start(value => signals.push(value));
+    expect(created[0].url.href).to.equal(new URL('../js/app/procgen/workstation/ProcgenTimingWorker.js', import.meta.url).href);
+    expect(created[0].options).to.deep.equal({ type: 'module', name: 'procgen-clock' });
     const start = created[0].messages[0];
     created[0].onmessage({ data: { epoch: start.epoch, sequence: 1, sourceTimeMs: 0 } });
     created[0].onmessage({ data: { epoch: start.epoch, sequence: 1, sourceTimeMs: 0 } });
@@ -217,7 +221,15 @@ describe('ProcGen background timing driver', () => {
     expect(created[0].terminated).to.equal(true);
     expect(signals).to.deep.equal([{ epoch: start.epoch, sequence: 1, sourceTimeMs: 0 },
       { suspended: true, reason: 'worker-runtime-failure', epoch: start.epoch }]);
-    expect(revoked).to.deep.equal(['blob:clock']);
+
+  });
+
+  it('falls back after module-worker construction refusal and retires its interval', () => {
+    let wake; const cleared = [], values = [];
+    const host = { Worker: class { constructor() { throw new Error('Worker unavailable'); } }, setInterval(callback) { wake = callback; return 9; }, clearInterval(id) { cleared.push(id); } };
+    const driver = createProcgenTimingDriver({ host }); driver.start(value => values.push(value)); wake();
+    expect(values).to.have.length(1); expect(driver.diagnostics()).to.include({ mode: 'fallback-timer', lastError: 'worker-construction-failure' });
+    driver.stop(); expect(cleared).to.deep.equal([9]);
   });
 
   it('falls back to interval wakeups and clears them on stop', () => {
@@ -229,8 +241,7 @@ describe('ProcGen background timing driver', () => {
   it('rejects retired worker messages and errors after rapid restart', () => {
     const workers = [], signals = [];
     class FakeWorker { constructor() { workers.push(this); this.messages = []; } postMessage(value) { this.messages.push(value); } terminate() { this.terminated = true; } }
-    const host = { Worker: FakeWorker, Blob: class {}, performance: { now: () => 200 },
-      URL: { createObjectURL: () => 'blob:clock', revokeObjectURL() {} } };
+    const host = { Worker: FakeWorker, performance: { now: () => 200 } };
     const driver = createProcgenTimingDriver({ host });
     driver.start(value => signals.push(['old', value]));
     const oldEpoch = workers[0].messages[0].epoch;
@@ -245,22 +256,20 @@ describe('ProcGen background timing driver', () => {
     expect(signals).to.have.length(1);
   });
   it('keeps only one unacknowledged wake during a long main-thread stall', () => {
-    let blob, workerTick, worker;
-    const queued = [], delivered = [];
-    class FakeBlob { constructor(parts) { blob = parts.join(''); } }
+    let workerTick, worker;
+    const queued = [], delivered = [], workerSource = readFileSync(new URL('../js/app/procgen/workstation/ProcgenTimingWorker.js', import.meta.url), 'utf8');
     class FakeWorker {
       constructor() {
         worker = this;
         const workerHost = { performance: { now: () => 100 }, postMessage: value => queued.push(value),
           setInterval: callback => { workerTick = callback; return 1; }, clearInterval() {} };
-        runInNewContext(blob, workerHost);
+        runInNewContext(workerSource, workerHost);
         this.workerHost = workerHost;
       }
       postMessage(value) { this.workerHost.onmessage({ data: value }); }
       terminate() {}
     }
-    const host = { Worker: FakeWorker, Blob: FakeBlob, performance: { now: () => 150 },
-      URL: { createObjectURL: () => 'blob:clock', revokeObjectURL() {} } };
+    const host = { Worker: FakeWorker, performance: { now: () => 150 } };
     const driver = createProcgenTimingDriver({ host }); driver.start(value => delivered.push(value.sequence));
     for (let i = 0; i < 100; i++) workerTick();
     expect(queued).to.have.length(1);

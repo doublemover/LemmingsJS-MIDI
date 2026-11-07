@@ -99,7 +99,7 @@ export function createCausalTakeRealtimePrint({ journal, resourceBudget, jobs, g
         while (true) {
           check(); const captured = capture.state(); if (['ready','partial','failed'].includes(captured.state)) { captureResult = captured; break; } if (context.state !== 'running') throw fail('The private print context was suspended.');
           const nowFrame = Math.ceil(context.currentTime*plan.sampleRate), horizon = nowFrame+Math.ceil(plan.sampleRate*0.2), batch = { version: 1, worldId: plan.worldId, generation: plan.generation, batchId: plan.epoch+':'+cursor };
-          const renewed = dispatcher.renewExecutionLease(plan.generation, plan.epoch, nowFrame+plan.sampleRate); if (renewed.some(value => value.status === 'rejected')) throw fail('The private engine did not renew its owned execution lease.');
+          const renewed = dispatcher.renewExecutionLease(plan.generation, plan.epoch, nowFrame+plan.sampleRate); if (renewed.status !== 'accepted') throw fail('The private engine did not renew its owned execution lease.');
           while (cursor <plan.events.length && origin+plan.events[cursor].frame <= horizon) {
             const event = plan.events[cursor++]; if (origin+event.frame <nowFrame) throw fail('The main-thread print feeder missed an original target frame. The partial capture is retained.');
             const printed = { ...event.intent, timeTransformPolicy: null, route: 'local', laneId: 'print', audioLaneId: 'print' };

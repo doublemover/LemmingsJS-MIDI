@@ -1,7 +1,7 @@
 export interface SimulationExecutionPolicy { readonly schema: 'lemmings-simulation-execution-policy/v1'; readonly physicalFeedbackMode: 'disabled' | 'preserve-live' | 'exact-command-tape' }
 export interface SimulationManifest {
   schema: 'lemmings-authoritative-simulation/v1'; ownerId: string; ownerEpoch: number; documentRevision: number;
-  rootPath: string; resourceProfile?: 'balanced-v1' | 'compact-v1'; checkpoint: unknown; semantic: unknown; timeline: unknown; graph: unknown; performance: unknown;
+  rootPath: string; resourceProfile?: 'balanced-v1' | 'compact-v1' | 'single-lane-v1'; checkpoint: unknown; semantic: unknown; timeline: unknown; graph: unknown; performance: unknown;
   executionPolicy?: SimulationExecutionPolicy | null;
   bpm: number; nominalSpeed?: number; playing: boolean; scoreTimeline: boolean;
 }

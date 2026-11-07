@@ -20,7 +20,7 @@ test('accepted world ruler follows native pan and zoom while paused musical posi
   await ready(page); const before = await sourceState(page), ruler = page.locator('.studio-causal-summary'), clock = page.getByLabel('Musical bar and denominator-note beat', { exact: true });
   await expect(clock).toHaveAttribute('title', /Transport paused/); const musical = await clock.textContent(), original = await ruler.textContent();
   const canvas = page.locator('#gameCanvas'), bounds = await canvas.boundingBox(); await page.mouse.move(bounds.x + bounds.width * 0.5, bounds.y + bounds.height * 0.7); await page.mouse.wheel(320, 0);
-  await expect.poll(() => ruler.textContent()).not.toBe(original); const panned = await ruler.textContent(); await page.locator('#procgenZoomIn').click();
+  await expect.poll(() => ruler.textContent()).not.toBe(original); const panned = await ruler.textContent(); await useWorkstationControl(page, page.locator('#procgenZoomIn'), {}, 'click');
   await expect.poll(() => ruler.textContent()).not.toBe(panned); await expect(clock).toHaveText(musical); await expect(ruler).toContainText('World distance'); await expect(ruler).toContainText('px'); await expect(page.locator('.studio-world-axis [data-axis-value]')).toHaveCount(5);
   expect(await sourceState(page)).toEqual(before); const accepted = await page.evaluate(() => { const value = window.__PROCGEN_LANES__.renderer.presentation.getSnapshot(); return { origin: value.originX, extent: value.viewWidth, generation: value.generation }; });
   await expect(ruler).toHaveAttribute('title', new RegExp('Generation ' + accepted.generation));
@@ -51,7 +51,7 @@ test('recorded source and ordinal rulers remain historical after live tempo and 
   const ruler = page.locator('.studio-physical-score .studio-axis-ruler'); await expect(ruler).toHaveAttribute('data-axis-domain', 'simulation-time'); await expect(ruler).toHaveAttribute('title', /Captured history/);
   await page.locator('.studio-physical-score button').first().click(); const correspondence = page.getByLabel('Recorded coordinate correspondence', { exact: true }); await expect(correspondence).toContainText('Co-observed at this recorded cause'); const coordinates = await correspondence.textContent();
   const captured = await ruler.textContent(), state = await sourceState(page);
-  await page.evaluate(() => { window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 193, linked: false, gameSpeed: 5 }); }); await page.locator('#procgenZoomIn').click();
+  await page.evaluate(() => { window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 193, linked: false, gameSpeed: 5 }); }); await useWorkstationControl(page, page.locator('#procgenZoomIn'), {}, 'click');
   await expect(ruler).toHaveText(captured); await expect(ruler).toHaveAttribute('title', /Historical marks/); await expect(correspondence).toHaveText(coordinates);
   const after = await sourceState(page); expect(after.hash).toBe(state.hash); expect(after.sent).toBe(state.sent);
   await page.getByLabel('Physical score time axis').selectOption('causal-order'); await expect(ruler).toHaveAttribute('data-axis-domain', 'event-ordinal'); await expect(ruler).toContainText('events');

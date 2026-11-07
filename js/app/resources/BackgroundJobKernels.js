@@ -451,7 +451,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (['render-causal-sine-take', 'render-causal-source-pcm'].includes(kind)) {
-    if (!input || Object.keys(input).some(key => !['revoice', 'definition', 'engineRequirement', 'sampleRate', 'startSeconds', 'endSeconds', 'tail', 'stemLaneIds', 'pcm', 'restorationMode', 'effectGraph', 'effectReturnNodeIds', 'capturedEffects', 'effectReplayHash'].includes(key)) || estimatedPeakBytes < 8 * 1048576)
+    if (!input || Object.keys(input).some(key => !['revoice', 'definition', 'engineRequirement', 'sampleRate', 'startSeconds', 'endSeconds', 'tail', 'stemLaneIds', 'pcm', 'restorationMode', 'effectGraph', 'effectReturnNodeIds', 'capturedEffects', 'effectReplayHash', 'capturedSpatial', 'capturedMaterials', 'timeTransformMode', 'requestedEndSeconds', 'timbreTuningReadout'].includes(key)) || estimatedPeakBytes < 8 * 1048576)
       throw problem('invalid-contract', 'Causal audio rendering requires a bounded semantic-source request.');
     const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); guard(signal, current);
     const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);

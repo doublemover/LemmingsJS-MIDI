@@ -17,11 +17,12 @@ const localConfig = (source) => {
   return config;
 };
 
-const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), immutableConfig = false,
+const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), immutableConfig = false, getRoutingMode = () => 'game-events',
   onStateChange, resourceBudget = null, audio = createBrowserNotePreview({ resourceBudget, cueVoices: resourceBudget ? 4 : 0, cueCostUnits: resourceBudget ? 16 : 0 }) } = {}) => {
   let router = null, capture = null, liveInstruments = null, liveInstrumentLease = null, prepareSerial = 0;
   const instrumentRetirements = new Set();
-  let attachedView = null;
+  let attachedView = null, attachedMode = null;
+  const routingMode = () => { const mode = getRoutingMode(); if (!['game-events', 'physical'].includes(mode)) throw new Error('Choose a supported local playback route.'); return mode; };
   let generation = 0;
   let configKey = null;
   let sourceConfig = null;
@@ -48,7 +49,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   };
   const detach = () => {
     if (attachedView?.midiPreviewRouter === router) attachedView.setMidiPreviewRouter(null);
-    attachedView = null; prepareSerial++;
+    attachedView = null; attachedMode = null; prepareSerial++;
     const retiring = liveInstrumentLease?.release(); liveInstrumentLease = null; liveInstruments = null;
     if (retiring) { instrumentRetirements.add(retiring); retiring.completion.then(value => { if (value.outcome === 'complete') instrumentRetirements.delete(retiring); }); }
     router?.dispose();
@@ -77,7 +78,9 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     return liveInstruments.prepare(config);
   };
   const syncConfig = () => {
-    if (!router || disposed) return false;
+    if (disposed) return false;
+    if (attachedView && attachedMode !== routingMode()) { stop(); report('off', 'Local playback routing changed. Enable browser output again.'); return true; }
+    if (!router) return false;
     const source = getConfig();
     if (immutableConfig && source === sourceConfig) return false;
     const config = localConfig(source);
@@ -96,7 +99,9 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     return true;
   };
   const attachView = async view => {
-    const request = generation;
+    const request = generation, mode = routingMode();
+    attachedMode = mode; attachedView = view;
+    if (mode === 'physical') { report('live', 'Browser output ready for physical playback. No MIDI is sent.'); return true; }
     const source = getConfig(), config = localConfig(source);
     router = new MidiEventRouter(config);
     router.setCapture(capture);
@@ -106,6 +111,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     const candidate = router; view.setMidiPreviewRouter(candidate, stop);
     await prepareInstruments(config);
     if (disposed || request !== generation || router !== candidate || attachedView !== view) return false;
+    if (mode !== routingMode()) throw new Error('Local playback routing changed during preparation. Enable browser output again.');
     report('live', 'Listening to game notes in the browser. No MIDI is sent.'); return true;
   };
   const suspendGame = () => {
@@ -118,11 +124,12 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   };
   const resumeGame = async () => {
     if (disposed || status !== 'suspended' || !audio.getState().enabled) return false;
-    const view = getLemmings(), request = generation;
+    const view = getLemmings(), request = generation, mode = routingMode();
     if (!view || typeof view.setMidiPreviewRouter !== 'function' || view._midiPreviewDisposed || view.midiAvailable === false) return false;
     try {
       if (view.midiEnabled) await view.setMidiEnabled(false);
       if (disposed || generation !== request || status !== 'suspended' || !audio.getState().enabled || getLemmings() !== view) return false;
+      if (mode !== routingMode()) throw new Error('Local playback routing changed during preparation. Enable browser output again.');
       return await attachView(view);
     } catch (error) {
       if (!disposed && request === generation) { detach(); audio.stop(); report('error', error?.message || 'Browser preview could not resume. Try again.'); }
@@ -143,10 +150,10 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     if (status === 'live' && attachedView !== view && audio.getState().enabled) { suspendGame(); return resumeGame(); }
     if (status === 'live' && attachedView === view && audio.getState().enabled) {
       syncConfig();
-      return true;
+      return getState().enabled;
     }
     stop();
-    const request = generation;
+    const request = generation, mode = routingMode();
     report('starting', 'Starting browser preview…');
     if (!view || typeof view.setMidiPreviewRouter !== 'function' || view._midiPreviewDisposed) {
       report('error', 'The game is not ready for browser preview.');
@@ -166,6 +173,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
         report('error', 'The game changed while audio was starting. Try preview again.');
         return false;
       }
+      if (mode !== routingMode()) throw new Error('Local playback routing changed during preparation. Enable browser output again.');
       return await attachView(view);
     } catch (error) {
       if (!disposed && request === generation) {

@@ -11,7 +11,7 @@ export function validateSimulationManifest(value) {
   procgenSimulationProfile(value?.resourceProfile); procgenSimulationExecutionPolicy(value?.executionPolicy);
   if (!value || value.schema !== PROCGEN_SIMULATION_PROTOCOL || typeof value.ownerId !== 'string' || !value.ownerId || value.ownerId.length > 128 ||
       !simulationInteger(value.ownerEpoch, 1) || !simulationInteger(value.documentRevision) || value.checkpoint?.version !== 2 ||
-      !simulationInteger(value.checkpoint.laneCount, 1, 1024) || typeof value.rootPath !== 'string' || value.rootPath.length > 4096 ||
+      !simulationInteger(value.checkpoint.laneCount, 1, 1024) || value.resourceProfile === 'single-lane-v1' && value.checkpoint.laneCount !== 1 || typeof value.rootPath !== 'string' || value.rootPath.length > 4096 ||
       value.nominalSpeed != null && (!Number.isFinite(value.nominalSpeed) || value.nominalSpeed <= 0 || value.nominalSpeed > 1000000) ||
       !Number.isFinite(value.bpm) || value.bpm <= 0 || value.bpm > 1000000 || typeof value.playing !== 'boolean' ||
       typeof value.scoreTimeline !== 'boolean' || !value.graph || value.semantic?.version !== 1) throw simulationFailure('manifest-invalid', 'The simulation host requires one completed world and semantic continuation.');
