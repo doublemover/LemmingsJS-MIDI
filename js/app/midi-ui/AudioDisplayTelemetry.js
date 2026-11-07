@@ -79,6 +79,7 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
       if (!observers.size) return;
       if (packet.displayProtocol !== DISPLAY_PROTOCOL || packet.protocol !== PROTOCOL || !natural(serial) || serial < 1 || !natural(packet.count) || packet.count > DISPLAY_VOICES ||
           !(packet.data instanceof Float64Array) || packet.data.length !== DISPLAY_VOICES * DISPLAY_WIDTH || !natural(packet.droppedWindows)) { stats.rejected++; return; }
+      if (packet.sourceModelData !== undefined && (engineId !== 'worklet-choir' || packet.sourceModelProtocol !== 1 || !(packet.sourceModelData instanceof Float64Array) || packet.sourceModelData.length !== DISPLAY_VOICES * 6)) { stats.rejected++; return; }
       stats.packets++; stats.droppedWindows = Math.max(stats.droppedWindows, packet.droppedWindows);
       const context = getContext(), now = Math.ceil(context.currentTime * context.sampleRate);
       let routeState = Object.freeze({ muted: null, evidenceClass: 'unknown', scope: 'pre-owner-bus', outputAudibility: 'unknown' });
@@ -104,6 +105,12 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
           quantity('amplitude-envelope', 'normalized', Math.min(1, data[at + 9]), 'measured'), quantity('frequency', 'Hz', data[at + 11], 'applied-parameter'),
           quantity('pressure', 'normalized', data[at + 12], 'applied-parameter'), quantity('pan', 'normalized-signed', data[at + 13], 'applied-parameter')];
         if (sinePhase && !(flags & 6)) quantities.push(quantity('oscillator-phase', 'radians', data[at + 10], 'kernel-state'));
+        if (packet.sourceModelData && !(flags & 6)) {
+          const model = packet.sourceModelData, offset = index * 6; let validModel = true;
+          for (let band = 0; band < 3; band++) if (!Number.isFinite(model[offset + band]) || model[offset + band] < 60 || model[offset + band] > context.sampleRate * 0.4 || !Number.isFinite(model[offset + 3 + band]) || model[offset + 3 + band] < 0) validModel = false;
+          if (!validModel) { stats.rejected++; continue; }
+          for (let band = 0; band < 3; band++) { quantities.push(quantity('formant-' + (band + 1), 'Hz', model[offset + band], 'applied-parameter')); quantities.push(quantity('formant-' + (band + 1) + '-state-activity', 'linear-state-amplitude', model[offset + 3 + band], 'kernel-state')); }
+        }
         const sample = Object.freeze({ ...route.identity, scope: 'actorVoice', sequence: serial, appliedFrame: applied,
           effectiveFrame: last - 1, windowStartFrame: first, windowEndFrame: last, validUntilFrame: last + Math.ceil(context.sampleRate / 2),
           quantities: Object.freeze(quantities), processingState: Object.freeze({ bypassed: false, tail: !!(flags & 1), ended: !!(flags & 2), faulted: !!(flags & 4), pending: false, unsupported: false }),

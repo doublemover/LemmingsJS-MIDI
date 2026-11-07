@@ -25,7 +25,7 @@ export async function createRescueOrchestraScores({ sourceHash, descriptor, sign
   const parameters = { attackSeconds: air ? 0.01 : 0.002, decaySeconds: air ? 0.08 : 0, sustain01: air ? 0.65 : 1, releaseSeconds: air ? 0.16 : 0.08, gain01: 0.4, pan01: 0 };
   let resonance;
   if (pluck) { Object.assign(parameters, { pluckPosition01: 0.27, stringT60Seconds: 0.45, excitationBrightness01: 0.3, bodyMix01: 0.12, bodyT60Seconds: 0.2, damping01: 0 }); resonance = macro('resonance', 'RESONANCE', 'stringT60Seconds', 0.15, 1.1, 0.45, 's'); }
-  else if (air) { Object.assign(parameters, { vowel01: 0.2, breath01: 0.12, sizeRatio: 1.1, chorusCents: 2, vibratoCents: 1, vowelStep: 0, bandwidthScale: 1 }); resonance = macro('resonance', 'FORMANT SIZE', 'sizeRatio', 0.8, 1.4, 1.1, 'ratio'); }
+  else if (air) { Object.assign(parameters, { vowel01: 0.2, breath01: 0.12, consonant01: 0.12, consonantMilliseconds: 30, sizeRatio: 1.1, chorusCents: 2, vibratoCents: 1, vowelStep: 0, bandwidthScale: 1 }); resonance = macro('resonance', 'FORMANT SIZE', 'sizeRatio', 0.8, 1.4, 1.1, 'ratio'); }
   else {
     Object.assign(parameters, { modeCount: 4, bodyT60Seconds: 0.3, bodySizeRatio: 1, strikePosition01: 0.3, maxBendCents: 0 });
     [1, 2.32, 4.25, 6.63].forEach((ratio, index) => { parameters['mode' + index + 'Ratio'] = ratio; parameters['mode' + index + 'T60Scale'] = 1 - index * 0.12; parameters['mode' + index + 'GainA'] = [1, 0.45, 0.23, 0.12][index]; parameters['mode' + index + 'GainB'] = [0.6, 0.55, 0.18, 0.2][index]; }); resonance = macro('resonance', 'RESONANCE', 'bodyT60Seconds', 0.08, 0.8, 0.3, 's');

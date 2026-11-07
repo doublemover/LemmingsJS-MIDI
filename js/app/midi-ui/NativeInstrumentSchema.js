@@ -58,7 +58,7 @@ const schemas = freezeData({
       parameter('partial' + index + 'T60Scale', 0.01, 1, 1, 'ratio')]).flat()].map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(
     ['scan01', 'body01', 'edge01'].map(name => Object.freeze({ ...parameter(name, 0, 1, name === 'scan01' ? 0 : 0.5, 'normalized'), causalLiveSafe: true })), envelope(0.008, 0.1, 0.7, 0.5)),
   'worklet-choir': [parameter('vowel01', 0, 1, 0, 'normalized'), parameter('breath01', 0, 1, 0.1, 'normalized'), parameter('sizeRatio', 0.5, 2, 1, 'ratio'),
-    parameter('chorusCents', 0, 12, 3, 'cents'), parameter('vibratoCents', 0, 12, 2, 'cents'), parameter('vowelStep', 0, 1, 0, 'enum', true), parameter('bandwidthScale', 0.5, 2, 1, 'ratio')]
+    parameter('chorusCents', 0, 12, 3, 'cents'), parameter('vibratoCents', 0, 12, 2, 'cents'), parameter('vowelStep', 0, 1, 0, 'enum', true), parameter('bandwidthScale', 0.5, 2, 1, 'ratio'), Object.freeze({ ...parameter('consonant01', 0, 1, 0, 'normalized'), liveSafe: false }), Object.freeze({ ...parameter('consonantMilliseconds', 5, 80, 20, 'ms'), liveSafe: false })]
     .map(spec => Object.freeze({ ...spec, liveSafe: !spec.discrete, causalLiveSafe: !spec.discrete })).concat(envelope(0.025, 0.1, 0.8, 0.5)),
   'native-sample': envelope(0.005, 0, 1, 0.7),
   'worklet-sample': [parameter('graftModeCount', 0, 8, 0, 'count', true), parameter('graftExcitationMode', 0, 1, 0, 'enum', true), parameter('graftEnergyBudget', 1e-9, 1000000, 1, 'dimensionless'), parameter('graftSupportSeconds', 0.001, 0.5, 0.25, 's'),

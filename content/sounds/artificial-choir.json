@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.artificial-choir",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "name": "Artificial choir",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -17,7 +17,7 @@
   "recipes": [
     {
       "id": "choir.base",
-      "revision": 1,
+      "revision": 2,
       "abstract": true,
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -73,6 +73,20 @@
             "pan01": {
               "value": 0,
               "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "consonant01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "consonantMilliseconds": {
+              "value": 25,
+              "unit": "ms"
             }
           }
         }
@@ -176,7 +190,7 @@
     },
     {
       "id": "choir.hollow-ooh",
-      "revision": 2,
+      "revision": 3,
       "extends": "choir.base",
       "name": "Hollow Ooh",
       "components": [
@@ -195,6 +209,14 @@
             "vibratoCents": {
               "value": 2,
               "unit": "cents"
+            },
+            "consonant01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "consonantMilliseconds": {
+              "value": 25,
+              "unit": "ms"
             }
           }
         },
@@ -336,7 +358,7 @@
     },
     {
       "id": "choir.paper-aah",
-      "revision": 2,
+      "revision": 3,
       "extends": "choir.base",
       "name": "Paper Aah",
       "components": [
@@ -355,6 +377,14 @@
             "vibratoCents": {
               "value": 1,
               "unit": "cents"
+            },
+            "consonant01": {
+              "value": 0.18,
+              "unit": "normalized"
+            },
+            "consonantMilliseconds": {
+              "value": 25,
+              "unit": "ms"
             }
           }
         },
@@ -496,7 +526,7 @@
     },
     {
       "id": "choir.tiny-ee",
-      "revision": 2,
+      "revision": 3,
       "extends": "choir.base",
       "name": "Tiny Ee",
       "components": [
@@ -515,6 +545,14 @@
             "vibratoCents": {
               "value": 3,
               "unit": "cents"
+            },
+            "consonant01": {
+              "value": 0.12,
+              "unit": "normalized"
+            },
+            "consonantMilliseconds": {
+              "value": 25,
+              "unit": "ms"
             }
           }
         },
@@ -656,7 +694,7 @@
     },
     {
       "id": "choir.robot-choir",
-      "revision": 2,
+      "revision": 3,
       "extends": "choir.base",
       "name": "Robot Choir",
       "components": [
@@ -675,6 +713,14 @@
             "vibratoCents": {
               "value": 0,
               "unit": "cents"
+            },
+            "consonant01": {
+              "value": 0.3,
+              "unit": "normalized"
+            },
+            "consonantMilliseconds": {
+              "value": 12,
+              "unit": "ms"
             }
           }
         },

@@ -17,7 +17,7 @@ const profiles = Object.freeze({
   [FRICTION_LAYOUT.width]: { id: 'worklet-friction', kind: 7, layout: FRICTION_LAYOUT, arrays: ['state', 'modes', 'graftState', 'graftParameters'], scalars: ['leftSample', 'rightSample'] },
   80: { id: 'worklet-texture', kind: 6, layout: TEXTURE_LAYOUT, arrays: ['state', 'modes', 'pulses', 'observation', 'admission'], scalars: ['leftSample', 'rightSample'] },
   24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
-  26: { id: 'worklet-choir', kind: 2, layout: CHOIR_LAYOUT, arrays: ['state', 'bands'], scalars: [] },
+  [CHOIR_LAYOUT.width]: { id: 'worklet-choir', kind: 2, layout: CHOIR_LAYOUT, arrays: ['state', 'bands'], scalars: [] },
   73: { id: 'worklet-spectrum', kind: 3, layout: SPECTRUM_LAYOUT, arrays: ['state', 'partials'], scalars: [] },
   40: { id: 'worklet-sample', kind: 5, layout: SAMPLE_LAYOUT, arrays: ['state', 'cursorQueues', 'cursorScalars'], scalars: ['leftSample', 'rightSample', 'readLeft', 'readRight'] },
   33: { id: 'worklet-granular', kind: 4, layout: GRANULAR_LAYOUT, arrays: ['state', 'grains'], scalars: ['birthBucket', 'bucketBirths', 'leftSample', 'rightSample'] }
@@ -129,7 +129,7 @@ const inspectSource = (kernel, profile, view) => {
         !finite(frequency, low, high) || !finite(target, low, high)) fail('Source pitch state disagrees with its owned gate.');
     if (profile.kind === 1 && (!integer(get(0), 2, source.stride) || !integer(get(1), 0, get(0) - 1) ||
         !integer(get(6), 0, 0xffffffff) || !integer(get(7), 0, get(0) - 1) || !finite(get(16), -1, 1))) fail('Pluck fractional delay or seed state is invalid.');
-    if (profile.kind === 2 && (!finite(get(0), 0, 1) || !finite(get(1), 0, 1) || !integer(get(2), 0, 0xffffffff))) fail('Choir phase or PRNG state is invalid.');
+    if (profile.kind === 2 && (!finite(get(0), 0, 1) || !finite(get(1), 0, 1) || !integer(get(2), 0, 0xffffffff) || !integer(get(38), 0, Math.round(kernel.sampleRate * 0.08)) || !finite(get(39), 0, 1 / Math.round(kernel.sampleRate * 0.005)) || get(38) * get(39) > 1 + 1e-12)) fail('Choir phase, PRNG or finite consonant envelope state is invalid.');
     if (profile.kind === 3) {
       if (!finite(get(0), 0, 1) || ![0, 1, 2].includes(get(1)) || !integer(get(2), 1, 16)) fail('Spectrum phase or partial topology is invalid.');
       const partial = data.arrays[1].get;

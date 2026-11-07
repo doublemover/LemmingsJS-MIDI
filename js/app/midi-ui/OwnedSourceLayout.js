@@ -11,7 +11,7 @@ export const FRICTION_LAYOUT = Object.freeze({ width: 84, voices: FRICTION_MODEL
 export const TEXTURE_LAYOUT = Object.freeze({ width: 80, voices: TEXTURE_EXCITER_LIMITS.voices });
 export const SINE_LAYOUT = Object.freeze({ width: 18, voices: 64 });
 export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, delayFloorHz: 32, delayMargin: 4 });
-export const CHOIR_LAYOUT = Object.freeze({ width: 26, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049 });
+export const CHOIR_LAYOUT = Object.freeze({ width: 28, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049, displayVoices: 32, displayWidth: 6 });
 export const SPECTRUM_LAYOUT = Object.freeze({ width: 73, voices: 8, state: 36, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256 });
 export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32 });
 export const SAMPLE_LAYOUT = Object.freeze({ width: 40, voices: 16, state: 144, zones: 128, cursorCapacity: 32, cursorWidth: 7, cursorScalars: 21 });
@@ -28,7 +28,7 @@ export function pluckSourceBytes(rate, voices = PLUCK_LAYOUT.voices) {
   return stride * voices * 4 + stride * 8 + voices * PLUCK_LAYOUT.state * 8;
 }
 export function choirSourceBytes(rate, voices = CHOIR_LAYOUT.voices) {
-  check(rate, voices, CHOIR_LAYOUT.voices); return CHOIR_LAYOUT.tableSamples * 4 + voices * (CHOIR_LAYOUT.state + CHOIR_LAYOUT.bands * CHOIR_LAYOUT.bandState) * 8;
+  check(rate, voices, CHOIR_LAYOUT.voices); return CHOIR_LAYOUT.tableSamples * 4 + voices * (CHOIR_LAYOUT.state + CHOIR_LAYOUT.bands * CHOIR_LAYOUT.bandState) * 8 + CHOIR_LAYOUT.displayVoices * CHOIR_LAYOUT.displayWidth * 16;
 }
 export function spectrumSourceBytes(rate, voices = SPECTRUM_LAYOUT.voices) {
   check(rate, voices, SPECTRUM_LAYOUT.voices);

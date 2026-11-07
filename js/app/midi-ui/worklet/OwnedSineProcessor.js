@@ -85,7 +85,7 @@ class OwnedSineKernel {
       data[at + 8] = Math.sqrt(state[from + 6] / state[from + 5]); data[at + 9] = state[from + 7];
       for (let field = 0; field < 6; field++) data[at + 10 + field] = state[from + 8 + field];
       data[at + 16] = state[from + 4] - 1; data[at + 17] = this.displaySequence;
-      data[at + 18] = this.displayRevision; data[at + 19] = state[from + 15];
+      data[at + 18] = this.displayRevision; data[at + 19] = state[from + 15]; this.source?.writeDisplay?.(slot, this.displayCount - 1);
       state[from + 3] = frame; state[from + 5] = 0; state[from + 6] = 0; state[from + 7] = 0;
     }
     this.displayReady = this.displayCount > 0;
@@ -403,7 +403,7 @@ class OwnedSineProcessor extends ProcessorBase {
       channels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]), preChannels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]) } : null;
     this.message = { type: 'receipts', protocol: PROTOCOL, count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) };
     this.displayMessage = { type: 'display-samples', protocol: PROTOCOL, displayProtocol: DISPLAY_PROTOCOL, revision: 0,
-      sequence: 0, droppedWindows: 0, count: 0, data: new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH) };
+      sequence: 0, droppedWindows: 0, count: 0, data: new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH), ...(this.kernel.source?.displayData ? { sourceModelProtocol: 1, sourceModelData: new Float64Array(this.kernel.source.displayData.length) } : {}) };
     this.displayAwaiting = 0;
     this.port.onmessage = event => {
       const data = event.data;
@@ -488,7 +488,7 @@ class OwnedSineProcessor extends ProcessorBase {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;
     message.revision = this.kernel.displayRevision; message.droppedWindows = this.kernel.displayDropped;
-    message.data.set(this.kernel.displayData); this.kernel.displayReady = false; this.displayAwaiting = message.sequence; this.port.postMessage(message);
+    message.data.set(this.kernel.displayData); if (message.sourceModelData) message.sourceModelData.set(this.kernel.source.displayData); this.kernel.displayReady = false; this.displayAwaiting = message.sequence; this.port.postMessage(message);
   }
   flushReceipts() {
     if (!this.kernel.receiptCount) return;

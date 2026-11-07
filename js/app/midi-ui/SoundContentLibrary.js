@@ -339,7 +339,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-choir') {
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: artificial three-band formants · vowel ' + parameters.vowel01 + ' · size ' + parameters.sizeRatio +
-          ' · breath ' + parameters.breath01 + '. Actor-seeded breath and a phase-aligned harmonic bank share one owned gate. Live profile: eight voices, 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Spectral/listening qualification is pending; exact restore is unavailable. Fixed control WAVs and causal revoice use this same kernel.';
+          ' · breath ' + parameters.breath01 + ' · consonant onset ' + (parameters.consonant01 ?? 0) + ' / ' + (parameters.consonantMilliseconds ?? 20) + ' ms. The finite linear breath-onset shape belongs to the original gate; it creates no extra note. Actor inspector reports applied formant centers and filter-state activity separately from source pitch, measured RMS and perceived vowels. Live profile: eight voices, 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Exact owned snapshots retain phase, noise, filter and onset-envelope state; numerical/continuation/listening qualification remains pending. Fixed control WAVs and causal revoice use this same kernel.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode === 2) {
         const p = patch.definition.parameters;

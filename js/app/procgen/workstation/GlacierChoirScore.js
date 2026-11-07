@@ -22,7 +22,7 @@ export async function createGlacierChoirScores({ sourceHash, descriptor, spectru
   const choirPatches = [];
   for (let lane = 0; lane < 3; lane++) {
     signal?.throwIfAborted(); choirPatches.push(await createEmbeddedScenePatch({ sourceHash, descriptor, definition: { schemaVersion: 2, id: 'scene.glacier.hollow-ooh.' + lane, revision: 1, name: 'Hollow Ooh · glacier voice ' + (lane + 1), author: 'LemmingsJS-MIDI', tags: ['original', 'scene', 'physical-flight', 'dry-choir'], engineId: 'worklet-choir', engineVersion: 1,
-      parameters: { vowel01: [0.15, 0.3, 0.45][lane], breath01: 0.16, sizeRatio: [1.2, 1, 0.9][lane], chorusCents: 2, vibratoCents: 1, vowelStep: 0, bandwidthScale: 1.1, attackSeconds: 0.02, decaySeconds: 0.08, sustain01: 0.7, releaseSeconds: 0.16, gain01: 0.35, pan01: 0 },
+      parameters: { vowel01: [0.15, 0.3, 0.45][lane], breath01: 0.16, consonant01: 0.1, consonantMilliseconds: 25, sizeRatio: [1.2, 1, 0.9][lane], chorusCents: 2, vibratoCents: 1, vowelStep: 0, bandwidthScale: 1.1, attackSeconds: 0.02, decaySeconds: 0.08, sustain01: 0.7, releaseSeconds: 0.16, gain01: 0.35, pan01: 0 },
       sampleRefs: [], modulations: [], causalBindings: [], voicePolicy: { maxVoices: 4, steal: 'reject' }, mix: { gain01: 0.35, pan01: 0 }, macros: [macro('air', 'AIR', 'breath01', 0.02, 0.35, 'normalized', 0.16)] } }));
   }
   let prism = null;

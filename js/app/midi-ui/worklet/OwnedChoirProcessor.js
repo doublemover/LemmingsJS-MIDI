@@ -13,9 +13,11 @@ export class OwnedChoirSource {
   constructor(rate, voices = CHOIR_VOICES, sourceBank = null) {
     choirSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.maxUpdateMask = 511;
     this.bank = validateOwnedSourceBank(sourceBank, 'choir-v1');
-    this.state = new Float64Array(voices * STATE_WIDTH); this.bands = new Float64Array(voices * 3 * BAND_WIDTH); this.table = this.bank.planes[0];
+    this.displayData = new Float64Array(CHOIR_LAYOUT.displayVoices * CHOIR_LAYOUT.displayWidth); this.state = new Float64Array(voices * STATE_WIDTH); this.bands = new Float64Array(voices * 3 * BAND_WIDTH); this.table = this.bank.planes[0];
   }
   begin(slot, frequency, command) {
+    const consonant = command[26] ?? 0, duration = command[27] ?? 20;
+    if (!valid(consonant, 0, 1) || !(consonant === 0 && duration === 0 || valid(duration, 5, 80))) return 0;
     if (!Number.isInteger(slot) || slot < 0 || slot >= this.voices || !valid(frequency, CHOIR_MIN_HZ, CHOIR_MAX_HZ) ||
         !Number.isInteger(command[18]) || !valid(command[18], 0, 0xffffffff) || !valid(command[19], 0, 1) || !valid(command[20], 0, 1) ||
         !valid(command[21], 0.5, 2) || !valid(command[22], 0, 12) || !valid(command[23], 0, 12) || ![0, 1].includes(command[24]) || !valid(command[25], 0.5, 2)) return 0;
@@ -23,6 +25,7 @@ export class OwnedChoirSource {
     for (let field = 0; field < STATE_WIDTH; field++) this.state[at + field] = 0;
     this.state[at] = (seed & 65535) / 65536; this.state[at + 1] = this.state[at]; this.state[at + 2] = seed; this.state[at + 3] = this.state[at];
     this.state[at + 4] = frequency / pitchRange; this.state[at + 5] = frequency * pitchRange;
+    const consonantFrames = consonant > 0 ? Math.max(1, Math.round(duration * this.rate / 1000)) : 0; this.state[at + 38] = consonantFrames; this.state[at + 39] = consonantFrames ? consonant / consonantFrames : 0;
     this.state[at + 29] = seed / 4294967296 * 2 - 1; this.state[at + 31] = -1;
     for (let parameter = 0; parameter < 7; parameter++) { const value = parameter === 2 || parameter === 6 ? Math.log(command[19 + parameter]) : command[19 + parameter];
       this.state[at + 8 + parameter] = value; this.state[at + 16 + parameter] = value; }
@@ -57,6 +60,10 @@ export class OwnedChoirSource {
     }
     this.state[at + 26] = vowel; this.state[at + 27] = this.state[at + 10]; this.state[at + 28] = this.state[at + 14];
   }
+  writeDisplay(slot, index) {
+    const at = index * CHOIR_LAYOUT.displayWidth;
+    for (let band = 0; band < 3; band++) { const offset = (slot * 3 + band) * BAND_WIDTH; this.displayData[at + band] = this.bands[offset + 6]; this.displayData[at + 3 + band] = Math.hypot(this.bands[offset + 4], this.bands[offset + 5]); }
+  }
   tableAt(phase, level) { const position = phase * TABLE_LENGTH, first = Math.floor(position), index = level * (TABLE_LENGTH + 1) + first, fraction = position - first;
     return this.table[index] + (this.table[index + 1] - this.table[index]) * fraction; }
   excitationAt(phase, level, blend) {
@@ -85,7 +92,7 @@ export class OwnedChoirSource {
     this.state[at] = phase + frequency * ratio / this.rate; if (this.state[at] >= 1) this.state[at]--;
     this.state[at + 1] = otherPhase + frequency * ratio * this.state[at + 30] / this.rate; if (this.state[at + 1] >= 1) this.state[at + 1]--;
     let noise = this.state[at + 2]; noise ^= noise << 13; noise ^= noise >>> 17; noise ^= noise << 5; this.state[at + 2] = noise >>> 0;
-    const breath = this.state[at + 9], input = voiced * (1 - breath) + ((noise >>> 0) / 4294967296 * 2 - 1) * breath; let output = 0;
+    const onset = this.state[at + 38] > 0 ? this.state[at + 38]-- * this.state[at + 39] : 0, heldBreath = this.state[at + 9], breath = heldBreath + (1 - heldBreath) * onset, input = voiced * (1 - breath) + ((noise >>> 0) / 4294967296 * 2 - 1) * breath; let output = 0;
     for (let band = 0; band < 3; band++) {
       const offset = (slot * 3 + band) * BAND_WIDTH, first = this.bands[offset + 4], second = this.bands[offset + 5], difference = input - second;
       const bandpass = this.bands[offset] * first + this.bands[offset + 1] * difference,
@@ -102,6 +109,6 @@ export class OwnedChoirKernel extends OwnedSineKernel {
 }
 export class OwnedChoirProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedChoirKernel(rate, Math.min(voices, CHOIR_VOICES), options?.sourceBank); }
-  runtimeIdentity() { return { engineId: 'worklet-choir', engineVersion: 1, runtimeABI: 'owned-choir-f64-command-v1', buildId: 'owned-choir-v7-held-macros-source-restore', sourceBankHash: this.kernel.source.bank.hash }; }
+  runtimeIdentity() { return { engineId: 'worklet-choir', engineVersion: 1, runtimeABI: 'owned-choir-f64-command-v2', buildId: 'owned-choir-v8-owned-consonant-formants', sourceBankHash: this.kernel.source.bank.hash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-choir-v1', OwnedChoirProcessor);
