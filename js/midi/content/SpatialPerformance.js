@@ -2,10 +2,10 @@ import { validateAcousticMap } from './AcousticMap.js';
 import { validateSpatialState } from './SpatialState.js';
 import { validateAcousticMaterialSelection } from './AcousticMaterialSelection.js';
 import { validateInstrumentControls } from './InstrumentPerformance.js';
-import { cloneData, freezeData } from '../../core/CanonicalData.js';
+import { cloneMutableData, freezeData } from '../../core/CanonicalData.js';
 
 export function validateSpatialPerformance(raw) {
-  const value = cloneData(raw, { maxBytes: 196608, maxNodes: 24576 }), id = value => typeof value === 'string' && value.length > 0 && value.length <= 512, natural = value => Number.isSafeInteger(value) && value >= 0,
+  const value = cloneMutableData(raw, { maxBytes: 196608, maxNodes: 24576 }), id = value => typeof value === 'string' && value.length > 0 && value.length <= 512, natural = value => Number.isSafeInteger(value) && value >= 0,
     hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value), finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
   if (value?.schema !== 'lemmings-spatial-performance/v1' || Object.keys(value).some(key => !['schema', 'worldId', 'generation', 'sourceTick', 'sourceTimeMs', 'sourceTickDurationMs', 'executionEpoch', 'rendererExecutionEpoch', 'sampleRate', 'acousticReceipt', 'kind', 'status', 'reason', 'mapHash', 'definition', 'intentId', 'voiceId', 'state', 'acousticMaterialState', 'performanceControls', 'targetFrame', 'appliedFrame', 'sourceOwnerDelayFrames', 'timing', 'stalePolicy', 'transition', 'stage', 'effectiveLowpassHz'].includes(key)) || !id(value.worldId) || ![value.generation, value.sourceTick].every(natural) || !finite(value.sourceTimeMs, 0, Number.MAX_SAFE_INTEGER) || !finite(value.sourceTickDurationMs, 0.1, 10000) || value.executionEpoch !== null && !id(value.executionEpoch) || value.rendererExecutionEpoch != null && !id(value.rendererExecutionEpoch) || value.sampleRate !== null && (!natural(value.sampleRate) || value.sampleRate < 8000 || value.sampleRate > 192000) || value.acousticReceipt !== false || !['map', 'onset', 'update', 'updates'].includes(value.kind) || !['prepared', 'requested', 'accepted', 'rejected'].includes(value.status) || value.mapHash != null && !hash(value.mapHash) || value.reason != null && (typeof value.reason !== 'string' || value.reason.length > 512) || value.status === 'rejected' && !value.reason) throw new TypeError('Spatial performance needs bounded source-clock, map and native scheduling evidence.');
   if (value.kind === 'map') {

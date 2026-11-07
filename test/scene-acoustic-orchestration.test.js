@@ -26,6 +26,14 @@ describe('source-pinned scene orchestration (deferred grouped qualification)', (
     const prepared = materializePerformanceSceneProject(origin); expect(prepared.project.procgen.lanes).to.have.length(3); for (const lane of prepared.project.procgen.lanes) { expect(lane.materialPalette.references).to.have.length(5); expect(lane.instrumentRef.patchId).to.equal('material.unclassified'); }
     const changed = copy(item.scene); changed.patchRefs[0].materialPalette.references.find(reference => reference.patchId === 'material.glass').definition.parameters.bodyT60Seconds = 0.2; let error; try { await checkPerformanceSceneRequirements(changed, { resolveDependency: async dependency => ({ ...dependency, status: 'available', storage: 'embedded' }) }); } catch (failure) { error = failure; } expect(error).to.be.instanceOf(Error);
   });
+  it('keeps exact nested scene identities through repeated and JSON-roundtrip typed admission (#1272)', async () => {
+    const item = await createPocketCathedralScore({ sourceHash, descriptor: modal }), project = materializePerformanceSceneProject(await originFor(item)).project, original = JSON.stringify(project);
+    const imported = sanitizeMidiProject(copy(project)), repeated = sanitizeMidiProject(imported);
+    expect(repeated.procgen.sceneOrigin).to.deep.equal(project.procgen.sceneOrigin); expect(imported.procgen.lanes[0].materialPalette).to.deep.equal(project.procgen.lanes[0].materialPalette);
+    await verifyPerformanceSceneOrigin(repeated.procgen.sceneOrigin, { sourceHash }); expect(JSON.stringify(project)).to.equal(original);
+    const invalid = copy(project); Object.defineProperty(invalid.procgen.sceneOrigin.manifest.patchRefs[0].materialPalette.references[0].definition.macros[0].targets[0], 'constructor', { value: 'forbidden-import-key', enumerable: true });
+    expect(() => sanitizeMidiProject(invalid)).to.throw();
+  });
   it('publishes an acoustic edit through the canonical reducer without changing geometry or release policy', async () => {
     const item = await createPocketCathedralScore({ sourceHash, descriptor: modal }), project = sanitizeMidiProject(materializePerformanceSceneProject(await originFor(item)).project), state = readSceneAcousticControl(project, 'absorb'), action = prepareSceneAcousticControl(project, { ...state, value: 0.9 }), next = reduceMidiProject(project, action);
     expect(next.procgen.physicalGraph.acousticMap.controls.absorb01).to.equal(0.9); expect(project.procgen.physicalGraph.acousticMap.controls.absorb01).to.equal(0.35); expect(next.procgen.sceneOrigin.recipe.initialTerrainLayout).to.deep.equal(project.procgen.sceneOrigin.recipe.initialTerrainLayout); expect(next.procgen.releaseGesture).to.deep.equal(project.procgen.releaseGesture); expect(next.procgen.seed).to.equal(project.procgen.seed);

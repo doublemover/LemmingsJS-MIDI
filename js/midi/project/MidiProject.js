@@ -694,7 +694,7 @@ function sanitizeMidiProject(project = {}) {
     },
     transport: sanitizeTransport(source.transport),
     global: sanitizeGlobal(source.global),
-    ...(source.procgen ? { procgen: sanitizeProcgenWorkstation(source.procgen) } : {}),
+    ...(project?.procgen ? { procgen: sanitizeProcgenWorkstation(project.procgen) } : {}),
     ...(source.localInstrumentMigration ? { localInstrumentMigration: validateMidiLocalInstrumentMigration(source.localInstrumentMigration) } : {}),
     ...(sanitizeMidiEnsemble(source.ensemble, trackIds) ? { ensemble: sanitizeMidiEnsemble(source.ensemble, trackIds) } : {}),
     tracks,

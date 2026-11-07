@@ -1,11 +1,11 @@
-import { canonicalDataText, cloneData, freezeData } from '../../core/CanonicalData.js';
+import { canonicalDataText, cloneData, cloneMutableData, freezeData } from '../../core/CanonicalData.js';
 
 const id = value => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value);
 const natural = value => Number.isSafeInteger(value) && value >= 0;
 const fail = message => { throw new TypeError('Material response: ' + message); };
 export const ORIGINAL_MATERIAL_PATCH_IDS = freezeData(['material.unclassified', 'material.timber', 'material.slate', 'material.glass', 'material.sheet-metal']);
 export function validateMaterialResponseMap(raw) {
-  const value = cloneData(raw, { maxBytes: 16384, maxNodes: 1024 });
+  const value = cloneMutableData(raw, { maxBytes: 16384, maxNodes: 1024 });
   if (value?.schema !== 'lemmings-material-response-map/v1' || Object.keys(value).some(key => !['schema', 'id', 'revision', 'neutralPatchId', 'entries', 'articulation', 'site01'].includes(key)) || !id(value.id) || !natural(value.revision) || value.neutralPatchId !== 'material.unclassified' || !['hard', 'soft', 'muted'].includes(value.articulation) || !Number.isFinite(value.site01) || value.site01 < 0 || value.site01 > 1 || !Array.isArray(value.entries) || value.entries.length > 32) fail('Use an explicit bounded material-ID/tag map, unclassified fallback, authored articulation and normalized strike site.');
   const seen = new Set();
   for (const entry of value.entries) {
