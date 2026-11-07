@@ -40,7 +40,7 @@ export function attachProcgenSimulationOutput({ port, manifest, outputs, resourc
       tempoBpm = packet.tempoBpm;
       for (const output of outputs) output.observe(score, { bpm: tempoBpm, executionEpoch: epoch, generation, worldId, batchId: batch.batchId, scoreContext: getScoreContext() });
       const receipts = dispatcher.dispatch(packet.intents, batch);
-      for (const output of outputs) output.flushSourceControls?.(batch);
+      for (const output of outputs) await output.flushSourceControls?.(batch);
       batches++; submittedIntents += packet.intents.length;
       const refused = receipts.find(receipt => receipt.status === 'rejected');
       if (refused || packet.intents.length && !receipts.length) throw simulationFailure('output-admission-refused', refused?.reason || 'The required sink did not admit its complete intent packet.');
@@ -52,7 +52,10 @@ export function attachProcgenSimulationOutput({ port, manifest, outputs, resourc
     path: typeof document === 'undefined' ? 'simulation-worker-to-independent-output-owner;no-ui-relay' : 'explicit-main-thread-fallback;ui-stalls-affect-output', acousticEvidence: false }),
   dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; const readers = consumer.dispose(), producers = Promise.resolve(readers).then(async () => {
     if (safetyRetirement) await safetyRetirement;
-    const receipts = [dispatcher.dispose(), ...outputs.map(output => output.dispose())]; await Promise.all(receipts.map(complete));
+    const dispatcherResult = await Promise.allSettled([complete(dispatcher.dispose())]);
+    const outputResults = await Promise.allSettled(outputs.map(output => Promise.resolve().then(() => complete(output.dispose()))));
+    const failures = [...dispatcherResult, ...outputResults].filter(result => result.status === 'rejected');
+    if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Direct output execution or producer retirement remains unresolved.');
   });
   return scope.retire([{ name: 'direct-causal-consumer', run: () => readers }, { name: 'direct-output-executions', run: () => producers }]);
   } });

@@ -424,6 +424,16 @@ class BrowserNotePreview {
         try { await work; controller.signal.throwIfAborted(); return backend; }
         catch (error) { const receipt = backend.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
       },
+      prepareDirectOwnedSineSource: async (options = {}) => {
+        const generation = session.generation, context = this._context, epoch = this._contextEpoch;
+        if (session.disposed || session.audioOperation || !this._ownerReady(id)) throw new Error('Enable the current browser owner before preparing direct audio.');
+        const { prepareDirectOwnedSineSource } = await import('./DirectOwnedSineSource.js');
+        const current = () => !session.disposed && generation === session.generation && context === this._context && epoch === this._contextEpoch && this._ownerReady(id) && !session.audioOperation;
+        if (!current()) throw new Error('Direct audio preparation was canceled.');
+        const source = await prepareDirectOwnedSineSource({ ...options, context, destination: this._channel(0, id).sourceInput, resources: this._audioResources, owner: id, generation: this._generation, isCurrent: current });
+        try { if (!current()) throw new Error('The direct audio owner changed.'); return this._registerInstrumentBackend(source, id); }
+        catch (error) { const receipt = source.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
+      },
       prepareLiveInputPitchShift: options => session.api.prepareBufferedWarpVoice({ ...options, sourceMode: 'live-input' }),
       configureLaneSources: laneIds => {
         if (!Array.isArray(laneIds) || laneIds.length > 1024 || laneIds.some(value => typeof value !== 'string' || !value || value.length > 160) || new Set(laneIds).size !== laneIds.length) throw new TypeError('Invalid lane source declaration.');
