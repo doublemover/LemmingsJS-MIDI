@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { compileSoundContent } from '../../js/midi/content/SoundContentCompiler.js';
+import { compileInstrumentPerformance } from '../../js/midi/content/InstrumentPerformance.js';
+import { describeNativeInstrumentEngines, NATIVE_SPECTRUM_PARAMETERS } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { OwnedSpectrumSource, OwnedSpectrumKernel } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
 import { getOwnedSourceProfile } from '../../js/app/midi-ui/OwnedSourceProfiles.js';
 import { SPECTRUM_LAYOUT, SPECTRUM_DRAWBAR_BITS } from '../../js/app/midi-ui/OwnedSourceLayout.js';
@@ -53,5 +57,24 @@ describe('same-owned-voice organ onset component', () => {
     assert.ok(source.state[44] < before); assert.ok(source.state[44] > 0); assert.equal(source.state[47], 2);
     assert.equal(source.begin(1, 440, onset(values, 1), 640), 1); assert.equal(source.state[SPECTRUM_LAYOUT.state + 44], 0.14); assert.ok(source.state[44] < 0.14);
     assert.equal(profile.acceptsParameters(parameters({ sourceMode: 0, percussionGain01: 0.1 })), false); assert.equal(profile.acceptsParameters(parameters({ sourceMode: 2, percussionGain01: 0.1 })), false);
+  });
+});
+
+describe('authored sustained organ drawbar gestures', () => {
+  it('compiles each BODY default exactly and moves its actual retained drawbars without refilling the onset component', async () => {
+    const raw = JSON.parse(await readFile(new URL('../../content/sounds/liquid-drawbars.json', import.meta.url), 'utf8')), targets = (await describeNativeInstrumentEngines([{ engineId: 'worklet-spectrum', engineVersion: 1, artifactHash: 'a'.repeat(64) }])).map(descriptor => ({ descriptor }));
+    const content = await compileSoundContent(raw, { targets });
+    for (const id of ['spectrum.pipe-crew', 'spectrum.glass-drawbars', 'spectrum.falling-stars']) {
+      const definition = content.prepared.patches.find(entry => entry.definition.id === id).definition, plan = compileInstrumentPerformance(definition, Object.values(NATIVE_SPECTRUM_PARAMETERS)), baseline = plan.resolve({ variationAmount01: 0 }, 0);
+      const fields = definition.macros.find(macro => macro.id === 'body').targets.map(target => target.parameter).filter(id => id !== 'body01'); assert.ok(fields.length > 0);
+      for (const field of fields) assert.ok(Math.abs(baseline.values[field] - definition.parameters[field]) < 1e-12);
+      const source = new OwnedSpectrumSource(48000, 1, fixedSourceBank('spectrum-v1')); assert.equal(source.begin(0, 440, onset(baseline.values), 0), 1); for (let frame = 0; frame < 128; frame++) source.sample(0, 440, frame);
+      const beforeOnset = source.state[44], beforePartialDecay = source.partials[3], held = plan.resolveHeld(baseline, { macros: { body: 1 } }, null, [], 128), expression = Object.fromEntries(held.parameterIds.map(id => [id, held.values[id]])), update = new Float64Array(profile.width);
+      update[1] = 128; update[14] = Math.round(held.smoothingMs * 48); const mask = profile.writeUpdate(expression, { sourceValues: baseline.values }, update); assert.ok(mask > 0); assert.equal(source.validUpdate(0, mask, update), true); source.applyUpdate(0, mask, update);
+      assert.equal(source.state[44], beforeOnset); assert.equal(source.partials[3], beforePartialDecay);
+      for (const field of fields) { const index = Number(field.match(/partial(\d+)Gain/)[1]); assert.equal(source.drawbars[index], held.values[field]); assert.ok(held.values[field] < baseline.values[field]); }
+      for (let frame = 128; frame < 1200; frame++) assert.ok(Number.isFinite(source.sample(0, 440, frame)));
+      assert.ok(source.state[44] <= beforeOnset); assert.equal(source.state[16], 0);
+    }
   });
 });

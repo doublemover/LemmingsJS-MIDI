@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.liquid-drawbars",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "name": "Liquid tables and additive drawbars",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -635,7 +635,7 @@
     },
     {
       "id": "spectrum.pipe-crew",
-      "revision": 3,
+      "revision": 4,
       "extends": "spectrum.base",
       "name": "Pipe Crew",
       "components": [
@@ -909,7 +909,7 @@
           "mode": "continuous",
           "default01": 0.7,
           "smoothingMs": 20,
-          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "perceptualDirection": "Move the authored upper drawbars and lower-component weight inside this held voice. Higher BODY reduces upper drawbars; partial decays continue without an onset.",
           "targets": [
             {
               "parameter": "body01",
@@ -920,6 +920,104 @@
               "maximum": {
                 "value": 1,
                 "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial1Gain",
+              "minimum": {
+                "value": 0.7166666666666666,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.04999999999999999,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial2Gain",
+              "minimum": {
+                "value": 0.42999999999999994,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.03,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial3Gain",
+              "minimum": {
+                "value": 0.22933333333333328,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.016,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial4Gain",
+              "minimum": {
+                "value": 0.11466666666666664,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.008,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial5Gain",
+              "minimum": {
+                "value": 0.07166666666666666,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.0049999999999999975,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial6Gain",
+              "minimum": {
+                "value": 0.043,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.002999999999999999,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial7Gain",
+              "minimum": {
+                "value": 0.02866666666666666,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.002,
+                "unit": "amplitude-linear"
               },
               "curve": "linear",
               "composition": "replace",
@@ -1003,7 +1101,7 @@
     },
     {
       "id": "spectrum.glass-drawbars",
-      "revision": 3,
+      "revision": 4,
       "extends": "spectrum.base",
       "name": "Glass Drawbars",
       "components": [
@@ -1277,7 +1375,7 @@
           "mode": "continuous",
           "default01": 0.2,
           "smoothingMs": 20,
-          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "perceptualDirection": "Move the authored upper drawbars and lower-component weight inside this held voice. Higher BODY reduces upper drawbars; partial decays continue without an onset.",
           "targets": [
             {
               "parameter": "body01",
@@ -1288,6 +1386,104 @@
               "maximum": {
                 "value": 1,
                 "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial2Gain",
+              "minimum": {
+                "value": 0.72,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.12,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial4Gain",
+              "minimum": {
+                "value": 0.6,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.09999999999999998,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial5Gain",
+              "minimum": {
+                "value": 0.18,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.03,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial6Gain",
+              "minimum": {
+                "value": 0.42,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.07,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial8Gain",
+              "minimum": {
+                "value": 0.24000000000000002,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.03999999999999998,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial9Gain",
+              "minimum": {
+                "value": 0.12000000000000001,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.01999999999999999,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial10Gain",
+              "minimum": {
+                "value": 0.18,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.03,
+                "unit": "amplitude-linear"
               },
               "curve": "linear",
               "composition": "replace",
@@ -1371,7 +1567,7 @@
     },
     {
       "id": "spectrum.falling-stars",
-      "revision": 2,
+      "revision": 3,
       "extends": "spectrum.base",
       "name": "Falling Stars",
       "components": [
@@ -1633,7 +1829,7 @@
           "mode": "continuous",
           "default01": 0.1,
           "smoothingMs": 20,
-          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "perceptualDirection": "Move the authored upper drawbars and lower-component weight inside this held voice. Higher BODY reduces upper drawbars; partial decays continue without an onset.",
           "targets": [
             {
               "parameter": "body01",
@@ -1644,6 +1840,216 @@
               "maximum": {
                 "value": 1,
                 "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial1Gain",
+              "minimum": {
+                "value": 0.5444444444444445,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.09999999999999998,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial2Gain",
+              "minimum": {
+                "value": 0.38111111111111107,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.06999999999999995,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial3Gain",
+              "minimum": {
+                "value": 0.27222222222222225,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.04999999999999999,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial4Gain",
+              "minimum": {
+                "value": 0.2177777777777778,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.03999999999999998,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial5Gain",
+              "minimum": {
+                "value": 0.196,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.035999999999999976,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial6Gain",
+              "minimum": {
+                "value": 0.16333333333333333,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.03,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial7Gain",
+              "minimum": {
+                "value": 0.13066666666666665,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.023999999999999994,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial8Gain",
+              "minimum": {
+                "value": 0.11977777777777777,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.021999999999999992,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial9Gain",
+              "minimum": {
+                "value": 0.1088888888888889,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.01999999999999999,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial10Gain",
+              "minimum": {
+                "value": 0.08711111111111111,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.016,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial11Gain",
+              "minimum": {
+                "value": 0.07622222222222223,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.013999999999999999,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial12Gain",
+              "minimum": {
+                "value": 0.06533333333333333,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.011999999999999997,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial13Gain",
+              "minimum": {
+                "value": 0.05444444444444445,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.009999999999999995,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial14Gain",
+              "minimum": {
+                "value": 0.043555555555555556,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.008,
+                "unit": "amplitude-linear"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            },
+            {
+              "parameter": "partial15Gain",
+              "minimum": {
+                "value": 0.03266666666666666,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.005999999999999998,
+                "unit": "amplitude-linear"
               },
               "curve": "linear",
               "composition": "replace",
