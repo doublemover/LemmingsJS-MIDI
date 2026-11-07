@@ -2580,12 +2580,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         crossExcitationView.open();
       });
     },
-    openQuarryEcho() {
+    openQuarryEcho(request = null) {
       if (disposed || !physicalPlayback) { status('Physical owner effects are unavailable.'); return; }
       return toolGate.open('Quarry Echo', () => import('../../midi-ui/QuarryEchoView.js'), ({ createQuarryEchoView }) => {
         quarryEchoView ||= createQuarryEchoView({ document, window, onRectangularMembrane: () => handlers.openRectangularMembrane(), onSympatheticMap: () => handlers.openSympatheticMap(), onSpectralFreeze: () => handlers.openSpectralFreeze(), onTravelColoration: () => handlers.openTravelColoration(), onCrossExcitation: () => handlers.openCrossExcitation(), getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
           saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
-        quarryEchoView.open();
+        quarryEchoView.open(request);
       });
     },
     harvestSoundSeed(source) {
@@ -2618,7 +2618,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     openSoundLibrary() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Sound library resource ownership is unavailable.'); return; }
       return toolGate.open('Sound library', () => import('../../midi-ui/SoundContentLibrary.js'), ({ createSoundContentLibrary }) => {
-        soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
+        soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs, onSharedSpace: request => handlers.openQuarryEcho(request),
           getGestureTake: options => handlers.gestureSoundTake(options), getGestureTakeIdentity: () => handlers.gestureSoundTakeIdentity(),
           onApplyMaterialPalette: (request, options) => handlers.applyMaterialPalette(request, options), getMaterialTargetIdentity: () => JSON.stringify([documentGeneration, selected().id, selected().instrumentRef?.definitionHash || null, project.procgen.physicalGraph.revision]),
           onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });

@@ -35,7 +35,7 @@ const TACTILE_SOURCE = new URL('../../../content/sounds/tactile-contacts.json', 
 const SPECTRUM_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'liquid-drawbars').source;
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
-export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null, targetLabel = 'selected lane', allowLivePreview = true, getGestureTake = null, getGestureTakeIdentity = () => null, onApplyMaterialPalette = null, getMaterialTargetIdentity = () => null } = {}) {
+export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null, targetLabel = 'selected lane', allowLivePreview = true, getGestureTake = null, getGestureTakeIdentity = () => null, onApplyMaterialPalette = null, onSharedSpace = null, getMaterialTargetIdentity = () => null } = {}) {
   if (!document?.createElement || !resourceBudget || typeof onApply !== 'function') throw new TypeError('Invalid sound library surface.');
   const reader = createSoundContentReader({ resourceBudget, jobs }), archiver = createSoundContentArchiver({ resourceBudget, jobs });
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
@@ -274,6 +274,17 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       })); row.append(choose, archive); list.append(row);
     }
   });
+  const sharedSpace = button('Physical shared SPACE / ROOM…', () => {
+    if (disposed || current || typeof onSharedSpace !== 'function' || !stage || !selection) return;
+    const lease = stage.borrow(); let request;
+    try {
+      const patch = lease.prepared.patches.find(entry => entry.identity === selection);
+      if (patch?.state !== 'definition-admitted') throw failure('Prepare an actual family source before opening its shared room.');
+      const family = patch.definition.tags.includes('circuit-workshop') ? 'circuit' : patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2 ? 'liquid' : null;
+      if (!family) throw failure('This source has no authored family-room handoff.'); request = { family, sourceLabel: patch.definition.name };
+    } catch (error) { setStatus(error.message); return; } finally { lease.release(); }
+    dialog.close(); Promise.resolve().then(() => onSharedSpace(request)).catch(error => setStatus(error.message));
+  });
   const close = button('Close', () => dialog.close());
   on(dialog, 'close', () => { gestureDiscovery.invalidate(); current?.controller.abort(failure('Sound library closed.')); installation.stop(); monitor?.mountHome(); });
   on(select, 'change', () => { selectedGestureReceipt = selectedGestureTakeIdentity = null; selection = select.value; rights.checked = false; render(); }); on(rights, 'change', () => render());
@@ -306,8 +317,9 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (plan?.unavailableEngines.length) summary.textContent += ' Required renderer: ' + plan.unavailableEngines.map(entry => entry.state).join(', ') + '.';
     if (plan?.missingReferences.length || plan?.missingAssetBytes.length) summary.textContent += ' Missing material: ' + (plan.missingReferences.length + plan.missingAssetBytes.length) + ' references.';
     const ready = !!plan, auditioned = ready && !!installation.getAudition(stage, selection);
-    let materialFamilyReady = false, renderable = false, localProceduralMaterial = false, sourceComparable = false, sampleMap = null, sampleMapSource = null; modelInfo.textContent = '';
+    let materialFamilyReady = false, renderable = false, localProceduralMaterial = false, sourceComparable = false, sampleMap = null, sampleMapSource = null, sharedSpaceReady = false; modelInfo.textContent = '';
     if (ready) { const lease = stage.borrow(); try { materialFamilyReady = ORIGINAL_MATERIAL_PATCH_IDS.every(id => lease.prepared.patches.some(row => row.state === 'definition-admitted' && row.definition.id === id)); const patch = lease.prepared.patches.find(entry => entry.identity === selection);
+      sharedSpaceReady = patch?.state === 'definition-admitted' && (patch.definition.tags.includes('circuit-workshop') || patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2);
       sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
       localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralSoundMaterial(file)));
       renderable = patch?.state === 'definition-admitted' && (NATIVE_OFFLINE_SOURCE_IDS.includes(patch.definition.engineId) || OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender);
@@ -319,7 +331,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
           (patch.definition.engineId === 'worklet-sample' ? ' Owned source pool: ' + patch.definition.voicePolicy.maxVoices + ' declared voices including release tails; source and workspace quotas apply. Forward, reverse and explicit source-frame position controls use the same prepared reader in live and offline playback. Position control auditions use an authored outbound/return program, not physical motion. Listening and real-time capacity qualification are pending.' : '') +
           (chosen ? ' Last control selection: ' + chosen.zoneId + ' · alternate ' + (chosen.alternateIndex + 1) + '/' + chosen.alternates + (chosen.neutralFallback ? ' · declared neutral fallback.' : '.') : '');
       }
-      if (patch?.definition?.tags?.includes('circuit-workshop')) modelInfo.textContent += ' Fixed prepared drum pitches keep GM articulation separate from tuning. WEIGHT is source low-pass, SNAP is host attack and METAL is velocity brightness contrast. ROOM requires a separate shared send; small-room-print contains finite recorded taps. No commercial drum-machine emulation or listening qualification is claimed.';
+      if (patch?.definition?.tags?.includes('circuit-workshop')) modelInfo.textContent += ' Fixed prepared drum pitches keep GM articulation separate from tuning. WEIGHT is source low-pass, SNAP is host attack and METAL is velocity brightness contrast. ROOM uses the separate physical shared send: Apply this source, then open shared SPACE / ROOM and Prepare the original return. The small-room-print variant contains finite printed taps; it is a separate source choice. No commercial drum-machine emulation or listening qualification is claimed.';
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-fm') {
         const parameters = Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, parameter]) => [id, parameter.default])); Object.assign(parameters, patch.definition.parameters);
         modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources · carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
@@ -356,7 +368,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: ' + (parameters.sourceMode ? parameters.partialCount + ' authored additive partials' : '16 phase-aligned spectral frames') +
           ' · FLOW ' + parameters.scan01 + ' · BODY ' + parameters.body01 + ' · EDGE ' + parameters.edge01 +
-          '. Live profile: eight slots, 20–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0–512 pixel domain. Actor inspector reports actual prepared-frame position, retained partial support and filter cutoff; those state readouts are separate from a measured FFT or perceived pitch. Additive partial gains accept independent held drawbar ramps on the existing voice identity. Acid Current adds a positively damped resonant lowpass and restrained polynomial drive; driven sources reserve one third of the synthesis band before shaping. These source controls add no delay line. Exact owned source snapshots retain drawbar ramps, phases and filter integrators. Shared SPACE sends and PWM require separate explicit realizations. Fixed control WAVs and causal revoice use this same kernel. Spectral/alias/listening qualification is pending.';
+          '. Live profile: eight slots, 20–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0–512 pixel domain. Actor inspector reports actual prepared-frame position, retained partial support and filter cutoff; those state readouts are separate from a measured FFT or perceived pitch. Additive partial gains accept independent held drawbar ramps on the existing voice identity. Acid Current adds a positively damped resonant lowpass and restrained polynomial drive; driven sources reserve one third of the synthesis band before shaping. These source controls add no delay line. Exact owned source snapshots retain drawbar ramps, phases and filter integrators. Apply the source and use Physical shared SPACE / ROOM to prepare an original shared return. That physical-owner send is separate from this library audition and source macros. PWM remains unavailable. Fixed control WAVs and causal revoice use this same kernel. Spectral/alias/listening qualification is pending.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-texture') modelInfo.textContent = 'Procedural material texture: actual signed-axis travel visits actor-seeded spatial cells. No sample loop, audio-time birth clock or additional semantic attacks. Motion ends new births; admitted finite bursts and positive body/filter state decay. Eight source slots, 32 children per source and 32 admitted births per absolute 128-frame bucket. GRAIN/DRAG/SHADE/BODY affect new voices only. Control audition moves eight authored pixels in 40 ms, then rests; it is not a physical take. Exact kernel-state cuts are implemented; arbitrary live restoration and PCM equivalence remain unqualified. Alias, pulse statistics, device cost and listening remain unqualified.';
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-wind') modelInfo.textContent = 'Original experimental modal wind: a held gesture and pressure drive a private nonlinear port. At zero pressure no source work enters; the body can relax. AIR, BITE, LENGTH and LEAK affect later bodies; held channel pressure ramps the active source. LENGTH is acoustic-model size and never route length. Overblown Branch permits one hysteretic register change per gesture. Two slots share existing admission. Stability, pitch, register, aliasing, device cost and listening remain unqualified.';
@@ -370,6 +382,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       for (const entry of sampleMap?.articulations || []) { const option = node('option', entry.name); option.value = entry.id; gesture.append(option); }
       gesture.value = sampleMap?.neutralArticulationId || '';
     }
+    sharedSpace.hidden = typeof onSharedSpace !== 'function' || !sharedSpaceReady; sharedSpace.disabled = busy || !sharedSpaceReady;
     materialApply.disabled = busy || !materialFamilyReady; materialArticulation.disabled = materialSite.disabled = busy;
     gestureLabel.hidden = !sampleMap; gesture.disabled = busy || !sampleMap;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed && !localProceduralMaterial;

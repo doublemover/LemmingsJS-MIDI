@@ -16,7 +16,7 @@ test('liquid tables and drawbars use real worklet audition before installing the
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
   await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare liquid tables / drawbars', exact: true }).click();
-  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(6, { timeout: 30000 });
+  const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(7, { timeout: 30000 });
   await revisions.selectOption('spectrum.pipe-crew@1'); await expect(dialog.getByLabel('Instrument source model')).toContainText('8 authored additive partials');
   await expect(dialog.getByRole('button', { name: 'Install auditioned pack', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click(); await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');

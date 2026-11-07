@@ -9,7 +9,7 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const listen = (target, event, callback) => { target.addEventListener(event, callback); listeners.push(() => target.removeEventListener(event, callback)); };
   const dialog = node('dialog'); dialog.className = 'studio-dialog studio-echo-rack'; dialog.setAttribute('aria-labelledby', 'quarryEchoTitle');
   const title = node('h2', 'Quarry Echo · physical owner'); title.id = 'quarryEchoTitle';
-  const description = node('p', 'Enable browser audio, choose a delay or original reflection body, then prepare it. Hold THROW to send the running physical voices into its bounded return. Release stops new input and leaves the stored tail.');
+  const description = node('p', 'Enable browser audio, choose a delay or original reflection body, then prepare it. SPACE sends the running physical owner into one shared return. THROW temporarily raises that send; release returns to SPACE and leaves the stored tail. Dry attacks remain independent.');
   const qualification = node('p', 'Experimental original effects. Body normalization and conservative gain bounds are checked before activation; native convolution latency is unmeasured. Browser, PCM and listening qualification is pending. Causal takes can store effect API commands. The captured-command revoice mode supports one unchanged owned graph with cleared initial memory; master capture retains the actual digital output.');
   const fields = node('div'), actions = node('div'), status = node('output', 'No echo prepared.'); status.setAttribute('role', 'status');
   const say = value => { if (!disposed) { status.textContent = value; try { onStatus(value); } catch { /* Status cannot alter the rack. */ } } };
@@ -23,7 +23,8 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const time = slider('TIME · milliseconds', 70, 750, 1, 240, value => live('echo', { delaySeconds: value / 1000 }));
   const feedback = slider('FEEDBACK', 0, 0.7, 0.01, 0.3, value => live('echo', { feedback: value }));
   const age = slider('AGE · drive and feedback damping', 0, 1, 0.01, 0.35, value => { const receipt = live('preamp', { driveDb: 2 + value * 10 }); live('echo', { feedbackLowpassHz: 7000 - value * 5500 }, receipt); });
-  const level = slider('SPACE · return', 0, 0.35, 0.01, 0.2, value => live('return', { gain01: value }));
+  const level = slider('RETURN · shared level', 0, 0.35, 0.01, 0.2, value => live('return', { gain01: value }));
+  const space = slider('SPACE · shared send', 0, 0.65, 0.01, 0, value => { const receipt = live('send', { gain01: held ? Math.max(value, amount.value()) : value }); if (held && receipt) held.receipt = receipt; if (!receipt) say('SPACE is staged for the next explicit Prepare.'); });
   const amount = slider('THROW amount', 0, 0.65, 0.01, 0.35);
   const mode = node('select'); mode.setAttribute('aria-label', 'Delay time transition');
   for (const [value, text] of [['glide', 'Tape glide · changes pitch'], ['jump', 'Two-tap jump crossfade']]) { const option = node('option', text); option.value = value; mode.append(option); } fields.append(mode);
@@ -54,16 +55,16 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
     bodyDetails.textContent = body ? 'Fixed original ' + body.durationSeconds + ' s body; explicit native RMS normalization and authored reference gain. Algorithm latency is unknown. Preparing a replacement crossfades input and retains the old bounded tail.' : preset.value === 'tape-spring' ? 'Original cubic preamp and dark echo feeding a shared Hollow Spring blend. Native body latency is unknown; its authored predelay is retained.' : preset.value === 'tape' ? 'Original 2× cubic preamp with first-order ADAA, 100 Hz input highpass and 20 Hz DC block. AGE adds drive and darkens the feedback filter. Filter/ADAA delay is declared; spectral and level matching qualification is pending. This is not a hardware emulation.' : preset.value === 'duck' ? 'The physical owner controls only the echo return: 3 ms attack, 150 ms release, fixed reference 0.25 and a 0.25 gain floor. Reactive detector with no lookahead; the dry attack stays independent.' : 'TIME is an audio delay in milliseconds. It does not represent an actor journey.';
   };
   const model = () => { revision = Math.max(revision + 1, (getSavedRack()?.graph.revision || 0) + 1);
-    return ['echo', 'duck', 'tape', 'tape-spring'].includes(preset.value) ? (preset.value === 'tape-spring' ? createQuarryTapeSpring : preset.value === 'tape' ? createQuarryTape : preset.value === 'duck' ? createQuarryDuck : createQuarryEcho)({ revision, delaySeconds: time.value() / 1000, feedback: feedback.value(), return01: level.value(), send01: 0, mode: mode.value, ...(['tape', 'tape-spring'].includes(preset.value) ? { age01: age.value() } : {}), ...(preset.value === 'tape-spring' ? { springBlend01 } : {}) }) :
-      createQuarryBody({ revision, bodyId: preset.value, return01: level.value(), send01: 0 });
+    return ['echo', 'duck', 'tape', 'tape-spring'].includes(preset.value) ? (preset.value === 'tape-spring' ? createQuarryTapeSpring : preset.value === 'tape' ? createQuarryTape : preset.value === 'duck' ? createQuarryDuck : createQuarryEcho)({ revision, delaySeconds: time.value() / 1000, feedback: feedback.value(), return01: level.value(), send01: space.value(), mode: mode.value, ...(['tape', 'tape-spring'].includes(preset.value) ? { age01: age.value() } : {}), ...(preset.value === 'tape-spring' ? { springBlend01 } : {}) }) :
+      createQuarryBody({ revision, bodyId: preset.value, return01: level.value(), send01: space.value() });
   };
   const release = () => {
     const previous = held; held = null; if (!previous) return;
-    try { live('send', { gain01: 0 }, previous.receipt); say('THROW released; the admitted echo tail can decay.'); }
+    try { live('send', { gain01: space.value() }, previous.receipt); say('THROW released to SPACE ' + space.value() + '; the admitted return tail can decay.'); }
     catch (error) { if (error.code !== 'stale-effect-control') say(error.message); }
   };
   const throwButton = node('button', 'Hold THROW'); throwButton.type = 'button'; throwButton.setAttribute('aria-label', 'Hold to send physical voices into the Quarry return'); actions.append(throwButton);
-  const press = source => { if (disposed || pending || held) return; try { if (!preparedToken) throw new Error('Prepare this Quarry rack before performing a throw.'); if (preparedVoices && !preparedVoices.some(member => getPlayback()?.isEffectSourceVoiceAvailable?.(member))) throw new Error('The selected voices ended. Refresh and prepare a new selection.'); held = { source, receipt: live('send', { gain01: amount.value() }) }; say(preparedVoices ? 'Sending only the prepared causal voice selection into Quarry Echo.' : 'Sending physical owner audio into Quarry Echo.'); } catch (error) { say(error.message); } };
+  const press = source => { if (disposed || pending || held) return; try { if (!preparedToken) throw new Error('Prepare this Quarry rack before performing a throw.'); if (preparedVoices && !preparedVoices.some(member => getPlayback()?.isEffectSourceVoiceAvailable?.(member))) throw new Error('The selected voices ended. Refresh and prepare a new selection.'); held = { source, receipt: live('send', { gain01: Math.max(space.value(), amount.value()) }) }; say(preparedVoices ? 'Sending only the prepared causal voice selection into Quarry Echo.' : 'Sending physical owner audio into Quarry Echo.'); } catch (error) { say(error.message); } };
   listen(throwButton, 'pointerdown', event => { if (event.button !== 0) return; event.preventDefault(); throwButton.focus(); press('pointer'); if (held) throwButton.setPointerCapture?.(event.pointerId); });
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) listen(throwButton, event, release);
   listen(throwButton, 'keydown', event => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); if (!event.repeat) press('keyboard'); } });
@@ -74,7 +75,7 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const prepare = button('Prepare effect', run(async () => {
     release(); const playback = getPlayback(); if (!playback?.prepareEffectGraph) throw new Error('The physical owner is unavailable.');
     const controller = new AbortController(), operation = { controller, promise: null }; pending = operation; prepare.disabled = true;
-    const controls = [preset, mode, time.input, feedback.input, age.input, level.input, amount.input, scope, voicePicker, tap, refreshVoices]; for (const control of controls) control.disabled = true;
+    const controls = [preset, mode, time.input, feedback.input, age.input, level.input, space.input, amount.input, scope, voicePicker, tap, refreshVoices]; for (const control of controls) control.disabled = true;
     try { const members = scope.value === 'voices' ? selectedVoices() : null, graph = members ? scopeQuarryThrowToVoices(model(), members, tap.value) : model();
       operation.promise = playback.prepareEffectGraph(graph, { signal: controller.signal, isCurrent: () => !disposed && pending === operation && getPlayback() === playback });
       const state = await operation.promise; if (!disposed && pending === operation) { preparedToken = { graphDefinitionHash: state.activeGraph.hash, ownerRouteRevision: state.revision }; preparedVoices = members; say('Quarry effect prepared at owner route ' + state.revision + (members ? ' for ' + members.length + ' selected causal voices.' : ' for the physical owner sum.')); } }
@@ -85,7 +86,7 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   if (typeof onSpectralFreeze === 'function') button('Glass Hold', () => { release(); onSpectralFreeze(); });
   if (typeof onTravelColoration === 'function') button('Travel color', () => { release(); onTravelColoration(); });
   if (typeof onCrossExcitation === 'function') button('Interlocking lanes', () => { release(); onCrossExcitation(); });
-  button('Save defaults', run(async () => { const rack = validateOwnerEffectRack({ schema: 'lemmings-owner-effect-rack/v1', graph: model(), bypass: 'active' }); await saveRack(rack); say('Quarry Echo defaults saved in this project. Voice selections and live gestures remain separate from saved owner-sum defaults.'); }));
+  button('Save defaults', run(async () => { const rack = validateOwnerEffectRack({ schema: 'lemmings-owner-effect-rack/v1', graph: model(), bypass: 'active' }); await saveRack(rack); say('Shared send, return and rack defaults saved in this project. Voice selections and performed controls remain separate from these owner-sum defaults.'); }));
   const load = () => {
     const rack = getSavedRack(); if (!rack) return;
     const body = ORIGINAL_IMPULSE_PRESETS.find(entry => rack.graph.id === 'dub-quarry.body.' + entry.id);
@@ -94,18 +95,18 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
     if (rack.graph.id !== 'dub-quarry.echo' && !tape && !body && !duck) { say('The saved owner rack uses another graph.'); return; }
     if (spring) { const edge = rack.graph.edges.find(edge => edge.from.nodeId === 'spring' && edge.to.nodeId === 'wet-sum');
       if (!edge || !Number.isFinite(edge.gain01) || edge.gain01 < 0 || edge.gain01 > 0.3) { say('The saved spring blend is unavailable.'); return; } springBlend01 = edge.gain01; }
-    const echo = rack.graph.nodes.find(entry => entry.id === 'echo'), output = rack.graph.nodes.find(entry => entry.id === 'return');
-    if (!output || !body && !echo) { say('The saved Quarry topology is unavailable.'); return; }
+    const echo = rack.graph.nodes.find(entry => entry.id === 'echo'), output = rack.graph.nodes.find(entry => entry.id === 'return'), send = rack.graph.nodes.find(entry => entry.id === 'send');
+    if (!output || !send || !body && !echo) { say('The saved Quarry topology is unavailable.'); return; }
     const preamp = rack.graph.nodes.find(entry => entry.id === 'preamp'); if (tape && !preamp) { say('The saved Quarry Tape preamp is unavailable.'); return; }
-    preset.value = body?.id || (spring ? 'tape-spring' : tape ? 'tape' : duck ? 'duck' : 'echo'); showPreset(); level.set(output.parameters.gain01); if (tape) age.set((preamp.parameters.driveDb - 2) / 10);
+    preset.value = body?.id || (spring ? 'tape-spring' : tape ? 'tape' : duck ? 'duck' : 'echo'); showPreset(); space.set(send.parameters.gain01); level.set(output.parameters.gain01); if (tape) age.set((preamp.parameters.driveDb - 2) / 10);
     if (echo) { time.set(echo.parameters.delaySeconds * 1000); feedback.set(echo.parameters.feedback); mode.value = echo.parameters.mode; }
     revision = Math.max(revision, rack.graph.revision);
   };
   button('Load saved defaults', load);
   for (const [value, label] of [['neutral', 'Neutral dry'], ['tail', 'Bypass with tail'], ['mute', 'Mute owner rack'], ['panic', 'Clear echo tails']]) button(label, run(() => { release(); const result = getPlayback()?.setEffectBypass?.(value); if (!result) throw new Error('Prepare an owner rack before changing its bypass state.'); preparedToken = null; preparedVoices = null; say(label + ' requested for the physical owner.'); }));
   const close = () => { if (inspectionTimer !== null) clearInterval(inspectionTimer); inspectionTimer = null; release(); pending?.controller.abort(new Error('Echo preparation canceled.')); if (dialog.open) dialog.close(); };
-  listen(scope, 'change', () => { release(); voicePicker.hidden = tap.hidden = refreshVoices.hidden = scope.value !== 'voices'; if (scope.value === 'voices') refreshVoiceList(); }); voicePicker.hidden = tap.hidden = refreshVoices.hidden = true;
-  listen(preset, 'change', () => { release(); springBlend01 = 0.15; showPreset(); say('Recipe selected. Prepare effect to replace the running graph.'); }); showPreset();
+  listen(scope, 'change', () => { release(); preparedToken = preparedVoices = null; voicePicker.hidden = tap.hidden = refreshVoices.hidden = scope.value !== 'voices'; if (scope.value === 'voices') refreshVoiceList(); }); voicePicker.hidden = tap.hidden = refreshVoices.hidden = true;
+  listen(preset, 'change', () => { release(); preparedToken = preparedVoices = null; springBlend01 = 0.15; showPreset(); say('Recipe selected. Prepare effect to replace the running graph.'); }); showPreset();
   button('Close', close); listen(dialog, 'cancel', event => { event.preventDefault(); close(); });
   const activity = node('output'); activity.setAttribute('aria-label', 'Focused detector activity');
   const inspect = () => {
@@ -118,6 +119,15 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
     const routes = graph?.sidechains || []; if (routes.length) activity.textContent += ' ' + routes.map(route => route.sourceBusId + ' ' + route.tap + ' → ' + route.id + ': ' + route.status).join(' · ');
   };
   dialog.append(title, description, qualification, fields, actions, activity, status); (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
-  return Object.freeze({ open() { if (!disposed) { load(); if (!dialog.open) dialog.showModal(); if (inspectionTimer === null) inspectionTimer = setInterval(inspect, 250); inspect(); } }, suspend: close,
-    dispose() { return retirement.retire([{ name: 'quarry-echo-view', run: async () => { disposed = true; if (inspectionTimer !== null) clearInterval(inspectionTimer); inspectionTimer = null; release(); const operation = pending; operation?.controller.abort(new Error('Echo view retired.')); await operation?.promise?.catch(() => {}); for (const remove of listeners) remove(); dialog.remove(); } }]); } });
+  return Object.freeze({ open(request = null) {
+    if (disposed) return;
+    if (request !== null && (!request || Object.getPrototypeOf(request) !== Object.prototype || Object.keys(request).some(key => !['family', 'sourceLabel'].includes(key)) || !['liquid', 'circuit'].includes(request.family) || typeof request.sourceLabel !== 'string' || request.sourceLabel.length > 160)) throw new TypeError('Unknown shared family-room request.');
+    release(); load();
+    if (request) {
+      preset.value = request.family === 'circuit' ? 'quarry-stone-courtyard' : 'quarry-hollow-spring'; space.set(0.2); level.set(0.15); scope.value = 'owner'; voicePicker.hidden = tap.hidden = refreshVoices.hidden = true; preparedToken = preparedVoices = null; showPreset();
+      say(request.sourceLabel + ': shared ' + (request.family === 'circuit' ? 'ROOM' : 'SPACE') + ' is staged for the physical owner sum. Apply the instrument to its lane separately, then Prepare this return. This does not affect the library audition or create a note.');
+    }
+    if (!dialog.open) dialog.showModal(); if (inspectionTimer === null) inspectionTimer = setInterval(inspect, 250); inspect();
+  }, suspend: close,
+  dispose() { return retirement.retire([{ name: 'quarry-echo-view', run: async () => { disposed = true; if (inspectionTimer !== null) clearInterval(inspectionTimer); inspectionTimer = null; release(); const operation = pending; operation?.controller.abort(new Error('Echo view retired.')); await operation?.promise?.catch(() => {}); for (const remove of listeners) remove(); dialog.remove(); } }]); } });
 }
