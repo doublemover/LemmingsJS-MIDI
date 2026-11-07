@@ -382,6 +382,7 @@
         "js/app/procgen/workstation/PhysicalMusicSensitivity.js",
         "js/app/procgen/workstation/PhysicalMusicStudy.js",
         "js/app/procgen/workstation/PhysicalMusicStudyCommands.js",
+        "js/app/procgen/workstation/PhysicalMusicStudyMetrics.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
         "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
@@ -721,8 +722,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 567,
-      "sha256": "34ffec106311c5395e0fb8b4a838ac87292843ad8f2ec9c0f625384b5a139397",
+      "fileCount": 568,
+      "sha256": "22f6400dd2a0899d570eff69415924429f54a1c9dc618c571c3ab2209d57d740",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1096,6 +1097,7 @@
         "js/app/procgen/workstation/PhysicalMusicSensitivity.js",
         "js/app/procgen/workstation/PhysicalMusicStudy.js",
         "js/app/procgen/workstation/PhysicalMusicStudyCommands.js",
+        "js/app/procgen/workstation/PhysicalMusicStudyMetrics.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
         "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
@@ -1466,8 +1468,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 600,
-      "sha256": "fa82cf82d11b5625609d17d683fd578f73d0df026965f09ab545d8a19ef4f9dc",
+      "fileCount": 601,
+      "sha256": "d8a4ef4693bfde59475e510d0454140137abd6de858c35b5a5ea86600db29d35",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1721,6 +1723,7 @@
         "js/app/procgen/workstation/PhysicalMusicSensitivity.js",
         "js/app/procgen/workstation/PhysicalMusicStudy.js",
         "js/app/procgen/workstation/PhysicalMusicStudyCommands.js",
+        "js/app/procgen/workstation/PhysicalMusicStudyMetrics.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
         "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
@@ -2061,8 +2064,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 578,
-      "sha256": "6621a1fa64e3083d2920653b0a5542c6edcd852b266f02644cb193fd10a284e1",
+      "fileCount": 579,
+      "sha256": "a9e1afb493bd344335ccb36cc81a3951924624883a7e5991e7aa3496f509e10f",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2462,6 +2465,7 @@
         "js/app/procgen/workstation/PhysicalMusicSensitivity.js",
         "js/app/procgen/workstation/PhysicalMusicStudy.js",
         "js/app/procgen/workstation/PhysicalMusicStudyCommands.js",
+        "js/app/procgen/workstation/PhysicalMusicStudyMetrics.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
         "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
@@ -2815,8 +2819,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 651,
-      "sha256": "67377468269e41c50ff6e24666e93a468e84feeb7c124c9d8702802f0d8147bc",
+      "fileCount": 652,
+      "sha256": "e3415ee01e92bdd66a0073d839c5df7c3f9dd00f71e741622346810ce551442e",
       "inventoryScope": "first-party-artifact"
     }
   ]

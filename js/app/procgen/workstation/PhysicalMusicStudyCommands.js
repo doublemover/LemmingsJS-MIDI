@@ -1,3 +1,4 @@
+import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { canonicalDataText, hashDataText } from '../../../core/CanonicalData.js';
 import { digestPlan, normalizeTerrainCommand, readTerrainCell } from '../TerrainAuthoringAdapter.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
@@ -5,9 +6,10 @@ import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 const fail = message => { throw Object.assign(new Error(message), { code: 'physical-study-domain' }); };
 const overlaps = (a, b) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
 export async function buildPhysicalMusicStudyInputs(world, goal, candidate, { baseTick = world.tickIndex, requestedAt = world.simulationTimeMs } = {}) {
-  const graph = JSON.parse(canonicalDataText(world.physicalAuthoring.graph, { maxBytes: 1048576, maxNodes: 65536 }).text), spans = [], skills = [], rectangles = [];
+  const graph = JSON.parse(canonicalDataText(world.physicalAuthoring.graph, { maxBytes: 1048576, maxNodes: 65536 }).text), spans = [], skills = [], rectangles = [], releaseEdits = [];
   let changedGraph = false, cells = 0, editCost = 0;
   for (const edit of candidate.edits) {
+    if (edit.kind === 'release-spread-ticks' || edit.kind === 'release-clock-mode') { releaseEdits.push(edit); editCost++; continue; }
     if (edit.kind === 'worker-tick') {
       if (!world.actors.some(actor => actor.id === edit.actorId)) fail('A skill handle names an absent source actor.');
       skills.push(edit); editCost++; continue;
@@ -47,6 +49,14 @@ export async function buildPhysicalMusicStudyInputs(world, goal, candidate, { ba
         expectedJunctionRevision: world.physicalJunctions.revision, expectedGraphDigest: digestPlan(world.physicalAuthoring.graph), graph: validateCausalInstrumentGraph(graph),
         instances: world.physicalAuthoring.instances, junctions: world.physicalJunctions.definitions,
         terrain: spans.length ? normalizeTerrainCommand({ version: 1, operation: 'replaceSolid', transactionId: prefix, generation: world.generation, spans, maxCells: 8192, maxChunks: 128 }) : null } } } });
+  }
+  if (releaseEdits.length) {
+    const population = world.population, current = population.releaseGesture;
+    if (!world.cohorts || !current || population.pendingReleaseGesture || new Set(releaseEdits.map(edit => edit.kind)).size !== releaseEdits.length) fail('A release study needs one current authored cohort policy, no pending replacement and distinct property handles.');
+    const next = JSON.parse(canonicalDataText(current).text); next.revision++;
+    for (const edit of releaseEdits) if (edit.kind === 'release-spread-ticks') next.spreadTicks = edit.value; else next.clockMode = edit.value ? 'adaptive' : 'locked';
+    const gesture = validateReleaseGesture(next, world.laneCount), id = 'study-release:' + (await hashDataText(canonicalDataText(gesture).text)).slice(0, 40);
+    inputs.push({ tick: baseTick, command: { id, kind: 'set-release-gesture', origin: 'manual', requestedAt, applyAtTick: baseTick + 1, target: { generation: world.generation }, parameters: { gesture } } });
   }
   for (const edit of skills) inputs.push({ tick: baseTick + edit.value - 1, command: { id: 'study-skill:' + (await hashDataText(canonicalDataText(edit).text)).slice(0, 40), kind: 'assign-worker', origin: 'manual',
     requestedAt, applyAtTick: baseTick + edit.value, target: { generation: world.generation, actorId: edit.actorId }, parameters: { workerKind: { builder: 'builders', basher: 'bashers', digger: 'diggers', miner: 'miners' }[edit.skillType] } } });

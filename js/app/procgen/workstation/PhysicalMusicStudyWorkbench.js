@@ -26,7 +26,8 @@ export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captur
         const input = { ...capsule.input, mode, goal, applicationBuildId: getActiveExecutionIdentity('browser-background-jobs').buildId }, inputBytes = canonicalDataText(input, { maxBytes: 4 * 1048576, maxNodes: 300000 }).bytes.length;
         result = await jobs.compute({ kind: 'physical-music-study', ownerId: 'physical-music-compose', ownerEpoch, sourceRevision: sourceIdentity, inputBytes,
           estimatedPeakBytes: 384 * 1048576, maxBytes: 16 * 1048576, deadlineMs: 180000, signal: controller.signal, budgetAdapter: resourceBudget, isCurrent,
-          prepareInput: () => input, onProgress: value => { progress = value; if (value.partial) { canonicalDataText(value.partial, { maxBytes: 262144, maxNodes: 16384 }); partial = freezeData(value.partial); } publish(); } });
+          prepareInput: () => input, onProgress: value => { const { partial: receipt, ...presentation } = value; progress = presentation;
+            if (receipt) { try { canonicalDataText(receipt, { maxBytes: 262144, maxNodes: 16384 }); partial = freezeData(receipt); } catch { /* Keep the preceding admitted receipt; oversized progress does not retain uncharged data. */ } } publish(); } });
         controller.signal.throwIfAborted(); if (!isCurrent()) throw new Error('The completed study belongs to a stale source.');
         const value = result.value; retained = result; result = null; study = value.study; sensitivity = value.sensitivity;
         selectedId = study.selected?.candidateId || study.rows[0]?.id || null; progress = null; publish(); return study;

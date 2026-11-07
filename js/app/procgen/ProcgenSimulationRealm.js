@@ -41,7 +41,7 @@ export async function prepareProcgenSimulationRealm({ manifest, resourceBudget, 
       scoreTimeline: manifest.scoreTimeline, playing: manifest.playing, bpm: manifest.bpm, requiredConsumer, onState,
       getPerformance: () => performance.snapshot(), applyPerformance: value => { const next = createCausalPerformanceState(value.performance), nextGraph = validateCausalInstrumentGraph(value.graph); performance = next; graph = nextGraph; },
       disposeWorld, observePhysicalFeedback: (batch, analysis) => feedback?.observe(batch, analysis), getExecutionPolicy: () => policy });
-    return Object.freeze({ host: core, restoredContinuationHash: actual, execution: 'world-and-causal-music-in-owning-realm' });
+    return Object.freeze({ host: core, physicalAnalysis: () => engine.physicalAnalysis(), restoredContinuationHash: actual, execution: 'world-and-causal-music-in-owning-realm' });
   } catch (error) {
     if (core) { const receipt = core.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; }
     else {

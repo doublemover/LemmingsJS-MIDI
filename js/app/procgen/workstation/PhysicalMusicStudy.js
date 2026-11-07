@@ -11,7 +11,8 @@ import { hashProcgenContinuationCheckpoint } from './ProcgenCheckpointProvenance
 import { readTerrainCell } from '../TerrainAuthoringAdapter.js';
 import { createBranchPrefixCache, createBranchPrefixSource } from './BranchPrefixCache.js';
 import { buildPhysicalMusicStudyInputs } from './PhysicalMusicStudyCommands.js';
-import { validatePhysicalMusicGoal, enumeratePhysicalMusicCandidates, evaluatePhysicalMusicGoal } from './PhysicalMusicGoal.js';
+import { summarizePhysicalMusicStudyMetrics } from './PhysicalMusicStudyMetrics.js';
+import { validatePhysicalMusicGoal, enumeratePhysicalMusicCandidates, evaluatePhysicalMusicGoal, evaluatePhysicalMusicInvariants } from './PhysicalMusicGoal.js';
 
 const MiB = 1048576, encoded = value => canonicalDataText(value, { maxBytes: 8 * MiB, maxNodes: 524288 }).text;
 const fail = (code, message) => { throw Object.assign(new Error(message), { code }); };
@@ -32,13 +33,14 @@ function admitSource(world, goal, mode) {
   const actors = world.actors.filter(live), population = world.population, finite = !world.cohorts || !population.pendingReleaseGesture && !population.adaptive &&
     (population.releaseGesture?.paused === true || population.gestureRun?.remaining === 0);
   if (world._failedTick || world.interventionState.pending.length || !actors.length || actors.length > goal.crewConstraints.maximumActors || world.actors.length !== actors.length || actors.some(actor => !inside(actor, goal.crewConstraints.containment))) fail('physical-study-domain', 'Study one completed source with a bounded living crew inside its declared containment and no pending inputs.');
+  if (mode === 'search' && goal.allowedEdits.some(edit => edit.kind.startsWith('release-'))) fail('physical-study-domain', 'Release spread/adaptive-clock changes belong to sensitivity studies; finite-crew goal search does not add a new entrant domain.');
   if (mode === 'search' && (world.assists !== false || !finite || actors.some(actor => actor.canClimb || actor.hasParachute || ![world.actions[State.WALKING], world.actions[State.FALLING]].includes(actor.action))))
     fail('physical-study-domain', 'Goal search currently requires ordinary walking/falling actors, assistance off, and an unchanged finite/paused release policy with no future births.');
   const b = goal.crewConstraints.containment; if (b.x1 < world.leftEdgeX || b.x2 > world.width || b.y2 > world.height) fail('physical-study-domain', 'Containment leaves the actual source world.');
   return { actorIds: actors.map(actor => actor.id).sort((a, b) => a - b), generation: world.generation, protected: protectedCells(world, goal), finite, assists: world.assists,
     release: copy(population.snapshot()), initialActorCount: actors.length };
 }
-const emptyTrace = () => ({ onsets: [], causeKinds: [], factCount: 0, packetHashes: [], correspondence: [], discontinuities: [], safetyFailures: [], rejectedInputs: [], minimumLiving: null, maximumLiving: 0, terrainRevision: null });
+const emptyTrace = (heldVoices = []) => ({ heldVoices: [...heldVoices], maximumSemanticPolyphony: heldVoices.length, polyphonySum: 0, polyphonyBoundaries: 0, motifOccurrences: [], restObservations: [], births: 0, terminations: 0, censoredObservations: [], onsets: [], causeKinds: [], factCount: 0, packetHashes: [], correspondence: [], discontinuities: [], safetyFailures: [], rejectedInputs: [], minimumLiving: null, maximumLiving: 0, terrainRevision: null });
 const addUnique = (array, value) => { if (!array.includes(value)) array.push(value); };
 function observeSafety(world, goal, trace, source, mode) {
   const actors = world.actors.filter(live), ids = new Set(actors.map(actor => actor.id));
@@ -66,22 +68,36 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
   let constraints = null, selected = null, timeout = false, logicalLimit = false, planningOwner = null, planningWorld = null, basePhysicalHash = null;
   const check = () => { signal?.throwIfAborted(); if (!current()) fail('physical-study-stale', 'The study source changed.'); };
   let sourceIdentity = null;
+  const initialHeld = (source.engine.active || []).map(voice => JSON.stringify([start.worldId, voice.generation, voice.voiceId]));
   const run = async (candidate, { fresh = false, allUpfront = false } = {}) => {
-    let realm = null, world = null, reader = null, trace = emptyTrace(), consumed = 0, appliedInitial = null, auditionInitial = null, inputs = null, editCost = 0, patchHash = null;
+    let realm = null, world = null, reader = null, trace = emptyTrace(initialHeld), held = new Set(initialHeld), consumed = 0, appliedInitial = null, auditionInitial = null, inputs = null, editCost = 0, patchHash = null;
     const packet = async value => {
-      const batch = value.batch; trace.factCount += batch.facts.length;
+      const batch = value.batch, analysis = realm.physicalAnalysis(), derived = analysis?.batchId === batch.batchId ? analysis.facts || [] : [];
+      if (batch.completeness?.status !== 'complete' || analysis?.completeness.status === 'censored') addUnique(trace.censoredObservations, 'incomplete-physical-or-derived-observation');
+      trace.factCount += batch.facts.length + derived.length;
       if (trace.factCount > (goal.budgets.maximumFacts ?? 65536)) fail('physical-study-trace', 'The complete physical trace exceeds its admitted fact profile.');
       const causal = [];
-      for (const fact of batch.facts) {
+      for (const fact of [...batch.facts, ...derived]) {
         addUnique(trace.causeKinds, fact.kind);
-        if (fact.kind !== 'MotionCommitted') causal.push([fact.kind, fact.actorId ?? null, fact.laneId ?? null, fact.action ?? null, fact.causeKind ?? null, fact.reason ?? null, fact.junctionId ?? null, fact.topologyBinding?.componentId ?? null]);
+        if (fact.kind !== 'MotionCommitted') causal.push([fact.kind, fact.actorId ?? null, fact.laneId ?? null, fact.action ?? null, fact.causeKind ?? null, fact.reason ?? null, fact.junctionId ?? null, fact.topologyBinding?.componentId ?? null, fact.gateId ?? null, fact.motifId ?? null, fact.routeId ?? null, fact.direction ?? null]);
         if (['CommandRejected', 'CommandWaiting', 'BirthAdmitted', 'BirthAdmissionMissed', 'ActorBorn', 'ActorRemoved', 'GenerationEnded', 'JunctionExpired'].includes(fact.kind)) {
           if (trace.discontinuities.length >= 1024) fail('physical-study-trace', 'Discontinuity trace exceeds its complete admitted profile.');
           trace.discontinuities.push({ tick: batch.tick - start.tickIndex, kind: fact.kind, actorId: fact.actorId ?? null, commandId: fact.commandId ?? null, reason: fact.reason ?? null });
         }
+        if (fact.kind === 'ActorBorn') trace.births++; if (fact.kind === 'ActorTerminated') trace.terminations++;
+        if (['MotifCompleted', 'RestStarted', 'RestEnded'].includes(fact.kind)) { const collection = fact.kind === 'MotifCompleted' ? trace.motifOccurrences : trace.restObservations;
+          if (collection.length >= 512) fail('physical-study-trace', 'Complete motif/rest observations exceed the admitted study profile.');
+          collection.push({ kind: fact.kind, tick: batch.tick - start.tickIndex, motifId: fact.motifId ?? null, actorId: fact.actorId ?? null, sourceEventIds: fact.sourceEventIds || (fact.eventId ? [fact.eventId] : []) });
+        }
         if (fact.kind === 'CommandRejected') addUnique(trace.rejectedInputs, fact.commandId);
       }
       if (causal.length) trace.correspondence.push(...causal);
+      for (const intent of value.intents) { const key = JSON.stringify([intent.worldId, intent.generation, intent.voiceId]);
+        if (intent.kind === 'begin') held.add(key); else if (intent.kind === 'end') held.delete(key);
+        if (held.size > 4096) fail('physical-study-trace', 'Semantic voice tracking exceeds the complete4096-voice profile.');
+        trace.maximumSemanticPolyphony = Math.max(trace.maximumSemanticPolyphony, held.size);
+      }
+      trace.heldVoices = [...held].sort(); trace.polyphonySum += held.size; trace.polyphonyBoundaries++;
       for (const intent of value.intents) if (intent.kind === 'begin') {
         addUnique(trace.causeKinds, intent.physicalSourceKind);
         if (trace.onsets.length >= (goal.budgets.maximumOnsets ?? 2048)) fail('physical-study-trace', 'The complete actual-onset trace exceeds its admitted profile.');
@@ -105,8 +121,8 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       if (reader) {
         const restored = reader.read(), restoreStarted = now(); await prepare(restored);
         const actual = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB });
-        if (await reader.verify(actual)) { trace = copy(restored.study); consumed = reader.receipt.appliedInputCount; work.restoredTicks += world.tickIndex - start.tickIndex; work.restoreMs += Math.max(0, now() - restoreStarted); }
-        else { reader.invalidate(); await retire(realm.host); realm = null; await prepare(source); trace = emptyTrace(); }
+        if (await reader.verify(actual)) { trace = copy(restored.study); held = new Set(trace.heldVoices); consumed = reader.receipt.appliedInputCount; work.restoredTicks += world.tickIndex - start.tickIndex; work.restoreMs += Math.max(0, now() - restoreStarted); }
+        else { reader.invalidate(); await retire(realm.host); realm = null; await prepare(source); trace = emptyTrace(initialHeld); held = new Set(initialHeld); }
         reader.release(); reader = null;
       } else await prepare(source);
       observeSafety(world, goal, trace, constraints, mode);
@@ -128,10 +144,12 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         if ((world.tickIndex - start.tickIndex) % 16 === 0) { await yieldControl(); check(); }
       }
       const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }), completed = world.tickIndex === endTick,
-        metrics = evaluatePhysicalMusicGoal(goal, trace.onsets, { causeKinds: trace.causeKinds, editCost }), traceHash = await hashDataText(encoded(trace)),
+        semanticMetrics = summarizePhysicalMusicStudyMetrics(trace, { throughTicks: world.tickIndex - start.tickIndex, sourceTimeMs: planningWorld.simulationTimeMs, finalTimeMs: world.simulationTimeMs, finalPopulation: copy(world.population.snapshot()) }),
+        musical = evaluatePhysicalMusicGoal(goal, trace.onsets, { causeKinds: trace.causeKinds, editCost }), invariantResults = evaluatePhysicalMusicInvariants(goal, semanticMetrics),
+        metrics = { ...musical, semanticMetrics, invariantResults, requestedMetricsMet: musical.requestedMetricsMet === true && invariantResults.allMet }, traceHash = await hashDataText(encoded(trace)),
         continuationHash = await hashDataText(encoded({ world: continuation.world, engine: continuation.engine, timeline: continuation.timeline, replay: continuation.replay, executionPolicy: continuation.executionPolicy }));
       return { id: candidate.id, values: candidate.values, edits: candidate.edits, patchHash, baseContinuationHash: sourceIdentity.baseContinuationHash, mappingRevision: source.authoring.graph.revision, constraintRevision: goal.revision,
-        status: completed && !trace.safetyFailures.length && !trace.rejectedInputs.length ? 'sample-safe' : trace.safetyFailures.length || trace.rejectedInputs.length ? 'sample-failed' : 'unknown', completed,
+        status: completed && !trace.censoredObservations.length && !trace.safetyFailures.length && !trace.rejectedInputs.length ? 'sample-safe' : trace.safetyFailures.length || trace.rejectedInputs.length ? 'sample-failed' : 'unknown', completed,
         metrics, trace, traceHash, continuationHash, throughTick: world.tickIndex, appliedInitial, auditionInitial, inputs };
     } finally { reader?.release(); await retire(realm?.host); }
   };
@@ -153,12 +171,15 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         rows.push(retained); }
       catch (error) { check(); if (error.code === 'physical-study-retirement' || !constraints) throw error; rows.push({ id: candidate.id, values: candidate.values, edits: candidate.edits, status: 'unknown', reason: error.message }); }
       onProgress({ phase: mode === 'search' ? 'searching-real-physical-candidates' : 'sampling-real-physical-sensitivity', completed: rows.length, total: domain.candidates.length, logicalTicks: work.logicalTicks, computedTicks: work.computedTicks,
-        partial: { status: 'completed-samples-only;no-fresh-qualification', goal, mode, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, physicalHash: basePhysicalHash, projectRevision: input.projectRevision }, completed: rows.length, totalCombinations: domain.totalCombinations, omittedEarlierSamples: Math.max(0, rows.length - 16),
+        partial: { status: 'completed-samples-only;no-fresh-qualification', goal, mode, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, seed: source.world.seed, physicalHash: basePhysicalHash, projectRevision: input.projectRevision }, completed: rows.length, totalCombinations: domain.totalCombinations, omittedEarlierSamples: Math.max(0, rows.length - 16),
           baseContinuationHash: sourceIdentity.baseContinuationHash, mappingHash: sourceIdentity.mappingHash,
           samples: rows.slice(-16).map(row => ({ id: row.id, values: row.values, status: row.status, reason: row.reason || null, patchHash: row.patchHash || null,
             safetyFailures: row.trace?.safetyFailures || [], rejectedInputs: row.trace?.rejectedInputs || [],
-            metrics: row.metrics ? { score: row.metrics.score ?? null, requestedMetricsMet: row.metrics.requestedMetricsMet ?? false, missed: row.metrics.missedTargets?.length ?? null, extra: row.metrics.extraActualOnsets?.length ?? null,
-              periods: (row.metrics.periods || []).map(period => ({ selector: period.selector, observations: period.observations, meanTicks: period.meanTicks, minimumTicks: period.minimumTicks, maximumTicks: period.maximumTicks, satisfied: period.satisfied })) } : null })) } });
+            metrics: row.metrics ? { semantic: row.metrics.semanticMetrics ? { maximumSemanticPolyphony: row.metrics.semanticMetrics.semanticPolyphony.maximum, onsetsPer100Ticks: row.metrics.semanticMetrics.onsetsPer100Ticks,
+              maximumOnsetFreeGapTicks: row.metrics.semanticMetrics.onsetFreeGaps.maximumTicks, births: row.metrics.semanticMetrics.crew.births, terminations: row.metrics.semanticMetrics.crew.terminations, motifCounts: row.metrics.semanticMetrics.motifCounts,
+              realizedRelease: { adaptive: row.metrics.semanticMetrics.realizedReleasePolicy.adaptive, intervalTicks: row.metrics.semanticMetrics.realizedReleasePolicy.intervalTicks, gestureRun: row.metrics.semanticMetrics.realizedReleasePolicy.gestureRun || null } } : null,
+            invariants: row.metrics.invariantResults || null, score: row.metrics.score ?? null, requestedMetricsMet: row.metrics.requestedMetricsMet ?? false, missed: row.metrics.missedTargets?.length ?? null, extra: row.metrics.extraActualOnsets?.length ?? null,
+            periods: (row.metrics.periods || []).map(period => ({ selector: period.selector, observations: period.observations, meanTicks: period.meanTicks, minimumTicks: period.minimumTicks, maximumTicks: period.maximumTicks, satisfied: period.satisfied })) } : null })) } });
       await yieldControl();
     }
     if (mode === 'search') {
@@ -172,7 +193,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       }
     }
     const complete = rows.length === domain.totalCombinations && rows.every(row => row.status === 'sample-failed' || row.status === 'sample-safe' && row.metrics?.status === 'evaluated'), metricsMet = selected?.requestedMetricsMet === true;
-    return freezeData({ schema: 'lemmings-physical-music-study/v1', mode, goal, sourceIdentity, sourceBytes, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, physicalHash: basePhysicalHash, projectRevision: input.projectRevision },
+    return freezeData({ schema: 'lemmings-physical-music-study/v1', mode, goal, sourceIdentity, sourceBytes, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, seed: source.world.seed, physicalHash: basePhysicalHash, projectRevision: input.projectRevision },
       status: mode === 'sensitivity' ? complete ? 'sampled' : timeout ? 'timeout' : 'partial' : metricsMet ? 'qualified' : timeout ? 'timeout' : selected ? complete ? 'no-match-in-finite-domain' : 'partial' : 'unknown',
       rows, selected, domain: { ...domain, candidates: domain.candidates.map(candidate => ({ id: candidate.id, values: candidate.values })) }, constraints,
       work: { ...work, cache: cache ? { ...cache.state(), enabled: true } : { enabled: false }, peakAccountedBytes: budget.diagnostics().peakAccountedBytes, elapsedMs: Math.max(0, now() - started) },
@@ -181,7 +202,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
   } catch (error) {
     check(); if (error.code !== 'physical-study-domain') throw error;
     return freezeData({ schema: 'lemmings-physical-music-study/v1', mode, status: 'unsupported', reason: error.message, goal, sourceIdentity, sourceBytes,
-      base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, physicalHash: basePhysicalHash, projectRevision: input.projectRevision }, rows, selected: null, constraints,
+      base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, seed: source.world.seed, physicalHash: basePhysicalHash, projectRevision: input.projectRevision }, rows, selected: null, constraints,
       domain: { ...domain, candidates: domain.candidates.map(candidate => ({ id: candidate.id, values: candidate.values })) },
       work: { ...work, cache: cache ? { ...cache.state(), enabled: true } : { enabled: false }, elapsedMs: Math.max(0, now() - started) },
       coverage: { completeDomain: false, allCandidatesVisited: false, unresolvedCandidates: domain.totalCombinations, untestedCandidates: domain.totalCombinations - rows.length, sourceUnchanged: true, outputs: 'none', reason: error.message } });

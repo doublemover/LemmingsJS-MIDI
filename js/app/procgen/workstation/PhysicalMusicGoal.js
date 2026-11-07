@@ -13,7 +13,7 @@ const matches = (onset, selection) => Object.entries(selection).every(([key, val
 const weights = Object.freeze({ missed: 4, extra: 2, timing: 1, period: 1, edits: .01 });
 export function validatePhysicalMusicGoal(raw) {
   const goal = JSON.parse(canonicalDataText(raw, { maxBytes: 262144, maxNodes: 32768 }).text);
-  if (!keys(goal, ['schema', 'id', 'revision', 'timeDomain', 'referenceTimeline', 'targetOnsets', 'periodGoals', 'periodRatios', 'requiredCauseKinds', 'forbiddenCauses', 'allowedEdits', 'crewConstraints', 'skillInventory', 'horizon', 'objectiveWeights', 'budgets']) ||
+  if (!keys(goal, ['schema', 'id', 'revision', 'timeDomain', 'referenceTimeline', 'targetOnsets', 'periodGoals', 'periodRatios', 'requiredCauseKinds', 'forbiddenCauses', 'allowedEdits', 'crewConstraints', 'skillInventory', 'horizon', 'objectiveWeights', 'musicalInvariants', 'budgets']) ||
       goal.schema !== 'lemmings-physical-music-goal/v1' || !id(goal.id) || !integer(goal.revision, 1) || !['ticks', 'seconds', 'beats'].includes(goal.timeDomain) || !integer(goal.horizon, 1, 4096)) fail('Use a versioned finite physical-music goal and an explicit tick horizon.');
   if (goal.timeDomain !== 'ticks' && (!keys(goal.referenceTimeline, ['tickDurationMs', 'tempoBpm']) || !finite(goal.referenceTimeline.tickDurationMs, .001, 60000) || goal.timeDomain === 'beats' && !finite(goal.referenceTimeline.tempoBpm, .001, 1000000))) fail('Seconds or beats require an explicit fixed study clock; piecewise clocks need their own supported study.');
   if (goal.timeDomain === 'ticks' && goal.referenceTimeline != null) fail('A physical-tick goal does not imply a musical or wall-clock conversion.');
@@ -29,8 +29,9 @@ export function validatePhysicalMusicGoal(raw) {
   for (const list of [goal.requiredCauseKinds || [], goal.forbiddenCauses || []]) if (!Array.isArray(list) || list.length > 32 || new Set(list).size !== list.length || list.some(value => !id(value))) fail('Cause constraints must name distinct bounded physical/derived source kinds.');
   if (!Array.isArray(goal.allowedEdits) || goal.allowedEdits.length > 8 || new Set(goal.allowedEdits.map(edit => edit.id)).size !== goal.allowedEdits.length) fail('Choose at most eight distinct finite physical edit handles.');
   for (const edit of goal.allowedEdits) {
-    if (!keys(edit, ['id', 'kind', 'laneId', 'bounds', 'pickupId', 'actorId', 'skillType', 'values']) || !id(edit.id) || !['right-wall-x', 'pickup-x', 'worker-tick'].includes(edit.kind) ||
+    if (!keys(edit, ['id', 'kind', 'laneId', 'bounds', 'pickupId', 'actorId', 'skillType', 'values']) || !id(edit.id) || !['right-wall-x', 'pickup-x', 'worker-tick', 'release-spread-ticks', 'release-clock-mode'].includes(edit.kind) ||
         !Array.isArray(edit.values) || !edit.values.length || edit.values.length > 64 || edit.values.some(value => !integer(value, edit.kind === 'worker-tick' ? 1 : 0, edit.kind === 'worker-tick' ? goal.horizon : 1000000)) || new Set(edit.values).size !== edit.values.length) fail('Every physical handle needs a finite distinct integer domain.');
+    if (edit.kind === 'release-spread-ticks' && edit.values.some(value => value > 53) || edit.kind === 'release-clock-mode' && edit.values.some(value => value !== 0 && value !== 1)) fail('Release samples use0..53 spread ticks or clock mode0=locked/1=adaptive.');
     if (edit.kind === 'right-wall-x' && (!integer(edit.laneId, 0, 1023) || !bounds(edit.bounds) || edit.values.some(value => value < edit.bounds.x1 || value > edit.bounds.x2))) fail('A wall domain needs its exact editable world rectangle.');
     if (edit.kind === 'pickup-x' && !id(edit.pickupId)) fail('A pickup domain needs the actual authored pickup identity.');
     if (edit.kind === 'worker-tick' && (!integer(edit.actorId) || !['builder', 'basher', 'digger', 'miner'].includes(edit.skillType))) fail('A skill-time domain needs one real actor and supported shared action.');
@@ -43,6 +44,10 @@ export function validatePhysicalMusicGoal(raw) {
   if (!keys(budget, ['maximumCandidates', 'logicalTicks', 'wallTimeMs', 'maximumOnsets', 'maximumFacts', 'finalists']) || !integer(budget.maximumCandidates, 1, 64) || !integer(budget.logicalTicks, 1, 262144) ||
       budget.wallTimeMs != null && !integer(budget.wallTimeMs, 1, 60000) || !integer(budget.maximumOnsets ?? 2048, 1, 8192) || !integer(budget.maximumFacts ?? 65536, 1, 262144) || !integer(budget.finalists ?? 1, 1, 4)) fail('Choose explicit candidate/logical-work/trace/finalist bounds.');
   if (goal.objectiveWeights != null && (!keys(goal.objectiveWeights, Object.keys(weights)) || Object.values(goal.objectiveWeights).some(value => !finite(value, 0, 1000)))) fail('Goal weights must remain finite and bounded.');
+  const invariants = goal.musicalInvariants || {};
+  if (!keys(invariants, ['maximumSemanticPolyphony', 'maximumOnsetFreeGapTicks', 'minimumMotifCompletions']) || invariants.maximumSemanticPolyphony != null && !integer(invariants.maximumSemanticPolyphony, 0, 4096) || invariants.maximumOnsetFreeGapTicks != null && !finite(invariants.maximumOnsetFreeGapTicks, 0, goal.horizon) ||
+      invariants.minimumMotifCompletions != null && (!Array.isArray(invariants.minimumMotifCompletions) || invariants.minimumMotifCompletions.length > 16 || invariants.minimumMotifCompletions.some(value => !keys(value, ['motifId', 'count']) || !id(value.motifId) || !integer(value.count, 0, 512)))) fail('Musical invariants need bounded semantic polyphony, onset-free gaps and actual motif completion counts.');
+  goal.musicalInvariants = invariants;
   goal.objectiveWeights = { ...weights, ...goal.objectiveWeights }; if (!goal.objectiveWeights.missed || !goal.objectiveWeights.extra) fail('Missing and extra actual attacks must retain positive cost.');
   goal.targetOnsets = targets; goal.periodGoals = periods; goal.periodRatios = ratios; goal.requiredCauseKinds ||= []; goal.forbiddenCauses ||= [];
   return freezeData(goal);
@@ -103,4 +108,13 @@ export function evaluatePhysicalMusicGoal(raw, onsets, { causeKinds = [], editCo
   return freezeData({ status: 'evaluated', score, matched, missedTargets: missed, extraActualOnsets: extras, absoluteTimingErrorTicks: absoluteTimingError, periods, ratios, missingCauseKinds, forbiddenCauseKinds, editCost,
     requestedMetricsMet: !missed.length && !extras.length && periods.every(result => result.satisfied) && ratios.every(result => result.satisfied) && !missingCauseKinds.length && !forbiddenCauseKinds.length,
     authority: 'actual-onset-metrics;physical-safety-and-independent-fresh-finalist-replay-remain-required' });
+}
+
+export function evaluatePhysicalMusicInvariants(goal, metrics) {
+  const constraints = goal.musicalInvariants || {}, rows = [], maximum = (kind, requested, actual) => { if (requested != null) rows.push({ kind, requestedMaximum: requested, actual: actual ?? null, status: actual == null ? 'unknown' : actual <= requested ? 'met' : 'failed' }); };
+  maximum('semantic-polyphony', constraints.maximumSemanticPolyphony, metrics?.semanticPolyphony?.maximum);
+  maximum('onset-free-gap-ticks', constraints.maximumOnsetFreeGapTicks, metrics?.onsetFreeGaps?.maximumTicks);
+  for (const request of constraints.minimumMotifCompletions || []) { const actual = metrics?.observationCoverage === 'complete-admitted-observation-profile' ? Object.hasOwn(metrics.motifCounts, request.motifId) ? metrics.motifCounts[request.motifId] : 0 : null;
+    rows.push({ kind: 'motif-completions', motifId: request.motifId, requestedMinimum: request.count, actual, status: actual == null ? 'unknown' : actual >= request.count ? 'met' : 'failed' }); }
+  return freezeData({ results: rows, allMet: rows.every(row => row.status === 'met'), coverage: rows.some(row => row.status === 'unknown') ? 'unknown' : 'complete' });
 }
