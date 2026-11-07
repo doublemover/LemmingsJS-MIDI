@@ -52,3 +52,11 @@ export async function createTimbreTuningRecipe(kind = 'harmonic', { stretch = 1.
     degreeRatios: (kind === 'metal' ? [1, 1.16, 1.5] : [1, 1.25, 1.5]).map(ratio => ratio ** exponent), periodRatio: 2 ** exponent, referenceHz, referenceCents: 6900,
     registerDomain: { minimumHz: 110, maximumHz: 440 }, coupledMorph: { linked: kind === 'stretched', kind: 'power-stretch', stretch: exponent }, heldPolicy: 'onset-only', renderer: { engineId: 'worklet-spectrum', engineVersion: 1 }, analysisReceipt: null });
 }
+
+export function validateTimbreTuningBinding(raw, reference) {
+  const set = validateTimbreTuningSet(raw), definition = reference?.definition, parameters = definition?.parameters, t60 = Math.max(...set.partialT60Seconds);
+  if (reference?.patchId !== set.id || reference.revision !== set.revision || definition?.engineId !== set.renderer.engineId || definition.engineVersion !== set.renderer.engineVersion ||
+      parameters.sourceMode !== 1 || parameters.partialCount !== set.partialRatios.length || parameters.partialDecaySeconds !== t60 ||
+      set.partialRatios.some((ratio, index) => parameters['partial' + index + 'Ratio'] !== ratio || parameters['partial' + index + 'Gain'] !== (set.partialProvenance[index].kind === 'disabled' ? 0 : set.partialGains[index]) || parameters['partial' + index + 'T60Scale'] !== set.partialT60Seconds[index] / t60)) throw new Error('The saved pair differs from its exact prepared spectrum definition.');
+  return set;
+}

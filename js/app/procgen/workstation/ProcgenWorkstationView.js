@@ -1,5 +1,6 @@
 import { createPhysicalMusicComposeView } from './PhysicalMusicComposeView.js';
 import { createPhysicalCounterfactualView } from './PhysicalCounterfactualView.js';
+import { createTimbreTuningBenchView } from './TimbreTuningBenchView.js';
 import { inspectNativeEndpointTransport, OS_NETWORK_MIDI2_CONSENT } from '../../../midi/native/NativeEndpointTransport.js';
 import { defaultTimeTransform, validateTimeTransform, hasActiveTimeTransform } from '../../../midi/content/TimeTransform.js';
 import { createProcgenNoticeView } from './ProcgenNoticeView.js';
@@ -63,12 +64,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   let recentDraftKnob = null, recentDraftCurve = null, draftRevision = 0;
   const ownedKnobs = () => [...new Set([...parameterControls, ...laneMixControls.values(), ...lanePanControls.values()])].filter(control => control.element.isConnected);
   const createOwnedParameter = options => { let control, revision = 0; control = createParameterKnob({ ...options, onEntryActivity: event => { const current = control?.inspect(); if (current && revision !== current.textRevision) { revision = current.textRevision; draftRevision++; } if (current?.textDirty && typeof WeakRef === 'function') recentDraftKnob = new WeakRef(control); options.onEntryActivity?.(event); } }); return control; };
-  const pendingDraftState = () => { const native = controlTree.draftState(), knobs = ownedKnobs().map(control => ({ control, state: control.inspect() })); return Object.freeze({ textDrafts: native.count + knobs.filter(value => value.state.textDirty).length + retainedLaneDrafts.size + (composeView?.hasDraft() ? 1 : 0) + (counterfactualView?.hasDraft() ? 1 : 0), curveDrafts: [...curveEditors.values()].filter(value => { const state = value.control.inspect(); return state.dirty || state.conflict; }).length, revision: draftRevision, fieldRevision: native.revision, gestures: Math.max(pointerArbiter.inspect() ? 1 : 0, knobs.filter(value => value.state.gestureId != null).length), labels: Object.freeze([...native.labels, ...knobs.filter(value => value.state.textDirty).map(value => String(value.control.descriptor.name || 'Parameter').slice(0, 96))].slice(0, 8)) }); };
+  const pendingDraftState = () => { const native = controlTree.draftState(), knobs = ownedKnobs().map(control => ({ control, state: control.inspect() })); return Object.freeze({ textDrafts: native.count + knobs.filter(value => value.state.textDirty).length + retainedLaneDrafts.size + (composeView?.hasDraft() ? 1 : 0) + (counterfactualView?.hasDraft() ? 1 : 0) + (timbreTuningView?.hasDraft() ? 1 : 0), curveDrafts: [...curveEditors.values()].filter(value => { const state = value.control.inspect(); return state.dirty || state.conflict; }).length, revision: draftRevision, fieldRevision: native.revision, gestures: Math.max(pointerArbiter.inspect() ? 1 : 0, knobs.filter(value => value.state.gestureId != null).length), labels: Object.freeze([...native.labels, ...knobs.filter(value => value.state.textDirty).map(value => String(value.control.descriptor.name || 'Parameter').slice(0, 96))].slice(0, 8)) }); };
   const restoreReplacementFocus = identity => { if (disposed || String(getDocumentIdentity()) !== identity) return false; const knobs = ownedKnobs(), recent = recentDraftKnob?.deref(); if (knobs.includes(recent) && recent.focusDraft()) return true; if (controlTree.focusDraft() || knobs.some(control => control.focusDraft())) return true;
     const recentCurve = recentDraftCurve?.deref(), entry = [...curveEditors.values()].find(value => value.control === recentCurve && (value.control.inspect().dirty || value.control.inspect().conflict));
     if (!entry) return false; state.laneId = entry.laneId; state.tab = 'Automation'; dock.open(); render(); return entry.control.focusDraft(); };
   let parameterScope = null, parameterSeen = null, viewRevision = 0, curveDocumentIdentity = getDocumentIdentity();
-  let midiRouteView = null, midiRouteState = null, mixDocumentIdentity = null, variationsView = null, composeView = null, counterfactualView = null;
+  let midiRouteView = null, midiRouteState = null, mixDocumentIdentity = null, variationsView = null, composeView = null, counterfactualView = null, timbreTuningView = null;
   const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
   const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
   const on = (element, event, handler, options) => { element.addEventListener(event, handler, options); listeners.push(() => element.removeEventListener(event, handler, options)); };
@@ -628,7 +629,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   function renderInspector() {
     if (disposed) return;
-    const composeFocus = (state.tab === 'Compose' && composeView?.element.contains(document.activeElement) || state.tab === 'Compare' && counterfactualView?.element.contains(document.activeElement)) ? document.activeElement : null;
+    const composeFocus = (state.tab === 'Compose' && composeView?.element.contains(document.activeElement) || state.tab === 'Compare' && counterfactualView?.element.contains(document.activeElement) || state.tab === 'Spectrum' && timbreTuningView?.element.contains(document.activeElement)) ? document.activeElement : null;
     const harmonyFocus = state.tab === 'Harmony' && harmonyView?.element.contains(document.activeElement) ? document.activeElement : null;
     if (state.tab !== 'Harmony' || !dock.visible()) handlers.closeHarmony?.();
     if (!dock.visible()) { viewRevision++; parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]); return; }
@@ -641,7 +642,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const step = pattern?.steps[state.step];
     if (!pattern && ['Step', 'Chord'].includes(state.tab)) state.tab = 'Lane';
     parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]);
-    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'Harmony', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'] : ['Lane', 'Physical', 'Compose', 'Compare', 'Harmony', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); handlers.preferences?.(); }); el.id = 'procgen-dock-tab-' + tab; el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', String(state.tab === tab)); el.setAttribute('aria-controls', dock.panelId(tab)); el.tabIndex = state.tab === tab ? 0 : -1; nextTabs.append(el); }
+    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'Harmony', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'] : ['Lane', 'Physical', 'Compose', 'Compare', 'Spectrum', 'Harmony', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); handlers.preferences?.(); }); el.id = 'procgen-dock-tab-' + tab; el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', String(state.tab === tab)); el.setAttribute('aria-controls', dock.panelId(tab)); el.tabIndex = state.tab === tab ? 0 : -1; nextTabs.append(el); }
     fields.setAttribute('aria-labelledby', 'procgen-dock-tab-' + state.tab);
     nextFields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
@@ -1032,6 +1033,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         apply: () => handlers.applyPhysicalMusicCandidate?.(), prepareStarter: () => handlers.preparePhysicalMusicStarter?.(), prepareAudition: () => handlers.preparePhysicalMusicAudition?.(),
         readAudition: () => handlers.physicalMusicAuditionState?.(), runAudition: () => handlers.resumeSimulationWorkbench?.(), stopAudition: () => handlers.closeSimulationWorkbench?.(), exportReport: () => handlers.exportPhysicalMusicStudyReport?.(), onDraftChange: () => { draftRevision++; }, onStatus: message => setStatus(message) });
       nextFields.append(composeView.element); composeView.render();
+    } else if (state.tab === 'Spectrum') {
+      timbreTuningView ||= createTimbreTuningBenchView({ document, readSource: () => handlers.timbreTuningSource?.(), readState: () => handlers.timbreTuningBenchState?.(),
+        open: recipe => handlers.openTimbreTuningBench?.(recipe), edit: raw => handlers.editTimbreTuningDraft?.(raw), analyze: options => handlers.analyzeTimbreTuningDraft?.(options),
+        invalidateAnalysis: () => handlers.invalidateTimbreTuningAnalysis?.(), prepare: options => handlers.prepareTimbreTuningPair?.(options), commit: () => handlers.commitTimbreTuningPair?.(),
+        restore: () => handlers.restoreTimbreTuningBaseline?.(), cancel: () => handlers.cancelTimbreTuningBench?.(), onDraftChange: () => { draftRevision++; }, onStatus: message => setStatus(message) });
+      nextFields.append(timbreTuningView.element); timbreTuningView.render();
     } else if (state.tab === 'Compare') {
       counterfactualView ||= createPhysicalCounterfactualView({ document, resourceBudget, readSource: () => handlers.physicalMusicSource?.(), readState: () => handlers.physicalMusicStudyState?.(),
         start: request => handlers.startPhysicalCounterfactual?.(request), cancel: () => handlers.cancelPhysicalMusicStudy?.(), select: id => handlers.selectPhysicalMusicCandidate?.(id),
@@ -1164,7 +1171,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     controlTree.reconcile(tabs, nextTabs, 'tabs:' + JSON.stringify([getDocumentIdentity(), !!pattern]));
     controlTree.reconcile(fields, nextFields, parameterScope);
-    if (composeFocus?.isConnected && ['Compose', 'Compare'].includes(state.tab) && document.activeElement !== composeFocus) /** @type {HTMLElement} */ (composeFocus).focus({ preventScroll: true });
+    if (composeFocus?.isConnected && ['Compose', 'Compare', 'Spectrum'].includes(state.tab) && document.activeElement !== composeFocus) /** @type {HTMLElement} */ (composeFocus).focus({ preventScroll: true });
     if (harmonyFocus?.isConnected && state.tab === 'Harmony' && document.activeElement !== harmonyFocus) /** @type {HTMLElement} */ (harmonyFocus).focus({ preventScroll: true });
     for (const entry of curveEditors.values()) if (entry.laneId === state.laneId) { const curve = lane.ccAutomation.find(curve => curve.id === entry.curveId); if (curve) entry.control.update(curve); }
     for (const [id, entry] of parameterCache) if (!parameterSeen.has(id)) {
@@ -1737,6 +1744,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'physical-history-view', run: () => physicalHistoryView?.dispose() },
         { name: 'physical-compose-view', run: () => composeView?.dispose() },
         { name: 'physical-counterfactual-view', run: () => counterfactualView?.dispose() },
+        { name: 'spectrum-tuning-view', run: () => timbreTuningView?.dispose() },
         { name: 'worker-simulation-preview', run: () => simulationPreview?.dispose() },
         { name: 'physical-harmony-view', run: () => { handlers.closeHarmony?.(); return harmonyView?.dispose(); } },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },

@@ -1,3 +1,4 @@
+import { validateTimbreTuningBinding, physicalTuningForTimbreSet } from '../../../midi/content/TimbreTuningSet.js';
 import { INSTRUMENT_SWITCH_MODES, INSTRUMENT_SWITCH_BOUNDARIES } from '../../../midi/content/InstrumentSwitchPolicy.js';
 import { validateTimeTransform } from '../../../midi/content/TimeTransform.js';
 import { validateNativeRouteIntent } from '../../../midi/native/NativeRouteIntent.js';
@@ -93,6 +94,8 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
   if (overrides.soundChangePolicy != null && !INSTRUMENT_SWITCH_MODES.includes(overrides.soundChangePolicy)) throw new Error('Unsupported patch transition policy.');
   if (overrides.soundQualityPolicy != null && !['manual', 'adaptive'].includes(overrides.soundQualityPolicy)) throw new Error('Unsupported sound realization policy.');
   if (overrides.soundChangeBoundary != null && !INSTRUMENT_SWITCH_BOUNDARIES.includes(overrides.soundChangeBoundary) || overrides.soundChangeFadeSeconds != null && (!Number.isFinite(overrides.soundChangeFadeSeconds) || overrides.soundChangeFadeSeconds < 0.005 || overrides.soundChangeFadeSeconds > 0.2)) throw new Error('Unsupported patch switch boundary or fade.');
+  const paired = overrides.timbreTuningSet && !(trusted && overrides.timbreTuningSet === trusted.timbreTuningSet && instrumentRef !== trusted.instrumentRef) ? validateTimbreTuningBinding(overrides.timbreTuningSet, instrumentRef) : null;
+  if (paired && (typeof overrides.timbreTuningFieldId !== 'string' || !/^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(overrides.timbreTuningFieldId))) throw new Error('The paired spectrum needs its exact tuning field identity.');
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
   return { id: string(overrides.id, `lane-${index + 1}`), revision: integer(overrides.revision, 0, 0, Number.MAX_SAFE_INTEGER), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id, worldThemeId,
     instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
@@ -109,6 +112,7 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
     ...(overrides.orchestral == null ? {} : { orchestral: trusted && overrides.orchestral === trusted.orchestral ? trusted.orchestral : validateOrchestralArticulationPolicy(overrides.orchestral) }),
     ...(overrides.percussion == null ? {} : { percussion: trusted && overrides.percussion === trusted.percussion ? trusted.percussion : validatePercussionIntentPolicy(overrides.percussion) }),
     ...(overrides.deviceParameters == null ? {} : { deviceParameters: trusted && overrides.deviceParameters === trusted.deviceParameters ? trusted.deviceParameters : validateDeviceParameterMappings(overrides.deviceParameters) }),
+    ...(paired ? { timbreTuningSet: paired, timbreTuningFieldId: overrides.timbreTuningFieldId } : {}),
     instrumentRef, ...(overrides.devicePatch == null ? {} : { devicePatch: trusted && overrides.devicePatch === trusted.devicePatch ? trusted.devicePatch : validateDevicePatchIntent(overrides.devicePatch) }),
     instrumentControls: trusted && overrides.instrumentControls === trusted.instrumentControls ? trusted.instrumentControls : validateInstrumentControls(overrides.instrumentControls),
     mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,
@@ -205,6 +209,18 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
       changed = true; const next = { ...lane, outputId: route.outputId, ...(route.channel == null ? {} : { channel: route.channel }), revision: (lane.revision || 0) + 1 }; if (route.nativeRouteIntent) next.nativeRouteIntent = route.nativeRouteIntent; else delete next.nativeRouteIntent; return next;
     });
     if (!changed) return project; inheritProcgenLaneIndex(lanes, updated); return { ...project, procgen: { ...procgen, lanes: updated } };
+  }
+  if (action.type === 'procgen/timbreTuning') {
+    const index = procgen.lanes.findIndex(lane => lane.id === action.laneId), previous = procgen.lanes[index];
+    if (!previous || previous.mode === 'pattern') throw new Error('Select a physical lane for paired spectrum/tuning publication.');
+    const set = validateTimbreTuningBinding(action.set, action.reference), field = action.field;
+    if (!field || field.id !== action.fieldId || field.heldPolicy !== 'retain-onset' || !sameValue(field.tuning, physicalTuningForTimbreSet(set)) || !sameValue(field.laneScope, [index])) throw new Error('The paired field differs from its exact tuning or onset-only scope.');
+    const physicalGraph = validateCausalInstrumentGraph({ ...procgen.physicalGraph, revision: procgen.physicalGraph.revision + 1,
+      harmonicFields: [...(procgen.physicalGraph.harmonicFields || []).filter(item => item.id !== field.id), field] });
+    const next = createProcgenLane(index, { ...previous, revision: previous.revision + 1, instrumentRef: action.reference, instrumentPatchId: action.reference.patchId,
+        timbreTuningSet: set, timbreTuningFieldId: field.id, instrumentControls: { macros: {} }, soundChangePolicy: 'new-notes-only', soundChangeBoundary: 'immediate' }, previous),
+      lanes = procgen.lanes.map((lane, at) => at === index ? next : lane);
+    inheritProcgenLaneIndex(procgen.lanes, lanes); return { ...project, procgen: { ...procgen, lanes, physicalGraph } };
   }
   if (action.type === 'procgen/sceneMacro') return applySceneMacroAction(project, action);
   if (action.type === 'procgen/releaseGesture') { const releaseGesture = validateReleaseGesture(action.gesture, procgen.lanes.length); if (sameValue(releaseGesture, procgen.releaseGesture)) return project; if (procgen.releaseGesture?.id === releaseGesture.id && releaseGesture.revision <= procgen.releaseGesture.revision) throw new Error('A saved release gesture change requires a newer revision.'); return { ...project, procgen: { ...procgen, releaseGesture } }; }
@@ -315,7 +331,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (['procgen/actorTimbreLocks', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/timbreTuning', 'procgen/actorTimbreLocks', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, ...(Object.hasOwn(action.patch || {}, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id } : lane);

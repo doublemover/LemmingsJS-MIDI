@@ -605,3 +605,10 @@ body.procgen-workstation {
 .studio-counterfactual-side > figure { flex: 1 1 18rem; min-width: 0; }
 .studio-counterfactual [hidden] { display: none; }
 .studio-counterfactual pre { max-height: 28rem; overflow: auto; }
+
+.studio-timbre-bench fieldset { display: flex; flex-wrap: wrap; gap: .5rem; min-width: 0; margin-block: .75rem; }
+.studio-timbre-bench label { display: grid; gap: .25rem; flex: 1 1 10rem; min-width: 0; }
+.studio-timbre-bench input, .studio-timbre-bench select, .studio-timbre-bench textarea { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.studio-timbre-bench svg { display: block; background: #0e1119; color: #9bd0e4; }
+.studio-timbre-bench pre { max-height: 24rem; overflow: auto; }
+.studio-timbre-bench button { max-width: 100%; white-space: normal; }

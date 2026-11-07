@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add immutable paired spectra/tuning recipes, bounded offline roughness and beat prediction, and a retained Spectrum / Tuning dock with atomic onset-only preparation, publication and saved revision binding.
+
 - Add synchronized original/proposed physical-future review with captured-frame overlays, actual cause/period evidence, independent reference audition and actor-preserving reviewed command Apply.
 
 - Add worker-owned finite physical musical-goal search, exact onset matching, source-bound branch-prefix reuse, sampled release/junction/layer sensitivity and a desktop Compose draft/result surface with fresh-replay-gated reversible Apply.

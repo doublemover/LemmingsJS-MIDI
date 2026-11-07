@@ -87,7 +87,7 @@ const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
 const WORLD_HISTORY_ACTIONS = new Set(['procgen/worldTheme', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed',
   'procgen/physicalGraph', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment', 'procgen/releaseGesture']);
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/sceneMacro', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/timbreTuning', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/nativeRoutes', 'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -1428,6 +1428,39 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       physicalState: physicalPlayback?.engine.snapshot() || null,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } });
   };
+  let timbreTuningBench = null, timbreTuningBenchLoading = null;
+  const timbreTuningSource = () => {
+    const lane = selected(), world = runtime()?.world, audio = legacy.local.audio, native = nativeMidiRoutes.state(), local = legacy.local.getState(), sampleRate = audio.getAudioContext?.()?.sampleRate || null;
+    return { lane, sampleRate, worldId: world?.worldId, worldGeneration: world?.generation, graphRevision: project.procgen.physicalGraph.revision,
+      available: !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !causalTake && !causalTakeStart && !causalTakeStop && !macroGestures.diagnostics().active && !soundTransactions.diagnostics().active && !!physicalPlayback && !!world && !world.interventionState.pending.length && lane?.mode !== 'pattern',
+      identity: JSON.stringify([documentGeneration, lane?.id, lane?.revision, lane?.instrumentRef?.definitionHash, lane?.timbreTuningSet?.revision, project.procgen.physicalGraph.revision, world?.generation, world?.interventionState.sequence, world?.interventionState.pending.length, !!causalTake, !!causalTakeStart, !!causalTakeStop, ports.getRouteRevision(), native.revision, local.selectedBackend, sampleRate]),
+      external: { backend: local.selectedBackend, outputId: lane?.outputId || null, nativeRoutes: native.routes.filter(route => route.active && route.laneIds.includes(lane?.id)).map(route => ({ outputId: route.outputId, protocol: route.protocol })) },
+      field: project.procgen.physicalGraph.harmonicFields?.find(field => field.id === lane?.timbreTuningFieldId) || null };
+  };
+  const getTimbreTuningBench = async () => {
+    if (timbreTuningBench) return timbreTuningBench;
+    if (!timbreTuningBenchLoading) timbreTuningBenchLoading = import('./TimbreTuningBenchSession.js').then(({ createTimbreTuningBenchSession }) => {
+      if (disposed) throw new Error('The workstation closed before opening its spectrum/tuning bench.');
+      return timbreTuningBench = createTimbreTuningBenchSession({ jobs: backgroundJobs, resourceBudget, getSource: timbreTuningSource,
+        prepareRenderer: (laneId, reference, options) => physicalPlayback.prepareLaneInstrument(laneId, reference, options),
+        reviewExternal: (source, policy) => {
+          if (!source.available || !source.sampleRate) return { status: 'rejected', reason: 'Finish active world/take/gesture work and enable local audio before preparing this physical voice.' };
+          if (!['local-only', 'named-device-approximation'].includes(policy)) throw new Error('Choose a named output capability review.');
+          const external = source.external.backend === 'midi' || source.external.nativeRoutes.length > 0;
+          if (external && policy !== 'named-device-approximation') return { status: 'rejected', reason: 'An external route is active. Explicitly review the device-defined pitch/program approximation or select local-only output.' };
+          return { status: 'reviewed', policy, routeIdentity: source.external, local: 'exact-prepared-spectrum-and-float-cents-tuning', external: external ? 'device-defined-timbre-and-owned-route-pitch-policy;no-local-spectrum-or-exact-tuning-claim' : 'no-active-external-renderer' };
+        },
+        publishPair: (source, compiled) => {
+          if (!timbreTuningSource().available || timbreTuningSource().identity !== source.identity) throw new Error('The selected voice changed before atomic pair publication.');
+          const world = runtime().world, laneIndex = project.procgen.lanes.findIndex(lane => lane.id === source.lane.id), old = source.field, id = old?.id || 'timbre-field-' + laneIndex,
+            field = { ...(old || { id, priority: 10000, geometry: { kind: 'band', bounds: { x1: world.leftEdgeX, x2: world.width, y1: laneIndex * world.laneHeight, y2: (laneIndex + 1) * world.laneHeight } }, boundary: 'step', width: 0, coordinateMap: { mode: 'nearest' }, laneScope: [laneIndex] }),
+              revision: (old?.revision || 0) + 1, heldPolicy: 'retain-onset', deletionPolicy: 'retain', tuning: compiled.physicalTuning };
+          if (project.procgen.physicalGraph.harmonicFields?.some(other => other.id !== id && (other.laneScope == null || other.laneScope.includes(laneIndex)) && other.priority >= field.priority && !other.bypass)) throw new Error('Another equally prioritized field owns this lane. Review its scope before replacing the paired tuning.');
+          return dispatch({ type: 'procgen/timbreTuning', laneId: source.lane.id, set: compiled.set, reference: compiled.reference, fieldId: id, field });
+        }, onChange: () => view?.renderInspector?.() });
+    }).finally(() => { timbreTuningBenchLoading = null; });
+    return timbreTuningBenchLoading;
+  };
   let physicalMusicStudyWorkbench = null, physicalMusicAuditionCandidateId = null, feedbackSourceReference = null, feedbackSourceRevision = 0;
   const simulationExecutionPolicy = () => procgenSimulationExecutionPolicy({ schema: 'lemmings-simulation-execution-policy/v1', physicalFeedbackMode: physicalFeedback?.isArmed() ? 'preserve-live' : 'disabled' });
   const physicalMusicSourceIdentity = () => { const world = runtime()?.world, clock = transport.getState();
@@ -2291,6 +2324,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
+    timbreTuningSource,
+    timbreTuningBenchState: () => timbreTuningBench?.state() || null,
+    openTimbreTuningBench: async recipe => (await getTimbreTuningBench()).open(recipe),
+    editTimbreTuningDraft: raw => timbreTuningBench?.edit(raw),
+    invalidateTimbreTuningAnalysis: () => timbreTuningBench?.invalidateAnalysis(),
+    analyzeTimbreTuningDraft: options => timbreTuningBench?.analyze(options),
+    prepareTimbreTuningPair: options => timbreTuningBench?.prepare(options),
+    commitTimbreTuningPair: () => timbreTuningBench?.commit(),
+    restoreTimbreTuningBaseline: () => timbreTuningBench?.restoreBaseline(),
+    cancelTimbreTuningBench: () => timbreTuningBench?.cancel(),
     physicalMusicSource() { const world = runtime()?.world; if (!world) return null; const population = world.population, gesture = population.releaseGesture;
       return { worldId: world.worldId, generation: world.generation, tick: world.tickIndex, width: world.width, height: world.height, leftEdgeX: world.leftEdgeX, graph: project.procgen.physicalGraph, junctions: world.physicalJunctions.definitions.map(definition => ({ id: definition.id, revision: definition.revision, configurations: definition.configurations.map(configuration => configuration.id) })),
         actorIds: world.actors.filter(actor => !actor.removed && !actor.disabled && !actor.failureReason && !actor.terminalReason).map(actor => actor.id), assists: world.assists,
@@ -3175,6 +3218,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           { name: 'causal-take', run: async () => { if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'workstation-disposed' }); await discardOwnedCausalArm({ restoreSemantic: false }); } },
           { name: 'causal-workbench', run: () => causalWorkbench?.dispose() },
           { name: 'physical-music-composition', run: () => physicalMusicStudyWorkbench?.dispose() },
+          { name: 'spectrum-tuning-bench', run: async () => { await timbreTuningBenchLoading?.catch(() => {}); const receipt = timbreTuningBench?.dispose(); await receipt?.completion; if (receipt?.outcome && receipt.outcome !== 'complete') throw new Error('The spectrum/tuning bench retains unresolved resources.'); } },
           { name: 'simulation-workbench', run: async () => { const receipt = simulationWorkbench?.dispose(); await receipt?.completion; if (receipt && receipt.outcome !== 'complete') throw new Error('The simulation output generation is still owned.'); await nativeSimulationLoading?.catch(() => {}); return nativeSimulationWorkbench?.dispose(); } },
           { name: 'archive-exports', run: () => archiveExportTasks.size ? Promise.allSettled([...archiveExportTasks]) : null }
         ]) },
