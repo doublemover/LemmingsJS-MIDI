@@ -367,7 +367,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       reserveMetadata({ lanes: assignments.has(lane) ? 0 : 1 });
       const previous = assignments.get(lane); if (previous && !previous.blocked) previous.assignedLanes--;
       if (!assignments.get(lane)?.blocked || assignments.get(lane).reason !== reason) routeRevision++; assignments.set(lane, { blocked: true, reason }); assignmentVersions.set(lane, ++assignmentSerial); collect(); },
-    spatialSources() { collectVoices(maxVoices); return [...voices.values()].filter(voice => voice.intent.spatialState).map(voice => ({ voiceId: voice.voiceId, worldId: voice.intent.worldId, generation: voice.intent.generation, actorId: voice.intent.actorId, spatialState: voice.spatialState || voice.intent.spatialState })); },
+    spatialSources() { collectVoices(maxVoices); return [...voices.values()].filter(voice => voice.intent.spatialState).map(voice => ({ voiceId: voice.voiceId, worldId: voice.intent.worldId, generation: voice.intent.generation, actorId: voice.intent.actorId, bodyPatchId: voice.intent.acousticMaterialState?.patchId || voice.intent.materialState?.patchId || null, spatialState: voice.spatialState || voice.intent.spatialState })); },
     updateSpatialStates(states, frame) {
       if (!Array.isArray(states) || states.length > 128 || !Number.isSafeInteger(frame) || frame < 0) return [{ status: 'rejected', reason: 'spatial-source-capacity' }];
       const byId = new Map(states.map(state => [JSON.stringify([state.worldId, state.generation, state.voiceId]), state])), outcomes = [];

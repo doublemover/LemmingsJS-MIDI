@@ -1,3 +1,6 @@
+import { createAcousticFieldEditor } from './AcousticFieldEditor.js';
+import { validateAcousticMap } from '../../../midi/content/AcousticMap.js';
+import { validateSpatialAttachment } from '../../../midi/content/SpatialState.js';
 import { prepareCavityGeometryControl } from './CavityGeometryControl.js';
 import { createAudioLatencyBreakdown } from '../../midi-ui/AudioLatencyBreakdown.js';
 import { createLazyWorkstationToolGate } from './LazyWorkstationToolGate.js';
@@ -175,7 +178,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let writingLegacy = false;
   let worldBusy = false, pendingWorldSettings = null;
   let laneObserver = null;
-  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, preparePhysicalAudioReplacement = null, physicalAudioIncarnation = 0, physicalFeedback = null, physicalFeedbackView = null, physicalDomainEditor = null, feedbackEpoch = 0, worldInspector = null;
+  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, preparePhysicalAudioReplacement = null, physicalAudioIncarnation = 0, physicalFeedback = null, physicalFeedbackView = null, physicalDomainEditor = null, acousticFieldEditor = null, feedbackEpoch = 0, worldInspector = null;
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null, causalMarkerCheckpoint = null;
   let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0, lastCausalBranchPublication = null, lastWorkerPublication = null;
   const continuationExecutionIdentity = () => lastCausalBranchPublication || lastWorkerPublication ? { ...getActiveExecutionIdentity(), ...(lastCausalBranchPublication ? { physicalBranch: lastCausalBranchPublication } : {}), ...(lastWorkerPublication ? { workerContinuation: lastWorkerPublication } : {}) } : undefined;
@@ -2419,6 +2422,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       deliverPrepared(); return artifact.metadata();
       } finally { computed?.release(); }
     },
+    acousticFieldState: options => physicalPlayback?.spatialState(options) || null,
+    openAcousticFields() {
+      const identity = () => ({ documentEpoch: documentGeneration, worldId: runtime()?.world?.worldId || null, generation: runtime()?.world?.generation ?? null, graphRevision: project.procgen.physicalGraph.revision, laneId: selected().id });
+      acousticFieldEditor ||= createAcousticFieldEditor({ document, window, getGraph: () => project.procgen.physicalGraph, getWorld: () => runtime()?.world, getRenderer: renderer, getIdentity: identity, getLaneIndex: () => project.procgen.lanes.indexOf(selected()), getSpatialState: () => physicalPlayback?.spatialState({ includeSources: true }) || null, onOpenMaterialLibrary: () => handlers.openSoundLibrary(), resourceBudget, displayScheduler: view?.displayScheduler, onStatus: status,
+        commit: command => {
+          if (command?.schema !== 'lemmings-draft-field-edit/v1' || command.fieldKind !== 'acoustic-zone' || JSON.stringify(command.source) !== JSON.stringify(identity())) throw new Error('The acoustic field source changed. Reload before applying.');
+          if (worldBusy || pendingHistory || stageSession || physicalAuthoringAbort) throw new Error('Finish the current score operation before editing acoustic fields.');
+          const graph = project.procgen.physicalGraph, previous = graph.acousticMap, next = validateAcousticMap(command.map), content = value => { if (!value) return null; const { revision, ...rest } = value; return canonicalDataText(rest, { maxBytes: 131072, maxNodes: 16384 }).text; };
+          const zones = next.zones.map(zone => { const prior = previous?.zones.find(value => value.zoneId === zone.zoneId); return { ...zone, revision: prior ? content(zone) === content(prior) ? prior.revision : prior.revision + 1 : 1 }; }), proposed = { ...next, zones }, acousticMap = previous && content(proposed) === content(previous) ? previous : validateAcousticMap({ ...proposed, revision: previous?.id === next.id ? previous.revision + 1 : 1 });
+          let instruments = graph.instruments; if (command.mapping) { if (!instruments.some(instrument => instrument.id === command.mapping.mappingId)) throw new Error('The physical mapping was removed.'); const attachment = validateSpatialAttachment(command.mapping.attachment); instruments = instruments.map(instrument => instrument.id === command.mapping.mappingId ? { ...instrument, spatialAttachment: attachment } : instrument); }
+          dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1, acousticMap, instruments } });
+        } }); acousticFieldEditor.open();
+    },
     openPhysicalScene() { physicalDomainEditor ||= createPhysicalDomainEditor({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, saveGraph: graph => dispatch({ type: 'procgen/physicalGraph', graph }), getInspection: () => ({ terrainRevision: runtime()?.world?.terrainRevision ?? null, preparedSurfaces: physicalPlayback?.engine.diagnostics().preparedSurfaces, bodyBindings: physicalPlayback?.preparedSurfaceBodies(), swarm: physicalPlayback?.engine.diagnostics().swarm, cargo: physicalPlayback?.engine.diagnostics().cargo, physical: physicalPlayback?.engine.physicalAnalysis() }), onStatus: status }); physicalDomainEditor.open(); },
     openPhysicalFeedback() { physicalFeedbackView ||= createPhysicalFeedbackView({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, getState: () => physicalFeedback?.diagnostics(), save: feedback => dispatch({ type: 'procgen/physicalGraph', graph: { ...project.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1, feedback } }), arm: () => handlers.armPhysicalFeedback(), disarm: () => physicalFeedback?.disarm(), mute: (id, muted) => physicalFeedback?.muteLayer(id, muted), capture: input => handlers.captureInterventionLayer(input), onStatus: status }); physicalFeedbackView.open(); },
     armPhysicalFeedback() { if (!physicalFeedback || worldBusy || pendingHistory || physicalAuthoringAbort) throw new Error('No writable live physical world.'); if (!Number.isSafeInteger(++feedbackEpoch)) throw new Error('Feedback epoch exhausted.'); return physicalFeedback.arm({ mode: 'live', epoch: `live:${documentGeneration}:${runtime().world.generation}:${runtime().world.tickIndex}:${feedbackEpoch}` }); },
@@ -3177,7 +3193,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   pageLifecycle = createProcgenPageLifecycle({ document, window, suspend: ({ reason }) => {
     toolGate.cancel();
-    physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); physicalMappingsView?.suspend(); quarryEchoView?.suspend(); crossExcitationView?.suspend(); travelColorationView?.suspend(); spectralFreezeView?.suspend(); sympatheticMapView?.suspend(); rectangularMembraneView?.suspend(); physicalJunctionView?.suspend();
+    physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); acousticFieldEditor?.suspend(); physicalMappingsView?.suspend(); quarryEchoView?.suspend(); crossExcitationView?.suspend(); travelColorationView?.suspend(); spectralFreezeView?.suspend(); sympatheticMapView?.suspend(); rectangularMembraneView?.suspend(); physicalJunctionView?.suspend();
     soundSeedLab?.suspend(); shapeFoundry?.suspend();
     void masterCapture?.suspend();
     causalAudioRender?.suspend();
@@ -3320,6 +3336,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
         { name: 'patch-variations', run: () => patchVariations?.dispose() },
         { name: 'release-gesture-view', run: () => releaseGestureView?.dispose() },
+        { name: 'acoustic-field-editor', run: () => acousticFieldEditor?.dispose() },
         { name: 'physical-authoring-view', run: () => physicalAuthoringView?.dispose() },
         { name: 'physical-authoring-history', run: () => afterProcgenRetirement([storageReaders.getReceipt()], () => physicalHistory.dispose()) },
         { name: 'physical-junction-view', run: () => physicalJunctionView?.dispose() },

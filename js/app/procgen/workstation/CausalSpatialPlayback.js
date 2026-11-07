@@ -51,7 +51,7 @@ export function createCausalSpatialPlayback({ getGraph, world, session, getSourc
       for (const receipt of updateSources(states, frame)) { const { executionEpoch: rendererExecutionEpoch, ...controls } = receipt; report(envelope({ kind: 'update', ...controls, ...(rendererExecutionEpoch ? { rendererExecutionEpoch } : {}), mapHash })); }
       session.collectAcousticTails?.();
     },
-    diagnostics: () => mapper.diagnostics(), reset() { mapper.reset(); rawMap = activeMap = signature = mapHash = null; capturing = false; },
+    diagnostics: ({ includeSources = false } = {}) => ({ ...mapper.diagnostics(), ...(includeSources ? { sources: getSources().slice(0, 128) } : {}) }), reset() { mapper.reset(); rawMap = activeMap = signature = mapHash = null; capturing = false; },
     dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; mapper.reset(); return scope.retire([{ name: 'spatial-control-storage', run: () => storage.release() }]); }
   });
 }

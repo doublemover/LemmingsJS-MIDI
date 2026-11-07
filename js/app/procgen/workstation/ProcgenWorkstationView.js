@@ -475,6 +475,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       ...(physicalMidiCrop.checked ? { originTick: physicalMidiOrigin.value === '' ? NaN : Number(physicalMidiOrigin.value), endTick: physicalMidiEnd.value === '' ? NaN : Number(physicalMidiEnd.value) } : {}) }), 'Prepare a new MIDI1 revoice from the selected finished physical take; preserve captured source timing')),
     inMenu('World tools', button('Physical authoring…', () => handlers.openPhysicalAuthoring?.(), 'Preview and safely apply terrain or pinned fragments with whole-world Undo')),
     inMenu('World tools', button('Release…', () => handlers.openReleaseGestures?.(), 'Perform finite, phased or physically clock-locked cohort releases')),
+    inMenu('World tools', button('Acoustic fields…', () => handlers.openAcousticFields?.(), 'Paint world acoustic regions and edit the independent audio listener')),
     inMenu('World tools', button('Physical scene…', () => handlers.openPhysicalScene?.(), 'Author physical gates, cargo stations and their causal instruments')),
     inMenu('World tools', button('Feedback…', () => handlers.openPhysicalFeedback?.(), 'Author, inspect and explicitly arm physical conductors and intervention layers')),
     inMenu('World tools', button('Junctions…', () => handlers.openPhysicalJunctions?.(), 'Request safe physical route changes and inspect pending versus applied configurations')),
@@ -1555,7 +1556,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     label: direction < 0 ? 'Select the previous step' : 'Select the next step', contexts: ['optional-pattern'], bindings: [key], repeat: true, enabled: patternReady,
     execute: () => { const length = selected().patterns[state.slot].length; state.step = (state.step + length + direction) % length; state.tab = 'Step'; render(); } });
   for (const [action, label] of [['openSoundLibrary', 'Open the sound library'], ['openShapeFoundry', 'Open Shape Foundry'],
-    ['openPhysicalAuthoring', 'Open physical authoring'], ['openPhysicalMappings', 'Edit physical parameter mappings'], ['openPhysicalJunctions', 'Inspect physical junctions'], ['openPhysicalScene', 'Open physical scene and cargo authoring'],
+    ['openAcousticFields', 'Edit acoustic fields and audio listener'], ['openPhysicalAuthoring', 'Open physical authoring'], ['openPhysicalMappings', 'Edit physical parameter mappings'], ['openPhysicalJunctions', 'Inspect physical junctions'], ['openPhysicalScene', 'Open physical scene and cargo authoring'],
     ['openMasterCapture', 'Record the browser master'], ['openPrelistenMonitor', 'Open Prelisten routing'], ['save', 'Save the current project'], ['load', 'Open a saved project'], ['export', 'Prepare a performance file']]) {
     commands.push({ id: 'workstation.' + action, label, contexts: ['selected-lane'], enabled: () => canCommand(action), execute: () => action === 'load' ? handlers.load?.({ review: true }) : handlers[action]?.() });
   }

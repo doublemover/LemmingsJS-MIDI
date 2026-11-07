@@ -62,6 +62,7 @@ const validateCausalInstrumentGraph = value => {
         !nonempty(input.route) || !nonempty(input.role)) throw new Error('Invalid causal instrument.');
     ids.add(input.id);
     const spatialAttachment = input.spatialAttachment == null ? null : validateSpatialAttachment(input.spatialAttachment);
+    if (spatialAttachment?.materialMode === 'zone-response' && (input.topologyRegionId || input.preparedBodyStrike || input.sampleGesture || input.sampleKitId || input.response || input.contactTravel)) throw new Error('An acoustic region body cannot replace an already owned topology, sample or response interpretation.');
     if (spatialAttachment && (!acousticMap || input.route !== 'local')) throw new Error('World spatial sources need a saved acoustic map and local renderer.');
     const materialResponse = input.materialResponse == null ? null : validateMaterialResponseMap(input.materialResponse);
     if (materialResponse && (!['ContactSpanBegan', 'ContactResolved', 'TerrainWorkCommitted'].includes(input.sourceKind) || input.route !== 'local' || input.preparedBodyStrike || input.topologyRegionId || input.sampleGesture || input.sampleKitId || input.response || input.articulation || input.contactTravel)) throw new Error('Material response requires a direct local observed contact and an independently prepared body palette.');
