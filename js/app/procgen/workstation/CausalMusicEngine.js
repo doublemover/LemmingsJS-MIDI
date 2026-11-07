@@ -1,3 +1,5 @@
+import { validateAcousticMap } from '../../../midi/content/AcousticMap.js';
+import { validateSpatialAttachment } from '../../../midi/content/SpatialState.js';
 import { materialArticulationControls } from '../../../midi/content/MaterialPalette.js';
 import { validateMaterialResponseMap, resolveObservedMaterialResponse } from '../../../midi/content/MaterialResponseMap.js';
 import { createPianoPerformanceIntent } from '../../../midi/content/PianoPerformanceIntent.js';
@@ -46,6 +48,7 @@ const sourceLaneIncluded = (instrument, lane) => {
 const validateCausalInstrumentGraph = value => {
   if (!plain(value) || value.version !== 1 || !Number.isSafeInteger(value.revision) || value.revision < 0 ||
       !Array.isArray(value.instruments) || value.instruments.length > 256) throw new Error('Unsupported causal instrument graph.');
+  const acousticMap = value.acousticMap == null ? null : validateAcousticMap(value.acousticMap);
   const preparedSurfaces = validatePreparedSurfaceDefinitions(value.preparedSurfaces);
   const domain = validatePhysicalDomain(value), tonal = validateTonalDomain(value, domain), topologyRegions = validateTopologyRegions(value.topologyRegions), encounterDefinitions = validateEncounterDomain(value, domain), activityDefinitions = validateActivityWindows(value, { ...domain, topologyRegions }), motifDefinitions = validatePhysicalMotifs(value, { ...domain, encounters: encounterDefinitions, activityWindows: activityDefinitions });
   const cargoStations = validatePhraseCargoStations(value.cargoStations, { ...domain, encounters: encounterDefinitions });
@@ -58,6 +61,8 @@ const validateCausalInstrumentGraph = value => {
         !Number.isFinite(input.velocity01) || input.velocity01 < 0 || input.velocity01 > 1 ||
         !nonempty(input.route) || !nonempty(input.role)) throw new Error('Invalid causal instrument.');
     ids.add(input.id);
+    const spatialAttachment = input.spatialAttachment == null ? null : validateSpatialAttachment(input.spatialAttachment);
+    if (spatialAttachment && (!acousticMap || input.route !== 'local')) throw new Error('World spatial sources need a saved acoustic map and local renderer.');
     const materialResponse = input.materialResponse == null ? null : validateMaterialResponseMap(input.materialResponse);
     if (materialResponse && (!['ContactSpanBegan', 'ContactResolved', 'TerrainWorkCommitted'].includes(input.sourceKind) || input.route !== 'local' || input.preparedBodyStrike || input.topologyRegionId || input.sampleGesture || input.sampleKitId || input.response || input.articulation || input.contactTravel)) throw new Error('Material response requires a direct local observed contact and an independently prepared body palette.');
     if (materialResponse && input.sourceKind === 'TerrainWorkCommitted' && (input.workChangePolicy !== 'solid' || input.changedOnly !== true)) throw new Error('Material work bodies require successful changed-solid operations.');
@@ -96,7 +101,7 @@ const validateCausalInstrumentGraph = value => {
     if ([input.sampleGesture, input.sampleKitId].some(value => value != null && (typeof value !== 'string' || !/^[a-z][a-z0-9._:-]{0,127}$/i.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)))) throw new Error('Invalid authored sample gesture or kit identity.');
     return Object.freeze({ id: input.id, ...(input.sourceLanes ? { sourceLanes: Object.freeze([...input.sourceLanes].sort((a, b) => a - b)) } : {}), ...(input.topologyRegionId ? { topologyRegionId: input.topologyRegionId } : {}), ...(input.topologyAnchorId != null ? { topologyAnchorId: input.topologyAnchorId } : {}), ...(input.formationId ? { formationId: input.formationId } : {}), ...(input.harmonicFields ? { harmonicFields: true } : {}), sourceKind: input.sourceKind, ...(response ? { response } : {}), ...(actionVoicePolicy ? { actionVoicePolicy } : {}), ...(voiceTransfer ? { voiceTransfer } : {}), action: input.action ?? null,
       ...(input.cargoRole ? { cargoRole: input.cargoRole } : {}), ...(input.cargoStationId ? { cargoStationId: input.cargoStationId } : {}), ...(input.activityWindowId ? { activityWindowId: input.activityWindowId } : {}), ...(input.motifId ? { motifId: input.motifId } : {}), ...(input.encounterId ? { encounterId: input.encounterId } : {}), ...(input.pickupId ? { pickupId: input.pickupId } : {}), ...(input.routeId ? { routeId: input.routeId } : {}),
-      ...(materialResponse ? { materialResponse } : {}), ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}), ...(preparedBodyStrike ? { preparedBodyStrike } : {}),
+      ...(spatialAttachment ? { spatialAttachment } : {}), ...(materialResponse ? { materialResponse } : {}), ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}), ...(preparedBodyStrike ? { preparedBodyStrike } : {}),
       ...(input.workChangePolicy ? { workChangePolicy: input.workChangePolicy } : {}), operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
       gateX: input.sourceKind === 'MotionCommitted' ? input.gateX : null,
       articulation: input.articulation ? validateArticulationField(input.articulation) : null, ...(contactTravel ? { contactTravel } : {}),
@@ -107,7 +112,7 @@ const validateCausalInstrumentGraph = value => {
       route: input.route, role: input.role, mute: input.mute === true, solo: input.solo === true });
   });
   if (value.seed != null && !Number.isSafeInteger(value.seed)) throw new Error('Invalid causal graph seed.');
-  return Object.freeze({ version: 1, ...(randomSeeds ? { randomSeeds } : {}), ...(swarm ? { swarm } : {}), ...(feedback ? { feedback } : {}), revision: value.revision, seed: value.seed ?? 0, instruments: Object.freeze(instruments),
+  return Object.freeze({ version: 1, ...(acousticMap ? { acousticMap } : {}), ...(randomSeeds ? { randomSeeds } : {}), ...(swarm ? { swarm } : {}), ...(feedback ? { feedback } : {}), revision: value.revision, seed: value.seed ?? 0, instruments: Object.freeze(instruments),
     ...(value.preparedSurfaces ? { preparedSurfaces } : {}), ...(value.cargoStations ? { cargoStations } : {}), ...(value.activityWindows ? { activityWindows: activityDefinitions } : {}), ...(value.motifs ? { motifs: motifDefinitions } : {}), ...(value.encounters ? { encounters: encounterDefinitions } : {}), ...(value.topologyRegions ? { topologyRegions } : {}), ...(value.harmonicFields ? { harmonicFields: tonal.harmonicFields } : {}), ...(value.formations ? { formations: tonal.formations } : {}), ...(tonal.editCommandId ? { editCommandId: tonal.editCommandId } : {}),
     ...(value.pickups ? { pickups: domain.pickups } : {}), ...(value.ensembles ? { ensembles: domain.ensembles } : {}), ...(value.routes ? { routes: domain.routes } : {}) });
 };

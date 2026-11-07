@@ -611,6 +611,7 @@
         "js/level/level/LevelRender.js",
         "js/level/level/LevelShared.js",
         "js/level/packMechanics.js",
+        "js/midi/content/AcousticMap.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircuitWorkshopProfile.js",
@@ -686,6 +687,7 @@
         "js/midi/content/SoundContentPack.js",
         "js/midi/content/SoundContentReference.js",
         "js/midi/content/SoundRealizationProfiles.js",
+        "js/midi/content/SpatialState.js",
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/StretchImageProfile.js",
@@ -700,6 +702,7 @@
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
         "js/midi/content/WindModel.js",
+        "js/midi/content/WorldRegion.js",
         "js/midi/native/NativeRouteIntent.js",
         "js/midi/project/MidiProjectSnapshot.js",
         "js/midi/protocol/MidiClipFile.js",
@@ -739,8 +742,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 585,
-      "sha256": "f536f2040e374ded64f52234cd7087ffd32a6c0239fc94fdaba3cbd5a5a5aea9",
+      "fileCount": 588,
+      "sha256": "745ba2f94757350061f5bed1adfade1e1e47e2fe203a1c8bbc38d743d8bfc711",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1341,6 +1344,7 @@
         "js/level/level/LevelRender.js",
         "js/level/level/LevelShared.js",
         "js/level/packMechanics.js",
+        "js/midi/content/AcousticMap.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircuitWorkshopProfile.js",
@@ -1416,6 +1420,7 @@
         "js/midi/content/SoundContentReference.js",
         "js/midi/content/SoundRealizationDecision.js",
         "js/midi/content/SoundRealizationProfiles.js",
+        "js/midi/content/SpatialState.js",
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/StretchImageProfile.js",
@@ -1430,6 +1435,7 @@
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
         "js/midi/content/WindModel.js",
+        "js/midi/content/WorldRegion.js",
         "js/midi/native/DeviceControllerCohort.js",
         "js/midi/native/DeviceMutation.js",
         "js/midi/native/DeviceParameter.js",
@@ -1502,8 +1508,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 618,
-      "sha256": "29e6a1e3806f9e6c0cf789f24dc351736dd4c4406cdf1d650858b4ddd9773f5c",
+      "fileCount": 621,
+      "sha256": "19ece3409327ab3622a35bde5f52b9e98ff8bdac652f81d844fe7a32ffa94ebc",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1990,6 +1996,7 @@
         "js/level/level/LevelRender.js",
         "js/level/level/LevelShared.js",
         "js/level/packMechanics.js",
+        "js/midi/content/AcousticMap.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircuitWorkshopProfile.js",
@@ -2064,6 +2071,7 @@
         "js/midi/content/SoundContentPack.js",
         "js/midi/content/SoundContentReference.js",
         "js/midi/content/SoundRealizationProfiles.js",
+        "js/midi/content/SpatialState.js",
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/StretchImageProfile.js",
@@ -2078,6 +2086,7 @@
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
         "js/midi/content/WindModel.js",
+        "js/midi/content/WorldRegion.js",
         "js/midi/protocol/MidiClipFile.js",
         "js/midi/protocol/MidiProtocolLowering.js",
         "js/midi/protocol/UmpFlexData.js",
@@ -2115,8 +2124,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 596,
-      "sha256": "bd3f66e14c58f2c14086914e5374f2f9122d0fcafcbcc0fa1e46e73df03ecc64",
+      "fileCount": 599,
+      "sha256": "c738d1cc142bc9e28a503df476cc9208facb3d87b13e46c6ea99615315b181fd",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2750,6 +2759,7 @@
         "js/level/level/LevelRender.js",
         "js/level/level/LevelShared.js",
         "js/level/packMechanics.js",
+        "js/midi/content/AcousticMap.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircuitWorkshopProfile.js",
@@ -2825,6 +2835,7 @@
         "js/midi/content/SoundContentReference.js",
         "js/midi/content/SoundRealizationDecision.js",
         "js/midi/content/SoundRealizationProfiles.js",
+        "js/midi/content/SpatialState.js",
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/StretchImageProfile.js",
@@ -2839,6 +2850,7 @@
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
         "js/midi/content/WindModel.js",
+        "js/midi/content/WorldRegion.js",
         "js/midi/native/DeviceControllerCohort.js",
         "js/midi/native/DevicePatchIntent.js",
         "js/midi/native/DrumProfileAdapter.js",
@@ -2887,8 +2899,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 669,
-      "sha256": "03b3bdb8f862c7a2752c57cf49b60518166c568e00ba03d28786bba5124a91b9",
+      "fileCount": 672,
+      "sha256": "0123731da55d6d5861092a8926c21ac8b26c0ad9482d7a21be8eddec7921c0b8",
       "inventoryScope": "first-party-artifact"
     }
   ]
