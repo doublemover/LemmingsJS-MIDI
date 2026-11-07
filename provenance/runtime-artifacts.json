@@ -780,6 +780,7 @@
         "js/app/procgen/ProcgenSimulationCore.js",
         "js/app/procgen/ProcgenSimulationHost.js",
         "js/app/procgen/ProcgenSimulationOutputConsumer.js",
+        "js/app/procgen/ProcgenSimulationProfiles.js",
         "js/app/procgen/ProcgenSimulationProtocol.js",
         "js/app/procgen/ProcgenSimulationRealm.js",
         "js/app/procgen/ProcgenSimulationWorker.js",
@@ -1208,8 +1209,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 585,
-      "sha256": "dbb9ac63496a7e13e67d05a50990163d2b7e299e45d17b6a1a5743b06dede908"
+      "fileCount": 586,
+      "sha256": "357556f587c97e032d3af750776d6c26a4e685adf87bd4502f8159dc6a3e69cb"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1586,6 +1587,7 @@
         "js/app/procgen/ProcgenRetirement.js",
         "js/app/procgen/ProcgenSimulationConsumer.js",
         "js/app/procgen/ProcgenSimulationOutputConsumer.js",
+        "js/app/procgen/ProcgenSimulationProfiles.js",
         "js/app/procgen/ProcgenSimulationProtocol.js",
         "js/app/procgen/survey/ProcgenSurveyCanonical.js",
         "js/app/procgen/workstation/CausalIntentDispatcher.js",
@@ -1648,8 +1650,8 @@
         "js/midi/protocol/UmpPayloadCollector.js",
         "js/runtime/ActiveExecutionIdentity.js"
       ],
-      "fileCount": 67,
-      "sha256": "e27a22784c0faf699fa154e01cdfe74ceaada81e021243fefbdb7996b4401ab4"
+      "fileCount": 68,
+      "sha256": "7417e56da3a0972e7bdf08271e7f65bcccae6efd1c32308a1e8d2f40f8dc186e"
     }
   ]
 }

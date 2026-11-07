@@ -1427,7 +1427,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } }),
     { signal, isCurrent: () => !disposed && runtime()?.world === sourceWorld && project === sourceProject && documentGeneration === sourceGeneration && sourceWorld.tickIndex === sourceTick && !transport.getState().playing });
   };
-  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, requiredPorts = [], consume = null, onState = () => {}, signal = null } = {}) => {
+  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, resourceProfile = /** @type {'compact-v1' | 'balanced-v1'} */ ('compact-v1'), requiredPorts = [], consume = null, onState = () => {}, signal = null } = {}) => {
     if (disposed || !resourceBudget || simulationPreparation || simulationCandidates.size >= 2 || worldBusy || pendingHistory || physicalAuthoringAbort ||
         causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback) throw new Error('Prepare a worker candidate from an exclusive paused physical project boundary.');
     const sourceWorld = runtime()?.world, sourceProject = project, sourceGeneration = documentGeneration, sourceTick = sourceWorld?.tickIndex,
@@ -1443,7 +1443,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (!source.physicalState || !isCurrent()) throw new Error('This source has no current semantic continuation.');
         candidate = await prepareWorkerProcgenSimulationHost({ resourceBudget, signal: controller.signal, requiredPorts, consume, onState,
           manifest: { schema: 'lemmings-authoritative-simulation/v1', ownerId: 'workstation-candidate-' + (++simulationCandidateSerial), ownerEpoch: sourceGeneration,
-            documentRevision: projectRevision, rootPath, checkpoint: source.world, semantic: source.physicalState, timeline: source.physicalTimeline,
+            documentRevision: projectRevision, resourceProfile, rootPath, checkpoint: source.world, semantic: source.physicalState, timeline: source.physicalTimeline,
             graph: sourceProject.procgen.physicalGraph, performance: captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
             bpm: transport.getState().bpm, playing: true, scoreTimeline: true } });
         if (!isCurrent()) throw new Error('The source changed while its worker candidate was preparing.');

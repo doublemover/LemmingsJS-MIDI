@@ -1,3 +1,4 @@
+import { procgenSimulationProfile } from './ProcgenSimulationProfiles.js';
 import { createResourceBudget } from '../resources/ResourceBudget.js';
 import { createBackgroundSnapshotReceiver, encodeBackgroundSnapshotPages, backgroundSnapshotTransfers } from '../resources/BackgroundSnapshotPages.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
@@ -8,7 +9,7 @@ import { PROCGEN_SIMULATION_PROTOCOL, SIMULATION_MAX_CONSUMERS, SIMULATION_PACKE
 
 export function createProcgenSimulationWorkerEndpoint({ postMessage, close, timers = globalThis, now = () => performance.now(),
   prepare = prepareProcgenSimulationRealm, identity = getActiveExecutionIdentity, compareIdentity = required => compareActiveExecutionIdentity(required).matched } = {}) {
-  const controller = new AbortController(), budget = createResourceBudget({ limitBytes: 512 * 1048576 });
+  const controller = new AbortController(); let profile = procgenSimulationProfile(), budget = null;
   let manifest = null, receiver = null, inputSequence = 0, host = null, phase = 'new', timer = null, pumping = null, lastTime = null, elapsed = 0,
     transferStorage = null, inputStorage = null, inputLimit = null, consumers = [], outputAck = null, closing = null, activeRequest = false,
     preparingWork = null, activeWork = null;
@@ -82,7 +83,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
     })().catch(error => { try { send('retired', { outcome: 'unknown', error: String(error.message).slice(0, 512) }); } finally { phase = 'closed'; close(); } }); return closing;
   };
   const sendCheckpoint = async (requestId, detached = false, recovery = false) => {
-    let value; try { value = await host.checkpoint({ signal: controller.signal, ...(recovery ? { maxGraphBytes: 4 * 1048576, maxSemanticBytes: 2 * 1048576 } : detached ? { maxGraphBytes: 8 * 1048576, maxSemanticBytes: 8 * 1048576 } : {}) });
+    let value; try { value = await host.checkpoint({ signal: controller.signal, ...(recovery ? { maxGraphBytes: 4 * 1048576, maxSemanticBytes: 2 * 1048576 } : detached ? { maxGraphBytes: 8 * 1048576, maxSemanticBytes: 8 * 1048576 } : { maxGraphBytes: profile.checkpointGraphBytes, maxSemanticBytes: profile.checkpointSemanticBytes }) });
       if (detached || recovery) {
         const { hashData } = await import('../../core/CanonicalData.js'), { hashProcgenContinuationCheckpoint, hashProcgenPhysicsCheckpoint } = await import('./workstation/ProcgenCheckpointProvenance.js');
         const sourceHash = await hashData(value, { maxBytes: (recovery ? 8 : 16) * 1048576 - 4096, maxNodes: recovery ? 262144 : 1000000 }), continuationHash = await hashProcgenContinuationCheckpoint(value.world), physicsHash = await hashProcgenPhysicsCheckpoint(value.world);
@@ -98,7 +99,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
       outputAck = { sequence: fields.sequence, resolve: () => { timers.clearTimeout(timer); resolve(); }, reject: error => { timers.clearTimeout(timer); reject(error); } }; send(type, { requestId, ...fields }, transfers);
     });
     await transmit('checkpoint-start', { sequence: 0 }); let sequence = 0;
-    for await (const packet of encodeBackgroundSnapshotPages(value, { maxBytes: (recovery ? 8 : detached ? 16 : 128) * 1048576, maxNodes: recovery ? 262144 : 4000000, estimatedPeakBytes: 384 * 1048576, signal: controller.signal })) {
+    for await (const packet of encodeBackgroundSnapshotPages(value, { maxBytes: recovery ? 8 * 1048576 : detached ? 16 * 1048576 : profile.checkpointBytes, maxNodes: recovery ? 262144 : 4000000, estimatedPeakBytes: profile.checkpointPeakBytes, signal: controller.signal })) {
       sequence = packet.sequence; await transmit('checkpoint-page', { sequence, packet }, backgroundSnapshotTransfers(packet));
     }
     send('checkpoint-end', { requestId, sequence });
@@ -111,8 +112,9 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
             typeof request.ownerId !== 'string' || !request.ownerId || request.ownerId.length > 128 || request.requiredIdentity?.activeExecution !== 'bound' || !compareIdentity(request.requiredIdentity))
           throw simulationFailure('worker-build-mismatch', 'The authoritative worker requires its executing immutable application generation.');
         manifest = { ownerId: request.ownerId, ownerEpoch: request.ownerEpoch, documentRevision: request.documentRevision };
-        inputLimit = { maxBytes: 128 * 1048576, maxNodes: 4000000, estimatedPeakBytes: 384 * 1048576 };
-        inputStorage = createOwnedResourceReservation({ budget, owner: 'simulation-source-continuation', kind: 'initial-manifest-and-restore-overlap', category: 'candidate', bytes: 192 * 1048576 });
+        profile = procgenSimulationProfile(request.resourceProfile); budget = createResourceBudget({ limitBytes: profile.workerLimitBytes });
+        inputLimit = { maxBytes: profile.maxInputBytes, maxNodes: profile.maxInputNodes, estimatedPeakBytes: profile.inputPeakBytes };
+        inputStorage = createOwnedResourceReservation({ budget, owner: 'simulation-source-continuation', kind: 'initial-manifest-and-restore-overlap', category: 'candidate', bytes: profile.inputReservationBytes });
         receiver = createBackgroundSnapshotReceiver(inputLimit); connect(request.ports); phase = 'receiving'; send('input-ack', { sequence: 0 }); return;
       }
       if (!isSimulationEnvelope(request, manifest)) throw simulationFailure('host-envelope-stale', 'A simulation request belongs to a different document or generation.');
@@ -121,7 +123,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
       if (phase === 'receiving') {
         if (request.type === 'input-page') { const receipt = receiver.push(request.packet); inputSequence = receipt.sequence; send('input-ack', { sequence: inputSequence }); return; }
         if (request.type !== 'input-end' || request.sequence !== inputSequence) throw simulationFailure('manifest-incomplete', 'Complete all owned initialization pages before world preparation.');
-        const input = receiver.finish(request.sequence); receiver = null; validateSimulationManifest(input);
+        const input = receiver.finish(request.sequence); receiver = null; validateSimulationManifest(input); if (procgenSimulationProfile(input.resourceProfile).id !== profile.id) throw simulationFailure('resource-profile-stale', 'The received source changed its admitted worker memory profile.');
         if (!isSimulationEnvelope(simulationEnvelope(input, 'identity'), manifest)) throw simulationFailure('manifest-stale', 'The initialization manifest changed its admitted owner.');
         manifest = input; phase = 'preparing';
         preparingWork = Promise.resolve().then(() => prepare({ manifest, resourceBudget: budget, signal: controller.signal, requiredConsumer: deliver,

@@ -1,6 +1,6 @@
 export interface SimulationManifest {
   schema: 'lemmings-authoritative-simulation/v1'; ownerId: string; ownerEpoch: number; documentRevision: number;
-  rootPath: string; checkpoint: unknown; semantic: unknown; timeline: unknown; graph: unknown; performance: unknown;
+  rootPath: string; resourceProfile?: 'balanced-v1' | 'compact-v1'; checkpoint: unknown; semantic: unknown; timeline: unknown; graph: unknown; performance: unknown;
   bpm: number; playing: boolean; scoreTimeline: boolean;
 }
 export interface SimulationState {

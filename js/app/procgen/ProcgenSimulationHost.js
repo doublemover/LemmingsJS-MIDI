@@ -1,3 +1,4 @@
+import { procgenSimulationProfile } from './ProcgenSimulationProfiles.js';
 import { freezeData } from '../../core/CanonicalData.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 import { encodeBackgroundSnapshotPages, backgroundSnapshotTransfers, createBackgroundSnapshotReceiver } from '../resources/BackgroundSnapshotPages.js';
@@ -19,9 +20,10 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       !Array.isArray(requiredPorts) || new Set(requiredPorts).size !== requiredPorts.length || requiredPorts.length + (consume ? 1 : 0) > SIMULATION_MAX_CONSUMERS ||
       !requiredPorts.length && typeof consume !== 'function' || activeHosts >= 2)
     throw simulationFailure('worker-admission', 'This explicit worker mode requires an immutable build, an aggregate reservation and one to four required consumers.');
+  const profile = procgenSimulationProfile(input.resourceProfile);
   const manifest = { ownerId: input.ownerId, ownerEpoch: input.ownerEpoch, documentRevision: input.documentRevision },
     reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'simulation-worker:' + manifest.ownerId,
-      generation: manifest.ownerEpoch, kind: 'worker-world-semantic-state-and-transfer-overlap', category: 'candidate', bytes: 384 * 1048576 });
+      generation: manifest.ownerEpoch, kind: 'worker-world-semantic-state-and-transfer-overlap', category: 'candidate', bytes: profile.aggregateBytes });
   activeHosts++;
   const scope = createProcgenRetirementScope({ deadlineMs: 15000 }), requests = new Map(), projections = new Set(), controller = new AbortController();
   let worker = null, consumer = null, retired = false, confirmed = false, disposed = false, failure = null, latestState = null, requestSerial = 0,
@@ -92,7 +94,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       if (message.type === 'response') { requests.delete(message.requestId); timers.clearTimeout(pending.timer); if (message.value?.phase) publish(message.value); else if (message.value?.state) publish(message.value.state); pending.resolve(message.value); return; }
       if (message.type === 'checkpoint-start') {
         if (checkpointReceiver || message.sequence !== 0) throw simulationFailure('checkpoint-overlap', 'Only one checkpoint receiver may own its streamed pages.');
-        checkpointRequestId = message.requestId; checkpointReceiver = createBackgroundSnapshotReceiver({ maxBytes: (pending.kind === 'checkpoint-recovery' ? 8 : pending.kind === 'checkpoint-detach' ? 16 : 128) * 1048576, maxNodes: pending.kind === 'checkpoint-recovery' ? 262144 : 4000000, estimatedPeakBytes: (pending.kind === 'checkpoint-recovery' ? 64 : 384) * 1048576 });
+        checkpointRequestId = message.requestId; checkpointReceiver = createBackgroundSnapshotReceiver({ maxBytes: pending.kind === 'checkpoint-recovery' ? 8 * 1048576 : pending.kind === 'checkpoint-detach' ? 16 * 1048576 : profile.checkpointBytes, maxNodes: pending.kind === 'checkpoint-recovery' ? 262144 : 4000000, estimatedPeakBytes: pending.kind === 'checkpoint-recovery' ? 64 * 1048576 : profile.checkpointPeakBytes });
         send('checkpoint-ack', { sequence: 0 }); return;
       }
       if (!checkpointReceiver || checkpointRequestId !== message.requestId) throw simulationFailure('checkpoint-stale', 'The checkpoint stream has no admitted request owner.');
@@ -167,15 +169,15 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       resourceBudget, onFailure: fail }); ports.push(channel.port2); }
     signal?.addEventListener('abort', abort, { once: true });
     inputProducer = (async () => {
-      await transmitInput('initialize', 0, { requiredIdentity: execution, ports }, ports);
+      await transmitInput('initialize', 0, { requiredIdentity: execution, resourceProfile: profile.id, ports }, ports);
       let sequence = 0;
-      for await (const packet of encodeBackgroundSnapshotPages(input, { maxBytes: 128 * 1048576, maxNodes: 4000000, estimatedPeakBytes: 384 * 1048576,
+      for await (const packet of encodeBackgroundSnapshotPages(input, { maxBytes: profile.maxInputBytes, maxNodes: profile.maxInputNodes, estimatedPeakBytes: profile.inputPeakBytes,
         signal: controller.signal, isCurrent: () => !disposed && !failure })) { sequence = packet.sequence; await transmitInput('input-page', sequence, { packet }, backgroundSnapshotTransfers(packet)); }
       check(); input = null; send('input-end', { sequence });
     })(); await inputProducer; await timeout(ready, 180000, 'The authoritative world did not finish preparation.'); check();
     return Object.freeze({ mode: 'worker', identity: Object.freeze({ ...manifest }), state: () => latestState, pause: () => request('pause'), resume: () => request('resume'),
       project, detachCheckpoint, captureRecoveryCheckpoint, advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
       diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null, retainedProjections: projections.size, checkpointHandoff: checkpointTransfer ? checkpointTransfer.released ? 'released' : checkpointTransfer.published ? 'independently-owned' : 'waiting-for-producer-retirement' : null,
-        buildId: execution.buildId, defaultEnabled: false, performanceQualification: 'required-before-default', reservation: reservation.receipt() }), dispose });
+        buildId: execution.buildId, resourceProfile: profile, defaultEnabled: false, performanceQualification: 'required-before-default', reservation: reservation.receipt() }), dispose });
   } catch (error) { const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
 }
