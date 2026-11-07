@@ -46,7 +46,9 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
         if (!instances.has(instance)) { instances.add(instance); pools.set(descriptor.engineId, (pools.get(descriptor.engineId) || 0) + count); }
         return { instance, count };
       };
-      for (const patch of scene.patchRefs) {
+      for (const [laneIndex, patch] of scene.patchRefs.entries()) {
+        const gestureMaps = scene.causalMappings.instruments.filter(instrument => instrument.sampleGestureRegions && (!instrument.sourceLanes || instrument.sourceLanes.includes(laneIndex))).map(instrument => instrument.sampleGestureRegions);
+        if (gestureMaps.length && (patch.reference.definition.engineId !== 'worklet-sample' || gestureMaps.some(map => map.regions.some(region => !patch.reference.definition.sampleMap?.articulations.some(row => row.id === region.gesture))))) throw failure('scene-articulation-unbound', 'Every observed work gesture requires its exact saved owned sample articulation; neutral fallback is not a prepared workshop.');
         if (patch.materialPalette && !paletteHashes.has(patch.materialPalette.identityHash)) {
           const palette = await verifyMaterialPalette(patch.materialPalette, { descriptors: catalog.descriptors, signal }); check(); paletteHashes.add(palette.identityHash);
           for (const reference of palette.references) { const registered = registerSource(reference); paletteInstances.set(registered.instance, { engineId: reference.engineRequirement.engineId, count: registered.count }); }

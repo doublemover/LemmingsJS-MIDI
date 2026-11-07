@@ -7,6 +7,7 @@ import { createOrchestralArticulationIntent } from '../../../midi/content/Orches
 import { createPercussionHitIntent } from '../../../midi/content/PercussionRoleIntent.js';
 import { validatePreparedSurfaceDefinitions, createPreparedSurfaceMapping } from './physical/PreparedSurfaceMapping.js';
 import { validatePreparedBodyStrike } from '../../../midi/content/PreparedBodyStrike.js';
+import { validateObservedSampleGesture, resolveObservedSampleGesture } from '../../../midi/content/ObservedSampleGesture.js';
 import { captureCircularContactCoordinate, captureCircularPickupCoordinate } from '../../../midi/content/CircularSpectrum.js';
 import { registerPhysicalGraphAdmission } from '../PhysicalGraphAdmission.js';
 import { createCausalObserverResources } from './CausalObserverResources.js';
@@ -61,6 +62,8 @@ const validateCausalInstrumentGraph = value => {
         !Number.isFinite(input.velocity01) || input.velocity01 < 0 || input.velocity01 > 1 ||
         !nonempty(input.route) || !nonempty(input.role)) throw new Error('Invalid causal instrument.');
     ids.add(input.id);
+    const sampleGestureRegions = input.sampleGestureRegions == null ? null : validateObservedSampleGesture(input.sampleGestureRegions);
+    if (sampleGestureRegions && (input.sourceKind !== 'TerrainWorkCommitted' || input.route !== 'local' || input.workChangePolicy !== 'solid' || input.changedOnly !== true || input.sampleGesture != null || input.sampleKitId != null || input.materialResponse || input.spatialAttachment || input.topologyRegionId || input.response || input.articulation || input.actionVoicePolicy)) throw new Error('Observed sample gestures require a direct successful-work source with an exact prepared multisample map.');
     const spatialAttachment = input.spatialAttachment == null ? null : validateSpatialAttachment(input.spatialAttachment);
     if (spatialAttachment?.materialMode === 'zone-response' && (input.topologyRegionId || input.preparedBodyStrike || input.sampleGesture || input.sampleKitId || input.response || input.contactTravel)) throw new Error('An acoustic region body cannot replace an already owned topology, sample or response interpretation.');
     if (spatialAttachment && (!acousticMap || input.route !== 'local')) throw new Error('World spatial sources need a saved acoustic map and local renderer.');
@@ -102,7 +105,7 @@ const validateCausalInstrumentGraph = value => {
     if ([input.sampleGesture, input.sampleKitId].some(value => value != null && (typeof value !== 'string' || !/^[a-z][a-z0-9._:-]{0,127}$/i.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)))) throw new Error('Invalid authored sample gesture or kit identity.');
     return Object.freeze({ id: input.id, ...(input.sourceLanes ? { sourceLanes: Object.freeze([...input.sourceLanes].sort((a, b) => a - b)) } : {}), ...(input.topologyRegionId ? { topologyRegionId: input.topologyRegionId } : {}), ...(input.topologyAnchorId != null ? { topologyAnchorId: input.topologyAnchorId } : {}), ...(input.formationId ? { formationId: input.formationId } : {}), ...(input.harmonicFields ? { harmonicFields: true } : {}), sourceKind: input.sourceKind, ...(response ? { response } : {}), ...(actionVoicePolicy ? { actionVoicePolicy } : {}), ...(voiceTransfer ? { voiceTransfer } : {}), action: input.action ?? null,
       ...(input.cargoRole ? { cargoRole: input.cargoRole } : {}), ...(input.cargoStationId ? { cargoStationId: input.cargoStationId } : {}), ...(input.activityWindowId ? { activityWindowId: input.activityWindowId } : {}), ...(input.motifId ? { motifId: input.motifId } : {}), ...(input.encounterId ? { encounterId: input.encounterId } : {}), ...(input.pickupId ? { pickupId: input.pickupId } : {}), ...(input.routeId ? { routeId: input.routeId } : {}),
-      ...(spatialAttachment ? { spatialAttachment } : {}), ...(materialResponse ? { materialResponse } : {}), ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}), ...(preparedBodyStrike ? { preparedBodyStrike } : {}),
+      ...(sampleGestureRegions ? { sampleGestureRegions } : {}), ...(spatialAttachment ? { spatialAttachment } : {}), ...(materialResponse ? { materialResponse } : {}), ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}), ...(preparedBodyStrike ? { preparedBodyStrike } : {}),
       ...(input.workChangePolicy ? { workChangePolicy: input.workChangePolicy } : {}), operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
       gateX: input.sourceKind === 'MotionCommitted' ? input.gateX : null,
       articulation: input.articulation ? validateArticulationField(input.articulation) : null, ...(contactTravel ? { contactTravel } : {}),
@@ -199,7 +202,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       ...(fact?.tonalSourceBatchId ? { tonalSourceBatchId: fact.tonalSourceBatchId } : {}), ...(fact?.mappingEdit ? { mappingEdit: Object.freeze(fact.mappingEdit) } : {}), velocity01, ...(timeTransformPolicy ? { timeTransformPolicy } : {}), ...(scoreContextPolicy ? { scoreContextPolicy } : {}), ...(pianoPerformance ? { pianoPerformance } : {}), ...(orchestralArticulation ? { orchestralArticulation } : {}), ...(percussionHit ? { percussionHit } : {}),
       expression: Object.freeze({ ...expression, ...(Number.isFinite(expression.pitchOffsetCents) && tonalOffset ? { pitchOffsetCents: expression.pitchOffsetCents + tonalOffset } : {}) }), role: instrument.role, route: instrument.route, terminationReason: reason,
       ...(materialState ? { materialState } : {}), ...(instrument.preparedBodyStrike ? { preparedBodyStrike: instrument.preparedBodyStrike, graphRevision: graph.revision } : {}),
-      ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),
+      ...(fact?.sampleGestureState ? { sampleGestureState: fact.sampleGestureState } : {}), ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),
       ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
       ...(kind === 'begin' && onsetDecisions.has(`${instrument.id}:${fact?.observationId || fact?.eventId}`) ? { probabilityDecision: onsetDecisions.get(`${instrument.id}:${fact?.observationId || fact?.eventId}`) } : {}),
       ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(fact?.topologyBinding?.dampingMacroId ? { ...onsetControls, macros: { ...onsetControls?.macros, [fact.topologyBinding.dampingMacroId]: fact.topologyBinding.damping01 } } : materialOnsetControls), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
@@ -497,6 +500,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         }
         if (instrument.workChangePolicy === 'solid' && !(fact.physicalPayload?.changedSolidCells > 0) || instrument.workChangePolicy === 'appearance' && !(fact.physicalPayload?.changedAppearanceCells > 0)) continue;
         if (instrument.changedOnly && !((fact.physicalPayload?.changedSolidCells || 0) > 0 || (fact.physicalPayload?.changedAppearanceCells || 0) > 0)) continue;
+        if (instrument.sampleGestureRegions) { const sampleGestureState = resolveObservedSampleGesture(instrument.sampleGestureRegions, batch, fact); if (!sampleGestureState) { reject(instrument); continue; } fact = { ...fact, sampleGesture: sampleGestureState.gesture, sampleGestureState }; }
         let topologyBinding = null;
         if (instrument.topologyRegionId) {
           if (fact.kind === 'TerrainWorkCommitted' && !(fact.physicalPayload?.changedSolidCells > 0)) continue;

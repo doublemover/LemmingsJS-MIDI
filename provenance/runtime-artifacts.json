@@ -647,6 +647,7 @@
         "js/midi/content/MaterialResponseMap.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
+        "js/midi/content/ObservedSampleGesture.js",
         "js/midi/content/OrchestralArticulationIntent.js",
         "js/midi/content/OrganRotaryIntent.js",
         "js/midi/content/OriginalShapeMeshes.js",
@@ -748,8 +749,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 594,
-      "sha256": "7a90c2f0e0489011f9d1b4699e07a46d364d5283d16a2353229f12ac9b728f87",
+      "fileCount": 595,
+      "sha256": "d96351bc4f31e020799ee97bf63d9fbf075b16c2fc0350747f912c5fb90f042b",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1386,6 +1387,7 @@
         "js/midi/content/MaterialResponseMap.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
+        "js/midi/content/ObservedSampleGesture.js",
         "js/midi/content/OrchestralArticulationIntent.js",
         "js/midi/content/OrganRotaryIntent.js",
         "js/midi/content/OriginalShapeMeshes.js",
@@ -1520,8 +1522,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 627,
-      "sha256": "fef92ede6b538beefad35d74b3837553b945ccf50b5a18fa0f06d4636d84dc5a",
+      "fileCount": 628,
+      "sha256": "928d3877e112c8fbed3cc598b49f8b8098cd738ececa90eeeb6a7df0986cf5e4",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2045,6 +2047,7 @@
         "js/midi/content/MaterialResponseMap.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
+        "js/midi/content/ObservedSampleGesture.js",
         "js/midi/content/OrchestralArticulationIntent.js",
         "js/midi/content/OrganRotaryIntent.js",
         "js/midi/content/OriginalShapeMeshes.js",
@@ -2143,8 +2146,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 606,
-      "sha256": "b4ea35e3b73aa3cdda65bcada058d21ab43f0247af0dc3cbf8a041351d578089",
+      "fileCount": 607,
+      "sha256": "b7ed1e85a2f07990d73749c4ce8dcae8af27f7d29d5f0bf638a067da98e0bdd8",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2816,6 +2819,7 @@
         "js/midi/content/MaterialResponseMap.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
+        "js/midi/content/ObservedSampleGesture.js",
         "js/midi/content/OrchestralArticulationIntent.js",
         "js/midi/content/OrganRotaryIntent.js",
         "js/midi/content/OriginalShapeMeshes.js",
@@ -2926,8 +2930,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 680,
-      "sha256": "2cdd14aa268d41d12567ff81611c471029bb97337e71a957f21a726370fce2b1",
+      "fileCount": 681,
+      "sha256": "ae46596cc11e04d216695286514555aeccb0f17c6fc261e314d7d759f25adaa2",
       "inventoryScope": "first-party-artifact"
     }
   ]
