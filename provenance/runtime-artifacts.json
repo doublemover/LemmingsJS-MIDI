@@ -636,6 +636,7 @@
         "js/midi/content/InstrumentPatchV2.js",
         "js/midi/content/InstrumentPerformance.js",
         "js/midi/content/InstrumentSwitchPolicy.js",
+        "js/midi/content/MaterialPalette.js",
         "js/midi/content/MaterialResponseMap.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
@@ -737,8 +738,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 583,
-      "sha256": "fe3740119938610a28b5e3caa7d3c070c68f6adf530e1160fa6600f3ab37ce5e",
+      "fileCount": 584,
+      "sha256": "6c7281f5b847bc6dd341d67ef8639777185edb7a05e8ff8b14a0f12790a8a6fe",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1364,6 +1365,7 @@
         "js/midi/content/InstrumentPatchV2.js",
         "js/midi/content/InstrumentPerformance.js",
         "js/midi/content/InstrumentSwitchPolicy.js",
+        "js/midi/content/MaterialPalette.js",
         "js/midi/content/MaterialResponseMap.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
@@ -1498,8 +1500,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 616,
-      "sha256": "a518c46c7cb178e3884ea4411610900a0c3499a6883af756c46f26b31081ed10",
+      "fileCount": 617,
+      "sha256": "7b6511b59dcfa81c3c0832b84f2d48dd9287bea551dd041d3d9f650c2aaf9b78",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2011,6 +2013,7 @@
         "js/midi/content/InstrumentPatchV2.js",
         "js/midi/content/InstrumentPerformance.js",
         "js/midi/content/InstrumentSwitchPolicy.js",
+        "js/midi/content/MaterialPalette.js",
         "js/midi/content/MaterialResponseMap.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
@@ -2109,8 +2112,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 594,
-      "sha256": "0d5444e5f7960e824fa966137b58d4697c818bf7b75d97d5bc87176ce6fc99c5",
+      "fileCount": 595,
+      "sha256": "d055902c567210a4fc6eeeab8f71def3bbbbd39fa9f1ea1e2793660910d00e1d",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2769,6 +2772,7 @@
         "js/midi/content/InstrumentPatchV2.js",
         "js/midi/content/InstrumentPerformance.js",
         "js/midi/content/InstrumentSwitchPolicy.js",
+        "js/midi/content/MaterialPalette.js",
         "js/midi/content/MaterialResponseMap.js",
         "js/midi/content/NonlinearChainProfile.js",
         "js/midi/content/NonlinearFilterTables.js",
@@ -2879,8 +2883,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 667,
-      "sha256": "a3cc12a94a3794a0f043a0edb4518bef51a715ca94a5ec7a8c14660d16c471f7",
+      "fileCount": 668,
+      "sha256": "7c24e6df30f52920e471b474f4ba1163d77154f72f07fd96e25b6eae4c378c87",
       "inventoryScope": "first-party-artifact"
     }
   ]

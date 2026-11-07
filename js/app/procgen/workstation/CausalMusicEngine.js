@@ -1,3 +1,4 @@
+import { materialArticulationControls } from '../../../midi/content/MaterialPalette.js';
 import { validateMaterialResponseMap, resolveObservedMaterialResponse } from '../../../midi/content/MaterialResponseMap.js';
 import { createPianoPerformanceIntent } from '../../../midi/content/PianoPerformanceIntent.js';
 import { createOrchestralArticulationIntent } from '../../../midi/content/OrchestralArticulationIntent.js';
@@ -165,6 +166,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const tonalOffset = !fact?.tonalExpression ? active.get(voiceId)?.tonalOffset || 0 : 0;
     const onsetControls = kind === 'begin' ? getOnsetControls(fact?.laneId, { worldId: batch.worldId, generation: voiceGeneration, actorId: fact?.actorId ?? null }) : null;
     const velocity01 = Number.isFinite(fact?.velocity01) ? fact.velocity01 : Math.min(1, instrument.velocity01 * (Number.isFinite(fact?.velocityScale) ? fact.velocityScale : 1));
+    const materialOnsetControls = materialState ? { ...onsetControls, macros: { ...materialArticulationControls(materialState), ...onsetControls?.macros } } : onsetControls;
     const timeTransformPolicy = kind === 'begin' ? getTimeTransformPolicy(fact?.laneId) : null;
     const scoreContextPolicy = kind === 'begin' ? getScoreContextPolicy(fact?.laneId) : null;
     const pianoPerformance = kind === 'begin' ? createPianoPerformanceIntent(getPianoPolicy(fact?.laneId), getPianoControls(fact?.laneId), { velocity01, expression, swarm: fact?.swarm, sourceActionId: fact?.actionInstanceId }) : null;
@@ -191,7 +193,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),
       ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
       ...(kind === 'begin' && onsetDecisions.has(`${instrument.id}:${fact?.observationId || fact?.eventId}`) ? { probabilityDecision: onsetDecisions.get(`${instrument.id}:${fact?.observationId || fact?.eventId}`) } : {}),
-      ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(fact?.topologyBinding?.dampingMacroId ? { ...onsetControls, macros: { ...onsetControls?.macros, [fact.topologyBinding.dampingMacroId]: fact.topologyBinding.damping01 } } : onsetControls), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
+      ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(fact?.topologyBinding?.dampingMacroId ? { ...onsetControls, macros: { ...onsetControls?.macros, [fact.topologyBinding.dampingMacroId]: fact.topologyBinding.damping01 } } : materialOnsetControls), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
     });
     if (onIntentProvenance && provenanceCount < 512) {
       provenanceCount++;

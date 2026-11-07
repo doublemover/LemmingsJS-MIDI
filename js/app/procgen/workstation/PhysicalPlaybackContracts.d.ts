@@ -8,6 +8,7 @@ export interface PlaybackLaneSource {
   readonly id: string;
   readonly instrumentRef?: { readonly packHash: string; readonly definitionHash: string } | null;
   readonly instrumentControls?: unknown;
+  readonly materialPalette?: unknown;
   readonly timeTransform?: unknown;
   readonly scoreContext?: unknown;
   readonly piano?: unknown;

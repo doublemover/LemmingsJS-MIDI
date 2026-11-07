@@ -1,3 +1,4 @@
+import { createMaterialPalettePreparation } from '../../midi-ui/MaterialPalettePreparation.js';
 import { createSceneSympatheticBody } from './SceneSympatheticBody.js';
 import { createScenePreparedSurface } from './ScenePreparedSurface.js';
 import { actorTimbreControls, EMPTY_ACTOR_TIMBRE_LOCKS } from '../../../midi/content/InstrumentActorLocks.js';
@@ -55,12 +56,13 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     inspectRenderVoices: () => session?.inspectSourceVoiceStates?.() || [] });
   session?.configureLaneSources?.(getLanes().map(lane => lane.id));
   const nativeBackend = session?.createInstrumentBackend?.({ gateMode: 'owned' }) || null;
-  let cavityBody = null;
+  let cavityBody = null, materialPalettes = null;
+  const materialLaneSources = lanes => materialPalettes ? [...lanes, ...materialPalettes.aliases()] : lanes;
   let routed = null, routingUnavailable = null;
   try { if (nativeBackend?.inspectExecution) routed = createRoutedInstrumentBackend({ defaultBackend: nativeBackend, resourceBudget, getContext: () => audio.getAudioContext(),
     getGeneration: () => nativeBackend.executionIncarnation?.() ?? 0, defaultReleaseSeconds: nativeResolution.patch.parameters.releaseSeconds, defaultOneShotTailSeconds: 0.08,
     getLaneMix: laneId => laneMix.mix(laneId),
-    getPerformanceControls: (laneId, sourceId, identity) => actorTimbreControls((typeof sourceId === 'number' ? getLanes()[sourceId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity), resolveSharedTopologyBody: intent => cavityBody?.resolveSharedTopologyBody(intent) || null, onTopologyBody: onReceipt,
+    getPerformanceControls: (laneId, sourceId, identity) => actorTimbreControls((typeof sourceId === 'number' ? getLanes()[sourceId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity), resolveMaterialVariant: (intent, laneId) => materialPalettes?.resolve(intent, getLanes().find(lane => lane.id === laneId)?.materialPalette) || null, resolveSharedTopologyBody: intent => cavityBody?.resolveSharedTopologyBody(intent) || null, onTopologyBody: onReceipt,
     resolveLane: laneId => typeof laneId === 'number' ? getLanes()[laneId]?.id || String(laneId) : String(laneId),
     requiredInstrumentKey: (laneId, sourceId) => { const lane = typeof sourceId === 'number' ? getLanes()[sourceId] : getLanes().find(entry => entry.id === laneId), reference = lane?.instrumentRef;
       return reference ? reference.packHash + ':' + reference.definitionHash : null; } }); }
@@ -83,6 +85,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       return frame;
     } }); }
   catch { routingUnavailable = 'audio-preparation-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Preparation cannot stop physics. */ } }
+  try { if (laneInstruments && routed) materialPalettes = createMaterialPalettePreparation({ getCatalog: getInstrumentCatalog, getContext: () => audio?.getAudioContext?.(), prepareLane: laneInstruments.prepare, unassignLane: routed.unassign, assignment: routed.assignment, resourceBudget, onState: onInstrumentState }); } catch (error) { routingUnavailable = 'material-palette-owner-unavailable'; try { onInstrumentState({ laneId: 'material-palette', state: 'unavailable', code: error.message }); } catch {} }
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ (presentationDelayMs), maxHorizonMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ (5000) });
   /** @type {import('./AudioClockContracts.js').ExecutionEpoch | null} */
@@ -106,7 +109,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     ]);
     if (receipt.outcome !== 'complete') { displayErrors++; displayBlocked = true; } return receipt;
   };
-  const prepareSceneBody = () => { if (continuationStaging) return; if (sceneNetwork) sceneNetwork.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (sceneSurface) sceneSurface.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (sceneMorph && !sceneMorph.state().error && !sceneMorph.isPrepared()) sceneMorph.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (cavityBody) cavityBody.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); };
+  const prepareSceneBody = () => { if (continuationStaging) return; const lanes = getLanes(); if (lanes.some(lane => lane.materialPalette)) materialPalettes?.ensure(lanes, { isCurrent: () => !disposed && getLanes() === lanes }).catch(() => {}); if (sceneNetwork) sceneNetwork.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (sceneSurface) sceneSurface.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (sceneMorph && !sceneMorph.state().error && !sceneMorph.isPrepared()) sceneMorph.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (cavityBody) cavityBody.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); };
   const arm = () => {
     if (disposed || !armEnabled || !prepared || !session || !permitted() || !audio?.getState?.().enabled || enableLease) return;
     if (session.getState().enabled) { prepareSceneBody(); return; }
@@ -126,7 +129,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       clock.invalidate(); anchoredEpoch = null; anchoredBpm = null;
       leaseUntil = null; leaseEpoch = null; leaseContext = null;
     }
-    if (state.enabled) { arm(); if (!continuationStaging && (!lastAudioEnabled || context !== lastAudioContext)) laneInstruments?.retry(getLanes()).catch(() => {}); }
+    if (state.enabled) { arm(); if (!continuationStaging && (!lastAudioEnabled || context !== lastAudioContext)) laneInstruments?.retry(materialLaneSources(getLanes())).catch(() => {}); }
     lastAudioEnabled = !!state.enabled; lastAudioContext = context;
   }) || null;
   let bodyBackend = null;
@@ -143,7 +146,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   const audioLatePolicy = createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() });
   let cavityBackend = null;
   try { if (initialCavityBody && backend) cavityBackend = createCavitySourceAdmission({ backend, getBody: () => cavityBody, getContext: () => audio?.getAudioContext?.(), resourceBudget }); }
-  catch (error) { disposed = true; error.retirement = retirement.retire([{ name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }, ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))]); throw error; }
+  catch (error) { disposed = true; error.retirement = retirement.retire([{ name: 'material-palette-owner', run: () => materialPalettes?.dispose() }, { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }, ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))]); throw error; }
   const dispatcher = createCausalIntentDispatcher({ resourceBudget, getTempoBpm: () => sourceTempoBpm ?? scoreTimeline.currentSegment?.().tempoBpm ?? null,
     sinks: [...(backend ? [{ id: 'physical-browser-audio', route: 'local', backend: cavityBackend || backend, timeDomain: 'audio-sample-frames', getAdmissionIdentity: () => ({ connectionEpoch: backend.executionIncarnation?.() ?? null, routeRevision: routed?.routeRevision() ?? 0 }) }] : []), ...(bodyBackend ? [{ id: 'physical-shared-body', route: 'prepared-body', backend: bodyBackend, timeDomain: 'audio-sample-frames', getAdmissionIdentity: () => ({ connectionEpoch: bodyBackend.executionIncarnation?.() ?? null, routeRevision: routed?.routeRevision() ?? 0 }) }] : []), ...additionalOutputs.flatMap(output => output.sinks)],
     executionEpoch: () => executionEpoch,
@@ -320,7 +323,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   } catch (error) { disposed = true; error.retirement = retirement.retire([
     ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() })),
     { name: 'scene-network-mechanism', run: () => sceneNetwork?.dispose() }, { name: 'scene-surface-mechanism', run: () => sceneSurface?.dispose() }, { name: 'scene-morph-mechanism', run: () => sceneMorph?.dispose() }, { name: 'scene-cavity-body', run: () => cavityBody?.dispose() }, { name: 'cavity-state-subscription', run: () => unsubscribeCavityState?.() }, { name: 'cavity-source-buffer', run: () => cavityBackend?.disposeCavityBuffer() }, { name: 'causal-observer-storage', run: () => engine?.dispose() }, { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
-    { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
+    { name: 'material-palette-owner', run: () => materialPalettes?.dispose() }, { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
   ]); throw error; }
   const refreshDisplay = batch => {
     const manager = renderer?.actorEffects, state = audio?.getState?.(), owner = session?.getState?.().ownerId;
@@ -440,7 +443,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       { name: 'playback-stop', run: stop }, { name: 'scene-network-owner', run: () => sceneNetwork?.dispose() }, { name: 'scene-surface-owner', run: () => sceneSurface?.dispose() }, { name: 'scene-morph-owner', run: () => sceneMorph?.dispose() }, { name: 'scene-cavity-owner', run: () => cavityBody?.dispose() }, { name: 'cavity-state-subscription', run: () => unsubscribeCavityState?.() }, { name: 'cavity-source-buffer', run: () => cavityBackend?.disposeCavityBuffer() }, { name: 'surface-body-binding-storage', run: () => surfaceBodies?.dispose() }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
       { name: 'causal-observer-storage', run: () => engine.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() },
       { name: 'harmony-observation', run: () => harmony.dispose() },
-      { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
+      { name: 'material-palette-preparation', run: () => materialPalettes?.dispose() }, { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() },
       ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))
     ]);
@@ -448,7 +451,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   const api = { engine, processBatch, stop, dispose, capturePreparedBodyContinuation, prepareRestorationExecution, restorePreparedBodyContinuation, stageAudioRoutingContinuation, anchorAudioContinuation,
     audioContinuation: Object.freeze({ prepareSources: async options => { const { preparePhysicalContinuationSources } = await import('./PhysicalContinuationSources.js'); return preparePhysicalContinuationSources({ owner: api, lanes: getLanes(), ...options }); }, enable: () => session?.enable?.(), context: () => audio?.getAudioContext?.(), assignment: lane => routed?.assignmentBackend(lane) || null,
       provider: () => audio?.getSoundMaterialProvider?.(), createSource: options => session?.createWorkletInstrumentBackend?.(options),
-      capabilities: () => { const sources = session?.instrumentSources?.() || [], owned = sources.filter(row => typeof row.backend.detachSourceState === 'function'), uncovered = sources.some(row => !owned.includes(row) && row.backend.sourceCaptureStatus?.().quiescent !== true), ready = !!session?.getState().enabled && !!executionEpoch && !initialMorphMechanism && !initialCavityBody && !initialPreparedSurface && !initialSympatheticBody && !externalEnabled() && owned.length > 0 && owned.length <= 16 && !uncovered && owned.every(row => row.backend.sourceContentReference?.() && row.backend.renderDiagnostics().readiness === 'ready');
+      capabilities: () => { const sources = session?.instrumentSources?.() || [], owned = sources.filter(row => typeof row.backend.detachSourceState === 'function'), uncovered = sources.some(row => !owned.includes(row) && row.backend.sourceCaptureStatus?.().quiescent !== true), ready = !!session?.getState().enabled && !!executionEpoch && !initialMorphMechanism && !initialCavityBody && !initialPreparedSurface && !initialSympatheticBody && !getLanes().some(lane => lane.materialPalette) && !externalEnabled() && owned.length > 0 && owned.length <= 16 && !uncovered && owned.every(row => row.backend.sourceContentReference?.() && row.backend.renderDiagnostics().readiness === 'ready');
         return Object.freeze({ ready, externalOutput: externalEnabled(), sceneBody: !!initialMorphMechanism || !!initialCavityBody || !!initialPreparedSurface || !!initialSympatheticBody, ownedSources: owned.length, uncoveredSources: uncovered, sourceEpoch: executionEpoch }); },
       setCommandCapture: value => { commandCapture = value === true; }, activate: () => { continuationStaging = false; return true; }, sources: () => session?.instrumentSources?.() || [], capture: captureAudioState, captureImage: captureAudioImage, encode: options => session?.encodeAudioImage?.(options), prepare: options => session?.prepareAudioCutContinuation?.(options), prepareImage: options => session?.prepareAudioImageContinuation?.(options), restore: options => session?.restoreAudioState?.({ ...options, route: 'owner-live' }) }),
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
@@ -467,15 +470,17 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     },
     closeHarmony: () => harmony.selectLane(null),
     mappingParameterValues: (laneId, parameterId) => session?.inspectSourceParameter?.({ laneId, parameterId }) || Object.freeze([]),
-    synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
-    retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
+    prepareMaterialPalette: (palette, options) => materialPalettes ? materialPalettes.prepare(palette, options) : Promise.reject(new Error('Prepared material source ownership is unavailable.')),
+    materialPaletteState: () => materialPalettes?.state() || null,
+    synchronizeLaneInstruments: async lanes => { materialPalettes?.synchronizeUsage(lanes); await materialPalettes?.ensure(lanes, { isCurrent: () => !disposed && getLanes() === lanes }); return laneInstruments?.synchronize(materialLaneSources(lanes)) || []; },
+    retryLaneInstruments: async () => { const lanes = getLanes(); await materialPalettes?.retry(lanes, { isCurrent: () => !disposed && getLanes() === lanes }); return laneInstruments?.retry(materialLaneSources(lanes)) || []; },
     pendingInstrumentCount: () => laneInstruments?.pendingCount() || 0,
     operationalState: () => Object.freeze({ prepared, routingUnavailable, accepted, degraded, rejected, pendingAdmissions, leaseFailures, audioEnabled: !!session?.getState().enabled, clock: clock.diagnostics() }),
     latencyState,
     diagnostics: ({ requestHealth = false, requestSourceDiagnostics = false, includeSourceTraces = false } = {}) => Object.freeze({ prepared, routingUnavailable, enabled: externalEnabled() || !!session?.getState().enabled, audioEnabled: !!session?.getState().enabled, externalOutputs: Object.freeze(additionalOutputs.map(output => output.diagnostics?.() || null)), accepted, degraded, rejected, pendingAdmissions,
       sourceRender: requestSourceDiagnostics ? (backend || nativeBackend)?.renderDiagnostics?.({ includeTraces: includeSourceTraces }) || null : null,
       effects: session?.inspectEffectGraph?.({ requestHealth }) || null, preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, scoreMorph: sceneMorph?.state() || null, scoreSurface: sceneSurface?.state() || null, scoreNetwork: sceneNetwork?.state() || null, cavityBody: cavityBody?.state() || null, cavitySourceAdmission: cavityBackend?.cavityDiagnostics() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
-      instruments: laneInstruments?.diagnostics() || null, laneMix: laneMix.diagnostics(), renderers: routed?.backend.renderDiagnostics() || null }) };
+      instruments: laneInstruments?.diagnostics() || null, materialPalettes: materialPalettes?.state() || null, laneMix: laneMix.diagnostics(), renderers: routed?.backend.renderDiagnostics() || null }) };
   return api;
 }
 

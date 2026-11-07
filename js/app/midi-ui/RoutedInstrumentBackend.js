@@ -1,3 +1,4 @@
+import { materialArticulationControls } from '../../midi/content/MaterialPalette.js';
 import { validateObservedMaterialResponse } from '../../midi/content/MaterialResponseMap.js';
 import { createRoutedInstrumentContinuation } from './RoutedInstrumentContinuation.js';
 import { validateInstrumentSwitchPolicy, instrumentSwitchFidelity } from '../../midi/content/InstrumentSwitchPolicy.js';
@@ -188,7 +189,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (!Number.isSafeInteger(frame) || frame < 0 || disposed) return reject('performance-clock-unavailable');
     collectVoices(maxVoices); const outcomes = [];
     for (const voice of voices.values()) {
-      let input, expected; try { input = getPerformanceControls(voice.laneId, voice.sourceLaneId, voice.performanceIdentity); expected = voice.intent.materialState ? voice.child.instrumentKey : requiredInstrumentKey(voice.laneId, voice.sourceLaneId); } catch { outcomes.push(Object.freeze({ laneId: voice.laneId, status: 'rejected', reason: 'performance-source-unavailable' })); continue; }
+      let input, expected; try { input = getPerformanceControls(voice.laneId, voice.sourceLaneId, voice.performanceIdentity); if (input && voice.intent.materialState) input = { ...input, macros: { ...materialArticulationControls(voice.intent.materialState), ...input.macros } }; expected = voice.intent.materialState ? voice.child.instrumentKey : requiredInstrumentKey(voice.laneId, voice.sourceLaneId); } catch { outcomes.push(Object.freeze({ laneId: voice.laneId, status: 'rejected', reason: 'performance-source-unavailable' })); continue; }
       if (input == null || expected && expected !== (voice.child.instrumentKey || voice.child.key)) continue;
       const key = JSON.stringify(input.macros || {}); if (key === voice.performanceInput) continue;
       let result; try { result = voice.child.backend.updatePerformance?.(voice.voiceId, input, Math.max(frame, voice.startFrame), voice.execution); } catch { result = null; }
