@@ -87,7 +87,7 @@ const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
 const WORLD_HISTORY_ACTIONS = new Set(['procgen/worldTheme', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed',
   'procgen/physicalGraph', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment', 'procgen/releaseGesture']);
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/timbreTuning', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/materialPalette', 'procgen/timbreTuning', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/nativeRoutes', 'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -473,8 +473,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
     const instrumentRefsChanged = change && !change.structural ? change.laneIds.some(id => {
       const before = procgenLane(project.procgen.lanes, id)?.instrumentRef, after = procgenLane(next.procgen.lanes, id)?.instrumentRef;
-      return before !== after && !equal(before ?? null, after ?? null);
-    }) : project.procgen.lanes.some((lane, index) => lane.instrumentRef !== next.procgen.lanes[index]?.instrumentRef &&
+      return before !== after && !equal(before ?? null, after ?? null) || procgenLane(project.procgen.lanes, id)?.materialPalette !== procgenLane(next.procgen.lanes, id)?.materialPalette && !equal(procgenLane(project.procgen.lanes, id)?.materialPalette ?? null, procgenLane(next.procgen.lanes, id)?.materialPalette ?? null);
+    }) : project.procgen.lanes.some((lane, index) => lane.materialPalette !== next.procgen.lanes[index]?.materialPalette && !equal(lane.materialPalette ?? null, next.procgen.lanes[index]?.materialPalette ?? null)) || project.procgen.lanes.some((lane, index) => lane.instrumentRef !== next.procgen.lanes[index]?.instrumentRef &&
       !equal(lane.instrumentRef ?? null, next.procgen.lanes[index]?.instrumentRef ?? null)) || next.procgen.lanes.some((lane, index) => lane.instrumentRef && !project.procgen.lanes[index]);
     if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
     if ((causalTake || causalTakeStart || causalTakeStop) && !equal(project.procgen.effectRack ?? null, next.procgen.effectRack ?? null)) throw new Error('Finish the causal take before changing its saved effect defaults.');
@@ -2597,6 +2597,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return toolGate.open('Sound library', () => import('../../midi-ui/SoundContentLibrary.js'), ({ createSoundContentLibrary }) => {
         soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
           getGestureTake: options => handlers.gestureSoundTake(options), getGestureTakeIdentity: () => handlers.gestureSoundTakeIdentity(),
+          onApplyMaterialPalette: (request, options) => handlers.applyMaterialPalette(request, options), getMaterialTargetIdentity: () => JSON.stringify([documentGeneration, selected().id, selected().instrumentRef?.definitionHash || null, project.procgen.physicalGraph.revision]),
           onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
         soundLibrary.open();
       });
@@ -2627,6 +2628,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         shapeFoundry ||= createShapeFoundryView({ document, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
           onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onOfferResonatorSource: (index, file, options) => handlers.offerMorphSource(index, 'shape', file, options), onStatus: status }); shapeFoundry.open();
       });
+    },
+    async applyMaterialPalette(request, { signal = null, isCurrent = () => true } = {}) {
+      signal?.throwIfAborted(); if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop || !physicalPlayback) throw new Error('Finish the current world/take operation before applying a contact material palette.');
+      const lane = selected(), sourceGraph = project.procgen.physicalGraph, sourceWorld = runtime()?.world, sourceDocument = documentGeneration,
+        action = { type: 'procgen/materialPalette', laneId: lane.id, palette: request.palette, articulation: request.articulation, site01: request.site01 }, current = () => !disposed && !worldBusy && !pendingHistory && !causalTake && !causalTakeStart && !causalTakeStop && documentGeneration === sourceDocument && runtime()?.world === sourceWorld && selected().id === lane.id && procgenLane(project.procgen.lanes, lane.id)?.instrumentRef === lane.instrumentRef && project.procgen.physicalGraph === sourceGraph && isCurrent();
+      reduceMidiProject(project, action); const candidate = await physicalPlayback.prepareMaterialPalette(request.palette, { signal, isCurrent: current }); let published = false;
+      try { signal?.throwIfAborted(); if (!current()) throw new Error('The contact palette target changed before publication.'); candidate.commit();
+        try { dispatch(action); published = true; } catch (error) { if (procgenLane(project.procgen.lanes, lane.id)?.materialPalette?.identityHash === request.palette.identityHash && project.procgen.physicalGraph !== sourceGraph) published = true; if (!published) throw error; status('Contact palette applied; presentation refresh: ' + error.message); }
+        candidate.accept(); return Object.freeze({ status: 'committed', laneId: lane.id, paletteId: candidate.palette.id, undoEntries: 1 });
+      } finally { if (!published) candidate.release(); }
     },
     /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean, compatibilityReceipt?: object}} options */
     applyInstalledInstrument(candidate, { signal, hold = false, isCurrent, compatibilityReceipt = null } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, patch: { gestureCompatibilityReceipt: compatibilityReceipt }, laneId: selected().id }); },

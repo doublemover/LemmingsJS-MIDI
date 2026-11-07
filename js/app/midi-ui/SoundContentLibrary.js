@@ -1,3 +1,5 @@
+import { createMaterialPalette } from '../../midi/content/MaterialPalette.js';
+import { ORIGINAL_MATERIAL_PATCH_IDS } from '../../midi/content/MaterialResponseMap.js';
 import { createGestureSoundBrowserView } from './GestureSoundBrowserView.js';
 import { prepareCircuitWorkshopPack } from './CircuitWorkshopPreparation.js';
 import { readStagedDrumKit } from './DrumKitReference.js';
@@ -33,7 +35,7 @@ const TACTILE_SOURCE = new URL('../../../content/sounds/tactile-contacts.json', 
 const SPECTRUM_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'liquid-drawbars').source;
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
-export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null, targetLabel = 'selected lane', allowLivePreview = true, getGestureTake = null, getGestureTakeIdentity = () => null } = {}) {
+export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null, targetLabel = 'selected lane', allowLivePreview = true, getGestureTake = null, getGestureTakeIdentity = () => null, onApplyMaterialPalette = null, getMaterialTargetIdentity = () => null } = {}) {
   if (!document?.createElement || !resourceBudget || typeof onApply !== 'function') throw new TypeError('Invalid sound library surface.');
   const reader = createSoundContentReader({ resourceBudget, jobs }), archiver = createSoundContentArchiver({ resourceBudget, jobs });
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
@@ -167,6 +169,23 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       if (selectedGestureReceipt && selectedGestureTakeIdentity !== getGestureTakeIdentity()) throw new Error('Search the changed take again before keeping its compatibility receipt.');
       await onApply(candidate, { signal: operation.controller.signal, compatibilityReceipt: selectedGestureReceipt }); check(operation); setStatus('Instrument applied to the ' + targetLabel + '.'); });
   });
+  const materialControls = node('fieldset'), materialLegend = node('legend', 'Verified contact materials'), materialArticulation = node('select'), materialSite = node('input');
+  materialArticulation.setAttribute('aria-label', 'Material contact articulation'); for (const id of ['hard', 'soft', 'muted']) { const option = node('option', id); option.value = id; materialArticulation.append(option); }
+  materialSite.type = 'number'; materialSite.min = '0'; materialSite.max = '1'; materialSite.step = '0.01'; materialSite.value = '0.5'; materialSite.setAttribute('aria-label', 'Authored normalized strike site');
+  const materialApply = node('button', 'Apply contact material palette'); materialApply.type = 'button'; materialControls.hidden = typeof onApplyMaterialPalette !== 'function';
+  materialControls.append(materialLegend, node('p', 'Prepare Struck materials, then choose the contact articulation and authored strike site. Verified wood, stone, glass and metal tags select their bodies. Untagged or unavailable provenance uses Unclassified. Existing voices keep their onset body.'), materialArticulation, materialSite, materialApply);
+  on(materialApply, 'click', () => run(async operation => {
+    if (!stage || typeof onApplyMaterialPalette !== 'function' || !materialSite.checkValidity()) throw failure('Prepare the full original material family and choose a normalized strike site.');
+    const target = getMaterialTargetIdentity(), references = [], lease = stage.borrow();
+    try { for (const id of ORIGINAL_MATERIAL_PATCH_IDS) { const patch = lease.prepared.patches.find(row => row.state === 'definition-admitted' && row.definition.id === id); if (!patch) throw failure('The complete original material family is required.');
+      references.push({ schema: 'lemmings-sound-reference/v1', packHash: lease.prepared.contentHash, patchId: patch.definition.id, revision: patch.definition.revision, definitionHash: patch.definitionHash, definition: patch.archivedDefinition, engineRequirement: patch.engineRequirement, assetHashes: [...patch.dependencies].sort() }); }
+    } finally { lease.release(); }
+    const palette = await createMaterialPalette(references); check(operation);
+    await installation.install(stage, { referenceOnly: true, signal: operation.controller.signal, isCurrent: () => !disposed && current === operation && getMaterialTargetIdentity() === target }); check(operation); installed = true;
+    if (getMaterialTargetIdentity() !== target) throw failure('The selected lane or contact mapping changed while preparing the material palette.');
+    await onApplyMaterialPalette({ palette, articulation: materialArticulation.value, site01: Number(materialSite.value) }, { signal: operation.controller.signal, isCurrent: () => !disposed && current === operation && getMaterialTargetIdentity() === target }); check(operation);
+    setStatus('Contact material palette applied as one edit. The five exact bodies were admitted ahead of future contact onsets; source timing and terrain geometry are unchanged.');
+  }));
   const hold = button('Hold to preview incoming events', () => {});
   hold.hidden = !allowLivePreview;
   hold.setAttribute('aria-label', 'Hold Space, Enter or pointer to preview this instrument on incoming physical events; release to restore');
@@ -277,7 +296,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     },
     onSelect: (identity, receipt) => { if (!stage || ![...select.options].some(option => option.value === identity)) throw new Error('The suggested exact revision is no longer staged.'); selectedGestureReceipt = receipt; selectedGestureTakeIdentity = getGestureTakeIdentity(); selection = select.value = identity; rights.checked = false; render(); },
     onStatus: setStatus });
-  dialog.append(title, status, importInput, summary, select, gestureLabel, gestureDiscovery.element, modelInfo, reviewLabel, credits, controls, archivedLabel, list); document.body.append(dialog);
+  dialog.append(title, status, importInput, summary, select, gestureLabel, gestureDiscovery.element, modelInfo, reviewLabel, credits, materialControls, controls, archivedLabel, list); document.body.append(dialog);
   function render() {
     gestureDiscovery.refresh();
     if (disposed) return; const busy = !!current || !!factoryFaults.size; let plan = null;
@@ -287,8 +306,8 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (plan?.unavailableEngines.length) summary.textContent += ' Required renderer: ' + plan.unavailableEngines.map(entry => entry.state).join(', ') + '.';
     if (plan?.missingReferences.length || plan?.missingAssetBytes.length) summary.textContent += ' Missing material: ' + (plan.missingReferences.length + plan.missingAssetBytes.length) + ' references.';
     const ready = !!plan, auditioned = ready && !!installation.getAudition(stage, selection);
-    let renderable = false, localProceduralMaterial = false, sourceComparable = false, sampleMap = null, sampleMapSource = null; modelInfo.textContent = '';
-    if (ready) { const lease = stage.borrow(); try { const patch = lease.prepared.patches.find(entry => entry.identity === selection);
+    let materialFamilyReady = false, renderable = false, localProceduralMaterial = false, sourceComparable = false, sampleMap = null, sampleMapSource = null; modelInfo.textContent = '';
+    if (ready) { const lease = stage.borrow(); try { materialFamilyReady = ORIGINAL_MATERIAL_PATCH_IDS.every(id => lease.prepared.patches.some(row => row.state === 'definition-admitted' && row.definition.id === id)); const patch = lease.prepared.patches.find(entry => entry.identity === selection);
       sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
       localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralSoundMaterial(file)));
       renderable = patch?.state === 'definition-admitted' && (NATIVE_OFFLINE_SOURCE_IDS.includes(patch.definition.engineId) || OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender);
@@ -351,6 +370,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       for (const entry of sampleMap?.articulations || []) { const option = node('option', entry.name); option.value = entry.id; gesture.append(option); }
       gesture.value = sampleMap?.neutralArticulationId || '';
     }
+    materialApply.disabled = busy || !materialFamilyReady; materialArticulation.disabled = materialSite.disabled = busy;
     gestureLabel.hidden = !sampleMap; gesture.disabled = busy || !sampleMap;
     audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed && !localProceduralMaterial;
     originalSource.disabled = sourceRegion.disabled = audition.disabled || !sourceComparable;

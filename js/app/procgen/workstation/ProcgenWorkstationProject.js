@@ -1,3 +1,5 @@
+import { validateMaterialPalette } from '../../../midi/content/MaterialPalette.js';
+import { createOriginalMaterialResponseMap, validateMaterialResponseMap } from '../../../midi/content/MaterialResponseMap.js';
 import { validateGestureCompatibilityReceipt } from '../../../midi/content/GestureCompatibilityReceipt.js';
 import { validateTimbreTuningBinding, physicalTuningForTimbreSet } from '../../../midi/content/TimbreTuningSet.js';
 import { INSTRUMENT_SWITCH_MODES, INSTRUMENT_SWITCH_BOUNDARIES } from '../../../midi/content/InstrumentSwitchPolicy.js';
@@ -97,6 +99,10 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
   if (overrides.soundChangeBoundary != null && !INSTRUMENT_SWITCH_BOUNDARIES.includes(overrides.soundChangeBoundary) || overrides.soundChangeFadeSeconds != null && (!Number.isFinite(overrides.soundChangeFadeSeconds) || overrides.soundChangeFadeSeconds < 0.005 || overrides.soundChangeFadeSeconds > 0.2)) throw new Error('Unsupported patch switch boundary or fade.');
   const paired = overrides.timbreTuningSet && !(trusted && overrides.timbreTuningSet === trusted.timbreTuningSet && instrumentRef !== trusted.instrumentRef) ? validateTimbreTuningBinding(overrides.timbreTuningSet, instrumentRef) : null;
   if (paired && (typeof overrides.timbreTuningFieldId !== 'string' || !/^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(overrides.timbreTuningFieldId))) throw new Error('The paired spectrum needs its exact tuning field identity.');
+  const inheritedMaterial = trusted && overrides.materialPalette === trusted.materialPalette;
+  const materialPalette = overrides.materialPalette && !(inheritedMaterial && instrumentRef !== trusted.instrumentRef) ? inheritedMaterial ? trusted.materialPalette : validateMaterialPalette(overrides.materialPalette) : null;
+  if (materialPalette && !(trusted && materialPalette === trusted.materialPalette && instrumentRef === trusted.instrumentRef) && !sameValue(materialPalette.references.find(reference => reference.patchId === 'material.unclassified'), instrumentRef)) throw new Error('A material palette keeps its exact unclassified default lane source.');
+  if (materialPalette && (overrides.soundChangePolicy != null && overrides.soundChangePolicy !== 'new-notes-only' || overrides.soundChangeBoundary != null && overrides.soundChangeBoundary !== 'immediate')) throw new Error('Material palettes retain each onset body; delayed or held-replacement patch switching requires a separately prepared palette transition.');
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
   return { id: string(overrides.id, `lane-${index + 1}`), revision: integer(overrides.revision, 0, 0, Number.MAX_SAFE_INTEGER), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id, worldThemeId,
     instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
@@ -113,6 +119,7 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
     ...(overrides.orchestral == null ? {} : { orchestral: trusted && overrides.orchestral === trusted.orchestral ? trusted.orchestral : validateOrchestralArticulationPolicy(overrides.orchestral) }),
     ...(overrides.percussion == null ? {} : { percussion: trusted && overrides.percussion === trusted.percussion ? trusted.percussion : validatePercussionIntentPolicy(overrides.percussion) }),
     ...(overrides.deviceParameters == null ? {} : { deviceParameters: trusted && overrides.deviceParameters === trusted.deviceParameters ? trusted.deviceParameters : validateDeviceParameterMappings(overrides.deviceParameters) }),
+    ...(materialPalette ? { materialPalette } : {}),
     ...(paired ? { timbreTuningSet: paired, timbreTuningFieldId: overrides.timbreTuningFieldId } : {}),
     ...(overrides.gestureCompatibilityReceipt && !(trusted && overrides.gestureCompatibilityReceipt === trusted.gestureCompatibilityReceipt && instrumentRef !== trusted.instrumentRef) ? { gestureCompatibilityReceipt: validateGestureCompatibilityReceipt(overrides.gestureCompatibilityReceipt, instrumentRef) } : {}),
     instrumentRef, ...(overrides.devicePatch == null ? {} : { devicePatch: trusted && overrides.devicePatch === trusted.devicePatch ? trusted.devicePatch : validateDevicePatchIntent(overrides.devicePatch) }),
@@ -212,6 +219,22 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
     });
     if (!changed) return project; inheritProcgenLaneIndex(lanes, updated); return { ...project, procgen: { ...procgen, lanes: updated } };
   }
+  if (action.type === 'procgen/materialPalette') {
+    const index = procgen.lanes.findIndex(lane => lane.id === action.laneId), previous = procgen.lanes[index];
+    if (!previous || previous.mode === 'pattern') throw new Error('Select a physical contact lane for the prepared material palette.');
+    const palette = validateMaterialPalette(action.palette), reference = palette.references.find(reference => reference.patchId === 'material.unclassified'), baseMap = createOriginalMaterialResponseMap({ articulation: action.articulation, site01: action.site01 }); let matched = 0;
+    const instruments = procgen.physicalGraph.instruments.map(instrument => {
+      if (instrument.sourceLanes && !instrument.sourceLanes.includes(index) || !['ContactSpanBegan', 'ContactResolved'].includes(instrument.sourceKind)) return instrument;
+      if (!instrument.sourceLanes || instrument.sourceLanes.some(lane => lane !== index)) throw new Error('Scope the contact mapping to this lane explicitly before applying its material palette.');
+      if (instrument.route !== 'local' || instrument.response || instrument.articulation || instrument.contactTravel || instrument.preparedBodyStrike || instrument.topologyRegionId || instrument.sampleGesture || instrument.sampleKitId) throw new Error('This contact already owns another body/sample interpretation. Choose a separate direct local contact mapping.');
+      matched++; const prior = instrument.materialResponse, revision = prior ? prior.revision + 1 : 1;
+      return { ...instrument, materialResponse: validateMaterialResponseMap({ ...baseMap, id: 'material-lane-' + index, revision }) };
+    });
+    if (!matched) throw new Error('Add a lane-scoped local support or wall contact mapping before applying the material palette.');
+    const physicalGraph = validateCausalInstrumentGraph({ ...procgen.physicalGraph, revision: procgen.physicalGraph.revision + 1, instruments }), next = createProcgenLane(index, { ...previous, revision: previous.revision + 1,
+        instrumentRef: reference, instrumentPatchId: reference.patchId, materialPalette: palette, instrumentControls: { macros: {} }, soundChangePolicy: 'new-notes-only', soundChangeBoundary: 'immediate', soundQualityPolicy: 'manual', linkedThemePresetId: null }, previous), lanes = procgen.lanes.map((lane, at) => at === index ? next : lane);
+    inheritProcgenLaneIndex(procgen.lanes, lanes); return { ...project, procgen: { ...procgen, lanes, physicalGraph } };
+  }
   if (action.type === 'procgen/timbreTuning') {
     const index = procgen.lanes.findIndex(lane => lane.id === action.laneId), previous = procgen.lanes[index];
     if (!previous || previous.mode === 'pattern') throw new Error('Select a physical lane for paired spectrum/tuning publication.');
@@ -227,7 +250,7 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
     const next = createProcgenLane(index, { ...previous, revision: previous.revision + 1, instrumentRef: action.reference, instrumentPatchId: action.reference.patchId,
         timbreTuningSet: set, timbreTuningFieldId: field.id, instrumentControls: { macros: {} }, soundChangePolicy: 'new-notes-only', soundChangeBoundary: 'immediate' }, previous),
       lanes = procgen.lanes.map((lane, at) => at === index ? next : lane);
-    inheritProcgenLaneIndex(procgen.lanes, lanes); return { ...project, procgen: { ...procgen, lanes, physicalGraph } };
+    inheritProcgenLaneIndex(procgen.lanes, lanes); return { ...project, procgen: { ...procgen, lanes, physicalGraph: previous.materialPalette && !next.materialPalette ? clearLaneMaterialInterpretation(physicalGraph, index, false) : physicalGraph } };
   }
   if (action.type === 'procgen/sceneMacro') return applySceneMacroAction(project, action);
   if (action.type === 'procgen/releaseGesture') { const releaseGesture = validateReleaseGesture(action.gesture, procgen.lanes.length); if (sameValue(releaseGesture, procgen.releaseGesture)) return project; if (procgen.releaseGesture?.id === releaseGesture.id && releaseGesture.revision <= procgen.releaseGesture.revision) throw new Error('A saved release gesture change requires a newer revision.'); return { ...project, procgen: { ...procgen, releaseGesture } }; }
@@ -296,7 +319,7 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
     next = createProcgenLane(index, { ...lane, worldThemeId: action.worldThemeId }, lane);
   } else if (action.type === 'procgen/palette') {
     next = createProcgenLane(index, { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role,
-      patch: action.patch ?? null, instrumentPatchId: null, performanceRecipeId: null, linkedThemePresetId: action.family ?? lane.family, instrumentRef: null, instrumentControls: { macros: {} }, patterns: action.resetPatterns ? undefined : lane.patterns });
+      patch: action.patch ?? null, instrumentPatchId: null, performanceRecipeId: null, linkedThemePresetId: action.family ?? lane.family, instrumentRef: null, instrumentControls: { macros: {} }, patterns: action.resetPatterns ? undefined : lane.patterns }, lane);
     if (!action.resetPatterns) next.patterns = lane.patterns;
   } else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') {
     const slot = action.slot ?? lane.activeSlot, pattern = lane.patterns[slot];
@@ -327,8 +350,18 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
   if (!Number.isSafeInteger((lane.revision || 0) + 1)) throw new Error('Lane revision exhausted.');
   next = { ...next, revision: (lane.revision || 0) + 1 };
   const updated = lanes.slice(); updated[index] = next; inheritProcgenLaneIndex(lanes, updated);
-  return { ...project, procgen: { ...procgen, lanes: updated } };
+  const physicalGraph = lane.materialPalette && !next.materialPalette ? clearLaneMaterialInterpretation(procgen.physicalGraph, index) : procgen.physicalGraph;
+  return { ...project, procgen: { ...procgen, lanes: updated, physicalGraph } };
 };
+function clearLaneMaterialInterpretation(graph, index, bump = true) {
+  let changed = false;
+  const instruments = graph.instruments.map(instrument => {
+    if (!instrument.materialResponse || instrument.sourceLanes && !instrument.sourceLanes.includes(index)) return instrument;
+    if (!instrument.sourceLanes || instrument.sourceLanes.some(lane => lane !== index)) throw new Error('Separate the shared material contact mapping before changing one lane source.');
+    changed = true; const { materialResponse, ...ordinary } = instrument; return ordinary;
+  });
+  return changed ? validateCausalInstrumentGraph({ ...graph, revision: graph.revision + Number(bump), instruments }) : graph;
+}
 const releaseGestureAfterLaneRemoval = (gesture, index, laneCount) => gesture && validateReleaseGesture({ ...gesture, revision: gesture.revision + 1, lanePhase: gesture.lanePhase.filter(value => value.laneId !== index).map(value => ({ ...value, laneId: value.laneId > index ? value.laneId - 1 : value.laneId })) }, laneCount);
 const reduceCanonicalProcgenProject = (project, action) => {
   const next = reduceCanonicalProcgenProjectValue(project, action);
@@ -338,7 +371,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (['procgen/timbreTuning', 'procgen/actorTimbreLocks', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/lane', 'procgen/palette', 'procgen/materialPalette', 'procgen/timbreTuning', 'procgen/actorTimbreLocks', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, ...(Object.hasOwn(action.patch || {}, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id } : lane);
