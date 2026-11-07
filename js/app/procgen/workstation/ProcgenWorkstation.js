@@ -2536,10 +2536,29 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       masterCapture.open();
     },
     applyMatchingWorld(laneId = selected().id) { const lane = procgenLane(project.procgen.lanes, laneId); if (!lane?.linkedThemePresetId) throw new Error('This sound has no matching physical world suggestion.'); return dispatch({ type: 'procgen/worldTheme', laneId, worldThemeId: lane.linkedThemePresetId }); },
+    gestureSoundTakeIdentity: () => JSON.stringify([documentGeneration, selectedCausalTakeId || lastCausalTake?.takeId || null, lastCausalTake?.revision || null, lastCausalTake?.canonicalHash || null]),
+    /** @param {{signal?: AbortSignal}} options */
+    async gestureSoundTake({ signal } = {}) {
+      const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+      if (!takeId || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish and select a saved physical take, or explicitly query calibration fixtures without a take.');
+      const identity = handlers.gestureSoundTakeIdentity(), journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs }); let metadata = null, source = null;
+      try {
+        metadata = await borrowCausalTake(journal, takeId, { signal }); const manifest = metadata.value;
+        source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs: backgroundJobs, takeId, takeRevision: manifest.revision, soundPatch: { id: 'gesture-query-inspection', revision: 1 }, executionEpoch: 'gesture-query-inspection', limit: 8192, maxIntents: 32768, maxBytes: 4 * 1048576, signal });
+        signal?.throwIfAborted(); if (identity !== handlers.gestureSoundTakeIdentity() || source.value.sourceCanonicalHash !== manifest.canonicalHash) throw new Error('The selected take changed during compatibility inspection.');
+        const { queryCausalCoverage } = await import('./CausalCoverage.js'); signal?.throwIfAborted();
+        const retained = new Set(); for (const intent of source.value.intents) if (intent.performanceCause?.evidence === 'completed-world-fact') retained.add(intent.performanceCause.sourceKind);
+        const coverage = manifest.coverage, factsCovered = coverage?.sourceRange ? queryCausalCoverage({ coverage, kind: 'physical-facts', range: coverage.sourceRange }).status === 'known-covered' : false;
+        return { takeId, revision: manifest.revision, canonicalHash: manifest.canonicalHash, coverage: source.value.coverage.status === 'known-covered' ? 'known-covered' : 'unknown',
+          initialVoices: Array.isArray(manifest.boundaryState?.voices) ? manifest.boundaryState.voices.length ? 'held' : 'empty' : 'unknown', retainedSourceKinds: [...retained].sort(),
+          availableFactKinds: [...(coverage?.available?.factKinds || [])].sort(), factsCovered };
+      } finally { let failure = null; for (const loan of [source, metadata]) if (loan) { try { retireCausalRead(loan); } catch (error) { failure ||= error; } } if (failure) throw failure; }
+    },
     openSoundLibrary() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Sound library resource ownership is unavailable.'); return; }
       return toolGate.open('Sound library', () => import('../../midi-ui/SoundContentLibrary.js'), ({ createSoundContentLibrary }) => {
         soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
+          getGestureTake: options => handlers.gestureSoundTake(options), getGestureTakeIdentity: () => handlers.gestureSoundTakeIdentity(),
           onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
         soundLibrary.open();
       });
@@ -2571,8 +2590,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onOfferResonatorSource: (index, file, options) => handlers.offerMorphSource(index, 'shape', file, options), onStatus: status }); shapeFoundry.open();
       });
     },
-    /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean}} options */
-    applyInstalledInstrument(candidate, { signal, hold = false, isCurrent } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, laneId: selected().id }); },
+    /** @param {unknown} candidate @param {{signal?: AbortSignal, hold?: boolean, isCurrent?: () => boolean, compatibilityReceipt?: object}} options */
+    applyInstalledInstrument(candidate, { signal, hold = false, isCurrent, compatibilityReceipt = null } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, patch: { gestureCompatibilityReceipt: compatibilityReceipt }, laneId: selected().id }); },
     getLaneRealizationState: laneId => physicalPlayback?.laneRealizationState(laneId) || null,
     openPhysicalMappings() {
       if (!resourceBudget || !physicalPlayback) throw new Error('The physical parameter owner is unavailable.');

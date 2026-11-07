@@ -19,6 +19,20 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'query-gesture-sounds' || kind === 'import-gesture-sound-descriptors') {
+    const { queryGestureSounds } = await import('../../midi/content/GestureSoundQuery.js'); guard(signal, current); let value;
+    if (kind === 'query-gesture-sounds') value = await queryGestureSounds(input, { signal, current, yieldControl });
+    else {
+      if (typeof input !== 'string' || input.length > 16 * 1048576) throw problem('gesture-receipt-capacity', 'Import a bounded local gesture descriptor JSON file.');
+      const parsed = JSON.parse(input);
+      if (parsed.schema !== 'lemmings-gesture-sound-descriptor-set/v1' || !Array.isArray(parsed.descriptors)) throw problem('gesture-receipt-schema', 'Choose a generated gesture descriptor set.');
+      await queryGestureSounds({ candidates: [], descriptors: parsed.descriptors, query: { schema: 'lemmings-sound-query/v1', gesture: 'any' } }, { signal, current, yieldControl });
+      value = parsed;
+    }
+    guard(signal, current); const encoded = canonicalDataText(value, { maxBytes, maxNodes }), retainedBytes = encoded.bytes.length * 6;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'The gesture query/descriptor result exceeds its admitted storage.');
+    return { value, inputBytes: typeof input === 'string' ? new TextEncoder().encode(input).length : canonicalDataText(input, { maxBytes, maxNodes }).bytes.length, nodes: encoded.nodes, retainedBytes };
+  }
   if (kind === 'analyze-timbre-tuning-set' || kind === 'compile-timbre-tuning-set') {
     const { stampTimbreTuningSet } = await import('../../midi/content/TimbreTuningSet.js'); guard(signal, current);
     const set = await stampTimbreTuningSet(input.set); guard(signal, current); let value;

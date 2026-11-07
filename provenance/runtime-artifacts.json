@@ -623,6 +623,8 @@
         "js/midi/content/FiniteFmExciterProfile.js",
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
+        "js/midi/content/GestureSoundDescriptor.js",
+        "js/midi/content/GestureSoundQuery.js",
         "js/midi/content/ImpulseResponseDescriptor.js",
         "js/midi/content/InstrumentActorLocks.js",
         "js/midi/content/InstrumentIdentityVariation.js",
@@ -728,8 +730,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 574,
-      "sha256": "318afeec44deca8e7c0777795de408a1e304b41de09a2d40e1e5d6ad795ac943",
+      "fileCount": 576,
+      "sha256": "fd866b97aaaebc022d97fccbeb5c8569bdfab19c8bd05920215b2af7304501de",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1342,6 +1344,8 @@
         "js/midi/content/FiniteFmExciterProfile.js",
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
+        "js/midi/content/GestureSoundDescriptor.js",
+        "js/midi/content/GestureSoundQuery.js",
         "js/midi/content/ImpulseResponseDescriptor.js",
         "js/midi/content/InstrumentActorLocks.js",
         "js/midi/content/InstrumentIdentityVariation.js",
@@ -1480,8 +1484,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 607,
-      "sha256": "f6479725961eac0ef4f785616a8926283d57ee5d16bcafd071b5ac22a43c02a1",
+      "fileCount": 609,
+      "sha256": "b0a022b5323112a88fdb9693b5e2a9a9abace5ec89123517da3aa0f244442778",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1980,6 +1984,8 @@
         "js/midi/content/FiniteFmExciterProfile.js",
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
+        "js/midi/content/GestureSoundDescriptor.js",
+        "js/midi/content/GestureSoundQuery.js",
         "js/midi/content/ImpulseResponseDescriptor.js",
         "js/midi/content/InstrumentActorLocks.js",
         "js/midi/content/InstrumentIdentityVariation.js",
@@ -2082,8 +2088,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 585,
-      "sha256": "f128b0a1f873d8e697368a9d2081e03b18fe13f41b945369a3d7c6665918edb7",
+      "fileCount": 587,
+      "sha256": "0f46ace0c323b64aa374767ee19847bd1655a12e224d8cbac8f3c8f0897c6161",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2729,6 +2735,8 @@
         "js/midi/content/FiniteFmExciterProfile.js",
         "js/midi/content/FrictionModel.js",
         "js/midi/content/FrictionTravel.js",
+        "js/midi/content/GestureSoundDescriptor.js",
+        "js/midi/content/GestureSoundQuery.js",
         "js/midi/content/ImpulseResponseDescriptor.js",
         "js/midi/content/InstrumentActorLocks.js",
         "js/midi/content/InstrumentIdentityVariation.js",
@@ -2843,8 +2851,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 658,
-      "sha256": "5b4aba6ce56fe5ec2648e43206ec08154cd380966bad5575392c3d3c91e296ce",
+      "fileCount": 660,
+      "sha256": "6fa8a4cc83f78f8b105d620947d2dfcd9e6dc6e85d24477a0ef9f314f0f8e90d",
       "inventoryScope": "first-party-artifact"
     }
   ]

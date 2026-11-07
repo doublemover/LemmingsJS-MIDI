@@ -20,7 +20,7 @@ if (options.traces) { const filename = await fs.realpath(path.resolve(root, opti
 const output = path.resolve(root, options['out-dir']); if (!inside(path.join(root, 'temp'), output)) throw new Error('Qualification artifacts belong under temp, never runtime bundles.');
 await fs.mkdir(path.dirname(output), { recursive: true }); if (!inside(path.join(await fs.realpath(root), 'temp'), path.join(await fs.realpath(path.dirname(output)), path.basename(output)))) throw new Error('Output ancestor escapes temp.'); await fs.mkdir(output);
 const entries = ['js/midi/qualification/SoundQualificationRunner.js', 'js/midi/qualification/SoundQualificationPlan.js', 'js/midi/qualification/SharedSoundQualificationRenderer.js', 'js/midi/qualification/SoundListeningReview.js',
-  'js/midi/content/SoundContentCompiler.js', 'js/app/midi-ui/NativeInstrumentSchema.js'];
+  'js/midi/content/SoundContentCompiler.js', 'js/midi/content/GestureSoundDescriptor.js', 'js/app/midi-ui/NativeInstrumentSchema.js'];
 const closure = await collectRuntimeSourceClosure({ rootDir: root, entries, maxFiles: 1024, maxBytes: 64 * 1048576 });
 if (closure.dependencies.length) throw new Error('Qualification browser source has unresolved dependencies.');
 const profiles = await collectInstrumentArtifactProfiles({ rootDir: root }), artifacts = await computeInstrumentArtifacts(profiles.files, profiles.profiles), inventory = new Map();
@@ -63,9 +63,12 @@ try {
     const write = async ({ name, bytes, sha256 }) => { const response = await fetch('/artifact?name=' + encodeURIComponent(name) + '&sha256=' + sha256, { method: 'POST', body: bytes }); if (!response.ok) throw new Error('Artifact publication rejected: ' + await response.text()); return response.json(); };
     const planBytes = canonicalDataText(plan, { maxBytes: 16 * 1048576, maxNodes: 1048576 }).bytes; await write({ name: 'plan.json', bytes: planBytes, sha256: await digest(planBytes) });
     const renderer = createSharedSoundQualificationRenderer();
-    try { return await runSoundQualification(plan, { renderer, writeArtifact: write, writeCase: async ({ id, row }) => { const bytes = canonicalDataText(row, { maxBytes: 262144, maxNodes: 32768 }).bytes; await write({ name: id.replace(':', '-') + '.json', bytes, sha256: await digest(bytes) }); },
+    try { const report = await runSoundQualification(plan, { renderer, writeArtifact: write, writeCase: async ({ id, row }) => { const bytes = canonicalDataText(row, { maxBytes: 262144, maxNodes: 32768 }).bytes; await write({ name: id.replace(':', '-') + '.json', bytes, sha256: await digest(bytes) }); },
       ...(options['maximum-cases'] ? { maximumCases: Number(options['maximum-cases']) } : {}), ...(options['maximum-render-seconds'] ? { maximumRenderSeconds: Number(options['maximum-render-seconds']) } : {}),
-      ...(options['maximum-output-bytes'] ? { maximumOutputBytes: Number(options['maximum-output-bytes']) } : {}) }); }
+      ...(options['maximum-output-bytes'] ? { maximumOutputBytes: Number(options['maximum-output-bytes']) } : {}) });
+      const { createGestureSoundDescriptors } = await import('/js/midi/content/GestureSoundDescriptor.js'), descriptors = await createGestureSoundDescriptors(plan, report),
+        bytes = canonicalDataText(descriptors, { maxBytes: 16 * 1048576, maxNodes: 1000000 }).bytes;
+      await write({ name: 'gesture-descriptors.json', bytes, sha256: await digest(bytes) }); return report; }
     finally { if (!renderer.diagnostics().blocked && !renderer.diagnostics().active) { const receipt = renderer.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Qualification renderer retirement unresolved.'); } }
   }, { source, traces, artifacts, applicationBuildId, options });
   await fs.writeFile(path.join(output, 'report.json'), JSON.stringify({ report, environment, browserErrors: errors }, null, 2), { flag: 'wx' });

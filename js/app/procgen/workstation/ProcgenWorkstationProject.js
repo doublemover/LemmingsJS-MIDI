@@ -1,3 +1,4 @@
+import { validateGestureCompatibilityReceipt } from '../../../midi/content/GestureCompatibilityReceipt.js';
 import { validateTimbreTuningBinding, physicalTuningForTimbreSet } from '../../../midi/content/TimbreTuningSet.js';
 import { INSTRUMENT_SWITCH_MODES, INSTRUMENT_SWITCH_BOUNDARIES } from '../../../midi/content/InstrumentSwitchPolicy.js';
 import { validateTimeTransform } from '../../../midi/content/TimeTransform.js';
@@ -113,6 +114,7 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
     ...(overrides.percussion == null ? {} : { percussion: trusted && overrides.percussion === trusted.percussion ? trusted.percussion : validatePercussionIntentPolicy(overrides.percussion) }),
     ...(overrides.deviceParameters == null ? {} : { deviceParameters: trusted && overrides.deviceParameters === trusted.deviceParameters ? trusted.deviceParameters : validateDeviceParameterMappings(overrides.deviceParameters) }),
     ...(paired ? { timbreTuningSet: paired, timbreTuningFieldId: overrides.timbreTuningFieldId } : {}),
+    ...(overrides.gestureCompatibilityReceipt && !(trusted && overrides.gestureCompatibilityReceipt === trusted.gestureCompatibilityReceipt && instrumentRef !== trusted.instrumentRef) ? { gestureCompatibilityReceipt: validateGestureCompatibilityReceipt(overrides.gestureCompatibilityReceipt, instrumentRef) } : {}),
     instrumentRef, ...(overrides.devicePatch == null ? {} : { devicePatch: trusted && overrides.devicePatch === trusted.devicePatch ? trusted.devicePatch : validateDevicePatchIntent(overrides.devicePatch) }),
     instrumentControls: trusted && overrides.instrumentControls === trusted.instrumentControls ? trusted.instrumentControls : validateInstrumentControls(overrides.instrumentControls),
     mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,

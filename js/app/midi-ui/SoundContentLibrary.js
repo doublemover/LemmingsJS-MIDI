@@ -1,3 +1,4 @@
+import { createGestureSoundBrowserView } from './GestureSoundBrowserView.js';
 import { prepareCircuitWorkshopPack } from './CircuitWorkshopPreparation.js';
 import { readStagedDrumKit } from './DrumKitReference.js';
 import { CIRCUIT_WORKSHOP_VARIANTS } from '../../midi/content/CircuitWorkshopProfile.js';
@@ -32,13 +33,14 @@ const TACTILE_SOURCE = new URL('../../../content/sounds/tactile-contacts.json', 
 const SPECTRUM_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'liquid-drawbars').source;
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 
-export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null, targetLabel = 'selected lane', allowLivePreview = true } = {}) {
+export function createSoundContentLibrary({ document, window, audio, resourceBudget, jobs = backgroundJobService, onApply, onStatus = () => {}, monitor = null, targetLabel = 'selected lane', allowLivePreview = true, getGestureTake = null, getGestureTakeIdentity = () => null } = {}) {
   if (!document?.createElement || !resourceBudget || typeof onApply !== 'function') throw new TypeError('Invalid sound library surface.');
   const reader = createSoundContentReader({ resourceBudget, jobs }), archiver = createSoundContentArchiver({ resourceBudget, jobs });
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
   const installation = createSoundContentInstallation({ audio, registry, onReveal: () => { if (!disposed && !dialog.open) { monitor?.mount(dialog); dialog.showModal(); } } });
   const renderReferences = createSoundContentRenderReferences({ resourceBudget, jobs, getMaterialProvider: () => audio.getSoundMaterialProvider() });
   const retirement = createProcgenRetirementScope(), listeners = [], factoryFaults = new Map();
+  let selectedGestureReceipt = null, selectedGestureTakeIdentity = null;
   let stage = null, current = null, disposed = false, selection = null, artifact = null, pageCursor = null, installed = false, sequence = 0;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
   const on = (element, event, callback) => { element.addEventListener(event, callback); listeners.push(() => element.removeEventListener(event, callback)); };
@@ -69,7 +71,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   };
   const publish = (next, operation) => {
     try { check(operation); } catch (error) { next.discard(); throw error; }
-    stage?.discard(); stage = next; installed = false; rights.checked = false; selection = null; select.replaceChildren();
+    selectedGestureReceipt = selectedGestureTakeIdentity = null; stage?.discard(); stage = next; installed = false; rights.checked = false; selection = null; select.replaceChildren();
     const lease = stage.borrow();
     try { for (const patch of lease.prepared.patches) { const name = patch.archivedDefinition.name;
       const option = node('option', typeof name === 'string' ? name + ' · ' + patch.identity : patch.identity); option.value = patch.identity; select.append(option); }
@@ -162,7 +164,8 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       return;
     }
     return run(async operation => { let candidate = installation.applyCandidate(stage, selection); check(operation); const drumKit = await readStagedDrumKit(stage, selection, { signal: operation.controller.signal, resourceBudget }); check(operation); if (drumKit) candidate = Object.freeze({ ...candidate, reference: Object.freeze({ ...candidate.reference, drumKit }) });
-      await onApply(candidate, { signal: operation.controller.signal }); check(operation); setStatus('Instrument applied to the ' + targetLabel + '.'); });
+      if (selectedGestureReceipt && selectedGestureTakeIdentity !== getGestureTakeIdentity()) throw new Error('Search the changed take again before keeping its compatibility receipt.');
+      await onApply(candidate, { signal: operation.controller.signal, compatibilityReceipt: selectedGestureReceipt }); check(operation); setStatus('Instrument applied to the ' + targetLabel + '.'); });
   });
   const hold = button('Hold to preview incoming events', () => {});
   hold.hidden = !allowLivePreview;
@@ -174,7 +177,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     const operation = { mode: 'lane-preview', controller: new AbortController(), sequence: ++sequence, previewLease: null }; current = operation;
     const released = new Promise(resolve => operation.controller.signal.addEventListener('abort', resolve, { once: true }));
     hold.setAttribute('aria-pressed', 'true'); render();
-    operation.promise = Promise.resolve().then(async () => { const drumKit = await readStagedDrumKit(stage, selection, { signal: operation.controller.signal, resourceBudget }); check(operation); if (drumKit) candidate = Object.freeze({ ...candidate, reference: Object.freeze({ ...candidate.reference, drumKit }) }); return onApply(candidate, { signal: operation.controller.signal, hold: true }); }).then(async lease => {
+    operation.promise = Promise.resolve().then(async () => { const drumKit = await readStagedDrumKit(stage, selection, { signal: operation.controller.signal, resourceBudget }); check(operation); if (drumKit) candidate = Object.freeze({ ...candidate, reference: Object.freeze({ ...candidate.reference, drumKit }) }); if (selectedGestureReceipt && selectedGestureTakeIdentity !== getGestureTakeIdentity()) throw new Error('Search the changed take again before its incoming-event preview.'); return onApply(candidate, { signal: operation.controller.signal, hold: true, compatibilityReceipt: selectedGestureReceipt }); }).then(async lease => {
       operation.previewLease = lease; check(operation); render(); setStatus('Previewing current incoming events. Release restores the prior sound. Apply commits once; held voices retain their onset renderer.'); await released;
     }).catch(error => { if (!operation.controller.signal.aborted) setStatus(error.message); }).finally(async () => {
       const receipt = operation.previewLease?.cancel(); if (receipt?.completion) await receipt.completion;
@@ -253,10 +256,29 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     }
   });
   const close = button('Close', () => dialog.close());
-  on(dialog, 'close', () => { current?.controller.abort(failure('Sound library closed.')); installation.stop(); monitor?.mountHome(); });
-  on(select, 'change', () => { selection = select.value; rights.checked = false; render(); }); on(rights, 'change', () => render());
-  dialog.append(title, status, importInput, summary, select, gestureLabel, modelInfo, reviewLabel, credits, controls, archivedLabel, list); document.body.append(dialog);
+  on(dialog, 'close', () => { gestureDiscovery.invalidate(); current?.controller.abort(failure('Sound library closed.')); installation.stop(); monitor?.mountHome(); });
+  on(select, 'change', () => { selectedGestureReceipt = selectedGestureTakeIdentity = null; selection = select.value; rights.checked = false; render(); }); on(rights, 'change', () => render());
+  const gestureDiscovery = createGestureSoundBrowserView({ document, jobs, resourceBudget, getTake: getGestureTake,
+    getSourceIdentity: () => JSON.stringify([stage?.metadata().contentHash || null, sequence, getGestureTakeIdentity()]),
+    getCandidates: async () => {
+      if (!stage) throw new Error('Stage original or installed content before searching its exact revisions.');
+      const catalog = await getNativeInstrumentCatalog(), lease = stage.borrow();
+      try { return lease.prepared.patches.map(patch => {
+        const engine = catalog.descriptors.find(entry => entry.engineId === patch.engineRequirement.engineId && entry.engineVersion === patch.engineRequirement.engineVersion && entry.artifactHash === patch.engineRequirement.artifactHash && entry.parameterSchemaHash === patch.engineRequirement.parameterSchemaHash),
+          plan = planSoundContentSelection(lease.prepared, [patch.identity], { availableHashes: lease.metadata.assetHashes, reviewRights }),
+          definition = patch.archivedDefinition, required = (definition.causalBindings || []).filter(binding => binding.enabled !== false).map(binding => binding.sourceKind);
+        if (['worklet-friction', 'worklet-texture'].includes(definition.engineId) || definition.parameters.motionRequired === 1) required.push('MotionCommitted');
+        return { identity: patch.identity, name: definition.name, packHash: lease.prepared.contentHash, definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement,
+          capabilities: engine?.capabilities || {}, qualityRevision: engine ? engine.engineId + '@' + engine.engineVersion : 'unavailable',
+          preparation: !engine || plan.missingReferences.length || plan.missingAssetBytes.length && !installed ? 'requirements-unavailable' : 'unknown',
+          assetBytes: plan.missingReferences.length ? null : plan.requiredBytes, requiredSourceKinds: [...new Set(required)].sort(), tags: definition.tags || [] };
+      }); } finally { lease.release(); }
+    },
+    onSelect: (identity, receipt) => { if (!stage || ![...select.options].some(option => option.value === identity)) throw new Error('The suggested exact revision is no longer staged.'); selectedGestureReceipt = receipt; selectedGestureTakeIdentity = getGestureTakeIdentity(); selection = select.value = identity; rights.checked = false; render(); },
+    onStatus: setStatus });
+  dialog.append(title, status, importInput, summary, select, gestureLabel, gestureDiscovery.element, modelInfo, reviewLabel, credits, controls, archivedLabel, list); document.body.append(dialog);
   function render() {
+    gestureDiscovery.refresh();
     if (disposed) return; const busy = !!current || !!factoryFaults.size; let plan = null;
     try { plan = selectedPlan(); } catch { /* Expired stages expose their unavailable state through controls. */ }
     const metadata = stage?.metadata(); summary.textContent = metadata ? metadata.retained ? metadata.name + ' · ' + metadata.patches.length + ' saved revisions · ' + metadata.assetHashes.length + ' included assets' :
@@ -346,6 +368,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; const pending = current?.promise; current?.controller.abort(failure('Sound library retired.'));
       return retirement.retire([{ name: 'audition', run: () => installation.dispose() }, { name: 'archive-owner', run: () => archiver.dispose() },
         { name: 'render-reference-owner', run: () => renderReferences.dispose() },
+        { name: 'gesture-discovery', run: () => gestureDiscovery.dispose() },
         ...[...factoryFaults].map(([id, fault]) => ({ name: 'factory-retirement-' + id, run: () => fault.receipt })),
         { name: 'reader-owner', run: () => reader.dispose() }, { name: 'stage', run: () => stage?.discard() }, { name: 'artifact', run: () => artifact?.discard() },
         { name: 'artifact-digest', run: () => artifact?.digest() },

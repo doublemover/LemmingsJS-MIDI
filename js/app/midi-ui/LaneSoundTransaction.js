@@ -1,10 +1,11 @@
+import { validateGestureCompatibilityReceipt } from '../../midi/content/GestureCompatibilityReceipt.js';
 import { validateSoundContentReference } from '../../midi/content/SoundContentReference.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'SoundTransactionError', code });
 const fingerprint = lane => JSON.stringify([lane?.family, lane?.role, lane?.patch, lane?.instrumentRef?.packHash,
-  lane?.instrumentRef?.definitionHash, lane?.instrumentControls, lane?.soundChangePolicy, lane?.soundChangeBoundary, lane?.soundChangeFadeSeconds]);
+  lane?.instrumentRef?.definitionHash, lane?.instrumentControls, lane?.soundChangePolicy, lane?.soundChangeBoundary, lane?.soundChangeFadeSeconds, lane?.gestureCompatibilityReceipt]);
 let nextOwner = 0;
 
 export function createLaneSoundTransaction({ getSource, prepare, publish, resourceBudget = null, onState = () => {} } = {}) {
@@ -65,8 +66,8 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
     if (typeof isCurrent !== 'function') throw new TypeError('A sound review fence must be a function.');
     if (disposed || unknown) throw failure('sound-owner-unavailable', 'Sound transaction resources are unavailable.');
     const reference = typeof candidate === 'function' ? null : validateSoundContentReference({ ...candidate.reference, definition: candidate.definition || candidate.reference?.definition });
-    if (!patch || typeof patch !== 'object' || Array.isArray(patch) || Object.keys(patch).some(key => !['family', 'role', 'patch', 'performanceRecipeId', 'linkedThemePresetId'].includes(key)) || Object.values(patch).some(value => value != null && (typeof value !== 'string' || value.length > 128))) throw failure('invalid-sound-patch', 'A sound transaction cannot alter physical or hardware routing fields.');
-    patch = Object.freeze({ ...patch });
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch) || Object.keys(patch).some(key => !['family', 'role', 'patch', 'performanceRecipeId', 'linkedThemePresetId', 'gestureCompatibilityReceipt'].includes(key)) || Object.entries(patch).some(([key, value]) => key !== 'gestureCompatibilityReceipt' && value != null && (typeof value !== 'string' || value.length > 128))) throw failure('invalid-sound-patch', 'A sound transaction cannot alter physical or hardware routing fields.');
+    patch = Object.freeze({ ...patch, gestureCompatibilityReceipt: validateGestureCompatibilityReceipt(patch.gestureCompatibilityReceipt) });
     const source = getSource(laneId); laneId ||= source.selectedLaneId;
     if (!source.available || !source.lane || source.selectedLaneId !== laneId) throw failure('sound-source-unavailable', source.reason || 'Finish the world/history/take operation before selecting sound.');
     if (hold && (source.lane.soundChangePolicy !== 'new-notes-only' || source.lane.soundChangeBoundary && source.lane.soundChangeBoundary !== 'immediate'))
@@ -84,6 +85,7 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
     report('preparing', operation);
     try {
       check(operation); if (typeof candidate === 'function') { operation.sourceCandidate = await candidate(operation.controller.signal); check(operation); operation.reference = validateSoundContentReference({ ...operation.sourceCandidate.reference, definition: operation.sourceCandidate.definition || operation.sourceCandidate.reference?.definition }); }
+      if (patch.gestureCompatibilityReceipt) validateGestureCompatibilityReceipt(patch.gestureCompatibilityReceipt, operation.reference);
       operation.prepared = await prepare(laneId, operation.reference, { signal: operation.controller.signal, retainPrevious: true, switchLane: source.lane }); operation.preparing = false; check(operation);
       operation.prepared.commit(); preview = operation;
       if (!hold) return commit(operation);

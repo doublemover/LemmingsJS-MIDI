@@ -1,5 +1,6 @@
 import { createOwnedResourceReservation } from '../../app/resources/OwnedResourceReservation.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
+import { measureGestureOnsetResponse } from './GestureOnsetResponse.js';
 import { measureSoundRender, compareSoundFeatures } from './SoundRenderAnalysis.js';
 import { comparePcmChannels } from '../../app/midi-ui/PcmEvidence.js';
 const fail = message => { throw new Error('Sound qualification: ' + message); };
@@ -68,7 +69,7 @@ export async function runSoundQualification(plan, { renderer, writeArtifact, wri
           if (fixture.note === 60 && fixture.velocity === 64 && fixture.gateSeconds === 1.2) references.set(key, output.planes.map(plane => new Float32Array(plane)));
         }
         const baseline = baselines.get(key), comparison = baseline && selected.role !== 'baseline' ? compareSoundFeatures(baseline.metrics, metrics) : null;
-        row.digitalReceipt = { state: findings.length ? 'requires-review' : 'technically-valid', metrics, findings, repeat, comparison, panic,
+        row.digitalReceipt = { gestureOnsetResponse: fixture.revoice.intents.filter(intent => intent.kind === 'begin').length === 1 && output.admissionReceipt.effectiveTargets?.length === 1 ? measureGestureOnsetResponse(output.planes, selected.sampleRate, { onsetFrame: output.admissionReceipt.effectiveTargets[0].applyFrame, gateSeconds: fixture.gateSeconds ?? null }) : { status: 'unknown', reason: 'polyphonic-or-missing-isolated-onset;no-mix-attribution' }, state: findings.length ? 'requires-review' : 'technically-valid', metrics, findings, repeat, comparison, panic,
           logicalVoiceCount: output.semanticReceipt.begins, audibleAttackEstimate: metrics.audibleAttackEstimate, onsetComparison: 'heuristic-energy-estimate-not-a-one-to-one-voice-detector' };
         stage = 'artifact-publication'; const artifactHash = await bytesHash(output.bytes), expectedBytes = output.bytes.byteLength;
         if (outputBytes + expectedBytes > maximumOutputBytes) fail('encoded output exceeded its reserved artifact bound.');

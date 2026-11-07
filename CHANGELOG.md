@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add local receipt-based physical gesture discovery, exact-domain/take coverage filters and saved compatibility references through the existing sound library and sound transactions.
+
 - Add immutable paired spectra/tuning recipes, bounded offline roughness and beat prediction, and a retained Spectrum / Tuning dock with atomic onset-only preparation, publication and saved revision binding.
 
 - Add synchronized original/proposed physical-future review with captured-frame overlays, actual cause/period evidence, independent reference audition and actor-preserving reviewed command Apply.
