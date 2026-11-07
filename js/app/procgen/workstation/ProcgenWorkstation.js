@@ -1471,11 +1471,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const simulationExecutionPolicy = () => procgenSimulationExecutionPolicy({ schema: 'lemmings-simulation-execution-policy/v1', physicalFeedbackMode: physicalFeedback?.isArmed() ? 'preserve-live' : 'disabled' });
   const physicalMusicSourceIdentity = () => { const world = runtime()?.world, clock = transport.getState();
     if (world?.physicalFeedback !== feedbackSourceReference) { if (!Number.isSafeInteger(++feedbackSourceRevision)) throw new Error('Feedback source identity exhausted.'); feedbackSourceReference = world?.physicalFeedback; }
-    return JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId, world?.generation, world?.tickIndex, clock.playing, clock.bpm, clock.nominalSpeed, feedbackSourceRevision, physicalFeedback?.isArmed() === true, world?.interventionState.sequence, world?.interventionState.pending.length]); };
+    return JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId, world?.generation, world?.tickIndex, clock.playing, clock.bpm, clock.nominalSpeed, feedbackSourceRevision, physicalFeedback?.isArmed() === true, world?.interventionState.sequence, world?.interventionState.pending.length, macroGestures.revision()]); };
   const getPhysicalMusicStudyWorkbench = () => physicalMusicStudyWorkbench ||= createPhysicalMusicStudyWorkbench({ jobs: backgroundJobs, resourceBudget, getSourceIdentity: physicalMusicSourceIdentity,
     onChange: () => view?.render(),
     captureSource: async ({ signal }) => {
-      if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback || simulationWorkbench?.state().active || causalWorkbench?.state().active) throw new Error('Pause the physical project and finish active takes, branches and world operations before composition.');
+      if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback || macroGestures.diagnostics().active || soundTransactions.diagnostics().active || simulationWorkbench?.state().active || causalWorkbench?.state().active) throw new Error('Pause the physical project and finish active takes, branches and world operations before composition.');
       const world = runtime().world, sourceProject = project, revision = projectRevision, capsule = await capturePhysicalHistory(world, sourceProject, signal);
       try { const session = capsule.session(), clock = transport.getState();
         return { input: { projectRevision: revision, rootPath: new URL('../../../../', import.meta.url).href, sourceVersions: causalRuntimeSourceVersions(world, sourceProject.procgen.physicalGraph.revision),
@@ -1541,8 +1541,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return simulationWorkbench = createProcgenSimulationWorkbench({ prepareHost: stageAuthoritativeSimulation, prepareOutput: async ({ kind, signal, continuation = null }) => {
         if (kind === 'owned-audio') {
           const semantic = continuation?.engine || physicalPlayback?.engine.snapshot(), graph = continuation?.authoring.graph || project.procgen.physicalGraph, lanes = project.procgen.lanes;
-          if (!Array.isArray(semantic?.active) || semantic.active.length || graph.preparedSurfaces?.length || graph.instruments.some(instrument => instrument.route !== 'local') || lanes.some(lane => lane.mode === 'pattern'))
-            throw new Error('The owned reference sine needs physical local routes, no shared prepared bodies and an empty held-voice boundary. Clear held semantic voices explicitly or choose an output-off candidate.');
+          if (!Array.isArray(semantic?.active) || semantic.active.length || graph.preparedSurfaces?.length || graph.acousticMap || graph.instruments.some(instrument => instrument.route !== 'local') || lanes.some(lane => lane.mode === 'pattern'))
+            throw new Error('The owned reference sine needs physical local routes, no shared prepared bodies or world-acoustic map and an empty held-voice boundary. Clear held semantic voices explicitly or choose an output-off candidate.');
           const { prepareProcgenOwnedAudioOutputRealm } = await import('../ProcgenOwnedAudioOutputRealm.js'); signal.throwIfAborted();
           return prepareProcgenOwnedAudioOutputRealm({ resourceBudget, signal, performance: continuation?.performance || captureCausalPerformanceState(lanes, project.procgen.actorTimbreLocks), onState: () => { if (!disposed) view?.renderInspector?.(); } });
         }
@@ -1551,10 +1551,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return simulationWorkbenchLoading;
   };
   const startSimulationWorkbench = async ({ nativeOutput = false, ownedAudio = false, physicalMusicCandidate = false } = {}) => {
-    if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish recording and world operations before preparing an isolated worker candidate.');
+    if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || macroGestures.diagnostics().active || soundTransactions.diagnostics().active || ownedCausalArm && !['complete', 'discarded', 'failed'].includes(ownedCausalArm.state().phase)) throw new Error('Pause the live project and finish recording, retained sound, world operations and performer gestures before preparing an isolated worker candidate.');
     if (!physicalMusicCandidate) physicalMusicAuditionCandidateId = null;
     const continuation = physicalMusicCandidate ? getPhysicalMusicStudyWorkbench().auditionContinuation() : null;
-    beforeRestart(); const owner = await getSimulationWorkbench();
+    const sourceIdentity = physicalMusicSourceIdentity(), owner = await getSimulationWorkbench();
+    if (disposed || physicalMusicSourceIdentity() !== sourceIdentity) throw new Error('The paused physical source changed before private candidate preparation.');
     const result = await owner.start({ nativeOutput, ownedAudio, ...(continuation ? { continuation } : {}), viewport: { firstLane: Math.max(0, project.procgen.lanes.findIndex(lane => lane.id === state.laneId)) } });
     status(ownedAudio ? 'Owned reference sine prepared paused: eight voices with precise pitch, pressure, pan and lane mix. Run explicitly; Pause parks the physical checkpoint and closes this private audio context. Selected patch macros, samples and creative racks are unavailable in this output profile.' : nativeOutput ? 'Native worker performance prepared paused. Run explicitly to start its independent output; Pause parks a physical checkpoint and retires its device generation.' : 'Worker candidate prepared paused with output and recording off. The live world remains frozen until you close the candidate.'); return result;
   };

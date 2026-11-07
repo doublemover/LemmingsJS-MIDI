@@ -11660,3 +11660,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Preserve the original work geometry, finite crew and explicit skill stations. Save exact donor/carrier lane taps and rack; private station rehearsal uses the complete simultaneous source profile from621. Distinguish this action-held miner orchestration from the original per-operation dry study.
 - Add explicit Load saved interaction to the existing effects view, recovering typed controls while retaining the exact saved graph. Staging is silent; Prepare validates the saved source and publishes the actual graph, with stale source refusal, scoped cancellation and existing MERGE ownership.
 - All development remains frontloaded. Formatting and critical/boundary types are static checks only; functional/native/audio/browser/performance/listening qualification remains deferred. PR progress summary is updated at this twentieth-commit checkpoint.
+
+### Continuation 623 — private candidate preparation preserves the live source
+
+- Private worker/counterfactual preparation now requires an already paused, settled source and leaves live feedback arming/fuel, performer controls, output ledger and audio owners untouched. It no longer calls the world/transport replacement path, whose disarm/flush/stop side effects invalidated a preserved-live composition source before audition.
+- Fence lazy workbench preparation against the exact live identity and include performer-control revision in source/cache identity. Active gestures and retained sound operations must settle before capture instead of being silently canceled by private inspection.
+- Explicit reference output profiles refuse material palettes or world-spatial/shared-body interpretation they cannot realize. An output-off candidate remains available; no dry sine/native MIDI fallback is labeled as the acoustic scene renderer.
+- Functional/native/audio/browser/performance qualification remains deferred.
