@@ -116,6 +116,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
   if (input.engineId === 'worklet-texture') prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[input.parameters.textureKind ?? 0], roughnessPerPixel: input.parameters.roughnessPerPixel ?? 0.4, dragSlope: input.parameters.dragSlope ?? 0.5, shade01: input.parameters.shade01 ?? 0.5, bodySeconds: input.parameters.textureBodySeconds ?? 0.05 });
   if (input.engineId === 'worklet-spectrum' && input.parameters.sourceMode === 2) {
     const resolved = Object.fromEntries(engine.parameters.map(spec => [spec.id, input.parameters[spec.id] ?? spec.default]));
+    if (resolved.resonance01 || resolved.drive01) throw new TypeError('Circular sources do not realize liquid-source resonance or drive.');
     resolveCircularSpectrum(circularSpectrumParameters(resolved), 48000); validateCircularCoordinateControl(resolved);
   }
   const sampleIds = new Set();

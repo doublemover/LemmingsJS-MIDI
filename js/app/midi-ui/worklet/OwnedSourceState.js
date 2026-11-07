@@ -18,7 +18,7 @@ const profiles = Object.freeze({
   80: { id: 'worklet-texture', kind: 6, layout: TEXTURE_LAYOUT, arrays: ['state', 'modes', 'pulses', 'observation', 'admission'], scalars: ['leftSample', 'rightSample'] },
   24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
   [CHOIR_LAYOUT.width]: { id: 'worklet-choir', kind: 2, layout: CHOIR_LAYOUT, arrays: ['state', 'bands'], scalars: [] },
-  73: { id: 'worklet-spectrum', kind: 3, layout: SPECTRUM_LAYOUT, arrays: ['state', 'partials'], scalars: [] },
+  [SPECTRUM_LAYOUT.width]: { id: 'worklet-spectrum', kind: 3, layout: SPECTRUM_LAYOUT, arrays: ['state', 'partials', 'drawbars'], scalars: [] },
   40: { id: 'worklet-sample', kind: 5, layout: SAMPLE_LAYOUT, arrays: ['state', 'cursorQueues', 'cursorScalars'], scalars: ['leftSample', 'rightSample', 'readLeft', 'readRight'] },
   33: { id: 'worklet-granular', kind: 4, layout: GRANULAR_LAYOUT, arrays: ['state', 'grains'], scalars: ['birthBucket', 'bucketBirths', 'leftSample', 'rightSample'] }
 });
@@ -41,7 +41,7 @@ const profileFor = kernel => {
   const t = TEXTURE_EXCITER_LIMITS;
   const expected = profile.kind === 9 ? [source.voices * SEED_LAYER_LAYOUT.state, source.voices * GRANULAR_LAYOUT.cloudState, source.voices * GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState] : profile.kind === 8 ? [source.voices * WIND_MODEL_LIMITS.state, source.voices * WIND_MODEL_LIMITS.modes * WIND_MODEL_LIMITS.modeWidth, source.voices * SEALED_BODY_STATE, source.voices * SEALED_BODY_PARAMETERS] : profile.kind === 7 ? [source.voices * FRICTION_MODEL_LIMITS.state, source.voices * FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth, source.voices * SEALED_BODY_STATE, source.voices * SEALED_BODY_PARAMETERS] : profile.kind === 6 ? [source.voices * t.state, source.voices * t.modes * t.modeWidth, source.voices * t.pulses * t.pulseWidth, source.voices * t.modes, 2] : profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
     profile.kind === 2 ? [source.voices * CHOIR_LAYOUT.state, source.voices * 3 * CHOIR_LAYOUT.bandState] :
-      profile.kind === 3 ? [source.voices * SPECTRUM_LAYOUT.state, source.voices * 16 * SPECTRUM_LAYOUT.partialState] :
+      profile.kind === 3 ? [source.voices * SPECTRUM_LAYOUT.state, source.voices * 16 * SPECTRUM_LAYOUT.partialState, source.voices * SPECTRUM_LAYOUT.drawbars] :
         profile.kind === 5 ? [source.voices * SAMPLE_LAYOUT.state, source.voices * source.plan.entries.length * SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth, source.voices * source.plan.entries.length * SAMPLE_LAYOUT.cursorScalars] :
           [source.voices * GRANULAR_LAYOUT.cloudState, source.voices * GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState];
   for (let i = 0; i < profile.arrays.length; i++) {
@@ -131,13 +131,13 @@ const inspectSource = (kernel, profile, view) => {
         !integer(get(6), 0, 0xffffffff) || !integer(get(7), 0, get(0) - 1) || !finite(get(16), -1, 1) || !finite(get(26), 0.05, 0.45) || !finite(get(27), 0, 1))) fail('Pluck fractional delay, excitation metadata or seed state is invalid.');
     if (profile.kind === 2 && (!finite(get(0), 0, 1) || !finite(get(1), 0, 1) || !integer(get(2), 0, 0xffffffff) || !integer(get(38), 0, Math.round(kernel.sampleRate * 0.08)) || !finite(get(39), 0, 1 / Math.round(kernel.sampleRate * 0.005)) || get(38) * get(39) > 1 + 1e-12)) fail('Choir phase, PRNG or finite consonant envelope state is invalid.');
     if (profile.kind === 3) {
-      if (!finite(get(0), 0, 1) || ![0, 1, 2].includes(get(1)) || !integer(get(2), 1, 16)) fail('Spectrum phase or partial topology is invalid.');
+      if (!finite(get(0), 0, 1) || ![0, 1, 2].includes(get(1)) || !integer(get(2), 1, 16) || !finite(get(36), 0, 1) || !finite(get(37), 0, 1)) fail('Spectrum phase, partial topology or source color is invalid.');
       const partial = data.arrays[1].get;
       if (get(1) === 2) {
         const meta = (slot * 16 + 10) * SPECTRUM_LAYOUT.partialState; let recipe;
         try { recipe = resolveCircularSpectrum({ referenceFrequencyHz: partial(meta), frequencyCenterHz: partial(meta + 1), spectralWidthOctaves: partial(meta + 2), bandLowHz: partial(meta + 3), bandHighHz: partial(meta + 4), partialCountCap: partial(meta + 5), weight01: partial(meta + 6) }, kernel.sampleRate, get(3) / 261.6255653005986); } catch { fail('Circular source recipe is invalid.'); }
         const base = at + 24, phase = state(base), targetPhase = state(base + 1), remaining = state(base + 2), step = state(base + 3), whole = state(base + 4);
-        if (get(2) !== recipe.partialCountCap || !finite(phase, -1000000, 1000000) || !finite(targetPhase, -1000000, 1000000) || !integer(remaining, 0, kernel.sampleRate * 2) || !finite(step, -4 / kernel.sampleRate, 4 / kernel.sampleRate) ||
+        if (Array.from({ length: 8 }, (_, index) => get(36 + index)).some(value => value !== 0) || get(2) !== recipe.partialCountCap || !finite(phase, -1000000, 1000000) || !finite(targetPhase, -1000000, 1000000) || !integer(remaining, 0, kernel.sampleRate * 2) || !finite(step, -4 / kernel.sampleRate, 4 / kernel.sampleRate) ||
             !integer(whole, -1000001, 1000001) || Math.abs(Math.floor(phase) - whole) > 1 || !integer(state(base + 5), 0, 0xffffffff) || !integer(state(base + 7), 0, 8) || !integer(state(base + 8), 0, recipe.partialCountCap) || !integer(state(base + 9), 0) || state(base + 10) || state(base + 11) ||
             remaining && Math.abs(targetPhase - phase - remaining * step) > 1e-6 || remaining && Math.abs(state(base + 6) - 2 ** step) > 1e-12) fail('Circular distance-phase or interpolation frontier is invalid.');
         const indices = new Set(); let amplitude = 0, targetAmplitude = 0;
@@ -150,8 +150,13 @@ const inspectSource = (kernel, profile, view) => {
         if (amplitude > 0.800000001 || targetAmplitude > 0.800000001) fail('Circular amplitude normalization exceeds the declared peak bound.');
         continue;
       }
+      if (!finite(get(43), 0, kernel.sampleRate * 0.4) || !integer(get(16), 0, kernel.sampleRate * 60)) fail('Spectrum cutoff or drawbar interpolation frontier is invalid.');
+      if (get(36) > 0) {
+        const g = Math.tan(Math.PI * get(43) / kernel.sampleRate), damping = 1 / (Math.SQRT1_2 + get(36) * (3 - Math.SQRT1_2)), a1 = 1 / (1 + g * (g + damping));
+        if (Math.abs(get(38) - a1) > 1e-12 || Math.abs(get(39) - g * a1) > 1e-12 || Math.abs(get(40) - g * g * a1) > 1e-12) fail('Spectrum resonant filter coefficients differ from their admitted model.');
+      }
       for (let p = 0; p < 16; p++) { const offset = (slot * 16 + p) * SPECTRUM_LAYOUT.partialState;
-        if (!finite(partial(offset), 0.125, 32) || !finite(partial(offset + 2), 0, 1) || !finite(partial(offset + 4), 0, 1)) fail('Spectrum partial phase or decay state is invalid.');
+        if (!finite(partial(offset), 0.125, 32) || !finite(partial(offset + 1), 0, 1) || !finite(data.arrays[2].get(slot * 16 + p), 0, 1) || !finite(partial(offset + 2), 0, 1) || !finite(partial(offset + 4), 0, 1)) fail('Spectrum partial phase or decay state is invalid.');
       }
     }
     if (profile.kind === 4) {

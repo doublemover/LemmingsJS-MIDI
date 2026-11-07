@@ -2,13 +2,13 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.liquid-drawbars",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "name": "Liquid tables and additive drawbars",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
     "licenseId": "NOASSERTION",
     "licenseUrl": null,
-    "attribution": "Original phase-aligned Fourier-frame and additive-partial recipes; dry local source variants without shared sends, resonance or drive.",
+    "attribution": "Original phase-aligned Fourier-frame and additive-partial recipes, with an explicitly authored resonant and bandwidth reserved cubic Acid Current edition. Shared sends are separate.",
     "modifications": [],
     "redistributionPolicy": "unknown",
     "licenses": []
@@ -17,7 +17,7 @@
   "recipes": [
     {
       "id": "spectrum.base",
-      "revision": 1,
+      "revision": 2,
       "abstract": true,
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -35,7 +35,7 @@
         "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
         "licenseId": "NOASSERTION",
         "licenseUrl": null,
-        "attribution": "Original phase-aligned Fourier-frame and additive-partial recipes; dry local source variants without shared sends, resonance or drive.",
+        "attribution": "Original phase-aligned Fourier-frame and additive-partial recipes, with an explicitly authored resonant and bandwidth reserved cubic Acid Current edition. Shared sends are separate.",
         "modifications": [],
         "declaredUse": "unknown"
       },
@@ -1699,6 +1699,182 @@
             }
           ]
         }
+      ]
+    },
+    {
+      "id": "spectrum.acid-current",
+      "revision": 1,
+      "extends": "spectrum.base",
+      "name": "Acid Current",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "sourceMode": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "partialCount": {
+              "value": 16,
+              "unit": "enum"
+            },
+            "partialDecaySeconds": {
+              "value": 0,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "scan01": {
+              "value": 0.75,
+              "unit": "normalized"
+            },
+            "body01": {
+              "value": 0.05,
+              "unit": "normalized"
+            },
+            "edge01": {
+              "value": 0.85,
+              "unit": "normalized"
+            },
+            "resonance01": {
+              "value": 0.64,
+              "unit": "normalized"
+            },
+            "drive01": {
+              "value": 0.28,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.12,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.5,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.09,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "continuous",
+          "default01": 0.05,
+          "smoothingMs": 20,
+          "perceptualDirection": "Weight the lower components inside the same phase-owned source.",
+          "targets": [
+            {
+              "parameter": "body01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "continuous",
+          "default01": 0.85,
+          "smoothingMs": 20,
+          "perceptualDirection": "Sweep the positively damped resonant source lowpass after bandwidth reserved cubic drive, without restarting the voice.",
+          "targets": [
+            {
+              "parameter": "edge01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "flow",
+          "name": "FLOW",
+          "mode": "continuous",
+          "default01": 0.75,
+          "smoothingMs": 20,
+          "perceptualDirection": "Move across sixteen original phase-aligned spectral frames without another attack.",
+          "targets": [
+            {
+              "parameter": "scan01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "ring",
+          "name": "RING",
+          "mode": "onset-only",
+          "default01": 0.3266062568876718,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change dry release duration for future onsets. Shared SPACE sends are unavailable.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "resonant-lowpass",
+        "bandwidth-reserved-cubic"
       ]
     }
   ]

@@ -3,6 +3,7 @@ import { WIND_MODEL_LIMITS } from '../../midi/content/WindModel.js';
 import { FRICTION_MODEL_LIMITS } from '../../midi/content/FrictionModel.js';
 import { TEXTURE_EXCITER_LIMITS } from '../../midi/content/TextureExciter.js';
 import { SAMPLE_READ_TABLE_SAMPLES } from '../../midi/content/SampleReadProfile.js';
+export const SPECTRUM_DRAWBAR_BITS = Object.freeze(Array.from({ length: 16 }, (_, index) => 1 << (index < 9 ? index + 7 : index + 8)));
 export const LIVE_LANE_TAP_LIMIT = 8;
 export const LIVE_LANE_TAP_PROTOCOL = 3;
 export const LIVE_LANE_ID_LIMIT = 4096;
@@ -12,7 +13,7 @@ export const TEXTURE_LAYOUT = Object.freeze({ width: 80, voices: TEXTURE_EXCITER
 export const SINE_LAYOUT = Object.freeze({ width: 18, voices: 64 });
 export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, delayFloorHz: 32, delayMargin: 4, displayVoices: 32, displayWidth: 6 });
 export const CHOIR_LAYOUT = Object.freeze({ width: 28, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049, displayVoices: 32, displayWidth: 6 });
-export const SPECTRUM_LAYOUT = Object.freeze({ width: 73, voices: 8, state: 36, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256, displayVoices: 32, displayWidth: 6 });
+export const SPECTRUM_LAYOUT = Object.freeze({ width: 75, voices: 8, state: 44, drawbars: 16, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256, displayVoices: 32, displayWidth: 6 });
 export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32 });
 export const SAMPLE_LAYOUT = Object.freeze({ width: 40, voices: 16, state: 144, zones: 128, cursorCapacity: 32, cursorWidth: 7, cursorScalars: 21 });
 export const SEED_LAYER_LAYOUT = Object.freeze({ width: 56, voices: 2, state: 144 });
@@ -32,7 +33,7 @@ export function choirSourceBytes(rate, voices = CHOIR_LAYOUT.voices) {
 }
 export function spectrumSourceBytes(rate, voices = SPECTRUM_LAYOUT.voices) {
   check(rate, voices, SPECTRUM_LAYOUT.voices);
-  return (SPECTRUM_LAYOUT.tableSamples + SPECTRUM_LAYOUT.sineSamples + SPECTRUM_LAYOUT.frameSamples) * 4 + voices * (SPECTRUM_LAYOUT.state + SPECTRUM_LAYOUT.partials * SPECTRUM_LAYOUT.partialState) * 8 + SPECTRUM_LAYOUT.displayVoices * SPECTRUM_LAYOUT.displayWidth * 16;
+  return (SPECTRUM_LAYOUT.tableSamples + SPECTRUM_LAYOUT.sineSamples + SPECTRUM_LAYOUT.frameSamples) * 4 + voices * (SPECTRUM_LAYOUT.state + SPECTRUM_LAYOUT.drawbars + SPECTRUM_LAYOUT.partials * SPECTRUM_LAYOUT.partialState) * 8 + SPECTRUM_LAYOUT.displayVoices * SPECTRUM_LAYOUT.displayWidth * 16;
 }
 export function granularSourceBytes(rate, voices = GRANULAR_LAYOUT.voices) {
   check(rate, voices, GRANULAR_LAYOUT.voices, 192000); if (!Number.isInteger(rate)) throw new RangeError('Invalid granular source rate.');
