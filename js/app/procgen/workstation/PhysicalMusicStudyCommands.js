@@ -6,9 +6,11 @@ import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 const fail = message => { throw Object.assign(new Error(message), { code: 'physical-study-domain' }); };
 const overlaps = (a, b) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
 export async function buildPhysicalMusicStudyInputs(world, goal, candidate, { baseTick = world.tickIndex, requestedAt = world.simulationTimeMs } = {}) {
-  const graph = JSON.parse(canonicalDataText(world.physicalAuthoring.graph, { maxBytes: 1048576, maxNodes: 65536 }).text), spans = [], skills = [], rectangles = [], releaseEdits = [];
+  const graph = JSON.parse(canonicalDataText(world.physicalAuthoring.graph, { maxBytes: 1048576, maxNodes: 65536 }).text), spans = [], skills = [], rectangles = [], releaseEdits = [], junctionEdits = [], layerEdits = [];
   let changedGraph = false, cells = 0, editCost = 0;
   for (const edit of candidate.edits) {
+    if (edit.kind === 'junction-configuration') { junctionEdits.push(edit); editCost++; continue; }
+    if (edit.kind === 'layer-muted') { layerEdits.push(edit); editCost++; continue; }
     if (edit.kind === 'release-spread-ticks' || edit.kind === 'release-clock-mode') { releaseEdits.push(edit); editCost++; continue; }
     if (edit.kind === 'worker-tick') {
       if (!world.actors.some(actor => actor.id === edit.actorId)) fail('A skill handle names an absent source actor.');
@@ -50,6 +52,18 @@ export async function buildPhysicalMusicStudyInputs(world, goal, candidate, { ba
         instances: world.physicalAuthoring.instances, junctions: world.physicalJunctions.definitions,
         terrain: spans.length ? normalizeTerrainCommand({ version: 1, operation: 'replaceSolid', transactionId: prefix, generation: world.generation, spans, maxCells: 8192, maxChunks: 128 }) : null } } } });
   }
+  if (new Set(junctionEdits.map(edit => edit.junctionId)).size !== junctionEdits.length || new Set(layerEdits.map(edit => edit.layerId)).size !== layerEdits.length) fail('Use one finite handle per junction or layer property.');
+  for (const edit of junctionEdits) {
+    const definition = world.physicalJunctions.definitions.find(value => value.id === edit.junctionId), configuration = definition?.configurations[edit.value];
+    if (!configuration) fail('The sampled junction configuration is unavailable in the exact source.');
+    const request = { version: 1, junctionId: definition.id, configurationId: configuration.id, authoringRevision: definition.revision, policy: edit.junctionPolicy || 'waitForSafeBoundary', expiryTick: baseTick + 2 + (edit.eligibilityTicks || 0), coalesce: false },
+      id = 'study-junction:' + (await hashDataText(canonicalDataText(request).text)).slice(0, 40);
+    inputs.push({ tick: baseTick, command: { id, kind: 'junction-request', origin: 'manual', requestedAt, applyAtTick: baseTick + 1, target: { generation: world.generation }, parameters: { request } } });
+  }
+  for (const edit of layerEdits) {
+    if (!world.physicalAuthoring.graph.feedback?.layers.some(layer => layer.id === edit.layerId)) fail('The sampled physical intervention layer is unavailable in the exact source.');
+    inputs.push({ tick: baseTick, feedbackControl: { id: 'study-layer:' + edit.id, layerId: edit.layerId, muted: edit.value === 1 } });
+  }
   if (releaseEdits.length) {
     const population = world.population, current = population.releaseGesture;
     if (!world.cohorts || !current || population.pendingReleaseGesture || new Set(releaseEdits.map(edit => edit.kind)).size !== releaseEdits.length) fail('A release study needs one current authored cohort policy, no pending replacement and distinct property handles.');
@@ -61,6 +75,7 @@ export async function buildPhysicalMusicStudyInputs(world, goal, candidate, { ba
   for (const edit of skills) inputs.push({ tick: baseTick + edit.value - 1, command: { id: 'study-skill:' + (await hashDataText(canonicalDataText(edit).text)).slice(0, 40), kind: 'assign-worker', origin: 'manual',
     requestedAt, applyAtTick: baseTick + edit.value, target: { generation: world.generation, actorId: edit.actorId }, parameters: { workerKind: { builder: 'builders', basher: 'bashers', digger: 'diggers', miner: 'miners' }[edit.skillType] } } });
   // The atomic terrain edit precedes skills at the same boundary in every execution mode.
-  inputs.sort((a, b) => a.tick - b.tick || (a.command.kind === 'physical-authoring' ? -1 : b.command.kind === 'physical-authoring' ? 1 : a.command.id < b.command.id ? -1 : a.command.id > b.command.id ? 1 : 0));
+  const order = input => input.command?.kind === 'physical-authoring' ? 0 : input.feedbackControl ? 1 : 2, key = input => input.command?.id || input.feedbackControl.id;
+  inputs.sort((a, b) => a.tick - b.tick || order(a) - order(b) || (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
   return { inputs, editCost, patchHash: await hashDataText(canonicalDataText(inputs, { maxBytes: 2 * 1048576, maxNodes: 262144 }).text), scope: 'explicit-rectangles-pickups-and-shared-worker-actions;other-source-state-preserved' };
 }

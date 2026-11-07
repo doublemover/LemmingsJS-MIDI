@@ -33,7 +33,7 @@ function admitSource(world, goal, mode) {
   const actors = world.actors.filter(live), population = world.population, finite = !world.cohorts || !population.pendingReleaseGesture && !population.adaptive &&
     (population.releaseGesture?.paused === true || population.gestureRun?.remaining === 0);
   if (world._failedTick || world.interventionState.pending.length || !actors.length || actors.length > goal.crewConstraints.maximumActors || world.actors.length !== actors.length || actors.some(actor => !inside(actor, goal.crewConstraints.containment))) fail('physical-study-domain', 'Study one completed source with a bounded living crew inside its declared containment and no pending inputs.');
-  if (mode === 'search' && goal.allowedEdits.some(edit => edit.kind.startsWith('release-'))) fail('physical-study-domain', 'Release spread/adaptive-clock changes belong to sensitivity studies; finite-crew goal search does not add a new entrant domain.');
+  if (mode === 'search' && goal.allowedEdits.some(edit => edit.kind.startsWith('release-') || ['junction-configuration', 'layer-muted'].includes(edit.kind))) fail('physical-study-domain', 'Release, junction and contingent-layer control samples belong to sensitivity studies; initial inverse search keeps the declared wall/pickup/shared-skill domain.');
   if (mode === 'search' && (world.assists !== false || !finite || actors.some(actor => actor.canClimb || actor.hasParachute || ![world.actions[State.WALKING], world.actions[State.FALLING]].includes(actor.action))))
     fail('physical-study-domain', 'Goal search currently requires ordinary walking/falling actors, assistance off, and an unchanged finite/paused release policy with no future births.');
   const b = goal.crewConstraints.containment; if (b.x1 < world.leftEdgeX || b.x2 > world.width || b.y2 > world.height) fail('physical-study-domain', 'Containment leaves the actual source world.');
@@ -126,7 +126,8 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         reader.release(); reader = null;
       } else await prepare(source);
       observeSafety(world, goal, trace, constraints, mode);
-      const admit = item => { const proposal = world.prepareIntervention(item.command); if (proposal.outcome.status !== 'queued') fail('physical-study-input', 'Candidate input refused: ' + (proposal.outcome.reason || proposal.outcome.status)); proposal.commit(); };
+      const admit = item => { if (item.feedbackControl) { if (item.tick !== world.tickIndex) fail('physical-study-input', 'A sampled layer control must execute at its declared completed boundary.'); realm.controlPhysicalFeedback(item.feedbackControl); return; }
+        const proposal = world.prepareIntervention(item.command); if (proposal.outcome.status !== 'queued') fail('physical-study-input', 'Candidate input refused: ' + (proposal.outcome.reason || proposal.outcome.status)); proposal.commit(); };
       if (allUpfront) { for (const item of inputs) admit(item); consumed = inputs.length; auditionInitial = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }); }
       while (world.tickIndex < endTick) {
         check();
@@ -144,7 +145,10 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         if ((world.tickIndex - start.tickIndex) % 16 === 0) { await yieldControl(); check(); }
       }
       const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }), completed = world.tickIndex === endTick,
-        semanticMetrics = summarizePhysicalMusicStudyMetrics(trace, { throughTicks: world.tickIndex - start.tickIndex, sourceTimeMs: planningWorld.simulationTimeMs, finalTimeMs: world.simulationTimeMs, finalPopulation: copy(world.population.snapshot()) }),
+        semanticMetrics = summarizePhysicalMusicStudyMetrics(trace, { throughTicks: world.tickIndex - start.tickIndex, sourceTimeMs: planningWorld.simulationTimeMs, finalTimeMs: world.simulationTimeMs, finalPopulation: copy(world.population.snapshot()),
+          finalJunctions: world.physicalJunctions.definitions.map(definition => copy(world.queryJunction(definition.id, { includeDefinition: false }))),
+          finalLayers: { mode: world.physicalFeedback.mode, epoch: world.physicalFeedback.epoch, muted: [...world.physicalFeedback.muted], totalProposals: world.physicalFeedback.total,
+            rules: world.physicalFeedback.rules.map(rule => ({ key: rule.key, status: rule.status || 'unknown', fuel: rule.fuel, occurrences: rule.occurrences })), pendingCommandIds: world.interventionState.pending.filter(command => command.causality).map(command => command.id) } }),
         musical = evaluatePhysicalMusicGoal(goal, trace.onsets, { causeKinds: trace.causeKinds, editCost }), invariantResults = evaluatePhysicalMusicInvariants(goal, semanticMetrics),
         metrics = { ...musical, semanticMetrics, invariantResults, requestedMetricsMet: musical.requestedMetricsMet === true && invariantResults.allMet }, traceHash = await hashDataText(encoded(trace)),
         continuationHash = await hashDataText(encoded({ world: continuation.world, engine: continuation.engine, timeline: continuation.timeline, replay: continuation.replay, executionPolicy: continuation.executionPolicy }));
@@ -159,6 +163,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
     basePhysicalHash = await hashProcgenContinuationCheckpoint(source.world);
     if (await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(planningWorld)) !== basePhysicalHash) fail('physical-study-source', 'The immutable planning world differs from the complete source.');
     constraints = admitSource(planningWorld, goal, mode);
+    if (goal.allowedEdits.some(edit => edit.kind === 'layer-muted') && source.executionPolicy?.physicalFeedbackMode !== 'preserve-live') fail('physical-study-domain', 'Layer-mute sensitivity requires an explicitly armed source controller; the study does not arm a loaded project.');
     sourceIdentity = await createBranchPrefixSource({ continuation: source, graph: source.authoring.graph, performance: source.performance, sourceVersions: input.sourceVersions,
       executionIdentity, policy: { mode, goal, sourceDelivery: 'completed-tick-before-next-input', liveOutput: 'none' }, projectRevision: input.projectRevision, resourceBudget: budget });
     for (const candidate of domain.candidates) {

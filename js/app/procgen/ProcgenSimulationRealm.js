@@ -41,7 +41,10 @@ export async function prepareProcgenSimulationRealm({ manifest, resourceBudget, 
       scoreTimeline: manifest.scoreTimeline, playing: manifest.playing, bpm: manifest.bpm, requiredConsumer, onState,
       getPerformance: () => performance.snapshot(), applyPerformance: value => { const next = createCausalPerformanceState(value.performance), nextGraph = validateCausalInstrumentGraph(value.graph); performance = next; graph = nextGraph; },
       disposeWorld, observePhysicalFeedback: (batch, analysis) => feedback?.observe(batch, analysis), getExecutionPolicy: () => policy });
-    return Object.freeze({ host: core, physicalAnalysis: () => engine.physicalAnalysis(), restoredContinuationHash: actual, execution: 'world-and-causal-music-in-owning-realm' });
+    return Object.freeze({ host: core, controlPhysicalFeedback(value) {
+      if (!feedback || !core.state().paused || !value || typeof value.layerId !== 'string' || typeof value.muted !== 'boolean') throw new Error('Physical layer control requires this paused preserved controller and an explicit layer/mute value.');
+      return feedback.muteLayer(value.layerId, value.muted);
+    }, physicalAnalysis: () => engine.physicalAnalysis(), restoredContinuationHash: actual, execution: 'world-and-causal-music-in-owning-realm' });
   } catch (error) {
     if (core) { const receipt = core.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; }
     else {

@@ -1,5 +1,5 @@
 import { freezeData } from '../../../core/CanonicalData.js';
-export function summarizePhysicalMusicStudyMetrics(trace, { throughTicks, sourceTimeMs, finalTimeMs, finalPopulation } = {}) {
+export function summarizePhysicalMusicStudyMetrics(trace, { throughTicks, sourceTimeMs, finalTimeMs, finalPopulation, finalJunctions = [], finalLayers = null } = {}) {
   const times = trace.onsets.map(onset => onset.timeTicks).sort((a, b) => a - b), gaps = []; let previous = 0, maximumGap = 0;
   for (const time of [...times, throughTicks]) { if (time > previous) { const gap = { firstTick: previous, lastTick: time, durationTicks: time - previous }; maximumGap = Math.max(maximumGap, gap.durationTicks); gaps.push(gap); } previous = time; }
   const seconds = (finalTimeMs - sourceTimeMs) / 1000, motifCounts = Object.create(null);
@@ -11,5 +11,5 @@ export function summarizePhysicalMusicStudyMetrics(trace, { throughTicks, source
     onsetFreeGaps: { maximumTicks: maximumGap, intervals: gaps.slice(0, 64), omittedIntervals: Math.max(0, gaps.length - 64), interpretation: 'no-new-onset;held-voices-may-continue' },
     motifCounts, motifOccurrences: trace.motifOccurrences, restObservations: trace.restObservations,
     crew: { minimumLiving: trace.minimumLiving, maximumLiving: trace.maximumLiving, births: trace.births, terminations: trace.terminations, safetyFailures: trace.safetyFailures },
-    realizedReleasePolicy: finalPopulation, observationCoverage: trace.censoredObservations.length ? 'unknown-censored-observations' : 'complete-admitted-observation-profile', censoredObservations: trace.censoredObservations });
+    realizedReleasePolicy: finalPopulation, realizedJunctions: finalJunctions, realizedInterventionLayers: finalLayers, observationCoverage: trace.censoredObservations.length ? 'unknown-censored-observations' : 'complete-admitted-observation-profile', censoredObservations: trace.censoredObservations });
 }

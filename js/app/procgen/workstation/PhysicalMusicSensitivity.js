@@ -17,19 +17,19 @@ export function summarizePhysicalMusicSensitivity(study) {
       group.sort((a, b) => a.values[handle.id] - b.values[handle.id]);
       for (let index = 1; index < group.length; index++) {
         const left = group[index - 1], right = group[index], delta = right.values[handle.id] - left.values[handle.id], gap = delta > 1,
-          matched = handle.kind !== 'release-clock-mode' && left.status === 'sample-safe' && right.status === 'sample-safe' && left.correspondence === right.correspondence && !left.rejectedInputs.length && !right.rejectedInputs.length &&
+          categorical = ['release-clock-mode', 'junction-configuration', 'layer-muted'].includes(handle.kind), matched = !categorical && left.status === 'sample-safe' && right.status === 'sample-safe' && left.correspondence === right.correspondence && !left.rejectedInputs.length && !right.rejectedInputs.length &&
             !left.discontinuities.length && !right.discontinuities.length,
           eventDeltas = matched ? left.onsets.map((onset, at) => ({ actorId: onset.actorId, mappingId: onset.mappingId, occurrence: at,
             fromTick: onset.timeTicks, toTick: right.onsets[at].timeTicks, ticksPerIntegerUnit: (right.onsets[at].timeTicks - onset.timeTicks) / delta })) : [];
         edges.push({ handleId: handle.id, from: left.candidateId, to: right.candidateId, fromValue: left.values[handle.id], toValue: right.values[handle.id],
-          status: handle.kind === 'release-clock-mode' ? 'categorical-clock-policy-comparison;no-derivative' : matched ? 'matching-sampled-finite-difference' : 'discontinuity-or-unknown', interveningIntegers: gap ? 'untested-gap' : 'adjacent-integer-samples',
+          status: categorical ? 'categorical-physical-control-comparison;no-derivative' : matched ? 'matching-sampled-finite-difference' : 'discontinuity-or-unknown', interveningIntegers: gap ? 'untested-gap' : 'adjacent-integer-samples',
           scorePerIntegerUnit: matched && left.score != null && right.score != null ? (right.score - left.score) / delta : null, onsetDeltas: eventDeltas,
           continuousSafetyClaim: false, continuousDerivativeClaim: false });
       }
     }
   }
   return freezeData({ schema: 'lemmings-physical-music-sensitivity/v1', sourceIdentity: study.sourceIdentity, base: study.base,
-    domain: { handles, seedSet: [study.base.seed], seedCoverage: 'one-exact-source-seed;no-other-seed-claim', parameterUnits: handles.map(handle => ({ id: handle.id, unit: handle.kind === 'release-clock-mode' ? 'enum:0-locked,1-adaptive' : ['worker-tick', 'release-spread-ticks'].includes(handle.kind) ? 'simulation-ticks' : 'world-pixels' })), horizonTicks: study.goal.horizon, timeDomain: study.goal.timeDomain, referenceTimeline: study.goal.referenceTimeline || null,
+    domain: { handles, seedSet: [study.base.seed], seedCoverage: 'one-exact-source-seed;no-other-seed-claim', parameterUnits: handles.map(handle => ({ id: handle.id, unit: handle.kind === 'release-clock-mode' ? 'enum:0-locked,1-adaptive' : handle.kind === 'junction-configuration' ? 'authored-configuration-index' : handle.kind === 'layer-muted' ? 'enum:0-unmuted,1-muted' : ['worker-tick', 'release-spread-ticks'].includes(handle.kind) ? 'simulation-ticks' : 'world-pixels' })), horizonTicks: study.goal.horizon, timeDomain: study.goal.timeDomain, referenceTimeline: study.goal.referenceTimeline || null,
       completeFiniteGrid: study.coverage.completeDomain, untestedCandidates: study.coverage.untestedCandidates, adaptivePolicyPreserved: true },
     requestedInvariantCoverage: { allDeclaredSamplesMet: study.coverage.completeDomain && samples.every(sample => sample.status === 'sample-safe' && sample.requestedMetricsMet),
       failingPoints: samples.filter(sample => sample.status === 'sample-failed' || sample.status === 'sample-safe' && !sample.requestedMetricsMet).map(sample => ({ candidateId: sample.candidateId, values: sample.values })),

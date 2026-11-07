@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Add worker-owned finite physical musical-goal search, exact onset matching, source-bound branch-prefix reuse, sampled sensitivity reports and a desktop Compose draft/result surface with fresh-replay-gated reversible Apply.
+- Add worker-owned finite physical musical-goal search, exact onset matching, source-bound branch-prefix reuse, sampled release/junction/layer sensitivity and a desktop Compose draft/result surface with fresh-replay-gated reversible Apply.
 
 - Load specialized worker kernels only for their admitted jobs, and prime measured audio profiles from native render progress while retaining frozen-clock refusals.
 

@@ -19,12 +19,15 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
   const ratioEnabled = field(basic, 'Require period ratio', '', 'checkbox'), ratioRight = field(basic, 'Other ratio mapping ID', 'voice1', 'text'), ratioNumerator = field(basic, 'Left period ratio term', 3), ratioDenominator = field(basic, 'Right period ratio term', 4);
   ratioEnabled.checked = false;
   const handles = node('fieldset'); handles.append(node('legend', 'Finite physical handles · all other terrain and crew stay locked'));
-  const kind = choice(handles, 'Physical handle kind', [['right-wall-x', 'Right wall X'], ['pickup-x', 'Vertical pickup X'], ['worker-tick', 'Shared skill application tick'], ['release-spread-ticks', 'Sensitivity · release spread ticks'], ['release-clock-mode', 'Sensitivity · clock0=locked,1=adaptive']]),
+  const kind = choice(handles, 'Physical handle kind', [['right-wall-x', 'Right wall X'], ['pickup-x', 'Vertical pickup X'], ['worker-tick', 'Shared skill application tick'], ['release-spread-ticks', 'Sensitivity · release spread ticks'], ['release-clock-mode', 'Sensitivity · clock0=locked,1=adaptive'], ['junction-configuration', 'Sensitivity · junction configuration index'], ['layer-muted', 'Sensitivity · layer0=unmuted,1=muted']]),
     handleId = field(handles, 'Handle ID', 'wall0', 'text'), values = field(handles, 'Allowed integer values · comma separated', '80,81,82', 'text'),
     laneId = field(handles, 'Physical lane index', 0), x1 = field(handles, 'Editable rectangle left', 80), x2 = field(handles, 'Editable rectangle right', 83),
     y1 = field(handles, 'Editable rectangle top', 65), y2 = field(handles, 'Editable rectangle bottom', 80),
     pickupId = field(handles, 'Pickup ID', 'entry0', 'text'), actorId = field(handles, 'Source actor ID', source?.actorIds?.[0] ?? 0),
     skill = choice(handles, 'Shared skill', [['builder', 'Builder'], ['basher', 'Basher'], ['digger', 'Digger'], ['miner', 'Miner']]);
+  const junctionId = field(handles, 'Authored junction ID', source?.junctions?.[0]?.id || 'junction0', 'text'),
+    junctionWindow = field(handles, 'Junction eligibility window in ticks', 8), junctionPolicy = choice(handles, 'Junction request policy', [['waitForSafeBoundary', 'Wait for actual safe boundary'], ['rejectIfBusy', 'Reject when actually busy']]),
+    layerId = field(handles, 'Contingent layer ID', source?.graph?.feedback?.layers?.[0]?.id || 'layer0', 'text');
   const editList = node('ol'), inventory = node('fieldset'); inventory.append(node('legend', 'Joint skill inventory'));
   const skillFields = Object.fromEntries(['builder', 'basher', 'digger', 'miner'].map(name => [name, field(inventory, name + ' uses', 0)]));
   const advanced = node('details'); advanced.append(node('summary', 'Complete goal · ratios, protection and exact selectors'));
@@ -44,7 +47,8 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
   handles.append(button('Add finite handle', () => {
     const id = handleId.value.trim(), common = { id, kind: kind.value, values: numbers(values) };
     const edit = kind.value === 'right-wall-x' ? { ...common, laneId: numeric(laneId), bounds: { x1: numeric(x1), x2: numeric(x2), y1: numeric(y1), y2: numeric(y2) } } :
-      kind.value === 'pickup-x' ? { ...common, pickupId: pickupId.value.trim() } : kind.value.startsWith('release-') ? common : { ...common, actorId: numeric(actorId), skillType: skill.value };
+      kind.value === 'pickup-x' ? { ...common, pickupId: pickupId.value.trim() } : kind.value.startsWith('release-') ? common : kind.value === 'junction-configuration' ? { ...common, junctionId: junctionId.value.trim(), eligibilityTicks: numeric(junctionWindow), junctionPolicy: junctionPolicy.value } :
+        kind.value === 'layer-muted' ? { ...common, layerId: layerId.value.trim() } : { ...common, actorId: numeric(actorId), skillType: skill.value };
     if (edits.some(value => value.id === id)) throw new Error('Choose a distinct physical handle ID.'); edits.push(edit); markDraft(); renderEdits();
   }), editList);
   const build = () => {

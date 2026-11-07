@@ -2262,7 +2262,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
     physicalMusicSource() { const world = runtime()?.world; if (!world) return null; const population = world.population, gesture = population.releaseGesture;
-      return { worldId: world.worldId, generation: world.generation, tick: world.tickIndex, width: world.width, height: world.height, leftEdgeX: world.leftEdgeX, graph: project.procgen.physicalGraph,
+      return { worldId: world.worldId, generation: world.generation, tick: world.tickIndex, width: world.width, height: world.height, leftEdgeX: world.leftEdgeX, graph: project.procgen.physicalGraph, junctions: world.physicalJunctions.definitions.map(definition => ({ id: definition.id, revision: definition.revision, configurations: definition.configurations.map(configuration => configuration.id) })),
         actorIds: world.actors.filter(actor => !actor.removed && !actor.disabled && !actor.failureReason && !actor.terminalReason).map(actor => actor.id), assists: world.assists,
         finiteCrew: !world.cohorts || !population.pendingReleaseGesture && !population.adaptive && (gesture?.paused === true || population.gestureRun?.remaining === 0),
         tickDurationMs: 60 / transport.getState().nominalSpeed, bpm: transport.getState().bpm };

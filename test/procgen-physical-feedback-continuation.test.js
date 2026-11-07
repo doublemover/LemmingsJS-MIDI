@@ -1,4 +1,7 @@
 import { expect } from 'chai';
+import { runPhysicalMusicStudy } from '../js/app/procgen/workstation/PhysicalMusicStudy.js';
+import { createPhysicalMusicStarterGoal } from '../js/app/procgen/workstation/PhysicalMusicStarter.js';
+import { summarizePhysicalMusicSensitivity } from '../js/app/procgen/workstation/PhysicalMusicSensitivity.js';
 import { createHash } from 'node:crypto';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { createActualScoredWorldFactory } from './helpers/actualScoredWorld.js';
@@ -62,6 +65,18 @@ describe('actual intervention layers across isolated continuation and exact comm
       expect(physical[1]).to.equal(physical[0]); expect(physical[2]).to.equal(physical[0]); expect(snapshots[1].engine).to.deep.equal(snapshots[0].engine); expect(snapshots[2].engine).to.deep.equal(snapshots[0].engine);
       expect(world.physicalFeedback.commands.length).to.be.greaterThan(0); expect(worlds[0].physicalFeedback).to.deep.equal(world.physicalFeedback); expect(worlds[1].physicalFeedback).to.deep.equal(world.physicalFeedback);
       expect(snapshots[1].executionPolicy.physicalFeedbackMode).to.equal('preserve-live'); expect(snapshots[2].executionPolicy.physicalFeedbackMode).to.equal('exact-command-tape');
+      expect(feedback.diagnostics().fault).to.equal(null);
+      const beforeStudy = await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(world)), goal = JSON.parse(JSON.stringify(createPhysicalMusicStarterGoal()));
+      goal.allowedEdits = [{ id: 'overdub-mute', kind: 'layer-muted', layerId: 'builder-overdub', values: [0, 1] }];
+      const buildId = 'a'.repeat(64), study = await runPhysicalMusicStudy({ mode: 'sensitivity', goal, applicationBuildId: buildId, projectRevision: 1, sourceVersions: { applicationBuildId: buildId, physical: 2, musical: 1 }, rootPath: '/',
+        source: { world: manifest.checkpoint, engine: manifest.semantic, timeline: manifest.timeline, performance: manifest.performance, executionPolicy: policy('preserve-live'),
+          authoring: { graph: world.physicalAuthoring.graph, instances: world.physicalAuthoring.instances, junctions: world.physicalJunctions.definitions }, replay: { version: 2, playing: true, scoreTimeline: true, bpm: 120, nominalSpeed: 3 } } },
+      { createWorld, executionIdentity: { activeExecution: 'bound', buildId } });
+      expect(study.rows).to.have.length(2);
+      for (const row of study.rows) expect(row.metrics.semanticMetrics.realizedInterventionLayers.muted.includes('layer:builder-overdub')).to.equal(row.values['overdub-mute'] === 1);
+      expect(study.rows[1].metrics.semanticMetrics.realizedInterventionLayers.totalProposals).to.equal(0);
+      expect(summarizePhysicalMusicSensitivity(study).edges[0].status).to.equal('categorical-physical-control-comparison;no-derivative');
+      expect(await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(world))).to.equal(beforeStudy);
     } finally { await Promise.all([finish(baseline), finish(continued), finish(exact)]); if (!started) { const receipt = feedback.dispose(); await receipt.completion; engine.dispose(); await original.dispose(); } }
     expect(budget.diagnostics().accountedBytes).to.equal(0); expect(metadataBudget.diagnostics().accountedBytes).to.equal(0);
   });
