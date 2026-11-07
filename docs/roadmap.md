@@ -11681,3 +11681,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Save a v3 world-anchor map with a complete exact source-instrument and lane/body inventory. Validate actual static pickup lane bindings against the scene lane IDs; exact graph hashes include per-body ports and source buses. Private rehearsal retains the same lane taps, map and declared complete tail with verified source-binding receipts.
 - The Shared bodies panel adopts the active routed graph. COUPLE/DAMP remain live; TUNE prepares the same routed map and retains the old tail. Source/TOUCH controls stay unavailable until an explicit new mapping/recipe is selected, preventing a silent return to one-root excitation.
 - Functional/native/audio/browser/performance and listening qualification remains deferred.
+
+### Continuation 626 — deferred world/body integration fixtures
+
+- Author grouped fixtures for camera-independent controls, fixed crossing attachment, normalized overlap, five-body scene dependency/materialization and canonical acoustic/focus commands. Compare acoustic/paired/Trellis variants against their exact original terrain, release, gates and junctions.
+- Add actual per-body DSP and shared-graph fixtures for source separation, sparse transfer, exact state continuation, Panic and aggregate input containment across44.1/48/96kHz. These fixtures are authored but unexecuted. Existing coverage inspection/execution remains part of the final consolidated campaign.
+- Preserve exact adopted body-control ratios in the Shared bodies panel instead of rounding a220/180 tuning to a one-percent slider step before explicit preparation. No functional, native/audio, browser, performance or listening campaign ran.
