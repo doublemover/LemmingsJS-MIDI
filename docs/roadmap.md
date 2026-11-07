@@ -11894,3 +11894,9 @@ Dynamic recipe/dependency/embedded-asset maps publish only after scene registrat
 - Own construction and at most two concurrent factory workspaces through the shared budget. Close admission first, join pending factory work and registry retirement, clear retained graphs and release only acknowledged owners. Unknown workspace/window retirement preserves conservative charges.
 - Memoize the installed lesson definitions in that same owner and reserve a bounded observation/view window before building them. Retire lesson DOM/data and join scene-browser/loader receipts before releasing the catalog. The inventory is an estimate of retained data, not measured JavaScript/native memory.
 - Add deferred publication-refusal, prepaid-write, late-factory-disposal and unknown-retirement fixtures. Critical type checks pass; functional, browser and combined memory qualification remain deferred.
+
+### Continuation 658 — atomic spatial plan retry and actual retirement
+
+- Reserve bounded map-replacement workspace before canonical serialization and validation. Publish the cached raw identity only after retained-plan admission and compilation succeed; the identical immutable map remains retryable after pressure refusal. Preserve the old compiled plan through a failed replacement. Unknown preparation retirement blocks reuse and retains conservative storage charges.
+- Retain only the spatial batch identity/time frontier and its borrowed actor projection, rather than pinning the complete fact/intent batch. Disable, reset and disposal clear compiled maps, actor indexes, projections, occlusion cells and captured map references before reducing or releasing their reservation. Ordinary mapper reset can still preserve its configured plan when the caller explicitly requests that behavior.
+- Add deferred pressure/refusal/retry and reset/disable/disposal fixtures. No functional/browser/audio/combined-memory qualification runs in this development batch.

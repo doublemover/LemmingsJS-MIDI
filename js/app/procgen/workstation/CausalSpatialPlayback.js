@@ -17,15 +17,27 @@ export function spatialSourcePoint(fact, intent = null, graph = null) {
 export function createCausalSpatialPlayback({ getGraph, world, session, getSources, updateSources, toFrame, getExecutionEpoch, getContext, getCameraPosition, isCaptureEnabled = () => false, resourceBudget, onReceipt = () => {} } = {}) {
   const mapper = createWorldSpatialControl({ getCameraPosition, hasSolidAt: (x, y, identity) => world?.worldId === identity.worldId && world.generation === identity.generation && world.terrainRevision === identity.terrainRevision && world.tickIndex === identity.tick && typeof world.peekGroundAt === 'function' ? world.peekGroundAt(x, y) : null }),
     storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'world-spatial-controls', kind: 'bounded-spatial-observations-and-occlusion-cache', category: 'candidate', bytes: 4096 }), scope = createProcgenRetirementScope();
-  let rawMap = null, signature = null, activeMap = null, mapHash = null, capturing = false, disposed = false, batch = null;
+  let rawMap = null, signature = null, activeMap = null, mapHash = null, capturing = false, disposed = false, batch = null; const unknownPreparations = new Set();
+  const clear = () => { mapper.configure(null); mapper.reset(); rawMap = activeMap = signature = mapHash = batch = null; capturing = false; };
+  const configureMap = map => {
+    if (unknownPreparations.size) throw new Error('Spatial map preparation ownership remains unresolved.');
+    const workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'world-spatial-controls', kind: 'acoustic-map-replacement-overlap', category: 'candidate', bytes: 8 * 1048576 });
+    try {
+      const next = canonicalDataText(map, { maxBytes: 131072, maxNodes: 16384 }).text;
+      if (signature !== next) { storage.resize(8 * 1048576); mapper.configure(map); signature = next; activeMap = map; mapHash = null; }
+      rawMap = map;
+    } finally { try { workspace.release(); } catch (error) { unknownPreparations.add(workspace); throw error; } }
+  };
   const report = value => { try { onReceipt(validateSpatialPerformance(value)); } catch { try { onReceipt({ status: 'rejected', stage: 'world-spatial-observation', reason: 'spatial-performance-capture-rejected', batchId: batch?.batchId, acousticReceipt: false }); } catch {} } };
   const envelope = value => ({ schema: 'lemmings-spatial-performance/v1', worldId: batch.worldId, generation: batch.generation, sourceTick: batch.tick, sourceTimeMs: batch.sourceTimeMs, sourceTickDurationMs: batch.tickDurationMs, executionEpoch: getExecutionEpoch(), sampleRate: getContext()?.sampleRate || null, acousticReceipt: false, ...value });
   return Object.freeze({
     before(intents, source) {
-      if (disposed) return intents; batch = source; const map = getGraph()?.acousticMap || null, capture = isCaptureEnabled(); if (capture && !capturing) mapHash = null; capturing = capture;
+      if (disposed) return intents; if (unknownPreparations.size) throw new Error('Spatial map preparation ownership remains unresolved.');
+      batch = { worldId: source.worldId, generation: source.generation, batchId: source.batchId, tick: source.tick, sourceTimeMs: source.sourceTimeMs, tickDurationMs: source.tickDurationMs };
+      const map = getGraph()?.acousticMap || null, capture = isCaptureEnabled(); if (capture && !capturing) mapHash = null; capturing = capture;
       const ready = !!map && session?.acousticMapMatches?.(map) === true;
-      if (!map) { if (activeMap) { activeMap = rawMap = signature = null; mapper.configure(null); storage.resize(4096); } return intents; }
-      if (ready && map !== rawMap) { const next = canonicalDataText(map, { maxBytes: 131072, maxNodes: 16384 }).text; rawMap = map; if (signature !== next) { storage.resize(8 * 1048576); signature = next; activeMap = map; mapper.configure(map); mapHash = null; } }
+      if (!map) { clear(); storage.resize(4096); return intents; }
+      if (ready && map !== rawMap) configureMap(map);
       mapper.observe(source); const owner = ready ? session.acousticMapState() : null;
       if (owner?.mapHash && mapHash !== owner.mapHash) { mapHash = owner.mapHash; report(envelope({ kind: 'map', status: 'prepared', mapHash, definition: activeMap })); }
       const facts = new Map(source.facts.map(fact => [fact.eventId, fact])), instruments = new Map(getGraph().instruments.map(instrument => [instrument.id, instrument])); const capacity = Math.max(0, mapper.maximumVoices() - getSources().length); let onsets = 0;
@@ -57,7 +69,8 @@ export function createCausalSpatialPlayback({ getGraph, world, session, getSourc
       for (const receipt of updateSources(states, frame)) { const { executionEpoch: rendererExecutionEpoch, ...controls } = receipt; report(envelope({ kind: 'update', ...controls, ...(rendererExecutionEpoch ? { rendererExecutionEpoch } : {}), mapHash })); }
       session.collectAcousticTails?.();
     },
-    diagnostics: ({ includeSources = false } = {}) => ({ ...mapper.diagnostics(), ...(includeSources ? { sources: getSources().slice(0, 128) } : {}) }), reset() { mapper.reset(); rawMap = activeMap = signature = mapHash = null; capturing = false; },
-    dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; mapper.reset(); return scope.retire([{ name: 'spatial-control-storage', run: () => storage.release() }]); }
+    diagnostics: ({ includeSources = false } = {}) => ({ ...mapper.diagnostics(), storage: storage.receipt(), unknownPreparations: unknownPreparations.size, ...(includeSources ? { sources: getSources().slice(0, 128) } : {}) }),
+    reset() { if (disposed) return; clear(); if (unknownPreparations.size) throw new Error('Spatial map preparation ownership remains unresolved.'); storage.resize(4096); },
+    dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; clear(); return scope.retire([{ name: 'spatial-control-storage', run: () => { if (unknownPreparations.size) throw new Error('Spatial map preparation ownership remains unresolved.'); storage.release(); } }]); }
   });
 }
