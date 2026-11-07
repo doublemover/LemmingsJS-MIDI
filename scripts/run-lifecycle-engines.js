@@ -11,7 +11,7 @@ const harnessFiles = ['playwright.lifecycle.config.js', 'scripts/run-lifecycle-e
   'package.json', 'package-lock.json', 'playwright.config.js', 'e2e/helpers/desktopViewports.js', 'scripts/BrowserTestCatalog.js',
   'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js', 'scripts/InstrumentArtifactClosure.js',
   'scripts/NativeClockResults.js', 'e2e-portable/fixtures.js', 'e2e-portable/lifecycle.spec.js', 'e2e-portable/semantic.spec.js', 'e2e-portable/capabilities.spec.js', 'e2e-portable/native-permission.spec.js',
-  'e2e-portable/pcm-capabilities.spec.js', 'e2e-portable/fixtures/pcm-evidence.html', 'js/app/midi-ui/PcmEvidence.js',
+  'e2e-portable/pcm-capabilities.spec.js', 'e2e/helpers/nativeAudioFixture.js', 'e2e-portable/fixtures/pcm-evidence.html', 'js/app/midi-ui/PcmEvidence.js',
   'js/midi/qualification/SoundRenderAnalysis.js', 'js/midi/qualification/SoundQualificationRunner.js',
   'e2e-portable/audio-clock.spec.js', 'e2e-portable/fixtures/clock-onset-probe.js', 'e2e/helpers/observeNativeAudioClock.js', 'e2e/helpers/physicalAudioClockFixture.js',
   'e2e/helpers/physicalMidiClock.js', 'e2e/helpers/workstationChrome.js', 'e2e/helpers/workstationReady.js', 'e2e/helpers/privateClockAttempt.js', 'test/support/smf.js'];

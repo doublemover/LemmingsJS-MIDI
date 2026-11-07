@@ -126,7 +126,7 @@ test('main audio runtime changes profiles transactionally and retires availabili
     await enable();
     receipt.deviceSignal = await page.evaluate(() => {
       const q = window.changedRuntime, context = q.preview.getAudioContext(), before = q.preview.getState();
-      const scheduled = q.fixture.begin({ id: 'future-runtime-' + (++q.voiceSerial), pitchCents: 6000, targetFrame: Math.ceil((context.currentTime + 10) * context.sampleRate), endFrame: Math.ceil((context.currentTime + 11) * context.sampleRate) });
+      const scheduled = q.fixture.begin({ id: 'future-runtime-' + (++q.voiceSerial), pitchCents: 6000, targetFrame: Math.ceil((context.currentTime + 0.5) * context.sampleRate), endFrame: Math.ceil((context.currentTime + 1) * context.sampleRate) });
       if (scheduled.status !== 'accepted') throw new Error('Actual queued semantic voice rejected: ' + scheduled.reason); q.devices.dispatchEvent(new Event('devicechange'));
       const after = q.preview.getState(); return { controlled: true, beforeEpoch: before.contextEpoch, afterEpoch: after.contextEpoch,
         enabled: after.enabled, activeVoices: after.activeVoices, sameContext: context === q.preview.getAudioContext(), contexts: q.contexts.length };
@@ -136,7 +136,7 @@ test('main audio runtime changes profiles transactionally and retires availabili
     for (const config of [{ latencyProfile: 'balanced', preferredSampleRate: 44100 }, { latencyProfile: 'performance', preferredSampleRate: 48000 }, { latencyProfile: 'robust', preferredSampleRate: 96000 }]) {
       const cycle = await page.evaluate(async next => {
         const q = window.changedRuntime, old = q.preview.getAudioContext(), context = old, count = q.contexts.length, before = q.preview.getAudioRuntimeObservation();
-        const scheduled = q.fixture.begin({ id: 'future-runtime-' + (++q.voiceSerial), pitchCents: 6000, targetFrame: Math.ceil((context.currentTime + 10) * context.sampleRate), endFrame: Math.ceil((context.currentTime + 11) * context.sampleRate) });
+        const scheduled = q.fixture.begin({ id: 'future-runtime-' + (++q.voiceSerial), pitchCents: 6000, targetFrame: Math.ceil((context.currentTime + 0.5) * context.sampleRate), endFrame: Math.ceil((context.currentTime + 1) * context.sampleRate) });
         if (scheduled.status !== 'accepted') throw new Error('Actual queued semantic voice rejected: ' + scheduled.reason);
         const start = performance.now(), result = await q.preview.configureAudioRuntime(next), wallMs = performance.now() - start;
         return { config: next, before, result, wallMs, contextsBefore: count, contextsAfter: q.contexts.length, oldClosed: old.state === 'closed', currentNull: q.preview.getAudioContext() === null,

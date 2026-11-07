@@ -35,4 +35,3 @@ export function validateMidiLocalInstrumentMigration(value) {
   });
   return freezeData({ schema: 'midi-local-instrument-migration/v1', version: VERSION, entries, legacyEnvelopePolicy: value.legacyEnvelopePolicy, physicalMutation: false, externalProgramChanged: false });
 }
-

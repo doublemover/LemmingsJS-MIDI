@@ -462,7 +462,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const scheduleRecovery = (delay = 2000) => {
     if (disposed || suppressPersistence || !boundRuntime || !window.setTimeout) return;
     if (recoveryTimer != null) window.clearTimeout?.(recoveryTimer);
-    recoveryState = 'pending'; storageStatus();
+    if (recoveryState !== 'deferred') recoveryState = 'pending'; storageStatus();
     if (persistenceReadHolds.size) return;
     recoveryTimer = window.setTimeout(() => { recoveryTimer = null; void recover(); }, delay);
   };
@@ -477,7 +477,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }), release() {
       if (!persistenceReadHolds.delete(token)) return;
       preferences?.release();
-      if (!disposed && !persistenceReadHolds.size && recoveryState === 'pending') scheduleRecovery();
+      if (!disposed && !persistenceReadHolds.size && ['pending', 'deferred'].includes(recoveryState)) scheduleRecovery();
     } });
   };
   const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false, restoringWorld = false, worldPreparation = false } = {}) => {
@@ -1592,7 +1592,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const captured = capsule.session(), same = (a, b) => canonicalDataText(a, { maxBytes: 4 * 1048576, maxNodes: 300000 }).text === canonicalDataText(b, { maxBytes: 4 * 1048576, maxNodes: 300000 }).text;
       if (await hashProcgenContinuationCheckpoint(captured.world) !== reviewed.base.physicalHash || !same(captured.physicalState, initial.engine) || !same(captured.physicalTimeline, initial.timeline) ||
           !same(captureCausalPerformanceState(previous.procgen.lanes, previous.procgen.actorTimbreLocks), initial.performance) || !same(simulationExecutionPolicy(), initial.executionPolicy) ||
-          digestPlan(world.physicalAuthoring.graph) !== digestPlan(initial.authoring.graph) || transport.getState().bpm !== initial.replay.bpm || transport.getState().nominalSpeed !== initial.replay.nominalSpeed ||
+          !same(world.physicalAuthoring.graph, initial.authoring.graph) || transport.getState().bpm !== initial.replay.bpm || transport.getState().nominalSpeed !== initial.replay.nominalSpeed ||
           physicalMusicSourceIdentity() !== receipt.sourceIdentity) throw new Error('The complete physical, musical or clock source changed; compare/search again before Apply.');
       const proposal = world.prepareInterventions(commands);
       if (proposal.status !== 'prepared') throw new Error('The reviewed command transaction was not admitted: ' + proposal.outcomes.filter(value => value.status !== 'queued').map(value => value.reason).join(', '));
@@ -1706,7 +1706,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (recoveryAbort === controller) recoveryAbort = null;
       recoveryOwnershipFailure ||= recoveryCleanupFailure;
       recoveryPending = false; settleRecovery(recoveryOwnershipFailure);
-      if (!disposed && recoveryState === 'pending' && !transport.getState().playing) scheduleRecovery();
+      if (!disposed && ['pending', 'deferred'].includes(recoveryState) && !transport.getState().playing) scheduleRecovery();
     }
   };
   const capture = (name = savedName, { resume = true } = {}) => {

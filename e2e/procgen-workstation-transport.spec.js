@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { selectNativePatternInstrument } from './helpers/procgenPatterns.js';
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
@@ -45,8 +47,10 @@ for (const scenario of [
   expect(result.input.sequence).toBeLessThan(result.batch.sequence); expect(result.input.tick).toBeLessThan(result.batch.tick); expect(result.batch.tickDurationMs).toBeCloseTo(60 / (scenario.paused ? result.nominalSpeed : result.effectiveSpeed), 8);
 });
 
+test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
+
 async function ready(page) {
-  await page.goto('/procgen.html?e2e=1&seed=42');
+  await page.goto('/dist/browser/procgen.html?e2e=1&seed=42');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
 }

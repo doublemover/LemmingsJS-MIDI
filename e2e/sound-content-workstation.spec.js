@@ -24,7 +24,8 @@ test('liquid tables and drawbars use real worklet audition before installing the
   await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');
   await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
   expect(await page.evaluate(() => JSON.stringify(window.__PROCGEN_STUDIO__.getProject()))).toContain('worklet-spectrum'); await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-  for (const name of ['BODY', 'EDGE', 'FLOW', 'RING']) await expect(page.getByLabel(name + ' · next onset', { exact: true })).toBeVisible();
+  for (const name of ['BODY', 'EDGE', 'FLOW']) await expect(page.getByRole('group', { name: name + ' · held voices', exact: true })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'RING · next onset', exact: true })).toBeVisible();
 });
 
 test('Artificial Choir stages four recipes and only applies a real auditioned worklet revision', async ({ page }) => {
@@ -48,7 +49,7 @@ test('Artificial Choir stages four recipes and only applies a real auditioned wo
   await dialog.getByRole('button', { name: 'Apply to selected lane', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
   expect(await page.evaluate(() => JSON.stringify(window.__PROCGEN_STUDIO__.getProject()))).toContain('worklet-choir');
   await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-  for (const name of ['VOWEL', 'BREATH', 'SIZE', 'CHORUS']) await expect(page.getByLabel(name + ' · next onset', { exact: true })).toBeVisible();
+  for (const name of ['VOWEL', 'BREATH', 'SIZE', 'CHORUS']) await expect(page.getByRole('group', { name: name + ' · held voices', exact: true })).toBeVisible();
 });
 
 for (const fixture of [

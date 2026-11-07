@@ -56,9 +56,10 @@ function verifyTargets(snapshot) {
 }
 
 async function privateSource(page, delay) {
+  test.setTimeout(240000); // Cold immutable installation has its own setup allowance; measured clock bounds stay exact.
   await observeNativeAudioClock(page);
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=1');
-  await pauseWorkstationWhenReady(page);
+  await pauseWorkstationWhenReady(page, { timeout: 180000 });
   if (!await page.evaluate(() => typeof (window.AudioContext || window.webkitAudioContext) === 'function')) return null;
   await isolateAudioClockProbe(page);
   await page.evaluate(async presentationDelayMs => {

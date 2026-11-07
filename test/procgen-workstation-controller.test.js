@@ -779,6 +779,26 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.handlers.retryExport()).to.include({ artifactId: originalId, state: 'delivery-requested' });
     deliveryTimers.shift()(); await f.studio.dispose().completion;
   });
+  it('retries a paused recovery after an actual edit invalidates its cooperative capture (#1298)', async () => {
+    const timers = [], f = await setupRecovery({ windowTimers: {
+      setTimeout(callback, delay) { callback.delay = delay; timers.push(callback); return timers.length; },
+      clearTimeout(id) { timers[id - 1] = null; }
+    } });
+    f.studio.bindRuntime(); f.studio.transport.pause();
+    const capture = f.studio.engine.snapshotCooperative; let invalidate = true;
+    f.studio.engine.snapshotCooperative = async options => {
+      const value = await capture(options);
+      if (invalidate) { invalidate = false; f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 61 } }); }
+      return value;
+    };
+    try {
+      expect(await f.studio.recover()).to.equal(false); expect(f.studio.getRecoveryState().state).to.equal('deferred');
+      const retry = timers.find(callback => callback?.delay === 2000); expect(retry).to.be.a('function'); retry();
+      await waitForController(() => f.studio.getRecoveryState().state === 'saved');
+      expect(f.stored.get('__recovery__').project.procgen.lanes[0].patterns[0].steps[0].note).to.equal(61);
+      expect(f.studio.getRecoveryState().durableRevision).to.equal(f.studio.getDocumentState().editRevision);
+    } finally { f.studio.engine.snapshotCooperative = capture; await f.studio.dispose().completion; }
+  });
   it('schedules recovery after paused edits and reports the durable revision', async () => {
     const timers = [], f = await setupRecovery({ windowTimers: {
       setTimeout(callback, delay) { callback.delay = delay; timers.push(callback); return timers.length; },

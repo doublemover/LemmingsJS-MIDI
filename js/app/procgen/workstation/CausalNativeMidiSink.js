@@ -209,7 +209,7 @@ export function createCausalNativeMidiSink({ routes, getLanes, now, onReceipt = 
       const receipt = await routes.client.cancelExecution(grant, owner.execution);
       if (receipt.kind !== 'cancelled-execution' || (receipt.cleanupUnconfirmedNotes || receipt.cleanupUnconfirmedControls)) throw new Error('Native owned-note cleanup is unconfirmed');
       for (const entry of state.voices.values()) if (entry.route.grant === grant && entry.wireExecution === owner.execution) removeVoice(entry);
-    } }))); 
+    } })));
     receipt.completion.then(done => { if (done.outcome === 'complete') { for (const part of state.organParts.values()) part.owner.dispose(); state.organParts.clear(); for (const owner of state.grantExecutions.values()) owner.deviceControllers.dispose(); executions.delete(execution); if (!executions.size) anchor = null; } });
     return receipt;
   };

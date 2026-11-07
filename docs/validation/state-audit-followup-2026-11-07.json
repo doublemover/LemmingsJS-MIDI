@@ -490,5 +490,274 @@
       1292,
       1294
     ]
+  },
+  "desktopBoundedPreparationFollowthrough": {
+    "continuation": 673,
+    "sourceParent": "68ed0752",
+    "sourceCommit": "ee48e7027c225ddefd19f5172fa1775e7ee379b0",
+    "issues": [
+      1291,
+      1293,
+      1295,
+      1296,
+      1297
+    ],
+    "sourceSha256": {
+      "js/app/procgen/ProcgenSimulationHost.js": "03078326d22ae9964dd473a0cd9e2bbb43acd4c2e81cad1d36a2fb8c71c02e89",
+      "js/app/procgen/ProcgenSimulationCore.js": "24c90c2f7138f5bc16b1746d6d6f96c47c8f3b37b352f74a88f9e38d8d9f1a47",
+      "js/app/procgen/ProcgenSimulationProfiles.js": "7a75b3b52773a043c7b24c69c41760edbc08fd8a3d794bf4edd99b40fed3c78f",
+      "js/app/procgen/ProcgenSimulationProtocol.js": "482f03d094c7ac3662fafc72c0f7802912aa8250227035ad512b3926a9ef44e9",
+      "js/app/procgen/ProcgenSimulationConsumer.js": "dc305a3fbe336d2eaa161426aa14bd94e26238d47f26cd0da47281e91f21e042",
+      "js/app/procgen/ProcgenSimulationWorkerEndpoint.js": "5d01317fa4217c6c44cd78624b53b899acd2b5521d28de6e62f15d508e8204b7",
+      "js/app/procgen/workstation/CausalMusicEngine.js": "3ae5ab19aee835967f85f0ad9ba2c594ec7166e7517f11341c27fe277c2d427d",
+      "js/app/procgen/workstation/CausalObserverResources.js": "e7c351ab91895a0aefd3aa40cc9a3a339cdf9929edddd6daa5a5d5f430d0c1ed",
+      "js/app/procgen/workstation/PhysicalMusicStudy.js": "577230328cbab7ca72c7507e7b9f5a573a107722f4b2a1ecf39de4f2c43fc336",
+      "js/app/procgen/workstation/PhysicalMusicStudyWorkbench.js": "2dd515f5a9acf336365325fa938d48930f120b024e222e38c74a90021e320fb7",
+      "js/app/resources/GroundAssetDecode.js": "f726222acf206ba38eb6c532f6730fa58e01658d565676b36c329f38e61ee762",
+      "js/app/resources/GroundAssetRegistry.js": "78451abd526a91c1ff2db299aa739b72e62628fda122c378b469ca0f68e169d0",
+      "js/render/ParticleTable.js": "4de3c2690c504b1514fd03d71f6707b937d77fbd9b5cab5c36c6b5d9f643658a"
+    },
+    "node": {
+      "initial": {
+        "suites": 11,
+        "tests": 68,
+        "passes": 64,
+        "pending": 0,
+        "failures": 4,
+        "start": "2026-11-07T20:40:36.710Z",
+        "end": "2026-11-07T20:40:58.074Z",
+        "duration": 21364
+      },
+      "intermediate": {
+        "suites": 5,
+        "tests": 25,
+        "passes": 24,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-07T20:46:27.375Z",
+        "end": "2026-11-07T20:47:56.735Z",
+        "duration": 89360
+      },
+      "final": {
+        "suites": 15,
+        "tests": 88,
+        "passes": 88,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T20:55:20.501Z",
+        "end": "2026-11-07T20:56:30.524Z",
+        "duration": 70023
+      },
+      "remainingFailures": 0,
+      "scope": "11 affected test files, including actual physical studies and bounded copy/protocol ownership; no second full suite"
+    },
+    "coverage": {
+      "scoped": true,
+      "checkCoverage": false,
+      "total": {
+        "lines": {
+          "total": 1804,
+          "covered": 1469,
+          "skipped": 0,
+          "pct": 81.43
+        },
+        "statements": {
+          "total": 1804,
+          "covered": 1469,
+          "skipped": 0,
+          "pct": 81.43
+        },
+        "functions": {
+          "total": 198,
+          "covered": 159,
+          "skipped": 0,
+          "pct": 80.3
+        },
+        "branches": {
+          "total": 1445,
+          "covered": 820,
+          "skipped": 0,
+          "pct": 56.74
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "note": "Host/consumer/endpoint native ownership is covered by the real browser journey, not this Node coverage total. Broader physical graph feature combinations and unknown hardware retirement remain extension areas."
+    },
+    "browser": {
+      "buildId": "e2ec6ab70cca36583594e29340d73ee89976741c971cd403894152832e88125d",
+      "stats": {
+        "startTime": "2026-11-07T21:02:41.394Z",
+        "duration": 457437.19700000004,
+        "expected": 26,
+        "skipped": 0,
+        "unexpected": 5,
+        "flaky": 0
+      },
+      "passed": 26,
+      "remainingFailures": [
+        {
+          "file": "procgen-workstation-compose.spec.js",
+          "title": "desktop Compose searches an authored finite crew, keeps selection private and queues one reversible command transaction"
+        },
+        {
+          "file": "procgen-workstation-native-lifecycle.spec.js",
+          "title": "actual BFCache retains dirty edits while unavailable storage stays explicit and output remains stopped"
+        },
+        {
+          "file": "procgen-workstation-transport.spec.js",
+          "title": "sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices"
+        },
+        {
+          "file": "sound-content-workstation.spec.js",
+          "title": "liquid tables and drawbars use real worklet audition before installing the chosen source revision"
+        },
+        {
+          "file": "sound-content-workstation.spec.js",
+          "title": "Artificial Choir stages four recipes and only applies a real auditioned worklet revision"
+        }
+      ],
+      "catalog": 547,
+      "uniquePassingAcrossCheckpoints": 535,
+      "explicitExtendedOrBenchmarkSkipped": 7
+    },
+    "portable": {
+      "selected": 12,
+      "stats": {
+        "startTime": "2026-11-07T21:02:24.198Z",
+        "duration": 505575.006,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 8,
+        "flaky": 0
+      },
+      "passed": 4,
+      "failed": 8,
+      "note": "Three Firefox scheduled-clock cases and WebKit semantic context-transition pass. Chromium needs the controlled local TLS flag; old future targets exceed the8s bound; Windows WebKit cold installation exceeds60s. These are separate from measured native clock thresholds."
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "passed:15 components/2774 files",
+      "gitIndexProvenance": "passed:15 components/2774 component files/841 unique exact Git-index blobs",
+      "diffWhitespace": "passed",
+      "masterFetch": "up to date:810 ahead/0 behind"
+    },
+    "ci": {
+      "head": "68ed07526474e10dc4a6006adcf3ab963e919dba",
+      "run": 42411553535,
+      "status": "failed prior generation",
+      "mainCause": "local CRLF provenance versus canonical Git LF bytes (#1297)",
+      "lifecycleAdditionalCause": "portable context-transition fixture still used removed output.channels facade; migrated to actual prepared semantic owner",
+      "nativeCodecWindows": "success",
+      "nativeCodecUbuntu": "success",
+      "dependencyReview": "success",
+      "adaptivePolicy": "success"
+    },
+    "pendingIssues": [
+      1293,
+      1296,
+      1298
+    ],
+    "closedIssues": [
+      1291,
+      1295,
+      1297
+    ]
+  },
+  "desktopPublicationFollowthrough": {
+    "continuation": 674,
+    "sourceParent": "ee48e702",
+    "sourceSha256": {
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "ccc4263e767f3e06166b7e0a13464988247419a8aad6f58fdc8cc820e7584484",
+      "js/app/procgen/workstation/CausalNativeMidiSink.js": "1a498b68d921a4c795cfe0d5986b03b764cdfffaf2beed12274943f4663cee6e",
+      "js/midi/content/MidiLocalInstrumentMigration.js": "853a0d6cbe06dc650d442009b88f99dc88f750e27ff419f60f85c902951d4b1d",
+      "playwright.lifecycle.config.js": "dbc2e2c8938ab0b2dd175d61e6175351473434ecc1d76dd88fb56bfd38edb37b",
+      "e2e-portable/audio-clock.spec.js": "8323293f865d79cb8e284e0523525580c6a5cbcfb36e2e07047336401609f0fa",
+      "e2e-portable/pcm-capabilities.spec.js": "9da4fc3a042dd977f472fc7421ceb06de34a75c56e17a349626ec611b4788ccd",
+      "e2e/procgen-workstation-transport.spec.js": "ff3aa554efa6e899c5eba059573fccd49d12ef5f3ea222d12f6c2a859068968f",
+      "e2e/sound-content-workstation.spec.js": "ec248f5cd3135d143a544bc3217eb29b51dec58f4436448723799f755a8fd4bd",
+      "scripts/run-lifecycle-engines.js": "3a316988f756992833aea3a2d844c1aab485f834eae07090d753b2607f61b544"
+    },
+    "node": {
+      "suites": 1,
+      "tests": 140,
+      "passes": 140,
+      "pending": 0,
+      "failures": 0,
+      "start": "2026-11-07T21:16:52.340Z",
+      "end": "2026-11-07T21:16:58.310Z",
+      "duration": 5970
+    },
+    "coverage": {
+      "scoped": true,
+      "checkCoverage": false,
+      "total": {
+        "lines": {
+          "total": 3432,
+          "covered": 2452,
+          "skipped": 0,
+          "pct": 71.44
+        },
+        "statements": {
+          "total": 3432,
+          "covered": 2452,
+          "skipped": 0,
+          "pct": 71.44
+        },
+        "functions": {
+          "total": 514,
+          "covered": 298,
+          "skipped": 0,
+          "pct": 57.97
+        },
+        "branches": {
+          "total": 2225,
+          "covered": 1411,
+          "skipped": 0,
+          "pct": 63.41
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      }
+    },
+    "browser": {
+      "buildId": "de01efb04366707d2197be553db61e24ae3c20c9c541ab8a4941138bb3512644",
+      "selected": 5,
+      "status": "running"
+    },
+    "portable": {
+      "selected": 8,
+      "status": "running"
+    },
+    "issues": [
+      1293,
+      1296,
+      1298
+    ],
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "passed:15components/2774files",
+      "allPRChangedLineWhitespace": "passed against origin/master including current working changes"
+    },
+    "ci": {
+      "previousHead": "ee48e702",
+      "run": 42413862261,
+      "provenance": "passed",
+      "changedLineWhitespace": "failed on two older lines; both corrected",
+      "nativeCodecs": "Windows and Ubuntu passed",
+      "dependencyReview": "passed",
+      "adaptivePolicy": "passed",
+      "nativeLifecycle": "pending further portable fixture follow-through"
+    }
   }
 }
