@@ -1,6 +1,7 @@
 import { createQuarryWorldScores } from './QuarryWorldScore.js';
 import { createWorkshopSharedBodyScores } from './WorkshopSharedBodyScore.js';
 import { createPreparedWorkshopScores } from './PreparedWorkshopScore.js';
+import { createCircuitWorkshopScores } from './CircuitWorkshopScore.js';
 import { createWorkshopCourierScores } from './WorkshopCourierScore.js';
 import { createRescueAirCrewScores } from './RescueAirCrewScore.js';
 import { createGlassOrbitCircularScores } from './GlassOrbitCircularScore.js';
@@ -44,7 +45,7 @@ import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 // Larger named performances still need their authored geometry and qualification.
 export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal } = {}) {
   signal?.throwIfAborted(); const catalog = await getCatalog(); signal?.throwIfAborted();
-  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(), preparedWeather = new Map(), preparedWorkshops = new Map(), preparedSampleWorkshops = new Map(); let workshopPending = false, nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
+  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(), preparedWeather = new Map(), preparedWorkshops = new Map(), preparedSampleWorkshops = new Map(), preparedCircuitWorkshops = new Map(); let workshopPending = false, nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
   if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return Object.freeze({ registry, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } });
   const sourceHash = catalog.executionIdentity.buildId, descriptor = catalog.descriptors.find(value => value.engineId === 'worklet-sine');
   const put = (kind, id, revision, hash, storage = 'installed-runtime') => { const value = { kind, id, revision, hash, status: 'available', storage }; available.set(sceneDependencyKey(value), freezeData(value)); };
@@ -200,6 +201,13 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   }
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     getEmbeddedAsset(hash) { return embeddedAssets.get(hash) || null; },
+    async addCircuitWorkshop(reference, { signal: requestSignal } = {}) {
+      requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
+      if (preparedCircuitWorkshops.has(key)) return preparedCircuitWorkshops.get(key);
+      if (workshopPending || preparedCircuitWorkshops.size >= 8) throw new Error('Finish this workshop preparation; at most eight exact component-kit workshops are retained.'); workshopPending = true;
+      try { const items = await createCircuitWorkshopScores({ sourceHash, scores: modalWorkshopScores, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), reference, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedCircuitWorkshops.set(key, rows); requestSignal?.throwIfAborted(); return rows; }
+      finally { workshopPending = false; }
+    },
     async addPreparedWorkshop(reference, { signal: requestSignal } = {}) {
       requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
       if (preparedSampleWorkshops.has(key)) return preparedSampleWorkshops.get(key);

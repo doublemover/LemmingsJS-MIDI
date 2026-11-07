@@ -1,7 +1,7 @@
 import { inspectSceneStationRehearsal } from './SceneStationPolicy.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export function createPerformanceSceneBrowser({ document, window, registry, loader, onApply = options => loader.apply(options), getDocumentIdentity = () => null, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onCreateWorkshop = null, onCreatePreparedWorkshop = null, onCreateNursery = null, onCreateFoundry = null, onStatus = () => {} } = {}) {
+export function createPerformanceSceneBrowser({ document, window, registry, loader, onApply = options => loader.apply(options), getDocumentIdentity = () => null, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onCreateWorkshop = null, onCreatePreparedWorkshop = null, onCreateCircuitWorkshop = null, onCreateNursery = null, onCreateFoundry = null, onStatus = () => {} } = {}) {
   if (!document?.createElement || !registry?.page || !loader?.select || !loader?.state) throw new TypeError('The scene browser requires metadata pages and the existing candidate owner.');
   const listeners = [], rowListeners = [], retirement = createProcgenRetirementScope(); let disposed = false, selection = null, selectedManifest = null, page = null, offset = 0, opener = null, busy = false, dialogOwner = null, restoreFocus = null, assemblyController = null, assemblyWork = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
@@ -62,6 +62,7 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   };
   const nursery = typeof onCreateNursery === 'function' ? button(actions, 'Nursery · use selected finite body graft', run(() => assemble(onCreateNursery, 'Instrument Nursery', 'Three-route Nursery selected. Prepare verifies its exact source material; Load fresh remains a separate paused replacement.'))) : null;
   const workshop = typeof onCreateWorkshop === 'function' ? button(actions, 'Workshop · use selected tool graft', run(() => assemble(onCreateWorkshop, 'Tool transplant', 'Tool transplant variations assembled. Select dialogue, staggered or converging crew; Prepare verifies exact donor/body ancestry before a separate paused replacement.'))) : null;
+  const circuitWorkshop = typeof onCreateCircuitWorkshop === 'function' ? button(actions, 'Workshop · use selected Circuit component kit', run(() => assemble(onCreateCircuitWorkshop, 'Circuit Workshop', 'Circuit work variants assembled. Prepare verifies exact body/noise/metal source regions before a separate paused replacement; actual successful operations own every strike.'))) : null;
   const preparedWorkshop = typeof onCreatePreparedWorkshop === 'function' ? button(actions, 'Workshop · use selected muted/edge multisample', run(() => assemble(onCreatePreparedWorkshop, 'Prepared workshop', 'Prepared workshop variants assembled. Prepare verifies muted/edge source-rate PCM and the intact miner friction model before a separate paused replacement.'))) : null;
   const foundryTier = typeof onCreateFoundry === 'function' ? select('Pocket Foundry mode tier', [['8', '8 selected modes'], ['16', '16 selected modes'], ['32', '32 selected modes']]) : null;
   const foundry = typeof onCreateFoundry === 'function' ? button(actions, 'Pocket Foundry · prepare three shapes', run(async () => {
@@ -95,6 +96,7 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
     if (disposed) return; const state = loader.state(), active = getLiveScene(); live.textContent = 'LIVE · ' + (active?.title || 'Current physical world');
     if (foundry) foundry.disabled = busy || state.retirementUnknown || state.disposed;
     if (foundryTier) foundryTier.disabled = busy;
+    if (circuitWorkshop) circuitWorkshop.disabled = busy || state.retirementUnknown || state.disposed;
     if (preparedWorkshop) preparedWorkshop.disabled = busy || state.retirementUnknown || state.disposed;
     if (workshop) workshop.disabled = busy || state.retirementUnknown || state.disposed;
     if (nursery) nursery.disabled = busy || state.retirementUnknown || state.disposed;

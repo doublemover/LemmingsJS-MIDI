@@ -11803,3 +11803,9 @@ Checkpoint642: formatting and critical/boundary type checks pass; static provena
 - Author deferred produced-PCM/component-control and actual-kernel restore/lifecycle fixtures. Formatting/types are permitted development checks; functional/browser/audio/device/listening campaigns remain deferred.
 
 The sampler command profile also refuses a non-neutral component control when the exact selected articulation has no corresponding map slot.
+
+### Continuation 645 — actual-work Circuit performance
+
+- Assemble three Circuit Workshop orchestrations from the selected exact saved component kit and the original two/three-worker physical arrangements. Successful builder edits select Deep kick, actual miner substrokes select Snare, and the third basher selects Closed hat. Reuse all finite terrain, entrants, skill stations, work filters, causal mapping identities and timing; no kit clock or replacement note is added.
+- Carry complete verified atlas/kit/production ancestry into scene requirements and private preparation. Require the real three-component map and four source controls; a printed single-reader kit cannot silently become this instrument. Keep current scene/document/source identity fences, shared preparation cancellation, exact reference cache keys and an eight-kit bound.
+- Expose atomic later-onset WEIGHT/SNAP/METAL/DAMP, original STAGGER/FOCUS and an explicit shared ROOM handoff. ROOM is separate from the dry private baseline. Source capacity remains an authored bound subject to actual admission, not a measured device promise. Functional/Playwright/audio/device/listening qualification remains deferred.
