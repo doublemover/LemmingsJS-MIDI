@@ -1,6 +1,6 @@
 import { freezeData } from '../../core/CanonicalData.js';
 
-export const CIRCUIT_WORKSHOP_REVISION = 'original-circuit-workshop-prepared-strikes-v1';
+export const CIRCUIT_WORKSHOP_REVISION = 'original-circuit-workshop-component-atlas-v2';
 export const CIRCUIT_WORKSHOP_VARIANTS = freezeData({
   clean: { name: 'Clean', bodyScale: 1, noiseScale: 1, frequencyScale: 1, decayScale: 1, lowpassHz: 18000, roomTaps: [] },
   dusty: { name: 'Dusty', bodyScale: 0.98, noiseScale: 0.8, frequencyScale: 0.97, decayScale: 0.82, lowpassHz: 6200, roomTaps: [] },

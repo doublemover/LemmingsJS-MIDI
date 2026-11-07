@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { compileInstrumentPerformance } from '../../js/midi/content/InstrumentPerformance.js';
+import { NATIVE_OWNED_SAMPLE_PARAMETERS } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { buildCircuitWorkshop } from '../../js/app/resources/CircuitWorkshopBuilder.js';
 import { CIRCUIT_WORKSHOP_VARIANTS } from '../../js/midi/content/CircuitWorkshopProfile.js';
 import { validateDrumKitDefinition, resolveDrumKitStrike, validateDrumKitBinding, verifyDrumKitDecodedSources } from '../../js/midi/content/DrumKitDefinition.js';
@@ -35,7 +37,7 @@ describe('original Circuit Workshop prepared-source edition (deferred qualificat
     const kit = validateDrumKitDefinition(built.kit), patch = prepared.patches[0];
     expect(kit.voices.map(voice => voice.gmNote)).to.have.members([35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]);
     expect(kit.voices.find(voice => voice.id === 'clap').preparationComponents).to.equal(5);
-    expect(kit.voices.every(voice => voice.runtimeChildren === 1 && voice.sourceRate === 48000 && voice.sourceChannels === 1)).to.equal(true);
+    expect(kit.voices.every(voice => voice.runtimeChildren === 3 && voice.components.length === 3 && voice.sourceRate === 48000 && voice.sourceChannels === 1)).to.equal(true);
     expect(patch.dependencies).to.have.members(built.assets.map(asset => asset.sha256)); expect(built.assets).to.have.length(18);
     expect(patch.archivedDefinition.voicePolicy.maxVoices).to.equal(16); expect(validateDrumKitBinding(kit, patch.archivedDefinition)).to.equal(kit);
     for (const voice of kit.voices) {
@@ -48,6 +50,15 @@ describe('original Circuit Workshop prepared-source edition (deferred qualificat
     expect(contract.producerBuildId).to.equal(buildId); expect(contract.runtimeTarget.artifactHash).to.equal('a'.repeat(64));
     expect(contract.statistics.every(row => row.peak > 0 && row.peak < 0.95 && row.scheduledSourceDelayFrames === 0)).to.equal(true);
     expect(built.pack.redistributionPolicy).to.equal('unknown');
+  });
+  it('stores distinct actual body/noise/metal regions and maps source controls to those exact gain slots', () => {
+    const definition = prepared.patches[0].archivedDefinition, plan = compileInstrumentPerformance(definition, Object.values(NATIVE_OWNED_SAMPLE_PARAMETERS));
+    const low = plan.resolve({ macros: { weight: 0, snap: 0, metal: 0 } }, 128), high = plan.resolve({ macros: { weight: 1, snap: 1, metal: 1 } }, 128);
+    expect(low.values.sampleLayer0Gain01).to.equal(0.35); expect(high.values.sampleLayer0Gain01).to.equal(1); expect(low.values.sampleLayer1Gain01).to.equal(0); expect(high.values.sampleLayer1Gain01).to.equal(1); expect(low.values.sampleLayer2Gain01).to.equal(0); expect(high.values.sampleLayer2Gain01).to.equal(1);
+    expect(low.values.attackSeconds).to.equal(high.values.attackSeconds); expect(low.values.sampleVelocityTone01).to.equal(high.values.sampleVelocityTone01);
+    const energy = (voiceId, componentId) => { const voice = built.kit.voices.find(voice => voice.id === voiceId), part = voice.components.find(part => part.id === componentId), asset = built.assets.find(asset => asset.sha256 === voice.assetHash), view = new DataView(asset.bytes.buffer, asset.bytes.byteOffset, asset.bytes.byteLength); let sum = 0; for (let frame = part.onsetFrame; frame < part.endFrame; frame++) sum += Math.abs(view.getInt16(44 + frame * 2, true)); return sum; };
+    expect(energy('snare', 'body')).to.be.greaterThan(0); expect(energy('snare', 'noise')).to.be.greaterThan(0); expect(energy('snare', 'metal')).to.equal(0); expect(energy('open-hat', 'metal')).to.be.greaterThan(0); expect(energy('open-hat', 'body')).to.equal(0);
+    for (const voice of built.kit.voices) { const zone = definition.sampleMap.zones.find(zone => zone.articulationId === voice.articulationId); expect([zone, ...zone.layers].map(region => [region.gainControl, region.onsetFrame, region.endFrame])).to.deep.equal(voice.components.map(part => [part.gainControl, part.onsetFrame, part.endFrame])); }
   });
   it('separates local articulation selection from hardware fallback and forbids unsupported source retuning', () => {
     const kit = validateDrumKitDefinition(built.kit), first = resolveDrumKitStrike(kit, { gmNote: 36, intensity01: 0.7, instanceId: 'lane-1' }), second = resolveDrumKitStrike(kit, { gmNote: 35, instanceId: 'lane-2' });
