@@ -18,7 +18,7 @@ const mountEditor = async page => {
   return page.getByRole('dialog', { name: 'Acoustic fields and world listener', exact: true });
 };
 
-test('acoustic draft stays editable through publication, reload and repeated typed edits', async ({ page }) => {
+test('acoustic draft stays editable through publication, reload and repeated typed edits', { tag: ['@boundary', '@workstation-typed-controls'] }, async ({ page }) => {
   const dialog = await mountEditor(page);
   await dialog.getByLabel('Priority', { exact: true }).fill('3');
   await dialog.getByRole('button', { name: 'Apply selected field', exact: true }).click();

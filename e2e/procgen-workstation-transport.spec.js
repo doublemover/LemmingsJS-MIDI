@@ -57,31 +57,40 @@ async function ready(page) {
 
 test('sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices', { tag: ['@boundary', '@workstation-transport'] }, async ({ page }) => {
   test.setTimeout(90000); const errors = []; page.on('pageerror', error => errors.push(error.message));
-  await ready(page); await selectNativePatternInstrument(page); await page.locator('#procgenListen').click();
-  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
+  await ready(page); await selectNativePatternInstrument(page);
   await page.evaluate(() => {
     const studio = window.__PROCGEN_STUDIO__, project = studio.getProject();
     for (const [index, lane] of project.procgen.lanes.entries()) studio.dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { mode: 'pattern', patternPurpose: 'Exercise a sustained complementary phrase across a physical checkpoint', mute: index > 0 } });
     studio.dispatch({ type: 'procgen/pattern', laneId: 'lane-1', slot: 0, patch: { length: 16, steps: Array.from({ length: 16 }, (_, index) => ({ enabled: index === 0, note: 60, duration: 8 })) } });
-    studio.transport.seek(0); studio.handlers.record(true); studio.play();
-    studio.dispatch({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 });
+    studio.transport.seek(0); studio.handlers.record(true);
   });
+  await page.locator('#procgenListen').click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.play(); studio.dispatch({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 }); });
   const held = await page.waitForFunction(() => {
     const studio = window.__PROCGEN_STUDIO__;
-    if (studio.getPlaybackState().activeNotes !== 1 || studio.engine.snapshot().active.length !== 1) return false;
+    if (studio.getPlaybackState().audio.activeVoices !== 1 || studio.engine.snapshot().active.length !== 1) return false;
     studio.transport.pause(); window.heldSession = studio.capture('Held');
     return { active: window.heldSession.patterns.active.length, beat: window.heldSession.transport.beat, queued: window.heldSession.project.procgen.lanes[0].queuedSlot };
   }, null, { timeout: 15000 }); const saved = await held.jsonValue(); await held.dispose();
   expect(saved.active).toBe(1); expect(saved.queued).toBe(1);
-  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().activeNotes)).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().audio.activeVoices)).toBe(0);
   await page.evaluate(async () => window.__PROCGEN_STUDIO__.loadSession(window.heldSession));
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().playing)).toBe(false);
+  const restored = await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState());
+  expect(restored.audio.activeVoices).toBe(0);
+  if (!restored.enabled) await page.locator('#procgenListen').click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
   await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
-  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().activeNotes)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().audio.activeVoices)).toBe(1);
   await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 180, baseBpm: 180 }));
-  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().activeNotes)).toBe(1);
-  await page.evaluate(() => window.__PROCGEN_STUDIO__.ports.panic());
-  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState())).toMatchObject({ activeNotes: 0, pendingNotes: 0 });
+  const tempo = await page.evaluate(() => ({ voices: window.__PROCGEN_STUDIO__.engine.snapshot().active, audio: window.__PROCGEN_STUDIO__.getPlaybackState().audio }));
+  expect(tempo.voices).toHaveLength(1); expect(new Set(tempo.voices.map(voice => voice.voiceId)).size).toBe(1);
+  // Native source ownership also includes retiring release tails.
+  expect(tempo.audio.activeVoices).toBeGreaterThanOrEqual(1); expect(tempo.audio.voiceSteals).toBe(0); expect(tempo.audio.voiceDrops).toBe(0);
+  await page.locator('#procgenPanic').click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().audio.activeVoices)).toBe(0);
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().audio)).toMatchObject({ activeVoices: 0, pendingNotes: 0 });
   expect(errors).toEqual([]);
 });
 

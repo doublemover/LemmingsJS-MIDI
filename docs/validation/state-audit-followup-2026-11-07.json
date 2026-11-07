@@ -731,8 +731,21 @@
     },
     "browser": {
       "buildId": "de01efb04366707d2197be553db61e24ae3c20c9c541ab8a4941138bb3512644",
-      "selected": 5,
-      "status": "running"
+      "stats": {
+        "startTime": "2026-11-07T21:17:48.360Z",
+        "duration": 106349.005,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "confirmedPassing": [
+        "Complete finite-crew Compose/search/private selection/reviewed Apply/Undo",
+        "BFCache dirty unavailable-storage state and paused retry",
+        "Shipped drawbar worklet audition/Install/Apply/current control scopes",
+        "Artificial Choir worklet audition/Install/Apply/current control scopes"
+      ],
+      "remainingFailure": "Sustained fixture setup/legacy activity counters; corrected semantic/native-tail assertions pass in final one-case follow-up"
     },
     "portable": {
       "selected": 8,
@@ -758,6 +771,51 @@
       "dependencyReview": "passed",
       "adaptivePolicy": "passed",
       "nativeLifecycle": "pending further portable fixture follow-through"
+    },
+    "closedIssues": [
+      1293,
+      1296,
+      1298
+    ],
+    "pendingIssues": []
+  },
+  "desktopCampaignCompletion": {
+    "sourceCommit": "ab95be39",
+    "catalog": 547,
+    "distinctExecutedPassing": 540,
+    "explicitExtendedBenchmarkOrLegacySkipped": 7,
+    "completeFreshOneShot": false,
+    "finalFocusedSustainedCase": {
+      "startTime": "2026-11-07T21:27:28.626Z",
+      "duration": 38231.03,
+      "expected": 1,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "scope": "Combined source-bound complete/partial cohorts and failed-area follow-ups; no second full Node suite or one-shot current-build547-case run",
+    "finalSustainedSemantics": "Configure native pattern route before output activation; observe the real native voice owner; retain one semantic held voice across checkpoint/tempo change separately from retiring native tails; Panic joins all native cleanup.",
+    "finalSustainedFixtureSourceSha256": "4f9c57f6b16612aba2c6d5f15ccd5997c15ba98f99cf723b930944834dfe539b",
+    "finalSourceBuildId": "de01efb04366707d2197be553db61e24ae3c20c9c541ab8a4941138bb3512644",
+    "allAuditIssuesClosed": {
+      "count": 32,
+      "first": 1267,
+      "last": 1298
+    }
+  },
+  "ciSmokeCollectionFollowthrough": {
+    "previousHead": "ab95be39",
+    "run": 42415295557,
+    "mainBoundaryCasesPassed": 31,
+    "blockedBeforeWorkstationExecution": "Existing acoustic field publication regression lacks @boundary; add its smoke/typed-controls metadata",
+    "scope": "Preserve existing case assertions; no gate weakening or new synthetic passing case",
+    "resolution": {
+      "existingCaseTagged": "workstation-acoustic-field-state.spec.js:acoustic draft stays editable through publication, reload and repeated typed edits",
+      "fullWorkstation": 357,
+      "smoke": 324,
+      "files": 86,
+      "categories": 14,
+      "selection": "passed with all required files/capabilities represented"
     }
   }
 }
