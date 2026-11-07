@@ -1,17 +1,19 @@
+import { isPrivateSpatialReadout } from './PrivateSpatialReadout.js';
 import { prepareCapturedSpatialReadout } from './CapturedSpatialReadout.js';
 import { prepareCapturedMaterialReadout } from './CapturedMaterialReadout.js';
 import { planCausalSourceRender } from './CausalOwnedRender.js';
 import { renderNativeOfflineGraph, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 
 export async function prepareCausalNativeRenderInput(input, { resources, signal, onProgress = () => {}, OfflineAudioContext, resourceBudget, admission, getMaterialProvider, jobs, isCurrent = () => true,
-  maxWorkingBytes = 512 * 1048576 } = {}) {
+  privateSpatialReadout = null, maxWorkingBytes = 512 * 1048576 } = {}) {
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(input?.descriptor?.engineId)) throw new Error('Choose an available native causal render source.');
   signal?.throwIfAborted();
-  const spatialReadout = input.capturedSpatial ? await prepareCapturedSpatialReadout(input.revoice, input.sampleRate, { signal }) : null;
+  if (privateSpatialReadout && (!isPrivateSpatialReadout(privateSpatialReadout) || input.revoice !== privateSpatialReadout.source || input.capturedSpatial || input.capturedMaterials)) throw new Error('Private spatial realization needs its exact owned observation plan and an independent source.');
+  const spatialReadout = privateSpatialReadout || (input.capturedSpatial ? await prepareCapturedSpatialReadout(input.revoice, input.sampleRate, { signal }) : null);
   if (spatialReadout) input = { ...input, revoice: spatialReadout.source };
   if (input.capturedMaterials && input.revoice.spatialEvents?.some(event => event.kind === 'onset' && event.acousticMaterialState)) throw new Error('Choose captured spatial + material bodies to preserve the authored zone body selections.');
-  const materialReadout = input.capturedMaterials || input.capturedSpatial ? await prepareCapturedMaterialReadout(input.revoice, input.descriptor, { signal, allowUnmapped: !!spatialReadout }) : null;
-  const plan = await planCausalSourceRender({ ...input, materialReadout, signal, maxPlanningBytes: maxWorkingBytes }); signal?.throwIfAborted();
+  const materialReadout = input.capturedMaterials || spatialReadout ? await prepareCapturedMaterialReadout(input.revoice, input.descriptor, { signal, allowUnmapped: !!spatialReadout }) : null;
+  const plan = await planCausalSourceRender({ ...input, materialReadout, spatialTailFrames: spatialReadout?.maximumTailFrames || 0, signal, maxPlanningBytes: maxWorkingBytes }); signal?.throwIfAborted();
   const nativeEffects = !!plan.effectPlan, nativeReturns = nativeEffects ? plan.effectReturnNodeIds.length : 0;
   if (plan.stemLaneIds.length + nativeReturns > 15) throw Object.assign(new Error('Native convolution shares a 32-channel simultaneous tap budget: choose at most fifteen dry lanes plus shared returns.'), { code: 'native-convolution-tap-capacity' });
   const nativeBytes = plan.outputEnd * (2 + (plan.stemLaneIds.length + nativeReturns) * 2) * 4;
@@ -46,13 +48,13 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
   { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission, getMaterialProvider, jobs, isCurrent });
   try {
     const manifest = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
-      takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, ...(plan.laneRoutingReceipt ? { sourceLaneRouting: plan.laneRoutingReceipt } : {}), sourceVersions: plan.source.sourceVersions, intentHash: spatialReadout?.receipt.semanticIntentHash || plan.intentHash, ...(spatialReadout ? { realizationIntentHash: plan.intentHash, capturedSpatial: { ...spatialReadout.receipt, clippedSpatialUpdates } } : {}),
-      sourceEvidence: 'provided-covered-semantic-snapshot', sourceOriginMs: plan.sourceOriginMs, timeDomain: 'captured-source-time', inputRange: { startSeconds: plan.startSeconds, endSeconds: plan.endSeconds },
+      takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, ...(plan.laneRoutingReceipt ? { sourceLaneRouting: plan.laneRoutingReceipt } : {}), sourceVersions: plan.source.sourceVersions, intentHash: spatialReadout?.receipt.semanticIntentHash || plan.intentHash, ...(spatialReadout ? { realizationIntentHash: plan.intentHash, [privateSpatialReadout ? 'privateSpatial' : 'capturedSpatial']: { ...spatialReadout.receipt, clippedSpatialUpdates } } : {}),
+      sourceEvidence: privateSpatialReadout ? 'actual-independent-private-world-prefix;not-historical-performance' : 'provided-covered-semantic-snapshot', sourceOriginMs: plan.sourceOriginMs, timeDomain: 'captured-source-time', inputRange: { startSeconds: plan.startSeconds, endSeconds: plan.endSeconds },
       timing: plan.timing, sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', frames: outputFrames, timelineZeroSourceFrame: firstFrame,
       exactEndSourceFrame: endFrame, renderedEndSourceFrame: outputEnd,
       restoration: { mode: 'forward-native-preroll', fromSourceFrame: 0, prerollFrames: firstFrame, initialVoices: 0, maxHistorySeconds: 120, exactNativeStateExport: false },
       tail: { mode: plan.tail.mode, maxSeconds: plan.tail.maxSeconds ?? 4, derivedBoundaryReleases: plan.derivedReleases,
-        truncated: [...plan.voices.values()].some(voice => voice.end > outputEnd) || plan.effectTailTruncated, effectTailBoundFrames: plan.effectPlan?.maximumTailFrames ?? 0 },
+        truncated: [...plan.voices.values()].some(voice => voice.end > outputEnd) || plan.effectTailTruncated || plan.spatialTailTruncated, spatialTailBoundFrames: plan.spatialTailFrames, effectTailBoundFrames: plan.effectPlan?.maximumTailFrames ?? 0 },
       effectGraph: plan.effectPlan ? { definition: plan.effectPlan.definition, hash: plan.effectHash, processingRevisions: plan.effectPlan.processingRevisions, latencyFrames: plan.effectPlan.latencyFrames,
         maximumTailFrames: plan.effectPlan.maximumTailFrames, sourceBindings: plan.effectSourceBindings, controls: 'explicit-authored-defaults-not-replayed-live-gestures', scope: 'one-full-shared-owner-sum' } : null,
       ...(materialReadout?.receipt ? { capturedMaterials: materialReadout.receipt } : {}),

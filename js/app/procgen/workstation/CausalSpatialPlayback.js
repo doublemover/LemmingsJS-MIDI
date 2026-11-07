@@ -7,7 +7,7 @@ import { canonicalDataText } from '../../../core/CanonicalData.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-const pointFor = fact => fact?.anchor || fact?.physicalPayload?.surfaceCell || fact?.physicalPayload?.terrainEdit?.materialObservation?.sourceCell || fact?.positionAfter || null;
+export const spatialSourcePoint = fact => fact?.anchor || fact?.physicalPayload?.surfaceCell || fact?.physicalPayload?.terrainEdit?.materialObservation?.sourceCell || fact?.positionAfter || null;
 export function createCausalSpatialPlayback({ getGraph, world, session, getSources, updateSources, toFrame, getExecutionEpoch, getContext, getCameraPosition, isCaptureEnabled = () => false, resourceBudget, onReceipt = () => {} } = {}) {
   const mapper = createWorldSpatialControl({ getCameraPosition, hasSolidAt: (x, y, identity) => world?.worldId === identity.worldId && world.generation === identity.generation && world.terrainRevision === identity.terrainRevision && world.tickIndex === identity.tick && typeof world.peekGroundAt === 'function' ? world.peekGroundAt(x, y) : null }),
     storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'world-spatial-controls', kind: 'bounded-spatial-observations-and-occlusion-cache', category: 'candidate', bytes: 4096 }), scope = createProcgenRetirementScope();
@@ -26,7 +26,7 @@ export function createCausalSpatialPlayback({ getGraph, world, session, getSourc
       return intents.map(intent => {
         const attachment = instruments.get(intent.mappingId)?.spatialAttachment; if (intent.kind !== 'begin' || !attachment) return intent;
         if (!ready || onsets++ >= capacity) { report(envelope({ kind: 'onset', status: 'rejected', intentId: intent.intentId, voiceId: intent.voiceId, reason: !ready ? 'acoustic-map-not-prepared' : 'spatial-onset-capacity' })); return { ...intent, spatialUnavailable: !ready ? 'acoustic-map-not-prepared' : 'spatial-onset-capacity' }; }
-        const fact = intent.sourceEventIds.map(id => facts.get(id)).find(Boolean), observation = mapper.state({ voiceId: intent.voiceId, actorId: intent.actorId, attachment, sourcePosition: pointFor(fact) });
+        const fact = intent.sourceEventIds.map(id => facts.get(id)).find(Boolean), observation = mapper.state({ voiceId: intent.voiceId, actorId: intent.actorId, attachment, sourcePosition: spatialSourcePoint(fact) });
         if (observation.status !== 'complete') { report(envelope({ kind: 'onset', status: 'rejected', intentId: intent.intentId, voiceId: intent.voiceId, reason: observation.reason })); return { ...intent, spatialUnavailable: observation.reason }; }
         observation.state = validateSpatialState({ ...observation.state, mapHash });
         let acousticMaterialState = null;

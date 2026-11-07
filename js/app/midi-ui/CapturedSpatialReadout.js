@@ -1,7 +1,6 @@
 import { validateSpatialPerformance } from '../../midi/content/SpatialPerformance.js';
 import { validateAcousticMaterialSelection } from '../../midi/content/AcousticMaterialSelection.js';
-import { createAcousticZoneRecipe } from '../../midi/content/AcousticZoneRecipes.js';
-import { prepareEffectGraphRevision } from '../../midi/content/EffectGraphRevision.js';
+import { spatialReadoutGraphCost } from './SpatialReadoutPlan.js';
 import { canonicalDataText, hashData, freezeData } from '../../core/CanonicalData.js';
 
 const fail = message => { throw Object.assign(new Error(message), { code: 'captured-spatial-readout' }); };
@@ -9,7 +8,7 @@ export async function prepareCapturedSpatialReadout(revoice, sampleRate, { signa
   if (!Number.isFinite(revoice.boundary?.state?.sourceTimeMs) || !Number.isFinite(revoice.finalBoundaryState?.sourceTimeMs)) fail('Spatial readout needs the captured source-clock boundary.');
   if (revoice.spatialCoverage?.captured !== true || revoice.spatialCoverage.status !== 'known-covered' || !Array.isArray(revoice.spatialEvents) || !revoice.spatialEvents.length || revoice.spatialEvents.length > 16384) fail('This readout requires complete captured world spatial controls and map definitions.');
   const inventory = canonicalDataText(revoice.spatialEvents, { maxBytes: 8 * 1048576, maxNodes: 1048576 }), maps = new Map(), onsets = new Map(), updates = [], originals = new Map(revoice.intents.filter(intent => intent.kind === 'begin').map(intent => [intent.intentId, intent])), voices = new Map();
-  let lastSourceTime = -Infinity, graphBytes = 0, rejectedNativeRequests = 0;
+  let lastSourceTime = -Infinity, rejectedNativeRequests = 0;
   for (const raw of revoice.spatialEvents) {
     signal?.throwIfAborted(); const event = validateSpatialPerformance(raw);
     if (event.sourceTimeMs < lastSourceTime || event.sourceTimeMs < revoice.boundary.state.sourceTimeMs || event.sourceTimeMs > revoice.finalBoundaryState.sourceTimeMs) fail('Spatial control history is outside its ordered captured source clock.'); lastSourceTime = event.sourceTimeMs;
@@ -18,8 +17,6 @@ export async function prepareCapturedSpatialReadout(revoice, sampleRate, { signa
       if (!maps.has(event.mapHash)) {
         if (maps.size >= 3) fail('This native readout profile admits at most three exact map revisions in one captured history.');
         maps.set(event.mapHash, event.definition);
-        const requested = new Set(event.definition.controls.chamber01 > 0 ? event.definition.zones.filter(zone => zone.enabled).flatMap(zone => zone.zoneSends.filter(send => send.amount01 > 0).map(send => send.returnId)) : []);
-        for (const response of event.definition.materialResponses) if (requested.has(response.id)) { const recipe = createAcousticZoneRecipe(response.effectRecipe.id, sampleRate, event.definition.controls.absorb01); if (recipe.graph) { const plan = prepareEffectGraphRevision(recipe.graph, { sampleRate }); graphBytes += plan.stateBytes + plan.nativeNodeEstimateBytes + plan.impulseDecodedBytes * 6 + 1048576; } }
       }
       continue;
     }
@@ -38,7 +35,8 @@ export async function prepareCapturedSpatialReadout(revoice, sampleRate, { signa
   if (!maps.size || !onsets.size) fail('This take contains no complete spatial source onset.');
   const intents = revoice.intents.map(intent => { const event = onsets.get(intent.intentId); return event ? { ...intent, spatialState: event.state, ...(event.acousticMaterialState ? { acousticMaterialState: event.acousticMaterialState, performanceControls: event.performanceControls } : {}) } : intent; });
   signal?.throwIfAborted();
-  return Object.freeze({ source: { ...revoice, intents }, maps: [...maps.values()], updates, planningBytes: inventory.bytes.length * 3 + inventory.nodes * 64 + graphBytes + 8 * 1048576,
+  const { graphBytes, maximumTailFrames } = spatialReadoutGraphCost([...maps.values()], sampleRate);
+  return Object.freeze({ maximumTailFrames, source: { ...revoice, intents }, maps: [...maps.values()], updates, planningBytes: inventory.bytes.length * 3 + inventory.nodes * 64 + graphBytes + 8 * 1048576,
     receipt: freezeData({ schema: 'lemmings-captured-spatial-readout/v1', semanticIntentHash: await hashData(revoice.intents, { maxBytes: 8 * 1048576, maxNodes: 1000000 }), sourceHash: await hashData(revoice.spatialEvents, { maxBytes: 8 * 1048576, maxNodes: 1048576 }), maps: [...maps].map(([hash, definition]) => ({ hash, mapId: definition.id, revision: definition.revision })), spatialOnsets: onsets.size, controlUpdates: updates.length, rejectedNativeRequests,
       controls: 'complete-recorded-world-requests;no-camera-or-terrain-resampling', nativeAdmissionHistoryRecreated: false, hiddenNativeStateRecreated: false, otherSourcePolicy: 'explicit-neutral-modal-revoice;captured-material-bodies-preserved' }) });
 }

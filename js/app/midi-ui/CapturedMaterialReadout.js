@@ -36,7 +36,7 @@ export async function prepareCapturedMaterialReadout(revoice, descriptor, { sign
   }
   if (!allowUnmapped && selected.size !== onsets.size || [...onsets.keys()].some(id => !actualBegins.has(id))) fail('Captured material source bindings contain missing or repeated onsets.');
   signal?.throwIfAborted();
-  return Object.freeze({ allowUnmapped, variants, resolve: intent => selected.get(intent.intentId), receipt: freezeData({ schema: 'lemmings-captured-material-readout/v1', sourceHash: await hashData(source, { maxBytes: 2 * 1048576, maxNodes: 262144 }),
+  return Object.freeze({ allowUnmapped: allowUnmapped && selected.size < actualBegins.size, variants, resolve: intent => selected.get(intent.intentId), receipt: freezeData({ schema: 'lemmings-captured-material-readout/v1', sourceHash: await hashData(source, { maxBytes: 2 * 1048576, maxNodes: 262144 }),
     palettes: [...palettes.values()].map(palette => ({ identityHash: palette.identityHash, sourcePackHash: palette.sourcePackHash, definitions: palette.references.map(reference => ({ patchId: reference.patchId, definitionHash: reference.definitionHash })) })),
     bodyOnsets: Object.fromEntries(counts), controls: 'captured-per-onset-controls-and-actor-identity', heldBody: 'original-onset-body-through-all-updates-and-lane-transfers', liveAdmissionHistoryRecreated: false, exactNativeStateExport: false }) });
 }

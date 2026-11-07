@@ -220,6 +220,7 @@
         "js/app/midi-ui/OwnedSourceSeed.js",
         "js/app/midi-ui/SeedLayerPlan.js",
         "js/app/midi-ui/SmoothedAudioParameter.js",
+        "js/app/midi-ui/SpatialReadoutPlan.js",
         "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/WaveSourceProfile.js",
         "js/app/midi-ui/worklet/AllpassNotchProcessor.js",
@@ -414,6 +415,7 @@
         "js/app/procgen/workstation/ScenePreparedSurface.js",
         "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
+        "js/app/procgen/workstation/SceneSpatialEncoding.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SceneSympatheticBody.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -612,6 +614,7 @@
         "js/level/level/LevelShared.js",
         "js/level/packMechanics.js",
         "js/midi/content/AcousticMap.js",
+        "js/midi/content/AcousticZoneRecipes.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircuitWorkshopProfile.js",
@@ -742,8 +745,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 588,
-      "sha256": "9d3af4aa38670b579882204ae32e6dc6eafd4fed5d53d7ee703544d8d403b9ef",
+      "fileCount": 591,
+      "sha256": "2c73f3466bc73329d6ee58ac2c8a361c857507d2800b0ace3a4bb3e6c23b4a94",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -948,6 +951,7 @@
         "js/app/midi-ui/OwnedSourceSeed.js",
         "js/app/midi-ui/SeedLayerPlan.js",
         "js/app/midi-ui/SmoothedAudioParameter.js",
+        "js/app/midi-ui/SpatialReadoutPlan.js",
         "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/WaveSourceProfile.js",
         "js/app/midi-ui/worklet/AllpassNotchProcessor.js",
@@ -1147,6 +1151,7 @@
         "js/app/procgen/workstation/ScenePreparedSurface.js",
         "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
+        "js/app/procgen/workstation/SceneSpatialEncoding.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SceneSympatheticBody.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -1345,6 +1350,7 @@
         "js/level/level/LevelShared.js",
         "js/level/packMechanics.js",
         "js/midi/content/AcousticMap.js",
+        "js/midi/content/AcousticZoneRecipes.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircuitWorkshopProfile.js",
@@ -1508,8 +1514,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 621,
-      "sha256": "1f6812503975e690e1d848abff2d01c38383e9e76264d83d26860b2988667a06",
+      "fileCount": 624,
+      "sha256": "bb57fb07ff5321670bc4edb175fd365ca5c3f5e361102059d8fa4f51f6f31397",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1599,6 +1605,7 @@
         "js/app/midi-ui/RendererPublicationOwner.js",
         "js/app/midi-ui/SeedLayerPlan.js",
         "js/app/midi-ui/SmoothedAudioParameter.js",
+        "js/app/midi-ui/SpatialReadoutPlan.js",
         "js/app/midi-ui/StreamingWarpAudition.js",
         "js/app/midi-ui/StreamingWarpMaterialOwner.js",
         "js/app/midi-ui/StretchImageMaterial.js",
@@ -1794,6 +1801,7 @@
         "js/app/procgen/workstation/ScenePreparedSurface.js",
         "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
+        "js/app/procgen/workstation/SceneSpatialEncoding.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SceneSympatheticBody.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -1998,6 +2006,7 @@
         "js/level/level/LevelShared.js",
         "js/level/packMechanics.js",
         "js/midi/content/AcousticMap.js",
+        "js/midi/content/AcousticZoneRecipes.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircuitWorkshopProfile.js",
@@ -2125,8 +2134,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 600,
-      "sha256": "511f4dc9faa315fb08b1a350db8bb7885bd5a79f3a52e63806113146bafa05fd",
+      "fileCount": 603,
+      "sha256": "82d518c3cae107c32f8a7a33e7d8ce6a80538051db3e12cf8652d4181dece8a0",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2351,6 +2360,7 @@
         "js/app/midi-ui/SoundContentReader.js",
         "js/app/midi-ui/SoundContentRegistry.js",
         "js/app/midi-ui/SoundMaterialProvider.js",
+        "js/app/midi-ui/SpatialReadoutPlan.js",
         "js/app/midi-ui/StretchImageMaterial.js",
         "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/VoiceLaneMix.js",
@@ -2558,6 +2568,7 @@
         "js/app/procgen/workstation/ScenePreparedSurface.js",
         "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
+        "js/app/procgen/workstation/SceneSpatialEncoding.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
         "js/app/procgen/workstation/SceneSympatheticBody.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
@@ -2903,8 +2914,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 675,
-      "sha256": "bf96245353dfa3f1b5559ee978443394f72f1ce53f0c5b705b287e004a367879",
+      "fileCount": 677,
+      "sha256": "8cc5132eba7bf7c87b5fef9006e623fee28f1b151a2e5177558731f6f926d092",
       "inventoryScope": "first-party-artifact"
     }
   ]
