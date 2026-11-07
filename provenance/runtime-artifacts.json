@@ -168,6 +168,7 @@
         "js/app/midi-ui/NativeSamplePlan.js",
         "js/app/midi-ui/OwnedArticulationPolicy.js",
         "js/app/midi-ui/OwnedAudioWav.js",
+        "js/app/midi-ui/OwnedEffectCutAutomation.js",
         "js/app/midi-ui/OwnedEffectGraphKernel.js",
         "js/app/midi-ui/OwnedPcmBank.js",
         "js/app/midi-ui/OwnedPcmSet.js",
@@ -482,8 +483,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 334,
-      "sha256": "df4e967beeefd32f14b704b1007c6a6f87840e46fa4ba5f5e8b509221c9756fe"
+      "fileCount": 335,
+      "sha256": "2587202a3452dc5a3910c70646ce8137f577eaa6eb0f9b3b1ab03db4de0c5b27"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -666,6 +667,7 @@
         "js/app/midi-ui/NativeSamplePlan.js",
         "js/app/midi-ui/OwnedArticulationPolicy.js",
         "js/app/midi-ui/OwnedAudioWav.js",
+        "js/app/midi-ui/OwnedEffectCutAutomation.js",
         "js/app/midi-ui/OwnedEffectGraphKernel.js",
         "js/app/midi-ui/OwnedSampleControlFixture.js",
         "js/app/midi-ui/OwnedSamplePlan.js",
@@ -677,6 +679,7 @@
         "js/app/midi-ui/OwnedSourceProfiles.js",
         "js/app/midi-ui/OwnedSourceSeed.js",
         "js/app/midi-ui/SeedLayerPlan.js",
+        "js/app/midi-ui/SmoothedAudioParameter.js",
         "js/app/midi-ui/WaveSourceProfile.js",
         "js/app/midi-ui/worklet/AllpassNotchProcessor.js",
         "js/app/midi-ui/worklet/BoundedDelayProcessor.js",
@@ -1209,8 +1212,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 586,
-      "sha256": "5d737302b35099717eb4cfa5c94cc8c8ac3d008076390d1eb3ed88f7e9f5b1c8"
+      "fileCount": 588,
+      "sha256": "1b583b4394878a366c3cba49971933a8fe43774e50f9affd0f6ef34549897f08"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1252,6 +1255,7 @@
         "js/app/midi-ui/NativeSamplePlan.js",
         "js/app/midi-ui/OwnedArticulationPolicy.js",
         "js/app/midi-ui/OwnedAudioWav.js",
+        "js/app/midi-ui/OwnedEffectCutAutomation.js",
         "js/app/midi-ui/OwnedEffectGraphKernel.js",
         "js/app/midi-ui/OwnedPcmBank.js",
         "js/app/midi-ui/OwnedSampleControlFixture.js",
@@ -1567,8 +1571,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 342,
-      "sha256": "f19ebe7a8290f8a3f83164c2a8cc98b17588901e9e28cce8b8b1f0c628ced770"
+      "fileCount": 343,
+      "sha256": "9e6517b0f8f03c6bc248dd0ce71a5cca1035fd473286680f3e3cf1b3819ab173"
     },
     {
       "id": "lemmings-independent-native-simulation-output",

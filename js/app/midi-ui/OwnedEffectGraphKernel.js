@@ -1,3 +1,4 @@
+import { createOwnedEffectCutAutomation } from './OwnedEffectCutAutomation.js';
 import { assertMembraneStrikeKernelContinuation } from './MembraneStrikeContinuation.js';
 import { OWNED_STATE_BUNDLE_HEADER, writeOwnedStateBundle, readOwnedStateBundle, ownedStateTransferBytes } from './worklet/OwnedStateBundle.js';
 import { verifyResonatorBlendKernelProfile } from '../../midi/content/ResonatorBlendProfile.js';
@@ -53,12 +54,13 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     return { entry, index, kernel, incoming, at, sidechainOffset: (sidechainIndices.get(entry.id) ?? -1) * 2 };
   });
   const inputIndex = indices.get(plan.inputs[0]), outputIndex = indices.get(plan.outputs[0]) * 2, taps = returnNodeIds.map(id => indices.get(id) * 2), tapSamples = new Float32Array(taps.length * 2);
-  let validationOnly = false;
+  let validationOnly = false, nativeCut = null;
   let frame = 0, leftSample = 0, rightSample = 0, muted = false;
   const panic = () => { muted = true; for (const record of records) { record.kernel?.panic(); for (const edge of record.incoming) edge.align?.panic(); } values.fill(0); tapSamples.fill(0); leftSample = rightSample = 0; };
   const quarantine = (code, message) => { panic(); fail(code, message); };
   const update = (nodeId, next, apply = true) => {
     if (validationOnly) fail('effect-validation-owner-only', 'Detached validation graphs cannot publish live controls.');
+    if (nativeCut && apply) fail('effect-native-cut-controls', 'Stage original native automation before rendering the restored cut.');
     if (muted) fail('effect-graph-retired', 'This graph was cleared; prepare a new graph for further controls.');
     const index = indices.get(nodeId), record = records[index];
     if (!record || !next || Object.getPrototypeOf(next) !== Object.prototype || !Object.keys(next).length || Object.keys(next).length > 4 || Object.values(next).some(value => !Number.isFinite(value))) fail('invalid-effect-control', 'Invalid owned effect control.');
@@ -102,6 +104,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     if (sidechainSamples !== null && (!(sidechainSamples instanceof Float32Array) || sidechainSamples.length !== plan.sidechainInputs.length * 2)) quarantine('sidechain-input-layout', 'Sidechain input must match its prepared stereo slot inventory.');
     if (muted) { leftSample = rightSample = 0; tapSamples.fill(0); frame++; return; }
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32) quarantine('effect-input-headroom', 'Owned effect input is nonfinite or exceeds its declared absolute-32 bus profile.');
+    nativeCut?.automation.step(frame);
     for (const record of records) {
       let a = record.index === inputIndex ? Math.fround(left) : 0, b = record.index === inputIndex ? Math.fround(right) : 0, modulation = 0, donorLeft = 0, donorRight = 0, audioPresent = record.index === inputIndex, donorPresent = false;
       for (const edge of record.incoming) {
@@ -111,22 +114,39 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         else if (edge.audio) { audioPresent ||= Boolean(presence[edge.source / 2]); a = Math.fround(a + x); b = Math.fround(b + y); }
         else modulation = Math.fround(modulation + x);
       }
-      const { entry, index, kernel, at } = record;
+      const { entry, index, kernel, at } = record, native = record.native, parameters = native?.values, host = native?.host;
       if (entry.kind === 'sidechain-in') {
         const input = record.sidechainOffset; audioPresent = sidechainPresence ? Boolean(sidechainPresence[input / 2]) : sidechainSamples !== null; a = sidechainSamples?.[input] ?? 0; b = entry.parameters.inputLayout === 'audioMono' ? 0 : sidechainSamples?.[input + 1] ?? 0;
         if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a) > 32 || Math.abs(b) > 32) quarantine('sidechain-input-headroom', 'Sidechain input is nonfinite or exceeds its admitted audio domain.');
-      } else if (entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator') { kernel.sample(donorLeft, donorRight, a, b, donorPresent, audioPresent); a = kernel.leftSample; b = kernel.rightSample; }
-      else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, audioPresent); a = kernel.output; b = 0; }
+        if (parameters) { a *= parameters[0]; b *= parameters[0]; }
+      } else if (entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator') { kernel.sample(donorLeft, donorRight, a, b, host?.donorOverride ?? donorPresent, host?.carrierOverride ?? audioPresent); a = kernel.leftSample; b = kernel.rightSample; }
+      else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, host?.sourceOverride ?? audioPresent); a = kernel.output; b = 0; }
       else if (entry.kind === 'envelope-mapping') { kernel.sample(modulation); a = kernel.output; b = 0; }
       else if (entry.kind === 'modulated-gain') { a *= modulation; b *= modulation; }
       else if (entry.kind === 'polarity-invert') { a = -a; b = -b; }
       else if (entry.kind === 'mono-to-stereo') b = a;
       else if (entry.kind === 'stereo-to-mono') { a = (a + b) * 0.5; b = 0; }
       else if (entry.kind === 'gain') {
-        const g = index * 3; a *= gain[g]; b *= gain[g];
-        if (gain[g + 2] > 0) { gain[g] += (gain[g + 1] - gain[g]) / gain[g + 2]; gain[g + 2]--; }
+        const g = index * 3, value = parameters ? parameters[0] : gain[g]; a *= value; b *= value;
+        if (!parameters && gain[g + 2] > 0) { gain[g] += (gain[g + 1] - gain[g]) / gain[g + 2]; gain[g + 2]--; }
       } else if (kernel) {
-        if (entry.kind === 'paired-modal-body' || entry.kind === 'resonator-blend-body') kernel.sample(a, b, controls[at]); else if (entry.kind === 'rectangular-membrane') kernel.sample(a, b); else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
+        if (native && parameters.length) {
+          if (entry.kind === 'rectangular-membrane') {
+            for (let touch = 0; touch < 4; touch++) { const offset = 7 + touch * 4; if (!kernel.setTouch(touch, parameters[offset], parameters[offset + 1], parameters[offset + 2], parameters[offset + 3])) quarantine('effect-cut-touch-domain', 'The continued membrane touch has no prepared grid support.'); }
+            kernel.refreshTouchField(); kernel.sample(a, b, parameters[0], parameters[1], parameters[2], parameters[3], parameters[4], parameters[5], parameters[6], native.logicalAudioFrame + frame);
+          } else if (entry.kind === 'sympathetic-network') {
+            for (let mask = 0; mask < entry.network.lossMasks.length; mask++) kernel.setLossMask(mask, parameters[2 + mask]);
+            if (entry.network.pickupGrid) for (let pickup = 0; pickup < NETWORK_PICKUP_CONTROLS.length; pickup++) kernel.setPickupPosition(NETWORK_PICKUP_CONTROLS[pickup], parameters[2 + NETWORK_LOSS_CONTROLS.length + pickup]);
+            kernel.sample(a, b, parameters[0], parameters[1]);
+          } else if (entry.kind === 'feedback-delay') {
+            if (frame % native.blockFrames === 0 && !kernel.setFeedbackLowpassHz(parameters[3])) quarantine('effect-cut-delay-domain', 'The continued delay lowpass exceeds its prepared domain.');
+            if (parameters[0] !== host.lastRequestedDelay) { kernel.setDelay(parameters[0]); host.lastRequestedDelay = parameters[0]; }
+            kernel.sample(a, b, parameters[1], parameters[2]);
+          } else if (entry.kind === 'allpass-notch') kernel.sample(a, b, parameters[0], parameters[1], parameters[2]);
+          else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, parameters[0]);
+          else if (entry.kind === 'paired-modal-body' || entry.kind === 'resonator-blend-body') kernel.sample(a, b, parameters[0]);
+          else kernel.sample(a, b, parameters[0], parameters[1]);
+        } else if (entry.kind === 'paired-modal-body' || entry.kind === 'resonator-blend-body') kernel.sample(a, b, controls[at]); else if (entry.kind === 'rectangular-membrane') kernel.sample(a, b); else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
         if (entry.membrane) kernel.strikes.discardReceipts();
         if (kernel.faults && !entry.membrane && !entry.network && !entry.pairedBody && !entry.blendBody) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
       }
@@ -146,7 +166,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
   }
   const stateByteLength = () => OWNED_STATE_BUNDLE_HEADER + stateEntries.reduce((sum, entry) => sum + entry.bytes, 0);
   const snapshotInto = bytes => {
-    if (validationOnly) fail('effect-validation-owner-only', 'Detached components do not establish a render-graph frame.');
+    if (validationOnly || nativeCut) fail('effect-validation-owner-only', 'Detached native cuts retain their processor coordinate systems; use the explicit cut renderer rather than an unrelated aggregate graph snapshot.');
     const components = stateEntries.map(entry => { const bytes = new Uint8Array(entry.bytes); entry.kernel.snapshotInto(bytes); return { key: entry.key, bytes }; });
     return writeOwnedStateBundle(bytes, { identity: stateIdentity, frontier: { frame, leftSample, rightSample, muted, values: Array.from(values), presence: Array.from(presence), controls: Array.from(controls), gain: Array.from(gain), taps: Array.from(tapSamples) }, components });
   };
@@ -176,6 +196,26 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
   };
   return Object.freeze({ plan, hash, sample, update, stateByteLength, snapshotInto, restoreFrom, validateUpdate: (id, values) => update(id, values, false), tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
     componentStateInventory: () => Object.freeze(stateEntries.map(entry => Object.freeze({ nodeId: entry.nodeId, kind: entry.kind, bytes: entry.bytes }))),
+    restoreNativeCut({ metadata, components } = {}) {
+      if (frame || muted || validationOnly || nativeCut || metadata?.schema !== 'lemmings-live-effect-cut/v1' || metadata.graphHash !== hash || metadata.sampleRate !== sampleRate || !Number.isSafeInteger(metadata.audioFrame) || metadata.audioFrame < 0 || metadata.controlState?.graphHash !== hash || !Array.isArray(components) || components.some(row => row.audioFrame !== metadata.audioFrame || !Number.isSafeInteger(row.logicalAudioFrame) || row.logicalAudioFrame < 0 || !Number.isSafeInteger(row.blockFrames) || row.blockFrames < 1 || row.blockFrames > 16384 || row.kind === 'spectral-freeze' && row.hostState?.started !== true)) fail('effect-native-cut-frontier', 'A renderable cut requires every original processor grid, control frontier and exact graph identity.');
+      const automation = createOwnedEffectCutAutomation(plan, metadata.controlState, sampleRate, metadata.audioFrame);
+      try {
+        this.validateDetachedComponentStates(components, metadata.hostState, metadata.audioFrame);
+        const indexed = new Map(components.map(row => [row.nodeId, row]));
+        for (const record of records) {
+          const row = indexed.get(record.entry.id), control = automation.byNode.get(record.entry.id);
+          record.native = { values: control.values, host: row ? { ...row.hostState } : null, logicalAudioFrame: row?.logicalAudioFrame ?? metadata.audioFrame, blockFrames: row?.blockFrames ?? 1 };
+        }
+        validationOnly = false; nativeCut = { automation, audioFrame: metadata.audioFrame };
+        return Object.freeze({ status: 'restored-independent-native-effect-cut', graphHash: hash, audioFrame: metadata.audioFrame, sampleRate, components: components.length, automation: automation.receipt(), qualification: 'implementation-awaiting-live-offline-pcm-equivalence' });
+      } catch (error) { panic(); throw error; }
+    },
+    scheduleNativeUpdate(nodeId, values, targetFrame) { if (!nativeCut || frame) fail('effect-native-cut-staging', 'Stage the complete captured automation before rendering a native cut.'); update(nodeId, values, false); nativeCut.automation.scheduleUpdate(nodeId, values, targetFrame); },
+    enqueueNativeBodyStrike(nodeId, command) {
+      const record = records[indices.get(nodeId)];
+      if (!nativeCut || frame || !record?.entry.membrane || !Number.isSafeInteger(command?.frame) || command.frame < 0 || !record.kernel.enqueueStrike({ ...command, frame: command.frame + record.native.logicalAudioFrame })) fail('effect-native-body-strike', 'Stage each finite strike against its saved body logical frame before rendering.');
+    },
+    nativeCutReceipt: () => nativeCut?.automation.receipt() || null,
     validateDetachedComponentStates(components, hostState = null, audioFrame = null) {
       if (frame || validationOnly || !Array.isArray(components) || components.length !== stateEntries.length || new Set(components.map(row => row?.nodeId)).size !== components.length) fail('effect-detached-component-inventory', 'Use a fresh validation graph and every exact detached component.');
       if (hostState !== null && (hostState.schema !== 'lemmings-native-effect-host-cut/v1' || hostState.audioFrame !== audioFrame || !Array.isArray(hostState.bodies) ||

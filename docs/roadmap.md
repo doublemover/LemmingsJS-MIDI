@@ -11196,3 +11196,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Default worker activation and measured visual/audio scheduling benefit remain unqualified. Formatting/static checks only; live-frame pooling, UI stalls, stale generations, cancellation, parity and desktop rendering are part of the consolidated functional campaign after development.
 
 - Bind worker nominal speed separately from the paused source transport: verify the original continuation hash before applying its explicit positive execution speed, retain that speed while host pause prevents advancement, and expose finite tick duration/effective speed. This prevents a paused source’s zero effective speed from freezing autonomous Run. Native output uses real-time Run; offline multi-tick stepping is refused because it cannot imply native deadline coverage.
+
+### Continuation 562 — renderable common-frame creative-rack cuts
+
+- Added an independent owned effect-cut render path that joins saved processor memory with the complete captured native control inventory and committed future ramps. It retains each processor’s logical frame instead of assuming every worklet was created at frame zero.
+- Continued delay requests/quantum-rate lowpass, nonlinear drive, modal morphs, membrane strike/touch/pickup controls, sympathetic masks/pickups, spectral hold, and sidechain presence/gates use their corresponding owned kernel paths. New cuts retain the original processor quantum; older cuts without that grid remain valid for live restoration but are refused by this offline path.
+- Captured native parameter curves remain API scheduling evidence. Live/offline PCM equivalence and complete export integration are still pending; functional validation stays deferred until the development pass is complete.

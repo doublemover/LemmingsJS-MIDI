@@ -174,7 +174,7 @@ export function createOwnedEffectGraphState({ context, resources, owner, generat
       } else if (data.type === 'effect-state-complete') {
         if (op.phase !== 'capturing' || row.phase !== 'copying' || !row.returned || data.audioFrame !== op.targetAudioFrame || !natural(data.logicalAudioFrame) || !natural(data.sourceFrame) ||
             data.sourceClock !== 'frozen-at-common-audio-block-boundary') throw fail('invalid-effect-state-result');
-        row.component = { nodeId: processor.nodeId, kind: processor.kind, audioFrame: data.audioFrame, logicalAudioFrame: data.logicalAudioFrame, sourceFrame: data.sourceFrame, hostState: bounded(data.hostState), bytes: data.bytes };
+        row.component = { nodeId: processor.nodeId, kind: processor.kind, blockFrames: row.grid.frames, audioFrame: data.audioFrame, logicalAudioFrame: data.logicalAudioFrame, sourceFrame: data.sourceFrame, hostState: bounded(data.hostState), bytes: data.bytes };
         row.phase = 'detached'; if ([...op.rows.values()].every(entry => entry.phase === 'detached')) void completeCapture(op);
       } else if (data.type === 'effect-state-staged') {
         if (op.phase !== 'restoring' || row.phase !== 'restoring' || !row.returned || data.sourceFrame !== row.component.sourceFrame || data.sourceAudioFrame !== op.sourceAudioFrame ||

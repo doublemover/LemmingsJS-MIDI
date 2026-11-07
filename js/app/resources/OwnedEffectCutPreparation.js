@@ -12,7 +12,7 @@ export async function prepareOwnedEffectCut({ definition, metadata: rawMetadata,
     signal?.throwIfAborted(); if (graph.hash !== metadata.graphHash) fail('The live effect definition differs from its exact pinned kernel graph.');
     const validated = graph.validateDetachedComponentStates(components, metadata.hostState, metadata.audioFrame), source = new Map(components.map(row => [row.nodeId, row]));
     for (const row of validated) {
-      row.audioFrame = metadata.audioFrame; row.logicalAudioFrame = source.get(row.nodeId).logicalAudioFrame; row.hostState = cloneData(source.get(row.nodeId).hostState, { maxBytes: 4096, maxNodes: 128 });
+      row.audioFrame = metadata.audioFrame; row.logicalAudioFrame = source.get(row.nodeId).logicalAudioFrame; if (source.get(row.nodeId).blockFrames != null) { const frames = source.get(row.nodeId).blockFrames; if (!Number.isSafeInteger(frames) || frames < 1 || frames > 16384) fail('The original effect render quantum is invalid.'); row.blockFrames = frames; } row.hostState = cloneData(source.get(row.nodeId).hostState, { maxBytes: 4096, maxNodes: 128 });
       let checksum = 2166136261;
       for (let first = 0; first < row.bytes.length; first += 65536) {
         for (let index = first, end = Math.min(first + 65536, row.bytes.length); index < end; index++) checksum = Math.imul(checksum ^ row.bytes[index], 16777619);
