@@ -1,6 +1,7 @@
+import { createPhysicalMusicStarterGoal } from './PhysicalMusicStarter.js';
 import { validatePhysicalMusicGoal } from './PhysicalMusicGoal.js';
 
-export function createPhysicalMusicComposeView({ document, readSource, readState, start, cancel, select, apply, onStatus = () => {} } = {}) {
+export function createPhysicalMusicComposeView({ document, readSource, readState, start, cancel, select, apply, prepareStarter = () => {}, prepareAudition = () => {}, readAudition = () => null, runAudition = () => {}, stopAudition = () => {}, onStatus = () => {} } = {}) {
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; }, element = node('section');
   element.__ownedControl = true; element.className = 'studio-compose'; element.setAttribute('aria-label', 'Physical musical composition');
   const sourceLabel = node('p'), message = node('output'), controls = node('div'), drafts = node('div'), results = node('div'), report = node('pre'), ghost = node('div');
@@ -52,7 +53,12 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
   const stage = mode => { goal = build(); json.value = JSON.stringify(goal, null, 2); draftDirty = false; jsonDirty = false; return start({ goal, mode }); };
   const search = button('Search physical candidates', () => stage('search')), sensitivity = button('Sample musical sensitivity', () => stage('sensitivity')),
     stop = button('Cancel study · keep draft', cancel), applyButton = button('Apply verified candidate · one undo step', () => { if (draftDirty) throw new Error('The goal draft changed; Search again before Apply.'); return apply(); });
-  controls.append(search, sensitivity, stop, applyButton);
+  const audition = button('Prepare selected branch · reference sine', () => { if (draftDirty) throw new Error('Search the changed goal before preparing its selected branch audition.'); return prepareAudition(); }),
+    run = button('Run prepared branch audition', runAudition), stopAudio = button('Close branch audition · stop audio', stopAudition);
+  controls.append(search, sensitivity, stop, audition, run, stopAudio, applyButton);
+  const loadStarterGoal = unreachable => { goal = createPhysicalMusicStarterGoal({ unreachable }); json.value = JSON.stringify(goal, null, 2); jsonAuthority = true; jsonDirty = true; draftDirty = true; advanced.open = true; applyButton.disabled = true; };
+  const starters = node('div'); starters.append(button('Prepare two-wall starter for review', prepareStarter), button('Use120/160 goal · three wall samples', () => loadStarterGoal(false)), button('Use121 goal · seven-value domain', () => loadStarterGoal(true)));
+  drafts.append(starters);
   drafts.append(basic, handles, inventory, button('Copy fields to complete goal', () => { jsonDirty = false; jsonAuthority = false; goal = build(); json.value = JSON.stringify(goal, null, 2); draftDirty = false; advanced.open = true; }), advanced);
   for (const input of drafts.querySelectorAll('input,select')) input.addEventListener('input', () => { draftDirty = true; jsonAuthority = false; applyButton.disabled = true; });
   json.addEventListener('input', () => { jsonDirty = true; jsonAuthority = true; draftDirty = true; applyButton.disabled = true; });
@@ -61,13 +67,31 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
     const mark = (tag, attrs, label) => { const value = document.createElementNS(svg.namespaceURI, tag); for (const [key, entry] of Object.entries(attrs)) value.setAttribute(key, entry); const title = document.createElementNS(svg.namespaceURI, 'title'); title.textContent = label; value.append(title); svg.append(value); };
     const scale = study.goal.timeDomain === 'ticks' ? 1 : study.goal.timeDomain === 'seconds' ? 1000 / study.goal.referenceTimeline.tickDurationMs : 60000 / study.goal.referenceTimeline.tempoBpm / study.goal.referenceTimeline.tickDurationMs;
     for (const target of study.goal.targetOnsets) mark('circle', { cx: 10 + target.time * scale / study.goal.horizon * 540, cy: 40, r: 5, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, 'GOAL ' + target.time + ' ' + study.goal.timeDomain);
+    if (!study.goal.targetOnsets.length) for (const [index, period] of study.goal.periodGoals.slice(0, 3).entries()) {
+      const y = 20 + index * 22, x = 10 + period.period * scale / study.goal.horizon * 540;
+      mark('line', { x1: 10, x2: x, y1: y, y2: y, stroke: 'currentColor' }, 'GOAL interval ' + period.period + ' ' + study.goal.timeDomain + ' · phase unspecified');
+      for (const cx of [10, x]) mark('circle', { cx, cy: y, r: 5, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, 'Requested interval endpoint; phase unspecified');
+    }
     for (const onset of row.trace?.onsets || []) mark('circle', { cx: 10 + onset.timeTicks / study.goal.horizon * 540, cy: 95 + (onset.laneId % 3) * 12, r: 3, fill: 'currentColor' }, 'RESULT tick ' + onset.timeTicks + ' · ' + onset.mappingId + ' · actor ' + onset.actorId);
+    return svg;
+  };
+  const spatialGhost = (current, row) => {
+    const edits = row.edits.filter(edit => edit.kind === 'right-wall-x'); if (!edits.length) return null;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 560 160'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'Selected proposed wall collision rectangles; the live world is unchanged'); svg.style.width = '100%';
+    const low = Math.min(...edits.map(edit => edit.bounds.x1)) - 4, high = Math.max(...edits.map(edit => edit.bounds.x2)) + 4;
+    for (const [index, edit] of edits.slice(0, 8).entries()) {
+      const y = 10 + index * 18, x = 10 + (edit.value - low) / (high - low) * 540, rectangle = document.createElementNS(svg.namespaceURI, 'rect');
+      for (const [key, value] of Object.entries({ x, y, width: Math.max(0, (edit.bounds.x2 - edit.value) / (high - low) * 540), height: 12, fill: 'currentColor', opacity: '.25', stroke: 'currentColor', 'stroke-dasharray': '4 3' })) rectangle.setAttribute(key, String(value));
+      const title = document.createElementNS(svg.namespaceURI, 'title'); title.textContent = edit.id + ': proposed solid cells at X≥' + edit.value + ', physical lane ' + edit.laneId + ', only inside the explicit editable rectangle'; rectangle.append(title); svg.append(rectangle);
+    }
     return svg;
   };
   function render() {
     if (disposed) return; const current = readSource(), state = readState();
     sourceLabel.textContent = current ? `Source tick ${current.tick}, generation ${current.generation}; ${current.actorIds.length} actors. Assistance ${current.assists ? 'on' : 'off'}; future births ${current.finiteCrew ? 'paused/exhausted' : 'active'}. Search needs a finite ordinary crew with assistance off. Sensitivity preserves adaptive policies.` : 'Open and pause a physical project.';
-    search.disabled = sensitivity.disabled = !current || !!state?.busy; stop.disabled = !state?.busy; applyButton.disabled = !state?.canApply || draftDirty;
+    const audio = readAudition(); audition.disabled = !state?.canApply || draftDirty || !!audio?.active || !!audio?.busy || !!audio?.checkpointHeld;
+    run.disabled = !audio?.active || !!audio?.busy || audio.phase !== 'paused'; stopAudio.disabled = !audio?.active && !audio?.checkpointHeld && !audio?.busy;
+    search.disabled = sensitivity.disabled = !current || !!state?.busy || !!audio?.active || !!audio?.checkpointHeld; stop.disabled = !state?.busy; applyButton.disabled = !state?.canApply || draftDirty;
     if (state?.progress) message.textContent = state.progress.phase + ' · ' + (state.progress.completed ?? 0) + '/' + (state.progress.total ?? '?');
     else if (state?.error) message.textContent = state.error;
     else if (state?.study) message.textContent = state.study.status + (state.stale ? ' · source changed; Apply unavailable' : state.applied ? ' · applied paused with undo' : ' · source unchanged; output off');
@@ -78,7 +102,9 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
     const row = state.selected; if (row) {
       ghost.append(node('h3', 'GOAL ◯ · RESULT ●'), plot(state.study, row), node('h3', 'Selected candidate ghost · proposed changes'));
       const changes = node('ul'); for (const edit of row.edits) changes.append(node('li', edit.id + ': ' + edit.kind + ' → ' + edit.value + (edit.bounds ? ` inside [${edit.bounds.x1},${edit.bounds.x2}) × [${edit.bounds.y1},${edit.bounds.y2})` : ''))); ghost.append(changes);
-      report.textContent = JSON.stringify({ status: row.status, reason: row.reason, metrics: row.metrics, safety: row.trace?.safetyFailures, rejectedInputs: row.trace?.rejectedInputs,
+      const proposed = spatialGhost(current, row); if (proposed) ghost.append(proposed);
+      ghost.append(node('p', 'Reference audition replays the frozen physical candidate through the existing independent owned sine output. Prepare is silent; Run is explicit. It uses the reference realization, not the selected patch/rack. Close stops audio and returns to the untouched live source. Qualification covers only the declared study horizon.'));
+      report.textContent = JSON.stringify({ audition: audio, status: row.status, reason: row.reason, metrics: row.metrics, safety: row.trace?.safetyFailures, rejectedInputs: row.trace?.rejectedInputs,
         freshVerification: row.verification || null, work: state.study.work, sensitivity: state.sensitivity ? { domain: state.sensitivity.domain, edges: state.sensitivity.edges } : null }, null, 2);
     }
   }

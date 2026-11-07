@@ -35,6 +35,10 @@ export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captur
   };
   return Object.freeze({ state, start,
     select(id) { if (!study?.rows.some(row => row.id === id)) throw new Error('Choose a retained candidate.'); selectedId = id; publish(); return state(); },
+    auditionContinuation() {
+      if (!state().canApply) throw new Error('Choose the independently verified candidate from the unchanged source before preparing its private audition.');
+      return study.selected.auditionContinuation;
+    },
     cancel() { if (!operation) return false; operation.controller.abort(new Error('Composition canceled.')); return true; },
     async apply() {
       if (!state().canApply) throw new Error('Apply requires the independently replayed selected candidate and its unchanged paused source.');

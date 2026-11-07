@@ -67,7 +67,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
   const check = () => { signal?.throwIfAborted(); if (!current()) fail('physical-study-stale', 'The study source changed.'); };
   let sourceIdentity;
   const run = async (candidate, { fresh = false, allUpfront = false } = {}) => {
-    let realm = null, world = null, reader = null, trace = emptyTrace(), consumed = 0, appliedInitial = null, inputs = null, editCost = 0;
+    let realm = null, world = null, reader = null, trace = emptyTrace(), consumed = 0, appliedInitial = null, auditionInitial = null, inputs = null, editCost = 0;
     const packet = async value => {
       const batch = value.batch; trace.factCount += batch.facts.length;
       if (trace.factCount > (goal.budgets.maximumFacts ?? 65536)) fail('physical-study-trace', 'The complete physical trace exceeds its admitted fact profile.');
@@ -111,7 +111,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       } else await prepare(source);
       observeSafety(world, goal, trace, constraints, mode);
       const admit = item => { const proposal = world.prepareIntervention(item.command); if (proposal.outcome.status !== 'queued') fail('physical-study-input', 'Candidate input refused: ' + (proposal.outcome.reason || proposal.outcome.status)); proposal.commit(); };
-      if (allUpfront) { for (const item of inputs) admit(item); consumed = inputs.length; }
+      if (allUpfront) { for (const item of inputs) admit(item); consumed = inputs.length; auditionInitial = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }); }
       while (world.tickIndex < endTick) {
         check();
         if (!fresh && inputs[consumed]?.tick === world.tickIndex && world.tickIndex > start.tickIndex) {
@@ -130,7 +130,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         metrics = evaluatePhysicalMusicGoal(goal, trace.onsets, { causeKinds: trace.causeKinds, editCost }), traceHash = await hashDataText(encoded(trace)),
         continuationHash = await hashDataText(encoded({ world: continuation.world, engine: continuation.engine, timeline: continuation.timeline, replay: continuation.replay }));
       return { id: candidate.id, values: candidate.values, edits: candidate.edits, status: completed && !trace.safetyFailures.length && !trace.rejectedInputs.length ? 'sample-safe' : 'sample-failed', completed,
-        metrics, trace, traceHash, continuationHash, throughTick: world.tickIndex, appliedInitial, inputs };
+        metrics, trace, traceHash, continuationHash, throughTick: world.tickIndex, appliedInitial, auditionInitial, inputs };
     } finally { reader?.release(); await retire(realm?.host); }
   };
   try {
@@ -144,7 +144,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       check(); if (goal.budgets.wallTimeMs != null && now() - started >= goal.budgets.wallTimeMs) { timeout = true; break; }
       if (work.logicalTicks + goal.horizon > goal.budgets.logicalTicks) { logicalLimit = true; break; }
       work.logicalTicks += goal.horizon; work.candidateCount++;
-      try { const row = await run(candidate), retained = { ...row, appliedInitial: null, inputs: null };
+      try { const row = await run(candidate), retained = { ...row, appliedInitial: null, auditionInitial: null, inputs: null };
         canonicalDataText(retained, { maxBytes: 262144, maxNodes: 32768 });
         if (canonicalDataText([...rows, retained], { maxBytes: 4 * MiB, maxNodes: 262144 }).bytes.length > 4 * MiB) fail('physical-study-trace', 'Complete retained sample reports exceed the4MiB profile.');
         rows.push(retained); }
@@ -159,7 +159,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         work.verificationMs += Math.max(0, now() - verifyStarted);
         const matches = verified.status === 'sample-safe' && verified.completed && verified.traceHash === finalist.traceHash && verified.continuationHash === finalist.continuationHash;
         finalist.verification = { mode: 'independent-fresh-world-no-prefix-cache;all-inputs-admitted-upfront', matched: matches, traceHash: verified.traceHash, continuationHash: verified.continuationHash, computedTicks: verified.throughTick - start.tickIndex };
-        if (matches) { selected = { candidateId: finalist.id, applyContinuation: verified.appliedInitial, verification: finalist.verification, requestedMetricsMet: verified.metrics.requestedMetricsMet }; break; }
+        if (matches) { selected = { candidateId: finalist.id, applyContinuation: verified.appliedInitial, auditionContinuation: verified.auditionInitial, verification: finalist.verification, requestedMetricsMet: verified.metrics.requestedMetricsMet }; break; }
       }
     }
     const complete = rows.length === domain.totalCombinations, metricsMet = selected?.requestedMetricsMet === true;

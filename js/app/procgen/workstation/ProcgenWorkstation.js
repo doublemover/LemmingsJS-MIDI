@@ -1423,7 +1423,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       physicalState: physicalPlayback?.engine.snapshot() || null,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } });
   };
-  let physicalMusicStudyWorkbench = null;
+  let physicalMusicStudyWorkbench = null, physicalMusicAuditionCandidateId = null;
   const physicalMusicSourceIdentity = () => { const world = runtime()?.world, clock = transport.getState(); return JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId, world?.generation, world?.tickIndex, clock.playing, clock.bpm, clock.nominalSpeed]); };
   const getPhysicalMusicStudyWorkbench = () => physicalMusicStudyWorkbench ||= createPhysicalMusicStudyWorkbench({ jobs: backgroundJobs, resourceBudget, getSourceIdentity: physicalMusicSourceIdentity,
     onChange: () => view?.render(),
@@ -1444,7 +1444,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } }),
     { signal, isCurrent: () => !disposed && runtime()?.world === sourceWorld && project === sourceProject && documentGeneration === sourceGeneration && sourceWorld.tickIndex === sourceTick && !transport.getState().playing });
   };
-  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, resourceProfile = /** @type {'compact-v1' | 'balanced-v1'} */ ('compact-v1'), requiredPorts = [], consume = null, onState = () => {}, onViewport = () => {}, signal = null } = {}) => {
+  const stageAuthoritativeSimulation = async ({ rootPath = new URL('../../../../', import.meta.url).href, resourceProfile = /** @type {'compact-v1' | 'balanced-v1'} */ ('compact-v1'), requiredPorts = [], consume = null, onState = () => {}, onViewport = () => {}, signal = null, continuation = null } = {}) => {
     if (disposed || !resourceBudget || simulationPreparation || simulationCandidates.size >= 2 || worldBusy || pendingHistory || physicalAuthoringAbort ||
         causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || !physicalPlayback) throw new Error('Prepare a worker candidate from an exclusive paused physical project boundary.');
     const sourceWorld = runtime()?.world, sourceProject = project, sourceGeneration = documentGeneration, sourceTick = sourceWorld?.tickIndex,
@@ -1456,13 +1456,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       try {
         capsule = await capturePhysicalHistory(sourceWorld, sourceProject, controller.signal); controller.signal.throwIfAborted();
         if (!isCurrent()) throw new Error('The source changed before authoritative host preparation.');
-        const source = capsule.session(), { prepareWorkerProcgenSimulationHost } = await import('../ProcgenSimulationHost.js'); controller.signal.throwIfAborted();
+        const live = capsule.session(), source = continuation ? { world: continuation.world, physicalState: continuation.engine, physicalTimeline: continuation.timeline } : live, { prepareWorkerProcgenSimulationHost } = await import('../ProcgenSimulationHost.js'); controller.signal.throwIfAborted();
         if (!source.physicalState || !isCurrent()) throw new Error('This source has no current semantic continuation.');
+        if (continuation) { const props = continuation.world.graph?.owners?.find(owner => owner.name === 'world')?.props;
+          if (props?.worldId !== sourceWorld.worldId || props.generation !== sourceWorld.generation || props.tickIndex !== sourceTick || continuation.world.laneCount !== sourceProject.procgen.lanes.length) throw new Error('The selected composition audition belongs to another physical source boundary.');
+        }
         candidate = await prepareWorkerProcgenSimulationHost({ resourceBudget, signal: controller.signal, requiredPorts, consume, onState, onViewport,
           manifest: { schema: 'lemmings-authoritative-simulation/v1', ownerId: 'workstation-candidate-' + (++simulationCandidateSerial), ownerEpoch: sourceGeneration,
             documentRevision: projectRevision, resourceProfile, rootPath, checkpoint: source.world, semantic: source.physicalState, timeline: source.physicalTimeline,
-            graph: sourceProject.procgen.physicalGraph, performance: captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
-            bpm: transport.getState().bpm, nominalSpeed: transport.getState().nominalSpeed, playing: true, scoreTimeline: true } });
+            graph: continuation?.authoring.graph || sourceProject.procgen.physicalGraph, performance: continuation?.performance || captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
+            bpm: continuation?.replay.bpm || transport.getState().bpm, nominalSpeed: continuation?.replay.nominalSpeed || transport.getState().nominalSpeed, playing: true, scoreTimeline: true } });
         if (!isCurrent()) throw new Error('The source changed while its worker candidate was preparing.');
         simulationCandidates.add(candidate); const owned = candidate; candidate = null;
         return Object.freeze({ ...owned, async detachCheckpoint() { const checkpoint = await owned.detachCheckpoint(); simulationCandidates.delete(owned); return checkpoint; }, dispose() { const receipt = owned.dispose(); receipt.completion.then(() => { if (receipt.outcome === 'complete') simulationCandidates.delete(owned); }); return receipt; } });
@@ -1488,22 +1491,24 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (simulationWorkbench) return simulationWorkbench;
     if (!simulationWorkbenchLoading) simulationWorkbenchLoading = import('./ProcgenSimulationWorkbench.js').then(({ createProcgenSimulationWorkbench }) => {
       if (disposed) throw new Error('The workstation closed before worker simulation preparation.');
-      return simulationWorkbench = createProcgenSimulationWorkbench({ prepareHost: stageAuthoritativeSimulation, prepareOutput: async ({ kind, signal }) => {
+      return simulationWorkbench = createProcgenSimulationWorkbench({ prepareHost: stageAuthoritativeSimulation, prepareOutput: async ({ kind, signal, continuation = null }) => {
         if (kind === 'owned-audio') {
-          const semantic = physicalPlayback?.engine.snapshot(), graph = project.procgen.physicalGraph, lanes = project.procgen.lanes;
+          const semantic = continuation?.engine || physicalPlayback?.engine.snapshot(), graph = continuation?.authoring.graph || project.procgen.physicalGraph, lanes = project.procgen.lanes;
           if (!Array.isArray(semantic?.active) || semantic.active.length || graph.preparedSurfaces?.length || graph.instruments.some(instrument => instrument.route !== 'local') || lanes.some(lane => lane.mode === 'pattern'))
             throw new Error('The owned reference sine needs physical local routes, no shared prepared bodies and an empty held-voice boundary. Clear held semantic voices explicitly or choose an output-off candidate.');
           const { prepareProcgenOwnedAudioOutputRealm } = await import('../ProcgenOwnedAudioOutputRealm.js'); signal.throwIfAborted();
-          return prepareProcgenOwnedAudioOutputRealm({ resourceBudget, signal, performance: captureCausalPerformanceState(lanes, project.procgen.actorTimbreLocks), onState: () => { if (!disposed) view?.renderInspector?.(); } });
+          return prepareProcgenOwnedAudioOutputRealm({ resourceBudget, signal, performance: continuation?.performance || captureCausalPerformanceState(lanes, project.procgen.actorTimbreLocks), onState: () => { if (!disposed) view?.renderInspector?.(); } });
         }
         if (!nativeSimulationWorkbench) throw new Error('Prepare the independent native client and dedicated output routes first.'); return nativeSimulationWorkbench.prepareAttachment({ semantic: physicalPlayback?.engine.snapshot(), graph: project.procgen.physicalGraph, lanes: project.procgen.lanes, scoreContext: { meter: project.transport?.timeSignature || null } }); }, getSourceIdentity: () => documentGeneration + ':' + projectRevision + ':' + runtime()?.world?.worldId + ':' + runtime()?.world?.generation + ':' + runtime()?.world?.tickIndex, onState: () => view?.renderInspector?.() });
     }).finally(() => { simulationWorkbenchLoading = null; });
     return simulationWorkbenchLoading;
   };
-  const startSimulationWorkbench = async ({ nativeOutput = false, ownedAudio = false } = {}) => {
+  const startSimulationWorkbench = async ({ nativeOutput = false, ownedAudio = false, physicalMusicCandidate = false } = {}) => {
     if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish recording and world operations before preparing an isolated worker candidate.');
+    if (!physicalMusicCandidate) physicalMusicAuditionCandidateId = null;
+    const continuation = physicalMusicCandidate ? getPhysicalMusicStudyWorkbench().auditionContinuation() : null;
     beforeRestart(); const owner = await getSimulationWorkbench();
-    const result = await owner.start({ nativeOutput, ownedAudio, viewport: { firstLane: Math.max(0, project.procgen.lanes.findIndex(lane => lane.id === state.laneId)) } });
+    const result = await owner.start({ nativeOutput, ownedAudio, ...(continuation ? { continuation } : {}), viewport: { firstLane: Math.max(0, project.procgen.lanes.findIndex(lane => lane.id === state.laneId)) } });
     status(ownedAudio ? 'Owned reference sine prepared paused: eight voices with precise pitch, pressure, pan and lane mix. Run explicitly; Pause parks the physical checkpoint and closes this private audio context. Selected patch macros, samples and creative racks are unavailable in this output profile.' : nativeOutput ? 'Native worker performance prepared paused. Run explicitly to start its independent output; Pause parks a physical checkpoint and retires its device generation.' : 'Worker candidate prepared paused with output and recording off. The live world remains frozen until you close the candidate.'); return result;
   };
   const applyPausedPhysicalCommand = async buildCommand => {
@@ -2257,6 +2262,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         finiteCrew: !world.cohorts || !population.pendingReleaseGesture && !population.adaptive && (gesture?.paused === true || population.gestureRun?.remaining === 0),
         tickDurationMs: 60 / transport.getState().nominalSpeed, bpm: transport.getState().bpm };
     },
+    preparePhysicalMusicStarter: async () => {
+      await openPerformanceScenes({ showBrowser: false }); const reference = sceneCatalog?.registry.findSupported({ id: 'physical-composition.two-walls' });
+      if (!reference) throw new Error('The bound two-wall starter is unavailable in this build.');
+      sceneLoader.select(sceneCatalog.registry.resolve(reference)); const result = await sceneLoader.prepare(); sceneBrowser.open();
+      status('Two-wall starter prepared for review. Apply it explicitly in Scenes, then Run until both ordinary entrants have landed, Pause and return to Compose.'); return result;
+    },
+    preparePhysicalMusicAudition: async () => { const id = physicalMusicStudyWorkbench?.state().selectedId, result = await startSimulationWorkbench({ ownedAudio: true, physicalMusicCandidate: true }); physicalMusicAuditionCandidateId = id; view?.renderInspector(); return result; },
+    physicalMusicAuditionState: () => physicalMusicAuditionCandidateId ? { ...simulationWorkbench?.state(), candidateId: physicalMusicAuditionCandidateId } : null,
     physicalMusicStudyState: () => physicalMusicStudyWorkbench?.state() || null,
     startPhysicalMusicStudy: input => getPhysicalMusicStudyWorkbench().start(input),
     cancelPhysicalMusicStudy: () => physicalMusicStudyWorkbench?.cancel(),

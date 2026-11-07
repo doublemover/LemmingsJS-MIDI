@@ -1027,7 +1027,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } else if (state.tab === 'Compose') {
       composeView ||= createPhysicalMusicComposeView({ document, readSource: () => handlers.physicalMusicSource?.(), readState: () => handlers.physicalMusicStudyState?.(),
         start: input => handlers.startPhysicalMusicStudy?.(input), cancel: () => handlers.cancelPhysicalMusicStudy?.(), select: id => handlers.selectPhysicalMusicCandidate?.(id),
-        apply: () => handlers.applyPhysicalMusicCandidate?.(), onStatus: message => setStatus(message) });
+        apply: () => handlers.applyPhysicalMusicCandidate?.(), prepareStarter: () => handlers.preparePhysicalMusicStarter?.(), prepareAudition: () => handlers.preparePhysicalMusicAudition?.(),
+        readAudition: () => handlers.physicalMusicAuditionState?.(), runAudition: () => handlers.resumeSimulationWorkbench?.(), stopAudition: () => handlers.closeSimulationWorkbench?.(), onStatus: message => setStatus(message) });
       nextFields.append(composeView.element); composeView.render();
     } else if (state.tab === 'Harmony') {
       if (harmonyFactory && !harmonyView && !harmonyError) {

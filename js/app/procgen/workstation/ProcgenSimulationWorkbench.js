@@ -26,8 +26,8 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
     try {
       for (const key of Object.keys(counts)) counts[key] = ['lastTick', 'generation'].includes(key) ? null : 0;
       if (options.nativeOutput && options.ownedAudio) throw new Error('Choose one explicitly owned output for this candidate.');
-      if (options.nativeOutput || options.ownedAudio) { if (typeof prepareOutput !== 'function') throw new Error('Independent output is unavailable.'); outputCandidate = await prepareOutput({ kind: options.ownedAudio ? 'owned-audio' : 'native', signal: operation.controller.signal }); operation.controller.signal.throwIfAborted(); }
-      candidate = await prepareHost({ ...(outputCandidate ? { requiredPorts: [outputCandidate.requiredPort] } : {}), signal: operation.controller.signal, consume: outputCandidate ? null : function(packet) {
+      if (options.nativeOutput || options.ownedAudio) { if (typeof prepareOutput !== 'function') throw new Error('Independent output is unavailable.'); outputCandidate = await prepareOutput({ kind: options.ownedAudio ? 'owned-audio' : 'native', continuation: options.continuation || null, signal: operation.controller.signal }); operation.controller.signal.throwIfAborted(); }
+      candidate = await prepareHost({ ...(options.continuation ? { continuation: options.continuation } : {}), ...(outputCandidate ? { requiredPorts: [outputCandidate.requiredPort] } : {}), signal: operation.controller.signal, consume: outputCandidate ? null : function(packet) {
         if (disposed || closing || packet.sequence !== counts.lastSequence + 1 || !Number.isSafeInteger(packet.batch?.tick) || !Array.isArray(packet.batch.facts) || !Array.isArray(packet.intents) || !Array.isArray(packet.bodyCommands)) throw new Error('The worker candidate observation lost its ordered canonical batch.');
         counts.batches++; counts.facts += packet.batch.facts.length; counts.intents += packet.intents.length; counts.bodyCommands += packet.bodyCommands.length;
         counts.lastSequence = packet.sequence; counts.lastTick = packet.batch.tick; counts.generation = packet.batch.generation;
