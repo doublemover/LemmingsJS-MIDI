@@ -11260,3 +11260,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Deliver both canonical terminal/current-generation batches when an ordinary world step resets a cohort. Required consumers acknowledge each batch in sequence; later physics and commands remain blocked until the full boundary is accepted. Diagnostics count the actual outstanding batches and synchronous consumer reentry cannot advance the world.
 - Added unexecuted protocol ACK/refusal/reentry fixtures and two actual-world continuation cases, each specifying10,000 ticks from a paused checkpoint with fractional nominal speed, admitted commands, automatic generation resets and streaming packet hashes plus final physics/semantic/timeline identity. These use the real world and causal engine in the restored realm, without claiming a separate browser worker benchmark.
 - Formatting and critical/boundary type checks pass. Functional qualification remains deferred until the development pass is complete.
+
+
+### Continuation 570 — captured replacement donors and struck bodies
+
+- Continue later rack publications with a bounded union of their exact semantic donor/tap/layout bindings. Each retained graph reads its own preallocated input slots from the same source pass, including donors absent from the initial image, and applies its recorded publication/detachment gate. Existing saved native input-gate automation remains independent.
+- Replay later processor-acknowledged finite membrane strikes into the newly owned graph with its original pulse, normalized position and amplitude, exact local frame and unique intent. Retain original graph lifetimes and the two-graph/state bounds. New spectral analysis grids, native convolution and message-time lifecycle changes still require their complete supported history rather than an approximation.
+- Added unexecuted signal-path cases for two changing donor bindings and a new struck membrane compared with an independent complete graph. Formatting/static checks only; no functional tests run.

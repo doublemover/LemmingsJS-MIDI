@@ -1,4 +1,4 @@
-import { capturedSourceBusKey } from './CapturedSourceBus.js';
+import { capturedEffectSourceRoutes } from './CapturedSourceBus.js';
 import { createOwnedEffectGraphKernel } from './OwnedEffectGraphKernel.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { validateEffectPerformance } from '../../midi/content/EffectPerformance.js';
@@ -16,7 +16,7 @@ export async function createCausalOwnedImageRack({ rack, sampleRate, activationA
   if (state?.schema !== 'lemmings-owner-effect-cut/v1' || state.sampleRate !== sampleRate || cut?.sampleRate !== sampleRate || state.audioFrame !== cut.audioFrame || state.graphHash !== cut.graphHash || !['active', 'mute'].includes(state.mode) || state.outputGain01 !== (state.mode === 'mute' ? 0 : 1) || !Number.isSafeInteger(state.sourceOwnerRouteRevision) || !Number.isSafeInteger(activationAudioFrame) || activationAudioFrame < 0 || !Number.isSafeInteger(endFrame) || endFrame < 1 || !effectCoverage?.captured || effectCoverage.gaps?.length || !Array.isArray(effectEvents) || effectEvents.length > 8192) fail('The complete initial rack, original activation clock and gap-free effect capture are required.');
   const graph = await createOwnedEffectGraphKernel({ definition: rack.definition, sampleRate, returnNodeIds });
   try {
-    const sourceRoutes = graph.plan.sidechainInputs.map(id => { const p = graph.plan.nodes.find(node => node.id === id).parameters; if (p.inputLayout !== 'audioStereo') fail('Use the exact prepared stereo source bus and an explicit graph channel adapter.'); return { nodeId: id, sourceBusId: p.sourceBusId, key: p.sourceBusId === 'owner' ? null : capturedSourceBusKey(p), tap: p.tap, layout: p.inputLayout }; });
+    const sourceRoutes = capturedEffectSourceRoutes(graph.plan);
     graph.restoreNativeCut({ metadata: cut, components: rack.components });
     if (sourceRoutes.length) graph.reconstructNativeSourcePresence();
     const dry = createCapturedCutGain(state.dry, state.audioFrame, sampleRate), input = createCapturedCutGain(state.input, state.audioFrame, sampleRate);
