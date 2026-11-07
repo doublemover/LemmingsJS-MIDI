@@ -11306,3 +11306,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Share the existing TypeScript AST worker-construction inventory between the verifier and manifest preparation. The manifest now names the eight actual worker-producing source files, including independent output and live-input owners, rather than treating every worker module entry as a worker factory.
 - Added unexecuted small real-filesystem gate cases for common-byte mutation, within-bundle duplication and vendor/unscoped overlap. No functional suite is run; this is source-integrity development needed by immutable application builds and later qualification.
 - The static provenance checker now verifies all15components and1,920source/harness files. This verifies present source accounting, not runtime behavior or acceptance.
+
+
+### Continuation 576 — exact physical and musical branch-prefix owner
+
+- Added a bounded ephemeral prefix owner over the existing world/engine/timeline/replay checkpoint envelope. Keys bind the complete canonical base continuation, source/runtime/assets, mapping, performer state, project revision, execution policy and exact ordered input prefix; physical and musical frontiers must share a completed batch. Tagged current-codec nonfinite typed state and signed zero retain their established identity; inadmissible raw nonfinite numbers refuse caching.
+- Digest buckets only accelerate lookup. Complete canonical source and ordered-prefix comparisons select the longest eligible boundary, immutable state bytes retain a separate SHA-256, and every borrowed state is independently decoded under its own admitted reader reservation. Restored world/semantic/timeline/replay identity is verified before reuse; mismatch invalidates that entry and requires ordinary fresh replay.
+- Deterministic LRU, entry/byte/node/reader limits, admitted canonicalization workspace, generation invalidation, cancellation checks and joined outstanding readers bound ownership. Cache metrics distinguish stored/borrowed/restored state, lookup/validation time and refusals; a cache hit never qualifies a finalist. Search/study integration is the following development batch.
+- Formatting only; no functional cache, search, browser or native campaign run.
