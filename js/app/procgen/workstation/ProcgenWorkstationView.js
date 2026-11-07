@@ -899,6 +899,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           const step = button('Step worker 32 ticks', () => handlers.advanceSimulationWorkbench?.()), run = button('Run worker · output off', () => handlers.resumeSimulationWorkbench?.()), pause = button('Pause worker and inspect', () => handlers.pauseSimulationWorkbench?.()), close = button('Close worker · return to paused live world', () => handlers.closeSimulationWorkbench?.());
           step.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; run.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; pause.disabled = simulation.busy || !!simulation.failure || simulation.worker?.paused; close.disabled = simulation.busy; worker.append(step, run, pause, close);
           const detach = button('Park worker and retain checkpoint', () => handlers.detachSimulationCheckpoint?.()); detach.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; worker.append(detach);
+          const retainRecovery = button('Retain current worker recovery point', () => handlers.retainSimulationRecovery?.()); retainRecovery.disabled = simulation.busy || !!simulation.failure; worker.append(retainRecovery);
+          const automatic = input(simulation.automaticRecovery, value => handlers.setSimulationRecovery?.(value), { type: 'checkbox' }); automatic.disabled = simulation.busy || !!simulation.failure; labeled('Retain recovery every 256 completed ticks · briefly pauses worker', automatic, worker);
+          if (simulation.recovery) {
+            const recover = button('Recover retained checkpoint · paused', () => handlers.recoverSimulationCheckpoint?.()); recover.disabled = simulation.busy; worker.append(recover);
+            worker.append(node('p', 'Independent in-memory recovery point: tick ' + simulation.recovery.tick + ' · ' + simulation.recovery.physicsHash.slice(0, 16) + '. Later uncaptured progress is not recovered. The broken/current worker generation retires before this point can be adopted.', 'studio-hint'));
+          }
+          if (simulation.recoveryNotice) worker.append(node('p', simulation.recoveryNotice, 'studio-hint'));
           if (!simulationPreview && !simulationPreviewError) { try { simulationPreview = createCausalPhysicalHistoryView({ document, resourceBudget, label: 'Paused worker collision overview' }); } catch (error) { simulationPreviewError = error.message; } }
           if (simulationPreview) { simulationPreview.render(handlers.simulationWorkbenchProjection?.()); worker.append(simulationPreview.element); }
           if (simulationPreviewError) worker.append(node('p', simulationPreviewError, 'studio-hint'));
@@ -906,7 +913,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         worker.append(node('p', simulation.phase + ' · tick ' + (simulation.worker?.tick ?? '—') + ' · ' + (simulation.counts?.batches ?? 0) + ' complete batches observed · ' + (simulation.counts?.intents ?? 0) + ' intents · output off', 'studio-hint'));
         const workerOrigin = handlers.workerContinuationOrigin?.(); if (workerOrigin) worker.append(node('p', 'Current world continues worker ' + workerOrigin.ownerId + ' from tick ' + workerOrigin.tick + ' with preserved physical checkpoint hashes.', 'studio-hint'));
         if (simulation.failure) worker.append(node('p', simulation.failure.message, 'studio-hint'));
-        if (simulation.failure && simulation.active) worker.append(node('p', 'Close this failed candidate to return to the retained paused source world. Uncaptured worker progress is not represented as a recovered checkpoint.', 'studio-hint'));
+        if (simulation.failure && simulation.active) worker.append(node('p', simulation.recovery ? 'Recover the retained completed checkpoint, or close this failed candidate to return to the original paused source world.' : 'Close this failed candidate to return to the retained paused source world. No later completed recovery point was captured.', 'studio-hint'));
         if (simulation.busy) worker.append(button('Cancel worker preparation', () => handlers.cancelSimulationWorkbench?.()));
         nextFields.append(worker);
       }

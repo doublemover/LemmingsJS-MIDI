@@ -49,7 +49,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
     check(); if (requests.size >= 8 || requestSerial >= Number.MAX_SAFE_INTEGER - 1) return Promise.reject(simulationFailure('request-capacity', 'The authoritative host request queue is full.'));
     const requestId = ++requestSerial;
     return new Promise((resolve, reject) => {
-      const timer = timers.setTimeout(() => { requests.delete(requestId); const error = simulationFailure('request-timeout', 'The authoritative request did not complete; the generation must be reviewed paused.'); reject(error); fail(error); }, ['checkpoint', 'checkpoint-detach'].includes(type) ? 180000 : 30000);
+      const timer = timers.setTimeout(() => { requests.delete(requestId); const error = simulationFailure('request-timeout', 'The authoritative request did not complete; the generation must be reviewed paused.'); reject(error); fail(error); }, ['checkpoint', 'checkpoint-detach', 'checkpoint-recovery'].includes(type) ? 180000 : 30000);
       requests.set(requestId, { resolve, reject, timer, kind: type }); try { send(type, { ...fields, requestId }); } catch (error) { timers.clearTimeout(timer); requests.delete(requestId); reject(error); fail(error); }
     });
   };
@@ -91,14 +91,14 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       if (message.type === 'response') { requests.delete(message.requestId); timers.clearTimeout(pending.timer); if (message.value?.phase) publish(message.value); else if (message.value?.state) publish(message.value.state); pending.resolve(message.value); return; }
       if (message.type === 'checkpoint-start') {
         if (checkpointReceiver || message.sequence !== 0) throw simulationFailure('checkpoint-overlap', 'Only one checkpoint receiver may own its streamed pages.');
-        checkpointRequestId = message.requestId; checkpointReceiver = createBackgroundSnapshotReceiver({ maxBytes: (pending.kind === 'checkpoint-detach' ? 16 : 128) * 1048576, maxNodes: 4000000, estimatedPeakBytes: 384 * 1048576 });
+        checkpointRequestId = message.requestId; checkpointReceiver = createBackgroundSnapshotReceiver({ maxBytes: (pending.kind === 'checkpoint-recovery' ? 8 : pending.kind === 'checkpoint-detach' ? 16 : 128) * 1048576, maxNodes: pending.kind === 'checkpoint-recovery' ? 262144 : 4000000, estimatedPeakBytes: (pending.kind === 'checkpoint-recovery' ? 64 : 384) * 1048576 });
         send('checkpoint-ack', { sequence: 0 }); return;
       }
       if (!checkpointReceiver || checkpointRequestId !== message.requestId) throw simulationFailure('checkpoint-stale', 'The checkpoint stream has no admitted request owner.');
       if (message.type === 'checkpoint-page') { const receipt = checkpointReceiver.push(message.packet); send('checkpoint-ack', { sequence: receipt.sequence }); return; }
       if (message.type !== 'checkpoint-end') throw simulationFailure('response-invalid', 'Unsupported authoritative worker response.');
       const retainedBytes = checkpointReceiver.diagnostics().retainedEstimateBytes + 1048576, value = checkpointReceiver.finish(message.sequence); checkpointReceiver = null; checkpointRequestId = null;
-      requests.delete(message.requestId); timers.clearTimeout(pending.timer); pending.resolve(pending.kind === 'checkpoint-detach' ? { value, retainedBytes } : value);
+      requests.delete(message.requestId); timers.clearTimeout(pending.timer); pending.resolve(['checkpoint-detach', 'checkpoint-recovery'].includes(pending.kind) ? { value, retainedBytes } : value);
     } catch (error) { fail(error); }
   };
   const abort = () => { if (!disposed) fail(signal.reason || simulationFailure('worker-canceled', 'The authoritative simulation preparation was canceled.')); };
@@ -126,6 +126,20 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
         retired = true; worker = null; latestState = null; if (!checkpointTransfer) reservation.release(); activeHosts--;
       } }
     ]);
+  };
+  const captureRecoveryCheckpoint = async () => {
+    check(); if (!latestState?.paused || requests.size || checkpointTransfer) throw simulationFailure('recovery-checkpoint-boundary', 'Capture a recovery point from an idle completed paused worker boundary.');
+    const source = { ...latestState }, storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'simulation-recovery:' + manifest.ownerId, kind: 'independent-physical-recovery-checkpoint', category: 'checkpoint', bytes: 64 * 1048576 });
+    let value = null;
+    try {
+      const result = await request('checkpoint-recovery'); check(); if (result?.status === 'refused') throw simulationFailure('recovery-checkpoint-refused', result.message || 'The current world exceeds its bounded recovery profile.');
+      value = result?.value; const receipt = value?.receipt;
+      if (value?.schema !== 'lemmings-owned-simulation-checkpoint/v1' || receipt?.schema !== 'lemmings-simulation-checkpoint-receipt/v1' || receipt.applicationBuildId !== execution.buildId || receipt.ownerId !== manifest.ownerId || receipt.ownerEpoch !== manifest.ownerEpoch || receipt.documentRevision !== manifest.documentRevision || receipt.worldId !== source.worldId || receipt.generation !== source.generation || receipt.tick !== source.tick || receipt.paused !== true || !['sourceHash', 'continuationHash', 'physicsHash'].every(key => /^[a-f0-9]{64}$/.test(receipt[key] || '')) || !Number.isSafeInteger(result.retainedBytes) || result.retainedBytes < 4096 || result.retainedBytes > 32 * 1048576 || value.snapshot?.authoring?.graph == null || value.snapshot.engine?.version !== 1) throw simulationFailure('recovery-checkpoint-invalid', 'The recovery point differs from its exact completed worker source or bounded retained representation.');
+      storage.resize(result.retainedBytes); freezeData(receipt); let released = false;
+      return Object.freeze({ schema: 'lemmings-owned-simulation-checkpoint/v1', receipt: () => released ? null : value.receipt,
+        read() { if (released) throw simulationFailure('checkpoint-retired', 'The independently owned recovery point retired.'); return value.snapshot; },
+        release() { if (released) return false; storage.release(); released = true; value = null; return true; } });
+    } catch (error) { value = null; storage.release(); throw error; }
   };
   const detachCheckpoint = async () => {
     check();
@@ -159,7 +173,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       check(); input = null; send('input-end', { sequence });
     })(); await inputProducer; await timeout(ready, 180000, 'The authoritative world did not finish preparation.'); check();
     return Object.freeze({ mode: 'worker', identity: Object.freeze({ ...manifest }), state: () => latestState, pause: () => request('pause'), resume: () => request('resume'),
-      project, detachCheckpoint, advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
+      project, detachCheckpoint, captureRecoveryCheckpoint, advance: steps => request('advance', { steps }), submit: command => request('command', { command }), checkpoint: () => request('checkpoint'),
       diagnostics: () => Object.freeze({ state: latestState, activeHosts, requiredConsumers: requiredPorts.length + (consume ? 1 : 0), mainConsumer: consumer?.state() || null, retainedProjections: projections.size, checkpointHandoff: checkpointTransfer ? checkpointTransfer.released ? 'released' : checkpointTransfer.published ? 'independently-owned' : 'waiting-for-producer-retirement' : null,
         buildId: execution.buildId, defaultEnabled: false, performanceQualification: 'required-before-default', reservation: reservation.receipt() }), dispose });
   } catch (error) { const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
