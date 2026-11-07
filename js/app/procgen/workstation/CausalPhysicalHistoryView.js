@@ -11,7 +11,7 @@ export function createCausalPhysicalHistoryView({ document, resourceBudget = nul
   const render = projection => {
     if (disposed) throw new Error('The physical history view retired.');
     if (!projection) { element.hidden = true; key = null; actors.replaceChildren(); return; }
-    const view = projection.viewport, nextKey = [projection.schema, projection.paused, projection.worldId, projection.generation, projection.tick, projection.terrainRevision, view.x, view.y, view.width, view.height, view.pixelWidth, view.pixelHeight].join(':');
+    const view = projection.viewport, nextKey = [projection.presentationKey || '', projection.schema, projection.paused, projection.worldId, projection.generation, projection.tick, projection.terrainRevision, view.x, view.y, view.width, view.height, view.pixelWidth, view.pixelHeight].join(':');
     element.hidden = false; if (nextKey === key) return;
     if (!image || image.width !== view.pixelWidth || image.height !== view.pixelHeight) { canvas.width = view.pixelWidth; canvas.height = view.pixelHeight; image = context.createImageData(canvas.width, canvas.height); }
     const data = image.data;

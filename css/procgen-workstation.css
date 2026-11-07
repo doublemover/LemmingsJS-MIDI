@@ -599,3 +599,9 @@ body.procgen-workstation {
 .studio-compose button { max-width: 100%; white-space: normal; margin: .2rem; }
 .studio-compose svg { display: block; overflow: hidden; }
 .studio-compose pre { max-width: 100%; font-size: .8rem; }
+
+.studio-counterfactual fieldset, .studio-counterfactual-side { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.studio-counterfactual fieldset label { display: grid; gap: 0.25rem; flex: 1 1 12rem; }
+.studio-counterfactual-side > figure { flex: 1 1 18rem; min-width: 0; }
+.studio-counterfactual [hidden] { display: none; }
+.studio-counterfactual pre { max-height: 28rem; overflow: auto; }

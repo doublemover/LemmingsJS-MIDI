@@ -110,15 +110,15 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
   const candidatePicker = choice(results, 'Candidate ghost · selection does not edit the world', []); let listedRows = null;
   candidatePicker.addEventListener('change', () => select(candidatePicker.value));
   function render() {
-    if (disposed) return; const current = readSource(), state = readState();
+    if (disposed) return; const current = readSource(), ownedState = readState(), state = ownedState?.study?.mode === 'comparison' ? null : ownedState;
     sourceLabel.textContent = current ? `Source tick ${current.tick}, generation ${current.generation}; ${current.actorIds.length} actors. Assistance ${current.assists ? 'on' : 'off'}; future births ${current.finiteCrew ? 'paused/exhausted' : 'active'}. Search needs a finite ordinary crew with assistance off. Sensitivity preserves adaptive policies.` : 'Open and pause a physical project.';
     exportStudy.disabled = !state?.study && !state?.partial;
     const audio = readAudition(); audition.disabled = !state?.canAudition || draftDirty || !!audio?.active || !!audio?.busy || !!audio?.checkpointHeld;
     run.disabled = !audio?.active || !!audio?.busy || audio.phase !== 'paused'; stopAudio.disabled = !audio?.active && !audio?.checkpointHeld && !audio?.busy;
-    search.disabled = sensitivity.disabled = !current || !!state?.busy || !!audio?.active || !!audio?.checkpointHeld; stop.disabled = !state?.busy; applyButton.disabled = !state?.canApply || draftDirty;
+    search.disabled = sensitivity.disabled = !current || !!ownedState?.busy || !!audio?.active || !!audio?.checkpointHeld; stop.disabled = !state?.busy; applyButton.disabled = !state?.canApply || draftDirty;
     if (state?.progress) message.textContent = state.progress.phase + ' · ' + (state.progress.completed ?? 0) + '/' + (state.progress.total ?? '?');
     else if (state?.error) message.textContent = state.error;
-    else if (state?.study) message.textContent = state.study.status + (state.stale ? ' · source changed; Apply unavailable' : state.applied ? ' · applied paused with undo' : ' · source unchanged; output off');
+    else if (state?.study) message.textContent = state.study.status + (state.stale ? ' · source changed; Apply unavailable' : state.applied ? ' · queued paused with one Undo step' : ' · source unchanged; output off');
     results.replaceChildren(); ghost.replaceChildren();
     if (!state?.study) { report.textContent = state?.partial ? JSON.stringify(state.partial, null, 2) : ''; return; }
     if (listedRows !== state.study.rows) { candidatePicker.replaceChildren(); for (const row of state.study.rows) { const option = node('option', row.id + ' · ' + row.status + (Number.isFinite(row.metrics?.score) ? ' · cost ' + row.metrics.score : '')); option.value = row.id; candidatePicker.append(option); } listedRows = state.study.rows; }
@@ -133,6 +133,6 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
     } else report.textContent = JSON.stringify({ status: state.study.status, reason: state.study.reason, coverage: state.study.coverage, work: state.study.work }, null, 2);
   }
   setEditor('fields');
-  element.append(node('h2', 'Compose with physics'), sourceLabel, node('p', 'Declare a finite goal and edit domain, then explicitly Search or Sample. Selecting a candidate shows its proposed changes. Apply publishes the independently replayed first boundary paused; Undo restores the previous world. Goal timing uses physical source ticks or an explicitly fixed seconds/beat clock. Sampled gaps remain unknown.'), drafts, controls, message, results, ghost, report);
+  element.append(node('h2', 'Compose with physics'), sourceLabel, node('p', 'Declare a finite goal and edit domain, then explicitly Search or Sample. Selecting a candidate shows its proposed changes. Apply queues the independently reviewed commands while preserving live actors. Play applies them at their physical boundaries; Undo restores the pre-edit world. Goal timing uses physical source ticks or an explicitly fixed seconds/beat clock. Sampled gaps remain unknown.'), drafts, controls, message, results, ghost, report);
   return Object.freeze({ element, render, hasDraft: () => draftDirty || jsonDirty, dispose() { disposed = true; element.remove(); } });
 }

@@ -68,6 +68,8 @@ import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
 import { procgenSimulationExecutionPolicy } from '../ProcgenSimulationExecutionPolicy.js';
 import { createPhysicalMusicStudyWorkbench } from './PhysicalMusicStudyWorkbench.js';
+import { canonicalDataText } from '../../../core/CanonicalData.js';
+import { hashProcgenContinuationCheckpoint } from './ProcgenCheckpointProvenance.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
 import { createInstrumentMacroGestures } from '../../midi-ui/InstrumentMacroGestures.js';
@@ -208,6 +210,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const physicalHistory = createPhysicalAuthoringHistory({ resourceBudget, maxBytes: Math.max(1048576, Math.min(128 * 1048576, historyBytesLimit)) });
   const simulationCandidates = new Set(); let simulationPreparation = null, simulationCandidateSerial = 0, simulationWorkbench = null, simulationWorkbenchLoading = null, nativeSimulationWorkbench = null, nativeSimulationLoading = null;
   let physicalAuthoringAbort = null, pendingPhysicalAuthoring = null, physicalAuthoringSerial = 0;
+  const queuedStudyHistory = new WeakMap();
   let historyDropped = 0;
   const historyBytes = value => {
     let bytes = historySizes.get(value);
@@ -1331,7 +1334,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             const previous = project;
             if (pendingPhysicalAuthoring?.commandId === applied.commandId) { pendingPhysicalAuthoring.capsule.promote(previous); pendingPhysicalAuthoring.promoted = true; }
             project = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, physicalGraph: authored.graph, fragmentInstances: authored.instances, junctions: next.world.physicalJunctions.definitions } }));
-            undo.push(previous); redo.length = 0; lastHistoryGroup = null; trimHistory(); projectRevision++; editRevision++; storageStatus(); view?.render(); persist();
+            if (!queuedStudyHistory.get(next.world)?.delete(applied.commandId)) { undo.push(previous); redo.length = 0; lastHistoryGroup = null; trimHistory(); } projectRevision++; editRevision++; storageStatus(); view?.render(); persist();
           }
         }
         physicalJunctionView?.refresh(); physicalAuthoringView?.refresh();
@@ -1441,7 +1444,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             authoring: { graph: world.physicalAuthoring.graph, instances: world.physicalAuthoring.instances, junctions: world.physicalJunctions.definitions },
             replay: { version: 2, playing: true, bpm: clock.bpm, scoreTimeline: true, nominalSpeed: clock.nominalSpeed } } }, release: () => { if (!capsule.discard()) throw new Error('The composition source capsule could not retire.'); } };
       } catch (error) { capsule.discard(); throw error; }
-    }, applyContinuation: (snapshot, receipt) => adoptPhysicalContinuation(snapshot, { branchOrigin: { ...receipt, mode: 'finite-musical-goal;fresh-real-physics-replay;first-boundary-paused' } }) });
+    }, applyContinuation: (_snapshot, receipt, proposal) => applyReviewedPhysicalInputs(receipt, proposal) });
   const capturePhysicalHistory = async (sourceWorld, sourceProject, signal) => {
     const sourceGeneration = documentGeneration, sourceTick = sourceWorld.tickIndex, sourceFeedback = sourceWorld.physicalFeedback, sourceController = physicalFeedback, sourceArmed = physicalFeedback?.isArmed() === true, policy = simulationExecutionPolicy();
     return physicalHistory.capture(sourceWorld, sourceProject, (checkpoint, capturedProject) => createProcgenSession({ name: savedName, project: capturedProject, settings: clone(settingsFor(capturedProject)), executionIdentity: { ...continuationExecutionIdentity(), simulationExecutionPolicy: policy }, world: checkpoint,
@@ -1515,6 +1518,33 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     beforeRestart(); const owner = await getSimulationWorkbench();
     const result = await owner.start({ nativeOutput, ownedAudio, ...(continuation ? { continuation } : {}), viewport: { firstLane: Math.max(0, project.procgen.lanes.findIndex(lane => lane.id === state.laneId)) } });
     status(ownedAudio ? 'Owned reference sine prepared paused: eight voices with precise pitch, pressure, pan and lane mix. Run explicitly; Pause parks the physical checkpoint and closes this private audio context. Selected patch macros, samples and creative racks are unavailable in this output profile.' : nativeOutput ? 'Native worker performance prepared paused. Run explicitly to start its independent output; Pause parks a physical checkpoint and retires its device generation.' : 'Worker candidate prepared paused with output and recording off. The live world remains frozen until you close the candidate.'); return result;
+  };
+  const applyReviewedPhysicalInputs = async (receipt, reviewed) => {
+    if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing || simulationWorkbench?.state().active || simulationWorkbench?.state().checkpointHeld || simulationWorkbench?.state().busy) throw new Error('Close the private audition and finish active world operations before applying the paused proposal.');
+    const world = runtime()?.world, previous = project, initial = reviewed?.expectedInitialBoundary, commands = reviewed?.reviewedInputs?.map(input => input.command);
+    if (!world || world._failedTick || world.interventionState.pending.length || !initial || !commands?.length || commands.some(command => !command || !['physical-authoring', 'assign-worker'].includes(command.kind))) throw new Error('Apply requires the reviewed ordinary physical command tape and an empty live input queue.');
+    if (physicalMusicSourceIdentity() !== receipt.sourceIdentity || world.worldId !== reviewed.base.worldId || world.generation !== reviewed.base.generation || world.tickIndex !== reviewed.base.tick || !Number.isSafeInteger(previous.procgen.revision + 1)) throw new Error('The reviewed physical source changed before Apply.');
+    const controller = new AbortController(), workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'physical-study-apply', kind: 'complete-source-comparison', category: 'candidate', bytes: 32 * 1048576 });
+    physicalAuthoringAbort = controller; worldBusy = true; let capsule = null, promoted = false;
+    try {
+      capsule = await capturePhysicalHistory(world, previous, controller.signal); controller.signal.throwIfAborted();
+      const captured = capsule.session(), same = (a, b) => canonicalDataText(a, { maxBytes: 4 * 1048576, maxNodes: 300000 }).text === canonicalDataText(b, { maxBytes: 4 * 1048576, maxNodes: 300000 }).text;
+      if (await hashProcgenContinuationCheckpoint(captured.world) !== reviewed.base.physicalHash || !same(captured.physicalState, initial.engine) || !same(captured.physicalTimeline, initial.timeline) ||
+          !same(captureCausalPerformanceState(previous.procgen.lanes, previous.procgen.actorTimbreLocks), initial.performance) || !same(simulationExecutionPolicy(), initial.executionPolicy) ||
+          digestPlan(world.physicalAuthoring.graph) !== digestPlan(initial.authoring.graph) || transport.getState().bpm !== initial.replay.bpm || transport.getState().nominalSpeed !== initial.replay.nominalSpeed ||
+          physicalMusicSourceIdentity() !== receipt.sourceIdentity) throw new Error('The complete physical, musical or clock source changed; compare/search again before Apply.');
+      const proposal = world.prepareInterventions(commands);
+      if (proposal.status !== 'prepared') throw new Error('The reviewed command transaction was not admitted: ' + proposal.outcomes.filter(value => value.status !== 'queued').map(value => value.reason).join(', '));
+      const published = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...previous, procgen: { ...previous.procgen, revision: previous.procgen.revision + 1 } }));
+      proposal.commit(); capsule.promote(previous); promoted = true;
+      project = published; undo.push(previous); redo.length = 0; lastHistoryGroup = null; trimHistory(); projectRevision++; editRevision++;
+      queuedStudyHistory.set(world, new Set(commands.filter(command => command.kind === 'physical-authoring').map(command => command.id)));
+      storageStatus(); status('Reviewed physical commands queued as one Undo step. Playback remains paused; Play applies them at their actual physical boundaries.');
+      return Object.freeze({ status: 'queued-paused', commandIds: commands.map(command => command.id), sourceTick: world.tickIndex, liveActorsPreserved: true });
+    } finally {
+      if (!promoted) capsule?.discard(); workspace.release();
+      if (physicalAuthoringAbort === controller) physicalAuthoringAbort = null; worldBusy = false; if (!disposed) { persist(); view?.render(); }
+    }
   };
   const applyPausedPhysicalCommand = async buildCommand => {
     if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing) throw new Error('Pause playback and finish the take/world operation before physical authoring. Use a physical branch for recorded performance edits.');
@@ -2283,7 +2313,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     cancelPhysicalMusicStudy: () => physicalMusicStudyWorkbench?.cancel(),
     selectPhysicalMusicCandidate: id => getPhysicalMusicStudyWorkbench().select(id),
-    applyPhysicalMusicCandidate: () => getPhysicalMusicStudyWorkbench().apply(),
+    applyPhysicalMusicCandidate: async () => { if (physicalMusicAuditionCandidateId) await simulationWorkbench?.close(); physicalMusicAuditionCandidateId = null; return getPhysicalMusicStudyWorkbench().apply(); },
+    discardPhysicalMusicStudy: async () => { if (physicalMusicAuditionCandidateId) await simulationWorkbench?.close(); physicalMusicAuditionCandidateId = null; return physicalMusicStudyWorkbench?.discard(); },
     exportPhysicalMusicStudyReport: async () => {
       const owner = getPhysicalMusicStudyWorkbench(), source = owner.state(), report = owner.report(); let computed = null;
       try { computed = await backgroundJobs.compute({ kind: 'encode-canonical-json', ownerId: 'physical-music-study-export', ownerEpoch: documentGeneration,

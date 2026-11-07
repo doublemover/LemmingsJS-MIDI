@@ -53,12 +53,13 @@ export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captur
       if (!state().canAudition) throw new Error('Choose an independently verified original/proposed candidate from the unchanged source before preparing its private audition.');
       return auditionCandidate().auditionContinuation;
     },
+    async discard() { if (disposed || applying) throw new Error('Finish Apply before discarding the comparison.'); operation?.controller.abort(new Error('Study discarded.')); await operation?.completion.catch(() => {}); clearResult(); error = null; progress = null; sourceIdentity = null; publish(); return true; },
     cancel() { if (!operation) return false; operation.controller.abort(new Error('Composition canceled.')); return true; },
     async apply() {
       if (!state().canApply) throw new Error('Apply requires the independently replayed selected candidate and its unchanged paused source.');
       const selected = study.selected, identity = sourceIdentity, receipt = selected.verification;
       if (identity !== getSourceIdentity()) throw new Error('The physical source changed before Apply.');
-      applying = Promise.resolve().then(() => applyContinuation(selected.applyContinuation, { studyId: study.goal.id, candidateId: selected.candidateId, sourceIdentity: identity, verification: receipt }, { reviewedInputs: selected.reviewedInputs, expectedFirstBoundary: selected.applyContinuation, base: study.base, source: study.sourceIdentity })); publish();
+      applying = Promise.resolve().then(() => applyContinuation(selected.applyContinuation, { studyId: study.goal.id, candidateId: selected.candidateId, sourceIdentity: identity, verification: receipt }, { reviewedInputs: selected.reviewedInputs, expectedInitialBoundary: selected.auditionContinuation, expectedFirstBoundary: selected.applyContinuation, base: study.base, source: study.sourceIdentity })); publish();
       try { const published = await applying; if (published) applied = true; return published; } finally { applying = null; publish(); }
     },
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; operation?.controller.abort(new Error('Composition closed.')); publish();
