@@ -1,11 +1,14 @@
 import { compileAcousticMap } from '../../../midi/content/AcousticMap.js';
 import { evaluateSpatialState, validateSpatialAttachment } from '../../../midi/content/SpatialState.js';
-import { freezeData } from '../../../core/CanonicalData.js';
+import { canonicalDataText, freezeData } from '../../../core/CanonicalData.js';
 
 export function createWorldSpatialControl({ getCameraPosition = () => null, hasSolidAt = null } = {}) {
   let plan = null, actors = new Map(), listener = null, boundary = null, sourceTime = -Infinity, terrainRevision = null, tick = -1, valid = false, lastBatch = null;
   const occlusion = new Map();
-  const configure = raw => { if (plan?.map === raw) return; plan = raw ? compileAcousticMap(raw) : null; listener = plan?.map.listener.position || null; boundary = null; sourceTime = -Infinity; valid = false; occlusion.clear(); };
+  const configure = raw => {
+    if (plan?.map === raw) return; const next = raw ? compileAcousticMap(raw) : null, sameListener = !!plan && !!next && canonicalDataText(plan.map.listener).text === canonicalDataText(next.map.listener).text;
+    plan = next; if (!sameListener) listener = plan?.map.listener.position || null; if (!next || !lastBatch) boundary = null; sourceTime = -Infinity; valid = false; occlusion.clear();
+  };
   const observe = batch => {
     lastBatch = batch; valid = false;
     if (!plan || batch.completeness?.status !== 'complete' || !Array.isArray(batch.snapshot?.actors) || batch.snapshot.actors.length > 1024 || batch.snapshot.completeness?.status && batch.snapshot.completeness.status !== 'complete' || !Number.isFinite(batch.tickDurationMs) || batch.tickDurationMs <= 0 || !Number.isFinite(batch.sourceTimeMs) || !Number.isSafeInteger(batch.snapshot.terrainRevision ?? batch.terrainRevision)) return false;

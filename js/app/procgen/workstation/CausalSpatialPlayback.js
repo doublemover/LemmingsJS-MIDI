@@ -13,9 +13,10 @@ export function createCausalSpatialPlayback({ getGraph, world, session, getSourc
   return Object.freeze({
     before(intents, source) {
       if (disposed) return intents; batch = source; const map = getGraph()?.acousticMap || null, capture = isCaptureEnabled(); if (capture && !capturing) mapHash = null; capturing = capture;
-      if (map !== rawMap) { const next = map ? canonicalDataText(map, { maxBytes: 131072, maxNodes: 16384 }).text : null; rawMap = map; if (signature !== next) { storage.resize(map ? 8 * 1048576 : 4096); signature = next; activeMap = map; mapper.configure(map); mapHash = null; } }
-      if (!map) return intents;
-      mapper.observe(source); const ready = session?.acousticMapMatches?.(map) === true, owner = ready ? session.acousticMapState() : null;
+      const ready = !!map && session?.acousticMapMatches?.(map) === true;
+      if (!map) { if (activeMap) { activeMap = rawMap = signature = null; mapper.configure(null); storage.resize(4096); } return intents; }
+      if (ready && map !== rawMap) { const next = canonicalDataText(map, { maxBytes: 131072, maxNodes: 16384 }).text; rawMap = map; if (signature !== next) { storage.resize(8 * 1048576); signature = next; activeMap = map; mapper.configure(map); mapHash = null; } }
+      mapper.observe(source); const owner = ready ? session.acousticMapState() : null;
       if (owner?.mapHash && mapHash !== owner.mapHash) { mapHash = owner.mapHash; report(envelope({ kind: 'map', status: 'prepared', mapHash, definition: activeMap })); }
       const facts = new Map(source.facts.map(fact => [fact.eventId, fact])), instruments = new Map(getGraph().instruments.map(instrument => [instrument.id, instrument])); const capacity = Math.max(0, mapper.maximumVoices() - getSources().length); let onsets = 0;
       return intents.map(intent => {

@@ -44,9 +44,10 @@ export function createAcousticZoneAudioOwner({ context, resources, owner, genera
         if (groups.size >= 3) throw new Error('Three acoustic-map revisions still own sources or bounded return tails. Retire them before another replacement.');
         group = { map, raw, signature, hash, references: 0, retainUntil: 0, returns: [], lease: resources.reserve({ kind: 'acoustic-map-routing', owner, generation, estimateBytes: 262144, consumerOwned: true }), retirement: null };
         groups.set(hash, group);
+        const requestedReturns = new Set(map.controls.chamber01 > 0 ? map.zones.filter(zone => zone.enabled).flatMap(zone => zone.zoneSends.filter(send => send.amount01 > 0).map(send => send.returnId)) : []);
         for (const response of map.materialResponses) {
           guard(signal, check); const recipe = createAcousticZoneRecipe(response.effectRecipe.id, context.sampleRate, map.controls.absorb01), row = { id: response.id, recipe, graph: null, input: null, nodes: [] }; group.returns.push(row);
-          if (!recipe.graph) continue;
+          if (!recipe.graph || !requestedReturns.has(response.id)) continue;
           row.graph = await prepareNativeEffectGraph(recipe.graph, { context, resources, owner, generation, signal, getMaterialProvider, jobs, isCurrent: () => !disposed && isCurrent() && (!check || check()) }); guard(signal, check);
           row.input = row.graph.getInput('input');
           const low = context.createBiquadFilter(); row.nodes.push(low); const high = context.createBiquadFilter(); row.nodes.push(high);
@@ -59,10 +60,11 @@ export function createAcousticZoneAudioOwner({ context, resources, owner, genera
       } catch (error) { if (group) { const receipt = retire(group); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; } throw error; }
       finally { externalSignal?.removeEventListener('abort', abort); if (pending === token) pending = null; settle(); report(); }
     },
+    isPinnedCurrent: pin => !!current && !disposed && !fault && pin?.mapHash === current.hash,
     pin(state) {
       if (!current || disposed || fault || !isCurrent() || state.mapId !== current.map.id || state.mapRevision !== current.map.revision) throw new Error('The exact acoustic-map revision is not prepared.');
       const group = current; group.references++; let released = false;
-      return Object.freeze({ mapHash: group.hash, returns: Object.freeze(group.returns.map(row => Object.freeze({ id: row.id, node: row.input, dry: !row.graph }))),
+      return Object.freeze({ mapHash: group.hash, mapId: group.map.id, mapRevision: group.map.revision, returns: Object.freeze(group.returns.map(row => Object.freeze({ id: row.id, node: row.input, dry: !row.graph }))),
         release() { if (released) return; released = true; group.references--; group.retainUntil = Math.max(group.retainUntil, context.currentTime + 3); collect(); report(); } });
     },
     dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; current = null; const preparation = pending; preparation?.controller.abort(new Error('Acoustic map owner retired.')); return scope.retire([{ name: 'acoustic-map-producers-and-returns', run: async () => { await preparation?.completion; const receipts = [...groups.values()].map(retire); await Promise.all(receipts.map(receipt => receipt.completion)); if (receipts.some(receipt => receipt.outcome !== 'complete') || groups.size) throw new Error('Acoustic return producer or storage ownership remains unresolved.'); } }]); }
