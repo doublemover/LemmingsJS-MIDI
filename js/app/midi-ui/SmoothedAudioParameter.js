@@ -42,7 +42,7 @@ export function createSmoothedAudioParameter({ param, initialValue, startTime, s
     if (state.end <= from && !events.some(event => event.time > from)) param.setValueAtTime(state.target, from);
   };
   const insert = (value, time, now, duration = smoothingSeconds) => {
-    if (fault || !validValue(value) || time < minimumTime || now < minimumTime || ![value, time, now, duration].every(Number.isFinite) || duration < 0 || duration > 60 || allowedValues !== null && duration !== 0 || time < startTime || time < now) return false;
+    if (fault || !validValue(value) || time < minimumTime || now < 0 || restored && now < minimumTime || ![value, time, now, duration].every(Number.isFinite) || duration < 0 || duration > 60 || allowedValues !== null && duration !== 0 || time < startTime || time < now) return false;
     const floor = Math.max(startTime, now);
     anchor = stateAt(floor);
     let consumed = 0;

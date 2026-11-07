@@ -31,7 +31,7 @@ describe('finite Dub Quarry routes and explicit saved echo (qualification deferr
     return { world, terrain, budget, jobs, async close() { world.dispose(); await terrain.dispose().completion; jobs.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0); } };
   };
   it('installs distinct route lengths, actual junctions, finite sources and zero-send defaults without a hidden loop', async () => {
-    expect(library.registry.page({ limit: 64 }).rows.filter(row => row.id.startsWith('dub-quarry.'))).to.have.length(3);
+    expect(library.registry.page({ limit: 64 }).rows.filter(row => row.id.startsWith('dub-quarry.'))).to.have.length(21);
     expect(DUB_QUARRY_ROUTES.map(route => route.width)).to.deep.equal([512, 768, 1024]);
     for (const item of items) { expect((await checkPerformanceSceneRequirements(item.scene, { resolveDependency: library.resolveDependency })).status).to.equal('ready'); await verifyPerformanceSceneOrigin(await library.origin(item.scene), { sourceHash: buildId }); expect(item.recipe.initialReleaseGesture.finiteBurstCount).to.equal(3); expect(item.scene.cost.maximumVoices).to.equal(12); expect(item.scene.initialTransport.playing).to.equal(false); expect(item.recipe.initialEffectRack.graph.nodes.find(node => node.id === 'send').parameters.gain01).to.equal(0); expect(item.scene.causalMappings.instruments.every(value => value.sourceKind === 'PickupCrossing')).to.equal(true); expect(item.recipe.initialJunctions[0].configurations.map(value => value.id)).to.deep.equal(['direct', 'stepped']); }
   });
@@ -42,7 +42,7 @@ describe('finite Dub Quarry routes and explicit saved echo (qualification deferr
     finally { engine.dispose(); await f.close(); }
   };
   it('authors actual longer-journey timing and empty-world silence fixtures without changing audio delay into actor travel', async () => {
-    const a = await trace(items[0]), b = await trace(items[2]), empty = await trace(items[0], true);
+    const a = await trace(items.find(item => item.recipe.initialTerrainLayout.width === 512)), b = await trace(items.find(item => item.recipe.initialTerrainLayout.width === 1024)), empty = await trace(items[0], true);
     const firstReply = result => result.begins.find(row => row.intent.role === 'reply-arrival')?.tick; expect(firstReply(a)).to.be.a('number'); expect(firstReply(b)).to.be.greaterThan(firstReply(a));
     expect(a.facts.filter(fact => fact.kind === 'ActorBorn')).to.have.length(3); expect(b.facts.filter(fact => fact.kind === 'ActorBorn')).to.have.length(3); expect(a.begins.every(row => row.intent.sourceEventIds.length && row.intent.physicalSourceKind === 'PickupCrossing')).to.equal(true); expect(empty.begins).to.have.length(0);
   });
@@ -61,8 +61,8 @@ describe('finite Dub Quarry routes and explicit saved echo (qualification deferr
     expect((await refuse(renderPerformanceSceneRehearsal({ ...input, recipe: undefined }, { descriptors: engines, buildId }))).message).to.include('cannot be omitted');
     const changed = structuredClone(item.recipe); changed.initialEffectRack.graph.nodes.find(node => node.id === 'return').parameters.gain01 = 0.1; expect((await refuse(renderPerformanceSceneRehearsal({ ...input, recipe: changed }, { descriptors: engines, buildId }))).message).to.include('exact authored recipe');
   });
-  it('rejects an unlisted rack, unsupported topology/bypass and combined shared mechanisms before publication', async () => {
-    const rack = items[0].recipe.initialEffectRack; expect(() => prepareSceneEffectRack({ ...rack, bypass: 'neutral' })).to.throw(); expect(() => prepareSceneEffectRack({ ...rack, graph: createQuarryTape() })).to.throw();
+  it('admits the authored tape rack and rejects unsupported bypass and combined shared mechanisms before publication', async () => {
+    const rack = items[0].recipe.initialEffectRack; expect(() => prepareSceneEffectRack({ ...rack, bypass: 'neutral' })).to.throw(); expect(() => prepareSceneEffectRack({ ...rack, graph: createQuarryTape() })).not.to.throw();
     expect(() => validatePerformanceSceneRecipe({ ...items[0].recipe, initialMorphMechanism: {} })).to.throw(); const origin = await library.origin(items[0].scene), stripped = structuredClone(origin); stripped.manifest.requirements.required = stripped.manifest.requirements.required.filter(value => value.kind !== 'renderer'); expect(await refuse(verifyPerformanceSceneOrigin(stripped))).to.be.instanceOf(Error);
   });
 });

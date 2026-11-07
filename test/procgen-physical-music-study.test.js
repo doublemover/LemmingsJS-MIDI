@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { canonicalDataText, hashDataText } from '../js/core/CanonicalData.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { createActualScoredWorldFactory } from './helpers/actualScoredWorld.js';
 import { routeCircuitLayout, routeCircuitGraph } from './helpers/actualRouteCircuits.js';
@@ -75,7 +76,17 @@ describe('real physical musical-goal composition', function() {
     goal.allowedEdits = [{ id: 'late-builder', kind: 'worker-tick', actorId: fixture.world.actors[0].id, skillType: 'builder', values: Array.from({ length: 64 }, (_, index) => 401 + index) }];
     goal.skillInventory.builder = 1;
     try { const result = await runPhysicalMusicStudy({ ...fixture.input, mode: 'sensitivity', goal }, { createWorld: fixture.createWorld, executionIdentity });
-      expect(result.rows).to.have.length(64); expect(result.rows.every(row => row.completed === true)).to.equal(true); expect(result.work.logicalTicks).to.equal(30720); expect(result.work.cache.restoredCheckpoints).to.be.greaterThan(0);
+      expect(result.rows).to.have.length(64); expect(result.rows.every(row => row.completed === true), result.rows.find(row => row.reason)?.reason).to.equal(true);
+      expect(result.rows.every(row => row.trace.causeKinds.includes('sfx:builder-step'))).to.equal(true);
+      const retained = canonicalDataText(result.rows, { maxBytes: 4 * 1048576, maxNodes: 1 + 64 * 32768 });
+      expect(result.work.retainedResultBytes).to.equal(retained.bytes.length); expect(result.work.retainedResultNodes).to.equal(retained.nodes);
+      expect(retained.bytes.length).to.be.at.most(4 * 1048576);
+      for (const row of result.rows) {
+        const packed = row.trace.correspondence, decoded = packed.indices.map(index => packed.dictionary[index]);
+        expect(packed.schema).to.equal('lemmings-physical-cause-dictionary/v1'); expect(decoded).to.have.length(packed.count);
+        expect(await hashDataText(canonicalDataText(decoded).text)).to.equal(packed.sha256);
+        expect(decoded.some(cause => cause[0] === 'sfx:builder-step' && cause[1] === fixture.world.actors[0].id && cause[2] === 0)).to.equal(true);
+      } expect(result.work.logicalTicks).to.equal(30720); expect(result.work.cache.restoredCheckpoints).to.be.greaterThan(0);
       expect(result.work.computedTicks).to.be.lessThan(30720 * .35); expect(result.work.restoredTicks).to.be.greaterThan(0); expect(result.work.restoreMs).to.be.at.least(0);
       expect(result.work.verificationTicks).to.equal(0); expect(result.work.cache.reservedBytes).to.be.greaterThan(0);
     } finally { await fixture.dispose(); }

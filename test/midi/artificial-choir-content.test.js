@@ -19,7 +19,7 @@ describe('original Artificial Choir source recipes', () => {
       const high = plan.resolve({ variationAmount01: 0, macros: { vowel: 1, breath: 1, size: 1, chorus: 1 } }, 100);
       expect(high.values).to.include({ vowel01: 1, breath01: 0.7, sizeRatio: 2, chorusCents: 12 });
       expect(low.values).to.include({ vowel01: 0, breath01: 0, sizeRatio: 0.5, chorusCents: 0 });
-      expect(high.values).not.to.have.property('frequencyHz'); expect(low.deltas.every(delta => delta.interpolation === 'onset-only')).to.equal(true);
+      expect(high.values).not.to.have.property('frequencyHz'); expect(low.deltas.every(delta => ['onset-only', 'bounded-causal-slew'].includes(delta.interpolation))).to.equal(true);
     }
     expect(compiled.qualification).to.equal('compiled-data-not-render-qualified');
   });

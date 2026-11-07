@@ -34,6 +34,13 @@ const scene = async (count = 4, density = 'sparse') => {
 const available = async dependency => ({ ...dependency, status: 'available', storage: 'installed-runtime' });
 
 describe('versioned physical scene content and complete dependency closure', () => {
+  it('admits pinned relative asset paths while rejecting traversal, ambiguous paths and repeated dependencies', async () => {
+    const base = await scene(), dependency = { ...pin('content/impulses/hollow-spring.json'), kind: 'asset', description: 'Exact original reflection material' };
+    const withAssets = assets => ({ ...base, requirements: { ...base.requirements, optional: assets } });
+    expect(validatePerformanceScene(withAssets([dependency])).requirements.optional[0]).to.deep.equal(dependency);
+    for (const id of ['../outside.json', '/absolute.json', 'content//body.json', 'content/./body.json', 'content/body.json?other']) expect(() => validatePerformanceScene(withAssets([{ ...dependency, id }]))).to.throw('dependency');
+    expect(() => validatePerformanceScene(withAssets([dependency, { ...dependency, revision: 2 }]))).to.throw('dependency');
+  });
   it('indexes the latest supported version independently of paging, registration order and inspect-only future schemas', async () => {
     const registry = createPerformanceSceneRegistry(), first = await scene(), second = { ...first, version: 2, title: 'Later supported score' }; await registry.register(second); await registry.register(first); await registry.register({ schema: 'lemmings-performance-scene/v999', id: first.id, version: 3, title: 'Unsupported later schema' });
     const selected = registry.findSupported({ id: first.id }); expect(selected.version).to.equal(2); expect(registry.resolve(selected)).to.deep.equal(second); expect(registry.findSupported({ id: first.id, version: 1 }).hash).to.equal(await performanceSceneHash(first)); expect(registry.findSupported({ id: first.id, version: 3 })).to.equal(null); expect(registry.findSupported({ id: 'missing.score' })).to.equal(null); expect(Object.isFrozen(selected)).to.equal(true);
@@ -124,7 +131,7 @@ describe('installed crossing scores and the existing world candidate adapter', f
     const library = await createInstalledPerformanceSceneCatalog({ getCatalog }); return { library, getCatalog };
   };
   it('ships exact-build four/eight-lane physical scores with distinct per-corridor gates and inspectable unavailable source mode', async () => {
-    const f = await installed(), page = f.library.registry.page(); expect(page.rows).to.have.length(5); const crossings = page.rows.filter(row => row.id.startsWith('crossing-corridors.')); expect(crossings).to.have.length(2); expect(page.rows.filter(row => row.id.startsWith('digging-ocarina.'))).to.have.length(3);
+    const f = await installed(), page = f.library.registry.page(); expect(page.rows).to.have.length(12); const crossings = page.rows.filter(row => row.id.startsWith('crossing-corridors.')); expect(crossings).to.have.length(2); expect(page.rows.filter(row => row.id.startsWith('digging-ocarina.'))).to.have.length(3);
     for (const row of crossings) {
       const value = f.library.registry.resolve(row), proof = await checkPerformanceSceneRequirements(value, { resolveDependency: f.library.resolveDependency }); expect(proof.status).to.equal('ready');
       expect(value.causalMappings.instruments.map(instrument => instrument.sourceLanes)).to.deep.equal(Array.from({ length: value.cost.lanes }, (_, index) => [index]));
@@ -134,11 +141,11 @@ describe('installed crossing scores and the existing world candidate adapter', f
     const unbound = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'execution-unbound' }) }); expect(unbound.available).to.equal(false); expect(unbound.registry.size()).to.equal(0);
   });
   it('compiles actual patches and authoring into an unadvanced real world before the publication fence', async () => {
-    const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), budget = createResourceBudget(), masks = await loadProcgenMasks(); let world, recipe, published = false, retired = false;
+    const f = await installed(), value = f.library.registry.resolve(f.library.registry.findSupported({ id: 'crossing-corridors.4' })), budget = createResourceBudget(), masks = await loadProcgenMasks(); let world, recipe, published = false, retired = false;
     const adapter = createPerformanceSceneWorldAdapter({ resourceBudget: budget, getCatalog: f.getCatalog, getOrigin: (scene, variants) => f.library.origin(scene, variants),
       // This component fixture exercises real patch/world owners. Boot canvas,
       // installed terrain loading and audible rendering remain browser work.
-      prepareWorld: async input => { recipe = input.sceneRecipe; world = new ProcgenLaneWorld({ masks, laneCount: recipe.settings.laneCount, laneHeight: recipe.settings.laneHeight, seed: recipe.settings.seed }); world.configurePhysicalAuthoring(recipe.project.procgen.physicalGraph, []);
+      prepareWorld: async input => { recipe = input.sceneRecipe; world = new ProcgenLaneWorld({ masks, laneCount: recipe.settings.laneCount, laneHeight: recipe.settings.laneHeight, seed: recipe.settings.seed, assists: recipe.assistPolicy === 'standard' }); world.configurePhysicalAuthoring(recipe.project.procgen.physicalGraph, []);
         return { world, isCurrent: () => !published && !retired, commit({ isCurrent }) { isCurrent(); published = true; }, retire() { retired = true; if (!published) world.dispose(); return { outcome: 'complete' }; } }; } });
     const proof = await checkPerformanceSceneRequirements(value, { resolveDependency: f.library.resolveDependency }), candidate = await adapter({ scene: value, preflight: proof, baseIdentity: 'doc:1', isCurrent: () => true });
     expect(world.tickIndex).to.equal(0); expect(published).to.equal(false); expect(candidate.admission.sourcePools['worklet-sine']).to.equal(value.patchRefs[0].reference.definition.voicePolicy.maxVoices); expect(candidate.admission.sourceInstances).to.equal(1); expect(recipe.project.procgen.sceneOrigin.sceneHash).to.equal(proof.sceneHash);
@@ -171,7 +178,7 @@ describe('installed crossing scores and the existing world candidate adapter', f
     }
   });
   it('keeps source-build mismatch unavailable instead of converting the score silently', async () => {
-    const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), origin = await f.library.origin(value); let error;
+    const f = await installed(), value = f.library.registry.resolve(f.library.registry.findSupported({ id: 'crossing-corridors.4' })), origin = await f.library.origin(value); let error;
     try { await verifyPerformanceSceneOrigin(origin, { sourceHash: h('c') }); } catch (caught) { error = caught; } expect(error.code).to.equal('invalid-scene-score-recipe');
   });
   it('normalizes a frozen saved manifest without mutating the caller', async () => {
@@ -179,7 +186,7 @@ describe('installed crossing scores and the existing world candidate adapter', f
     expect(JSON.stringify(value)).to.equal(before); expect(normalized.initialTransport.clockSource).to.equal('internal'); expect(Object.isFrozen(normalized.causalMappings)).to.equal(true);
   });
   it('renders no onset from an empty private source and preserves the authored per-lane mix receipt', async () => {
-    const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), catalog = await f.getCatalog(), sceneHash = await performanceSceneHash(value);
+    const f = await installed(), value = f.library.registry.resolve(f.library.registry.findSupported({ id: 'crossing-corridors.4' })), catalog = await f.getCatalog(), sceneHash = await performanceSceneHash(value);
     const source = { schema: 'lemmings-scene-rehearsal-source/v1', sceneHash, initialTick: 0, ticks: 1, sourceTimeMs: 0, durationSeconds: 0.08, worldId: 'private-scene-world', generation: 0, seed: value.seed, intents: [] };
     const result = await renderPerformanceSceneRehearsal({ scene: value, sceneHash, source, sampleRate: 48000 }, { descriptors: catalog.descriptors, buildId: value.sourceVersion.hash, yieldControl: async () => {} });
     expect(result.manifest.statistics.peak).to.equal(0); expect(result.manifest.lanes.every(lane => lane.begins === 0)).to.equal(true); expect(result.manifest.nextWorldAdvanced).to.equal(false); expect(result.manifest.historicalPerformanceEvidence).to.equal(false);

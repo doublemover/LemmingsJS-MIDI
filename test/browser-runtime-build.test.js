@@ -68,7 +68,7 @@ describe('immutable browser generation staging', () => {
     } });
     expect(first.reusedGeneration).to.equal(false); expect(repeat.reusedGeneration).to.equal(true);
     expect(repeat.manifest).to.deep.equal(first.manifest); expect(repeat.buildId).to.equal(first.buildId);
-    expect(writes).to.have.length(first.manifest.routes.length + 1); expect(writes.every(target => path.basename(target).startsWith('.publish-'))).to.equal(true);
+    expect(writes).to.have.length(first.manifest.routes.length + 2); expect(writes.every(target => path.basename(target).startsWith('.publish-'))).to.equal(true);
   });
   for (const populated of [false, true]) it('rejects input drift after closure collection on ' + (populated ? 'reuse' : 'cold staging'), async () => {
     const first = populated ? await build() : null, target = path.join(root, 'classic/MAIN.DAT'); let reads = 0;

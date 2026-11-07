@@ -36,7 +36,7 @@ describe('owned granular render material handoff', () => {
       return { assets: [pin], release: () => retirement.retire([{ name: 'decoded-pin', run: () => pin.release() }]) }; } };
     const descriptors = await describeNativeInstrumentEngines([{ engineId: 'worklet-granular', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
     const authored = JSON.parse(await fs.readFile(new URL('../../content/sounds/granular-biomes.json', import.meta.url), 'utf8'));
-    const compiled = await compileSoundContent(authored, { targets: descriptors.map(descriptor => ({ descriptor })) }), patch = compiled.prepared.patches.find(entry => entry.identity === 'biome.water-lens@1');
+    const compiled = await compileSoundContent(authored, { targets: descriptors.map(descriptor => ({ descriptor })) }), patch = compiled.prepared.patches.find(entry => entry.definition.id === 'biome.water-lens');
     const resources = createAudioResourceLeases({ resourceBudget: budget });
     const material = await prepareOwnedRenderMaterial({ provider, resources, definition: patch.definition, stage: {}, owner: 'test-render' });
     try {

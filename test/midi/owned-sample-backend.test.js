@@ -22,7 +22,7 @@ const source = hash => {
 };
 const setup = bank => {
   const listeners = new Set(); let state = 'running';
-  const context = { get state() { return state; }, set state(value) { state = value; for (const listener of [...listeners]) listener(); }, addEventListener(type, listener) { if (type === 'statechange') listeners.add(listener); }, removeEventListener(type, listener) { if (type === 'statechange') listeners.delete(listener); }, sampleRate: 48000, currentTime: 0, audioWorklet: { async addModule() {} } }, resources = createAudioResourceLeases(), nodes = [];
+  const context = { createGain: () => ({ gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} }, connect() {}, disconnect() {} }), get state() { return state; }, set state(value) { state = value; for (const listener of [...listeners]) listener(); }, addEventListener(type, listener) { if (type === 'statechange') listeners.add(listener); }, removeEventListener(type, listener) { if (type === 'statechange') listeners.delete(listener); }, sampleRate: 48000, currentTime: 0, audioWorklet: { async addModule() {} } }, resources = createAudioResourceLeases(), nodes = [];
   const preview = { _context: context, _generation: 0, _sessions: new Map([['owner', { generation: 0 }]]), _voices: new Set(), _semanticVoiceOwners: new Map(), _retirementFaults: new Set(),
     _maxVoices: 96, _maxScheduledVoices: 96, _maxLiveScheduledVoices: 96, _maxNoteSeconds: 8, _voiceSequence: 0, _nowMs: () => context.currentTime * 1000,
     _audioResources: resources, _ownerReady: () => true, _workloadClass: () => 'live', getAudioContext: () => context, _channel: () => ({ gain: {} }), _captureMetadata: fields => fields,

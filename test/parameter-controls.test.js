@@ -23,7 +23,7 @@ describe('typed parameter control transactions', () => {
   it('previews many pointer samples but commits once, and canceled keyboard repeats commit nothing', () => {
     const document = new TestDocument(), window = {}, commits = [], previews = []; let identity = {};
     const knob = createParameterKnob({ document, window, descriptor, value: 0, getIdentity: () => identity, commit: value => commits.push(value), preview: value => previews.push(value) });
-    const cap = knob.element.children[1]; cap.dispatchEvent(event('pointerdown', { pointerId: 7, clientY: 160, button: 0 }));
+    const cap = knob.element.children.find(child => child.className === 'parameter-knob-cap'); cap.dispatchEvent(event('pointerdown', { pointerId: 7, clientY: 160, button: 0 }));
     for (let y = 159; y >= 80; y--) cap.dispatchEvent(event('pointermove', { pointerId: 7, clientY: y }));
     expect(commits).to.have.length(0); cap.dispatchEvent(event('pointerup', { pointerId: 8 })); expect(commits).to.have.length(0);
     cap.dispatchEvent(event('pointerup', { pointerId: 7 })); expect(commits).to.deep.equal([1200]); expect(previews.length).to.be.greaterThan(1);
@@ -35,7 +35,7 @@ describe('typed parameter control transactions', () => {
   it('updates pickup observations without overwriting the active drag and restores the accepted value after rejected publication', () => {
     const document = new TestDocument(), commits = [];
     const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit: value => { commits.push(value); throw new Error('Publication rejected'); } });
-    const cap = knob.element.children[1]; cap.dispatchEvent(event('pointerdown', { pointerId: 1, clientY: 160 }));
+    const cap = knob.element.children.find(child => child.className === 'parameter-knob-cap'); cap.dispatchEvent(event('pointerdown', { pointerId: 1, clientY: 160 }));
     cap.dispatchEvent(event('pointermove', { pointerId: 1, clientY: 120 })); const draft = knob.inspect().draft;
     knob.setObservations({ pickupValue: -600 }); expect(knob.inspect().draft).to.equal(draft);
     cap.dispatchEvent(event('pointerup', { pointerId: 1 })); expect(commits).to.have.length(1);
@@ -44,7 +44,7 @@ describe('typed parameter control transactions', () => {
   it('retains the authored gesture draft across unchanged state patches and cancels a real external change', () => {
     const document = new TestDocument(), commits = [], cancellations = [];
     const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit: value => commits.push(value), onCancel: reason => cancellations.push(reason) });
-    const cap = knob.element.children[1]; cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); const before = knob.inspect();
+    const cap = knob.element.children.find(child => child.className === 'parameter-knob-cap'); cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); const before = knob.inspect();
     knob.setState({ value: 0, effectiveValue: 30 }); expect(knob.inspect()).to.deep.equal(before);
     cap.dispatchEvent(event('keyup', { key: 'ArrowUp' })); expect(commits).to.deep.equal([before.draft]);
     cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); knob.setState({ value: -300 });
@@ -53,7 +53,7 @@ describe('typed parameter control transactions', () => {
   it('preserves a numeric composition buffer and requires explicit conflict resolution', () => {
     const document = new TestDocument(), commits = [];
     const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit: value => commits.push(value) });
-    const entry = knob.element.children[3]; entry.removeAttribute = name => entry.attributes.delete(name); document.activeElement = entry; entry.value = '-300'; entry.dispatchEvent(event('compositionstart')); entry.dispatchEvent(event('input'));
+    const entry = knob.element.children.find(child => child.className === 'parameter-knob-number'); entry.removeAttribute = name => entry.attributes.delete(name); document.activeElement = entry; entry.value = '-300'; entry.dispatchEvent(event('compositionstart')); entry.dispatchEvent(event('input'));
     entry.dispatchEvent(event('change')); expect(commits).to.have.length(0); knob.setState({ value: 600 });
     expect(entry.value).to.equal('-300'); expect(entry.dataset.editConflict).to.equal('true'); entry.dispatchEvent(event('keydown', { key: 'Enter' })); expect(commits).to.have.length(0);
     entry.dispatchEvent(event('compositionend')); entry.dispatchEvent(event('keydown', { key: 'Escape' })); expect(entry.value).to.equal('600'); expect(entry.dataset.editConflict).to.equal(undefined); knob.dispose();
@@ -61,7 +61,7 @@ describe('typed parameter control transactions', () => {
   it('cancels a captured gesture when its descriptor becomes pending or read-only', () => {
     const document = new TestDocument(), commits = [], cancellations = [];
     const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit: value => commits.push(value), onCancel: reason => cancellations.push(reason) });
-    const cap = knob.element.children[1], entry = knob.element.children[3];
+    const cap = knob.element.children.find(child => child.className === 'parameter-knob-cap'), entry = knob.element.children.find(child => child.className === 'parameter-knob-number');
     cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); knob.setState({ isPending: true }); cap.dispatchEvent(event('keyup', { key: 'ArrowUp' }));
     expect(commits).to.have.length(0); expect(cancellations).to.include('unavailable'); expect(knob.inspect().gestureId).to.equal(null); expect(entry.readOnly).to.equal(true);
     knob.setState({ isPending: false }); cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); knob.setState({ isReadOnly: true }); cap.dispatchEvent(event('keyup', { key: 'ArrowUp' }));
@@ -71,7 +71,7 @@ describe('typed parameter control transactions', () => {
     const document = new TestDocument(), commits = [], previews = [], finishes = [];
     const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, momentary: true,
       commit: value => commits.push(value), preview: (value, meta) => previews.push([value, meta.phase]), onFinish: () => finishes.push(true) });
-    const cap = knob.element.children[1]; cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); cap.dispatchEvent(event('keyup', { key: 'ArrowUp' }));
+    const cap = knob.element.children.find(child => child.className === 'parameter-knob-cap'); cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); cap.dispatchEvent(event('keyup', { key: 'ArrowUp' }));
     expect(knob.inspect().draft).to.equal(0); expect(previews.at(-1)).to.deep.equal([0, 'return']); expect(commits).to.have.length(0);
     cap.dispatchEvent(event('pointerdown', { pointerId: 2, clientY: 160, pointerType: 'pen', pressure: 0.4 })); cap.dispatchEvent(event('pointerup', { pointerId: 2 }));
     expect(finishes).to.have.length(2); knob.dispose();

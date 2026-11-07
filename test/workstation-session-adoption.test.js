@@ -1,3 +1,4 @@
+import { captureCausalPerformanceState } from '../js/app/procgen/workstation/CausalPerformanceState.js';
 import { expect } from 'chai';
 import { setup } from './helpers/workstation-fixture.js';
 import { createTestBackgroundJobs } from './helpers/background-worker.js';
@@ -6,6 +7,7 @@ const replacement = fixture => {
   const session = fixture.studio.capture('Imported frontier');
   session.project.procgen.seed = 91; session.project.procgen.lanes[0].gain = 0.375;
   session.world.seed = 91; session.settings.seed = 91;
+  if (session.physicalState) session.physicalState = { ...session.physicalState, performanceInputs: captureCausalPerformanceState(session.project.procgen.lanes, session.project.procgen.actorTimbreLocks) };
   return session;
 };
 const expectAccepted = (fixture, session) => {

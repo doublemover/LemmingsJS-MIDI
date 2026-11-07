@@ -19,8 +19,10 @@ const readTerrainCell = (world, x, y) => {
   if (!world.terrain) base = world.baseGroundAt(x, y);
   else {
     const slot = lane * world._chunkSlots + (chunk & (world._chunkSlots - 1));
-    if (world._collisionIndices[slot] !== chunk || world.terrainGrowth?.stateFor(lane, chunk)) return { status: 'unknown', reason: 'unmaterialized-terrain' };
-    source = world._collisionSlots[slot]; if (!source?.solid || !source.steel) return { status: 'unknown', reason: 'source-mask-unavailable' };
+    if (world.terrainGrowth?.stateFor(lane, chunk)) return { status: 'unknown', reason: 'unmaterialized-terrain' };
+    source = world._collisionIndices[slot] === chunk ? world._collisionSlots[slot] : world.terrain.authored?.(world.laneSeeds[lane], chunk);
+    if (!source) return { status: 'unknown', reason: 'unmaterialized-terrain' };
+    if (!source?.solid || !source.steel) return { status: 'unknown', reason: 'source-mask-unavailable' };
     const index = localY * width + x % width; base = source.solid[index >>> 5] & (1 << (index & 31)) ? 1 : 0; steel = !!(source.steel[index >>> 5] & (1 << (index & 31)));
   }
   const edit = readPatchCell(world.editChunks, world._editKey(x, y), localY * 32 + x % 32);

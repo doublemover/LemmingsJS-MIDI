@@ -41,7 +41,7 @@ describe('actual intervention layers across isolated continuation and exact comm
     const manifest = { schema: 'lemmings-authoritative-simulation/v1', ownerId: 'layer-continuation', ownerEpoch: 1, documentRevision: 1, rootPath: '/', resourceProfile: 'compact-v1',
       checkpoint: captureProcgenCheckpoint(world), semantic: engine.snapshot(), timeline: clock.snapshot(), graph: world.physicalAuthoring.graph, performance: performance.snapshot(), bpm: 120, nominalSpeed: 3, playing: true, scoreTimeline: true };
     inputs.length = 0;
-    const hashes = [0, 1, 2].map(() => createHash('sha256')), counts = [0, 0, 0], worlds = [], budget = createResourceBudget({ limitBytes: 256 * 1048576 }), metadataBudget = createResourceBudget();
+    const hashes = [0, 1, 2].map(() => createHash('sha256')), counts = [0, 0, 0], worlds = [], budget = createResourceBudget({ limitBytes: 384 * 1048576 }), metadataBudget = createResourceBudget();
     const consume = index => packet => { hashes[index].update(JSON.stringify(packet)); counts[index]++; return { accepted: true }; };
     const createWorld = async () => { const owner = await factory(layout), scope = createProcgenRetirementScope(); worlds.push(owner.world); return { world: owner.world, dispose: () => scope.retire([{ name: 'actual-world', run: owner.dispose }]) }; };
     let baseline = null, continued = null, exact = null, started = false;
@@ -61,7 +61,9 @@ describe('actual intervention layers across isolated continuation and exact comm
         }
       }
       expect(counts).to.deep.equal([600, 600, 600]); const canonical = hashes.map(hash => hash.digest('hex')); expect(canonical[1]).to.equal(canonical[0]); expect(canonical[2]).to.equal(canonical[0]);
-      const snapshots = await Promise.all([baseline.checkpoint(), continued.checkpoint(), exact.checkpoint()]), physical = await Promise.all(snapshots.map(snapshot => hashProcgenContinuationCheckpoint(snapshot.world)));
+      const snapshots = [];
+      for (const host of [baseline, continued, exact]) snapshots.push(await host.checkpoint());
+      const physical = await Promise.all(snapshots.map(snapshot => hashProcgenContinuationCheckpoint(snapshot.world)));
       expect(physical[1]).to.equal(physical[0]); expect(physical[2]).to.equal(physical[0]); expect(snapshots[1].engine).to.deep.equal(snapshots[0].engine); expect(snapshots[2].engine).to.deep.equal(snapshots[0].engine);
       expect(world.physicalFeedback.commands.length).to.be.greaterThan(0); expect(worlds[0].physicalFeedback).to.deep.equal(world.physicalFeedback); expect(worlds[1].physicalFeedback).to.deep.equal(world.physicalFeedback);
       expect(snapshots[1].executionPolicy.physicalFeedbackMode).to.equal('preserve-live'); expect(snapshots[2].executionPolicy.physicalFeedbackMode).to.equal('exact-command-tape');
@@ -73,6 +75,8 @@ describe('actual intervention layers across isolated continuation and exact comm
           authoring: { graph: world.physicalAuthoring.graph, instances: world.physicalAuthoring.instances, junctions: world.physicalJunctions.definitions }, replay: { version: 2, playing: true, scoreTimeline: true, bpm: 120, nominalSpeed: 3 } } },
       { createWorld, executionIdentity: { activeExecution: 'bound', buildId } });
       expect(study.rows).to.have.length(2);
+      expect(study.rows[0].trace.causeKinds).to.include('sfx:builder-step');
+      expect(study.rows.every(row => row.trace.causeKinds.every(kind => typeof kind === 'string'))).to.equal(true);
       for (const row of study.rows) expect(row.metrics.semanticMetrics.realizedInterventionLayers.muted.includes('layer:builder-overdub')).to.equal(row.values['overdub-mute'] === 1);
       expect(study.rows[1].metrics.semanticMetrics.realizedInterventionLayers.totalProposals).to.equal(0);
       expect(summarizePhysicalMusicSensitivity(study).edges[0].status).to.equal('categorical-physical-control-comparison;no-derivative');

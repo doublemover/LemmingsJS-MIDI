@@ -66,7 +66,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     return receipt;
   };
   const prepareInstruments = config => {
-    if (!liveInstruments && !localInstrumentTracks(config).length) return Promise.resolve(true);
+    if (!localInstrumentTracks(config).length) return Promise.reject(new Error('Choose a local instrument or use native defaults before listening to the game.'));
     if (!liveInstruments) {
       if (instrumentRetirements.size >= 4) throw new Error('Earlier local instruments still retain their resources. Stop and resolve the previous output before preparing more.');
       const owner = createLiveLocalInstrumentSink({ audio, resourceBudget, isCurrent: () => !disposed && liveInstruments === owner,

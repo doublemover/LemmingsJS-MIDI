@@ -14,9 +14,14 @@ import { OwnedChoirKernel, OwnedChoirProcessor, CHOIR_WIDTH, CHOIR_VOICES } from
 import { OwnedPluckKernel, OwnedPluckProcessor, PLUCK_WIDTH, PLUCK_VOICES } from '../../js/app/midi-ui/worklet/OwnedPluckProcessor.js';
 import { OwnedSpectrumKernel, OwnedSpectrumProcessor, SPECTRUM_WIDTH, SPECTRUM_VOICES } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
 import { OwnedGranularKernel, OwnedGranularProcessor, GRANULAR_WIDTH, GRANULAR_VOICES } from '../../js/app/midi-ui/worklet/OwnedGranularProcessor.js';
+import { OWNED_STATE_CHUNK_BYTES } from '../../js/app/midi-ui/worklet/OwnedSineState.js';
 import { getOwnedSourceProfile } from '../../js/app/midi-ui/OwnedSourceProfiles.js';
 
 const expectReady = async work => { const result = await work; expect(result.status, result.reason).to.equal('ready'); return result; };
+const settleHostRetirement = async backend => {
+  for (let count = 0; count < 32; count++) { const value = backend.renderDiagnostics().retirement; if (!value || value.state === 'retired') return value; await new Promise(resolve => setImmediate(resolve)); }
+  throw new Error('The worklet host did not acknowledge retirement.');
+};
 const row = (opcode, frame, sequence, slot = 0, token = 1, values = {}) => {
   const data = new Array(WIDTH).fill(0);
   Object.assign(data, { 0: 1, 1: frame, 2: sequence, 3: opcode, 4: slot, 5: token, 6: 440, 7: 0.5,
@@ -157,10 +162,10 @@ const setupHost = (engineId = 'worklet-sine') => {
     'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, OwnedSpectrumProcessor] }[engineId];
   const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, OwnedGranularProcessor] : source;
   const nodes = [], contextListeners = new Set(); let contextState = 'running';
-  const context = { get state() { return contextState; }, set state(value) { contextState = value; for (const listener of contextListeners) listener(); },
+  const context = { createGain: () => ({ gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} }, connect() {}, disconnect() {} }), get state() { return contextState; }, set state(value) { contextState = value; for (const listener of contextListeners) listener(); },
     addEventListener: (type, listener) => { if (type === 'statechange') contextListeners.add(listener); }, removeEventListener: (type, listener) => { if (type === 'statechange') contextListeners.delete(listener); },
     sampleRate: 48000, currentTime: 0, audioWorklet: { async addModule() {} } };
-  const preview = { _generation: 0, _sessions: new Map([['owner', { generation: 0 }]]), _voices: new Set(), _semanticVoiceOwners: new Map(),
+  const preview = { _context: context, _audioResources: createAudioResourceLeases(), _generation: 0, _sessions: new Map([['owner', { generation: 0 }]]), _voices: new Set(), _semanticVoiceOwners: new Map(),
     _maxVoices: 64, _maxScheduledVoices: 96, _maxNoteSeconds: 8, _voiceSequence: 0, _nowMs: () => context.currentTime * 1000,
     _ownerReady: () => true, _workloadClass: () => 'live', getAudioContext: () => context, _channel: () => ({ gain: {} }), _captureMetadata: fields => fields,
     _intervalAdmission: createAudioIntervalAdmission({ maxIntervals: 97 }), _maxLiveScheduledVoices: 96, _workloadVoiceCount: workloadVoiceCount, _inspectVoiceInterval: inspectVoiceInterval, _inspectVoiceExtensions: () => ({ accepted: true }),
@@ -179,7 +184,7 @@ const setupHost = (engineId = 'worklet-sine') => {
         kernel.receiptCount = 0;
       }, render(frames, start = 0) { const result = render(kernel, frames, start); this.flush(); return result; } };
     nodes.push(node); queueMicrotask(() => node.port.onmessage?.({ data: { type: 'ready', protocol: PROTOCOL, engineId, engineVersion: 1,
-      ...actualSource[3].prototype.runtimeIdentity.call({ kernel }), maxVoices: kernel.maxVoices, ...(kernel.source?.bank ? { sourceBankHash: kernel.source.bank.hash } : {}), ...(granular ? { pcmBankHash: kernel.source.descriptor.bankHash } : {}),
+      ...actualSource[3].prototype.runtimeIdentity.call({ kernel }), stateTransferProtocol: 1, stateRestoreProtocol: 1, stateChunkBytes: OWNED_STATE_CHUNK_BYTES, maxStateBytes: 16 * 1048576, maxVoices: kernel.maxVoices, ...(kernel.source?.bank ? { sourceBankHash: kernel.source.bank.hash } : {}), ...(granular ? { pcmBankHash: kernel.source.descriptor.bankHash } : {}),
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: 48000, width: actualSource[1], capacity: 512 } })); return node;
   };
@@ -247,7 +252,7 @@ describe('Owned worklet host lifecycle', () => {
     const pin = () => { let active = true; return { ref, variant, buffer, isActive: () => active, retain: pin, release: () => { if (!active) return false; active = false; return true; } }; };
     patch.patch.sampleRefs = [{ id: 'source', sha256: ref.contentHash, bytes: ref.bytes, required: true }]; patch.patch.parameters.motionRequired = 0;
     const prepared = await backend.prepare(patch, [pin()]); expect(prepared.status).to.equal('ready'); expect(prepared.sourceBank.bankHash).to.match(/^[a-f0-9]{64}$/);
-    expect(preview._audioResources.diagnostics().consumerOwnedReservations).to.equal(2);
+    expect(preview._audioResources.diagnostics().consumerOwnedReservations).to.equal(3);
     const execution = backend.registerExecution({ executionEpoch: 'granular-source', generation: 1 }).execution;
     expect(backend.begin(intent('cloud'), 128, execution)).to.include({ status: 'accepted', stage: 'queued' }); await Promise.resolve(); const rendered = nodes[0].render(4096);
     expect(rendered.left.some(value => Math.abs(value) > 1e-5)).to.equal(true); expect(nodes[0].kernel.source.inspect().clouds[0].admittedGrains).to.be.greaterThan(0);
@@ -320,7 +325,7 @@ describe('Owned worklet host lifecycle', () => {
   it('fences a faulted incarnation while allowing its replacement to register the same label', async () => {
     const { backend, nodes, patch, intent } = setupHost(); await backend.prepare(patch);
     const old = backend.registerExecution({ executionEpoch: 'live', generation: 1 }).execution;
-    backend.begin(intent('same'), 100, old); nodes[0].onprocessorerror(); await backend.prepare(patch);
+    backend.begin(intent('same'), 100, old); nodes[0].onprocessorerror(); await settleHostRetirement(backend); await expectReady(backend.prepare(patch));
     const next = backend.registerExecution({ executionEpoch: 'live', generation: 1 }).execution;
     expect(backend.begin(intent('same'), 100, old).reason).to.equal('execution-retired');
     expect(backend.begin(intent('same'), 100, next).status).to.equal('accepted');
@@ -361,7 +366,8 @@ describe('Owned worklet host lifecycle', () => {
     const { backend, nodes, patch, intent, preview } = setupHost(); await backend.prepare(patch); backend.begin(intent('a'), 100);
     nodes[0].onprocessorerror(); expect(preview._voices.size).to.equal(0); expect(nodes[0].disconnected).to.equal(true);
     expect(backend.renderDiagnostics().readiness).to.equal('processor-error');
-    await expectReady(backend.prepare(patch)); expect(nodes).to.have.length(2);
+    expect((await backend.prepare(patch)).reason).to.equal('audio-retirement-pending');
+    await settleHostRetirement(backend); await expectReady(backend.prepare(patch)); expect(nodes).to.have.length(2);
     expect(backend.begin(intent('b'), 100).status).to.equal('accepted'); backend.dispose();
   });
   it('contains native teardown failure, closes independent leaves and retains uncertain runtime storage', async () => {
@@ -373,11 +379,11 @@ describe('Owned worklet host lifecycle', () => {
     nodes[0].port.close = () => { portCloses++; };
     nodes[0].onprocessorerror();
     expect(preview._voices.size).to.equal(0); expect(portCloses).to.equal(1); expect(disconnects).to.equal(1);
-    expect(backend.renderDiagnostics().retirement.outcome).to.equal('partial');
+    await settleHostRetirement(backend); expect(backend.renderDiagnostics().retirement.outcome).to.equal('partial');
     expect((await backend.prepare(patch)).reason).to.equal('audio-retirement-unknown');
     expect(preview._audioResources.retireOwner('owner').outcome).to.equal('partial');
     expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
-    backend.dispose(); expect(portCloses).to.equal(1); expect(disconnects).to.equal(1);
+    await backend.dispose().completion; expect(portCloses).to.equal(1); expect(disconnects).to.equal(1);
     context.state = 'closed'; preview._audioResources.confirmClosedContext(); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 
@@ -447,9 +453,9 @@ describe('Owned worklet host lifecycle', () => {
     context.audioWorklet.addModule = async () => {};
     await expectReady(backend.prepare(patch));
     backend.begin(intent('funded'), 100); await Promise.resolve();
-    expect(preview._audioResources.diagnostics().reservations).to.equal(2);
+    expect(preview._audioResources.diagnostics().reservations).to.equal(3);
     nodes[0].onprocessorerror();
-    expect(preview._voices.size).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    await settleHostRetirement(backend); expect(preview._voices.size).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
     backend.dispose();
   });
 });

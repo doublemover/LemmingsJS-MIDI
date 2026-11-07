@@ -6,6 +6,19 @@ const parameter = () => ({ events: [], setValueAtTime(value, time) { this.events
   cancelScheduledValues(time) { this.events = this.events.filter(event => event.time < time); } });
 
 describe('Smoothed audio parameters', () => {
+  it('admits future controls before onset without scheduling automation before the voice starts', () => {
+    const param = parameter(), curve = createSmoothedAudioParameter({ param, initialValue: 1, startTime: 1, smoothingSeconds: 0.1 });
+    expect(curve.insert(2, 1.2, 0)).to.equal(true); expect(curve.insert(0.5, 1.1, 0)).to.equal(true);
+    expect(curve.valueAt(1)).to.equal(1); expect(curve.valueAt(1.15)).to.be.closeTo(0.75, 1e-12);
+    expect(curve.valueAt(1.3)).to.be.closeTo(2, 1e-12); expect(param.events.every(event => event.time >= 1)).to.equal(true);
+    expect(curve.insert(1, 1.4, -1)).to.equal(false);
+  });
+  it('retains the restored cut boundary while a fresh curve permits pre-onset submission', () => {
+    const source = createSmoothedAudioParameter({ param: parameter(), initialValue: 1, startTime: 0 });
+    const restored = createSmoothedAudioParameter({ param: parameter(), initialValue: 1, startTime: 2 });
+    restored.restore(source.snapshot(1), 2);
+    expect(restored.insert(0.5, 3, 1.9)).to.equal(false); expect(restored.insert(0.5, 3, 2)).to.equal(true);
+  });
   it('reports queued future commands even when the latest declared target is neutral', () => {
     const curve = createSmoothedAudioParameter({ param: parameter(), initialValue: 0, startTime: 0, smoothingSeconds: 0 }); expect(curve.hasFutureEvents(0)).to.equal(false);
     curve.insert(1, 1, 0); curve.insert(0, 2, 0); expect(curve.valueAt(0)).to.equal(0); expect(curve.hasFutureEvents(0)).to.equal(true); expect(curve.hasFutureEvents(1.5)).to.equal(true); expect(curve.hasFutureEvents(2)).to.equal(false);

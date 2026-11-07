@@ -42,7 +42,7 @@ describe('authored work, path and formation practice scores (runtime qualificati
     f.world.enqueueIntervention({ id: 'release:' + revision, kind: 'set-release-gesture', origin: 'manual', target: { generation: f.world.generation }, parameters: { gesture } });
   };
   it('pins three distinct initial sources, manual policies, exact junction geometry and all five lesson manifests', async () => {
-    expect(lessons).to.have.length(5); const hashes = new Set();
+    expect(lessons).to.have.length(9); const hashes = new Set();
     for (const id of ['work-becomes-percussion', 'path-becomes-delay', 'crowd-becomes-harmony']) {
       const scene = score(id), origin = await library.origin(scene), recipe = origin.recipe; await verifyPerformanceSceneOrigin(origin, { sourceHash: h('b') }); hashes.add(await hashData(recipe.initialTerrainLayout));
       expect((await checkPerformanceSceneRequirements(scene, { resolveDependency: library.resolveDependency })).status).to.equal('ready'); expect(recipe.assistPolicy).to.equal('manual-only'); expect(recipe.initialReleaseGesture.finiteBurstCount).to.equal(scene.cost.lanes); expect(scene.initialTransport.playing).to.equal(false);

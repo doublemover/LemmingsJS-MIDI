@@ -8,6 +8,7 @@ import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createTestBackgroundJobs } from './helpers/background-worker.js';
 import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
 import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
 
@@ -127,7 +128,7 @@ describe('semantic causal take capture and reinterpretation', function() {
   });
 
   it('records mid-held boundary inventory without inventing a new source attack or future release', async () => {
-    const { journal } = setup(), masks = await loadProcgenMasks(), world = new ProcgenLaneWorld({ masks, assists: false });
+    const jobs = createTestBackgroundJobs(), { journal } = setup({ jobs }), masks = await loadProcgenMasks(), world = new ProcgenLaneWorld({ masks, assists: false });
     const mapping = graph('ActionEntered', { action: 'building' }), engine = createCausalMusicEngine({ getGraph: () => mapping });
     const actor = world.actors[0]; actor.setAction(world.actions[State.BUILDING]); actor.frameIndex = 8;
     world.soundEvents.onBatch.on(batch => engine.processBatch(batch)); world.step();
@@ -143,7 +144,7 @@ describe('semantic causal take capture and reinterpretation', function() {
       expect(manifest.stopBoundaryState.voices).to.have.length(1);
       const captured = await journal.query({ takeId: 'take:held', kinds: ['musical-intents'] });
       expect(captured.records.flatMap(record => record.payload.intents)).to.have.length(0);
-    } finally { world.soundEvents.onBatch.off(onBatch); world.dispose(); }
+    } finally { world.soundEvents.onBatch.off(onBatch); world.dispose(); jobs.dispose(); }
   });
 
   it('reports first divergent physical cause without discarding order or actor identity', () => {

@@ -28,11 +28,11 @@ describe('original tactile proof content', () => {
   });
   it('compiles twenty-four gesture zones with exact layer boundaries and stable event-owned alternates', async () => {
     const source = JSON.parse(await fs.readFile(new URL('../../content/sounds/tactile-contacts.json', import.meta.url), 'utf8'));
-    const descriptors = await describeNativeInstrumentEngines([{ engineId: 'native-sample', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
-    const compiled = await compileSoundContent(source, { targets: descriptors.map(descriptor => ({ descriptor })) }), entry = compiled.prepared.patches[0], patch = entry.definition;
+    const descriptors = await describeNativeInstrumentEngines(['native-sample', 'worklet-sample'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) })));
+    const compiled = await compileSoundContent(source, { targets: descriptors.map(descriptor => ({ descriptor })) }), entry = compiled.prepared.patches.find(value => value.definition.engineId === 'worklet-sample'), patch = entry.definition;
     expect(entry.state).to.equal('definition-admitted'); expect(patch.sampleRefs).to.have.length(8); expect(patch.sampleMap.zones).to.have.length(24);
     expect(patch.sampleMap.normalizationRef).to.equal(null);
-    const select = createSampleMapResolver(patch.sampleMap, patch.sampleRefs, { patchId: patch.id, patchRevision: patch.revision });
+    const select = createSampleMapResolver(patch.sampleMap, patch.sampleRefs, { patchId: patch.id, patchRevision: patch.revision, rendererProfile: patch.sampleMap.rendererProfile });
     const begin = { version: 1, kind: 'begin', voiceId: 'voice', onsetId: 'contact', worldId: 'world', generation: 7, actorId: 3,
       sampleKitId: 'kit', laneId: 0, pitch: { cents: 6000 }, velocity01: 0.5 };
     for (const gesture of patch.sampleMap.articulations) {

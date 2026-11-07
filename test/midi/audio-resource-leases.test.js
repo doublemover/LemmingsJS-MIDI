@@ -4,6 +4,17 @@ import { createAudioResourceLeases, releaseAudioResourceAfterRetirement, KERNEL_
 import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetirement.js';
 
 describe('Audio resource admission', () => {
+  it('reconciles unknown publication gates after context closure while retaining independent material (#1282)', () => {
+    const budget = createResourceBudget(), audio = createAudioResourceLeases({ resourceBudget: budget });
+    const publication = audio.reserve({ kind: 'renderer-publication-gates', owner: 'game', estimateBytes: 262144, consumerOwned: true });
+    const material = audio.reserve({ kind: 'decoded-pcm-f32', owner: 'material', bytes: 4096, consumerOwned: true });
+    publication.retainUnknown(new Error('native producer unconfirmed')); material.retainUnknown(new Error('material consumer unconfirmed'));
+    expect(audio.diagnostics().reservations).to.equal(2); expect(audio.retireOwner('game').outcome).to.equal('partial');
+    expect(audio.confirmClosedContext().outcome).to.equal('complete');
+    expect(audio.diagnostics()).to.include({ reservations: 1, exactBytes: 4096, estimatedBytes: 0 });
+    expect(material.releaseState()).to.equal('failed-or-unknown'); const remaining = budget.diagnostics().accountedBytes;
+    expect(audio.confirmClosedContext().outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(remaining);
+  });
   it('releases zero-byte declarations after their empty budget reservation is reconciled away', async () => {
     const budget = createResourceBudget(), audio = createAudioResourceLeases({ resourceBudget: budget });
     const empty = audio.reserve({ kind: 'empty-source-declaration', owner: 'offline', consumerOwned: true });

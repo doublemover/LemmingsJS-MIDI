@@ -64,6 +64,6 @@ describe('finite Builder-Miner contact scores (runtime/listening qualification d
       expect(modal[index].scene.id).to.equal(items[index].scene.id.replace('.dry-fm', '.dry-modal')); expect(modal[index].recipeHash).to.equal(items[index].recipeHash); expect(modal[index].scene.causalMappings).to.deep.equal(items[index].scene.causalMappings);
       for (const { reference } of modal[index].scene.patchRefs) { const parameters = reference.definition.parameters; expect(reference.engineRequirement.engineId).to.equal('native-modal'); expect(parameters.modeCount).to.equal(4); expect(parameters.bodyT60Seconds).to.be.greaterThan(0); for (let mode = 0; mode < 4; mode++) expect(parameters['mode' + mode + 'T60Scale']).to.be.greaterThan(0); expect(parameters.mode0GainA).not.to.equal(parameters.mode0GainB); }
     }
-    const library = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors: [...entries, descriptor] }) }); expect(library.registry.page({ limit: 64 }).rows.filter(row => row.id.startsWith('builder-miner.'))).to.have.length(6);
+    const library = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors: [...entries, descriptor] }) }); expect(library.registry.page({ limit: 64 }).rows.filter(row => row.id.startsWith('builder-miner.'))).to.have.length(12);
   });
 });

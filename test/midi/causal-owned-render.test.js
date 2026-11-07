@@ -84,7 +84,7 @@ describe('owned-source causal revoice rendering', function() {
         source: { packId: 'fixture.footprint', packVersion: '1.0.0', contentHash: 'b'.repeat(64), patchIdentity: definition.id + '@' + definition.revision, definitionHash, attribution: 'Direct source-footprint regression fixture.' } }, { yieldControl: async () => {} });
       expect(result.manifest.sourceTypedBytes).to.equal(getOwnedSourceProfile(engineId).sourceBytes({ sampleRate: 48000, pcm: null, voices: 2 }));
       const cropped = await renderCausalOwnedTake({ definition, descriptor, revoice: revoice(), pcm: null, sampleRate: 48000, startSeconds: 0.303, endSeconds: 1, restorationMode: 'owned-state-cut' }, { yieldControl: async () => {} });
-      expect(cropped.manifest.restoration.stateCut).to.include({ frame: 14544, mutableState: 'independent-staged-copy' });
+      expect(cropped.manifest.restoration.stateCut).to.include({ frame: 14544, mutableState: 'independent-staged-source-effects-and-body-memory' });
       expect(cropped.files[0].manifest.statistics.peak).to.be.greaterThan(0);
     }
   });
@@ -113,7 +113,7 @@ describe('owned-source causal revoice rendering', function() {
       expect(Buffer.from(pcm(restored.files[0]))).to.deep.equal(Buffer.from(pcm(full.files[0]).subarray(cutFrame * 8)));
       expect(Buffer.from(pcm(restored.files[1]))).to.deep.equal(Buffer.from(pcm(full.files[1]).subarray(cutFrame * 8)));
       expect(restored.manifest.restoration).to.include({ mode: 'forward-preroll-and-owned-state-cut', prerollFrames: cutFrame });
-      expect(restored.manifest.restoration.stateCut).to.include({ frame: cutFrame, mutableState: 'independent-staged-copy', plannerContinuation: 'same-admitted-immutable-intent-plan' });
+      expect(restored.manifest.restoration.stateCut).to.include({ frame: cutFrame, mutableState: 'independent-staged-source-effects-and-body-memory', plannerContinuation: 'bound-immutable-intent-plan-and-restored-future-control-frontier' });
       expect(restored.manifest.restoration.stateCut.stateHash).to.match(/^[a-f0-9]{64}$/);
     });
   }

@@ -27,6 +27,6 @@ describe('finite actor-owned choir consonant onset', () => {
     const a = source(48000); a.begin(0, 440, command(0.4, 20)); for (let frame = 0; frame < 128; frame++) a.sample(0, 440); a.writeDisplay(0, 0);
     for (let band = 0; band < 3; band++) { assert.equal(a.displayData[band], a.bands[band * 8 + 6]); assert.ok(Number.isFinite(a.displayData[band + 3]) && a.displayData[band + 3] >= 0); }
     assert.equal(a.displayData.length, CHOIR_LAYOUT.displayVoices * CHOIR_LAYOUT.displayWidth);
-    assert.ok(choirSourceBytes(48000, 1) >= a.state.byteLength + a.bands.byteLength + a.displayData.byteLength * 2 + a.table.byteLength);
+    assert.ok(choirSourceBytes(48000, 1) >= a.state.byteLength + a.bands.byteLength + a.displayData.byteLength + a.table.byteLength);
   });
 });

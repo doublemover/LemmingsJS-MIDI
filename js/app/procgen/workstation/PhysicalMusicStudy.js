@@ -18,6 +18,15 @@ import { validatePhysicalMusicGoal, enumeratePhysicalMusicCandidates, evaluatePh
 
 const MiB = 1048576, encoded = value => canonicalDataText(value, { maxBytes: 8 * MiB, maxNodes: 524288 }).text;
 const fail = (code, message) => { throw Object.assign(new Error(message), { code }); };
+const compactCorrespondence = async values => {
+  const dictionary = [], indices = [], lookup = new Map();
+  for (const value of values) {
+    const key = encoded(value); let index = lookup.get(key);
+    if (index === undefined) { index = dictionary.length; lookup.set(key, index); dictionary.push(value); }
+    indices.push(index);
+  }
+  return { schema: 'lemmings-physical-cause-dictionary/v1', count: values.length, sha256: await hashDataText(encoded(values)), dictionary, indices };
+};
 const live = actor => !actor.removed && !actor.disabled && !actor.failureReason && !actor.terminalReason;
 const inside = (actor, b) => actor.x >= b.x1 && actor.x < b.x2 && actor.y >= b.y1 && actor.y < b.y2;
 const boundaryOf = source => source.world.graph.owners.find(owner => owner.name === 'world').props;
@@ -70,7 +79,14 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
     comparisonPolicy = mode === 'comparison' ? physicalCounterfactualPolicy(input.comparisonPolicy || {}) : null;
   const budget = createResourceBudget({ limitBytes: estimatedPeakBytes }), storage = createOwnedResourceReservation({ budget, owner: 'physical-music-study', kind: 'bounded-source-trace-results-and-canonical-workspace', category: 'candidate', bytes: 80 * MiB }),
     cache = useCache ? createBranchPrefixCache({ resourceBudget: budget }) : null, candidateOrder = new Map(domain.candidates.map((candidate, index) => [candidate.id, index])), rows = [], started = now(),
-    work = { logicalTicks: 0, computedTicks: 0, restoredTicks: 0, restoreMs: 0, verificationTicks: 0, verificationMs: 0, candidateCount: 0 };
+    work = { logicalTicks: 0, computedTicks: 0, restoredTicks: 0, restoreMs: 0, verificationTicks: 0, verificationMs: 0, candidateCount: 0, retainedResultBytes: 2, retainedResultNodes: 1 };
+  const rowLimits = { maxBytes: mode === 'comparison' ? 2 * MiB : 262144, maxNodes: mode === 'comparison' ? 131072 : 32768 };
+  const resultNodeLimit = 1 + domain.candidates.length * rowLimits.maxNodes;
+  const retainRow = row => {
+    const inventory = canonicalDataText(row, rowLimits), bytes = work.retainedResultBytes + inventory.bytes.length + (rows.length ? 1 : 0), nodes = work.retainedResultNodes + inventory.nodes;
+    if (bytes > 4 * MiB || nodes > resultNodeLimit) fail('physical-study-report-capacity', 'Complete retained sample reports exceed their4MiB or composed row-node profile.');
+    rows.push(row); work.retainedResultBytes = bytes; work.retainedResultNodes = nodes;
+  };
   let constraints = null, selected = null, reference = null, timeout = false, logicalLimit = false, planningOwner = null, planningWorld = null, basePhysicalHash = null;
   const check = () => { signal?.throwIfAborted(); if (!current()) fail('physical-study-stale', 'The study source changed.'); };
   let sourceIdentity = null;
@@ -84,27 +100,29 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       if (trace.factCount > (goal.budgets.maximumFacts ?? 65536)) fail('physical-study-trace', 'The complete physical trace exceeds its admitted fact profile.');
       const causal = [];
       for (const fact of [...batch.facts, ...derived]) {
-        addUnique(trace.causeKinds, fact.kind);
-        if (fact.kind === 'MotionCommitted') { let distance = trace.actorDisplacements.find(value => value.actorId === fact.actorId);
+        const kind = typeof fact.kind === 'string' && fact.kind ? fact.kind : typeof fact.type === 'string' && fact.type ? 'sfx:' + fact.type : null;
+        if (!kind) fail('physical-study-trace', 'A source fact needs its physical or SFX discriminator.');
+        addUnique(trace.causeKinds, kind);
+        if (kind === 'MotionCommitted') { let distance = trace.actorDisplacements.find(value => value.actorId === fact.actorId);
           if (!distance) { if (trace.actorDisplacements.length >= 64) fail('physical-study-trace', 'Actual motion tracking exceeds the64-actor study profile.'); distance = { actorId: fact.actorId, accumulatedEndpointPixels: 0, knownMotions: 0, unknownMotions: 0, evidenceKinds: [] }; trace.actorDisplacements.push(distance); }
           if (Number.isFinite(fact.physicalPayload?.displacementPixels) && fact.physicalPayload.displacementPixels >= 0) { distance.accumulatedEndpointPixels += fact.physicalPayload.displacementPixels; distance.knownMotions++; addUnique(distance.evidenceKinds, fact.physicalPayload.pathEvidence || 'unspecified'); } else distance.unknownMotions++;
         }
-        if (fact.kind !== 'MotionCommitted') causal.push([fact.kind, fact.actorId ?? null, fact.laneId ?? null, fact.action ?? null, fact.causeKind ?? null, fact.reason ?? null, fact.junctionId ?? null, fact.topologyBinding?.componentId ?? null, fact.gateId ?? null, fact.motifId ?? null, fact.routeId ?? null, fact.direction ?? null]);
-        if (['CommandRejected', 'CommandWaiting', 'BirthAdmitted', 'BirthAdmissionMissed', 'ActorBorn', 'ActorRemoved', 'GenerationEnded', 'JunctionExpired'].includes(fact.kind)) {
+        if (kind !== 'MotionCommitted') causal.push([kind, fact.actorId ?? fact.lemmingId ?? null, fact.laneId ?? fact.laneIndex ?? null, fact.action ?? null, fact.causeKind ?? null, fact.reason ?? null, fact.junctionId ?? null, fact.topologyBinding?.componentId ?? null, fact.gateId ?? null, fact.motifId ?? null, fact.routeId ?? null, fact.direction ?? null]);
+        if (['CommandRejected', 'CommandWaiting', 'BirthAdmitted', 'BirthAdmissionMissed', 'ActorBorn', 'ActorRemoved', 'GenerationEnded', 'JunctionExpired'].includes(kind)) {
           if (trace.discontinuities.length >= 1024) fail('physical-study-trace', 'Discontinuity trace exceeds its complete admitted profile.');
-          trace.discontinuities.push({ tick: batch.tick - start.tickIndex, kind: fact.kind, actorId: fact.actorId ?? null, commandId: fact.commandId ?? null, reason: fact.reason ?? null });
+          trace.discontinuities.push({ tick: batch.tick - start.tickIndex, kind: kind, actorId: fact.actorId ?? fact.lemmingId ?? null, commandId: fact.commandId ?? null, reason: fact.reason ?? null });
         }
-        if (mode === 'comparison' && fact.kind !== 'MotionCommitted') {
+        if (mode === 'comparison' && kind !== 'MotionCommitted') {
           if (trace.causeObservations.length >= 8192) fail('physical-study-trace', 'The complete compared-cause trace exceeds its8192-observation profile.');
-          trace.causeObservations.push({ tick: batch.tick - start.tickIndex, kind: fact.kind, actorId: fact.actorId ?? null, identity: causal.at(-1), eventId: fact.observationId || fact.eventId || null,
+          trace.causeObservations.push({ tick: batch.tick - start.tickIndex, kind: kind, actorId: fact.actorId ?? fact.lemmingId ?? null, identity: causal.at(-1), eventId: fact.observationId || fact.eventId || null,
             position: fact.positionAfter || fact.position || null, sourceEventIds: fact.sourceEventIds || (fact.eventId ? [fact.eventId] : []) });
         }
-        if (fact.kind === 'ActorBorn') trace.births++; if (fact.kind === 'ActorTerminated') trace.terminations++;
-        if (['MotifCompleted', 'RestStarted', 'RestEnded'].includes(fact.kind)) { const collection = fact.kind === 'MotifCompleted' ? trace.motifOccurrences : trace.restObservations;
+        if (kind === 'ActorBorn') trace.births++; if (kind === 'ActorTerminated') trace.terminations++;
+        if (['MotifCompleted', 'RestStarted', 'RestEnded'].includes(kind)) { const collection = kind === 'MotifCompleted' ? trace.motifOccurrences : trace.restObservations;
           if (collection.length >= 512) fail('physical-study-trace', 'Complete motif/rest observations exceed the admitted study profile.');
-          collection.push({ kind: fact.kind, tick: batch.tick - start.tickIndex, motifId: fact.motifId ?? null, actorId: fact.actorId ?? null, sourceEventIds: fact.sourceEventIds || (fact.eventId ? [fact.eventId] : []) });
+          collection.push({ kind: kind, tick: batch.tick - start.tickIndex, motifId: fact.motifId ?? null, actorId: fact.actorId ?? fact.lemmingId ?? null, sourceEventIds: fact.sourceEventIds || (fact.eventId ? [fact.eventId] : []) });
         }
-        if (fact.kind === 'CommandRejected') addUnique(trace.rejectedInputs, fact.commandId);
+        if (kind === 'CommandRejected') addUnique(trace.rejectedInputs, fact.commandId);
       }
       if (causal.length) trace.correspondence.push(...causal);
       for (const intent of value.intents) { const key = JSON.stringify([intent.worldId, intent.generation, intent.voiceId]);
@@ -198,11 +216,10 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       check(); if (goal.budgets.wallTimeMs != null && now() - started >= goal.budgets.wallTimeMs) { timeout = true; break; }
       if (work.logicalTicks + goal.horizon > goal.budgets.logicalTicks) { logicalLimit = true; break; }
       work.logicalTicks += goal.horizon; work.candidateCount++;
-      try { const row = await run(candidate), retained = { ...row, appliedInitial: null, auditionInitial: null, inputs: null };
-        canonicalDataText(retained, { maxBytes: mode === 'comparison' ? 2 * MiB : 262144, maxNodes: mode === 'comparison' ? 131072 : 32768 });
-        if (canonicalDataText([...rows, retained], { maxBytes: 4 * MiB, maxNodes: mode === 'comparison' ? 393216 : 262144 }).bytes.length > 4 * MiB) fail('physical-study-trace', 'Complete retained sample reports exceed the4MiB profile.');
-        rows.push(retained); }
-      catch (error) { check(); if (error.code === 'physical-study-retirement' || !constraints) throw error; rows.push({ id: candidate.id, reference: candidate.reference === true, values: candidate.values, edits: candidate.edits, status: 'unknown', reason: error.message }); }
+      try { const row = await run(candidate), retained = { ...row, trace: { ...row.trace, correspondence: await compactCorrespondence(row.trace.correspondence) }, appliedInitial: null, auditionInitial: null, inputs: null };
+        retainRow(retained); }
+      catch (error) { check(); if (['physical-study-retirement', 'physical-study-report-capacity'].includes(error.code) || !constraints) throw error;
+        retainRow({ id: candidate.id, reference: candidate.reference === true, values: candidate.values, edits: candidate.edits, status: 'unknown', reason: error.message }); }
       onProgress({ phase: mode === 'comparison' ? 'comparing-original-and-proposed-real-futures' : mode === 'search' ? 'searching-real-physical-candidates' : 'sampling-real-physical-sensitivity', completed: rows.length, total: domain.candidates.length, logicalTicks: work.logicalTicks, computedTicks: work.computedTicks,
         partial: { status: 'completed-samples-only;no-fresh-qualification', goal, mode, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, seed: source.world.seed, physicalHash: basePhysicalHash, projectRevision: input.projectRevision }, completed: rows.length, totalCombinations: domain.totalCombinations, omittedEarlierSamples: Math.max(0, rows.length - 16),
           baseContinuationHash: sourceIdentity.baseContinuationHash, mappingHash: sourceIdentity.mappingHash,

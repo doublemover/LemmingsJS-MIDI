@@ -1629,9 +1629,14 @@
           "targets": [
             {
               "parameter": "attackSeconds",
-              "unit": "s",
-              "minimum": 0.001,
-              "maximum": 0.02,
+              "minimum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.02,
+                "unit": "s"
+              },
               "curve": "linear",
               "composition": "replace",
               "clamp": true
@@ -1648,9 +1653,14 @@
           "targets": [
             {
               "parameter": "gain01",
-              "unit": "amplitude-linear",
-              "minimum": 0.2,
-              "maximum": 0.9,
+              "minimum": {
+                "value": 0.2,
+                "unit": "amplitude-linear"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "amplitude-linear"
+              },
               "curve": "linear",
               "composition": "replace",
               "clamp": true
@@ -1667,9 +1677,14 @@
           "targets": [
             {
               "parameter": "pan01",
-              "unit": "normalized",
-              "minimum": -1,
-              "maximum": 1,
+              "minimum": {
+                "value": -1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
               "curve": "linear",
               "composition": "replace",
               "clamp": true
@@ -1686,9 +1701,14 @@
           "targets": [
             {
               "parameter": "releaseSeconds",
-              "unit": "s",
-              "minimum": 0.192,
-              "maximum": 0.002,
+              "minimum": {
+                "value": 0.192,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.002,
+                "unit": "s"
+              },
               "curve": "linear",
               "composition": "replace",
               "clamp": true

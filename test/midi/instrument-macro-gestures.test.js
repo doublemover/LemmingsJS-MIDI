@@ -11,7 +11,7 @@ const fixture = () => {
 describe('bounded physical-onset macro gesture owner', () => {
   it('refuses gestures against opaque future patch metadata before interpreting it', () => {
     const f = fixture(); f.change({ instrumentRef: { ...f.lane().instrumentRef, definition: { schemaVersion: 99, macros: { futureOnly: true } } } });
-    expect(() => f.owner.begin(f.lane().id, 'a')).to.throw('Only admitted onset-sampled macros'); expect(f.commits).to.have.length(0); f.owner.dispose();
+    expect(() => f.owner.begin(f.lane().id, 'a')).to.throw('no admitted macro target'); expect(f.commits).to.have.length(0); f.owner.dispose();
   });
   it('coalesces rapid reversals to one canonical gesture without a preset or physical mutation during preview', () => {
     const f = fixture(), initial = f.lane(), handle = f.owner.begin(initial.id, 'a');
@@ -71,7 +71,7 @@ describe('bounded physical-onset macro gesture owner', () => {
     f.owner.finish(h); record([f.lane()]); expect(replay.snapshot()).to.deep.equal(captureCausalPerformanceState([f.lane()])); f.owner.dispose();
   });
   it('exposes unsupported continuous macro modes rather than decorative movement', () => {
-    const f = fixture(); f.change({ instrumentRef: { ...f.lane().instrumentRef, definition: { schemaVersion: 2, macros: [{ id: 'live', default01: 0.5, mode: 'continuous' }] } } });
-    expect(() => f.owner.begin(f.lane().id, 'live')).to.throw('unsupported'); f.owner.dispose();
+    const f = fixture(); f.change({ instrumentRef: { ...f.lane().instrumentRef, definition: { schemaVersion: 2, macros: [{ id: 'live', default01: 0.5, mode: 'unsupported-future-mode' }] } } });
+    expect(() => f.owner.begin(f.lane().id, 'live')).to.throw('no admitted macro target'); f.owner.dispose();
   });
 });

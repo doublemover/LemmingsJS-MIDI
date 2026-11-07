@@ -24,7 +24,7 @@ describe('owned deterministic granular source', () => {
       expect(kernel.nonfinite).to.equal(0); expect(kernel.source.inspect().activeGrains).to.be.at.most(128); return { kernel, output };
     };
     const a = render(64), b = render(257); expect([...a.output]).to.deep.equal([...b.output]); expect(a.kernel.source.inspect()).to.deep.equal(b.kernel.source.inspect());
-    const source = a.kernel.source; expect(source.state.byteLength + source.grains.byteLength + source.window.byteLength + source.displayData.byteLength * 2).to.equal(granularSourceBytes(48000));
+    const source = a.kernel.source; expect(source.state.byteLength + source.grains.byteLength + source.window.byteLength + source.displayData.byteLength).to.equal(granularSourceBytes(48000));
     expect(source.inspect().clouds[0].admittedGrains).to.be.greaterThan(1); expect(a.output.some(value => Math.abs(value) > 1e-5)).to.equal(true);
   });
   it('preserves antiphase stereo and measures pre-pan energy without reducing it to an inaudible mono sum', () => {

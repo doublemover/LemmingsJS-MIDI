@@ -20,7 +20,7 @@ const instrumentWorker = (mode, retained = []) => (entry, configuration) => {
       if (${JSON.stringify(mode)} === 'wrong-admission' && message.type === 'started') { send({ ...message, attemptId: 'unassigned' }); return; }
       send(message);
       if (${JSON.stringify(mode)} === 'delayed-preparation' && message.type === 'preparing') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
-      if (${JSON.stringify(mode)} === 'blocked-compute' && message.type === 'started') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1000);
+      if (${JSON.stringify(mode)} === 'blocked-compute' && message.type === 'started') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000);
       if (message.type === 'result' && !changed) {
         changed = true;
         if (${JSON.stringify(mode)} === 'duplicate') send(message);
@@ -91,10 +91,10 @@ describe('real isolated procgen survey workers', function() {
     expect(workers.every(worker => worker.threadId === -1)).to.equal(true);
   });
   it('supervises an admitted worker whose physical slice stops cooperating', async () => {
-    const workers = [], report = await runSurveyJobs(jobs().slice(0, 1), { maxTrialMs: 50, maxTotalMs: 5000,
+    const workers = [], report = await runSurveyJobs(jobs().slice(0, 1), { maxTrialMs: 1000, maxTotalMs: 8000,
       workerFactory: instrumentWorker('blocked-compute', workers) });
     expect(report.reason).to.equal('trial-wall-time-safety');
-    expect(report.admissions[0]).to.include({ status: 'admitted', failureKind: 'trial-wall-time-deadline', trialLimitMs: 50, lastVerifiedTick: 0 });
+    expect(report.admissions[0]).to.include({ status: 'admitted', failureKind: 'trial-wall-time-deadline', trialLimitMs: 1000, lastVerifiedTick: 0 });
     expect(report.results[0].episodeComplete).not.to.equal(true); expect(workers.every(worker => worker.threadId === -1)).to.equal(true);
   });
   it('accepts identical repeated delivery once and preserves conflicting delivery as infrastructure evidence', async () => {

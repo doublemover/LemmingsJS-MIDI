@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { loadLocalInstrumentFixture, localInstrumentFixture } from '../helpers/local-instrument-fixture.js';
 import { createMidiOutputCapture } from '../../js/midi/capture/MidiOutputCapture.js';
 import { analyzeMidiOutputCapture, formatMidiCaptureSummary, renderMidiCaptureReport } from '../../js/midi/capture/MidiCaptureAnalysis.js';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
@@ -15,7 +16,7 @@ const capturing = clock => { const capture = createMidiOutputCapture({ capacity:
 const param = () => ({ value: 1, setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} });
 const node = () => ({ connect() {}, disconnect() {}, gain: param(), pan: param() });
 const audioContext = clock => ({
-  state: 'running', get currentTime() { return clock.now / 1000; }, destination: {},
+  state: 'running', sampleRate: 48000, get currentTime() { return clock.now / 1000; }, destination: {},
   createGain: node, createStereoPanner: node, createWaveShaper: node,
   createOscillator() {
     const oscillator = { ...node(), frequency: param(), detune: param(), start() {}, onended: null, timer: null,
@@ -26,6 +27,7 @@ const audioContext = clock => ({
 });
 
 describe('bounded MIDI output capture', function() {
+  before(loadLocalInstrumentFixture);
   it('merges capture context without losing field priority or retaining mutable input', function() {
     const defaults = { scaleRoot: 0, scaleDegrees: [0, 2, 4], scaleName: 'major' };
     const fields = Object.assign(Object.fromEntries(Array.from({ length: 80 }, (_, index) => ['extra' + index, index])),
@@ -149,12 +151,12 @@ describe('bounded MIDI output capture', function() {
 
   it('keeps a planned audition scale context after later project edits', async function() {
     await withFakeClockAndPerformance(async clock => {
-      const capture = capturing(clock), preview = createBrowserNotePreview({ createAudioContext: () => audioContext(clock), nowMs: () => clock.now });
+      const capture = capturing(clock), preview = createBrowserNotePreview({ getInstrumentCatalog: async () => localInstrumentFixture().catalog, createAudioContext: () => audioContext(clock), nowMs: () => clock.now });
       let context = { scaleRoot: 0, scaleDegrees: [0, 2, 4, 5, 7, 9, 11], generation: 1 };
       preview.setCapture(capture, () => context);
-      await preview.preview([{ note: 60, offsetMs: 0, durationMs: 200 }, { note: 64, offsetMs: 10000, durationMs: 200 }]);
+      await preview.preview([{ note: 60, offsetMs: 0, durationMs: 200 }, { note: 64, offsetMs: 4000, durationMs: 200 }].map(note => ({ ...note, instrumentRef: localInstrumentFixture().reference })));
       context = { scaleRoot: 1, scaleDegrees: [0, 2, 4, 5, 7, 9, 11], generation: 2 };
-      await clock.tickAsync(11000);
+      await clock.tickAsync(5000);
       const snapshot = capture.snapshot(), report = analyzeMidiOutputCapture(snapshot);
       expect(snapshot.records.filter(record => record.stage === 'synth-scheduled').map(record => record.scaleRoot)).to.deep.equal([0, 0]);
       expect(report.outsideScale).to.equal(0);
@@ -258,10 +260,10 @@ describe('bounded MIDI output capture', function() {
       context.sampleRate = 48000;
       let analysers = 0;
       context.createAnalyser = () => { analysers += 1; return { ...node(), getFloatTimeDomainData(samples) { samples.fill(0.02); } }; };
-      const preview = createBrowserNotePreview({ createAudioContext: () => context, nowMs: () => clock.now });
+      const preview = createBrowserNotePreview({ getInstrumentCatalog: async () => localInstrumentFixture().catalog, createAudioContext: () => context, nowMs: () => clock.now });
       preview.setCapture(capture);
       expect(preview.inspectRender()).to.equal(null); expect(analysers).to.equal(0);
-      await preview.preview([{ note: 60, durationMs: 200 }]);
+      await preview.preview([{ note: 60, durationMs: 200, instrumentRef: localInstrumentFixture().reference }]);
       const voices = preview.getState().activeVoices;
       const sample = preview.inspectRender(); preview.inspectRender();
       expect(sample).to.include({ sampleRate: 48000, frames: 2048, acousticReceipt: false, localMasterGain: 0.7 });
@@ -273,21 +275,23 @@ describe('bounded MIDI output capture', function() {
     });
   });
 
-  it('observes all 16 long-audition notes and cancellation in the existing incremental queue', async function() {
+  it('observes all sixteen prepared semantic voices and retires their future schedules on Stop', async function() {
     await withFakeClockAndPerformance(async clock => {
-      const capture = capturing(clock), preview = createBrowserNotePreview({ createAudioContext: () => audioContext(clock), nowMs: () => clock.now });
+      const capture = capturing(clock), preview = createBrowserNotePreview({ getInstrumentCatalog: async () => localInstrumentFixture().catalog, createAudioContext: () => audioContext(clock), nowMs: () => clock.now });
       preview.setCapture(capture);
-      const notes = Array.from({ length: 16 }, (_, index) => ({ note: 60 + index % 7, offsetMs: index * 960, durationMs: 200 }));
+      const notes = Array.from({ length: 16 }, (_, index) => ({ note: 60 + index % 7, offsetMs: index * 240, durationMs: 200, instrumentRef: localInstrumentFixture().reference }));
       expect(await preview.preview(notes)).to.equal(true);
-      await clock.tickAsync(15200);
+      await clock.tickAsync(4200);
       let snapshot = capture.snapshot(), report = analyzeMidiOutputCapture(snapshot);
-      expect(report.requests).to.equal(16); expect(report.noteOns).to.equal(16);
+      expect(report.apiMessages).to.deep.equal([]); expect(report.noteOns).to.equal(0);
       expect(report.synthSchedules).to.equal(16); expect(report.synthEnds).to.equal(16);
-      expect(report.notes.every(note => note.durationMs === 200)).to.equal(true);
+      const scheduled = snapshot.records.filter(record => record.stage === 'synth-scheduled');
+      expect(scheduled.every(record => record.patchId === localInstrumentFixture().reference.patchId)).to.equal(true);
       expect(snapshot.records.filter(record => record.stage === 'synth-scheduled').every(record => record.audioTime >= 0)).to.equal(true);
       await preview.preview(notes); preview.stop(); await clock.tickAsync(16000);
       snapshot = capture.snapshot();
-      expect(snapshot.records.some(record => record.stage === 'cancelled' && record.reason === 'audition-stop')).to.equal(true);
+      expect(preview.getState().activeVoices).to.equal(0);
+      expect(snapshot.records.filter(record => record.stage === 'synth-end')).to.have.length(32);
       const afterStop = snapshot.records.filter(record => record.stage === 'synth-scheduled').length;
       await clock.tickAsync(1000);
       expect(capture.snapshot().records.filter(record => record.stage === 'synth-scheduled')).to.have.length(afterStop);

@@ -3,10 +3,10 @@ import { getMidiAutomationTargetInfo } from '../../js/app/midi-ui/midiAutomation
 import { applyMidiAutomationSpanValues } from '../../js/midi/midi-mapping/MidiAutomationSpanValues.js';
 describe('truthful automation output targets', () => {
   it('labels controller and note-off behavior by backend without pretending to change synth envelopes', () => {
-    expect(getMidiAutomationTargetInfo('timbre', 'synth').label).to.include('ignored by synth');
+    expect(getMidiAutomationTargetInfo('timbre', 'synth').label).to.include('external MIDI only');
     expect(getMidiAutomationTargetInfo('timbre', 'midi').help).to.include('response depends on the device');
-    expect(getMidiAutomationTargetInfo('timbre', 'synth', 7).help).to.include('channel volume');
-    expect(getMidiAutomationTargetInfo('release', 'synth').help).to.include('ignores note-off velocity');
+    expect(getMidiAutomationTargetInfo('timbre', 'synth', 7).help).to.include('not a local tone or channel control');
+    expect(getMidiAutomationTargetInfo('release', 'synth').help).to.include('does not map MIDI note-off velocity');
     expect(getMidiAutomationTargetInfo('release', 'midi').help).to.include('may respond');
     expect(getMidiAutomationTargetInfo('attack').label).to.equal('Attack strength');
     expect(getMidiAutomationTargetInfo('sustain').help).to.include('gate duration');

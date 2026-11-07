@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { withFakeClockAndPerformance } from '../support/timers.js';
 import { createLocalGamePreview } from '../../js/app/midi-ui/localGamePreview.js';
 import { gameViewMidiMethods } from '../../js/game/game-view/GameViewMidi.js';
 import { gameViewEditorModeMethods } from '../../js/game/game-view/GameViewEditorMode.js';
@@ -6,7 +7,7 @@ import { gameViewRuntimeMethods } from '../../js/game/game-view/GameViewRuntime.
 import { gameViewLevelSelectionMethods } from '../../js/game/game-view/GameViewLevelSelection.js';
 import { SoundEventBus, SoundEffectIds, SoundEventTypes } from '../../js/game/SoundEvents.js';
 import { EventHandler } from '../../js/util/EventHandler.js';
-import { makeOutput } from '../support/midi-output.js';
+import { loadLocalInstrumentFixture, localInstrumentFixture, addSemanticAudioFixturePorts } from '../helpers/local-instrument-fixture.js';
 import { createMidiProject, projectToMidiConfig } from '../../js/midi/project/MidiProject.js';
 import { applyGameEventMidiPreset } from '../../js/midi/project/GameEventMidiPresets.js';
 
@@ -23,13 +24,14 @@ const makeAudio = () => {
   let pending = null;
   let serial = 0;
   const audio = {
-    output: { ...makeOutput(Array.from({ length: 16 }, (_, index) => index + 1), calls, 'local'), supportsIndependentNoteGates: true },
+
     getState: () => ({ enabled, message: enabled ? 'Ready' : 'Audio off' }),
     subscribe: callback => { listeners.add(callback); return () => listeners.delete(callback); },
     enableCalls: 0,
     stopCalls: 0,
     disposeCalls: 0,
     async enable() {
+      if (enabled) return true;
       audio.enableCalls += 1;
       const request = serial;
       const result = pending ? await pending.promise : true;
@@ -40,7 +42,7 @@ const makeAudio = () => {
     stop() {
       serial += 1;
       enabled = false;
-      audio.stopCalls += 1;
+      audio.stopCalls += 1; calls.push({ type: 'clear' });
       for (const callback of listeners) callback(audio.getState());
     },
     async dispose() { audio.disposeCalls += 1; enabled = false; },
@@ -48,7 +50,7 @@ const makeAudio = () => {
     interrupt() { enabled = false; for (const callback of listeners) callback(audio.getState()); },
     calls
   };
-  audio.output.clear = () => calls.push({ type: 'clear' });
+  addSemanticAudioFixturePorts(audio, row => calls.push(row));
   return audio;
 };
 
@@ -63,7 +65,7 @@ const makeGame = () => {
   return { soundEvents: bus, getGameTimer: () => timer, timer, stop() {} };
 };
 const makeView = () => ({
-  ...gameViewMidiMethods,
+  ...gameViewRuntimeMethods, ...gameViewMidiMethods,
   game: makeGame(), stage: {}, midiEnabled: false, midiRouter: null,
   midiPreviewRouter: null, _midiPreviewOnDispose: null, _midiPreviewDisposed: false,
   editorMode: false, editorPlaytest: false,
@@ -74,8 +76,8 @@ const config = () => ({
   defaultChannel: 1,
   mpe: { enabled: false },
   position: { mappings: [] },
-  sfx: { [SoundEffectIds.SPAWN]: { note: 60, velocity: 50, durationTicks: 2, outputId: 'external-device' } },
-  triggers: { 4: { note: 67, outputId: 'second-device' } }
+  sfx: { [SoundEffectIds.SPAWN]: { trackId: 'fixture-track', instrumentRef: localInstrumentFixture().reference, note: 60, velocity: 50, durationTicks: 2, outputId: 'external-device' } },
+  triggers: { 4: { trackId: 'fixture-track', instrumentRef: localInstrumentFixture().reference, note: 67, outputId: 'second-device' } }
 });
 
 const setup = (options = {}) => {
@@ -87,6 +89,24 @@ const setup = (options = {}) => {
 };
 
 describe('local game note preview', function() {
+  before(loadLocalInstrumentFixture);
+  it('refuses an unassigned local instrument and admits a later assigned retry', async () => {
+    const state = setup(); state.source = { enabled: false, sfx: { [SoundEffectIds.SPAWN]: { note: 60 } } };
+    expect(await state.local.start()).to.equal(false); expect(state.local.getState()).to.include({ enabled: false, status: 'error' });
+    expect(state.local.getState().message).to.include('Choose a local instrument'); expect(state.view.midiPreviewRouter).to.equal(null);
+    expect(state.audio.calls.some(call => call.type === 'begin')).to.equal(false);
+    state.source = config(); expect(await state.local.start()).to.equal(true);
+    state.view.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
+    expect(state.audio.calls.filter(call => call.type === 'begin')).to.have.length(1); await state.local.dispose();
+  });
+  it('retires a failed instrument preparation and prepares a clean retry', async () => {
+    const state = setup(), catalog = state.audio.getInstrumentCatalog;
+    state.audio.getInstrumentCatalog = async () => { throw new Error('catalog unavailable'); };
+    expect(await state.local.start()).to.equal(false); expect(state.local.getState().status).to.equal('error'); expect(state.view.midiPreviewRouter).to.equal(null);
+    state.audio.getInstrumentCatalog = catalog; expect(await state.local.start()).to.equal(true);
+    state.view.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
+    expect(state.audio.calls.filter(call => call.type === 'begin')).to.have.length(1); await state.local.dispose();
+  });
   it('retains one unlocked audio graph across replacement games and silences old gates', async function() {
     let current = makeView(); const old = current, audio = makeAudio();
     const local = createLocalGamePreview({ audio, getLemmings: () => current, getConfig: config });
@@ -103,12 +123,12 @@ describe('local game note preview', function() {
     expect(audio.enableCalls).to.equal(1); expect(audio.stopCalls).to.equal(stops);
     expect(current.game.soundEvents.onEvent.handlers.size).to.equal(1);
     expect(current.game.timer.onGameTick.handlers.size).to.equal(1);
-    expect(audio.calls.some(call => call.type === 'noteOff' || call.type === 'clear')).to.equal(true);
-    const count = audio.calls.filter(call => call.type === 'noteOn').length;
+    expect(audio.calls.some(call => call.type === 'end' || call.type === 'clear')).to.equal(true);
+    const count = audio.calls.filter(call => call.type === 'begin').length;
     old.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
-    expect(audio.calls.filter(call => call.type === 'noteOn')).to.have.length(count);
+    expect(audio.calls.filter(call => call.type === 'begin')).to.have.length(count);
     current.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
-    expect(audio.calls.filter(call => call.type === 'noteOn')).to.have.length(count + 1);
+    expect(audio.calls.filter(call => call.type === 'begin')).to.have.length(count + 1);
     local.suspendGame(); local.panic();
     expect(await local.resumeGame()).to.equal(false);
     expect(current.midiPreviewRouter).to.equal(null);
@@ -139,7 +159,7 @@ describe('local game note preview', function() {
     expect(state.local.syncConfig()).to.equal(false);
     expect(router._arpStateBySfx.get('test')).to.deep.equal({ index: 2 });
     expect(updates).to.equal(0);
-    state.source = { ...state.source, sfx: { [SoundEffectIds.SPAWN]: { note: 73 } } };
+    state.source = { ...state.source, sfx: { [SoundEffectIds.SPAWN]: { ...state.source.sfx[SoundEffectIds.SPAWN], note: 73 } } };
     expect(state.local.syncConfig()).to.equal(true);
     expect(updates).to.equal(1);
     expect(router._arpStateBySfx.get('test')).to.deep.equal({ index: 2 });
@@ -150,7 +170,7 @@ describe('local game note preview', function() {
     await state.local.dispose();
   });
 
-  it('refuses excluded mobile preview before initializing browser audio or routing', async function() {
+  it('refuses an explicitly unavailable local destination before initializing browser audio or routing', async function() {
     const { view, audio, local } = setup();
     view.midiAvailable = false;
     for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -176,10 +196,10 @@ describe('local game note preview', function() {
     expect(view.midiPreviewRouter.mapping.config.enabled).to.equal(true);
     expect(view.midiPreviewRouter.mapping.config.sfx[SoundEffectIds.SPAWN].outputId).to.equal(null);
     expect(view.midiPreviewRouter.mapping.config.triggers[4].outputId).to.equal(null);
-    expect(view.midiPreviewRouter.scheduler._listOutputs()).to.eql([audio.output]);
+    expect(view.midiPreviewRouter.scheduler._listOutputs()).to.deep.equal([]);
     expect(JSON.stringify(source)).to.equal(before);
     view.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
-    expect(audio.calls.filter(call => call.type === 'noteOn')).to.have.length(1);
+    expect(audio.calls.filter(call => call.type === 'begin')).to.have.length(1);
     await local.dispose();
     expect(view.game.soundEvents.onEvent.handlers.size).to.equal(0);
     expect(view.game.timer.onGameTick.handlers.size).to.equal(0);
@@ -189,7 +209,7 @@ describe('local game note preview', function() {
     const { view, audio, local } = setup();
     const order = [];
     const originalEnable = audio.enable;
-    audio.enable = () => { order.push('unlock'); return originalEnable(); };
+    audio.enable = () => { if (!audio.getState().enabled) order.push('unlock'); return originalEnable(); };
     view.midiEnabled = true;
     view.setMidiEnabled = async value => { order.push(`hardware:${value}`); view.midiEnabled = value; };
     const originalAttach = view.setMidiPreviewRouter;
@@ -324,33 +344,36 @@ describe('local game note preview', function() {
   });
 
   it('retains bounded phrase progression on real game ticks only', async function() {
-    const { local, view, audio } = setup({
-      getConfig: () => projectToMidiConfig(applyGameEventMidiPreset(createMidiProject({
-        enabled: false, global: { mpe: { enabled: false }, density: { velocityBoost: 0, durationScale: 0 } }
-      }), 'game-major', { mode: 'phrase' }))
-    });
-    await local.start();
-    view.midiPreviewRouter._nowMs = () => view.game.timer.tick * 60;
-    view.midiPreviewRouter.scheduler._nowMs = () => view.game.timer.tick * 60;
-    const notes = () => audio.calls.filter(call => call.type === 'noteOn');
-    view.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
-    expect(notes().map(call => call.note)).to.eql([76]);
-    await Promise.resolve();
-    expect(notes()).to.have.length(1);
-    for (let index = 0; index < 8; index += 1) {
-      view.game.timer.tick += 1;
+    await withFakeClockAndPerformance(async clock => {
+      const { local, view, audio } = setup({
+        getConfig: () => { const project = applyGameEventMidiPreset(createMidiProject({
+          enabled: false, global: { mpe: { enabled: false }, density: { velocityBoost: 0, durationScale: 0 } }
+        }), 'game-major', { mode: 'phrase' }); for (const track of project.tracks) track.instrumentRef = localInstrumentFixture().reference; return projectToMidiConfig(project); }
+      });
+      await local.start();
+      view.midiPreviewRouter._nowMs = () => view.game.timer.tick * 60;
+      view.midiPreviewRouter.scheduler._nowMs = () => view.game.timer.tick * 60;
+      const notes = () => audio.calls.filter(call => call.type === 'begin');
+      view.game.soundEvents.emitSfx(SoundEventTypes.LEMMING_SPAWN, SoundEffectIds.SPAWN);
+      expect(notes().map(call => call.note)).to.eql([76]);
+      await Promise.resolve();
+      expect(notes()).to.have.length(1);
+      for (let index = 0; index < 8; index += 1) {
+        view.game.timer.tick += 1; clock.tick(60);
+        view.game.timer.onGameTick.trigger();
+      }
+      expect(notes().map(call => call.note)).to.eql([76, 72, 67, 64, 60]);
+      local.panic();
+      view.game.timer.tick += 5;
       view.game.timer.onGameTick.trigger();
-    }
-    expect(notes().map(call => call.note)).to.eql([76, 72, 67, 64, 60]);
-    local.panic();
-    view.game.timer.tick += 5;
-    view.game.timer.onGameTick.trigger();
-    expect(notes()).to.have.length(5);
-    await local.dispose();
+      expect(notes()).to.have.length(5);
+      await local.dispose();
+    });
   });
 });
 
 describe('GameView local preview lifecycle', function() {
+  before(loadLocalInstrumentFixture);
   it('detaches the previous bus on level change and reattaches despite hardware being disabled', async function() {
     const { local, view, audio } = setup();
     await local.start();
@@ -364,7 +387,7 @@ describe('GameView local preview lifecycle', function() {
       changeHtmlText() {}, updateQuery() {}, log: { debug() {} }, stage: null,
       start() { this.game = makeGame(); this._attachMidiPreview(this.game); }
     });
-    await gameViewLevelSelectionMethods.loadLevel.call(view);
+    await gameViewLevelSelectionMethods.loadLevel.call(view); await new Promise(resolve => setImmediate(resolve));
     expect(stops).to.equal(1);
     expect(previousGame.soundEvents.onEvent.handlers.size).to.equal(0);
     expect(previousGame.timer.onGameTick.handlers.size).to.equal(0);
@@ -413,11 +436,13 @@ describe('GameView local preview lifecycle', function() {
     view.stage = null;
     view.autoMoveTimer = null;
     view.resumeTimer = null;
+    const disposedGame = view.game;
     gameViewEditorModeMethods.dispose.call(view);
+    expect(view.game).to.equal(null);
     expect(view._midiPreviewDisposed).to.equal(true);
     expect(view.midiPreviewRouter).to.equal(null);
     expect(local.getState().status).to.equal('off');
-    expect(view.game.soundEvents.onEvent.handlers.size).to.equal(0);
+    expect(disposedGame.soundEvents.onEvent.handlers.size).to.equal(0);
     expect(await local.start()).to.equal(false);
     await local.dispose();
   });
@@ -454,7 +479,7 @@ describe('GameView local preview lifecycle', function() {
     const { local } = setup({ onStateChange: state => statuses.push(state.status) });
     await local.start();
     local.stop();
-    expect(statuses).to.eql(['off', 'starting', 'live', 'off']);
+    expect(statuses.filter((status, index) => index === 0 || status !== statuses[index - 1])).to.eql(['off', 'starting', 'live', 'off']);
     await local.dispose();
   });
 

@@ -15,6 +15,7 @@ describe('OS-managed Network MIDI 2 route admission', () => {
     const client = { session: 7, state: 'connected', capabilities: {}, now: () => 0, subscribe: () => () => {},
       enumerate: async () => ({ inventoryEpoch: 9, endpoints: [endpoint] }),
       open: async () => { opens++; return { grant: 3, session: 7, connectionEpoch: 7, direction: 'output', groupMask: 1, permissions: 0, transport: endpoint.transport }; },
+      closeGrant: async () => ({ kind: 'closed', grant: 3, session: 7, cleanupUnconfirmedNotes: 0, cleanupUnconfirmedControls: 0, nativeCloseConfirmed: true }),
       disconnect: async () => { client.state = 'disconnected'; } };
     const routes = createNativeMidiRoutes({ client });
     try {

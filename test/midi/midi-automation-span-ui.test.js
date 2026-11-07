@@ -57,8 +57,8 @@ describe('musical span editing and lane rectangles', () => {
       const list = document.getElementById('procgenSpanList'), row = id => find(list, element => element.dataset.spanId === id);
       const target = id => find(row(id), element => element.dataset.spanProperty === 'target');
       const name = find(row(release), element => element.dataset.spanProperty === 'name'); name.focus(); Object.assign(name, { selectionStart: 2, selectionEnd: 5, selectionDirection: 'backward' });
-      expect(target(timbre).children.find(option => option.value === 'timbre').textContent).to.include('ignored by synth');
-      expect(target(release).title).to.include('ignores note-off velocity'); const before = JSON.stringify(project);
+      expect(target(timbre).children.find(option => option.value === 'timbre').textContent).to.include('external MIDI only');
+      expect(target(release).title).to.include('does not map MIDI note-off velocity'); const before = JSON.stringify(project);
       backend = 'midi'; controls.syncTargetHelp(); expect(target(timbre).children.find(option => option.value === 'timbre').textContent).to.include('device-dependent');
       expect(target(release).title).to.include('may respond'); expect(document.activeElement).to.equal(name); expect(name.selectionDirection).to.equal('backward');
       expect([name.selectionStart, name.selectionEnd]).to.deep.equal([2, 5]); expect(JSON.stringify(project)).to.equal(before);
@@ -387,7 +387,7 @@ describe('musical span editing and lane rectangles', () => {
       expect(calls.filter(call => call.width === 1 && call.alpha === 0.2).every(call => call.x === 48)).to.equal(true);
       const states = overlay.snapshot().rectangles.map(rect => [rect.id, rect.resolution.status]);
       expect(states).to.deep.equal([['low', 'suppressed'], ['distance', 'winner'], ['bypassed', 'bypassed'], ['high', 'winner']]);
-      expect(calls.some(call => call.text?.includes('Transport preview'))).to.equal(true);
+      expect(calls.some(call => call.text?.includes('Simulation-derived preview'))).to.equal(true);
       renderer.originX = 80; renderer.viewWidth = 128; calls.length = 0; renderer.render();
       expect(calls.filter(call => call.color === '#fff' && call.width === 2).map(call => call.x)).to.deep.equal([50, 24]);
       expect(model.snapshot('high').resolution).to.include({ beat: 1.2, value: 80 });

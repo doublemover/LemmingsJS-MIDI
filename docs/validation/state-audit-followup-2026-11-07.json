@@ -1,0 +1,97 @@
+{
+  "schema": "lemmings-validation-campaign/v1",
+  "date": "2026-11-07",
+  "continuation": 669,
+  "sourceParent": "201e4b0469b48d10a52fc627daef50e92bf001b8",
+  "sourceSha256": {
+    "content/sounds/tactile-contacts.json": "ebbcf9cc3c6820215478419fc90bbdecc83f55f9bc184c1b9d5f5ca09d791c86",
+    "js/app/midi-ui/AudioResourceLeases.js": "cad92cca8846bdb7d092e03f1592d8e8397a5cc24c7e8319b910d471f1ce21b5",
+    "js/app/midi-ui/LiveLocalInstrumentSink.js": "56e7cf178717ff1693ea3c01a16421a5db2e5917c1cdf8afc64e3d0439ce4244",
+    "js/app/midi-ui/SmoothedAudioParameter.js": "0e9c1ae2c7dd3d17a90ed3ff28947ac9b1f520d5f84d5c1be4a4bde2c6cb33ab",
+    "js/app/midi-ui/browserNotePreview.js": "ada338822d5ad5f4fe125c5af49f7fdbc2b4eecf6704568a26d5901aa218041d",
+    "js/app/midi-ui/localGamePreview.js": "f98f7243c968a52b9cb760160f416a560d5805f0e1e67a67b610f10425509f19",
+    "js/app/procgen/TerrainAuthoringAdapter.js": "31150bce82a0eb5b9832836e127b707f7c5d4fc7e30ee52fed3ede0e582959cb",
+    "js/app/procgen/workstation/PhysicalMusicStudy.js": "15696412e075a04e9e0434b07e346010805a50cfd71c376b4a0ecf125a1abd8e"
+  },
+  "issues": [
+    1279,
+    1280,
+    1281,
+    1282,
+    1283,
+    1284
+  ],
+  "fullNode": {
+    "command": "npm test",
+    "passing": 8278,
+    "failing": 12,
+    "reporterDuration": "16m",
+    "currentOneShotGreen": false
+  },
+  "followups": [
+    {
+      "scope": "known changed-area development batch",
+      "stats": {
+        "suites": 52,
+        "tests": 535,
+        "passes": 519,
+        "pending": 0,
+        "failures": 16,
+        "start": "2026-11-07T17:46:42.359Z",
+        "end": "2026-11-07T17:50:37.894Z",
+        "duration": 235535
+      }
+    },
+    {
+      "scope": "all full-run failed areas plus new readiness/native/cache regressions",
+      "stats": {
+        "suites": 27,
+        "tests": 355,
+        "passes": 353,
+        "pending": 0,
+        "failures": 2,
+        "start": "2026-11-07T18:12:41.852Z",
+        "end": "2026-11-07T18:14:15.493Z",
+        "duration": 93641
+      }
+    },
+    {
+      "scope": "complete intervention and finite musical-study files after final trace/report repair",
+      "stats": {
+        "suites": 2,
+        "tests": 6,
+        "passes": 6,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T18:28:45.649Z",
+        "end": "2026-11-07T18:29:55.228Z",
+        "duration": 69579
+      }
+    }
+  ],
+  "result": {
+    "allTwelveFullRunFailuresClearedByFollowups": true,
+    "additionalCompleteNodeRun": false,
+    "desktopBrowserCampaign": "pending",
+    "ci": "not-claimed"
+  },
+  "coverage": {
+    "scope": "AudioResourceLeases, LiveLocalInstrumentSink, SmoothedAudioParameter, BrowserNotePreview, localGamePreview, TerrainAuthoringAdapter",
+    "lines": 90.08,
+    "branches": 79.31,
+    "functions": 82.58,
+    "remaining": "Additional hardware/context error paths, live lane combinations and terrain edit/protection combinations; separate native/device/listening qualification."
+  },
+  "previewMigration": {
+    "portedScenarios": 17,
+    "retiredObsoleteLocalMidiFacadeScenarios": 35,
+    "policy": "Retain prepared semantic/native owner coverage and external hardware byte/retrigger coverage; no restored local GM/channel facade."
+  },
+  "artifactSha256": {
+    ".tmp/rook-full-669-node.log": "4b9982e8a066d6c4affd278b4a917c49a8d9820d33daed147507d940214a9ce8",
+    ".tmp/rook-grouped-669.json": "aa26645781a50535d7886db1032c162abc2efbcfcbd360ecc5fac708e8a0fe50",
+    ".tmp/rook-full-669-followup.json": "4c6f21b6c6b5e83b1df21b93cffe1e167b243d3b6c6b4b3a625f062661221eab",
+    ".tmp/rook-full-669-study-packed.json": "ede7e2be199d4cb3138bcb8bbf453ec2a0d354268d4ede1cd46d9fbeab07926f",
+    ".tmp/rook-669-coverage/coverage-summary.json": "88b4437ca01cd3df4003355f9e224d295c5a517499c1007302722575e81042a5"
+  }
+}

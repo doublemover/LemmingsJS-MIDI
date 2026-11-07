@@ -16,6 +16,7 @@ import { createOwnedCueRouting } from './OwnedCueRouting.js';
 import { createForegroundAuditionOwner } from './ForegroundAuditionOwner.js';
 import { createAudioIntervalAdmission, audioIntervalStorageBytes } from './AudioIntervalAdmission.js';
 import { createPreparedInstrumentPreview } from './PreparedInstrumentPreview.js';
+import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 const retirementState = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome,
   failures: receipt.resources.filter(resource => ['failed', 'unknown'].includes(resource.status)).map(resource => ({ name: resource.name, status: resource.status, error: resource.error })) } : null;
@@ -59,7 +60,7 @@ const createMixCompressor = context => {
 
 /** A local tone monitor. It owns its audio context and never opens a MIDI device. */
 class BrowserNotePreview {
-  constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8,
+  constructor({ createAudioContext, getInstrumentCatalog = getNativeInstrumentCatalog, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8,
     volume = 0.15, masterVolume = 0.7, resourceBudget = null, cueVoices = 0, cueCostUnits = cueVoices, maxInstrumentBackends = 20,
     createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices, permissions = globalThis.navigator?.permissions, performanceCoordinator, runtimeConfig = {},
     getQualifiedSoundRealization = () => null, monitorOutput = 'audible' } = {}) {
@@ -71,6 +72,8 @@ class BrowserNotePreview {
     this._createContext = createAudioContext === undefined
       ? (AudioContextType ? options => new AudioContextType(options) : null)
       : createAudioContext;
+    if (typeof getInstrumentCatalog !== 'function') throw new TypeError('A local instrument catalog provider is required.');
+    this._getInstrumentCatalog = getInstrumentCatalog;
     this._nowMs = nowMs || (() => globalThis.performance?.now?.() ?? Date.now());
     this._runtimeConfig = normalizeAudioRuntimeConfig(runtimeConfig);
     this._runtimeObservation = createAudioRuntimeObservation({ nowMs: this._nowMs });
@@ -362,7 +365,7 @@ class BrowserNotePreview {
         return prepareMaterializedAudioImage({ resourceBudget: this._soundMaterialBudget, materialProvider: this.getSoundMaterialProvider(), resources: this._audioResources, ...options },
           (cut, sources) => session.api.prepareAudioContinuation({ ...options, cut, sources }));
       },
-      getAudioContext: () => this.getAudioContext(), getSoundMaterialProvider: () => this.getSoundMaterialProvider(),
+      getAudioContext: () => this.getAudioContext(), getInstrumentCatalog: () => this.getInstrumentCatalog(), getSoundMaterialProvider: () => this.getSoundMaterialProvider(),
       setCaptureContext: ({ worldId, graphRevision, routeRevision, scoreMapping = null } = {}) => {
         if (session.disposed) return false;
         const previous = session.captureContext;
@@ -584,6 +587,7 @@ class BrowserNotePreview {
   }
 
   getAudioContext() { return this._context; }
+  getInstrumentCatalog() { return this._getInstrumentCatalog(); }
   getQualifiedSoundRealization(request) {
     if (!this._ready() || request?.contextEpoch !== this._contextEpoch || request.sampleRate !== this._context?.sampleRate) return null;
     return this._getQualifiedSoundRealization(Object.freeze({ ...request, contextEpoch: this._contextEpoch, sampleRate: this._context.sampleRate }));
@@ -1171,7 +1175,7 @@ class BrowserNotePreview {
     if (this._preparedPreviews.size >= 8 || [...this._preparedPreviews].some(entry => entry.player.state().phase === 'retirement-unknown')) { this._setStatus('error', 'Finish or retire earlier prepared previews before starting another.'); return false; }
     const generation = session.generation, graphGeneration = this._generation, entry = { owner, player: null, noteCount: notes.length };
     const current = () => !this._disposed && !session.disposed && generation === session.generation && graphGeneration === this._generation;
-    entry.player = createPreparedInstrumentPreview({ session: session.api, getContext: () => this._context, getMaterialProvider: () => this.getSoundMaterialProvider(), maxSeconds: this._maxNoteSeconds, current,
+    entry.player = createPreparedInstrumentPreview({ session: session.api, getContext: () => this._context, getMaterialProvider: () => this.getSoundMaterialProvider(), getCatalog: () => this.getInstrumentCatalog(), maxSeconds: this._maxNoteSeconds, current,
       onReceipt: receipt => { this._lastPreparedPreview = receipt; session.preparedPreview = receipt; if (receipt.phase === 'retired') this._preparedPreviews.delete(entry); this._observe('prepared-instrument-preview', { ...receipt, owner }); if (!receipt.voiceId) session.report(); } });
     this._preparedPreviews.add(entry);
     try { return await entry.player.play(notes); }

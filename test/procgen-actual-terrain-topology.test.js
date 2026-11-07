@@ -10,7 +10,7 @@ describe('actual chamber topology source and saved history', function() {
   this.timeout(120000);
   it('qualifies collision cavities, real worker revisions, held handover and refused stale interpretations', async () => {
     const masks = await loadProcgenMasks(), jobs = createTestBackgroundJobs({ identity: () => ({ activeExecution: 'bound', buildId: 'actual-topology-fixture' }) }), store = createMemoryCausalStore();
-    try { const result = await qualifyActualTerrainTopology({ createWorld: await createActualScoredWorldFactory({ masks, jobs, maxActors: 128 }), journal: createProcgenCausalJournal({ storage: store.storage }) }); expect(result.chambers.refusals).to.have.length(7); expect(result.workerRuns.find(row => row.kind === 'dig').work).to.have.length(6); expect(result.generation.staleRefused).to.equal(true); }
+    try { const result = await qualifyActualTerrainTopology({ createWorld: await createActualScoredWorldFactory({ masks, jobs, maxActors: 128 }), journal: createProcgenCausalJournal({ storage: store.storage, jobs }) }); expect(result.chambers.refusals).to.have.length(7); expect(result.workerRuns.find(row => row.kind === 'dig').work).to.have.length(6); expect(result.generation.staleRefused).to.equal(true); }
     finally { jobs.dispose(); }
   });
   it('matches full reference analysis across regional edits, authoring, halo changes and restored bounded stress', async () => {

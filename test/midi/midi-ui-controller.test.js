@@ -1,6 +1,7 @@
 import { GameSkills } from '../../js/game/GameSkills.js';
 import { SkillTypes } from '../../js/game/SkillTypes.js';
 import { expect } from 'chai';
+import { loadLocalInstrumentFixture, localInstrumentFixture, addSemanticAudioFixturePorts } from '../helpers/local-instrument-fixture.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 import { BrowserNotePreview } from '../../js/app/midi-ui/browserNotePreview.js';
 import { createMidiUiController } from '../../js/app/midiUiController.js';
@@ -220,6 +221,7 @@ const createControllerHarness = ({
   webMidi = { enabled: false, inputs: [], outputs: [] },
   lemmings = {},
   createPreviewAudio,
+  withLocalInstruments = false,
   freshProjectPresetId
 } = {}) => {
   const doc = new TestDocument();
@@ -245,7 +247,7 @@ const createControllerHarness = ({
     getLemmings: () => currentView,
     getWebMidi: () => webMidi,
     freshProjectPresetId,
-    ...(createPreviewAudio ? { createPreviewAudio } : {}),
+    ...(createPreviewAudio ? { createPreviewAudio: options => addSemanticAudioFixturePorts(createPreviewAudio({ ...options, getInstrumentCatalog: async () => localInstrumentFixture().catalog })) } : {}),
     downloadTextFile(document, text, filename, mimeType) {
       view.downloads = view.downloads || [];
       view.downloads.push({ text, filename, mimeType });
@@ -254,10 +256,18 @@ const createControllerHarness = ({
       return Promise.resolve(file?.text ?? '');
     }
   });
+  if (withLocalInstruments) {
+    const bind = controller.bindMidiUi; controller.bindMidiUi = (...args) => {
+      const result = bind(...args);
+      for (const track of controller.getProject().tracks) controller.dispatchProjectIntent({ type: 'track.update', trackId: track.id, patch: { instrumentRef: localInstrumentFixture().reference } });
+      return result;
+    };
+  }
   return { controller, doc, win, view, webMidi, setView(next) { currentView = next; } };
 };
 
 describe('midiUiController sequencer', function() {
+  before(loadLocalInstrumentFixture);
   it('preserves an uncommitted focused edit across background refresh and exports the committed value', () => {
     const { controller, doc, view } = createControllerHarness();
     controller.bindMidiUi();
@@ -288,10 +298,10 @@ describe('midiUiController sequencer', function() {
       const param = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, cancelScheduledValues() {} });
       const node = () => ({ gain: param(), frequency: param(), detune: param(), pan: param(), connect() {}, disconnect() {}, start() {}, stop() {} });
       let contexts = 0, closes = 0, factories = 0, graph;
-      const context = { state: 'running', currentTime: 2, destination: {}, createGain: node, createWaveShaper: node, createOscillator: node, createStereoPanner: node,
+      const context = { state: 'running', sampleRate: 48000, currentTime: 2, destination: {}, createGain: node, createWaveShaper: node, createOscillator: node, createStereoPanner: node,
         createDynamicsCompressor() { return { ...node(), threshold: param(), knee: param(), ratio: param(), attack: param(), release: param() }; },
         close() { closes++; return Promise.resolve(); } };
-      const { controller, doc, win, view } = createControllerHarness({ freshProjectPresetId: 'game-iron-ensemble',
+      const { controller, doc, win, view } = createControllerHarness({ withLocalInstruments: true, freshProjectPresetId: 'game-iron-ensemble',
         lemmings: { setMidiPreviewRouter(router) { this.midiPreviewRouter = router; } },
         createPreviewAudio(options) { factories++; graph = new BrowserNotePreview({ ...options, createAudioContext: () => { contexts++; return context; }, nowMs: () => 1000 }); return graph; }
       });
@@ -303,7 +313,7 @@ describe('midiUiController sequencer', function() {
         doc.getElementById('midiSoundPreviewRole').value = 'ensemble-melody';
         expect(await controller.testSelectedSound()).to.equal(true);
         expect(factories).to.equal(1); expect(contexts).to.equal(1);
-        expect([...graph._voices].filter(voice => voice.owner.startsWith('audition')).every(voice => voice.instrument.role === 'melody' && voice.instrument.program === 81)).to.equal(true);
+        expect([...graph._voices].filter(voice => voice.owner.startsWith('audition')).every(voice => voice.patchId === localInstrumentFixture().reference.patchId)).to.equal(true);
         expect([...graph._voices].filter(voice => voice.owner.startsWith('audition'))).not.to.have.length(0);
         expect(gameVoices.every(voice => graph._voices.has(voice))).to.equal(true);
         expect(await controller.testSelectedSound()).to.equal(true); expect(gameVoices.every(voice => graph._voices.has(voice))).to.equal(true);
@@ -334,7 +344,7 @@ describe('midiUiController sequencer', function() {
 
   it('stops audition-only voices and pending unlock without creating a live monitor or accepting the canceled completion', async () => {
     const created = []; let finish;
-    const { controller, doc, view } = createControllerHarness({
+    const { controller, doc, view } = createControllerHarness({ withLocalInstruments: true,
       lemmings: { setMidiPreviewRouter(router) { this.midiPreviewRouter = router; } },
       createPreviewAudio(options) {
         let active = 0, pending = false, generation = 0;
@@ -426,7 +436,7 @@ describe('midiUiController sequencer', function() {
 
   it('uses the active local destination for spans, tension and pressure while hardware is retained, then reports idle after Stop', async () => {
     let hardwareReads = 0, localReads = 0;
-    const { controller, doc, view } = createControllerHarness({ lemmings: {
+    const { controller, doc, view, win } = createControllerHarness({ withLocalInstruments: true, lemmings: {
       midiRouter: { getRateReport() { hardwareReads++; return { reason: 'old-hardware' }; }, getAutomationSpanState() { hardwareReads++; return { reason: 'old-hardware' }; } },
       setMidiPreviewRouter(router) { this.midiPreviewRouter = router; }
     }, createPreviewAudio: () => ({ output: makeOutput([1], [], 'local'), setMasterVolume() {}, getState: () => ({ enabled: true, activeVoices: 0 }), async enable() { return true; }, subscribe: () => () => {}, stop() {}, dispose() {} }) });
@@ -434,6 +444,9 @@ describe('midiUiController sequencer', function() {
     view.midiPreviewRouter.getRateReport = () => { localReads++; return { reason: 'local-budget' }; };
     view.midiPreviewRouter.getAutomationSpanState = () => { localReads++; return { active: true, phase: 0.5, eventCount: 7, bar: 3, spanPass: 2 }; };
     controller.dispatchProjectIntent({ type: 'automation.add', automation: { id: 'live-span', target: 'pan', span: { domain: 'beats', start: 0, duration: 8 } } });
+    const deadline = Date.now() + 2000;
+    while (win.__LEMMINGS_MIDI_UI__.getLocalAudioState().monitor.status === 'starting' && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5));
+    expect(win.__LEMMINGS_MIDI_UI__.getLocalAudioState().monitor.status).to.equal('live');
     expect(controller.getMidiSetupState().scheduler.reason).to.equal('local-budget');
     expect(doc.getElementById('midiMainSpanList').querySelectorAll('.midi-span-status')[0].textContent).to.include('event 7');
     expect(localReads).to.be.greaterThan(0); expect(hardwareReads).to.equal(0);
@@ -586,7 +599,7 @@ describe('midiUiController sequencer', function() {
   it('updates both local audio paths with a persisted master level without editing the project or hardware', async function() {
     const created = [];
     let hardwareChanges = 0;
-    const { controller, doc, win, view } = createControllerHarness({
+    const { controller, doc, win, view } = createControllerHarness({ withLocalInstruments: true,
       createPreviewAudio(options) {
         let enabled = false;
         const audio = {
@@ -645,7 +658,7 @@ describe('midiUiController sequencer', function() {
   it('restores local master level before lazily creating audio, including a saved mute', async function() {
     for (const [stored, expected] of [['0', 0], ['0.35', 0.35], ['broken', 0.7], ['2', 1], ['-1', 0], ['1', 1], [JSON.stringify({ version: 2, value: 2 }), 2]]) {
       const levels = [];
-      const { controller, doc, win } = createControllerHarness({ createPreviewAudio: options => {
+      const { controller, doc, win } = createControllerHarness({ withLocalInstruments: true, createPreviewAudio: options => {
         levels.push(options.masterVolume);
         return { preview: async () => true, getState: () => ({}), dispose() {} };
       } });
@@ -682,7 +695,7 @@ describe('midiUiController sequencer', function() {
     const timer = { frameTime: 60, speedFactor: 1, getGameTicks: () => 10 };
     const bus = new SoundEventBus(timer);
     router.attach(bus);
-    const { controller } = createControllerHarness({ factoryConfig: config,
+    const { controller } = createControllerHarness({ withLocalInstruments: true, factoryConfig: config,
       webMidi: { enabled: true, inputs: [], outputs: [output] },
       createPreviewAudio: () => ({ getState: () => ({ enabled: true }), preview: async notes => { previews.push(notes); return true; }, dispose() {} }),
       lemmings: { midiEnabled: true, midiRouter: router, midiOut: output,
@@ -758,7 +771,7 @@ describe('midiUiController sequencer', function() {
 
   it('clears successful audition footers and retains actionable audio errors', async function() {
     let ok = true;
-    const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({
+    const { controller, doc } = createControllerHarness({ withLocalInstruments: true, createPreviewAudio: () => ({
       preview: async () => ok, getState: () => ({ message: 'Enable browser audio again' }), dispose() {}
     }) });
     controller.bindMidiUi(); expect(await controller.testSelectedSound({ x: 0, y: 0 })).to.equal(true);
@@ -772,7 +785,7 @@ describe('midiUiController sequencer', function() {
     const notes = [];
     let hardwareChanges = 0;
     const audio = { getState: () => ({ enabled: true }), preview: async plan => { notes.push(plan); return true; }, dispose() {} };
-    const { controller, view } = createControllerHarness({
+    const { controller, view } = createControllerHarness({ withLocalInstruments: true,
       createPreviewAudio: () => audio,
       factoryConfig: { enabled: true, sfx: { 1: { note: 60, notes: [60, 64, 67], arp: { enabled: true, mode: 'up' } } } },
       lemmings: { midiEnabled: true, setMidiEnabled() { hardwareChanges += 1; }, game: { getGameTimer: () => ({ tickIndex: 9, frameTime: 30, speedFactor: 2 }) } }
@@ -1040,7 +1053,7 @@ describe('midiUiController sequencer', function() {
       subscribe: () => () => {}, stop() {}, dispose() {},
       preview(notes) { captured.push(notes); return Promise.resolve(true); }
     };
-    const { controller, doc, view } = createControllerHarness({
+    const { controller, doc, view } = createControllerHarness({ withLocalInstruments: true,
       createPreviewAudio: () => audio,
       webMidi: { enabled: false, inputs: [], outputs: [], enable() { permissionRequests += 1; } },
       lemmings: { midiRouter: { scheduler: { sendNote() { hardwareNotes += 1; } } } }
@@ -1206,7 +1219,7 @@ describe('midiUiController sequencer', function() {
     const { controller, doc, view } = createControllerHarness();
     controller.bindMidiUi();
 
-    expect(doc.getElementById('midiMappingTimbre').title).to.include('Browser synth ignores the default CC74');
+    expect(doc.getElementById('midiMappingTimbre').title).to.include('local instruments use authored parameters');
     expect(doc.getElementById('midiEnvRelease').title).to.include('not envelope release time');
     const pan = doc.getElementById('midiMappingPan');
     pan.value = '-32';
@@ -1901,7 +1914,7 @@ describe('midiUiController sequencer', function() {
 
   it('reports bounded local audition omissions while preserving recorded polyphonic voices and route enable state', async function() {
     const heard = [];
-    const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({ async preview(notes) { heard.push(notes); return true; }, stop() {}, getState: () => ({ enabled: true }) }) });
+    const { controller, doc } = createControllerHarness({ withLocalInstruments: true, createPreviewAudio: () => ({ async preview(notes) { heard.push(notes); return true; }, stop() {}, getState: () => ({ enabled: true }) }) });
     controller.bindMidiUi(); controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'dense', lengthSteps: 16,
       playback: { advance: 'game-tick', spacingTicks: 2 }, steps: Array.from({ length: 16 }, () => ({ voices: Array.from({ length: 8 }, (_, index) => ({ note: 50 + index, velocity: 80, durationTicks: 5 })), transformLayers: [{ type: 'repeat', count: 8 }] })) } });
     controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'dense' });
@@ -1931,7 +1944,7 @@ describe('midiUiController sequencer', function() {
   it('keeps independent local completed-pass counts through silent phrases, retriggering and Panic', async function() {
     await withFakeClockAndPerformance(async clock => {
       const heard = [];
-      const { controller, doc } = createControllerHarness({ createPreviewAudio: () => ({
+      const { controller, doc } = createControllerHarness({ withLocalInstruments: true, createPreviewAudio: () => ({
         async preview(notes) { heard.push(notes.map(n => n.note)); return true; },
         stop() {}, getState: () => ({ enabled: true })
       }) });

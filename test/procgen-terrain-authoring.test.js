@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { createActualScoredWorldFactory } from './helpers/actualScoredWorld.js';
+import { routeCircuitLayout } from './helpers/actualRouteCircuits.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { planTerrainCommand, applyTerrainPlan, readTerrainCell } from '../js/app/procgen/TerrainAuthoringAdapter.js';
@@ -13,6 +15,18 @@ const queued = (world, terrain, id = terrain.transactionId) => ({ id, kind: 'ter
 describe('atomic terrain authoring and bounded physical provenance', () => {
   let masks; before(async () => { masks = await loadProcgenMasks(); });
   const ready = () => new ProcgenLaneWorld({ masks, assists: false });
+  it('reads prepared authored masks after checkpoint cache retirement without warming or changing the world (#1283)', async () => {
+    const factory = await createActualScoredWorldFactory({ masks }), owner = await factory(routeCircuitLayout([81])), world = owner.world;
+    try {
+      world.basePixelAt(40, 80); const saved = captureProcgenCheckpoint(world); restoreProcgenCheckpoint(world, saved);
+      const indices = [...world._collisionIndices], slots = [...world._collisionSlots], before = captureProcgenCheckpoint(world);
+      expect(readTerrainCell(world, 40, 80)).to.include({ status: 'complete', color: 1, steel: false });
+      expect(readTerrainCell(world, 40, 60)).to.include({ status: 'complete', color: 0, steel: false });
+      expect(readTerrainCell(world, 512, 80).status).to.equal('unknown');
+      expect([...world._collisionIndices]).to.deep.equal(indices); expect([...world._collisionSlots]).to.deep.equal(slots);
+      expect(captureProcgenCheckpoint(world)).to.deep.equal(before);
+    } finally { await owner.dispose(); }
+  });
   it('does not let fractional or nonfinite low-level writes invent revisions', () => {
     const world = ready(), before = world.terrainRevision, chunks = world.editChunks.size;
     for (const x of [62.5, NaN, Infinity, Number.MAX_SAFE_INTEGER]) expect(world.setGroundAt(x, 10)).to.equal(false);

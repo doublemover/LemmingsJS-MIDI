@@ -1,6 +1,7 @@
 import { createRoutedInstrumentBackend } from './RoutedInstrumentBackend.js';
 import { resolveLocalDrumArticulation } from './LocalDrumArticulation.js';
 import { createLaneInstrumentPreparation } from './LaneInstrumentPreparation.js';
+import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { getLocalAudioNotePan } from '../../midi/scheduler/LocalAudioVoiceBudget.js';
 import { createProcgenRetirementScope, afterProcgenRetirement } from '../procgen/ProcgenRetirement.js';
 
@@ -33,7 +34,7 @@ export function createLiveLocalInstrumentSink({ audio, resourceBudget = null, no
     const prepared = await native.prepare(defaultResolution); check(); if (prepared.status !== 'ready') throw failure(prepared.reason, 'Local instrument routing could not be prepared.');
     routed = createRoutedInstrumentBackend({ defaultBackend: native, resourceBudget, maxChildren: 17, maxVoices: 128, getContext: () => audio.getAudioContext(), getGeneration: () => native.executionIncarnation(),
       resolveLane: laneId => String(laneId), getPerformanceControls: laneId => tracks.find(track => track.id === laneId)?.instrumentControls || {}, requiredInstrumentKey: laneId => keyFor(tracks.find(track => track.id === laneId)?.instrumentRef) });
-    instruments = createLaneInstrumentPreparation({ session, routed, resourceBudget, getMaterialProvider: () => audio.getSoundMaterialProvider(), onState: value => report({ status: value.state, trackId: value.laneId, reason: value.code }) });
+    instruments = createLaneInstrumentPreparation({ session, routed, resourceBudget, getCatalog: () => audio.getInstrumentCatalog?.() ?? getNativeInstrumentCatalog(), getMaterialProvider: () => audio.getSoundMaterialProvider(), onState: value => report({ status: value.state, trackId: value.laneId, reason: value.code }) });
   })();
   const prepare = async next => {
     check(); config = next; tracks = localInstrumentTracks(next); if (!tracks.length && !initialized) return true; if (tracks.length > 1024 || new Set(tracks.map(track => keyFor(track.instrumentRef))).size > 16) throw failure('local-instrument-capacity', 'Use at most sixteen distinct local instruments across the active tracks.');
