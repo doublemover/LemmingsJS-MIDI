@@ -87,7 +87,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const attachedLaneBuses = new Map(), routeBarriers = new Map(), laneTapsEnabled = typeof preview._laneSourcesFor === 'function'; let nextRouteBarrier = 0;
   const voiceRouteMask = voice => { let mask = 0; for (const bus of attachedLaneBuses.keys()) if (bus.voiceSelection && sourceVoiceMatches(bus.voiceSelection, voice.voiceId, voice.semanticGeneration)) mask |= 1 << bus.index; return mask; };
   const sendLaneRoute = (voice, route, producer = node) => producer.port.postMessage({ type: 'lane-route', protocol: LIVE_LANE_TAP_PROTOCOL, slot: voice.slot, token: voice.slotToken, laneToken: voice.onsetLaneToken, route });
-  const sendLaneTap = (bus, enabled, producer) => producer.port.postMessage({ type: 'lane-tap', protocol: LIVE_LANE_TAP_PROTOCOL, index: bus.index, laneToken: bus.laneToken, enabled });
+  const sendLaneTap = (bus, enabled, producer) => producer.port.postMessage({ type: 'lane-tap', protocol: LIVE_LANE_TAP_PROTOCOL, index: bus.index, laneToken: bus.laneToken, enabled, sourceBinding: { sourceBusId: bus.voiceSelection ? 'voices:selected' : 'lane:' + bus.laneId, ...(bus.voiceSelection ? { voiceSelection: bus.voiceSelection } : {}) } });
   const routeBarrier = (producer, bus) => {
     if (routeBarriers.size >= LIVE_LANE_TAP_LIMIT || nextRouteBarrier === Number.MAX_SAFE_INTEGER) throw new Error('Source route barrier capacity exceeded.');
     const barrierId = ++nextRouteBarrier; let resolve, reject;

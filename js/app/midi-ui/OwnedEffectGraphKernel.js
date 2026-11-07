@@ -119,8 +119,8 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         const input = record.sidechainOffset; audioPresent = sidechainPresence ? Boolean(sidechainPresence[input / 2]) : sidechainSamples !== null; a = sidechainSamples?.[input] ?? 0; b = entry.parameters.inputLayout === 'audioMono' ? 0 : sidechainSamples?.[input + 1] ?? 0;
         if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a) > 32 || Math.abs(b) > 32) quarantine('sidechain-input-headroom', 'Sidechain input is nonfinite or exceeds its admitted audio domain.');
         if (parameters) { a *= parameters[0]; b *= parameters[0]; }
-      } else if (entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator') { kernel.sample(donorLeft, donorRight, a, b, host?.donorOverride ?? donorPresent, host?.carrierOverride ?? audioPresent); a = kernel.leftSample; b = kernel.rightSample; }
-      else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, host?.sourceOverride ?? audioPresent); a = kernel.output; b = 0; }
+      } else if (entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator') { kernel.sample(donorLeft, donorRight, a, b, nativeCut?.reconstructPresence ? donorPresent : host?.donorOverride ?? donorPresent, nativeCut?.reconstructPresence ? audioPresent : host?.carrierOverride ?? audioPresent); a = kernel.leftSample; b = kernel.rightSample; }
+      else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, nativeCut?.reconstructPresence ? audioPresent : host?.sourceOverride ?? audioPresent); a = kernel.output; b = 0; }
       else if (entry.kind === 'envelope-mapping') { kernel.sample(modulation); a = kernel.output; b = 0; }
       else if (entry.kind === 'modulated-gain') { a *= modulation; b *= modulation; }
       else if (entry.kind === 'polarity-invert') { a = -a; b = -b; }
@@ -215,6 +215,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       const record = records[indices.get(nodeId)];
       if (!nativeCut || !record?.entry.membrane || !Number.isSafeInteger(command?.frame) || command.frame < frame || !record.kernel.enqueueStrike({ ...command, frame: command.frame + record.native.logicalAudioFrame })) fail('effect-native-body-strike', 'Stage each finite strike against its saved body logical frame before rendering.');
     },
+    reconstructNativeSourcePresence() { if (!nativeCut || frame) fail('effect-native-cut-staging', 'Choose source-presence reconstruction before rendering.'); nativeCut.reconstructPresence = true; },
     nativeCutReceipt: () => nativeCut?.automation.receipt() || null,
     validateDetachedComponentStates(components, hostState = null, audioFrame = null) {
       if (frame || validationOnly || !Array.isArray(components) || components.length !== stateEntries.length || new Set(components.map(row => row?.nodeId)).size !== components.length) fail('effect-detached-component-inventory', 'Use a fresh validation graph and every exact detached component.');

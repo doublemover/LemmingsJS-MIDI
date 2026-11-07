@@ -398,7 +398,7 @@ class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES, options?.processorOptions);
     this.retired = false; this.stateCut = null; this.stateRestore = null; this.sourceFrameOffset = 0; this.sourceTransport = null;
-    this.laneRouteCount = 0; this.laneTapEnabled = new Uint8Array(LIVE_LANE_TAP_LIMIT); this.routeBarriers = new Float64Array(LIVE_LANE_TAP_LIMIT); this.routeBarrierCount = 0;
+    this.laneTapBindings = new Array(LIVE_LANE_TAP_LIMIT).fill(null); this.laneRouteCount = 0; this.laneTapEnabled = new Uint8Array(LIVE_LANE_TAP_LIMIT); this.routeBarriers = new Float64Array(LIVE_LANE_TAP_LIMIT); this.routeBarrierCount = 0;
     this.laneTaps = options?.processorOptions?.laneTapProtocol === LIVE_LANE_TAP_PROTOCOL ? { routeMode: 'mask', routes: new Uint16Array(MAX_VOICES), tokens: new Uint32Array(MAX_VOICES), laneTokens: new Uint32Array(LIVE_LANE_TAP_LIMIT),
       channels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]), preChannels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]) } : null;
     this.message = { type: 'receipts', protocol: PROTOCOL, count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) };
@@ -413,7 +413,7 @@ class OwnedSineProcessor extends ProcessorBase {
       }
       if (data?.type === 'source-transport-observe' && Number.isSafeInteger(data.captureId) && data.captureId > 0 && Number.isSafeInteger(data.audioFrame) && data.audioFrame >= globalThis.currentFrame && !this.sourceTransport) {
         this.sourceTransport = { id: data.captureId, audioFrame: data.audioFrame, sequence: 0, acknowledged: 0, overflow: false, blockFrames: this.lastAudioBlockFrames };
-        this.port.postMessage({ type: 'source-transport-started', captureId: data.captureId, frame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, startAudioFrame: data.audioFrame, lastPacket: this.kernel.lastPacket, blockFrames: this.lastAudioBlockFrames }); return;
+        this.port.postMessage({ type: 'source-transport-started', captureId: data.captureId, frame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, startAudioFrame: data.audioFrame, lastPacket: this.kernel.lastPacket, blockFrames: this.lastAudioBlockFrames, tapInventoryVersion: 1, taps: Array.from(this.laneTapEnabled, (enabled, index) => ({ index, enabled: Boolean(enabled), laneToken: this.laneTaps?.laneTokens[index] || 0, sourceBinding: this.laneTapBindings[index] })), routes: this.laneTaps ? Array.from(this.laneTaps.routes.subarray(0, this.kernel.maxVoices)) : [], tokens: this.laneTaps ? Array.from(this.laneTaps.tokens.subarray(0, this.kernel.maxVoices)) : [] }); return;
       }
       if (data?.type === 'source-transport-ack' && data.captureId === this.sourceTransport?.id && data.sequence === this.sourceTransport.acknowledged + 1 && data.sequence <= this.sourceTransport.sequence) { this.sourceTransport.acknowledged = data.sequence; return; }
       if (data?.type === 'source-transport-stop' && data.captureId === this.sourceTransport?.id) {
@@ -466,7 +466,7 @@ class OwnedSineProcessor extends ProcessorBase {
       else if (data?.type === 'lane-tap' && this.laneTaps && data.protocol === LIVE_LANE_TAP_PROTOCOL && Number.isInteger(data.index) && data.index >= 0 && data.index < LIVE_LANE_TAP_LIMIT &&
           typeof data.enabled === 'boolean' && Number.isInteger(data.laneToken) && data.laneToken >= 0 && data.laneToken <= LIVE_LANE_ID_LIMIT) {
         this.laneRouteCount += Number(data.enabled) - this.laneTapEnabled[data.index]; this.laneTapEnabled[data.index] = Number(data.enabled);
-        this.laneTaps.laneTokens[data.index] = data.enabled ? data.laneToken : 0;
+        this.laneTaps.laneTokens[data.index] = data.enabled ? data.laneToken : 0; this.laneTapBindings[data.index] = data.sourceBinding || null; this.captureSourceTransport(data);
       }
       else if (data?.type === 'lane-route-barrier' && this.laneTaps && data.protocol === LIVE_LANE_TAP_PROTOCOL && Number.isSafeInteger(data.barrierId) && data.barrierId > 0 && Number.isInteger(data.index) && data.index >= 0 && data.index < LIVE_LANE_TAP_LIMIT) { if (!this.routeBarriers[data.index]) this.routeBarrierCount++; this.routeBarriers[data.index] = data.barrierId; }
       else if (data?.type === 'display-config' && data.displayProtocol === DISPLAY_PROTOCOL) this.kernel.configureDisplay(data.tokens, data.intervalFrames, data.revision);
@@ -513,6 +513,7 @@ class OwnedSineProcessor extends ProcessorBase {
     const packet = { type: 'source-transport-packet', captureId: capture.id, sequence: ++capture.sequence, frame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, command: data.type };
     if (data.type === 'commands') { packet.packetSequence = data.packetSequence; packet.count = data.count; packet.data = data.data; }
     else if (data.type === 'lane-route') { packet.slot = data.slot; packet.token = data.token; packet.laneToken = data.laneToken; packet.route = data.route; }
+    else if (data.type === 'lane-tap') { packet.index = data.index; packet.enabled = data.enabled; packet.laneToken = data.laneToken; packet.sourceBinding = data.sourceBinding || null; }
     this.port.postMessage(packet, data.type === 'commands' && data.data?.buffer instanceof ArrayBuffer ? [data.data.buffer] : []);
   }
 

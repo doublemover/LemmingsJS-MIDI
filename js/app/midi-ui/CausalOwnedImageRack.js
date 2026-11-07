@@ -1,3 +1,4 @@
+import { capturedSourceBusKey } from './CapturedSourceBus.js';
 import { createOwnedEffectGraphKernel } from './OwnedEffectGraphKernel.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
 import { validateEffectPerformance } from '../../midi/content/EffectPerformance.js';
@@ -15,8 +16,9 @@ export async function createCausalOwnedImageRack({ rack, sampleRate, activationA
   if (state?.schema !== 'lemmings-owner-effect-cut/v1' || state.sampleRate !== sampleRate || cut?.sampleRate !== sampleRate || state.audioFrame !== cut.audioFrame || state.graphHash !== cut.graphHash || !['active', 'mute'].includes(state.mode) || state.outputGain01 !== (state.mode === 'mute' ? 0 : 1) || !Number.isSafeInteger(state.sourceOwnerRouteRevision) || !Number.isSafeInteger(activationAudioFrame) || activationAudioFrame < 0 || !Number.isSafeInteger(endFrame) || endFrame < 1 || !effectCoverage?.captured || effectCoverage.gaps?.length || !Array.isArray(effectEvents) || effectEvents.length > 8192) fail('The complete initial rack, original activation clock and gap-free effect capture are required.');
   const graph = await createOwnedEffectGraphKernel({ definition: rack.definition, sampleRate, returnNodeIds });
   try {
-    if (graph.plan.sidechainInputs.length) fail('This captured rack needs owned donor bus reconstruction. Use the dry source projection until its exact donor inventory is available.');
+    const sourceRoutes = graph.plan.sidechainInputs.map(id => { const p = graph.plan.nodes.find(node => node.id === id).parameters; if (p.inputLayout !== 'audioStereo') fail('Use the exact prepared stereo source bus and an explicit graph channel adapter.'); return { nodeId: id, sourceBusId: p.sourceBusId, key: p.sourceBusId === 'owner' ? null : capturedSourceBusKey(p), tap: p.tap, layout: p.inputLayout }; });
     graph.restoreNativeCut({ metadata: cut, components: rack.components });
+    if (sourceRoutes.length) graph.reconstructNativeSourcePresence();
     const dry = createCapturedCutGain(state.dry, state.audioFrame, sampleRate), input = createCapturedCutGain(state.input, state.audioFrame, sampleRate);
     const checks = [], strikes = [], streams = new Map(), seenStrikes = new Set(), tokens = new Map();
     for (const body of cut.hostState.bodies) tokens.set(body.nodeId, body.state.pending.reduce((max, row) => Math.max(max, row.command.token), 0));
@@ -35,16 +37,17 @@ export async function createCausalOwnedImageRack({ rack, sampleRate, activationA
       } else fail('The captured rack contains a topology or message-time lifecycle change outside this fixed-rack continuation profile. Choose a covered range or dry output.');
     }
     strikes.sort((a, b) => a.frame - b.frame || a.sequence - b.sequence); checks.sort((a, b) => a.frame - b.frame);
-    let frame = 0, strikeCursor = 0, checkCursor = 0, leftSample = 0, rightSample = 0;
+    let frame = 0, strikeCursor = 0, checkCursor = 0, leftSample = 0, rightSample = 0, dryLeftSample = 0, dryRightSample = 0, returnLeftSample = 0, returnRightSample = 0;
     const checkSpectral = current => { while (checkCursor < checks.length && checks[checkCursor].frame === current) { const check = checks[checkCursor++], original = rack.components.find(row => row.nodeId === check.nodeId), offset = original.logicalAudioFrame - activationAudioFrame - check.logicalFrameOffset;
       graph.assertSpectralCapture(check.nodeId, { ...check.capture, startFrame: check.capture.startFrame + offset, endFrame: check.capture.endFrame + offset }); } };
-    return Object.freeze({ graph, sample(left, right) {
+    return Object.freeze({ graph, sourceRoutes, sample(left, right, sidechainSamples = null, presence = null) {
       if (frame >= endFrame) fail('The rack continuation passed its declared range.'); checkSpectral(frame);
       while (strikeCursor < strikes.length && strikes[strikeCursor].frame === frame) { const strike = strikes[strikeCursor++]; graph.enqueueNativeBodyStrike(strike.nodeId, strike.command); }
-      const send = input(frame); graph.sample(Math.fround(left * send), Math.fround(right * send)); const direct = dry(frame);
-      leftSample = Math.fround(Math.fround(left * direct) + Math.fround(graph.leftSample * state.outputGain01)); rightSample = Math.fround(Math.fround(right * direct) + Math.fround(graph.rightSample * state.outputGain01)); frame++;
+      const send = input(frame); graph.sample(Math.fround(left * send), Math.fround(right * send), sidechainSamples, presence); const direct = dry(frame);
+      dryLeftSample = Math.fround(left * direct); dryRightSample = Math.fround(right * direct); returnLeftSample = Math.fround(graph.leftSample * state.outputGain01); returnRightSample = Math.fround(graph.rightSample * state.outputGain01);
+      leftSample = Math.fround(dryLeftSample + returnLeftSample); rightSample = Math.fround(dryRightSample + returnRightSample); frame++;
     }, finish() { checkSpectral(frame); graph.assertHealthy(); if (frame !== endFrame || strikeCursor !== strikes.length || checkCursor !== checks.length) fail('A captured rack command missed its declared frontier.'); return this.receipt(); },
-    receipt: () => ({ schema: 'lemmings-captured-rack-continuation-render/v1', graphHash: graph.hash, sourceAudioFrame: state.audioFrame, activationAudioFrame, frames: frame, mode: state.mode, automation: graph.nativeCutReceipt(), finiteStrikes: strikes.length, checkedSpectralWindows: checkCursor, route: 'one-complete-saved-owner-rack-with-retained-memory-and-captured-control-curves', finalMasterProtection: 'excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }),
-    get leftSample() { return leftSample; }, get rightSample() { return rightSample; }, dispose: () => graph.panic() });
+    receipt: () => ({ schema: 'lemmings-captured-rack-continuation-render/v1', graphHash: graph.hash, sourceAudioFrame: state.audioFrame, activationAudioFrame, frames: frame, mode: state.mode, automation: graph.nativeCutReceipt(), finiteStrikes: strikes.length, sourceRoutes, sourcePresence: 'actual-source-tap-enable-boundaries;effect-status-message-lag-not-replayed', checkedSpectralWindows: checkCursor, route: 'one-complete-saved-owner-rack-with-retained-memory-and-captured-control-curves', finalMasterProtection: 'excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }),
+    get dryLeftSample() { return dryLeftSample; }, get dryRightSample() { return dryRightSample; }, get returnLeftSample() { return returnLeftSample; }, get returnRightSample() { return returnRightSample; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; }, dispose: () => graph.panic() });
   } catch (error) { graph.panic(); throw error; }
 }
