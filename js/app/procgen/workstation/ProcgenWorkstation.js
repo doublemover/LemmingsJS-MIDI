@@ -175,7 +175,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null, causalMarkerCheckpoint = null;
   let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0, lastCausalBranchPublication = null, lastWorkerPublication = null;
   const continuationExecutionIdentity = () => lastCausalBranchPublication || lastWorkerPublication ? { ...getActiveExecutionIdentity(), ...(lastCausalBranchPublication ? { physicalBranch: lastCausalBranchPublication } : {}), ...(lastWorkerPublication ? { workerContinuation: lastWorkerPublication } : {}) } : undefined;
-  let causalTakeArmCanceled = false, ownedCausalArm = null, ownedCausalPersistence = null;
+  let causalTakeArmCanceled = false, ownedCausalArm = null, ownedCausalPersistence = null, ownedSourceCommands = null;
   let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalProvenanceBuffer = null, physicalProvenanceDropped = 0, physicalReceiptBoundary = null, causalTakeErrorReported = false;
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
@@ -1024,6 +1024,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalTakeStop) return causalTakeStop;
     if (!causalTake) return lastCausalTake;
     const recorder = causalTake;
+    if (ownedSourceCommands?.recorder === recorder) { const receipt = ownedSourceCommands.close(); await receipt.completion; if (receipt.outcome !== 'complete') { const world = runtime()?.world; recorder.markGap({ kind: 'owned-source-commands', firstTick: world?.tickIndex || 0, lastTick: world?.tickIndex || 0, generation: world?.generation || 0, reason: 'source-command-terminal-fence-unavailable' }); } else ownedSourceCommands = null; }
     let finalCheckpoint = null;
     try {
       const world = runtime()?.world;
@@ -1080,7 +1081,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (ownedCausalArm) return runOwnedCausalArm({ takeName });
     if (project.procgen.lanes.some(lane => lane.mode === 'pattern') || pendingHistory || physicalAuthoringAbort || currentOperation || state.recording || state.thru || masterCapture?.state().capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(masterCapture?.state().capture?.state) || macroGestures.diagnostics().active || soundTransactions.diagnostics().active)
       throw new Error('Finish document, capture, sound and macro operations and disarm MIDI thru before owned sound capture.');
-    const { createOwnedCausalTakeArm } = await import('./OwnedCausalTakeArm.js');
+    const [{ createOwnedCausalTakeArm }, { preparePhysicalSourceCommandCapture }] = await Promise.all([import('./OwnedCausalTakeArm.js'), import('./PhysicalSourceCommandCapture.js')]);
     if (disposed || causalTake || causalTakeStart || causalTakeStop || ownedCausalArm || worldBusy || !transport.getState().playing || !physicalPlayback?.audioContinuation.capabilities().ready) throw new Error('Owned take capture needs active internal playback with a complete prepared owned-source inventory, supported creative rack and no external output.');
     const sourceRuntime = runtime(), sourceWorld = sourceRuntime.world, sourceProject = project, sourceGeneration = documentGeneration,
       sourceBoundary = Object.freeze({ worldId: sourceWorld.worldId, tick: sourceWorld.tickIndex, generation: sourceWorld.generation });
@@ -1098,12 +1099,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
         return createCausalTakeRecorder({ journal, takeId, takeName: recordedName, documentId: documentId || 'unsaved:' + takeId,
           sourceVersions: causalRuntimeSourceVersions(sourceWorld, sourceProject.procgen.physicalGraph.revision, session.world.version), signal,
-          captureProfile: { ...PHYSICAL_CAPTURE_PROFILE, id: 'physical-owned-audio-v1', stateKinds: [...PHYSICAL_CAPTURE_PROFILE.stateKinds, 'owned-audio'] },
+          captureProfile: { ...PHYSICAL_CAPTURE_PROFILE, id: 'physical-owned-audio-v1', stateKinds: [...PHYSICAL_CAPTURE_PROFILE.stateKinds, 'owned-audio', 'owned-source-commands'] },
           initialCheckpoint: { world: session.world, engine: session.physicalState, timeline: session.physicalTimeline, ownedAudio: image.checkpoint(), replay: { version: 2, bpm: held.bpm, scoreTimeline: true, playing: true } },
           mapping: sourceProject.procgen.physicalGraph, assetRefs: session.world.assets || [], boundaryState: { ...causalBoundary(), 'owned-audio': image.metadata() } });
       },
+      prepareCommandCapture: async options => {
+        ownedSourceCommands = await preparePhysicalSourceCommandCapture({ ...options, getBoundary: () => ({ tick: sourceWorld.tickIndex, generation: sourceWorld.generation }),
+          onGap: () => { causalClockBlocked = true; Promise.resolve().then(() => { if (causalTake === options.recorder && !disposed) transport.pause(); }); } }); return ownedSourceCommands;
+      },
       publishRecorder: recorder => publishCausalRecorder(recorder, sourceWorld),
       retireRecorder: async recorder => {
+        if (ownedSourceCommands?.recorder === recorder && ownedSourceCommands.state().retirement === 'complete') ownedSourceCommands = null;
         recorder.markGap({ kind: 'all', firstTick: sourceBoundary.tick, lastTick: sourceBoundary.tick, generation: sourceBoundary.generation, reason: 'owned-audio-activation-failed' });
         lastCausalTake = await recorder.stop({ boundaryState: causalBoundary(), reason: 'owned-audio-activation-failed' }); selectedCausalTakeId = lastCausalTake.takeId;
         if (!recorder.canReplaceDocument()) { causalTake = recorder; throw new Error('Save or explicitly discard the undurable take tail before retrying owned sound restoration.'); }

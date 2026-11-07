@@ -153,8 +153,9 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     recordInput: (observation, boundary) => record('input-observation', observation, boundary),
     recordTimeline: (timeline, boundary) => { const receipt = record('timeline', timeline, boundary); if (receipt.status === 'accepted') observedStateKinds.add('timeline'); return receipt; }, recordMapping,
     recordSinkOutcome: (outcome, boundary) => {
+      if (outcome?.schema === 'lemmings-captured-source-transport/v1' && !profile.stateKinds.includes('owned-source-commands')) return Object.freeze({ status: 'rejected', reason: 'source-commands-not-in-capture-profile' });
       if (outcome?.schema === 'lemmings-effect-performance/v1' && !profile.stateKinds.includes('effect-performance')) return Object.freeze({ status: 'rejected', reason: 'effect-performance-not-in-capture-profile' });
-      const receipt = record('sink-outcome', outcome, boundary); if (receipt.status === 'accepted') observeEffectCoverage([outcome], boundary?.tick ?? lastTick ?? 0, boundary?.generation ?? lastGeneration ?? 0); return receipt;
+      const receipt = record('sink-outcome', outcome, boundary); if (receipt.status === 'accepted' && outcome?.schema === 'lemmings-captured-source-transport/v1') observedStateKinds.add('owned-source-commands'); if (receipt.status === 'accepted') observeEffectCoverage([outcome], boundary?.tick ?? lastTick ?? 0, boundary?.generation ?? lastGeneration ?? 0); return receipt;
     },
     mark: (marker, boundary) => record('marker', marker, boundary), markGap, checkpoint: writer.checkpoint,
     flush: writer.flush, status, canReplaceDocument: writer.canReplaceDocument, stop, manifest: writer.manifest,

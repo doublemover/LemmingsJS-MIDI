@@ -2,7 +2,7 @@ const fail = message => { throw Object.assign(new Error(message), { name: 'Audio
 const join = async value => { const receipt = await value; await receipt?.completion; if (receipt === false || receipt?.outcome && receipt.outcome !== 'complete') throw Object.assign(new Error('Owned take preparation retains unresolved resources.'), { retirement: receipt }); };
 
 export function createOwnedCausalTakeArm({ hold, isCurrent, sourceBoundary, captureSession, captureAudio, encodeAudio, prepareOwner, createRecorder, publishRecorder,
-  retireRecorder, recordActivation, discardAudio, onState = () => {} } = {}) {
+  retireRecorder, recordActivation, discardAudio, prepareCommandCapture = async () => null, onState = () => {} } = {}) {
   if (!hold?.isCurrent || ![isCurrent, captureSession, captureAudio, encodeAudio, prepareOwner, createRecorder, publishRecorder, retireRecorder, recordActivation, discardAudio].every(value => typeof value === 'function')) fail('Owned take arming requires its exclusive physical/audio source transaction.');
   let capsule = null, captured = null, encoded = null, pending = null, controller = null, phase = 'ready', failure = null, unresolved = null, lastReceipt = null;
   const current = () => isCurrent() && hold.isCurrent();
@@ -20,7 +20,7 @@ export function createOwnedCausalTakeArm({ hold, isCurrent, sourceBoundary, capt
     if (pending || unresolved || ['complete', 'discarded'].includes(phase) || typeof record !== 'boolean') fail('Finish the current owned take operation before retrying.');
     check(); controller = new AbortController(); failure = null;
     const execute = async () => {
-      let owner = null, routing = null, continuation = null, recorder = null, resumed = false;
+      let owner = null, routing = null, continuation = null, recorder = null, commands = null, resumed = false;
       const options = { signal: controller.signal, isCurrent: current };
       try {
         if (!capsule) { notify('capturing-world'); capsule = await captureSession(options); check(); }
@@ -45,8 +45,9 @@ export function createOwnedCausalTakeArm({ hold, isCurrent, sourceBoundary, capt
         }
         notify('restoring-audio');
         const activation = await owner.audioContinuation.restore({ ...options, continuation, sources: routing.sources(),
-          restoreBindings: (bindings, frontier) => { check(); return owner.restorePreparedBodyContinuation(bindings.physical, { ...frontier, ...options, routingPlan: routing }); }, beforeArm: check });
+          restoreBindings: (bindings, frontier) => { check(); return owner.restorePreparedBodyContinuation(bindings.physical, { ...frontier, ...options, routingPlan: routing }); }, beforeArm: async frontier => { check(); if (recorder) commands = await prepareCommandCapture({ ...frontier, recorder, sources: inventory.sources }); check(); } });
         continuation = null; check(); routing.complete(); routing = null; owner.audioContinuation.activate();
+        commands?.activate(activation);
         const anchor = owner.anchorAudioContinuation({ audioFrame: activation.audioFrame, bpm: hold.metadata().bpm });
         notify('activating-world');
         const transport = hold.resumeAt({ hostMs: anchor.hostMs, audioFrame: activation.audioFrame, sampleRate: activation.sampleRate,
@@ -56,6 +57,7 @@ export function createOwnedCausalTakeArm({ hold, isCurrent, sourceBoundary, capt
       } catch (error) {
         failure = error; controller.abort(error); owner ||= error.preparedPhysicalOwner || null;
         if (!resumed) {
+          try { if (commands) await join(commands.close()); } catch (retirementError) { unresolved ||= retirementError; }
           try { await join(owner?.stop()); } catch (retirementError) { unresolved ||= retirementError; }
           try { if (routing) await join(routing.cancel()); } catch (retirementError) { unresolved ||= retirementError; }
           try { if (continuation?.metadata()) await join(continuation.release()); } catch (retirementError) { unresolved ||= retirementError; }

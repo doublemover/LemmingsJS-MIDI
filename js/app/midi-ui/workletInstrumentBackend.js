@@ -1,3 +1,4 @@
+import { createOwnedSourceTransportObserver } from './OwnedSourceTransportObserver.js';
 import { admitBrowserAudioTransport } from '../../runtime/BrowserDeploymentPolicy.js';
 import { createRendererPublicationOwner } from './RendererPublicationOwner.js';
 import { mapOwnedCommandFrames, mapOwnedHostFrames } from './OwnedSourceCoordinates.js';
@@ -74,6 +75,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const voices = new Map(), epochs = new Map(), leases = new Map(), cancelled = new Set(), inFlight = new Map(), traces = [];
   const cancellationReceipts = new Map();
   const pendingInitializations = new Set(), pendingPreparations = new Set();
+  const sourceTransport = createOwnedSourceTransportObserver({ resources: preview._audioResources, owner, getProducer: () => ready && !disposed ? node : null, getContext: () => context });
   const commandObservers = new Set(); let commandObservationFailures = 0, commandObserverSequence = 0;
   const kernelQueued = new Set();
   const slots = new Array(MAX_VOICES).fill(null), slotTokens = new Uint32Array(MAX_VOICES);
@@ -396,6 +398,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         queue = createAudioCommandQueue({ capacity: CAPACITY, terminalReserve: SINE_MAX_VOICES, maxHorizonFrames: Math.ceil(context.sampleRate * 10) });
         const connectedNode = node;
         node.port.onmessage = event => {
+          if (sourceTransport.consume(event.data)) return;
           if (disposed || !ready || node !== connectedNode) return;
           if (sourceRestoreOwner.consume(event.data) || sourceCutOwner.consume(event.data)) return;
           if (event.data?.type === 'receipts') onReceipts(event.data);
@@ -951,7 +954,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     }, retire: () => lifecycle.api.dispose() });
   const dispose = () => {
     if (retirement.getReceipt()) return retirement.getReceipt();
-    const retiringNode = node; let retiredRuntime;
+    const retiringNode = node, sourceCaptureRetirement = sourceTransport.close(); let retiredRuntime;
     const receipt = retirement.retire([
       { name: 'admission', run: () => { disposed = true; ready = false; settleSourceInspection(null, new Error('Sample diagnostic owner retired.')); } },
       { name: 'kernel-stop', run: onOwnerStop },
@@ -959,7 +962,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         await Promise.allSettled([...pendingPreparations]); if (faultRetirement?.outcome === 'partial') return faultRetirement;
       } },
       ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'backend-disposed') })),
-      { name: 'native-runtime', run: () => retiredRuntime = retireNode(retiringNode, runtimeResourceLease) },
+      { name: 'source-command-capture', run: () => sourceCaptureRetirement },
+      { name: 'native-runtime', run: async () => { await sourceCaptureRetirement?.completion; return retiredRuntime = retireNode(retiringNode, runtimeResourceLease); } },
       { name: 'restored-source-host', run: async () => { await retiredRuntime?.completion; if (restoredHostLease) { if (retiredRuntime?.outcome !== 'complete') { restoredHostLease.retainUnknown(new Error('Restored source retirement is unresolved.')); throw new Error('Restored source host is still owned.'); } restoredHostLease.release(); restoredHostLease = null; } } },
       { name: 'display', run: () => display.dispose() },
       { name: 'command-observers', run: () => commandObservers.clear() },
@@ -970,6 +974,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     return receipt;
   };
   lifecycle = createInstrumentExecutionLifecycle({ capabilities, runtime, prepare, begin, update, updatePerformance, updateLaneMix, updatePhysical, updateSamplePosition, updateSampleTravel, updateCanonicalTravel, end, renewExecutionLease, cancelGenerationWithReceipt,
+    observeSourceTransport: sourceTransport.observe, sourceTransportBindings: () => ({ laneIdentities: laneRegistry?.captureIdentityTokens() || [] }),
     observeCommandOutcomes(listener) {
       if (disposed || typeof listener !== 'function' || commandObservers.size >= 8 || commandObserverSequence === Number.MAX_SAFE_INTEGER) throw new Error('Command observation is unavailable.');
       const observer = { id: ++commandObserverSequence, listener }; commandObservers.add(observer); let active = true;
