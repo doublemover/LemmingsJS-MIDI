@@ -213,3 +213,23 @@ describe('protected stage sessions consume the same prepared scene owner', () =>
     loader.select(value); await loader.prepare(); expect(loader.state().canApply).to.equal(true); base = 'doc:2'; expect(loader.state().canApply).to.equal(false); await loader.dispose();
   });
 });
+
+describe('owned scene metadata registration (functional campaign deferred)', () => {
+  it('keeps one admitted copy, charges retained metadata and releases it after the registry retires', async () => {
+    const budget = createResourceBudget({ limitBytes: 64 * 1048576 }), registry = createPerformanceSceneRegistry({ resourceBudget: budget }), value = await scene();
+    await registry.register(value); const bytes = budget.diagnostics().accountedBytes; expect(bytes).to.be.greaterThan(4096); expect(registry.resolve(registry.findSupported({ id: value.id }))).to.equal(value);
+    await registry.register(value); expect(budget.diagnostics().accountedBytes).to.equal(bytes); expect(registry.size()).to.equal(1);
+    const changed = structuredClone(value); changed.title += ' changed'; const rejected = await Promise.allSettled([registry.register(changed)]); expect(rejected[0].status).to.equal('rejected'); expect(registry.size()).to.equal(1); expect(budget.diagnostics().accountedBytes).to.equal(bytes);
+    const receipt = registry.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(registry.dispose()).to.equal(receipt); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('refuses a new stored scene before publication when the metadata byte bound is exhausted', async () => {
+    const budget = createResourceBudget({ limitBytes: 64 * 1048576 }), registry = createPerformanceSceneRegistry({ resourceBudget: budget, maximumBytes: 4096 }), value = await scene();
+    const rejected = await Promise.allSettled([registry.register(value)]); expect(rejected[0].status).to.equal('rejected'); expect(rejected[0].reason.message).to.include('metadata byte capacity'); expect(registry.size()).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(4096);
+    const receipt = registry.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('joins an in-flight hash before releasing its workspace and refuses late publication', async () => {
+    const budget = createResourceBudget({ limitBytes: 64 * 1048576 }), registry = createPerformanceSceneRegistry({ resourceBudget: budget }), value = await scene();
+    const work = registry.register(value), receipt = registry.dispose(), result = await Promise.allSettled([work]); expect(result[0].status).to.equal('rejected'); await receipt.completion;
+    expect(receipt.outcome).to.equal('complete'); expect(registry.size()).to.equal(0); expect(registry.diagnostics().pendingRegistrations).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+});

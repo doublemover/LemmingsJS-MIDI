@@ -6,6 +6,7 @@ import { validateSoundContentReference } from '../../../midi/content/SoundConten
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 
 export const PERFORMANCE_SCENE_SCHEMA = 'lemmings-performance-scene/v1';
+const admittedScenes = new WeakSet();
 const limits = { maxBytes: 1048576, maxNodes: 65536, domain: 'Performance scene' };
 const fail = message => { throw Object.assign(new Error(message), { name: 'PerformanceSceneError', code: 'invalid-performance-scene' }); };
 const text = (value, max = 128) => typeof value === 'string' && value.length > 0 && value.length <= max;
@@ -20,6 +21,7 @@ const requirement = value => keys(value, ['id', 'kind', 'revision', 'hash', 'des
 export const sceneDependencyKey = value => [value.kind, value.id, value.revision, value.hash].join(':');
 
 export function validatePerformanceScene(raw) {
+  if (admittedScenes.has(raw)) return raw;
   const scene = JSON.parse(canonicalDataText(raw, limits).text);
   if (!keys(scene, ['schema', 'id', 'version', 'title', 'description', 'sourceVersion', 'worldRecipeRef', 'seed', 'physicalControls', 'causalMappings', 'patchRefs', 'mix', 'initialTransport', 'tutorialRef', 'expectedLandmarks', 'requirements', 'credits', 'cost', 'mechanisms', 'lessonLevel', 'density', 'parent']) || scene.schema !== PERFORMANCE_SCENE_SCHEMA || !id(scene.id) || !integer(scene.version, 1, 2147483647) || !text(scene.title, 160) || !text(scene.description, 2048) || !reference(scene.sourceVersion) || !reference(scene.worldRecipeRef) || !integer(scene.seed, 0, 0xffffffff)) fail('Scene identity, source or physical score recipe is invalid.');
   if (!Array.isArray(scene.physicalControls) || scene.physicalControls.length > 4) fail('A scene exposes at most four authored controls.');
@@ -63,7 +65,7 @@ export function validatePerformanceScene(raw) {
   if (!Array.isArray(scene.mechanisms) || !scene.mechanisms.length || scene.mechanisms.length > 8 || new Set(scene.mechanisms).size !== scene.mechanisms.length || scene.mechanisms.some(value => !['crossing', 'work', 'flight', 'encounter', 'travel', 'contact', 'terrain', 'cooperation'].includes(value)) || !['sparse', 'medium', 'dense'].includes(scene.density) || !integer(scene.lessonLevel, 0, 5)) fail('Scene browsing metadata is invalid.');
   if (!Array.isArray(scene.credits) || scene.credits.length > 64 || scene.credits.some(value => !keys(value, ['name', 'role', 'source']) || !text(value.name, 256) || !text(value.role, 256) || value.source !== null && !text(value.source, 2048))) fail('Scene credits are invalid.');
   if (scene.parent !== undefined && (!keys(scene.parent, ['id', 'version', 'hash', 'overridesHash']) || !id(scene.parent.id) || !integer(scene.parent.version, 1, 2147483647) || !hash(scene.parent.hash) || !hash(scene.parent.overridesHash))) fail('Derived scenes require an immutable parent and override identity.');
-  return freezeData(scene);
+  const prepared = freezeData(scene); admittedScenes.add(prepared); return prepared;
 }
 export async function performanceSceneHash(raw) { return hashData(validatePerformanceScene(raw), limits); }
 export async function derivePerformanceScene(raw, { id: nextId, version, title, overrides }) {
@@ -73,7 +75,7 @@ export async function derivePerformanceScene(raw, { id: nextId, version, title, 
   return validatePerformanceScene({ ...parent, ...value, id: nextId, version, title, parent: { id: parent.id, version: parent.version, hash: await performanceSceneHash(parent), overridesHash: await hashData(value, limits) } });
 }
 export function inspectPerformanceScene(raw) {
-  const value = cloneData(raw, limits);
+  const value = admittedScenes.has(raw) ? raw : cloneData(raw, limits);
   if (!id(value?.id) || !text(value.title, 160) || !integer(value.version, 1, 2147483647)) fail('Scene metadata is not inspectable.');
   if (value.schema !== PERFORMANCE_SCENE_SCHEMA) return freezeData({ id: value.id, version: value.version, title: value.title, supported: false, reason: 'unsupported-scene-schema', schema: typeof value.schema === 'string' ? value.schema.slice(0, 128) : null });
   const scene = validatePerformanceScene(value);

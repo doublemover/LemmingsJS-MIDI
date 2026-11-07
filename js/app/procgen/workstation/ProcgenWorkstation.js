@@ -1974,7 +1974,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         ]);
         if (disposed) return;
         const getCatalog = getInstrumentCatalog || audio.getNativeInstrumentCatalog;
-        sceneCatalog = await installed.createInstalledPerformanceSceneCatalog({ getCatalog }); if (disposed) return;
+        sceneCatalog = await installed.createInstalledPerformanceSceneCatalog({ getCatalog, resourceBudget }); if (disposed) { const receipt = sceneCatalog.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Scene catalog retirement remains unresolved.'); return; }
         sceneLoader = loading.createPerformanceSceneLoader({ getBaseIdentity: sceneBaseIdentity, resolveDependency: sceneCatalog.resolveDependency,
           prepareCandidate: typeof prepareSceneWorld === 'function' ? adapter.createPerformanceSceneWorldAdapter({ getCatalog, getOrigin: (scene, variants) => sceneCatalog.origin(scene, variants), prepareWorld: prepareSceneWorld, resourceBudget, getMaterialProvider: legacy.local.audio?.getSoundMaterialProvider ? () => legacy.local.audio.getSoundMaterialProvider() : null }) : async () => { throw new Error('This host does not provide staged world publication.'); },
           preparePreview: typeof prepareInspectionWorld === 'function' && legacy.local.audio && resourceBudget ? rehearsal.createPerformanceSceneRehearsal({ audio: legacy.local.audio, prepareInspectionWorld, jobs: backgroundJobs, resourceBudget }) : null,
@@ -3348,7 +3348,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'macro-gestures', run: () => macroGestures.dispose() },
         { name: 'sound-transactions', run: () => soundTransactions.dispose() },
         { name: 'stage-session', run: () => stageSession?.dispose() },
-        { name: 'scene-tools', run: async () => { await sceneToolsPending?.catch(() => {}); const lessons = physicalLessonView?.dispose(); if (lessons) { await lessons.completion; if (lessons.outcome !== 'complete') throw new Error('Lesson preparation retirement remains unresolved.'); } await sceneBrowser?.dispose(); await sceneLoader?.dispose(); } },
+        { name: 'scene-tools', run: async () => { await sceneToolsPending?.catch(() => {}); const lessons = physicalLessonView?.dispose(); if (lessons) { await lessons.completion; if (lessons.outcome !== 'complete') throw new Error('Lesson preparation retirement remains unresolved.'); } await sceneBrowser?.dispose(); await sceneLoader?.dispose(); const catalogReceipt = sceneCatalog?.dispose(); if (catalogReceipt) { await catalogReceipt.completion; if (catalogReceipt.outcome !== 'complete') throw new Error('Scene catalog retirement remains unresolved.'); } } },
         { name: 'native-sound-selection', run: () => nativeSoundSelection?.dispose() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },

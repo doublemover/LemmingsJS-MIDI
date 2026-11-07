@@ -39,223 +39,234 @@ import { normalizeWorkerLimits } from '../ProcgenWorkerLimits.js';
 import { normalizePopulationPolicy } from '../ProcgenPopulationPolicy.js';
 import { validatePerformanceScene, performanceSceneHash, sceneDependencyKey } from './PerformanceScene.js';
 import { createPerformanceSceneRegistry } from './PerformanceSceneRegistry.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 
 // These bounded crossing/practice scores use actual actor and cohort owners.
 // Larger named performances still need their authored geometry and qualification.
-export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal } = {}) {
+export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal, resourceBudget = null } = {}) {
   signal?.throwIfAborted(); const catalog = await getCatalog(); signal?.throwIfAborted();
-  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(), preparedWeather = new Map(), preparedWorkshops = new Map(), preparedSampleWorkshops = new Map(), preparedCircuitWorkshops = new Map(); let workshopPending = false, nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
-  if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return Object.freeze({ registry, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } });
-  const sourceHash = catalog.executionIdentity.buildId, descriptor = catalog.descriptors.find(value => value.engineId === 'worklet-sine');
-  const put = (kind, id, revision, hash, storage = 'installed-runtime') => { const value = { kind, id, revision, hash, status: 'available', storage }; available.set(sceneDependencyKey(value), freezeData(value)); };
-  put('world-source', 'procgen-workstation-source', 2, sourceHash);
-  put('engine', descriptor.engineId, descriptor.engineVersion, descriptor.artifactHash); put('parameter-schema', descriptor.engineId, descriptor.engineVersion, descriptor.parameterSchemaHash);
-  const observationHash = await hashData({ buildId: sourceHash, observation: 'MotionCommitted', physicalBatch: 1 }); put('physical-observation', 'MotionCommitted', 1, observationHash);
-  const definition = { schemaVersion: 2, id: 'scene.crossing-tone', revision: 1, name: 'Crossing tone', author: 'LemmingsJS-MIDI', tags: ['original', 'scene', 'crossing'], engineId: 'worklet-sine', engineVersion: 1,
-    parameters: { attackSeconds: 0.008, decaySeconds: 0.05, sustain01: 0.65, releaseSeconds: 0.06, gain01: 0.4, pan01: 0 }, modulations: [], sampleRefs: [], macros: [], causalBindings: [], voicePolicy: { maxVoices: 8, steal: 'reject' }, mix: { gain01: 0.4, pan01: 0 } };
-  const definitionHash = await hashData(definition), packHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash });
-  put('patch', definition.id, 1, definitionHash, 'embedded');
-  const reference = { schema: 'lemmings-sound-reference/v1', packHash, patchId: definition.id, revision: 1, definitionHash, definition, assetHashes: [], engineRequirement: { engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash } };
-  for (const laneCount of [4, 8]) {
-    const recipe = validatePerformanceSceneRecipe({ schema: 'lemmings-physical-score-recipe/v1', id: 'score.crossing-corridors.' + laneCount, revision: 1, sourceHash, seedPolicy: 'scene-seed',
-      settings: { laneCount, laneHeight: 96, pack: 1, speed: 3, hazardSpacing: 320, decoration: 'none', workerLimits: normalizeWorkerLimits(), populationPolicy: normalizePopulationPolicy({ scoutsEvery: 0, spawnSpreadTicks: laneCount === 4 ? 12 : 36 }) }, terrainFamilies: Array(laneCount).fill('crystal') });
-    const recipeHash = await hashData(recipe), instruments = Array.from({ length: laneCount }, (_, laneId) => ({ id: 'corridor-' + laneId + '-gate', sourceLanes: [laneId], sourceKind: 'MotionCommitted', gateX: 160 + laneId * 16, crossingDirection: 'either', pitchCents: 4800 + [0, 700, 1200, 1900, 400, 1100, 1600, 2300][laneId], velocity01: 0.55, role: 'crossing', route: 'local' }));
-    recipes.set(recipeHash, recipe); put('score-recipe', recipe.id, 1, recipeHash, 'embedded');
-    const scene = validatePerformanceScene({ schema: 'lemmings-performance-scene/v1', id: 'crossing-corridors.' + laneCount, version: 1, title: 'Crossing Corridors · ' + laneCount + ' lanes', description: 'Real actors cross one spatial gate in each corridor; redirect their routes to change the timing. The world remains the clock.', sourceVersion: { id: 'procgen-workstation-source', revision: 2, hash: sourceHash }, worldRecipeRef: { id: recipe.id, revision: 1, hash: recipeHash }, seed: 24001 + laneCount,
-      physicalControls: [], causalMappings: { version: 1, revision: 1, instruments }, patchRefs: Array.from({ length: laneCount }, (_, i) => ({ laneId: 'scene-lane-' + i, reference })),
-      mix: Array.from({ length: laneCount }, (_, i) => ({ laneId: 'scene-lane-' + i, gain: 0.5, pan: (i / (laneCount - 1) * 2 - 1) * 64, mute: false, solo: false })), initialTransport: { playing: false, bpm: 120, gameSpeed: 3, speedMode: 'bpm' }, tutorialRef: null,
-      expectedLandmarks: instruments.slice(0, 4).map(instrument => ({ id: instrument.id, observationKind: 'MotionCommitted', sourceObjectId: instrument.id, consequence: 'An actual crossing at X=' + instrument.gateX + ' excites the local tone.', help: 'Enable local audio, start the world, then redirect an actor across this gate. Stopping traffic stops new attacks.' })),
-      requirements: { required: [{ kind: 'physical-observation', id: 'MotionCommitted', revision: 1, hash: observationHash, description: 'Committed actor crossing facts' }], optional: [], substitutableWithNamedApproximation: [] }, credits: [{ name: 'LemmingsJS-MIDI', role: 'Original crossing score and tone', source: null }],
-      cost: { lanes: laneCount, maximumVoices: laneCount * 8, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing'], density: laneCount === 4 ? 'sparse' : 'medium', lessonLevel: 1 });
-    await registry.register(scene); signal?.throwIfAborted();
-  }
-  let quarryScores = [];
-  const pluck = catalog.descriptors.find(value => value.engineId === 'worklet-pluck');
-  if (pluck && pluck.maximumVoices >= 8) {
-    put('engine', pluck.engineId, pluck.engineVersion, pluck.artifactHash); put('parameter-schema', pluck.engineId, pluck.engineVersion, pluck.parameterSchemaHash);
-    const pickupHash = await hashData({ buildId: sourceHash, observation: 'PickupCrossing', source: 'MotionCommitted', physicalBatch: 1 }); put('physical-observation', 'PickupCrossing', 1, pickupHash);
-    const pluckDefinition = { ...definition, id: 'scene.practice-pluck', name: 'Practice pickup pluck', engineId: 'worklet-pluck', parameters: { attackSeconds: 0.002, decaySeconds: 0, sustain01: 1, releaseSeconds: 0.08, gain01: 0.4, pan01: 0,
-      stringT60Seconds: 0.4, bodyMix01: 0.15, bodyT60Seconds: 0.2, pluckPosition01: 0.3, excitationBrightness01: 0.5, damping01: 0.15 }, voicePolicy: { maxVoices: 4, steal: 'reject' } };
-    const pluckDefinitionHash = await hashData(pluckDefinition), pluckPackHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash: pluckDefinitionHash }); put('patch', pluckDefinition.id, 1, pluckDefinitionHash, 'embedded');
-    const pluckReference = { schema: 'lemmings-sound-reference/v1', packHash: pluckPackHash, patchId: pluckDefinition.id, revision: 1, definitionHash: pluckDefinitionHash, definition: pluckDefinition, assetHashes: [], engineRequirement: { engineId: pluck.engineId, engineVersion: pluck.engineVersion, artifactHash: pluck.artifactHash, parameterSchemaHash: pluck.parameterSchemaHash } };
-    for (const practice of [
-      { id: 'one-foot-one-sound', title: 'One Foot, One Sound', lanes: 1, spread: 0, paused: false, description: 'One finite entrant approaches a visible world-space pickup. Load a fresh attempt, move the pickup through Physical authoring while paused, then predict the crossing before Play. An actual crossing owns the pluck; the display and transport create no attacks.' },
-      { id: 'space-becomes-rhythm', title: 'Space Becomes Rhythm', lanes: 2, spread: 12, paused: false, description: 'Two finite entrants share one world-space pickup with explicit birth phases. Their actual paths determine the arrival interval. Use Release gestures to perform a new finite phrase with changed entry spacing; no note schedule moves the actors.' },
-      { id: 'quiet-control', title: 'Quiet Control · no entrants', lanes: 1, spread: 0, paused: true, description: 'Birth admission starts paused and the world contains no actors. Running transport produces no physical crossing or pluck. This is the zero-note control for the practice scores; explicitly perform a release gesture to introduce a real cause.' }
-    ]) {
-      const laneCount = practice.lanes, initialReleaseGesture = validateReleaseGesture({ version: 1, id: 'practice.' + practice.id, revision: 1, nominalGapTicks: 54, spreadTicks: practice.spread, lanePhase: Array.from({ length: laneCount }, (_, laneId) => ({ laneId, offsetTicks: laneId * practice.spread })),
-        grouping: 'free', clockMode: 'locked', finiteBurstCount: laneCount, phaseStepTicks: 0, liveChangeBoundary: 'next-cohort', paused: practice.paused, seed: 28001 }, laneCount);
-      const recipe = validatePerformanceSceneRecipe({ schema: 'lemmings-physical-score-recipe/v1', id: 'score.practice.' + practice.id, revision: 1, sourceHash, seedPolicy: 'scene-seed', initialReleaseGesture,
-        settings: { laneCount, laneHeight: 96, pack: 1, speed: 3, hazardSpacing: 1024, decoration: 'none', workerLimits: normalizeWorkerLimits(), populationPolicy: normalizePopulationPolicy({ scoutsEvery: 0, spawnSpreadTicks: practice.spread }) }, terrainFamilies: Array(laneCount).fill('crystal') });
-      const recipeHash = await hashData(recipe); recipes.set(recipeHash, recipe); put('score-recipe', recipe.id, 1, recipeHash, 'embedded');
-      const pickupId = 'practice-pickup', causalMappings = { version: 1, revision: 1,
-        pickups: [{ id: pickupId, revision: 1, worldAnchor: 'world', geometry: { kind: 'segment', points: [{ x: 96, y: 0 }, { x: 96, y: laneCount * 96 }] }, laneScope: Array.from({ length: laneCount }, (_, laneId) => laneId), trigger: 'cross', directionPolicy: 'either', hysteresis: 0, pitchMap: { mode: 'fixed', baseCents: 6000 } }],
-        instruments: Array.from({ length: laneCount }, (_, laneId) => ({ id: 'practice-pluck-' + laneId, pickupId, sourceLanes: [laneId], sourceKind: 'PickupCrossing', pitchCents: 6000, velocity01: 0.55, role: 'harp', route: 'local' })) };
-      const scene = validatePerformanceScene({ schema: 'lemmings-performance-scene/v1', id: 'practice.' + practice.id, version: 1, title: practice.title, description: practice.description,
-        sourceVersion: { id: 'procgen-workstation-source', revision: 2, hash: sourceHash }, worldRecipeRef: { id: recipe.id, revision: 1, hash: recipeHash }, seed: 28001,
-        physicalControls: [], causalMappings, patchRefs: Array.from({ length: laneCount }, (_, index) => ({ laneId: 'practice-lane-' + index, reference: pluckReference })),
-        mix: Array.from({ length: laneCount }, (_, index) => ({ laneId: 'practice-lane-' + index, gain: 0.5, pan: laneCount === 1 ? 0 : index ? 48 : -48, mute: false, solo: false })),
-        initialTransport: { playing: false, bpm: 120, gameSpeed: 3, speedMode: 'bpm' }, tutorialRef: null,
-        expectedLandmarks: [{ id: 'pickup-crossing', observationKind: 'PickupCrossing', sourceObjectId: pickupId, consequence: practice.paused ? 'Without an entrant, no crossing or new attack exists.' : 'Each actual pickup crossing begins one owned pluck. Source end and the bounded decay retain their existing ownership.', help: 'Load starts paused. Enable local audio explicitly. Predict the next crossing; use Physical authoring to move the pickup or Release gestures to introduce new finite entrants. Rejected physical requests are not corrected automatically.' }],
-        requirements: { required: [{ kind: 'physical-observation', id: 'PickupCrossing', revision: 1, hash: pickupHash, description: 'Swept world-space pickup observations derived from complete actual motion' }, { kind: 'physical-observation', id: 'MotionCommitted', revision: 1, hash: observationHash, description: 'Complete committed actor motion' }], optional: [], substitutableWithNamedApproximation: [] },
-        credits: [{ name: 'LemmingsJS-MIDI', role: 'Original finite-cohort practice score and pluck', source: null }], cost: { lanes: laneCount, maximumVoices: laneCount * 4, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing'], density: 'sparse', lessonLevel: practice.paused ? 0 : 1 });
+  const registry = createPerformanceSceneRegistry({ resourceBudget }), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(), preparedWeather = new Map(), preparedWorkshops = new Map(), preparedSampleWorkshops = new Map(), preparedCircuitWorkshops = new Map(); let workshopPending = false, nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
+  const retirement = createProcgenRetirementScope(); let disposed = false, quarryScores = [], glassOrbitScores = [], modalWorkshopScores = [];
+  const checkActive = () => { if (disposed) throw new Error('The installed scene catalog has retired.'); };
+  const dispose = () => {
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
+    const registryReceipt = registry.dispose(), registryComplete = Promise.resolve(registryReceipt.completion).then(() => { if (registryReceipt.outcome !== 'complete') throw new Error('Scene registry ownership remains unresolved.'); });
+    return retirement.retire([{ name: 'scene-registry', run: () => registryComplete },
+      { name: 'installed-scene-caches', run: async () => { await registryComplete; for (const map of [recipes, available, embeddedAssets, preparedNurseries, preparedFoundries, preparedFoundBells, preparedWeather, preparedWorkshops, preparedSampleWorkshops, preparedCircuitWorkshops]) map.clear(); quarryScores = []; glassOrbitScores = []; modalWorkshopScores = []; } }]);
+  };
+  try {
+    if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return Object.freeze({ registry, dispose, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } });
+    const sourceHash = catalog.executionIdentity.buildId, descriptor = catalog.descriptors.find(value => value.engineId === 'worklet-sine');
+    const put = (kind, id, revision, hash, storage = 'installed-runtime') => { const value = { kind, id, revision, hash, status: 'available', storage }; available.set(sceneDependencyKey(value), freezeData(value)); };
+    put('world-source', 'procgen-workstation-source', 2, sourceHash);
+    put('engine', descriptor.engineId, descriptor.engineVersion, descriptor.artifactHash); put('parameter-schema', descriptor.engineId, descriptor.engineVersion, descriptor.parameterSchemaHash);
+    const observationHash = await hashData({ buildId: sourceHash, observation: 'MotionCommitted', physicalBatch: 1 }); put('physical-observation', 'MotionCommitted', 1, observationHash);
+    const definition = { schemaVersion: 2, id: 'scene.crossing-tone', revision: 1, name: 'Crossing tone', author: 'LemmingsJS-MIDI', tags: ['original', 'scene', 'crossing'], engineId: 'worklet-sine', engineVersion: 1,
+      parameters: { attackSeconds: 0.008, decaySeconds: 0.05, sustain01: 0.65, releaseSeconds: 0.06, gain01: 0.4, pan01: 0 }, modulations: [], sampleRefs: [], macros: [], causalBindings: [], voicePolicy: { maxVoices: 8, steal: 'reject' }, mix: { gain01: 0.4, pan01: 0 } };
+    const definitionHash = await hashData(definition), packHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash });
+    put('patch', definition.id, 1, definitionHash, 'embedded');
+    const reference = { schema: 'lemmings-sound-reference/v1', packHash, patchId: definition.id, revision: 1, definitionHash, definition, assetHashes: [], engineRequirement: { engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash } };
+    for (const laneCount of [4, 8]) {
+      const recipe = validatePerformanceSceneRecipe({ schema: 'lemmings-physical-score-recipe/v1', id: 'score.crossing-corridors.' + laneCount, revision: 1, sourceHash, seedPolicy: 'scene-seed',
+        settings: { laneCount, laneHeight: 96, pack: 1, speed: 3, hazardSpacing: 320, decoration: 'none', workerLimits: normalizeWorkerLimits(), populationPolicy: normalizePopulationPolicy({ scoutsEvery: 0, spawnSpreadTicks: laneCount === 4 ? 12 : 36 }) }, terrainFamilies: Array(laneCount).fill('crystal') });
+      const recipeHash = await hashData(recipe), instruments = Array.from({ length: laneCount }, (_, laneId) => ({ id: 'corridor-' + laneId + '-gate', sourceLanes: [laneId], sourceKind: 'MotionCommitted', gateX: 160 + laneId * 16, crossingDirection: 'either', pitchCents: 4800 + [0, 700, 1200, 1900, 400, 1100, 1600, 2300][laneId], velocity01: 0.55, role: 'crossing', route: 'local' }));
+      recipes.set(recipeHash, recipe); put('score-recipe', recipe.id, 1, recipeHash, 'embedded');
+      const scene = validatePerformanceScene({ schema: 'lemmings-performance-scene/v1', id: 'crossing-corridors.' + laneCount, version: 1, title: 'Crossing Corridors · ' + laneCount + ' lanes', description: 'Real actors cross one spatial gate in each corridor; redirect their routes to change the timing. The world remains the clock.', sourceVersion: { id: 'procgen-workstation-source', revision: 2, hash: sourceHash }, worldRecipeRef: { id: recipe.id, revision: 1, hash: recipeHash }, seed: 24001 + laneCount,
+        physicalControls: [], causalMappings: { version: 1, revision: 1, instruments }, patchRefs: Array.from({ length: laneCount }, (_, i) => ({ laneId: 'scene-lane-' + i, reference })),
+        mix: Array.from({ length: laneCount }, (_, i) => ({ laneId: 'scene-lane-' + i, gain: 0.5, pan: (i / (laneCount - 1) * 2 - 1) * 64, mute: false, solo: false })), initialTransport: { playing: false, bpm: 120, gameSpeed: 3, speedMode: 'bpm' }, tutorialRef: null,
+        expectedLandmarks: instruments.slice(0, 4).map(instrument => ({ id: instrument.id, observationKind: 'MotionCommitted', sourceObjectId: instrument.id, consequence: 'An actual crossing at X=' + instrument.gateX + ' excites the local tone.', help: 'Enable local audio, start the world, then redirect an actor across this gate. Stopping traffic stops new attacks.' })),
+        requirements: { required: [{ kind: 'physical-observation', id: 'MotionCommitted', revision: 1, hash: observationHash, description: 'Committed actor crossing facts' }], optional: [], substitutableWithNamedApproximation: [] }, credits: [{ name: 'LemmingsJS-MIDI', role: 'Original crossing score and tone', source: null }],
+        cost: { lanes: laneCount, maximumVoices: laneCount * 8, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing'], density: laneCount === 4 ? 'sparse' : 'medium', lessonLevel: 1 });
       await registry.register(scene); signal?.throwIfAborted();
     }
-    const lessonDefinition = { ...pluckDefinition, id: 'scene.lesson-pluck', name: 'Physical lesson pluck', macros: [{ id: 'brightness', name: 'BRIGHTNESS', mode: 'onset-only', default01: 0.5, smoothingMs: 0, perceptualDirection: 'Brighter excitation on later actual attacks.', targets: [{ parameter: 'excitationBrightness01', unit: 'normalized', minimum: 0.15, maximum: 0.85, curve: 'linear', composition: 'replace', clamp: true }] }] };
-    const lessonHash = await hashData(lessonDefinition), lessonPackHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash: lessonHash }); put('patch', lessonDefinition.id, 1, lessonHash, 'embedded');
-    const lessonReference = { ...pluckReference, patchId: lessonDefinition.id, definitionHash: lessonHash, definition: lessonDefinition, packHash: lessonPackHash };
-    for (const item of await createAdditionalPracticeScores({ sourceHash, reference: lessonReference })) {
-      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
-      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-      await registry.register(item.scene); signal?.throwIfAborted();
-    }
-  }
-  if (pluck?.maximumVoices >= 12) {
-    quarryScores = await createDubQuarryScores({ sourceHash, descriptor: pluck, signal });
-    for (const item of [...quarryScores, ...await createQuarryJourneyScores({ sourceHash, scores: quarryScores, signal })]) {
-      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
-      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-      for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
-      await registry.register(item.scene); signal?.throwIfAborted();
-    }
-  }
-  const friction = catalog.descriptors.find(value => value.engineId === 'worklet-friction');
-  if (friction?.capabilities.sealedFrictionModel && friction.capabilities.canonicalFrictionTravel && friction.maximumVoices >= 2) {
-    const item = await createFrictionPerformanceScore({ sourceHash, descriptor: friction }); signal?.throwIfAborted();
-    recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
-    put('engine', friction.engineId, friction.engineVersion, friction.artifactHash); put('parameter-schema', friction.engineId, friction.engineVersion, friction.parameterSchemaHash);
-    for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-    for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
-    await registry.register(item.scene); signal?.throwIfAborted();
-    for (const strategy of ['paired', 'blend']) {
-      const bridge = await createMetamorphicBridgeScore({ sourceHash, descriptor: friction, strategy }); signal?.throwIfAborted(); recipes.set(bridge.recipeHash, bridge.recipe); put('score-recipe', bridge.recipe.id, 1, bridge.recipeHash, 'embedded');
-      for (const dependency of bridge.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-      for (const patch of bridge.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
-      await registry.register(bridge.scene); signal?.throwIfAborted();
-    }
-  }
-  const wind = catalog.descriptors.find(value => value.engineId === 'worklet-wind');
-  if (wind?.capabilities.sealedWindModel && wind.capabilities.pressureDrivenWind && wind.maximumVoices >= 2) {
-    const item = await createWindPerformanceScore({ sourceHash, descriptor: wind }); signal?.throwIfAborted();
-    recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
-    put('engine', wind.engineId, wind.engineVersion, wind.artifactHash); put('parameter-schema', wind.engineId, wind.engineVersion, wind.parameterSchemaHash);
-    for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-    for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
-    await registry.register(item.scene); signal?.throwIfAborted();
-  }
-  let glassOrbitScores = [], modalWorkshopScores = [];
-  const fm = catalog.descriptors.find(value => value.engineId === 'native-fm');
-  if (fm?.capabilities.perVoicePitch && fm.maximumVoices >= 8) {
-    put('engine', fm.engineId, fm.engineVersion, fm.artifactHash); put('parameter-schema', fm.engineId, fm.engineVersion, fm.parameterSchemaHash);
-    glassOrbitScores = await createGlassOrbitScores({ sourceHash, descriptor: fm, signal });
-    for (const item of [...await createSwitchyardScores({ sourceHash, descriptor: fm, signal }), ...glassOrbitScores, ...await createBuilderMinerScores({ sourceHash, descriptor: fm, signal })]) {
-      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
-      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-      for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
-      await registry.register(item.scene); signal?.throwIfAborted();
-    }
-  }
-  const modal = catalog.descriptors.find(value => value.engineId === 'native-modal');
-  if (modal?.maximumVoices >= 8) {
-    put('engine', modal.engineId, modal.engineVersion, modal.artifactHash); put('parameter-schema', modal.engineId, modal.engineVersion, modal.parameterSchemaHash);
-    modalWorkshopScores = await createBuilderMinerScores({ sourceHash, descriptor: modal, signal });
-    for (const item of modalWorkshopScores) {
-      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
-      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-      for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
-      await registry.register(item.scene); signal?.throwIfAborted();
-    }
-  }
-  const registerAuthoredScores = async items => {
-    for (const item of items) {
-      signal?.throwIfAborted(); recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, item.recipe.revision, item.recipeHash, 'embedded');
-      for (const asset of item.embeddedAssets || []) embeddedAssets.set(asset.hash, freezeData({ ...asset }));
-      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-      for (const reference of item.scene.patchRefs.flatMap(patch => patch.materialPalette ? patch.materialPalette.references : [patch.reference])) {
-        const engine = reference.engineRequirement; put('engine', engine.engineId, engine.engineVersion, engine.artifactHash); put('parameter-schema', engine.engineId, engine.engineVersion, engine.parameterSchemaHash);
-        put('patch', reference.patchId, reference.revision, reference.definitionHash, 'embedded');
+    const pluck = catalog.descriptors.find(value => value.engineId === 'worklet-pluck');
+    if (pluck && pluck.maximumVoices >= 8) {
+      put('engine', pluck.engineId, pluck.engineVersion, pluck.artifactHash); put('parameter-schema', pluck.engineId, pluck.engineVersion, pluck.parameterSchemaHash);
+      const pickupHash = await hashData({ buildId: sourceHash, observation: 'PickupCrossing', source: 'MotionCommitted', physicalBatch: 1 }); put('physical-observation', 'PickupCrossing', 1, pickupHash);
+      const pluckDefinition = { ...definition, id: 'scene.practice-pluck', name: 'Practice pickup pluck', engineId: 'worklet-pluck', parameters: { attackSeconds: 0.002, decaySeconds: 0, sustain01: 1, releaseSeconds: 0.08, gain01: 0.4, pan01: 0,
+        stringT60Seconds: 0.4, bodyMix01: 0.15, bodyT60Seconds: 0.2, pluckPosition01: 0.3, excitationBrightness01: 0.5, damping01: 0.15 }, voicePolicy: { maxVoices: 4, steal: 'reject' } };
+      const pluckDefinitionHash = await hashData(pluckDefinition), pluckPackHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash: pluckDefinitionHash }); put('patch', pluckDefinition.id, 1, pluckDefinitionHash, 'embedded');
+      const pluckReference = { schema: 'lemmings-sound-reference/v1', packHash: pluckPackHash, patchId: pluckDefinition.id, revision: 1, definitionHash: pluckDefinitionHash, definition: pluckDefinition, assetHashes: [], engineRequirement: { engineId: pluck.engineId, engineVersion: pluck.engineVersion, artifactHash: pluck.artifactHash, parameterSchemaHash: pluck.parameterSchemaHash } };
+      for (const practice of [
+        { id: 'one-foot-one-sound', title: 'One Foot, One Sound', lanes: 1, spread: 0, paused: false, description: 'One finite entrant approaches a visible world-space pickup. Load a fresh attempt, move the pickup through Physical authoring while paused, then predict the crossing before Play. An actual crossing owns the pluck; the display and transport create no attacks.' },
+        { id: 'space-becomes-rhythm', title: 'Space Becomes Rhythm', lanes: 2, spread: 12, paused: false, description: 'Two finite entrants share one world-space pickup with explicit birth phases. Their actual paths determine the arrival interval. Use Release gestures to perform a new finite phrase with changed entry spacing; no note schedule moves the actors.' },
+        { id: 'quiet-control', title: 'Quiet Control · no entrants', lanes: 1, spread: 0, paused: true, description: 'Birth admission starts paused and the world contains no actors. Running transport produces no physical crossing or pluck. This is the zero-note control for the practice scores; explicitly perform a release gesture to introduce a real cause.' }
+      ]) {
+        const laneCount = practice.lanes, initialReleaseGesture = validateReleaseGesture({ version: 1, id: 'practice.' + practice.id, revision: 1, nominalGapTicks: 54, spreadTicks: practice.spread, lanePhase: Array.from({ length: laneCount }, (_, laneId) => ({ laneId, offsetTicks: laneId * practice.spread })),
+          grouping: 'free', clockMode: 'locked', finiteBurstCount: laneCount, phaseStepTicks: 0, liveChangeBoundary: 'next-cohort', paused: practice.paused, seed: 28001 }, laneCount);
+        const recipe = validatePerformanceSceneRecipe({ schema: 'lemmings-physical-score-recipe/v1', id: 'score.practice.' + practice.id, revision: 1, sourceHash, seedPolicy: 'scene-seed', initialReleaseGesture,
+          settings: { laneCount, laneHeight: 96, pack: 1, speed: 3, hazardSpacing: 1024, decoration: 'none', workerLimits: normalizeWorkerLimits(), populationPolicy: normalizePopulationPolicy({ scoutsEvery: 0, spawnSpreadTicks: practice.spread }) }, terrainFamilies: Array(laneCount).fill('crystal') });
+        const recipeHash = await hashData(recipe); recipes.set(recipeHash, recipe); put('score-recipe', recipe.id, 1, recipeHash, 'embedded');
+        const pickupId = 'practice-pickup', causalMappings = { version: 1, revision: 1,
+          pickups: [{ id: pickupId, revision: 1, worldAnchor: 'world', geometry: { kind: 'segment', points: [{ x: 96, y: 0 }, { x: 96, y: laneCount * 96 }] }, laneScope: Array.from({ length: laneCount }, (_, laneId) => laneId), trigger: 'cross', directionPolicy: 'either', hysteresis: 0, pitchMap: { mode: 'fixed', baseCents: 6000 } }],
+          instruments: Array.from({ length: laneCount }, (_, laneId) => ({ id: 'practice-pluck-' + laneId, pickupId, sourceLanes: [laneId], sourceKind: 'PickupCrossing', pitchCents: 6000, velocity01: 0.55, role: 'harp', route: 'local' })) };
+        const scene = validatePerformanceScene({ schema: 'lemmings-performance-scene/v1', id: 'practice.' + practice.id, version: 1, title: practice.title, description: practice.description,
+          sourceVersion: { id: 'procgen-workstation-source', revision: 2, hash: sourceHash }, worldRecipeRef: { id: recipe.id, revision: 1, hash: recipeHash }, seed: 28001,
+          physicalControls: [], causalMappings, patchRefs: Array.from({ length: laneCount }, (_, index) => ({ laneId: 'practice-lane-' + index, reference: pluckReference })),
+          mix: Array.from({ length: laneCount }, (_, index) => ({ laneId: 'practice-lane-' + index, gain: 0.5, pan: laneCount === 1 ? 0 : index ? 48 : -48, mute: false, solo: false })),
+          initialTransport: { playing: false, bpm: 120, gameSpeed: 3, speedMode: 'bpm' }, tutorialRef: null,
+          expectedLandmarks: [{ id: 'pickup-crossing', observationKind: 'PickupCrossing', sourceObjectId: pickupId, consequence: practice.paused ? 'Without an entrant, no crossing or new attack exists.' : 'Each actual pickup crossing begins one owned pluck. Source end and the bounded decay retain their existing ownership.', help: 'Load starts paused. Enable local audio explicitly. Predict the next crossing; use Physical authoring to move the pickup or Release gestures to introduce new finite entrants. Rejected physical requests are not corrected automatically.' }],
+          requirements: { required: [{ kind: 'physical-observation', id: 'PickupCrossing', revision: 1, hash: pickupHash, description: 'Swept world-space pickup observations derived from complete actual motion' }, { kind: 'physical-observation', id: 'MotionCommitted', revision: 1, hash: observationHash, description: 'Complete committed actor motion' }], optional: [], substitutableWithNamedApproximation: [] },
+          credits: [{ name: 'LemmingsJS-MIDI', role: 'Original finite-cohort practice score and pluck', source: null }], cost: { lanes: laneCount, maximumVoices: laneCount * 4, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing'], density: 'sparse', lessonLevel: practice.paused ? 0 : 1 });
+        await registry.register(scene); signal?.throwIfAborted();
       }
-      await registry.register(item.scene);
+      const lessonDefinition = { ...pluckDefinition, id: 'scene.lesson-pluck', name: 'Physical lesson pluck', macros: [{ id: 'brightness', name: 'BRIGHTNESS', mode: 'onset-only', default01: 0.5, smoothingMs: 0, perceptualDirection: 'Brighter excitation on later actual attacks.', targets: [{ parameter: 'excitationBrightness01', unit: 'normalized', minimum: 0.15, maximum: 0.85, curve: 'linear', composition: 'replace', clamp: true }] }] };
+      const lessonHash = await hashData(lessonDefinition), lessonPackHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash: lessonHash }); put('patch', lessonDefinition.id, 1, lessonHash, 'embedded');
+      const lessonReference = { ...pluckReference, patchId: lessonDefinition.id, definitionHash: lessonHash, definition: lessonDefinition, packHash: lessonPackHash };
+      for (const item of await createAdditionalPracticeScores({ sourceHash, reference: lessonReference })) {
+        recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+        for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+        await registry.register(item.scene); signal?.throwIfAborted();
+      }
     }
-  };
-  await registerAuthoredScores([await createPhysicalMusicStarter({ sourceHash, reference })]);
-  if (modal?.capabilities.worldSpatialControl && modal.capabilities.sharedAcousticZoneSends && quarryScores.length) await registerAuthoredScores(await createQuarryWorldScores({ sourceHash, descriptor: modal, scores: quarryScores, signal }));
-  if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createThreeHandsScores({ sourceHash, descriptor, signal }));
-  if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createResonanceTerrariumScores({ sourceHash, descriptor, signal }));
-  if (modal?.maximumVoices >= 3) await registerAuthoredScores([await createFoundBellScore({ sourceHash, descriptor: modal, signal })]);
-  if (modal?.capabilities.worldSpatialControl && modal.capabilities.sharedAcousticZoneSends) await registerAuthoredScores([await createPocketCathedralScore({ sourceHash, descriptor: modal, signal })]);
-  const texture = catalog.descriptors.find(value => value.engineId === 'worklet-texture');
-  if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
-  if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
-  if (modalWorkshopScores.length) { await registerAuthoredScores(await createWorkshopCourierScores({ sourceHash, scores: modalWorkshopScores, signal })); await registerAuthoredScores(await createWorkshopSharedBodyScores({ sourceHash, scores: modalWorkshopScores, signal })); }
-  const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
-  if (modal?.maximumVoices >= 16 && spectrum?.maximumVoices >= 4) await registerAuthoredScores(await createWorkshopInteractionScores({ sourceHash, modalDescriptor: modal, spectrumDescriptor: spectrum, signal }));
-  if (glassOrbitScores.length) { await registerAuthoredScores(await createGlassOrbitTrellisScores({ sourceHash, scores: glassOrbitScores, signal })); await registerAuthoredScores(await createGlassOrbitMetamorphicScores({ sourceHash, scores: glassOrbitScores, signal })); }
-  if (fm?.capabilities.worldSpatialControl && fm.capabilities.sharedAcousticZoneSends && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitOrchestrations({ sourceHash, scores: glassOrbitScores, spectrumDescriptor: spectrum, signal }));
-  if (spectrum?.maximumVoices >= 8 && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitCircularScores({ sourceHash, descriptor: spectrum, scores: glassOrbitScores, signal }));
-  if (spectrum?.maximumVoices >= 8) await registerAuthoredScores(await createBentLadderScores({ sourceHash, descriptor: spectrum, signal }));
-  if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
-  for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) {
-    const scores = await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }); await registerAuthoredScores(scores); await registerAuthoredScores(await createRescueResonantScores({ sourceHash, scores, signal })); if (crewDescriptor === choir && wind?.capabilities.sealedWindModel && wind.capabilities.pressureDrivenWind && wind.maximumVoices >= 2) await registerAuthoredScores(await createRescueAirCrewScores({ sourceHash, descriptor: wind, scores, signal }));
+    if (pluck?.maximumVoices >= 12) {
+      quarryScores = await createDubQuarryScores({ sourceHash, descriptor: pluck, signal });
+      for (const item of [...quarryScores, ...await createQuarryJourneyScores({ sourceHash, scores: quarryScores, signal })]) {
+        recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+        for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+        for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+        await registry.register(item.scene); signal?.throwIfAborted();
+      }
+    }
+    const friction = catalog.descriptors.find(value => value.engineId === 'worklet-friction');
+    if (friction?.capabilities.sealedFrictionModel && friction.capabilities.canonicalFrictionTravel && friction.maximumVoices >= 2) {
+      const item = await createFrictionPerformanceScore({ sourceHash, descriptor: friction }); signal?.throwIfAborted();
+      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+      put('engine', friction.engineId, friction.engineVersion, friction.artifactHash); put('parameter-schema', friction.engineId, friction.engineVersion, friction.parameterSchemaHash);
+      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+      for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+      await registry.register(item.scene); signal?.throwIfAborted();
+      for (const strategy of ['paired', 'blend']) {
+        const bridge = await createMetamorphicBridgeScore({ sourceHash, descriptor: friction, strategy }); signal?.throwIfAborted(); recipes.set(bridge.recipeHash, bridge.recipe); put('score-recipe', bridge.recipe.id, 1, bridge.recipeHash, 'embedded');
+        for (const dependency of bridge.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+        for (const patch of bridge.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+        await registry.register(bridge.scene); signal?.throwIfAborted();
+      }
+    }
+    const wind = catalog.descriptors.find(value => value.engineId === 'worklet-wind');
+    if (wind?.capabilities.sealedWindModel && wind.capabilities.pressureDrivenWind && wind.maximumVoices >= 2) {
+      const item = await createWindPerformanceScore({ sourceHash, descriptor: wind }); signal?.throwIfAborted();
+      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+      put('engine', wind.engineId, wind.engineVersion, wind.artifactHash); put('parameter-schema', wind.engineId, wind.engineVersion, wind.parameterSchemaHash);
+      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+      for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+      await registry.register(item.scene); signal?.throwIfAborted();
+    }
+    const fm = catalog.descriptors.find(value => value.engineId === 'native-fm');
+    if (fm?.capabilities.perVoicePitch && fm.maximumVoices >= 8) {
+      put('engine', fm.engineId, fm.engineVersion, fm.artifactHash); put('parameter-schema', fm.engineId, fm.engineVersion, fm.parameterSchemaHash);
+      glassOrbitScores = await createGlassOrbitScores({ sourceHash, descriptor: fm, signal });
+      for (const item of [...await createSwitchyardScores({ sourceHash, descriptor: fm, signal }), ...glassOrbitScores, ...await createBuilderMinerScores({ sourceHash, descriptor: fm, signal })]) {
+        recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+        for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+        for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+        await registry.register(item.scene); signal?.throwIfAborted();
+      }
+    }
+    const modal = catalog.descriptors.find(value => value.engineId === 'native-modal');
+    if (modal?.maximumVoices >= 8) {
+      put('engine', modal.engineId, modal.engineVersion, modal.artifactHash); put('parameter-schema', modal.engineId, modal.engineVersion, modal.parameterSchemaHash);
+      modalWorkshopScores = await createBuilderMinerScores({ sourceHash, descriptor: modal, signal });
+      for (const item of modalWorkshopScores) {
+        recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+        for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+        for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+        await registry.register(item.scene); signal?.throwIfAborted();
+      }
+    }
+    const registerAuthoredScores = async items => {
+      for (const item of items) {
+        checkActive();
+        signal?.throwIfAborted(); await registry.register(item.scene); checkActive(); recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, item.recipe.revision, item.recipeHash, 'embedded');
+        for (const asset of item.embeddedAssets || []) embeddedAssets.set(asset.hash, freezeData({ ...asset }));
+        for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+        for (const reference of item.scene.patchRefs.flatMap(patch => patch.materialPalette ? patch.materialPalette.references : [patch.reference])) {
+          const engine = reference.engineRequirement; put('engine', engine.engineId, engine.engineVersion, engine.artifactHash); put('parameter-schema', engine.engineId, engine.engineVersion, engine.parameterSchemaHash);
+          put('patch', reference.patchId, reference.revision, reference.definitionHash, 'embedded');
+        }
+      }
+    };
+    await registerAuthoredScores([await createPhysicalMusicStarter({ sourceHash, reference })]);
+    if (modal?.capabilities.worldSpatialControl && modal.capabilities.sharedAcousticZoneSends && quarryScores.length) await registerAuthoredScores(await createQuarryWorldScores({ sourceHash, descriptor: modal, scores: quarryScores, signal }));
+    if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createThreeHandsScores({ sourceHash, descriptor, signal }));
+    if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createResonanceTerrariumScores({ sourceHash, descriptor, signal }));
+    if (modal?.maximumVoices >= 3) await registerAuthoredScores([await createFoundBellScore({ sourceHash, descriptor: modal, signal })]);
+    if (modal?.capabilities.worldSpatialControl && modal.capabilities.sharedAcousticZoneSends) await registerAuthoredScores([await createPocketCathedralScore({ sourceHash, descriptor: modal, signal })]);
+    const texture = catalog.descriptors.find(value => value.engineId === 'worklet-texture');
+    if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
+    if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
+    if (modalWorkshopScores.length) { await registerAuthoredScores(await createWorkshopCourierScores({ sourceHash, scores: modalWorkshopScores, signal })); await registerAuthoredScores(await createWorkshopSharedBodyScores({ sourceHash, scores: modalWorkshopScores, signal })); }
+    const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
+    if (modal?.maximumVoices >= 16 && spectrum?.maximumVoices >= 4) await registerAuthoredScores(await createWorkshopInteractionScores({ sourceHash, modalDescriptor: modal, spectrumDescriptor: spectrum, signal }));
+    if (glassOrbitScores.length) { await registerAuthoredScores(await createGlassOrbitTrellisScores({ sourceHash, scores: glassOrbitScores, signal })); await registerAuthoredScores(await createGlassOrbitMetamorphicScores({ sourceHash, scores: glassOrbitScores, signal })); }
+    if (fm?.capabilities.worldSpatialControl && fm.capabilities.sharedAcousticZoneSends && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitOrchestrations({ sourceHash, scores: glassOrbitScores, spectrumDescriptor: spectrum, signal }));
+    if (spectrum?.maximumVoices >= 8 && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitCircularScores({ sourceHash, descriptor: spectrum, scores: glassOrbitScores, signal }));
+    if (spectrum?.maximumVoices >= 8) await registerAuthoredScores(await createBentLadderScores({ sourceHash, descriptor: spectrum, signal }));
+    if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
+    for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) {
+      const scores = await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }); await registerAuthoredScores(scores); await registerAuthoredScores(await createRescueResonantScores({ sourceHash, scores, signal })); if (crewDescriptor === choir && wind?.capabilities.sealedWindModel && wind.capabilities.pressureDrivenWind && wind.maximumVoices >= 2) await registerAuthoredScores(await createRescueAirCrewScores({ sourceHash, descriptor: wind, scores, signal }));
+    }
+    return Object.freeze({ registry, dispose, metadataState: () => registry.diagnostics(), available: true, reason: null, sourceHash,
+      getEmbeddedAsset(hash) { checkActive(); return embeddedAssets.get(hash) || null; },
+      async addCircuitWorkshop(reference, { signal: requestSignal } = {}) {
+        checkActive(); requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); checkActive(); requestSignal?.throwIfAborted();
+        if (preparedCircuitWorkshops.has(key)) return preparedCircuitWorkshops.get(key);
+        if (workshopPending || preparedCircuitWorkshops.size >= 8) throw new Error('Finish this workshop preparation; at most eight exact component-kit workshops are retained.'); workshopPending = true;
+        try { const items = await createCircuitWorkshopScores({ sourceHash, scores: modalWorkshopScores, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedCircuitWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
+        finally { workshopPending = false; }
+      },
+      async addPreparedWorkshop(reference, { signal: requestSignal } = {}) {
+        checkActive(); requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); checkActive(); requestSignal?.throwIfAborted();
+        if (preparedSampleWorkshops.has(key)) return preparedSampleWorkshops.get(key);
+        if (workshopPending || preparedSampleWorkshops.size >= 8) throw new Error('Finish this workshop preparation; at most eight immutable multisample workshops are retained.'); workshopPending = true;
+        try { const items = await createPreparedWorkshopScores({ sourceHash, scores: modalWorkshopScores, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), frictionDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-friction'), reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedSampleWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
+        finally { workshopPending = false; }
+      },
+      async addWorkshopTool(reference, { signal: requestSignal } = {}) {
+        checkActive(); requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); checkActive(); requestSignal?.throwIfAborted();
+        if (preparedWorkshops.has(key)) return preparedWorkshops.get(key);
+        if (workshopPending || preparedWorkshops.size >= 8) throw new Error('Finish this tool preparation; at most eight immutable workshop grafts are retained.'); workshopPending = true;
+        try { const items = await createWorkshopToolScores({ sourceHash, modalDescriptor: modal, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
+        finally { workshopPending = false; }
+      },
+      async addNurseryStrike(reference, { signal: requestSignal } = {}) {
+        checkActive(); requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); checkActive(); requestSignal?.throwIfAborted();
+        if (preparedNurseries.has(key)) return preparedNurseries.get(key);
+        if (nurseryPending || preparedNurseries.size >= 8) throw new Error('The Nursery catalog admits one preparation at a time and at most eight distinct prepared strike scores.');
+        nurseryPending = true;
+        try {
+          const item = await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedNurseries.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row;
+        } finally { nurseryPending = false; }
+      },
+      async addGlacierWeather(prepared, { signal: requestSignal } = {}) {
+        checkActive(); requestSignal?.throwIfAborted(); const key = prepared.reference.definitionHash;
+        if (preparedWeather.has(key)) return preparedWeather.get(key);
+        if (weatherPending || preparedWeather.size >= 8) throw new Error('Finish this weather preparation; at most eight captured seed palettes are retained.'); weatherPending = true;
+        try { const items = await createGlacierWeatherScores({ sourceHash, choirDescriptor: choir, granularDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-granular'), prepared, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWeather.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
+        finally { weatherPending = false; }
+      },
+      async addFoundBell(prepared, sourceReceipt, { signal: requestSignal } = {}) {
+        checkActive(); requestSignal?.throwIfAborted(); const key = sourceReceipt.receiptHash + ':' + prepared.reference.definitionHash;
+        if (preparedFoundBells.has(key)) return preparedFoundBells.get(key);
+        if (foundBellPending || preparedFoundBells.size >= 8) throw new Error('Finish this Found Bell preparation; at most eight reviewed source lessons are retained.');
+        foundBellPending = true;
+        try { const item = await createFoundBellScore({ sourceHash, descriptor: modal, prepared, sourceReceipt, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedFoundBells.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row; }
+        finally { foundBellPending = false; }
+      },
+      getPreparedFoundry({ modeCount, sampleRate }) { return preparedFoundries.get(modeCount + ':' + sampleRate) || null; },
+      async addPocketFoundry(bundle, { signal: requestSignal } = {}) {
+        checkActive(); requestSignal?.throwIfAborted(); const key = bundle.modeCount + ':' + bundle.sampleRate;
+        if (preparedFoundries.has(key)) return preparedFoundries.get(key);
+        if (foundryPending || preparedFoundries.size >= 9) throw new Error('Finish the current foundry assembly; at most nine explicit tier/rate scores are retained.');
+        foundryPending = true;
+        try { const item = await createPocketFoundryScore({ sourceHash, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), bundle, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedFoundries.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row; }
+        finally { foundryPending = false; }
+      },
+      resolveDependency: async dependency => { checkActive(); return available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' }; },
+      getRecipe(scene) { checkActive(); const recipe = recipes.get(scene.worldRecipeRef.hash); if (!recipe || recipe.id !== scene.worldRecipeRef.id || recipe.revision !== scene.worldRecipeRef.revision) throw new Error('The exact physical score recipe is unavailable.'); return recipe; },
+      async origin(scene, variants = []) { checkActive(); return freezeData({ schema: 'lemmings-performance-scene-origin/v1', manifest: scene, sceneHash: await performanceSceneHash(scene), recipe: recipes.get(scene.worldRecipeRef.hash), variants }); } });
+  } catch (error) {
+    const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { error.retirement = receipt; error.sceneCatalogOwnership = { registry, retirement }; } throw error;
   }
-  return Object.freeze({ registry, available: true, reason: null, sourceHash,
-    getEmbeddedAsset(hash) { return embeddedAssets.get(hash) || null; },
-    async addCircuitWorkshop(reference, { signal: requestSignal } = {}) {
-      requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
-      if (preparedCircuitWorkshops.has(key)) return preparedCircuitWorkshops.get(key);
-      if (workshopPending || preparedCircuitWorkshops.size >= 8) throw new Error('Finish this workshop preparation; at most eight exact component-kit workshops are retained.'); workshopPending = true;
-      try { const items = await createCircuitWorkshopScores({ sourceHash, scores: modalWorkshopScores, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), reference, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedCircuitWorkshops.set(key, rows); requestSignal?.throwIfAborted(); return rows; }
-      finally { workshopPending = false; }
-    },
-    async addPreparedWorkshop(reference, { signal: requestSignal } = {}) {
-      requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
-      if (preparedSampleWorkshops.has(key)) return preparedSampleWorkshops.get(key);
-      if (workshopPending || preparedSampleWorkshops.size >= 8) throw new Error('Finish this workshop preparation; at most eight immutable multisample workshops are retained.'); workshopPending = true;
-      try { const items = await createPreparedWorkshopScores({ sourceHash, scores: modalWorkshopScores, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), frictionDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-friction'), reference, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedSampleWorkshops.set(key, rows); requestSignal?.throwIfAborted(); return rows; }
-      finally { workshopPending = false; }
-    },
-    async addWorkshopTool(reference, { signal: requestSignal } = {}) {
-      requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
-      if (preparedWorkshops.has(key)) return preparedWorkshops.get(key);
-      if (workshopPending || preparedWorkshops.size >= 8) throw new Error('Finish this tool preparation; at most eight immutable workshop grafts are retained.'); workshopPending = true;
-      try { const items = await createWorkshopToolScores({ sourceHash, modalDescriptor: modal, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWorkshops.set(key, rows); requestSignal?.throwIfAborted(); return rows; }
-      finally { workshopPending = false; }
-    },
-    async addNurseryStrike(reference, { signal: requestSignal } = {}) {
-      requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
-      if (preparedNurseries.has(key)) return preparedNurseries.get(key);
-      if (nurseryPending || preparedNurseries.size >= 8) throw new Error('The Nursery catalog admits one preparation at a time and at most eight distinct prepared strike scores.');
-      nurseryPending = true;
-      try {
-        const item = await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedNurseries.set(key, row); requestSignal?.throwIfAborted(); return row;
-      } finally { nurseryPending = false; }
-    },
-    async addGlacierWeather(prepared, { signal: requestSignal } = {}) {
-      requestSignal?.throwIfAborted(); const key = prepared.reference.definitionHash;
-      if (preparedWeather.has(key)) return preparedWeather.get(key);
-      if (weatherPending || preparedWeather.size >= 8) throw new Error('Finish this weather preparation; at most eight captured seed palettes are retained.'); weatherPending = true;
-      try { const items = await createGlacierWeatherScores({ sourceHash, choirDescriptor: choir, granularDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-granular'), prepared, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWeather.set(key, rows); requestSignal?.throwIfAborted(); return rows; }
-      finally { weatherPending = false; }
-    },
-    async addFoundBell(prepared, sourceReceipt, { signal: requestSignal } = {}) {
-      requestSignal?.throwIfAborted(); const key = sourceReceipt.receiptHash + ':' + prepared.reference.definitionHash;
-      if (preparedFoundBells.has(key)) return preparedFoundBells.get(key);
-      if (foundBellPending || preparedFoundBells.size >= 8) throw new Error('Finish this Found Bell preparation; at most eight reviewed source lessons are retained.');
-      foundBellPending = true;
-      try { const item = await createFoundBellScore({ sourceHash, descriptor: modal, prepared, sourceReceipt, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedFoundBells.set(key, row); requestSignal?.throwIfAborted(); return row; }
-      finally { foundBellPending = false; }
-    },
-    getPreparedFoundry({ modeCount, sampleRate }) { return preparedFoundries.get(modeCount + ':' + sampleRate) || null; },
-    async addPocketFoundry(bundle, { signal: requestSignal } = {}) {
-      requestSignal?.throwIfAborted(); const key = bundle.modeCount + ':' + bundle.sampleRate;
-      if (preparedFoundries.has(key)) return preparedFoundries.get(key);
-      if (foundryPending || preparedFoundries.size >= 9) throw new Error('Finish the current foundry assembly; at most nine explicit tier/rate scores are retained.');
-      foundryPending = true;
-      try { const item = await createPocketFoundryScore({ sourceHash, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), bundle, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedFoundries.set(key, row); requestSignal?.throwIfAborted(); return row; }
-      finally { foundryPending = false; }
-    },
-    resolveDependency: async dependency => available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' },
-    getRecipe(scene) { const recipe = recipes.get(scene.worldRecipeRef.hash); if (!recipe || recipe.id !== scene.worldRecipeRef.id || recipe.revision !== scene.worldRecipeRef.revision) throw new Error('The exact physical score recipe is unavailable.'); return recipe; },
-    async origin(scene, variants = []) { return freezeData({ schema: 'lemmings-performance-scene-origin/v1', manifest: scene, sceneHash: await performanceSceneHash(scene), recipe: recipes.get(scene.worldRecipeRef.hash), variants }); } });
 }
