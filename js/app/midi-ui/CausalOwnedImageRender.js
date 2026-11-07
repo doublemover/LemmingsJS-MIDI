@@ -1,5 +1,5 @@
 import { createCausalOwnedSourceReplay } from './CausalOwnedSourceReplay.js';
-import { createCausalOwnedImageRack } from './CausalOwnedImageRack.js';
+import { createCausalOwnedRackHistory } from './CausalOwnedRackHistory.js';
 import { decodeOwnedAudioImage } from '../resources/OwnedAudioImageCodec.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 import { encodeCausalRenderWave } from './CausalOwnedRender.js';
@@ -61,13 +61,14 @@ export async function renderCausalOwnedImage(input, options = {}) {
   if (includeStems) for (const [id, role] of [['source-dry', 'raw-source-before-rack-routing'], ['owner-dry-route', 'recombinable-owner-dry-route'], ['shared-rack-return', 'recombinable-shared-rack-return']]) slots.push({ id, role, pcm: new Float32Array(output.length) });
   const laneSlots = laneIds.map((laneId, index) => ({ id: 'lane-' + index, laneId, role: 'captured-dry-lane-before-owner-rack', pcm: new Float32Array(output.length) })); slots.push(...laneSlots);
   const sourceReceipts = [], replays = []; let rackReceipt = null;
-  const rack = includeRack ? await createCausalOwnedImageRack({ rack: decoded.rack, sampleRate: rate, activationAudioFrame: activationFrames[0], endFrame: end, effectEvents: source.effectEvents, effectCoverage: source.effectCoverage }) : null;
+  const rack = includeRack ? await createCausalOwnedRackHistory({ rack: decoded.rack, sampleRate: rate, activationAudioFrame: activationFrames[0], endFrame: end, effectEvents: source.effectEvents, effectCoverage: source.effectCoverage }) : null;
   try {
     const routes = rack?.sourceRoutes || [], needTaps = routes.some(route => route.key !== null), sidechainSamples = new Float32Array(routes.length * 2), presence = new Uint8Array(routes.length);
     for (const inventory of inventories.values()) { check(options); replays.push(await createCausalOwnedSourceReplay({ inventory, rate, materials, options, remapLanes, needTaps, stemLaneIds: laneIds })); }
     for (let frame = 0; frame < end; frame++) {
       let left = 0, right = 0; for (const replay of replays) { replay.sample(frame); left = Math.fround(left + replay.leftSample); right = Math.fround(right + replay.rightSample); }
       if (rack) {
+        if (frame >= rack.nextBoundary) { await rack.advance(frame); check(options); }
         sidechainSamples.fill(0); presence.fill(0);
         for (let index = 0; index < routes.length; index++) { const route = routes[index]; if (route.key === null) { sidechainSamples[index * 2] = left; sidechainSamples[index * 2 + 1] = right; presence[index] = 1; } else for (const replay of replays) if (replay.donor(route.key, route.tap, sidechainSamples, index)) presence[index] = 1; }
         rack.sample(left, right, sidechainSamples, presence);

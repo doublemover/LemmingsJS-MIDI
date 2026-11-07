@@ -32,10 +32,10 @@ export function createOwnedEffectCutAutomation(plan, state, sampleRate, audioFra
   });
   let lastFrame = -1, additional = 0;
   const valueAt = (curve, frame) => curve.end <= curve.at || frame >= curve.end ? curve.target : curve.value + (curve.target - curve.value) * Math.max(0, frame - curve.at) / (curve.end - curve.at);
-  const schedule = (nodeId, name, value, frame) => {
+  const schedule = (nodeId, name, value, frame, durationFrames = null) => {
     const curve = byNode.get(nodeId)?.curves.find(curve => curve.spec.name === name);
-    if (lastFrame >= 0 || !curve || !Number.isSafeInteger(frame) || frame < 0 || !Number.isFinite(value) || value < curve.spec.valueMinimum || value > curve.spec.valueMaximum || curve.spec.allowedValues && !curve.spec.allowedValues.includes(value) || additional >= 32768) fail('An original control exceeds the staged automation inventory or frame domain.');
-    curve.events.push({ frame, value, duration: curve.spec.smoothingSeconds * sampleRate, sequence: ++curve.sequence }); additional++;
+    if (lastFrame >= 0 || !curve || !Number.isSafeInteger(frame) || frame < 0 || !Number.isFinite(value) || value < curve.spec.valueMinimum || value > curve.spec.valueMaximum || curve.spec.allowedValues && !curve.spec.allowedValues.includes(value) || additional >= 32768 || durationFrames !== null && (!Number.isSafeInteger(durationFrames) || durationFrames < 0 || durationFrames > sampleRate * 60 || curve.spec.allowedValues && durationFrames !== 0)) fail('An original control exceeds the staged automation inventory or frame domain.');
+    curve.events.push({ frame, value, duration: durationFrames ?? curve.spec.smoothingSeconds * sampleRate, sequence: ++curve.sequence }); additional++;
   };
   let sorted = false;
   const step = frame => {

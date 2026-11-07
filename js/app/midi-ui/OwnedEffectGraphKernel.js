@@ -215,6 +215,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       const record = records[indices.get(nodeId)];
       if (!nativeCut || !record?.entry.membrane || !Number.isSafeInteger(command?.frame) || command.frame < frame || !record.kernel.enqueueStrike({ ...command, frame: command.frame + record.native.logicalAudioFrame })) fail('effect-native-body-strike', 'Stage each finite strike against its saved body logical frame before rendering.');
     },
+    scheduleNativeSidechainGate(value, targetFrame, durationFrames) { if (!nativeCut || frame) fail('effect-native-cut-staging', 'Stage original sidechain ramps before rendering.'); for (const id of plan.sidechainInputs) nativeCut.automation.schedule(id, 'gate', value, targetFrame, durationFrames); },
     reconstructNativeSourcePresence() { if (!nativeCut || frame) fail('effect-native-cut-staging', 'Choose source-presence reconstruction before rendering.'); nativeCut.reconstructPresence = true; },
     nativeCutReceipt: () => nativeCut?.automation.receipt() || null,
     validateDetachedComponentStates(components, hostState = null, audioFrame = null) {
