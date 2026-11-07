@@ -20,7 +20,7 @@ export async function createSceneSpatialObservation({ scene, world, signal } = {
       for (const intent of intents) {
         const attachment = mappings.get(intent.mappingId)?.spatialAttachment; if (intent.kind !== 'begin' || !attachment) continue;
         if (voices.size >= Math.min(128, map.maximumVoices)) throw new Error('The private spatial prefix exceeds its complete retained-source bound.');
-        const fact = intent.sourceEventIds.map(id => facts.get(id)).find(Boolean), result = mapper.state({ voiceId: intent.voiceId, actorId: intent.actorId, attachment, sourcePosition: spatialSourcePoint(fact) });
+        const fact = intent.sourceEventIds.map(id => facts.get(id)).find(Boolean), result = mapper.state({ voiceId: intent.voiceId, actorId: intent.actorId, attachment, sourcePosition: spatialSourcePoint(fact, intent, scene.causalMappings) });
         if (result.status !== 'complete') throw new Error(result.reason);
         const state = validateSpatialState({ ...result.state, mapHash }), material = attachment.materialMode === 'zone-response' ? createAcousticMaterialSelection({ map, state, mapHash, intent, sourceEventId: fact?.eventId || intent.sourceEventIds[0], articulation: attachment.articulation || intent.materialState?.articulation || 'hard', site01: attachment.site01 ?? intent.materialState?.site01 ?? 0.5 }) : null,
           performanceControls = material ? { ...intent.performanceControls, macros: { ...materialArticulationControls(material), ...intent.performanceControls?.macros } } : intent.performanceControls,

@@ -13,7 +13,7 @@ export async function preparePrivateSpatialReadout({ revoice, spatial, scene, sa
   const checkState = (raw, original) => { const state = validateSpatialState(raw); if (state.mapHash !== spatial.mapHash || state.mapId !== map.id || state.mapRevision !== map.revision || state.voiceId !== original.voiceId || state.worldId !== original.worldId || state.generation !== original.generation || canonicalDataText(state.sourceAttachment).text !== canonicalDataText(mappings.get(original.mappingId)?.spatialAttachment).text) fail('A spatial source changed its physical identity, attachment or map.'); return state; };
   for (const row of spatial.onsets) {
     signal?.throwIfAborted(); const original = originals.get(row.intentId); if (!original || onsets.has(row.intentId)) fail('Keep one observed spatial onset for each original semantic source.');
-    const state = checkState(row.state, original); if (state.sourceTick !== original.scoreTime.simTick) fail('The spatial onset differs from its committed source tick.');
+    const state = checkState(row.state, original); if (state.sourceTick !== original.scoreTime.simTick && !(original.observation && state.sourceTick === original.scoreTime.simTick + 1)) fail('The spatial onset differs from its committed source tick.');
     if (row.acousticMaterialState) validateAcousticMaterialSelection(row.acousticMaterialState, { intent: { ...original, spatialState: state }, map });
     onsets.set(row.intentId, row);
   }

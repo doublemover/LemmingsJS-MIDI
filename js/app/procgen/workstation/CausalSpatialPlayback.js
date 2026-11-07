@@ -7,7 +7,17 @@ import { canonicalDataText } from '../../../core/CanonicalData.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export const spatialSourcePoint = fact => fact?.anchor || fact?.physicalPayload?.surfaceCell || fact?.physicalPayload?.terrainEdit?.materialObservation?.sourceCell || fact?.positionAfter || null;
+export function spatialSourcePoint(fact, intent = null, graph = null) {
+  if (intent?.observation?.kind === 'PickupCrossing') {
+    const observation = intent.observation, gate = graph?.pickups?.find(gate => gate.id === observation.gateId && gate.revision === observation.gateRevision), local = observation.local01;
+    if (!gate || !Number.isFinite(local) || local < 0 || local > 1) return null;
+    const bounds = gate.geometry.bounds, points = gate.geometry.kind === 'band' ? [{ x: bounds.x1, y: bounds.y1 }, { x: bounds.x2, y: bounds.y1 }, { x: bounds.x2, y: bounds.y2 }, { x: bounds.x1, y: bounds.y2 }, { x: bounds.x1, y: bounds.y1 }] : gate.geometry.points, lengths = points.slice(1).map((point, index) => Math.hypot(point.x - points[index].x, point.y - points[index].y));
+    let remaining = local * lengths.reduce((sum, length) => sum + length, 0);
+    for (let index = 0; index < lengths.length; index++) { const length = lengths[index]; if (remaining <= length || index === lengths.length - 1) { const fraction = length ? Math.max(0, Math.min(1, remaining / length)) : 0; return { x: points[index].x + (points[index + 1].x - points[index].x) * fraction, y: points[index].y + (points[index + 1].y - points[index].y) * fraction }; } remaining -= length; }
+    return null;
+  }
+  return fact?.anchor || fact?.physicalPayload?.surfaceCell || fact?.physicalPayload?.terrainEdit?.materialObservation?.sourceCell || fact?.positionAfter || null;
+}
 export function createCausalSpatialPlayback({ getGraph, world, session, getSources, updateSources, toFrame, getExecutionEpoch, getContext, getCameraPosition, isCaptureEnabled = () => false, resourceBudget, onReceipt = () => {} } = {}) {
   const mapper = createWorldSpatialControl({ getCameraPosition, hasSolidAt: (x, y, identity) => world?.worldId === identity.worldId && world.generation === identity.generation && world.terrainRevision === identity.terrainRevision && world.tickIndex === identity.tick && typeof world.peekGroundAt === 'function' ? world.peekGroundAt(x, y) : null }),
     storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'world-spatial-controls', kind: 'bounded-spatial-observations-and-occlusion-cache', category: 'candidate', bytes: 4096 }), scope = createProcgenRetirementScope();
@@ -26,7 +36,7 @@ export function createCausalSpatialPlayback({ getGraph, world, session, getSourc
       return intents.map(intent => {
         const attachment = instruments.get(intent.mappingId)?.spatialAttachment; if (intent.kind !== 'begin' || !attachment) return intent;
         if (!ready || onsets++ >= capacity) { report(envelope({ kind: 'onset', status: 'rejected', intentId: intent.intentId, voiceId: intent.voiceId, reason: !ready ? 'acoustic-map-not-prepared' : 'spatial-onset-capacity' })); return { ...intent, spatialUnavailable: !ready ? 'acoustic-map-not-prepared' : 'spatial-onset-capacity' }; }
-        const fact = intent.sourceEventIds.map(id => facts.get(id)).find(Boolean), observation = mapper.state({ voiceId: intent.voiceId, actorId: intent.actorId, attachment, sourcePosition: spatialSourcePoint(fact) });
+        const fact = intent.sourceEventIds.map(id => facts.get(id)).find(Boolean), observation = mapper.state({ voiceId: intent.voiceId, actorId: intent.actorId, attachment, sourcePosition: spatialSourcePoint(fact, intent, getGraph()) });
         if (observation.status !== 'complete') { report(envelope({ kind: 'onset', status: 'rejected', intentId: intent.intentId, voiceId: intent.voiceId, reason: observation.reason })); return { ...intent, spatialUnavailable: observation.reason }; }
         observation.state = validateSpatialState({ ...observation.state, mapHash });
         let acousticMaterialState = null;

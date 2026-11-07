@@ -12,7 +12,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
   const spatialReadout = privateSpatialReadout || (input.capturedSpatial ? await prepareCapturedSpatialReadout(input.revoice, input.sampleRate, { signal }) : null);
   if (spatialReadout) input = { ...input, revoice: spatialReadout.source };
   if (input.capturedMaterials && input.revoice.spatialEvents?.some(event => event.kind === 'onset' && event.acousticMaterialState)) throw new Error('Choose captured spatial + material bodies to preserve the authored zone body selections.');
-  const materialReadout = input.capturedMaterials || spatialReadout ? await prepareCapturedMaterialReadout(input.revoice, input.descriptor, { signal, allowUnmapped: !!spatialReadout }) : null;
+  const materialReadout = input.capturedMaterials || spatialReadout && input.revoice.materialSources ? await prepareCapturedMaterialReadout(input.revoice, input.descriptor, { signal, allowUnmapped: !!spatialReadout }) : null;
   const plan = await planCausalSourceRender({ ...input, materialReadout, spatialTailFrames: spatialReadout?.maximumTailFrames || 0, signal, maxPlanningBytes: maxWorkingBytes }); signal?.throwIfAborted();
   const nativeEffects = !!plan.effectPlan, nativeReturns = nativeEffects ? plan.effectReturnNodeIds.length : 0;
   if (plan.stemLaneIds.length + nativeReturns > 15) throw Object.assign(new Error('Native convolution shares a 32-channel simultaneous tap budget: choose at most fifteen dry lanes plus shared returns.'), { code: 'native-convolution-tap-capacity' });
@@ -38,7 +38,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
       const voice = byOnset.get(onsetId); if (!voice) { clippedSpatialUpdates++; continue; }
       const frame = Math.max(voice.start, Math.round((event.sourceTimeMs - plan.sourceOriginMs) * plan.sampleRate / 1000) + Math.round((event.sourceOwnerDelayFrames || 0) * plan.sampleRate / event.sampleRate));
       if (frame >= plan.outputEnd || frame >= voice.end) { clippedSpatialUpdates++; continue; }
-      events.push({ kind: 'spatial', frame, sourceKey: voice.materialVariantKey || 'selected-source', voiceId: voice.begin.voiceId, executionEpoch: 'offline-voice-' + voice.order, state: event.state });
+      events.push({ kind: 'spatial', frame, ...(materialReadout ? { sourceKey: voice.materialVariantKey || 'selected-source' } : {}), voiceId: voice.begin.voiceId, executionEpoch: 'offline-voice-' + voice.order, state: event.state });
     }
     events.sort((a, b) => a.frame - b.frame);
   }

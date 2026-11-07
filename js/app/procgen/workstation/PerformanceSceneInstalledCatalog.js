@@ -1,3 +1,4 @@
+import { createGlassOrbitOrchestrations } from './GlassOrbitOrchestration.js';
 import { createPocketCathedralScore } from './PocketCathedralScore.js';
 import { createGlacierWeatherScores } from './GlacierWeatherScore.js';
 import { createFoundBellScore } from './FoundBellScore.js';
@@ -128,10 +129,12 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
     await registry.register(item.scene); signal?.throwIfAborted();
   }
+  let glassOrbitScores = [];
   const fm = catalog.descriptors.find(value => value.engineId === 'native-fm');
   if (fm?.capabilities.perVoicePitch && fm.maximumVoices >= 8) {
     put('engine', fm.engineId, fm.engineVersion, fm.artifactHash); put('parameter-schema', fm.engineId, fm.engineVersion, fm.parameterSchemaHash);
-    for (const item of [...await createSwitchyardScores({ sourceHash, descriptor: fm, signal }), ...await createGlassOrbitScores({ sourceHash, descriptor: fm, signal }), ...await createBuilderMinerScores({ sourceHash, descriptor: fm, signal })]) {
+    glassOrbitScores = await createGlassOrbitScores({ sourceHash, descriptor: fm, signal });
+    for (const item of [...await createSwitchyardScores({ sourceHash, descriptor: fm, signal }), ...glassOrbitScores, ...await createBuilderMinerScores({ sourceHash, descriptor: fm, signal })]) {
       recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
       for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
@@ -169,6 +172,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
   if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
   const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
+  if (fm?.capabilities.worldSpatialControl && fm.capabilities.sharedAcousticZoneSends && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitOrchestrations({ sourceHash, scores: glassOrbitScores, spectrumDescriptor: spectrum, signal }));
   if (spectrum?.maximumVoices >= 8) await registerAuthoredScores(await createBentLadderScores({ sourceHash, descriptor: spectrum, signal }));
   if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
   for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) await registerAuthoredScores(await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }));
