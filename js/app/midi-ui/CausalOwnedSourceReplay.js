@@ -7,7 +7,7 @@ import { LIVE_LANE_TAP_LIMIT } from './OwnedSourceLayout.js';
 import { capturedSourceBusKey } from './CapturedSourceBus.js';
 const fail = message => { throw Object.assign(new Error(message), { name: 'CausalRenderError', code: 'captured-source-replay' }); };
 const natural = value => Number.isSafeInteger(value) && value >= 0;
-export async function createCausalOwnedSourceReplay({ inventory, rate, materials, options, remapLanes, needTaps = false }) {
+export async function createCausalOwnedSourceReplay({ inventory, rate, materials, options, remapLanes, needTaps = false, stemLaneIds = [] }) {
   const { source: row, activation, started, stopped, events } = inventory, profile = getOwnedSourceProfile(row.reference.engineRequirement.engineId), descriptor = options.descriptors.find(value => value.engineId === profile.id && value.engineVersion === row.reference.engineRequirement.engineVersion);
   const pcm = materials.find(value => value.sourceId === row.sourceId)?.pcm ?? null;
   const verified = profile.requiresPCM ? await (profile.requiresPCMSet ? verifyOwnedPcmSetPayload : verifyOwnedPcmPayload)(pcm, profile.requiresPCMSet ? row.reference.definition.sampleRefs : row.reference.definition.sampleRefs[0], options) : null;
@@ -17,7 +17,10 @@ export async function createCausalOwnedSourceReplay({ inventory, rate, materials
   if (publication?.schema !== 'lemmings-renderer-publication-cut/v1' || publication.audioFrame !== row.metadata.audioFrame || publication.sampleRate !== rate) fail('The original source publication envelope is unavailable.');
   const gain = createCapturedCutGain(publication.curve, publication.audioFrame, rate), origin = row.metadata.cut.frame, blockFrames = started.blockFrames;
   const left = new Float32Array(blockFrames), right = new Float32Array(blockFrames), buses = new Map(), tapBindings = new Array(LIVE_LANE_TAP_LIMIT).fill(null), enabled = new Uint8Array(LIVE_LANE_TAP_LIMIT);
-  const taps = needTaps ? { routeMode: 'mask', routes: new Uint16Array(kernel.maxVoices), tokens: new Uint32Array(kernel.maxVoices), laneTokens: new Uint32Array(LIVE_LANE_TAP_LIMIT), channels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [new Float32Array(blockFrames), new Float32Array(blockFrames)]), preChannels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [new Float32Array(blockFrames), new Float32Array(blockFrames)]) } : null;
+  const tapCount = LIVE_LANE_TAP_LIMIT + stemLaneIds.length;
+  if (stemLaneIds.length > 8) fail('Choose at most eight aligned dry lane taps.');
+  const taps = needTaps || stemLaneIds.length ? { routeMode: 'mask', routes: new Uint16Array(kernel.maxVoices), tokens: new Uint32Array(kernel.maxVoices), laneTokens: new Uint32Array(tapCount), unrestrictedLaneMask: ((1 << stemLaneIds.length) - 1) << LIVE_LANE_TAP_LIMIT, channels: Array.from({ length: tapCount }, () => [new Float32Array(blockFrames), new Float32Array(blockFrames)]), preChannels: Array.from({ length: tapCount }, () => [new Float32Array(blockFrames), new Float32Array(blockFrames)]) } : null;
+  if (taps) { const names = new Map(activation.laneIdentities); for (let index = 0; index < stemLaneIds.length; index++) taps.laneTokens[LIVE_LANE_TAP_LIMIT + index] = names.get(stemLaneIds[index]) || 0; }
   const bindTap = event => {
     if (!Number.isInteger(event.index) || event.index < 0 || event.index >= LIVE_LANE_TAP_LIMIT || typeof event.enabled !== 'boolean' || !natural(event.laneToken) || event.laneToken > 4096) fail('The actual source tap inventory is invalid.');
     const key = event.sourceBinding ? capturedSourceBusKey(event.sourceBinding) : null;
@@ -38,7 +41,7 @@ export async function createCausalOwnedSourceReplay({ inventory, rate, materials
         if (event.packetSequence !== lastPacket + 1 || !natural(event.count) || event.count > 512 || !Array.isArray(event.data) || event.data.length !== event.count * kernel.width || event.data.some(value => !Number.isFinite(value))) fail('The captured source packet payload, sequence or width differs.');
         kernel.accept(new Float64Array(event.data), event.count, event.packetSequence); lastPacket = event.packetSequence;
       } else if (event.command === 'panic') kernel.panicPending = true;
-      else if (event.command === 'lane-tap') { if (taps) bindTap(event); }
+      else if (event.command === 'lane-tap') { if (needTaps) bindTap(event); }
       else { if (!kernel.setLaneIdentity(event.slot, event.token, event.laneToken) || !natural(event.route) || event.route >= 2 ** LIVE_LANE_TAP_LIMIT) fail('The captured source lane route could not apply at its original boundary.'); if (taps) { taps.routes[event.slot] = event.route; taps.tokens[event.slot] = event.token; } }
       kernel.receiptCount = 0;
     }
@@ -48,6 +51,7 @@ export async function createCausalOwnedSourceReplay({ inventory, rate, materials
   return Object.freeze({ sourceId: row.sourceId, buses,
     sample(frame) { if (!natural(frame) || complete || frame < blockStart || frame >= stopped.frame - origin) fail('The source sample lies outside its actual ordered coverage.'); while (frame >= blockStart + blockFrames) renderBlock(); offset = frame - blockStart; publicationGain = gain(frame); leftSample = Math.fround(left[offset] * publicationGain); rightSample = Math.fround(right[offset] * publicationGain); },
     donor(key, tap, destination, index) { const bus = buses.get(key); if (bus == null || !taps) return false; const pair = tap === 'pre-fader' ? taps.preChannels[bus] : taps.channels[bus], at = index * 2; destination[at] = Math.fround(destination[at] + Math.fround(pair[0][offset] * publicationGain)); destination[at + 1] = Math.fround(destination[at + 1] + Math.fround(pair[1][offset] * publicationGain)); return true; },
+    lane(index, destination, at) { if (!taps || index < 0 || index >= stemLaneIds.length) fail('The requested lane tap is not prepared.'); const pair = taps.channels[LIVE_LANE_TAP_LIMIT + index]; destination[at] = Math.fround(destination[at] + Math.fround(pair[0][offset] * publicationGain)); destination[at + 1] = Math.fround(destination[at + 1] + Math.fround(pair[1][offset] * publicationGain)); },
     async finish() { let work = 0; while (kernel.lastFrame < stopped.frame) { renderBlock(); work += blockFrames; if (work >= 16384) { work = 0; await options.yieldControl?.(); options.signal?.throwIfAborted(); } } applyBoundary(); if (kernel.lastFrame !== stopped.frame || cursor !== events.length || kernel.lastPacket !== stopped.lastPacket || kernel.nonfinite !== stopped.nonfinite || Array.from(kernel.counters).some((value, index) => value !== stopped.counters[index])) fail('The source differs from its actual closing processor frontier or containment counters.'); complete = true; return { sourceId: row.sourceId, engineRequirement: row.reference.engineRequirement, definitionHash: row.reference.definitionHash, initialSourceFrame: origin, finalSourceFrame: stopped.frame, blockFrames, commandPackets: lastPacket - row.metadata.host.packetSequence, observedEvents: events.length, counters: stopped.counters, donorRoutes: needTaps ? 'actual-processor-tap-fences-and-ingress-history' : 'not-requested', initialHeldVoices: row.metadata.host.voices.filter(voice => !voice.released).length, initialSourceVoices: row.metadata.host.voices.length }; },
     get leftSample() { return leftSample; }, get rightSample() { return rightSample; } });
 }

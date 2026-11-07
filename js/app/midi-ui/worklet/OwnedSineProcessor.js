@@ -291,7 +291,7 @@ class OwnedSineKernel {
           !Array.isArray(stems.channels) || !stems.channels.length || stems.channels.length > 16 ||
           stems.tokens && (!(stems.tokens instanceof Uint32Array) || stems.tokens.length !== stems.routes.length) ||
           stems.laneTokens && (!(stems.laneTokens instanceof Uint32Array) || stems.laneTokens.length !== stems.channels.length || stems.laneTokens.some(value => value > LIVE_LANE_ID_LIMIT)) ||
-          stems.preChannels && (!Array.isArray(stems.preChannels) || stems.preChannels.length !== stems.channels.length)) throw new TypeError('Invalid bounded sine stem taps.');
+          stems.preChannels && (!Array.isArray(stems.preChannels) || stems.preChannels.length !== stems.channels.length) || stems.unrestrictedLaneMask != null && (!Number.isSafeInteger(stems.unrestrictedLaneMask) || stems.unrestrictedLaneMask < 0 || stems.unrestrictedLaneMask >= 2 ** stems.channels.length)) throw new TypeError('Invalid bounded sine stem taps.');
       for (let index = 0; index < stems.routes.length; index++) if (maskedStems ? stems.routes[index] >= 2 ** stems.channels.length : stems.routes[index] < -1 || stems.routes[index] >= stems.channels.length) throw new TypeError('Invalid stem route.');
       for (let stage = 0; stage < (stems.preChannels ? 2 : 1); stage++) {
         const channels = stage ? stems.preChannels : stems.channels;
@@ -367,7 +367,7 @@ class OwnedSineKernel {
         const routed = stems && (!stems.tokens || stems.tokens[slot] === voices[at + 2]), stemRoute = routed && !maskedStems ? stems.routes[slot] : -1, stemMask = routed && maskedStems ? stems.routes[slot] : 0;
         const route = slot * 5, fromWeight = this.laneRoutes[route + 3] ? this.laneRoutes[route + 2] / this.laneRoutes[route + 3] : 0;
         if (stems) for (let index = 0; index < stems.channels.length; index++) {
-          const lane = stems.laneTokens?.[index] || 0, weight = !routed ? 0 : lane ?
+          const lane = stems.laneTokens?.[index] || 0, weight = !routed && !(lane && (stems.unrestrictedLaneMask & 1 << index)) ? 0 : lane ?
             (lane === this.laneRoutes[route] ? fromWeight : 0) + (lane === this.laneRoutes[route + 1] ? 1 - fromWeight : 0) : stemRoute === index || stemMask & 1 << index ? 1 : 0;
           this.stemWeights[index] = weight;
           if (stems.preChannels && weight) { this.preStemSums[index * 2] += voiceLeft * weight; this.preStemSums[index * 2 + 1] += voiceRight * weight; }

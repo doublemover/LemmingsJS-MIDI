@@ -76,7 +76,7 @@ export async function encodeOwnedAudioImage(input, options) {
   const sha256 = await digest(bytes); check(options);
   const checkpoint = input.includeCheckpointEnvelope ? { schema: 'lemmings-owned-audio-checkpoint-image/v1', applicationBuildId: value.applicationBuildId, sha256, bytes: bytes.length, encoding: 'base64', data: await toBase64(bytes, options), audioFrame: value.metadata.audioFrame, sampleRate: value.metadata.sampleRate, graphRevision: value.metadata.graphRevision } : null; check(options);
   return { schema: OWNED_AUDIO_IMAGE_SCHEMA, bytes, sha256, ...(checkpoint ? { checkpoint } : {}), manifest: { schema: OWNED_AUDIO_IMAGE_SCHEMA, applicationBuildId: value.applicationBuildId, audioFrame: value.metadata.audioFrame, sampleRate: value.metadata.sampleRate,
-    graphRevision: value.metadata.graphRevision, bytes: bytes.length, sha256, sources: sources.map(row => ({ sourceId: row.sourceId, definitionHash: row.reference.definitionHash, engineRequirement: row.reference.engineRequirement })), rackGraphHash: value.rack?.graphMetadata.graphHash || null,
+    graphRevision: value.metadata.graphRevision, bytes: bytes.length, sha256, sourceLaneIds: [...new Set(value.sources.flatMap(row => row.metadata.host.laneIdentities.map(pair => pair[0])))].sort(), sources: sources.map(row => ({ sourceId: row.sourceId, definitionHash: row.reference.definitionHash, engineRequirement: row.reference.engineRequirement })), rackGraphHash: value.rack?.graphMetadata.graphHash || null,
     semanticBoundary: value.metadata.semanticBoundary, stateRestoreCapability: 'exactSnapshot', scope: value.metadata.scope, qualification: header.qualification, acousticReceipt: false } };
 }
 
