@@ -79,7 +79,7 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
       if (!observers.size) return;
       if (packet.displayProtocol !== DISPLAY_PROTOCOL || packet.protocol !== PROTOCOL || !natural(serial) || serial < 1 || !natural(packet.count) || packet.count > DISPLAY_VOICES ||
           !(packet.data instanceof Float64Array) || packet.data.length !== DISPLAY_VOICES * DISPLAY_WIDTH || !natural(packet.droppedWindows)) { stats.rejected++; return; }
-      if (packet.sourceModelData !== undefined && (!['worklet-choir', 'worklet-pluck', 'worklet-spectrum'].includes(engineId) || packet.sourceModelProtocol !== 1 || !(packet.sourceModelData instanceof Float64Array) || packet.sourceModelData.length !== DISPLAY_VOICES * 6)) { stats.rejected++; return; }
+      if (packet.sourceModelData !== undefined && (!['worklet-choir', 'worklet-pluck', 'worklet-spectrum', 'worklet-granular'].includes(engineId) || packet.sourceModelProtocol !== 1 || !(packet.sourceModelData instanceof Float64Array) || packet.sourceModelData.length !== DISPLAY_VOICES * 6)) { stats.rejected++; return; }
       stats.packets++; stats.droppedWindows = Math.max(stats.droppedWindows, packet.droppedWindows);
       const context = getContext(), now = Math.ceil(context.currentTime * context.sampleRate);
       let routeState = Object.freeze({ muted: null, evidenceClass: 'unknown', scope: 'pre-owner-bus', outputAudibility: 'unknown' });
@@ -111,6 +111,11 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
             for (let band = 0; band < 3; band++) if (!Number.isFinite(model[offset + band]) || model[offset + band] < 60 || model[offset + band] > context.sampleRate * 0.4 || !Number.isFinite(model[offset + 3 + band]) || model[offset + 3 + band] < 0) validModel = false;
             if (!validModel) { stats.rejected++; continue; }
             for (let band = 0; band < 3; band++) { quantities.push(quantity('formant-' + (band + 1), 'Hz', model[offset + band], 'applied-parameter')); quantities.push(quantity('formant-' + (band + 1) + '-state-activity', 'linear-state-amplitude', model[offset + 3 + band], 'kernel-state')); }
+          } else if (engineId === 'worklet-granular') {
+            for (let field = 0; field < 6; field++) if (!Number.isFinite(model[offset + field])) validModel = false;
+            const active = model[offset], cap = model[offset + 1], requested = model[offset + 2], admitted = model[offset + 3], position = model[offset + 4], held = model[offset + 5];
+            if (!validModel || !natural(cap) || cap < 1 || cap > 16 || !natural(active) || active > cap || requested < 0 || requested > 48 || admitted < 0 || admitted > context.sampleRate || position < 0 || position > 1 || ![0, 1].includes(held)) { stats.rejected++; continue; }
+            for (const [field, name, unit] of [[0, 'active-grain-children', 'count'], [1, 'admitted-grain-child-cap', 'count'], [2, 'current-requested-grain-density', 'grains/s'], [3, 'mean-admitted-grain-density-since-onset', 'grains/s'], [4, 'effective-source-position', 'normalized'], [5, 'source-position-hold', 'boolean']]) quantities.push(quantity(name, unit, model[offset + field], 'kernel-state'));
           } else if (engineId === 'worklet-pluck') {
             for (let field = 0; field < 6; field++) if (!Number.isFinite(model[offset + field])) validModel = false;
             if (!validModel || model[offset] < 0.05 || model[offset] > 0.45 || model[offset + 1] < 0 || model[offset + 1] > 1 || model[offset + 2] < 0.02 || model[offset + 2] > 4 || [3, 4, 5].some(field => model[offset + field] < 0 || model[offset + field] > 1)) { stats.rejected++; continue; }

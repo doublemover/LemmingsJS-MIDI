@@ -18,6 +18,7 @@ export class OwnedGranularSource {
         !integer(descriptor.sourceFrames, 2, 8000000) || !integer(descriptor.sourceSampleRate, 8000, 192000) || !valid(descriptor.peak, 0, 16) ||
         !Array.isArray(pcm.planes) || pcm.planes.length !== descriptor.channels || pcm.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== descriptor.frames)) throw new TypeError('Granular source needs a prepared PCM bank.');
     this.rate = rate; this.voices = voices; this.descriptor = Object.freeze({ ...descriptor }); this.pcm = Object.freeze([...pcm.planes]); this.stereo = descriptor.channels === 2;
+    this.displayData = new Float64Array(GRANULAR_LAYOUT.displayVoices * GRANULAR_LAYOUT.displayWidth);
     this.state = new Float64Array(voices * CLOUD); this.grains = new Float64Array(voices * GRAINS_PER_VOICE * GRAIN); this.window = this.bank.planes[0];
     this.maxUpdateMask = 1023; this.leftSample = 0; this.rightSample = 0; this.birthBucket = -1; this.bucketBirths = 0;
     this.sourceGain = 0.9 / Math.max(1, descriptor.peak) / 4;
@@ -112,6 +113,12 @@ export class OwnedGranularSource {
     if (Math.abs(this.state[at + 32]) < 1e-14) this.state[at + 32] = 0; if (Math.abs(this.state[at + 33]) < 1e-14) this.state[at + 33] = 0;
     this.leftSample = this.state[at + 32]; this.rightSample = this.state[at + 33]; return this.stereo ? (this.leftSample + this.rightSample) * 0.5 : this.leftSample;
   }
+  writeDisplay(slot, index) {
+    const at = slot * CLOUD, output = index * GRANULAR_LAYOUT.displayWidth, elapsed = this.state[at + 38] - this.state[at + 36] + 1;
+    this.displayData[output] = this.state[at + 27]; this.displayData[output + 1] = this.state[at + 43];
+    this.displayData[output + 2] = this.state[at + 31]; this.displayData[output + 3] = elapsed > 0 ? this.state[at + 29] * this.rate / elapsed : 0;
+    this.displayData[output + 4] = this.state[at + 15] ? this.state[at + 16] : this.state[at + 2]; this.displayData[output + 5] = this.state[at + 15];
+  }
   inspect() {
     const clouds = []; let activeGrains = 0;
     for (let slot = 0; slot < this.voices; slot++) {
@@ -131,6 +138,6 @@ export class OwnedGranularKernel extends OwnedSineKernel {
 }
 export class OwnedGranularProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedGranularKernel(rate, options?.pcm, Math.min(voices, GRANULAR_VOICES), options?.sourceBank); }
-  runtimeIdentity() { return { engineId: 'worklet-granular', engineVersion: 1, runtimeABI: 'owned-granular-f64-command-v2', buildId: 'owned-granular-v8-authored-child-caps', sourceBankHash: this.kernel.source.bank.hash, pcmBankHash: this.kernel.source.descriptor.bankHash }; }
+  runtimeIdentity() { return { engineId: 'worklet-granular', engineVersion: 1, runtimeABI: 'owned-granular-f64-command-v2', buildId: 'owned-granular-v9-live-cloud-readout', sourceBankHash: this.kernel.source.bank.hash, pcmBankHash: this.kernel.source.descriptor.bankHash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-granular-v1', OwnedGranularProcessor);

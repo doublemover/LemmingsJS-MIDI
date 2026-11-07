@@ -14,7 +14,7 @@ export const SINE_LAYOUT = Object.freeze({ width: 18, voices: 64 });
 export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, delayFloorHz: 32, delayMargin: 4, displayVoices: 32, displayWidth: 6 });
 export const CHOIR_LAYOUT = Object.freeze({ width: 28, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049, displayVoices: 32, displayWidth: 6 });
 export const SPECTRUM_LAYOUT = Object.freeze({ width: 78, voices: 8, state: 48, drawbars: 16, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256, displayVoices: 32, displayWidth: 6 });
-export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32 });
+export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32, displayVoices: 32, displayWidth: 6 });
 export const SAMPLE_LAYOUT = Object.freeze({ width: 44, voices: 16, state: 144, zones: 128, cursorCapacity: 32, cursorWidth: 7, cursorScalars: 21 });
 export const SEED_LAYER_LAYOUT = Object.freeze({ width: 56, voices: 2, state: 144 });
 export const CHOIR_SOURCE_HEAP_ESTIMATE = 65536;
@@ -37,7 +37,7 @@ export function spectrumSourceBytes(rate, voices = SPECTRUM_LAYOUT.voices) {
 }
 export function granularSourceBytes(rate, voices = GRANULAR_LAYOUT.voices) {
   check(rate, voices, GRANULAR_LAYOUT.voices, 192000); if (!Number.isInteger(rate)) throw new RangeError('Invalid granular source rate.');
-  return GRANULAR_LAYOUT.windowSamples * 4 + voices * (GRANULAR_LAYOUT.cloudState + GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState) * 8;
+  return GRANULAR_LAYOUT.windowSamples * 4 + voices * (GRANULAR_LAYOUT.cloudState + GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState) * 8 + GRANULAR_LAYOUT.displayVoices * GRANULAR_LAYOUT.displayWidth * 16;
 }
 export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices, zones = SAMPLE_LAYOUT.zones) {
   check(rate, voices, SAMPLE_LAYOUT.voices, 96000);

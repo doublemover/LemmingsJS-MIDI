@@ -24,7 +24,7 @@ describe('owned deterministic granular source', () => {
       expect(kernel.nonfinite).to.equal(0); expect(kernel.source.inspect().activeGrains).to.be.at.most(128); return { kernel, output };
     };
     const a = render(64), b = render(257); expect([...a.output]).to.deep.equal([...b.output]); expect(a.kernel.source.inspect()).to.deep.equal(b.kernel.source.inspect());
-    const source = a.kernel.source; expect(source.state.byteLength + source.grains.byteLength + source.window.byteLength).to.equal(granularSourceBytes(48000));
+    const source = a.kernel.source; expect(source.state.byteLength + source.grains.byteLength + source.window.byteLength + source.displayData.byteLength * 2).to.equal(granularSourceBytes(48000));
     expect(source.inspect().clouds[0].admittedGrains).to.be.greaterThan(1); expect(a.output.some(value => Math.abs(value) > 1e-5)).to.equal(true);
   });
   it('preserves antiphase stereo and measures pre-pan energy without reducing it to an inaudible mono sum', () => {
@@ -53,7 +53,8 @@ describe('owned deterministic granular source', () => {
     expect(cloud.maximumGrainChildren).to.equal(2); expect(cloud.activeGrains).to.be.at.most(2);
     expect(cloud.rejectedGrains).to.be.greaterThan(0); expect(cloud.requestedDensityHz).to.equal(48);
     expect(cloud.effectiveDensityHz).to.equal(cloud.admittedGrains); expect(cloud.effectiveDensityHz).to.be.lessThan(48);
-    expect(cloud.densityWindowFrames).to.equal(48000);
+    expect(cloud.densityWindowFrames).to.equal(48000); source.writeDisplay(0, 0);
+    expect([...source.displayData.slice(0, 6)]).to.deep.equal([cloud.activeGrains, 2, 48, cloud.admittedGrains, cloud.sourcePosition01, 0]);
     for (let index = 2; index < 16; index++) expect(source.grains[index * 14]).to.equal(0);
     command[29] = 17; expect(source.begin(0, 220, command, 48000)).to.equal(0);
     command[29] = 0; expect(source.begin(0, 220, command, 48000)).to.equal(1);

@@ -184,3 +184,24 @@ describe('Audio display observation leases', () => {
     expect(telemetry.diagnostics().rejected).to.equal(1); expect(messages.at(-1).type).to.equal('display-ack'); telemetry.dispose();
   });
 });
+
+
+describe('granular live source-model readout (functional campaign deferred)', () => {
+  it('keeps requested density separate from admitted mean and measured output energy', () => {
+    const { telemetry, context } = host({ engineId: 'worklet-granular' }), samples = []; context.currentTime = 0; const stop = telemetry.observe(value => samples.push(value), { identity });
+    const incoming = packet(); incoming.sourceModelProtocol = 1; incoming.sourceModelData = new Float64Array(DISPLAY_VOICES * 6); incoming.sourceModelData.set([2, 2, 48, 20, 0.25, 1]); telemetry.consume(incoming);
+    expect(samples).to.have.length(1); expect(samples[0].quantities).to.have.length(12);
+    const values = new Map(samples[0].quantities.map(value => [value.name, value]));
+    expect(values.get('current-requested-grain-density')).to.include({ value: 48, unit: 'grains/s', evidenceClass: 'kernel-state' });
+    expect(values.get('mean-admitted-grain-density-since-onset')).to.include({ value: 20, unit: 'grains/s', evidenceClass: 'kernel-state' });
+    expect(values.get('active-grain-children').value).to.equal(2); expect(values.get('admitted-grain-child-cap').value).to.equal(2); expect(values.get('source-position-hold').value).to.equal(1);
+    expect(values.get('rms').evidenceClass).to.equal('measured'); expect(values.has('oscillator-phase')).to.equal(false); stop(); telemetry.dispose();
+  });
+  it('rejects malformed cloud evidence without replacing it with configured patch values', () => {
+    const { telemetry, messages } = host({ engineId: 'worklet-granular' }), samples = []; telemetry.observe(value => samples.push(value), { identity });
+    for (const values of [[3, 2, 48, 20, 0.25, 0], [1, 2, 48, NaN, 0.25, 0], [1, 2, 48, 20, 0.25, 2]]) {
+      const incoming = packet(); incoming.sourceModelProtocol = 1; incoming.sourceModelData = new Float64Array(DISPLAY_VOICES * 6); incoming.sourceModelData.set(values); telemetry.consume(incoming);
+    }
+    expect(samples).to.have.length(0); expect(telemetry.diagnostics().rejected).to.equal(3); expect(messages.at(-1).type).to.equal('display-ack'); telemetry.dispose();
+  });
+});
