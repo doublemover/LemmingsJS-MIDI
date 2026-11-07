@@ -44,3 +44,15 @@ rejection is contained; its eventual result cannot grant the waiting admission.
 Diagnostics detach and freeze nested category, eviction and bounded owner
 observations. They report accounting and estimated pressure, not native-resource
 retirement or acoustic/device delivery.
+
+The checked ownership helper uses
+`js/app/resources/OwnedResourceReservationContracts.d.ts`. A required owner/kind
+admits a numeric byte count and returns an immutable observation with
+`reserved`, `released` or `failed-or-unknown` state. `release()` is a synchronous
+acknowledgment, separate from a producer's asynchronous retirement completion.
+Failed acknowledgment prevents later resize/reuse; an ordinary budget refusal
+leaves the previous admitted reservation intact. Catalog factories preserve their
+argument/result types through the workspace wrapper; cached values remain
+`unknown` until their domain owner validates them. Critical checkJs covers both
+implementations, and boundary fixtures reject missing identity, display-text byte
+counts, asynchronous budget acknowledgments and unvalidated cache reads.

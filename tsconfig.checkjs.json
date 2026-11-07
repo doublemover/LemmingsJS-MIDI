@@ -76,6 +76,9 @@
     "js/app/procgen/workstation/ProcgenOperationalView.js",
     "js/app/resources/ResourceBudgetContracts.d.ts",
     "js/app/resources/ResourceBudget.js",
-    "js/app/resources/ResourceRetirement.js"
+    "js/app/resources/ResourceRetirement.js",
+    "js/app/resources/OwnedResourceReservation.js",
+    "js/app/resources/OwnedResourceReservationContracts.d.ts",
+    "js/app/procgen/workstation/SceneCatalogStorage.js"
   ]
 }

@@ -3,6 +3,7 @@ import { isAdmittedPerformanceScene } from './PerformanceScene.js';
 
 const LIMIT = 128 * 1048576, WORKSPACE = 16 * 1048576;
 let sequence = 0;
+/** @param {string} key @param {unknown} value */
 const estimate = (key, value) => {
   const seen = new WeakSet(), pending = [key, value]; let bytes = 2048, nodes = 0;
   while (pending.length) {
@@ -27,6 +28,7 @@ const estimate = (key, value) => {
   }
   return bytes;
 };
+/** @param {{ resourceBudget?: import('../../resources/ResourceBudgetContracts.js').ResourceBudgetAdapter | null }} [options] */
 export function createSceneCatalogStorage({ resourceBudget = null } = {}) {
   const owner = 'scene-catalog-' + (++sequence), metadata = createOwnedResourceReservation({ budget: resourceBudget, owner, kind: 'scene-catalog-auxiliary-data', bytes: 4096, maxBytes: LIMIT });
   let construction;
@@ -42,9 +44,11 @@ export function createSceneCatalogStorage({ resourceBudget = null } = {}) {
     creditBytes -= amount - left;
     return left;
   };
+  /** @extends {Map<string, unknown>} */
   class CatalogMap extends Map {
     constructor() { super(); this.costs = new Map(); stores.add(this); }
     estimate(key, value) { return estimate(key, value); }
+    /** @param {string} key @param {unknown} value */
     set(key, value) {
       check(); const bytes = estimate(key, value), previous = this.costs.get(key) || 0, delta = bytes - previous;
       const covered = Math.min(Math.max(0, delta), creditBytes), next = residentBytes + delta, credit = creditBytes - covered;
@@ -57,6 +61,7 @@ export function createSceneCatalogStorage({ resourceBudget = null } = {}) {
     clear() { check(); let cost = 0; for (const bytes of this.costs.values()) cost += bytes; resize(residentBytes - cost, creditBytes); super.clear(); this.costs.clear(); residentBytes -= cost; }
   }
   const makeMap = () => { check(); return new CatalogMap(); }, roots = makeMap();
+  /** @param {ReadonlyArray<readonly [CatalogMap, string, unknown]>} writes */
   const prepay = writes => {
     check(); let bytes = 0;
     for (const [store, key, value] of writes) { if (!stores.has(store)) throw new TypeError('Fund only this catalog’s cache publication.'); bytes += estimate(key, value); if (bytes > LIMIT) throw new RangeError('Scene publication exceeds the auxiliary metadata limit.'); }
@@ -65,6 +70,12 @@ export function createSceneCatalogStorage({ resourceBudget = null } = {}) {
     return Object.freeze({ release() { if (entry.released) return false; const remainder = entry.remaining; resize(residentBytes, creditBytes - remainder);
       entry.released = true; entry.remaining = 0; creditBytes -= remainder; funding.splice(funding.indexOf(entry), 1); return true; } });
   };
+  /**
+   * @template {unknown[]} Args
+   * @template Result
+   * @param {(workspace: import('../../resources/OwnedResourceReservationContracts.js').OwnedResourceReservation, ...args: Args) => Result | PromiseLike<Result>} operation
+   * @returns {(...args: Args) => Promise<Result>}
+   */
   const trackFactory = operation => async (...args) => {
     check(); if (pending.size >= 2) throw new Error('At most two scene factory operations may own preparation workspace.');
     const workspace = createOwnedResourceReservation({ budget: resourceBudget, owner, kind: 'scene-factory-workspace', category: 'candidate', bytes: 1048576 });

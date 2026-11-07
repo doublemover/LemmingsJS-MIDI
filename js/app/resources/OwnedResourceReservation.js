@@ -1,8 +1,15 @@
+import { requireSynchronousResourceAcknowledgement } from './ResourceRetirement.js';
+
 const MAX_BYTES = 512 * 1048576;
 const failure = message => Object.assign(new Error(message), { name: 'ResourceOwnershipError' });
 const asFailure = error => error instanceof Error ? error : failure(String(error ?? 'Unknown resource ownership failure.'));
 
-export function createOwnedResourceReservation({ budget = null, owner, kind, category = 'checkpoint', generation = 0, bytes = 4096, maxBytes = MAX_BYTES } = {}) {
+/**
+ * @param {import('./OwnedResourceReservationContracts.js').OwnedResourceReservationOptions} options
+ * @returns {import('./OwnedResourceReservationContracts.js').OwnedResourceReservation}
+ */
+export function createOwnedResourceReservation(options) {
+  const { budget = null, owner, kind, category = 'checkpoint', generation = 0, bytes = 4096, maxBytes = MAX_BYTES } = options || { owner: null, kind: null };
   if (budget != null && (typeof budget.reserve !== 'function' || typeof budget.release !== 'function') || typeof owner !== 'string' || !owner || owner.length > 256 ||
       typeof kind !== 'string' || !kind || kind.length > 128 || typeof category !== 'string' || !category || category.length > 64 || !Number.isSafeInteger(generation) || generation < 0 ||
       !Number.isSafeInteger(maxBytes) || maxBytes < 4096 || maxBytes > MAX_BYTES || !Number.isSafeInteger(bytes) || bytes < 4096 || bytes > maxBytes)
@@ -17,10 +24,7 @@ export function createOwnedResourceReservation({ budget = null, owner, kind, cat
     try {
       const acknowledged = budget?.reserve({ token, owner, kind, category, generation, bytes: next, previousBytes: admitted ? declaredBytes : null,
         pinned: true, cache: false, reloadable: false });
-      if (acknowledged === false || acknowledged && typeof acknowledged.then === 'function') {
-        if (acknowledged?.then) Promise.resolve(acknowledged).catch(() => {});
-        throw failure('Reservation resize did not acknowledge synchronously.');
-      }
+      requireSynchronousResourceAcknowledgement(acknowledged, 'Reservation resize');
     } catch (caught) {
       if (caught?.name === 'ResourceBudgetError') throw caught;
       error = asFailure(caught); throw error;
@@ -34,9 +38,7 @@ export function createOwnedResourceReservation({ budget = null, owner, kind, cat
       releaseAttempted = true; error = failure('Resource retirement did not acknowledge.');
       try {
         const acknowledged = budget?.release({ token, owner });
-        if (acknowledged === false || acknowledged && typeof acknowledged.then === 'function') {
-          if (acknowledged?.then) Promise.resolve(acknowledged).catch(() => {}); throw error;
-        }
+        requireSynchronousResourceAcknowledgement(acknowledged, 'Resource retirement');
       } catch (caught) { error = asFailure(caught); throw error; }
       released = true; error = null; return true;
     }
