@@ -11,10 +11,10 @@ import { describeNativeInstrumentEngines } from '../js/app/midi-ui/NativeInstrum
 const h = value => value.repeat(64), scene = (id, hash) => ({ id, version: 1, hash: h(hash) });
 const definition = (kind = 'pickup-relocation') => validatePhysicalLessonDefinition({ schema: 'lemmings-physical-lesson/v1', id: 'lesson.' + kind, version: 1, title: kind, setupScene: scene('practice.' + kind, 'a'), zeroNoteScene: scene('practice.quiet-control', 'b'),
   prediction: 'Predict the next actual crossing.', intervention: 'Change the declared cause using existing physical actions.', expectedPhysicalEvidence: 'Actual source-linked pickup crossings.', expectedMusicalDifference: 'Different physical location or actual birth/arrival intervals.', audibleEvidence: 'Backend acceptance and user-reported hearing are separate.', hint: 'A timer or unrelated click cannot complete this lesson.', permittedActions: ['finite-release'],
-  success: { kind, pickupId: 'practice-pickup', mappingIds: ['pluck'], minimumActors: kind === 'pickup-relocation' ? 1 : 2 }, resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' });
+  success: { kind, pickupId: 'practice-pickup', mappingIds: ['pluck'], minimumActors: kind === 'entry-spacing-change' ? 2 : 1 }, resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' });
 const graph = x => ({ version: 1, revision: x === 96 ? 1 : 2, pickups: [{ id: 'practice-pickup', revision: x === 96 ? 1 : 2, geometry: { kind: 'segment', points: [{ x, y: 0 }, { x, y: 96 }] } }], instruments: [{ id: 'pluck', route: 'local' }] });
 const gesture = spreadTicks => ({ nominalGapTicks: 54, spreadTicks, lanePhase: [{ laneId: 0, offsetTicks: 0 }, { laneId: 1, offsetTicks: spreadTicks }], phaseStepTicks: 0, grouping: 'free', clockMode: 'locked' });
-const context = (x = 96, spread = 12, documentEpoch = 2) => ({ documentEpoch, activeActors: 0, graph: graph(x), releaseGesture: gesture(spread), soundIdentity: h('c') });
+const context = (x = 96, spread = 12, documentEpoch = 2) => ({ documentEpoch, assists: false, activeActors: 0, graph: graph(x), releaseGesture: gesture(spread), soundIdentity: h('c') });
 const binding = (hash = 'a', documentEpoch = 2) => ({ sceneHash: h(hash), worldId: 'practice-world', generation: 3, ...context(96, 12, documentEpoch) });
 const packet = (tick, actorId = null, birthTick = tick, ctx = context()) => {
   const batchId = 'practice-world:3:' + tick + ':0', eventId = batchId + ':motion', intentId = batchId + ':pluck:' + actorId;
@@ -60,7 +60,7 @@ describe('observed physical lessons (runtime/browser acceptance deferred)', () =
   });
   it('uses all five actual pinned catalog scenes and retains an independent actor-free control', async () => {
     const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('d') }))), catalog = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('e') }, descriptors }) }), lessons = await createInstalledPhysicalLessons(catalog);
-    expect(lessons).to.have.length(5); expect(lessons.map(value => value.setupScene.id)).to.deep.equal(['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.work-becomes-percussion', 'practice.path-becomes-delay', 'practice.crowd-becomes-harmony']); expect(lessons.every(value => value.zeroNoteScene.id === 'practice.quiet-control')).to.equal(true);
+    expect(lessons).to.have.length(6); expect(lessons.map(value => value.setupScene.id)).to.deep.equal(['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.work-becomes-percussion', 'practice.path-becomes-delay', 'practice.crowd-becomes-harmony']); expect(lessons.every(value => value.zeroNoteScene.id === 'practice.quiet-control')).to.equal(true);
   });
   it('resolves every lesson and exact scene reference beyond the first sixty-four inventory rows', async () => {
     const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('d') }))), catalog = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('e') }, descriptors }) });
@@ -88,4 +88,39 @@ describe('observed physical lessons (runtime/browser acceptance deferred)', () =
     view.open('practice.pickup-relocation'); expect(button('Load empty control').disabled).to.equal(false); const receipt = view.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); dom.window.close();
   });
 
+});
+
+describe('observed make-and-keep lesson journey', () => {
+  const source = (epoch = 2) => ({ ...context(96, 12, epoch), worldId: 'practice-world', generation: 3, tick: 1,
+    soundIdentity: h('d'), soundReferences: [{ laneId: 'lane:0', definitionHash: h('d'), packHash: h('e'), patchId: 'user.fork', revision: 1 }] });
+  const kept = { kind: 'kept-fork-applied', laneId: 'lane:0', definitionHash: h('d'), packHash: h('e'), patchId: 'user.fork', revision: 1 };
+  const save = { kind: 'project-saved', documentId: 'doc:lesson', storedRevision: 4, tick: 1, durable: true };
+  it('requires a kept fork, durable exact save/reopen, second prediction and a new actual cause', () => {
+    const { session, progress } = ready('make-and-keep');
+    session.observe(packet(1, 1)); expect(session.state().phase).to.equal('keep-sound');
+    expect(session.observeMaterial(kept, source(99))).to.equal(false);
+    expect(session.observeMaterial(kept, source())).to.equal(true); expect(session.state().phase).to.equal('await-project-save');
+    session.observeDocument({ ...save, durable: false }, source()); expect(session.state().journey.projectSaved).to.equal(false);
+    session.observeDocument(save, source()); expect(session.state().phase).to.equal('await-project-reopen');
+    session.observeDocument({ ...save, kind: 'project-reopened' }, source(4));
+    expect(session.state().phase).to.equal('predict-next-contact'); expect(session.state().journey.exactProjectReopened).to.equal(true);
+    session.observe(packet(2, 2, 2, source(4))); expect(session.state().changed).to.have.length(0);
+    session.predict('The next real actor will cross the same pickup with my kept sound.');
+    const next = packet(3, 2, 2, source(4)); session.observe(next);
+    expect(session.state()).to.include({ physicalObserved: true, soundAccepted: false, reportedHearing: false });
+    expect(session.state().changed[0]).to.include({ definitionHash: h('d'), packHash: h('e') });
+    expect(() => session.reportHearing()).to.throw('acceptance');
+    expect(session.observeReceipt({ ...next.intents[0], status: 'accepted', stage: 'scheduled', outputRequested: true }, 2)).to.equal(false);
+    expect(session.observeReceipt({ ...next.intents[0], status: 'accepted', stage: 'scheduled', outputRequested: true }, 4)).to.equal(true);
+    expect(progress.read('lesson.make-and-keep', 1)).to.include({ physicalObserved: true, soundAccepted: true, reportedHearing: false });
+    session.reportHearing(); expect(session.state().reportedHearing).to.equal(true);
+  });
+  it('declines another saved revision and clears late material/storage observations on Skip', () => {
+    const { session } = ready('make-and-keep'); session.observe(packet(1, 1)); session.observeMaterial(kept, source()); session.observeDocument(save, source());
+    session.observeDocument({ ...save, kind: 'project-reopened', storedRevision: 5 }, source(4));
+    expect(session.state().phase).to.equal('reset-required'); expect(session.state().physicalObserved).to.equal(false);
+    session.skip(); expect(session.observeMaterial(kept, source())).to.equal(false);
+    expect(session.observeDocument({ ...save, kind: 'project-reopened' }, source(4))).to.equal(false);
+    expect(session.state().journey).to.equal(null);
+  });
 });

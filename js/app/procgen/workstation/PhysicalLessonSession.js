@@ -1,4 +1,5 @@
 import { ADVANCED_PHYSICAL_LESSONS, createAdvancedPhysicalLessonObservation } from './PhysicalLessonObservation.js';
+import { createKeptSoundLessonObservation } from './PhysicalKeptSoundLesson.js';
 import { canonicalDataText, freezeData } from '../../../core/CanonicalData.js';
 import { validatePhysicalLessonDefinition } from './PhysicalLessonDefinition.js';
 
@@ -8,14 +9,14 @@ const interval = (records, key) => records.length === 2 ? Math.abs(records[1][ke
 
 export function createPhysicalLessonSession({ progress, onState = () => {} } = {}) {
   let definition = null, phase = 'closed', reason = null, prediction = '', binding = null, zeroControl = null, baseline = [], changed = [], baselineGraph = null, baselineSpacing = null, soundIdentity = null, disposed = false, reportedHearing = false;
-  let advanced = null;
+  let advanced = null, keptJourney = null;
   let lastTick = -1, lastOrdinal = -1, lastBatch = null, graphRef = null, graphValue = null;
   const accepted = new Set();
   const state = () => freezeData({ phase, reason, definition, prediction, priorProgress: definition ? progress?.read?.(definition.id, definition.version) ?? null : null, zeroControl, baseline: [...baseline], changed: [...changed], physicalObserved: phase === 'physical-evidence-observed', soundAccepted: changed.length > 0 && changed.every(record => accepted.has(record.intentId)), reportedHearing,
-    evidencePath: reportedHearing ? 'reported-hearing' : 'visual', soundRendered: false, hearingEvidence: reportedHearing ? 'explicit-user-report;not-measured' : 'unverified', persistence: progress?.state?.().persistence ?? 'session-only' });
+    journey: keptJourney?.state().journey || null, evidencePath: reportedHearing ? 'reported-hearing' : 'visual', soundRendered: false, hearingEvidence: reportedHearing ? 'explicit-user-report;not-measured' : 'unverified', persistence: progress?.state?.().persistence ?? 'session-only' });
   const report = () => { if (!disposed) { try { onState(state()); } catch {} } };
   const fail = message => { reason = message; phase = 'reset-required'; binding = null; reportedHearing = false; accepted.clear(); report(); return false; };
-  const clearAttempt = () => { advanced = null; binding = null; baseline = []; changed = []; baselineGraph = baselineSpacing = soundIdentity = null; graphRef = graphValue = null; lastTick = -1; lastOrdinal = -1; lastBatch = null; accepted.clear(); reportedHearing = false; prediction = ''; reason = null; };
+  const clearAttempt = () => { advanced = keptJourney = null; binding = null; baseline = []; changed = []; baselineGraph = baselineSpacing = soundIdentity = null; graphRef = graphValue = null; lastTick = -1; lastOrdinal = -1; lastBatch = null; accepted.clear(); reportedHearing = false; prediction = ''; reason = null; };
   const persist = () => { if (phase === 'physical-evidence-observed') progress?.write(definition.id, { version: definition.version, physicalObserved: true, soundAccepted: changed.every(record => accepted.has(record.intentId)), reportedHearing, evidencePath: reportedHearing ? 'reported-hearing' : 'visual' }); };
   const graph = value => {
     if (value === graphRef) return graphValue;
@@ -39,16 +40,18 @@ export function createPhysicalLessonSession({ progress, onState = () => {} } = {
         if (typeof currentSound !== 'string' || !currentSound || currentSound.length > 16384) return fail('The effective setup sound identity is unavailable.');
         soundIdentity = currentSound;
         try {
-          if (ADVANCED_PHYSICAL_LESSONS.includes(definition.success.kind)) advanced = createAdvancedPhysicalLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists, junctionDefinitions });
+          if (definition.success.kind === 'make-and-keep') keptJourney = createKeptSoundLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists });
+          else if (ADVANCED_PHYSICAL_LESSONS.includes(definition.success.kind)) advanced = createAdvancedPhysicalLessonObservation({ definition, graph: currentGraph, releaseGesture, soundIdentity, assists, junctionDefinitions });
           else { baselineGraph = { ...graph(currentGraph) }; baselineSpacing = spacing(releaseGesture); }
         } catch (error) { return fail(error.message); }
         phase = 'predict';
       } else return fail('Load the exact empty control before this exact setup scene.');
       report(); return state();
     },
-    predict(value) { if (disposed || phase !== 'predict' || typeof value !== 'string' || !value.trim() || value.length > 512) throw new TypeError('Write a short prediction before observing the baseline.'); prediction = value.trim(); phase = 'observe-baseline'; report(); },
+    predict(value) { if (!disposed && keptJourney && phase === 'predict-next-contact') { const observed = keptJourney.predictNext(value); phase = observed.phase; reason = observed.reason; report(); return; } if (disposed || phase !== 'predict' || typeof value !== 'string' || !value.trim() || value.length > 512) throw new TypeError('Write a short prediction before observing the baseline.'); prediction = value.trim(); phase = 'observe-baseline'; report(); },
     observe({ batch, intents = [], receipts = [], context } = {}) {
-      if (disposed || !binding || !['observe-zero-control', 'observe-baseline', 'perform-intervention', 'perform-timbre', 'physical-evidence-observed'].includes(phase)) return false;
+      if (disposed || !binding || !['observe-zero-control', 'observe-baseline', 'perform-intervention', 'perform-timbre', 'physical-evidence-observed', 'keep-sound', 'await-project-save', 'await-project-reopen', 'predict-next-contact', 'observe-next-contact'].includes(phase)) return false;
+      if (keptJourney && phase === 'await-project-reopen' && context?.documentEpoch !== binding.documentEpoch) return false;
       if (!context || context.documentEpoch !== binding.documentEpoch || batch?.worldId !== binding.worldId || batch?.generation !== binding.generation) return fail('The lesson world or document changed. Reset to a fresh control.');
       if (batch.version !== 1 || !integer(batch.tick) || !Array.isArray(batch.facts) || batch.facts.length > 8192 || !Array.isArray(intents) || intents.length > 8192 || batch.completeness?.status !== 'complete' || batch.completeness.dropped !== 0 || batch.terminalGenerationTransition) return fail('This batch is incomplete or terminal; no lesson success was inferred.');
       if (batch.batchId === lastBatch) return false;
@@ -59,8 +62,8 @@ export function createPhysicalLessonSession({ progress, onState = () => {} } = {
         zeroControl = { batchId: batch.batchId, worldId: batch.worldId, generation: batch.generation, observedNoActors: true, observedNoOnsets: true }; binding = null; phase = 'load-setup'; report(); return true;
       }
       if (phase === 'physical-evidence-observed') { for (const receipt of receipts) observeReceipt(receipt, context.documentEpoch); return false; }
-      if (advanced) {
-        let observed; try { observed = advanced.observe({ batch, intents, context }); } catch (error) { return fail(error.message); }
+      if (advanced || keptJourney) {
+        let observed; try { observed = (advanced || keptJourney).observe({ batch, intents, context }); } catch (error) { return fail(error.message); }
         baseline = observed.baseline; changed = observed.changed; phase = observed.phase; reason = observed.reason;
         for (const receipt of receipts) observeReceipt(receipt, context.documentEpoch); persist(); report(); return true;
       }
@@ -87,6 +90,26 @@ export function createPhysicalLessonSession({ progress, onState = () => {} } = {
         else { phase = 'physical-evidence-observed'; reason = null; persist(); }
       }
       for (const receipt of receipts) observeReceipt(receipt, context.documentEpoch); report(); return true;
+    },
+    observeMaterial(receipt, context) {
+      if (disposed || !binding || !keptJourney || context?.documentEpoch !== binding.documentEpoch ||
+          context.worldId !== binding.worldId || context.generation !== binding.generation) return false;
+      try {
+        const observed = keptJourney.material(receipt, context); if (!observed) return false;
+        phase = observed.phase; reason = observed.reason; report(); return true;
+      } catch (error) { return fail(error.message); }
+    },
+    observeDocument(receipt, context) {
+      if (disposed || !binding || !keptJourney || !integer(context?.documentEpoch) || !integer(context.generation) ||
+          typeof context.worldId !== 'string' || receipt?.kind === 'project-saved' && context.documentEpoch !== binding.documentEpoch) return false;
+      try {
+        const observed = keptJourney.document(receipt, context); if (!observed) return false;
+        if (receipt.kind === 'project-reopened' && observed.phase === 'predict-next-contact') {
+          binding = { ...binding, documentEpoch: context.documentEpoch, worldId: context.worldId, generation: context.generation };
+          lastTick = lastOrdinal = -1; lastBatch = null;
+        }
+        phase = observed.phase; reason = observed.reason; report(); return true;
+      } catch (error) { return fail(error.message); }
     },
     observeReceipt,
     reportHearing() { if (phase !== 'physical-evidence-observed' || !changed.every(record => accepted.has(record.intentId))) throw new Error('Physical evidence and matching backend acceptance are required before reporting hearing.'); reportedHearing = true; persist(); report(); },

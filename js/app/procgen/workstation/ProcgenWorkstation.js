@@ -377,6 +377,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     commit: (laneId, instrumentControls, gestureId) => dispatch({ type: 'procgen/lane', laneId, patch: { instrumentControls } }, { historyGroup: 'macro:' + documentGeneration + ':' + gestureId }),
     onState: () => { view?.macroState?.(); physicalMappingsView?.invalidate(); publishHeldMacros(); } });
   const effectiveSoundLanes = lanes => macroGestures.lanes(soundTransactions.lanes(lanes));
+  const lessonContext = (value = project) => {
+    const world = runtime()?.world;
+    return { documentEpoch: documentGeneration, worldId: world?.worldId, generation: world?.generation, tick: world?.tickIndex,
+      assists: world?.assists, graph: world?.physicalAuthoring?.graph || value.procgen.physicalGraph, releaseGesture: world?.population?.releaseGesture,
+      soundIdentity: value.procgen.lanes.map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|'),
+      soundReferences: value.procgen.lanes.filter(lane => lane.instrumentRef).map(lane => ({ laneId: lane.id, definitionHash: lane.instrumentRef.definitionHash,
+        packHash: lane.instrumentRef.packHash, patchId: lane.instrumentRef.patchId, revision: lane.instrumentRef.revision })) };
+  };
   const sampleMacroPerformance = boundary => {
     const revision = macroGestures.revision(); if (revision === sampledMacroRevision) return;
     const next = captureCausalPerformanceState(effectiveSoundLanes(project.procgen.lanes), project.procgen.actorTimbreLocks), previous = sampledMacroPerformance || captureCausalPerformanceState(project.procgen.lanes, project.procgen.actorTimbreLocks);
@@ -1365,7 +1373,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
               status(`Causal take became partial: ${receipt.reason}. Stop and inspect it.`); causalTakeErrorReported = true;
             }
           }
-          if (physicalLessonView?.isObserving()) physicalLessonView.observe({ batch, intents: intents || [], receipts: physicalReceiptBuffer || [], context: { assists: next.world.assists, junctionDefinitions: next.world.physicalJunctions.definitions, junctionStates: next.world.physicalJunctions.definitions.map(value => next.world.queryJunction(value.id, { includeDefinition: false }).actual).filter(Boolean), documentEpoch: physicalDocumentEpoch, activeActors: next.world.activeCount, graph: next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, releaseGesture: next.world.population?.releaseGesture, soundIdentity: effectiveSoundLanes(playbackProject().procgen.lanes).map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|') } });
+          if (physicalLessonView?.isObserving()) physicalLessonView.observe({ batch, intents: intents || [], receipts: physicalReceiptBuffer || [], context: { ...lessonContext(), assists: next.world.assists, junctionDefinitions: next.world.physicalJunctions.definitions, junctionStates: next.world.physicalJunctions.definitions.map(value => next.world.queryJunction(value.id, { includeDefinition: false }).actual).filter(Boolean), documentEpoch: physicalDocumentEpoch, activeActors: next.world.activeCount, graph: next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, releaseGesture: next.world.population?.releaseGesture, soundIdentity: effectiveSoundLanes(playbackProject().procgen.lanes).map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|') } });
           physicalFeedback?.observe(batch, physicalPlayback?.engine.physicalAnalysis());
         }
         catch (error) {
@@ -2637,7 +2645,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         onReveal: () => handlers.openPrelistenMonitor(), onApply: async (candidate, options) => {
           const transaction = await soundTransactions.select(candidate, { signal: options.signal, laneId: options.laneId, hold: true });
           if (!options.isCurrent()) { transaction.cancel(); throw new Error('The variation source changed before lane publication.'); }
-          return transaction.commit();
+          const committed = transaction.commit(), reference = candidate.reference;
+          physicalLessonView?.observeMaterial({ kind: 'kept-fork-applied', laneId: options.laneId, definitionHash: reference.definitionHash,
+            packHash: reference.packHash, patchId: reference.patchId, revision: reference.revision }, lessonContext());
+          return committed;
         } });
       return createPatchVariationView({ document, window, owner: patchVariations });
     },
@@ -2925,7 +2936,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         preferenceHold = preferenceWriter?.suspend(); if (preferenceHold) await preferenceHold.completion;
         if (disposed || documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return false;
         const resumeWasCurrent = transportStopGeneration === resumeStopGeneration;
-        const session = capture(name, { resume: false }), revision = editRevision;
+        const session = capture(name, { resume: false }), revision = editRevision, lessonSnapshot = physicalLessonView?.isObserving() ? clone(lessonContext(session.project)) : null;
         if (resumeWasCurrent) resumeStopGeneration = transportStopGeneration;
         const id = asCopy || !documentId ? createProcgenDocumentId(window.crypto) : documentId;
         const expectedRevision = asCopy || !documentId ? 0 : documentRevision;
@@ -2937,6 +2948,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (documentGeneration !== saveDocumentGeneration) return true;
         if (receipt) { documentId = receipt.id; documentRevision = receipt.revision; }
         recoveredDocument = null; savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; lastStorageError = null; storageStatus();
+        if (lessonSnapshot) physicalLessonView?.observeDocument({ kind: 'project-saved', documentId: receipt?.id ?? null, storedRevision: receipt?.revision ?? null, tick: lessonSnapshot.tick, durable: !!receipt }, lessonSnapshot);
         if (operationSerial === saveOperationSerial) status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
       } catch (error) {
         saveOperation.errorCode = String(error.code || error.name || 'save-error').slice(0, 96);
@@ -3006,7 +3018,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             loaded = await loadSession(record.session, lease, { signal: record.signal });
             if (loaded) {
               if (id.startsWith('recovery:')) { recoveredDocument = { documentGeneration, summary: record.summary || createProcgenProjectSummary(record.session, { id, kind: id === 'recovery:legacy' ? 'legacy-recovery' : 'recovery-checkpoint', recoveryGeneration: record.generation, checksum: record.checksum }) }; status('Recovery checkpoint loaded paused. Save a recovered copy to keep it as a new named project.'); }
-              else { recoveredDocument = null; documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt; }
+              else { recoveredDocument = null; documentId = record.id; documentRevision = record.revision; savedRevision = editRevision; lastSavedAt = record.session.savedAt;
+                const context = lessonContext(); physicalLessonView?.observeDocument({ kind: 'project-reopened', documentId: record.id, storedRevision: record.revision, tick: context.tick, durable: !!record.id && Number.isSafeInteger(record.revision) }, context); }
               storageStatus(); finishOperation(lease, 'committed');
             }
             return loaded;

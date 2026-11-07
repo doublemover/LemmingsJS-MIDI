@@ -24,5 +24,17 @@ export async function createInstalledPhysicalLessons(catalog) {
       permittedActions: spec.actions, success: { kind: spec.kind, ...(spec.pickupId ? { pickupId: spec.pickupId } : {}), mappingIds: scene.causalMappings.instruments.map(item => item.id), minimumActors: spec.actors, ...spec.extra },
       resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
   }
+  const keptSetup = resolve('practice.one-foot-one-sound');
+  if (keptSetup) lessons.push(validatePhysicalLessonDefinition({ schema: 'lemmings-physical-lesson/v1', id: 'lesson.make-and-keep', version: 1, title: 'Make and keep',
+    setupScene: await reference(keptSetup), zeroNoteScene,
+    prediction: 'Predict the next real pickup contact. After observing it, change only its sound and predict whether the physical cause changes.',
+    intervention: 'Record a short causal take for exact A/B if needed. In Variations, generate and compare a candidate, Keep it and Apply it. Save the named project, then reopen that exact revision through Load. Predict the next contact and explicitly continue or release a fresh finite entrant.',
+    expectedPhysicalEvidence: 'One actual source-linked baseline pickup crossing, the same physical graph/release policy through a kept fork and durable named save/reopen, then a new real crossing after the reopened checkpoint.',
+    expectedMusicalDifference: 'The saved effective patch identity survives reopen; the next source-linked onset uses that kept identity. No saved old cause is relabeled as a new contact.',
+    audibleEvidence: 'Visual evidence can verify the physical cause, kept source and project reopen. Backend acceptance and your reported hearing remain separate; no microphone or automatic heard-it grade.',
+    hint: 'An unsaved candidate, download request, different project revision or unrelated crossing cannot complete this journey. Denied output or missing material leaves the world playable and hearing unverified.',
+    permittedActions: ['finite-release', 'play-pause', 'record-causal-take', 'keep-sound-fork', 'apply-sound', 'save-project', 'open-project'],
+    success: { kind: 'make-and-keep', pickupId: 'practice-pickup', mappingIds: keptSetup.causalMappings.instruments.map(value => value.id), minimumActors: 1 },
+    resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
   return Object.freeze(lessons);
 }
