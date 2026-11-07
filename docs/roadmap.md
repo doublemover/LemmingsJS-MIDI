@@ -11253,3 +11253,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Added the real bounded PCM capture kernel through print finalization and the cue WAV inspector at all three rates and two render-quantum sizes. Independent expected sample bytes and Node SHA-256 verify exact nonaligned crop boundaries, stereo order, Float32 headroom and source-receipt binding.
 - Added a production desktop Playwright journey that installs a real saved instrument, records an actual physical take, preflights without opening audio, starts a silent private print, downloads its actual WAV, and checks exact crop/digest plus unchanged project/world, no microphone/MIDI requests and closed private context.
 - These fixtures are written but deliberately unexecuted. Run them with the consolidated functional campaign after the remaining development audit; this commit adds no acceptance evidence or issue closure.
+
+
+### Continuation 569 — complete authoritative generation delivery
+
+- Deliver both canonical terminal/current-generation batches when an ordinary world step resets a cohort. Required consumers acknowledge each batch in sequence; later physics and commands remain blocked until the full boundary is accepted. Diagnostics count the actual outstanding batches and synchronous consumer reentry cannot advance the world.
+- Added unexecuted protocol ACK/refusal/reentry fixtures and two actual-world continuation cases, each specifying10,000 ticks from a paused checkpoint with fractional nominal speed, admitted commands, automatic generation resets and streaming packet hashes plus final physics/semantic/timeline identity. These use the real world and causal engine in the restored realm, without claiming a separate browser worker benchmark.
+- Formatting and critical/boundary type checks pass. Functional qualification remains deferred until the development pass is complete.

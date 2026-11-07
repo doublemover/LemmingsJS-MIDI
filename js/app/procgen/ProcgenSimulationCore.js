@@ -15,15 +15,15 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
   const scope = createProcgenRetirementScope(), producers = createProcgenRetirementScope(), storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'authoritative-simulation',
     kind: 'command-receipts-and-causal-admission', category: 'live', bytes: 8 * 1048576 });
   const commands = new Map(); let commandFrontier = 0, sequence = 0, paused = true, disposed = false, failed = null, pending = null, capturing = false,
-    projecting = false, collecting = null, listenerError = null, latest = null, ticks = 0, deadlineMisses = 0, maximumStepMs = 0, maximumConsumerMs = 0, deliveryAgeMs = 0;
+    projecting = false, collecting = null, listenerError = null, latest = null, ticks = 0, deadlineMisses = 0, maximumStepMs = 0, maximumConsumerMs = 0, deliveryAgeMs = 0, remainingDeliveries = 0;
   const state = () => Object.freeze({ mode: 'authoritative', phase: disposed ? 'retiring' : failed ? 'failed-paused' : projecting ? 'projecting' : capturing ? 'checkpointing' : pending ? 'causal-backpressure' : paused ? 'paused' : 'running',
     paused, failure: failed ? Object.freeze({ code: failed.code || 'simulation-failed', message: failed.message }) : null,
     worldId: world.worldId, laneCount: world.laneCount, laneHeight: world.laneHeight, worldWidth: world.width, generation: world.generation, tick: world.tickIndex, sequence, documentRevision, commandFrontier, tickDurationMs: 60 / world.timer.speedFactor, nominalSpeed: world.timer.speedFactor, effectiveSpeed: paused ? 0 : world.timer.speedFactor,
-    commandReceipts: commands.size, pendingCausalBatches: pending ? 1 : 0, ticks, deadlineMisses, maximumStepMs, maximumConsumerMs, deliveryAgeMs,
+    commandReceipts: commands.size, pendingCausalBatches: remainingDeliveries, ticks, deadlineMisses, maximumStepMs, maximumConsumerMs, deliveryAgeMs,
     evidence: 'completed-authoritative-ticks;output-consumer-acceptance-is-not-acoustic-evidence' });
   const publish = () => { try { onState(state()); } catch {} };
   const fail = error => { failed ||= error instanceof Error ? error : new Error(String(error)); paused = true; publish(); return failed; };
-  const check = () => { if (disposed || failed || capturing || pending) throw failed || simulationFailure('host-unavailable', 'The simulation owner is paused for retirement, capture or required causal acknowledgment.'); };
+  const check = () => { if (disposed || failed || capturing || pending || collecting) throw failed || simulationFailure('host-unavailable', 'The simulation owner is paused for retirement, capture or required causal acknowledgment.'); };
   const listener = batch => {
     try {
       if (!collecting || batch.worldId !== world.worldId || batch.generation !== world.generation || collecting.length >= 2) throw simulationFailure('batch-boundary', 'The world published outside its host-owned completed step.');
@@ -41,20 +41,25 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
     try {
       world.step(timestamp);
       if (listenerError) throw listenerError;
-      if (collecting.length !== 1 || collecting[0].batch.tick !== world.tickIndex) throw simulationFailure('batch-boundary', 'One authoritative tick must publish one completed PhysicalEventBatch.');
-      const packet = collecting[0], elapsed = Math.max(0, now() - started), deadline = 60 / world.timer.speedFactor;
+      if (collecting.length < 1 || collecting.length > 2 || collecting.at(-1).batch.tick !== world.tickIndex || collecting.at(-1).batch.generation !== world.generation) throw simulationFailure('batch-boundary', 'One authoritative step must publish its complete ordered terminal/current-generation boundary.');
+      const packets = collecting, elapsed = Math.max(0, now() - started), deadline = 60 / world.timer.speedFactor;
       ticks++; maximumStepMs = Math.max(maximumStepMs, elapsed); if (elapsed > deadline) deadlineMisses++;
-      const delivering = now(), accepted = requiredConsumer(packet);
-      const validate = receipt => {
-        maximumConsumerMs = Math.max(maximumConsumerMs, Math.max(0, now() - delivering)); deliveryAgeMs = Math.max(0, now() - started);
-        if (receipt === false || receipt?.accepted === false) throw simulationFailure('causal-consumer-refused', 'A required consumer refused the completed tick. Resume requires explicit recovery.');
-        return packet;
+      remainingDeliveries = packets.length;
+      const deliver = index => {
+        const packet = packets[index], delivering = now(), accepted = requiredConsumer(packet);
+        const validate = receipt => {
+          maximumConsumerMs = Math.max(maximumConsumerMs, Math.max(0, now() - delivering)); deliveryAgeMs = Math.max(0, now() - started);
+          if (receipt === false || receipt?.accepted === false) throw simulationFailure('causal-consumer-refused', 'A required consumer refused the completed generation boundary. Resume requires explicit recovery.');
+          remainingDeliveries--; return index + 1 < packets.length ? deliver(index + 1) : packet;
+        };
+        return accepted?.then ? Promise.resolve(accepted).then(validate) : validate(accepted);
       };
-      if (accepted?.then) {
-        const task = Promise.resolve(accepted).then(validate).catch(error => { throw fail(error); }).finally(() => { if (pending === task) { pending = null; publish(); } });
+      const delivered = deliver(0);
+      if (delivered?.then) {
+        const task = Promise.resolve(delivered).catch(error => { throw fail(error); }).finally(() => { if (pending === task) { pending = null; publish(); } });
         pending = task; task.catch(() => {}); publish(); return task;
       }
-      validate(accepted); return packet;
+      return delivered;
     } catch (error) { throw fail(error); }
     finally { collecting = null; }
   };
