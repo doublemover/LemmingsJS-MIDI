@@ -304,5 +304,83 @@
       "ci": "pending",
       "oneShotCompleteSuiteGreen": false
     }
+  },
+  "desktopConcurrencyFollowthrough": {
+    "continuation": 671,
+    "sourceParent": "b069c717",
+    "issues": [
+      1289,
+      1291
+    ],
+    "sourceSha256": {
+      "js/app/midi-ui/CausalTakeRealtimePrint.js": "3c04c360dfee43d75a2b7a53b787e3daa29efb585f116e148ca55d3c4171bf40",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "7a72650bc868fb6a71ccd2ac0c5a0e47e070658d27226c7fe70484174d103a2c"
+    },
+    "node": {
+      "initial": {
+        "suites": 6,
+        "tests": 163,
+        "passes": 161,
+        "pending": 0,
+        "failures": 2,
+        "start": "2026-11-07T19:35:06.845Z",
+        "end": "2026-11-07T19:35:29.014Z",
+        "duration": 22169
+      },
+      "correctedRealWorldFollowup": {
+        "suites": 1,
+        "tests": 2,
+        "passes": 2,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T19:36:48.264Z",
+        "end": "2026-11-07T19:36:48.489Z",
+        "duration": 225
+      },
+      "remainingFailures": 0,
+      "note": "The new two quiescence tests initially used an unready fake world; real paused-world fixtures pass, including actual stale stepping. No second full Node suite."
+    },
+    "browser": {
+      "priorGeneration": "e77068610b0baffacda633a510ae1e4cef9438886fad730d28f5d0d006aaf560",
+      "previousBatch": {
+        "interrupted": true,
+        "completedPassing": 43,
+        "reason": "Frontload the confirmed routing-facade and joined-autosave fixes; exclude every completed passing case."
+      },
+      "alreadyPassingExcluded": 264,
+      "plannedRemaining": 283,
+      "workers": 2,
+      "buildId": "da100c053fd950f210fc8eac7befc2425d9676c330b023ef0f0d36888005bc0a",
+      "status": "running",
+      "confirmedPassing": [
+        "World inspection keyboard/pointer DPR1",
+        "World inspection keyboard/pointer DPR2"
+      ],
+      "newlyExposed": [
+        "Private print duplicate lease renewal at same audio frame (stale-execution-lease)",
+        "Worker relative text asset root (#1292)",
+        "Combined cancellation capture reports Partial rather than fixture-expected Ready",
+        "Knob observer counts legitimate text-node mutations; investigating captured evidence"
+      ]
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "immutableBuild": "passed",
+      "diffWhitespace": "passed"
+    },
+    "closedIssues": [
+      1285,
+      1286,
+      1287,
+      1288,
+      1290
+    ],
+    "pendingIssues": [
+      1289,
+      1291,
+      1292
+    ],
+    "ci": "no workflow runs returned at first remote commit snapshot"
   }
 }

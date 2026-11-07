@@ -1511,8 +1511,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const abort = () => controller.abort(signal.reason); signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
     const isCurrent = () => !disposed && !controller.signal.aborted && documentGeneration === sourceGeneration && project === sourceProject && runtime()?.world === sourceWorld && sourceWorld.tickIndex === sourceTick && sourceWorld.physicalFeedback === sourceFeedback && (physicalFeedback?.isArmed() === true) === sourceArmed && !transport.getState().playing;
     pending.completion = (async () => {
-      let capsule = null, candidate = null;
+      let capsule = null, candidate = null, transferredHold = false, retired = true;
+      const persistenceHold = holdBackgroundPersistence();
       try {
+        await persistenceHold.completion; controller.signal.throwIfAborted();
+        if (!isCurrent()) throw new Error('The source changed while background persistence was retiring.');
         capsule = await capturePhysicalHistory(sourceWorld, sourceProject, controller.signal); controller.signal.throwIfAborted();
         if (!isCurrent()) throw new Error('The source changed before authoritative host preparation.');
         const live = capsule.session(), source = continuation ? { world: continuation.world, physicalState: continuation.engine, physicalTimeline: continuation.timeline } : live, { prepareWorkerProcgenSimulationHost } = await import('../ProcgenSimulationHost.js'); controller.signal.throwIfAborted();
@@ -1526,11 +1529,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             executionPolicy: continuation?.executionPolicy || live.executionIdentity.simulationExecutionPolicy, graph: continuation?.authoring.graph || sourceProject.procgen.physicalGraph, performance: continuation?.performance || captureCausalPerformanceState(sourceProject.procgen.lanes, sourceProject.procgen.actorTimbreLocks),
             bpm: continuation?.replay.bpm || transport.getState().bpm, nominalSpeed: continuation?.replay.nominalSpeed || transport.getState().nominalSpeed, playing: true, scoreTimeline: true } });
         if (!isCurrent()) throw new Error('The source changed while its worker candidate was preparing.');
-        simulationCandidates.add(candidate); const owned = candidate; candidate = null;
-        return Object.freeze({ ...owned, async detachCheckpoint() { const checkpoint = await owned.detachCheckpoint(); simulationCandidates.delete(owned); return checkpoint; }, dispose() { const receipt = owned.dispose(); receipt.completion.then(() => { if (receipt.outcome === 'complete') simulationCandidates.delete(owned); }); return receipt; } });
+        const owned = candidate, wrapped = Object.freeze({ ...owned, async detachCheckpoint() { const checkpoint = await owned.detachCheckpoint(); simulationCandidates.delete(wrapped); persistenceHold.release(); return checkpoint; }, dispose() { const receipt = owned.dispose(); receipt.completion.then(() => { if (receipt.outcome === 'complete') { simulationCandidates.delete(wrapped); persistenceHold.release(); } }); return receipt; } });
+        simulationCandidates.add(wrapped); candidate = null; transferredHold = true; return wrapped;
       } finally {
-        if (candidate) { const receipt = candidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') status('The abandoned simulation candidate retains unresolved ownership.'); }
-        if (capsule && !capsule.discard()) throw new Error('The simulation source checkpoint retirement remains unresolved.');
+        try {
+          if (candidate) { const receipt = candidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { retired = false; simulationCandidates.add(candidate); status('The abandoned simulation candidate retains unresolved ownership.'); } }
+          if (capsule && !capsule.discard()) { retired = false; throw new Error('The simulation source checkpoint retirement remains unresolved.'); }
+        } finally { if (!transferredHold && retired) persistenceHold.release(); }
       }
     })(); try { return await pending.completion; } finally { signal?.removeEventListener('abort', abort); if (simulationPreparation === pending) simulationPreparation = null; }
   };

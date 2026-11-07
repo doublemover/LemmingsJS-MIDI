@@ -861,6 +861,28 @@ describe('ProcGen workstation orchestration', () => {
     expect(await loading).to.equal(!cancel); expect(admitted).to.equal(cancel ? 0 : 1); expect(budget.diagnostics().accountedBytes).to.equal(0);
     expect(f.studio.getPreferenceState().suspended).to.equal(false); await f.studio.dispose().completion;
   });
+
+  for (const mode of ['cancel', 'stale']) it('joins autosave retirement before worker source capture and fences ' + mode + ' while waiting (#1291)', async () => {
+    const timers = [], budget = createResourceBudget(), background = {}; let started, retire, saves = 0;
+    const entered = new Promise(resolve => { started = resolve; }), producer = new Promise(resolve => { retire = resolve; });
+    const storage = { savePreferences(_value, { signal }) {
+      if (saves++) return Promise.resolve({ durable: true });
+      budget.reserve({ token: background, owner: 'held-autosave', category: 'checkpoint', bytes: 32 * 1048576 }); started();
+      return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(Object.assign(new Error('Autosave paused'), { backgroundRetirementCompletion: producer })), { once: true }));
+    }, close() {} };
+    const f = await setupRecovery({ physicalOnly: true, resourceBudget: budget, storageOverride: storage,
+      windowTimers: { setTimeout(callback, delay) { timers.push({ callback, delay }); return timers.length; }, clearTimeout(id) { timers[id - 1] = null; } } });
+    f.studio.bindRuntime(); f.studio.transport.pause(); timers.find(timer => timer?.delay === 250).callback(); await entered;
+    const before = f.captures.length, controller = new AbortController(), preparing = f.studio.stageAuthoritativeSimulation({ signal: controller.signal, consume: () => true }); preparing.catch(() => {});
+    await new Promise(resolve => setImmediate(resolve));
+    expect(f.studio.getPreferenceState()).to.include({ active: true, suspended: true }); expect(f.captures.length).to.equal(before);
+    expect(f.studio.handlers.historyState().physical.owned).to.equal(0);
+    if (mode === 'cancel') controller.abort(new Error('worker preparation canceled')); else f.runtime.world.step();
+    budget.release({ token: background, owner: 'held-autosave' }); retire({ phase: 'canceled' });
+    let failure; try { await preparing; } catch (error) { failure = error; }
+    expect(failure).to.be.instanceOf(Error); expect(f.captures.length).to.equal(before); expect(f.studio.getSimulationHostState()).to.include({ preparing: false });
+    expect(f.studio.getPreferenceState().suspended).to.equal(false); await f.studio.dispose().completion;
+  });
   it('prepares a recipe with declared lanes and speed without inheriting a saved project', () => {
     const savedProject = createProcgenWorkstationProject(createMidiProject(), { seed: 12, lanes: [{}, {}] });
     const persisted = { version: 1, project: savedProject, transport: { bpm: 60, gameSpeed: 0.5, speedMode: 'bpm' }, ui: { slot: 2 } };
