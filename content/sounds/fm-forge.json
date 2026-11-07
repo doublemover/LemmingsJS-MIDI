@@ -2,13 +2,13 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.fm-forge",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "name": "FM Forge",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
     "licenseId": "NOASSERTION",
     "licenseUrl": null,
-    "attribution": "Original declarative FM working recipes; redistribution terms have not been assigned. Numerical and listening qualification remains pending.",
+    "attribution": "Original declarative FM working recipes, including an explicitly 128-frame delayed modulator self-FM Alarm Bloom variant. Numerical, spectral, device and listening qualification remains pending.",
     "modifications": [],
     "redistributionPolicy": "unknown",
     "licenses": []
@@ -17,7 +17,7 @@
   "recipes": [
     {
       "id": "forge.base",
-      "revision": 4,
+      "revision": 5,
       "abstract": true,
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -99,6 +99,10 @@
               "unit": "dimensionless"
             },
             "secondaryIndexEnd": {
+              "value": 0,
+              "unit": "dimensionless"
+            },
+            "feedbackIndex": {
               "value": 0,
               "unit": "dimensionless"
             }
@@ -244,7 +248,7 @@
     },
     {
       "id": "forge.glass-rivet",
-      "revision": 5,
+      "revision": 6,
       "extends": "forge.base",
       "name": "Glass Rivet",
       "components": [
@@ -379,7 +383,7 @@
     },
     {
       "id": "forge.copper-tine",
-      "revision": 5,
+      "revision": 6,
       "extends": "forge.base",
       "name": "Copper Tine",
       "components": [
@@ -538,7 +542,7 @@
     },
     {
       "id": "forge.alarm-bloom",
-      "revision": 5,
+      "revision": 6,
       "extends": "forge.base",
       "name": "Alarm Bloom",
       "components": [
@@ -567,6 +571,10 @@
             "indexSeconds": {
               "value": 0.7,
               "unit": "s"
+            },
+            "feedbackIndex": {
+              "value": 0.12,
+              "unit": "dimensionless"
             }
           }
         },
@@ -701,7 +709,7 @@
     },
     {
       "id": "forge.rubber-bolt",
-      "revision": 5,
+      "revision": 6,
       "extends": "forge.base",
       "name": "Rubber Bolt",
       "components": [
@@ -933,7 +941,7 @@
         {
           "id": "authored",
           "recipeId": "forge.alarm-bloom",
-          "algorithmRevision": "native-fm-authored-v1",
+          "algorithmRevision": "native-fm-delay128-feedback-v2",
           "preservedInvariants": [
             "semantic-onset-and-end",
             "authored-operator-and-pitch-interface",
@@ -944,7 +952,7 @@
         }
       ],
       "transitions": [],
-      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+      "singleProfileLimit": "One authored 128-frame delayed modulator self-FM topology, with feedback index capped at0.25. No zero-delay, oversampled or lower-cost feedback realization is qualified."
     },
     {
       "schema": "lemmings-authored-sound-realizations/v1",

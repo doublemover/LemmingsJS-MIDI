@@ -9,7 +9,7 @@ test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(
 
 for (const family of [
   { name: 'Liquid', prepare: 'Prepare liquid tables / drawbars', count: 7, revision: 'spectrum.acid-current@1', body: 'quarry-hollow-spring' },
-  { name: 'Forge', prepare: 'Prepare FM Forge', count: 4, revision: 'forge.glass-rivet@5', body: 'quarry-crossed-gallery' }
+  { name: 'Forge', prepare: 'Prepare FM Forge', count: 4, revision: 'forge.glass-rivet@6', body: 'quarry-crossed-gallery' }
 ]) test(family.name + ' browsing hands off to a saved real shared SPACE without changing physical causes', async ({ page }) => {
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);

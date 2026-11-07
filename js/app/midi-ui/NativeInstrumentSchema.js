@@ -14,7 +14,7 @@ const schemas = freezeData({
   'worklet-warp': [parameter('attackSeconds', 0, 2, 0.003, 's'), parameter('releaseSeconds', 0.002, 4, 0.04, 's'), parameter('maximumHoldSeconds', 0.1, 30, 8, 's', false), parameter('gain01', 0, 1, 0.4, 'amplitude-linear'), parameter('pan01', -1, 1, 0, 'normalized')].map(spec => Object.freeze({ ...spec, liveSafe: ['gain01', 'pan01'].includes(spec.id) })),
   'native-oscillator': [parameter('waveform', 0, 3, 1, 'enum', true), ...envelope(0.008, 0.05, 0.7, 0.5)],
   'native-fm': [parameter('carrierRatio', 0.125, 8, 1, 'ratio'), parameter('modulatorRatio', 0.125, 12, 2, 'ratio'),
-    parameter('indexStart', 0, 8, 1, 'dimensionless'), parameter('indexEnd', 0, 8, 0.1, 'dimensionless'), parameter('indexSeconds', 0.001, 4, 0.3, 's'),
+    parameter('feedbackIndex', 0, 0.25, 0, 'dimensionless'), parameter('indexStart', 0, 8, 1, 'dimensionless'), parameter('indexEnd', 0, 8, 0.1, 'dimensionless'), parameter('indexSeconds', 0.001, 4, 0.3, 's'),
     parameter('dualPair', 0, 1, 0, 'enum', true), parameter('secondaryCarrierRatio', 0.125, 8, 1, 'ratio'), parameter('secondaryModulatorRatio', 0.125, 12, 1, 'ratio'),
     parameter('secondaryIndexStart', 0, 8, 0, 'dimensionless'), parameter('secondaryIndexEnd', 0, 8, 0, 'dimensionless'), parameter('secondaryMix01', 0, 1, 0, 'ratio'),
     parameter('pitchSettleCents', -1200, 1200, 0, 'cents'), parameter('pitchSettleSeconds', 0.001, 1, 0.035, 's'), parameter('maxBendCents', 0, 1200, 200, 'cents')]

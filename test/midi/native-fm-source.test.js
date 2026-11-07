@@ -5,14 +5,14 @@ import { compileInstrumentPerformance } from '../../js/midi/content/InstrumentPe
 
 const parameters = overrides => ({ ...Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, spec]) => [id, spec.default])), ...overrides });
 const contextFixture = () => {
-  const sources = [], gains = []; let fault = null;
+  const sources = [], gains = [], delays = []; let fault = null;
   const param = () => ({ events: [], setValueAtTime(value, time) { this.events.push(['set', value, time]); },
     linearRampToValueAtTime(value, time) { this.events.push(['ramp', value, time]); }, cancelScheduledValues(time) { this.events.push(['cancel', time]); } });
   const node = () => ({ targets: [], disconnects: 0, connect(target) { this.targets.push(target); }, disconnect() { this.disconnects++; if (fault === this) throw new Error('unknown child disconnection'); this.targets.length = 0; } });
   const source = () => Object.assign(node(), { frequency: param(), detune: param(), offset: param(), starts: [], stops: [], start(time) { this.starts.push(time); }, stop(time) { this.stops.push(time); } });
-  const context = { createOscillator() { const value = source(); sources.push(value); return value; }, createConstantSource() { const value = source(); sources.push(value); return value; },
+  const context = { createDelay(maximum) { const value = Object.assign(node(), { maximum, delayTime: param() }); delays.push(value); return value; }, createOscillator() { const value = source(); sources.push(value); return value; }, createConstantSource() { const value = source(); sources.push(value); return value; },
     createGain() { const value = Object.assign(node(), { gain: param() }); gains.push(value); return value; } };
-  return { context, sources, gains, refuse: value => { fault = value; } };
+  return { context, sources, gains, delays, refuse: value => { fault = value; } };
 };
 
 describe('owned native two/four-operator FM source', () => {
@@ -48,6 +48,25 @@ describe('owned native two/four-operator FM source', () => {
     expect(f.sources.slice(0, 4).every(node => node.detune.events.some(event => event[0] === 'ramp' && event[1] === -100))).to.equal(true);
     source.start(1); source.stop(5); source.stop(7); expect(f.sources.every(node => node.starts.length === 1 && node.stops.join(',') === '5,7')).to.equal(true);
     source.disconnect(); expect(f.sources.every(node => node.targets.length === 0)).to.equal(true); expect(f.gains.every(node => node.targets.length === 0)).to.equal(true);
+  });
+  it('owns the explicit delayed self-FM loop and accounts for its gain and delay per pair', () => {
+    const f = contextFixture(), plan = planNativeFmSource({ fundamentalHz: 440, sampleRate: 48000,
+      parameters: parameters({ dualPair: 1, secondaryMix01: 0.5, feedbackIndex: 0.12 }) });
+    const owner = createNativeFmSourceOwner(f.context, plan, 1);
+    expect(f.delays).to.have.length(0); owner.prepare();
+    expect(plan.feedback).to.include({ kind: 'delayed-modulator-self-fm/v1', index: 0.12, delayFrames: 128, maximumIndex: 0.25 });
+    expect(plan.sourceCost).to.equal(8); expect(f.sources).to.have.length(4); expect(f.delays).to.have.length(2);
+    for (const [index, delay] of f.delays.entries()) {
+      expect(delay.delayTime.events[0]).to.deep.equal(['set', 128 / 48000, 1]);
+      expect(delay.maximum).to.equal(128 / 48000);
+      const feedback = delay.targets[0], modulator = f.sources[index * 2 + 1];
+      expect(modulator.targets).to.include(delay); expect(feedback.targets).to.deep.equal([modulator.frequency]);
+      expect(feedback.gain.events[0][1]).to.equal(plan.pairs[index].modulatorHz * 0.12);
+    }
+    owner.start(1); owner.stop(2); owner.disconnect();
+    expect([...f.sources, ...f.gains, ...f.delays].every(node => node.targets.length === 0 && node.disconnects === 1)).to.equal(true);
+    expect(() => planNativeFmSource({ fundamentalHz: 440, sampleRate: 48000, parameters: parameters({ feedbackIndex: 0.251 }) })).to.throw('profile');
+    expect(() => createNativeFmSourceOwner({ ...f.context, renderQuantumSize: 256 }, plan, 0)).to.throw('128-frame');
   });
   it('attempts every child disconnection and caches unknown retirement without blindly retrying', () => {
     const f = contextFixture(), source = createNativeFmSourceOwner(f.context, planNativeFmSource({ fundamentalHz: 440, sampleRate: 48000, parameters: parameters({ dualPair: 1, secondaryMix01: 0.5 }) }), 0);

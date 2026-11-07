@@ -7,36 +7,40 @@ export const fmIndexToDeviation = (index, modulatorHz) => {
 };
 
 export function planNativeFmSource({ fundamentalHz, sampleRate, parameters, pitchOffsetCents = 0 } = {}) {
+  const feedbackIndex = parameters?.feedbackIndex ?? 0;
   if (!finite(fundamentalHz, 0.1, 40000) || !finite(sampleRate, 8000, 384000) || !parameters || ![0, 1].includes(parameters.dualPair) ||
       !finite(parameters.maxBendCents, 0, 1200) || !finite(pitchOffsetCents, -parameters.maxBendCents, parameters.maxBendCents) ||
       !finite(parameters.indexSeconds, 0.001, 4) || !finite(parameters.pitchSettleCents, -1200, 1200) || !finite(parameters.pitchSettleSeconds, 0.001, 1) ||
-      !finite(parameters.secondaryMix01, 0, 1) || !parameters.dualPair && parameters.secondaryMix01 !== 0)
+      !finite(feedbackIndex, 0, 0.25) || !finite(parameters.secondaryMix01, 0, 1) || !parameters.dualPair && parameters.secondaryMix01 !== 0)
     throw new RangeError('The requested FM source exceeds its declared topology, bend or envelope profile.');
   const upperTranspose = 2 ** ((parameters.maxBendCents + Math.max(0, parameters.pitchSettleCents)) / 1200),
     lowerTranspose = 2 ** ((-parameters.maxBendCents + Math.min(0, parameters.pitchSettleCents)) / 1200), guardHz = sampleRate * 0.4;
   const pair = (carrierRatio, modulatorRatio, firstIndex, lastIndex, mix) => {
     if (!finite(carrierRatio, 0.125, 8) || !finite(modulatorRatio, 0.125, 12) || !finite(firstIndex, 0, 8) || !finite(lastIndex, 0, 8)) throw new RangeError('Invalid FM ratio or modulation-index envelope.');
     const carrierHz = fundamentalHz * carrierRatio, modulatorHz = fundamentalHz * modulatorRatio;
-    if (carrierHz * upperTranspose >= guardHz || modulatorHz * upperTranspose >= guardHz || Math.min(carrierHz, modulatorHz) * lowerTranspose < 0.1)
+    if (carrierHz * upperTranspose >= guardHz || modulatorHz * upperTranspose * (1 + feedbackIndex) >= guardHz || Math.min(carrierHz, modulatorHz) * lowerTranspose < 0.1)
       throw new RangeError('The requested FM ratios exceed the selected sample-rate register.');
-    const indexLimit = Math.max(0, (guardHz - carrierHz * upperTranspose) / (modulatorHz * upperTranspose) - 1),
+    const indexLimit = Math.max(0, (guardHz - carrierHz * upperTranspose) / (modulatorHz * upperTranspose * (1 + feedbackIndex)) - 1),
       indexStart = Math.min(firstIndex, indexLimit), indexEnd = Math.min(lastIndex, indexLimit);
     return Object.freeze({ carrierHz, modulatorHz, indexStart, indexEnd, indexLimit, requestedIndexStart: firstIndex, requestedIndexEnd: lastIndex,
-      deviationStartHz: fmIndexToDeviation(indexStart, modulatorHz), deviationEndHz: fmIndexToDeviation(indexEnd, modulatorHz), mix01: mix,
+      feedbackDeviationHz: fmIndexToDeviation(feedbackIndex, modulatorHz), deviationStartHz: fmIndexToDeviation(indexStart, modulatorHz), deviationEndHz: fmIndexToDeviation(indexEnd, modulatorHz), mix01: mix,
       indexLimited: indexStart !== firstIndex || indexEnd !== lastIndex });
   };
   const pairs = [pair(parameters.carrierRatio, parameters.modulatorRatio, parameters.indexStart, parameters.indexEnd, parameters.dualPair ? 1 - parameters.secondaryMix01 : 1)];
   if (parameters.dualPair) pairs.push(pair(parameters.secondaryCarrierRatio, parameters.secondaryModulatorRatio, parameters.secondaryIndexStart, parameters.secondaryIndexEnd, parameters.secondaryMix01));
   return Object.freeze({ schema: 'lemmings-owned-native-fm/v1', fundamentalHz, sampleRate, pairs: Object.freeze(pairs),
-    sourceCost: pairs.length * 2 + Number(parameters.pitchSettleCents !== 0), maxBendCents: parameters.maxBendCents,
+    sourceCost: pairs.length * (feedbackIndex > 0 ? 4 : 2) + Number(parameters.pitchSettleCents !== 0), maxBendCents: parameters.maxBendCents,
     indexSeconds: parameters.indexSeconds, pitchSettleCents: parameters.pitchSettleCents, pitchSettleSeconds: parameters.pitchSettleSeconds,
-    feedback: 'unsupported', quality: 'conservative-sideband-estimate-not-spectral-qualified', indexLimited: pairs.some(pair => pair.indexLimited) });
+    feedback: Object.freeze({ kind: feedbackIndex > 0 ? 'delayed-modulator-self-fm/v1' : 'none', index: feedbackIndex, maximumIndex: 0.25,
+      delayFrames: feedbackIndex > 0 ? 128 : 0, delaySeconds: feedbackIndex > 0 ? 128 / sampleRate : 0, stateRestore: 'unavailable' }), quality: 'conservative-sideband-estimate-not-spectral-qualified', indexLimited: pairs.some(pair => pair.indexLimited) });
 }
 
 // Native nodes are allocated only by prepare(), after the caller owns a source lease.
 export function createNativeFmSourceOwner(context, plan, start) {
   if (!context?.createOscillator || !context.createGain || !plan || plan.schema !== 'lemmings-owned-native-fm/v1' || !Number.isFinite(start) || start < 0)
     throw new TypeError('Invalid FM source owner.');
+  if (plan.feedback.index > 0 && (!context.createDelay || context.renderQuantumSize != null && context.renderQuantumSize !== 128))
+    throw new TypeError('Delayed self-FM requires the native 128-frame render quantum and DelayNode support.');
   const sources = [], nodes = [], pitched = [], retirement = createProcgenRetirementScope(); let output = null, primary = null, prepared = false, started = false, callback = null;
   const forEvery = (list, action) => {
     const failures = []; for (const entry of list) { try { action(entry); } catch (error) { failures.push(error); } }
@@ -61,6 +65,12 @@ export function createNativeFmSourceOwner(context, plan, start) {
         carrier.type = modulator.type = 'sine'; carrier.frequency.setValueAtTime(pair.carrierHz, start); modulator.frequency.setValueAtTime(pair.modulatorHz, start);
         index.gain.setValueAtTime(pair.deviationStartHz, start); index.gain.linearRampToValueAtTime(pair.deviationEndHz, start + plan.indexSeconds);
         mix.gain.setValueAtTime(pair.mix01, start); modulator.connect(index); index.connect(carrier.frequency); carrier.connect(mix); mix.connect(output);
+        if (plan.feedback.index > 0) {
+          const delay = context.createDelay(plan.feedback.delaySeconds); nodes.push(delay);
+          const feedback = context.createGain(); nodes.push(feedback);
+          delay.delayTime.setValueAtTime(plan.feedback.delaySeconds, start); feedback.gain.setValueAtTime(pair.feedbackDeviationHz, start);
+          modulator.connect(delay); delay.connect(feedback); feedback.connect(modulator.frequency);
+        }
       }
       if (plan.pitchSettleCents !== 0) {
         if (typeof context.createConstantSource !== 'function') throw new Error('This FM pitch-settle recipe needs ConstantSourceNode support.');

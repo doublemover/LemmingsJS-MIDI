@@ -18,11 +18,11 @@ describe('original FM Forge source content', () => {
     const patches = new Map(result.prepared.patches.map(patch => [patch.definition.id, patch.definition]));
     expect(patches.get('forge.glass-rivet').parameters).to.include({ modulatorRatio: 2.71, indexStart: 3.5, indexEnd: 0.15, indexSeconds: 0.8 });
     expect(patches.get('forge.copper-tine').parameters).to.include({ dualPair: 1, secondaryMix01: 0.7, secondaryIndexStart: 0, secondaryIndexEnd: 0 });
-    expect(patches.get('forge.alarm-bloom').parameters).to.include({ modulatorRatio: 1.414, indexStart: 0.5, indexEnd: 4 });
+    expect(patches.get('forge.alarm-bloom').parameters).to.include({ modulatorRatio: 1.414, indexStart: 0.5, indexEnd: 4, feedbackIndex: 0.12 });
     expect(patches.get('forge.rubber-bolt').parameters).to.include({ pitchSettleCents: 700, pitchSettleSeconds: 0.035, decaySeconds: 0.26 });
     for (const [id, definition] of patches) for (const note of [36, 60, 84]) {
       const plan = planNativeFmSource({ fundamentalHz: 440 * 2 ** ((note - 69) / 12), sampleRate: 48000, parameters: definition.parameters });
-      expect(plan.sourceCost).to.equal(id === 'forge.copper-tine' ? 4 : id === 'forge.rubber-bolt' ? 3 : 2);
+      expect(plan.sourceCost).to.equal(['forge.copper-tine', 'forge.alarm-bloom'].includes(id) ? 4 : id === 'forge.rubber-bolt' ? 3 : 2);
       expect(plan.quality).to.equal('conservative-sideband-estimate-not-spectral-qualified');
     }
   });

@@ -338,7 +338,8 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         const parameters = Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, parameter]) => [id, parameter.default])); Object.assign(parameters, patch.definition.parameters);
         modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources · carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
           ' · index ' + parameters.indexStart + ' → ' + parameters.indexEnd + ' over ' + parameters.indexSeconds + ' s · bend ±' + parameters.maxBendCents +
-          ' cents. Register limits are estimates; spectral/listening qualification is pending. Actual successful work size and completed safe landing descent can scale onset hardness. Shared SPACE uses Physical shared SPACE / ROOM after applying the source; feedback remains unavailable in this native source.';
+          ' cents · ' + (parameters.feedbackIndex > 0 ? '128-frame delayed modulator self-FM index ' + parameters.feedbackIndex + ' (cap0.25)' : 'no feedback') +
+          '. Register limits are estimates; spectral/listening qualification is pending. Actual successful work size and completed safe landing descent can scale onset hardness. Shared SPACE uses Physical shared SPACE / ROOM after applying the source. The feedback variant requires the native 128-frame render quantum; its delay state cannot be restored exactly.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-modal') {
         const parameters = patch.definition.parameters;
