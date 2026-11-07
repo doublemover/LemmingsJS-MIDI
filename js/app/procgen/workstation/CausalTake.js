@@ -1,3 +1,4 @@
+import { validateSpatialPerformance } from '../../../midi/content/SpatialPerformance.js';
 import { validateMappedBodyPreparation } from '../../../midi/content/PreparedSurface.js';
 import { captureCausalMaterialSources } from './CausalMaterialSources.js';
 import { captureRevoiceLaneRouting } from './CausalLaneRouting.js';
@@ -18,10 +19,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v21',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v22',
   factKinds: ['ReleaseGestureRequested', 'ReleaseScheduleCommitted', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed', 'MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['prepared-surfaces', 'effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'route-coordinate-history-v2', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['prepared-surfaces', 'spatial-performance', 'effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'route-coordinate-history-v2', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null, signal = null } = {}) => {
@@ -56,6 +57,10 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
   const addGap = coverageIndex.add;
   const observeEffectCoverage = (outcomes, tick, generation) => {
     for (const outcome of outcomes) {
+      if (outcome?.schema === 'lemmings-spatial-performance/v1') {
+        if (profile.stateKinds.includes('spatial-performance')) { if (outcome.kind === 'map' || outcome.state) observedStateKinds.add('spatial-performance'); if (outcome.status === 'rejected' && !outcome.state) addGap({ kind: 'spatial-performance', firstTick: tick, lastTick: tick, generation, reason: 'spatial-source-observation-unavailable' }); }
+        else addGap({ kind: 'spatial-performance', firstTick: tick, lastTick: tick, generation, reason: 'spatial-performance-not-in-capture-profile' });
+      } else if (outcome?.stage === 'world-spatial-observation' && outcome.status === 'rejected') addGap({ kind: 'spatial-performance', firstTick: tick, lastTick: tick, generation, reason: outcome.reason || 'spatial-source-observation-unavailable' });
       if (outcome?.stage === 'effect-performance-capture' && outcome.status === 'rejected') addGap({ kind: 'effect-performance', firstTick: tick, lastTick: tick, generation, reason: 'effect-performance-capture-rejected' });
       else if (outcome?.schema === 'lemmings-effect-performance/v1') {
         if (profile.stateKinds.includes('effect-performance')) observedStateKinds.add('effect-performance');
@@ -80,6 +85,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
         !['begin', 'update', 'end'].includes(intent.kind) || !Array.isArray(intent.sourceEventIds) || intent.batchId !== batch.batchId) throw new Error('Invalid canonical musical intent.');
     bodyCommands = bodyCommands.map(command => { const value = validateMappedBodyPreparation(command); if (value.batchId !== batch.batchId || value.sourceTick !== batch.tick) throw new Error('Prepared body command differs from its canonical batch.'); return value; });
     if (probability && (probability.version !== 1 || probability.batchId !== batch.batchId || !Number.isSafeInteger(probability.requested) || !Number.isSafeInteger(probability.omitted) || probability.omitted < 0 || !Array.isArray(probability.decisions) || probability.decisions.length > 8192 || probability.requested !== probability.decisions.length + probability.omitted || JSON.stringify(probability).length * 2 > 1050624)) throw new Error('Invalid bounded causal probability evidence.');
+    for (const outcome of deliveryOutcomes) if (outcome?.schema === 'lemmings-spatial-performance/v1') validateSpatialPerformance(outcome);
     const entries = [{ kind: 'physical-batch', tick: batch.tick, generation: batch.generation, payload: batch },
       { kind: 'musical-intents', tick: batch.tick, generation: batch.generation, payload: { batchId: batch.batchId, intents, ...(bodyCommands.length ? { bodyCommands } : {}), ...(probability ? { probability } : {}) } }];
     if (deliveryOutcomes.length) entries.push({ kind: 'sink-outcome', tick: batch.tick, generation: batch.generation,
@@ -233,8 +239,8 @@ const planCausalReinterpretation = ({ manifest, graph, range = null, verifiedRec
 };
 
 const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, soundPatch, firstTick, lastTick, generation,
-  firstSequence = 1, includeEffects = false, limit = 4096, maxIntents = 65536, maxBytes = 4194304, executionEpoch, resourceBudget = null, jobs, signal } = {}) => {
-  if (typeof includeEffects !== 'boolean' || !name(executionEpoch) || typeof takeId !== 'string' || !takeId || takeId.length > 256 || !soundPatch || typeof soundPatch !== 'object' || Array.isArray(soundPatch) ||
+  firstSequence = 1, includeSpatial = false, includeEffects = false, limit = 4096, maxIntents = 65536, maxBytes = 4194304, executionEpoch, resourceBudget = null, jobs, signal } = {}) => {
+  if (typeof includeSpatial !== 'boolean' || typeof includeEffects !== 'boolean' || !name(executionEpoch) || typeof takeId !== 'string' || !takeId || takeId.length > 256 || !soundPatch || typeof soundPatch !== 'object' || Array.isArray(soundPatch) ||
       !Number.isSafeInteger(firstSequence) || firstSequence < 1 || !Number.isSafeInteger(limit) || limit < 1 || limit > 65536 ||
       !Number.isSafeInteger(maxIntents) || maxIntents < 1 || maxIntents > 262144 || !Number.isSafeInteger(maxBytes) || maxBytes < 4096 || maxBytes > 32 * 1048576 ||
       takeRevision != null && (!Number.isSafeInteger(takeRevision) || takeRevision < 1) || generation != null && (!Number.isSafeInteger(generation) || generation < 0))
@@ -248,7 +254,7 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
     if (takeRevision != null && manifest.revision !== takeRevision) throw journalError('stale-revision', 'Revoice source revision has changed.');
     const range = { firstTick: firstTick ?? manifest.coverage?.sourceRange?.firstTick, lastTick: lastTick ?? manifest.coverage?.sourceRange?.lastTick };
     const coverage = queryCausalCoverage({ coverage: manifest.coverage, range, kind: 'musical-intents', generation });
-    const slice = await workspace.page({ takeId, takeRevision: manifest.revision, ...range, generation, firstSequence, kinds: ['musical-intents', 'input-observation', ...(includeEffects ? ['sink-outcome'] : [])], limit, signal });
+    const slice = await workspace.page({ takeId, takeRevision: manifest.revision, ...range, generation, firstSequence, kinds: ['musical-intents', 'input-observation', ...(includeEffects || includeSpatial ? ['sink-outcome'] : [])], limit, signal });
     let count = 0;
     for (const record of slice.records) {
       if (record.kind !== 'musical-intents') continue;
@@ -262,6 +268,10 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
       if (!Array.isArray(record.payload.bodyCommands) || record.payload.bodyCommands.length > 1024 || bodyCommands.length + record.payload.bodyCommands.length > 65536) throw journalError('prepared-body-command-capacity', 'Prepared body commands exceed this revoice window.');
       for (const command of record.payload.bodyCommands) bodyCommands.push(validateMappedBodyPreparation(command));
     }
+    const spatialEvents = [];
+    if (includeSpatial) for (const record of slice.records) if (record.kind === 'sink-outcome') for (const outcome of Array.isArray(record.payload?.outcomes) ? record.payload.outcomes : [record.payload]) {
+      if (outcome?.schema === 'lemmings-spatial-performance/v1') { if (spatialEvents.length >= 16384) throw journalError('spatial-performance-capacity', 'Captured spatial controls exceed this bounded history. Choose a shorter take.'); spatialEvents.push(validateSpatialPerformance(outcome)); }
+    }
     const effectEvents = [];
     if (includeEffects) for (const record of slice.records) if (record.kind === 'sink-outcome') for (const outcome of Array.isArray(record.payload?.outcomes) ? record.payload.outcomes : [record.payload]) {
       if (outcome?.schema === 'lemmings-effect-performance/v1') { if (effectEvents.length >= 8192) throw journalError('effect-performance-capacity', 'Captured effect commands exceed the render window.'); effectEvents.push(validateEffectPerformance(outcome)); }
@@ -272,6 +282,7 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
     return await workspace.publish({ version: 1, operation: 'sound-only-revoice', takeId, takeRevision: slice.takeRevision,
       sourceCanonicalHash: manifest.canonicalHash, sourceVersions: manifest.sourceVersions, sourceState: manifest.state, sourceComplete: manifest.complete,
       finalBoundaryState: manifest.stopBoundaryState || null, executionEpoch, soundPatch: patch,
+      ...(includeSpatial ? { spatialEvents, spatialCoverage: { captured: manifest.coverage?.available?.stateKinds?.includes('spatial-performance') === true, ...queryCausalCoverage({ coverage: manifest.coverage, range, kind: 'spatial-performance', generation }), evidence: 'recorded-world-controls;native-api-admission-separate-from-rendered-or-acoustic-output' } } : {}),
       ...(includeEffects ? { effectEvents, effectCoverage: { captured: manifest.coverage?.available?.stateKinds?.includes('effect-performance') === true, gaps: (manifest.coverage?.gaps || []).filter(gap => ['effect-performance', 'all'].includes(gap.kind)) } } : {}),
       ...(laneRouting ? { laneRouting } : {}), ...(materialSources ? { materialSources } : {}), ...(bodyCommands.length ? { bodyCommands, bodyPreparationPolicy: includeEffects ? 'captured-effect-commands-required;no-remapping-physical-facts' : 'source-only-revoice-excludes-prepared-body-output' } : {}), intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
       boundary: { status: initialBoundary ? 'captured-initial-state' : 'requires-state-reconstruction',

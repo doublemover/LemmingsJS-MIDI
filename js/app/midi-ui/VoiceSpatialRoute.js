@@ -38,7 +38,7 @@ export function createVoiceSpatialRoute({ context, resources, owner, generation,
     try {
       collect(now);
       if ([gainCurve, panCurve, filterCurve, ...[...sends.values()].map(send => send.curve)].some(curve => !curve.canInsert(now))) return { status: 'rejected', reason: 'spatial-control-capacity' };
-      if (state.mapId !== pin.mapId || state.mapRevision !== pin.mapRevision || zoneOwner.isPinnedCurrent?.(pin) === false) {
+      if (state.mapHash && state.mapHash !== pin.mapHash || state.mapId !== pin.mapId || state.mapRevision !== pin.mapRevision || zoneOwner.isPinnedCurrent?.(pin) === false) {
         if (retained.length >= 2) return { status: 'rejected', reason: 'spatial-map-transition-capacity' };
         const candidate = zoneOwner.pin(state), next = buildSet(candidate, at, state.smoothingSeconds); staged = { pin: candidate, sends: next };
         if ([...entries].some(([id, amount]) => amount > 0 && !next.has(id))) { releaseSet(staged); staged = null; return { status: 'rejected', reason: 'spatial-return-unavailable' }; }
@@ -53,7 +53,7 @@ export function createVoiceSpatialRoute({ context, resources, owner, generation,
       stale.gain.cancelScheduledValues(at); stale.gain.setValueAtTime(previous, at); stale.gain.linearRampToValueAtTime(1, at + 0.008);
       expiry = state.sourceAttachment.kind === 'actor' ? at + (state.validUntil.sourceTick - state.sourceTick) * state.sourceTickDurationMs / 1000 : Infinity;
       if (Number.isFinite(expiry)) { stale.gain.setValueAtTime(1, Math.max(at + 0.008, expiry)); stale.gain.linearRampToValueAtTime(0, Math.max(at + 0.008, expiry) + 0.02); } frame = targetFrame;
-      return Object.freeze({ status: 'accepted', stage: 'spatial-controls-scheduled', voiceId: state.voiceId, generation: state.generation, sourceTick: state.sourceTick, targetFrame, appliedFrame: null, mapHash: pin.mapHash, state, transition,
+      return Object.freeze({ status: 'accepted', stage: 'spatial-controls-scheduled', voiceId: state.voiceId, generation: state.generation, sourceTick: state.sourceTick, targetFrame, appliedFrame: null, mapHash: pin.mapHash, state, transition, effectiveLowpassHz: Math.min(context.sampleRate * 0.4, state.lowpassHz),
         stalePolicy: state.sourceAttachment.kind === 'actor' ? 'hold-then20ms-fade;no-position-extrapolation' : 'fixed-world-source-through-owned-tail;no-actor-follow', acousticReceipt: false });
     } catch { if (staged) { try { releaseSet(staged); } catch {} } return { status: 'rejected', reason: 'spatial-native-automation-failed' }; }
   };

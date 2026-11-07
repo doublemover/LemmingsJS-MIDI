@@ -11564,3 +11564,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Palette Apply supports lane-scoped explicit region responses as one canonical saved edit. Selecting an ordinary sound clears zone body selection together with contact-material interpretation while retaining spatial placement. Reference snapshots also retain palettes for region-only onset mappings.
 - Realize monotone frequency/amplitude absorption curves through an explicitly named minus3dB-cutoff mapping and the existing native lowpass, blended by ABSORB. This is an authored filter control, not an exact arbitrary absorption-spectrum or measured-room claim.
 - Captured spatial source/history rendering and field/listener/proof-scene integration remain in development. Functional, browser, audio/native, performance and listening validation stay deferred.
+
+### Continuation 609 — typed spatial performance capture and source query
+
+- Validate bounded map/onset/update spatial receipts before capture: exact world/source clock, map hash/definition, source/voice identity, per-onset region-body choice, explicit controls and native target frame. Renderer execution identity stays separate from the physical output execution; requested state and effective native filter cutoff are retained independently.
+- Extend the physical capture profile with spatial-performance coverage. Missing source observations or rejected capture create explicit gaps; a rejected native API update with a still-complete requested world observation remains distinguishable rather than being mislabeled as acoustic evidence.
+- Add an owned revoice query option for validated spatial history and coverage. Bound copied control history and source workspace; oversized/partial history is refused instead of dropping later control pages. Every audio control state now pins the prepared map hash, including same-revision Undo/branch identities.
+- Native spatial readout, field/listener editing and Pocket Cathedral content remain in progress. Functional/audio/browser/native/performance and listening campaigns remain deferred.
