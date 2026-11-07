@@ -817,5 +817,93 @@
       "categories": 14,
       "selection": "passed with all required files/capabilities represented"
     }
+  },
+  "ciQualification675": {
+    "sourceCommit": "e84f8dcb1816349a73599ad96f85d993daf0abfb",
+    "run": 42416256466,
+    "mainJob": 128534888857,
+    "desktopBoundaries": {
+      "passed": 31
+    },
+    "workstationSmoke": {
+      "passed": 321,
+      "failed": 3,
+      "minutes": 49.5,
+      "failures": [
+        {
+          "file": "procgen-workstation-export-ownership.spec.js",
+          "cause": "Client module fetch aborted; startup remained Loading without recovery",
+          "issue": 1299
+        },
+        {
+          "file": "procgen-workstation-seed-rebuild.spec.js",
+          "cause": "Two independent valid capacity guards; fixture required only source-count refusal"
+        },
+        {
+          "file": "procgen-workstation-transport.spec.js",
+          "cause": "Queued phrase could be consumed by the initial clock boundary before capture"
+        }
+      ]
+    },
+    "lifecycle": {
+      "job": 128534888945,
+      "passed": 51,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "measuredProfilesPerEngine": 3,
+      "qualification": "matching physics, causal and asset identities; qualified native clock receipts"
+    },
+    "nativeMidiCodec": {
+      "platforms": [
+        "ubuntu-latest",
+        "windows-latest"
+      ],
+      "commandsPerPlatform": 8829,
+      "boundedFailureCasesPerPlatform": 4
+    },
+    "overall": "failed; all three failures cleared by the grouped4/4 native follow-up"
+  },
+  "startupAndCiFollowthrough676": {
+    "baseCommit": "e84f8dcb1816349a73599ad96f85d993daf0abfb",
+    "issue": 1299,
+    "browser": {
+      "stats": {
+        "startTime": "2026-11-07T22:35:10.336Z",
+        "duration": 104401.34400000001,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceBuildId": "87de9ab9628627f93ebea6a2700ed146e602811200c5ae415b70b4ff127122e6",
+      "protocol": "Native Chromium on the same loopback HTTP boundary server as CI,1920x1080",
+      "startupReceipt": {
+        "interrupted": {
+          "url": "http://127.0.0.1:51541/dist/browser/87de9ab9628627f93ebea6a2700ed146e602811200c5ae415b70b4ff127122e6/procgen.html?e2e=1&seed=42&lanes=2#retained-startup",
+          "studio": false,
+          "phase": "failed",
+          "message": "The application files could not finish loading. Retry loading to reopen this session."
+        },
+        "restoredUrl": "http://127.0.0.1:51541/dist/browser/87de9ab9628627f93ebea6a2700ed146e602811200c5ae415b70b4ff127122e6/procgen.html?e2e=1&seed=42&lanes=2#retained-startup",
+        "scope": "Native Chromium page-request block after independent generation installation; explicit full-document retry preserves entry and consent."
+      },
+      "tests": [
+        "Permission/unsupported picker and actual anchor retry",
+        "Blocked module graph and explicit same-entry retry",
+        "Durable rebuild with exact bounded-capacity refusal",
+        "Held semantic voice and queued phrase restoration/Panic"
+      ]
+    },
+    "checks": {
+      "format": "passed",
+      "provenance": "15components/2774files passed",
+      "changedLineWhitespace": "passed"
+    },
+    "coverageScope": "HTML startup failure/retry executes under the actual immutable generation CSP; interrupted module and explicit navigation covered. Delayed late-load/BFCache branches are source-reviewed, not additional native timing qualifications.",
+    "newFullNodeRun": false,
+    "ci": "Pending automatic qualification after push"
   }
 }

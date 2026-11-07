@@ -66,10 +66,11 @@ test('sustained synth gate and queued phrase survive a paused checkpoint without
   });
   await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
-  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.play(); studio.dispatch({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 }); });
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
   const held = await page.waitForFunction(() => {
     const studio = window.__PROCGEN_STUDIO__;
     if (studio.getPlaybackState().audio.activeVoices !== 1 || studio.engine.snapshot().active.length !== 1) return false;
+    studio.dispatch({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 });
     studio.transport.pause(); window.heldSession = studio.capture('Held');
     return { active: window.heldSession.patterns.active.length, beat: window.heldSession.transport.beat, queued: window.heldSession.project.procgen.lanes[0].queuedSlot };
   }, null, { timeout: 15000 }); const saved = await held.jsonValue(); await held.dispose();

@@ -123,7 +123,8 @@ test('a captured phrase durably branches a fitted body, preserves a shared froze
   await expect.poll(async () => (await state(page)).rebuild.summary?.planHash, { timeout: 60000 }).toBe(graftPlan.planHash);
   await expect.poll(async () => (await state(page)).rebuild.active).toBe(false);
   await lab.getByRole('button', { name: 'Audition derived branch', exact: true }).click();
-  await expect.poll(async () => (await state(page)).rebuild.error, { timeout: 15000 }).toContain('workload-source-reservations');
+  await expect.poll(async () => (await state(page)).rebuild.error, { timeout: 15000 })
+    .toMatch(/^Audition command was rejected: (workload-source-reservations|reserved-interval-capacity)$/);
   const refusedGraft = (await state(page)).rebuild;
   expect(refusedGraft.instrument.compiledPatchReady).toBe(true); expect(refusedGraft.instrument.audibleAuditionReady).toBe(false); expect(refusedGraft.instrument.durable).toBe(false);
   await expect(lab.getByRole('button', { name: 'Apply derived branch to selected lane', exact: true })).toBeDisabled();

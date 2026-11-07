@@ -28,7 +28,11 @@ test.afterEach(async ({ page }, testInfo) => {
 const openWorkstation = async page => {
   await page.goto('/dist/browser/procgen.html?e2e=1&seed=42&lanes=2');
   await page.waitForURL(url => /\/dist\/browser\/[a-f0-9]{64}\/procgen\.html$/.test(url.pathname));
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain || document.getElementById('procgenModuleStartupRetry'));
+  if (!await page.evaluate(() => !!window.__PROCGEN_STUDIO__)) {
+    await Promise.all([page.waitForEvent('domcontentloaded'), page.getByRole('button', { name: 'Retry loading', exact: true }).click()]);
+    await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  }
 };
 const prepareFileDelivery = async page => {
   await openWorkstation(page);
@@ -193,4 +197,26 @@ test('native archive preparation can be superseded, canceled and discarded witho
   expect(await page.evaluate(() => ({ artifact: window.__PROCGEN_STUDIO__.getExportState().artifact,
     sameWorld: window.exportWorld === window.__PROCGEN_LANES__.world, sameTick: window.exportTick === window.exportWorld.tickIndex,
     output: window.__PROCGEN_STUDIO__.getPlaybackState().enabled }))).toEqual({ artifact: null, sameWorld: true, sameTick: true, output: false });
+});
+
+test('an interrupted module graph offers an explicit retry of the same immutable entry', { tag: '@boundary' }, async ({ page }, testInfo) => {
+  test.setTimeout(120000);
+  const protocol = await page.context().newCDPSession(page);
+  await protocol.send('Network.enable');
+  await protocol.send('Network.setBlockedURLs', { urls: ['*/js/app/resources/ResourceRetirement.js'] });
+  await page.goto('/dist/browser/procgen.html?e2e=1&seed=42&lanes=2#retained-startup');
+  const retry = page.getByRole('button', { name: 'Retry loading', exact: true });
+  await expect(retry).toBeVisible({ timeout: 45000 });
+  const interrupted = await page.evaluate(() => ({ url: location.href, studio: !!window.__PROCGEN_STUDIO__,
+    phase: document.getElementById('procgenModuleStartupError')?.dataset.startupState, message: document.getElementById('procgenRunStatus')?.textContent }));
+  expect(interrupted.studio).toBe(false); expect(['failed', 'delayed']).toContain(interrupted.phase);
+  expect(new URL(interrupted.url).pathname).toMatch(/\/dist\/browser\/[a-f0-9]{64}\/procgen\.html$/);
+  await protocol.send('Network.setBlockedURLs', { urls: [] });
+  await Promise.all([page.waitForEvent('domcontentloaded'), retry.click()]);
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
+  expect(page.url()).toBe(interrupted.url); await expect(retry).toHaveCount(0);
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(false);
+  await testInfo.attach('explicit-module-startup-retry', { body: JSON.stringify({ interrupted, restoredUrl: page.url(),
+    scope: 'Native Chromium page-request block after independent generation installation; explicit full-document retry preserves entry and consent.' }), contentType: 'application/json' });
+  await protocol.detach();
 });

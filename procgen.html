@@ -13,7 +13,58 @@
   <link type="text/css" rel="stylesheet" href="css/procgen-workstation.css">
   <link type="text/css" rel="stylesheet" href="css/procgen-world-inspector.css">
   <link type="text/css" rel="stylesheet" href="css/workstation-materials.css">
-  <script type="module" src="js/app/procgenBoot.js"></script>
+  <script id="procgenBootModule" type="module" src="js/app/procgenBoot.js"></script>
+  <script>
+    (() => {
+      const entry = document.getElementById('procgenBootModule');
+      let phase = 'loading', message = '', timer;
+      const clear = () => {
+        clearTimeout(timer);
+        entry.removeEventListener('load', ready);
+        entry.removeEventListener('error', failed);
+        document.removeEventListener('DOMContentLoaded', render);
+        window.removeEventListener('pagehide', dispose);
+      };
+      const render = () => {
+        if (phase !== 'failed' && phase !== 'delayed') return;
+        const status = document.getElementById('procgenRunStatus');
+        if (status) status.textContent = message;
+        let panel = document.getElementById('procgenModuleStartupError');
+        if (!panel) {
+          panel = document.createElement('section'); panel.id = 'procgenModuleStartupError';
+          panel.className = 'procgen-startup-error'; panel.setAttribute('role', 'alert');
+          const title = document.createElement('h2'); title.textContent = 'Application loading interrupted';
+          const detail = document.createElement('p'); detail.id = 'procgenModuleStartupMessage';
+          const retry = document.createElement('button'); retry.id = 'procgenModuleStartupRetry'; retry.type = 'button'; retry.textContent = 'Retry loading';
+          retry.addEventListener('click', () => {
+            if (phase !== 'failed' && phase !== 'delayed') return;
+            phase = 'reloading'; retry.disabled = true; clear(); window.location.reload();
+          });
+          panel.append(title, detail, retry); document.body.appendChild(panel); retry.focus();
+        }
+        panel.dataset.startupState = phase;
+        document.getElementById('procgenModuleStartupMessage').textContent = message;
+      };
+      const show = (next, text) => {
+        if (phase === 'ready' || phase === 'disposed' || phase === 'reloading') return;
+        phase = next; message = text; clearTimeout(timer);
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render, { once: true });
+        else render();
+      };
+      const ready = () => {
+        phase = 'ready'; clear();
+        const status = document.getElementById('procgenRunStatus');
+        if (status?.textContent === message) status.textContent = 'Loading…';
+        document.getElementById('procgenModuleStartupError')?.remove();
+      };
+      const failed = () => show('failed', 'The application files could not finish loading. Retry loading to reopen this session.');
+      const dispose = event => { if (!event.persisted) { phase = 'disposed'; clear(); } };
+      entry.addEventListener('load', ready, { once: true });
+      entry.addEventListener('error', failed, { once: true });
+      window.addEventListener('pagehide', dispose);
+      timer = setTimeout(() => show('delayed', 'Application files are taking longer than expected to load. You can retry loading this session.'), 30000);
+    })();
+  </script>
 </head>
 <body class="procgen-workstation">
   <header id="procgenTopbar" aria-label="Run controls">
