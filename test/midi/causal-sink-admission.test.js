@@ -90,3 +90,25 @@ describe('canonical physical sink admission ownership', () => {
     }
   });
 });
+
+
+describe('joined deferred-output retirement (functional campaign deferred)', () => {
+  it('keeps dispatcher disposal pending until its cancellation is acknowledged', async () => {
+    const work = job(), canceled = job(), f = fixture({ begin: () => ({ status: 'deferred', completion: work.completion, cancel: () => canceled.completion }) });
+    f.dispatch(); const receipt = f.dispatcher.dispose(); expect(receipt.outcome).to.equal('pending'); expect(f.dispatcher.dispose()).to.equal(receipt);
+    work.resolve({ status: 'accepted', stage: 'scheduled' }); await turn(); expect(f.receipts.filter(row => row.status === 'accepted')).to.have.length(0); expect(receipt.outcome).to.equal('pending');
+    canceled.resolve({ outcome: 'complete' }); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(f.dispatcher.diagnostics().admissions.pending).to.have.length(0); expect(f.dispatcher.diagnostics().admissions.latest).to.have.length(0);
+  });
+  it('preserves unknown cancellations in the aggregate receipt instead of reporting complete', async () => {
+    const work = job(), f = fixture({ begin: () => ({ status: 'deferred', completion: work.completion, cancel: () => false }) });
+    f.dispatch(); const receipt = f.dispatcher.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('partial');
+    expect(f.dispatcher.diagnostics().admissions.pending[0]).to.include({ cancelled: true, cancellationUnconfirmed: true });
+    work.resolve({ status: 'accepted', stage: 'scheduled' }); await turn(); expect(f.receipts.filter(row => row.status === 'accepted')).to.have.length(0); expect(f.dispatcher.dispose()).to.equal(receipt);
+  });
+  it('joins cancellation when an observer disposes reentrantly during the rejection transition', async () => {
+    const work = job(), canceled = job(); let receipt, f;
+    f = fixture({ begin: () => ({ status: 'deferred', completion: work.completion, cancel: () => canceled.completion }), onReceipt: value => { if (value.status === 'rejected') receipt ||= f.dispatcher.dispose(); } });
+    f.dispatch(); f.dispatcher.cancelPendingAdmissions('explicit-cancel'); expect(receipt.outcome).to.equal('pending');
+    canceled.resolve(true); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(f.dispatcher.diagnostics().admissions.pending).to.have.length(0);
+  });
+});

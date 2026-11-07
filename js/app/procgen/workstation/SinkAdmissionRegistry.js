@@ -4,7 +4,7 @@ const identityFields = Object.freeze(['worldId', 'generation', 'batchId', 'inten
 export function createSinkAdmissionRegistry({ capacity = 4096, historyLimit = 1024, onTransition = () => {} } = {}) {
   if (!Number.isInteger(capacity) || capacity < 1 || capacity > 65536 || !Number.isInteger(historyLimit) || historyLimit < 0 || historyLimit > 65536) throw new RangeError('Invalid sink admission bounds.');
   const latest = new Map(), history = Array(historyLimit);
-  let serial = 0, sequence = 0, cursor = 0, retained = 0;
+  let serial = 0, sequence = 0, cursor = 0, retained = 0, disposed = false;
   const publish = value => {
     if (sequence >= Number.MAX_SAFE_INTEGER) throw new RangeError('Sink admission sequence exhausted.');
     const receipt = Object.freeze({ ...value, sequence: ++sequence });
@@ -14,7 +14,7 @@ export function createSinkAdmissionRegistry({ capacity = 4096, historyLimit = 10
     return receipt;
   };
   const open = (identity, outcome) => {
-    if (serial >= Number.MAX_SAFE_INTEGER) return null;
+    if (disposed || serial >= Number.MAX_SAFE_INTEGER) return null;
     if (latest.size >= capacity) {
       let evict = null;
       for (const [id, receipt] of latest) if (receipt.status !== 'deferred') { evict = id; break; }
@@ -37,7 +37,7 @@ export function createSinkAdmissionRegistry({ capacity = 4096, historyLimit = 10
       ackState: valid ? ackState : 'none' });
   };
   const advance = (previous, update) => {
-    if (!previous || latest.get(previous.receiptId) !== previous || previous.status === 'rejected' || !update ||
+    if (disposed || !previous || latest.get(previous.receiptId) !== previous || previous.status === 'rejected' || !update ||
         update.expectedVersion !== previous.receiptVersion || identityFields.some(name => Object.hasOwn(update, name) && update[name] !== previous[name])) return null;
     const status = update.status ?? previous.status, ackState = update.ackState ?? (status === 'accepted' ? previous.status === 'deferred' ? 'scheduled' : previous.ackState : 'none');
     if (!['accepted', 'rejected'].includes(status) || previous.status === 'accepted' && status !== 'accepted' || !Object.hasOwn(stages, ackState) ||
@@ -52,9 +52,10 @@ export function createSinkAdmissionRegistry({ capacity = 4096, historyLimit = 10
   const snapshot = () => Object.freeze({ latest: Object.freeze([...latest.values()]), history: Object.freeze(Array.from({ length: retained }, (_, index) => history[(cursor - retained + historyLimit + index) % historyLimit])) });
   const counters = () => Object.freeze({ serial, sequence });
   const restoreCounters = value => {
-    if (!value || !Number.isSafeInteger(value.serial) || value.serial < 0 || value.serial > Number.MAX_SAFE_INTEGER - 65536 ||
+    if (disposed || !value || !Number.isSafeInteger(value.serial) || value.serial < 0 || value.serial > Number.MAX_SAFE_INTEGER - 65536 ||
         !Number.isSafeInteger(value.sequence) || value.sequence < value.serial || value.sequence > Number.MAX_SAFE_INTEGER - 65536) return false;
     serial = Math.max(serial, value.serial); sequence = Math.max(sequence, value.sequence); return true;
   };
-  return Object.freeze({ open, advance, snapshot, counters, restoreCounters });
+  return Object.freeze({ open, advance, snapshot, counters, restoreCounters,
+    dispose() { if (disposed) return false; disposed = true; latest.clear(); history.fill(undefined); cursor = retained = 0; return true; } });
 }

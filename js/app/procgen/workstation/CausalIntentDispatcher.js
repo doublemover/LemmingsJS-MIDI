@@ -1,7 +1,7 @@
 import { createTimeTransformOwner, hasActiveTimeTransform } from '../../../midi/content/TimeTransform.js';
 import { retainSoundRealizationDecision } from '../../../midi/content/SoundRealizationDecision.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
-import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { createProcgenRetirementScope, afterProcgenRetirement } from '../ProcgenRetirement.js';
 import { retainSampleSelectionReceipt } from '../../../midi/content/SampleInstrumentMap.js';
 import { createCausalSinkAdmissions } from './CausalSinkAdmissions.js';
 
@@ -191,11 +191,14 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     return Object.freeze({ status: outcomes.every(outcome => outcome?.status === 'accepted') ? 'accepted' : 'rejected', outcomes: Object.freeze(outcomes) });
   };
   const dispose = () => {
-    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; admissions.dispose();
-    return retirement.retire(sinks.flatMap(sink => {
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
+    const admissionReceipt = admissions.dispose(), executionReceipt = createProcgenRetirementScope().retire(sinks.flatMap(sink => {
       const current = executions.get(sink.id);
       return current ? [{ name: sink.id + '-execution', run: () => retireCurrent(sink, current) }] : [];
-    }).concat({ name: 'dispatch-state', run: () => { timingOwner.reset(); timingLease?.release(); timingLease = null; executions.clear(); history.fill(undefined); historyCount = historyCursor = 0; } }));
+    }));
+    return retirement.retire([{ name: 'sink-admissions', run: () => admissionReceipt }, { name: 'sink-executions', run: () => executionReceipt },
+      { name: 'dispatch-history', run: () => { history.fill(undefined); historyCount = historyCursor = 0; } },
+      { name: 'dispatch-state', run: () => afterProcgenRetirement([admissionReceipt, executionReceipt], () => { timingOwner.reset(); timingLease?.release(); timingLease = null; executions.clear(); }) }]);
   };
   const observeDisplaySamples = (sinkId, listener, options = {}) => {
     const sink = sinks.find(candidate => candidate.id === sinkId), current = executions.get(sinkId);

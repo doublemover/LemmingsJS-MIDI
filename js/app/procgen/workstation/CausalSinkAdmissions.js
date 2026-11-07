@@ -1,4 +1,5 @@
 import { createSinkAdmissionRegistry } from './SinkAdmissionRegistry.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const fields = ['worldId', 'generation', 'batchId', 'intentId', 'onsetId', 'voiceId', 'eventId', 'sinkId', 'connectionEpoch', 'routeRevision', 'targetTime', 'timeDomain'];
 const acknowledged = stage => stage === 'submitted' ? 'driver-submitted' : ['scheduled', 'driver-submitted', 'applied', 'receiver-observed'].includes(stage) ? stage : 'scheduled';
@@ -6,8 +7,8 @@ const confirmed = value => value === true || value?.outcome === 'complete' || va
 
 export function createCausalSinkAdmissions({ maxPending = 128, capacity = 4096, historyLimit = 1024, publish = value => Object.freeze(value) } = {}) {
   if (!Number.isInteger(maxPending) || maxPending < 1 || maxPending > 4096 || !Number.isInteger(capacity) || capacity < maxPending || capacity > 65536) throw new RangeError('Invalid causal admission bounds.');
-  const registry = createSinkAdmissionRegistry({ capacity, historyLimit }), pending = new Map(), reservations = new Set(), owners = new WeakMap();
-  let disposed = false;
+  const registry = createSinkAdmissionRegistry({ capacity, historyLimit }), pending = new Map(), reservations = new Set(), retirement = createProcgenRetirementScope();
+  let disposed = false, owners = new WeakMap();
   const current = entry => { try { return !disposed && entry.isCurrent() === true; } catch { return false; } };
   const seal = (entry, admission, changes = {}) => {
     entry.admission = admission;
@@ -21,23 +22,25 @@ export function createCausalSinkAdmissions({ maxPending = 128, capacity = 4096, 
   };
   const cancel = (entry, reason) => {
     if (entry.cancelled) return; entry.cancelled = true; entry.acknowledgements.length = 0;
+    let finishCancellation; entry.cancellation = new Promise(resolve => { finishCancellation = resolve; });
     advance(entry, { expectedVersion: entry.admission.receiptVersion, status: 'rejected', reason }, { status: 'rejected', stage: 'none', reason });
     try {
       const result = entry.cancel(reason);
       Promise.resolve(result?.completion ?? result).then(value => {
         if (confirmed(result) || confirmed(value)) pending.delete(entry.admission.receiptId);
         else entry.cancellationUnconfirmed = true;
-      }, () => { entry.cancellationUnconfirmed = true; }).catch(() => { entry.cancellationUnconfirmed = true; });
-    } catch { entry.cancellationUnconfirmed = true; }
+      }, () => { entry.cancellationUnconfirmed = true; }).catch(() => { entry.cancellationUnconfirmed = true; }).then(finishCancellation, finishCancellation);
+    } catch { entry.cancellationUnconfirmed = true; finishCancellation(); }
   };
   const sweep = (reason = null, predicate = () => true) => {
     for (const entry of pending.values()) if (predicate(entry.template) && (reason || !current(entry))) cancel(entry, reason || 'admission-context-retired');
   };
   const reserve = () => { if (disposed || pending.size + reservations.size >= maxPending) return null; const token = {}; reservations.add(token); return token; };
   const open = (template, outcome, isCurrent, reservation, canSettle = () => true) => {
+    if (disposed) throw new Error('Causal sink admission owner is disposed.');
     let value = outcome;
     if (!['accepted', 'rejected', 'degraded', 'deferred'].includes(value?.status)) value = { status: 'rejected', reason: template.reason || 'invalid-sink-receipt' };
-    const entry = { template, isCurrent, admission: null, receipt: null, cancel: outcome?.cancel, cancelled: false, cancellationUnconfirmed: false, acknowledgements: [] };
+    const entry = { template, isCurrent, admission: null, receipt: null, cancel: outcome?.cancel, cancelled: false, cancellationUnconfirmed: false, cancellation: null, acknowledgements: [] };
     if (!reservations.has(reservation)) value = { status: 'rejected', reason: 'admission-capacity' };
     const invalidIdentity = fields.some(name => Object.hasOwn(outcome || {}, name) && outcome[name] !== (name === 'targetTime' ? template.targetFrame ?? null : name === 'timeDomain' ? template.targetTimeDomain ?? null : template[name] ?? null));
     if (invalidIdentity && value?.status !== 'deferred') value = { status: 'rejected', reason: 'stale-sink-identity' };
@@ -82,5 +85,10 @@ export function createCausalSinkAdmissions({ maxPending = 128, capacity = 4096, 
   };
   return Object.freeze({ reserve, open, acknowledge, acknowledgeCurrent, sweep, available: () => !disposed && pending.size + reservations.size < maxPending,
     snapshot: () => Object.freeze({ ...registry.snapshot(), reserved: reservations.size, pending: Object.freeze([...pending.values()].map(entry => Object.freeze({ receiptId: entry.admission.receiptId, cancelled: entry.cancelled, cancellationUnconfirmed: entry.cancellationUnconfirmed }))) }),
-    dispose() { if (disposed) return; disposed = true; sweep('dispatcher-disposed'); } });
+    dispose() {
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sweep('dispatcher-disposed');
+      const cancellations = [...pending.values()].map(entry => entry.cancellation).filter(Boolean);
+      const complete = () => { if (pending.size) throw new Error('Deferred sink cancellation remains unconfirmed.'); registry.dispose(); reservations.clear(); owners = new WeakMap(); };
+      return retirement.retire([{ name: 'deferred-sink-admissions', run: () => cancellations.length ? Promise.allSettled(cancellations).then(complete) : complete() }]);
+    } });
 }
