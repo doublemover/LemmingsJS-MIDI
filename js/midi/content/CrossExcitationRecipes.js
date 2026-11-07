@@ -1,4 +1,4 @@
-import { freezeData } from '../../core/CanonicalData.js';
+import { freezeData, canonicalDataText } from '../../core/CanonicalData.js';
 import { prepareEffectGraphRevision } from './EffectGraphRevision.js';
 
 export const CROSS_EXCITATION_RECIPES = freezeData([
@@ -43,4 +43,15 @@ export function createCrossExcitationRecipe({ recipe = 'tools-talk', donorLaneId
     lineagePolicy: 'retain-original-intents-and-bus-membership;no-additional-semantic-onsets', direction: 'donor-to-carrier-only',
     dryPolicy: 'preserve-complete-owner-dry-source-with-declared-graph-alignment;add-bounded-carrier-return',
     latencyPolicy: 'reactive-no-lookahead;prepared-FIR-alignment', qualification: 'implementation-awaiting-graph-spectral-listening-and-device-qualification' });
+}
+
+export function readCrossExcitationRecipe(raw) {
+  raw = JSON.parse(canonicalDataText(raw, { maxBytes: 65536, maxNodes: 8192 }).text);
+  const metadata = CROSS_EXCITATION_RECIPES.find(entry => raw?.id === 'cross-excitation.' + entry.id), node = id => raw?.nodes?.find(node => node.id === id), donor = node('donor')?.parameters, carrier = node('carrier')?.parameters, interaction = node('interaction')?.parameters;
+  if (!metadata || !donor?.sourceBusId?.startsWith('lane:') || !carrier?.sourceBusId?.startsWith('lane:') || donor.tap !== carrier.tap) throw new TypeError('The saved graph is not an exact supported lane interaction recipe.');
+  const recipe = metadata.id, release = recipe === 'tools-talk' ? interaction?.releaseSeconds : node('follower')?.parameters.releaseSeconds, bite01 = recipe === 'rust-bloom' ? (interaction?.drive01 - 0.5) / 1.5 : 0.5 - Math.log2(release / (recipe === 'tools-talk' ? 0.08 : 0.06)), air01 = recipe === 'tools-talk' ? interaction?.baseline01 : recipe === 'rust-bloom' ? node('air')?.parameters.gain01 : node('envelope')?.parameters.neutral01;
+  const model = createCrossExcitationRecipe({ recipe, donorLaneId: donor.sourceBusId.slice(5), carrierLaneId: carrier.sourceBusId.slice(5), tap: donor.tap, bite01: Math.max(0, Math.min(1, bite01)), merge01: node('return')?.parameters.gain01, air01, revision: raw.revision });
+  const same = (a, b) => typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) <= 1e-12 * Math.max(1, Math.abs(a), Math.abs(b)) : a && b && typeof a === 'object' && typeof b === 'object' ? Array.isArray(a) === Array.isArray(b) && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every(key => Object.hasOwn(b, key) && same(a[key], b[key])) : a === b;
+  if (!same(model.graph, raw)) throw new TypeError('The saved interaction has custom or changed processing; keep its exact graph rather than interpreting it as these recipe controls.');
+  return freezeData({ ...model, graph: raw, controlRecovery: 'inverse-authored-functions;roundoff-bounded;exact-saved-graph-retained' });
 }

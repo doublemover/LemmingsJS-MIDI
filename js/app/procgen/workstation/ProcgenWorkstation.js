@@ -2573,7 +2573,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     openCrossExcitation() {
       if (disposed || !physicalPlayback) { status('Physical lane effects are unavailable.'); return; }
       return toolGate.open('Cross excitation', () => import('../../midi-ui/CrossExcitationView.js'), ({ createCrossExcitationView }) => {
-        crossExcitationView ||= createCrossExcitationView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
+        crossExcitationView ||= createCrossExcitationView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes, getSavedRack: () => project.procgen.effectRack || null,
           saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
         crossExcitationView.open();
       });

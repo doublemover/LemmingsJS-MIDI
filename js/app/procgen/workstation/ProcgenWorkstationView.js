@@ -1626,6 +1626,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     getSceneMacroState: id => readSceneMacroControl(getProject(), id), performSceneMacro: input => handlers.performSceneMacro(input),
     openControl: (control, scene) => {
       if (control.target.startsWith('effect-macro:THROW;') || control.target.startsWith('quarry-echo:')) return handlers.openQuarryEcho?.();
+      if (control.target.startsWith('cross-excitation:')) return handlers.openCrossExcitation?.();
       if (control.target.startsWith('sound-library:')) { if (stageActive) { setStatus('Exit stage to choose the selected lane’s material or instrument.'); return; } return handlers.openSoundLibrary?.(); }
       if (control.target.startsWith('acoustic-map:')) return handlers.openAcousticFields?.();
       if (control.target.startsWith('scene-browser:')) return handlers.scenes?.();

@@ -1,3 +1,4 @@
+import { createWorkshopInteractionScores } from './WorkshopInteractionScore.js';
 import { createRescueResonantScores } from './RescueResonantScore.js';
 import { createWorkshopToolScores } from './WorkshopToolScore.js';
 import { createQuarryJourneyScores } from './QuarryJourneyScore.js';
@@ -176,6 +177,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
   if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
   const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
+  if (modal?.maximumVoices >= 16 && spectrum?.maximumVoices >= 4) await registerAuthoredScores(await createWorkshopInteractionScores({ sourceHash, modalDescriptor: modal, spectrumDescriptor: spectrum, signal }));
   if (fm?.capabilities.worldSpatialControl && fm.capabilities.sharedAcousticZoneSends && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitOrchestrations({ sourceHash, scores: glassOrbitScores, spectrumDescriptor: spectrum, signal }));
   if (spectrum?.maximumVoices >= 8) await registerAuthoredScores(await createBentLadderScores({ sourceHash, descriptor: spectrum, signal }));
   if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
