@@ -11647,3 +11647,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add one bounded canonical scene focus action for the exact authored lanes. Constant authored gain power moves emphasis from the builder to the other workers; current mute/solo and world state retain their owners. Complete lane revisions/gains are verified before one history command, and the existing mix owner smooths live changes. Labels explicitly distinguish gain power from measured loudness.
 - Scope tool-transplant DAMP/MIX to its exact graft lane while retaining all-lane FOCUS. Shared scene macros now accept explicit authored lane scopes rather than affecting unrelated patches that happen to expose the same macro ID. Captured performance diffs use the existing lane/mix journal path.
 - Functional/audio/native/browser/performance qualification remains deferred.
+
+### Continuation 621 — complete donor/carrier scene rack profile
+
+- Add a distinct static cross-excitation scene requirement for bounded vocoder/ring/follower graphs. Pin exact post-fader stereo owner/lane sources, reject missing or unsupported pre-fader/selected-voice combinations, and keep native reflection plus external sidechain composition explicitly separate.
+- Private rehearsal now retains only the requested source lane planes from the same authored mix, budgets them before allocation and feeds their exact samples/presence into one shared owned effect kernel. No isolated nonlinear bounces or fabricated source stream stands in for the actual donor and carrier.
+- Source-binding and actual graph/vocoder realization receipts survive worker encoding and cue checks. Existing raw source causes and semantic onset counts stay unchanged. Functional/native/audio/browser/performance qualification remains deferred.

@@ -1,3 +1,4 @@
+import { createEffectSourceSampler } from '../../midi-ui/EffectSourceBindings.js';
 import { sceneSympatheticBodyModel, SCENE_SYMPATHETIC_REQUIREMENT } from './SceneSympatheticBody.js';
 import { prepareScenePreparedSurfaceRehearsal, renderScenePreparedSurfaceRehearsal } from './ScenePreparedSurfaceRehearsal.js';
 import { SCENE_PREPARED_SURFACE_REQUIREMENT } from './ScenePreparedSurface.js';
@@ -8,7 +9,7 @@ import { inspectSceneStationRehearsal, sceneStationRehearsalReceipt } from './Sc
 import { prepareSceneRehearsalLane, sceneOwnedMaterialReceipt } from './SceneRehearsalLane.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from '../../midi-ui/NativeOfflineProfile.js';
 import { encodeNativeOfflineRender } from '../../resources/NativeOfflineEncoding.js';
-import { prepareSceneEffectRack, SCENE_EFFECT_RACK_REQUIREMENTS } from './SceneEffectRack.js';
+import { prepareSceneEffectRack, sceneEffectSourceBindings, SCENE_EFFECT_RACK_REQUIREMENTS } from './SceneEffectRack.js';
 import { prepareEffectGraphRevision, effectGraphHash } from '../../../midi/content/EffectGraphRevision.js';
 import { createResonatorMorphGraph } from '../../../midi/content/ResonatorMorphGraph.js';
 import { travelColorationValue } from '../../../midi/content/TravelColorationRecipes.js';
@@ -62,7 +63,10 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
   if (!!preparedSurface !== scene.requirements?.required?.some(entry => entry.kind === 'renderer' && entry.id === SCENE_PREPARED_SURFACE_REQUIREMENT) || !preparedSurface && source.preparedSurface != null) throw failure('The prepared-surface stream cannot be omitted or inserted into an unrelated private score.');
   if (!!sympathetic !== scene.requirements?.required?.some(entry => entry.kind === 'renderer' && entry.id === SCENE_SYMPATHETIC_REQUIREMENT)) throw failure('The anchored sympathetic route cannot be omitted or inserted into another private score.');
   const sourceHash = await hashData(source, { maxBytes: 8 * 1048576, maxNodes: 524288 }), mix = createLaneMixState(); check(); mix.synchronize(scene.mix.map(row => ({ ...row, id: row.laneId })));
-  const frames = Math.ceil((source.durationSeconds + 0.5) * rate) + (bodyPlan?.maximumTailFrames || effects?.previewTailFrames || 0), left = new Float64Array(frames), right = new Float64Array(frames), lanes = [], ownedMaterial = []; let outputFrames = 0;
+  const effectSources = effects?.cross ? sceneEffectSourceBindings(effects, scene.patchRefs.map(row => row.laneId)) : null, tapIds = effectSources?.laneIds || [];
+  const frames = Math.ceil((source.durationSeconds + 0.5) * rate) + (bodyPlan?.maximumTailFrames || effects?.previewTailFrames || 0);
+  const tapBytes = frames * tapIds.length * 8; if (!Number.isSafeInteger(tapBytes) || frames * 48 + tapBytes + (effects?.plan.stateBytes || 0) + 32 * 1048576 > maxWorkingBytes) throw failure('The complete simultaneous lane taps, mix and rack exceed the admitted rehearsal workspace.');
+  const tapChannels = tapIds.map(() => [new Float32Array(frames), new Float32Array(frames)]), left = new Float64Array(frames), right = new Float64Array(frames), lanes = [], ownedMaterial = []; let outputFrames = 0;
   for (let index = 0; index < scene.patchRefs.length; index++) {
     const sourceMaterial = ownedLanes.find(row => row.sourceIndex === index) || null, lane = await prepareSceneRehearsalLane({ scene, source, sourceHash, buildId, sampleRate: rate, index, descriptors, sourceMaterial }), { row, reference, descriptor, intents, laneHash } = lane, state = mix.mix(row.laneId); check();
     if (preparedSurface?.profile.finite) { lanes.push({ laneId: row.laneId, sourceIndex: index, patchDefinitionHash: reference.definitionHash, sourceCanonicalHash: laneHash, begins: intents.filter(intent => intent.kind === 'begin').length, mix: state, frames: 0, realization: { method: 'finite-model-force-into-one-shared-body;no-dry-source-render' } }); continue; }
@@ -81,11 +85,12 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
     if (result.files.length !== 1 || !Number.isSafeInteger(count) || count < 1 || count > frames || file.manifest.sampleRate !== rate || file.bytes.byteLength < 64 + count * 8) throw failure('A lane render exceeded its declared cue layout.');
     const view = new DataView(file.bytes.buffer, file.bytes.byteOffset, file.bytes.byteLength);
     if (view.getUint32(52, true) !== count * 8) throw failure('The owned lane WAV layout changed.');
+    const tap = tapChannels[tapIds.indexOf(row.laneId)];
     const pan = state.pan, angle = (pan <= 0 ? pan + 1 : pan) * Math.PI / 2, c = Math.cos(angle), s = Math.sin(angle);
     for (let first = 0; first < count; first += 16384) {
       check(); const end = Math.min(count, first + 16384);
       for (let frame = first; frame < end; frame++) { const l = view.getFloat32(56 + frame * 8, true), r = view.getFloat32(60 + frame * 8, true);
-        left[frame] += state.gain * (pan <= 0 ? l + r * c : l * c); right[frame] += state.gain * (pan <= 0 ? r * s : r + l * s); }
+        const mixedLeft = state.gain * (pan <= 0 ? l + r * c : l * c), mixedRight = state.gain * (pan <= 0 ? r * s : r + l * s); left[frame] += mixedLeft; right[frame] += mixedRight; if (tap) { tap[0][frame] = mixedLeft; tap[1][frame] = mixedRight; } }
       await yieldControl();
     }
     outputFrames = Math.max(outputFrames, count); lanes.push({ laneId: row.laneId, sourceIndex: index, patchDefinitionHash: reference.definitionHash, sourceCanonicalHash: laneHash, intentHash: file.manifest.intentHash,
@@ -154,17 +159,17 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
   if (effects) {
     const sourceFrames = outputFrames; outputFrames += effects.previewTailFrames;
     if (outputFrames > frames) throw failure('The scene rack exceeded its admitted source and tail window.');
-    effectReceipt = { latencyFrames: effects.plan.latencyFrames, latencyPolicy: effects.rack.graph.latencyPolicy, definitionHash: await hashData(effects.rack.graph, { maxBytes: 65536, maxNodes: 8192 }), graphHash: await effectGraphHash(effects.plan), sourceFrames, tailFrames: effects.previewTailFrames, declaredMaximumTailFrames: effects.plan.maximumTailFrames, tailTruncatedByPreviewBound: effects.previewTailFrames < effects.plan.maximumTailFrames, tailPolicy: 'four-second-preview-bound-after-source-output;full-rack-tail-remains-explicit', controls: 'authored-static-defaults;no-replayed-throw-gestures', semanticOnsetsAdded: 0, acousticReceipt: false,
+    effectReceipt = { latencyFrames: effects.plan.latencyFrames, latencyPolicy: effects.rack.graph.latencyPolicy, definitionHash: await hashData(effects.rack.graph, { maxBytes: 65536, maxNodes: 8192 }), graphHash: await effectGraphHash(effects.plan), sourceFrames, tailFrames: effects.previewTailFrames, declaredMaximumTailFrames: effects.plan.maximumTailFrames, tailTruncatedByPreviewBound: effects.previewTailFrames < effects.plan.maximumTailFrames, tailPolicy: 'four-second-preview-bound-after-source-output;full-rack-tail-remains-explicit', controls: 'authored-static-defaults;no-replayed-throw-gestures', semanticOnsetsAdded: 0, acousticReceipt: false, ...(effectSources ? { sourceBindings: effectSources, tapBytes, sidechainEvidence: 'same-private-lane-PCM-before-shared-processing;authored-post-fader-mix' } : {}),
       ...(effects.native ? { definition: effects.rack.graph, processingRevisions: effects.plan.processingRevisions, realization: 'awaiting-native-offline-owner' } : {}) };
     if (!effects.native) {
-      const graph = await createOwnedEffectGraphKernel({ definition: effects.rack.graph, sampleRate: rate });
+      const graph = await createOwnedEffectGraphKernel({ definition: effects.rack.graph, sampleRate: rate }), sampler = effectSources ? createEffectSourceSampler(effectSources, tapIds, tapChannels) : null;
       if (graph.hash !== effectReceipt.graphHash) throw failure('The owned effect kernel differs from its prepared plan.');
       for (let first = 0; first < outputFrames; first += 4096) {
         check(); const end = Math.min(outputFrames, first + 4096);
-        for (let frame = first; frame < end; frame++) { graph.sample(frame < sourceFrames ? Math.fround(left[frame]) : 0, frame < sourceFrames ? Math.fround(right[frame]) : 0); left[frame] = graph.leftSample; right[frame] = graph.rightSample; }
+        for (let frame = first; frame < end; frame++) { const sourceLeft = frame < sourceFrames ? Math.fround(left[frame]) : 0, sourceRight = frame < sourceFrames ? Math.fround(right[frame]) : 0; graph.sample(sourceLeft, sourceRight, sampler?.fill(sourceLeft, sourceRight, frame) || null, sampler?.present || null); left[frame] = graph.leftSample; right[frame] = graph.rightSample; }
         await yieldControl();
       }
-      graph.panic(); check();
+      graph.assertHealthy(); if (effectSources) effectReceipt.realization = graph.diagnostics(); graph.panic(); check();
     }
   }
   const manifestBase = { schema: 'lemmings-scene-rehearsal-render/v1', sceneHash: input.sceneHash, sourceHash, applicationBuildId: buildId, initialTick: 0, ticks: source.ticks, sourceDurationSeconds: source.durationSeconds,

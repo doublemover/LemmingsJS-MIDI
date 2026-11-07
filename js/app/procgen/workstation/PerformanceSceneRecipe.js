@@ -1,7 +1,7 @@
 import { validateFoundBellSourceReceipt } from '../../../midi/content/FoundBellSourceReceipt.js';
 import { validateSceneSympatheticBody, validateSceneSympatheticMapping, sceneSympatheticBodyModel, SCENE_SYMPATHETIC_REQUIREMENT } from './SceneSympatheticBody.js';
 import { validateScenePreparedSurface, validateScenePreparedSurfaceMapping, SCENE_PREPARED_SURFACE_REQUIREMENT } from './ScenePreparedSurface.js';
-import { prepareSceneEffectRack, SCENE_EFFECT_RACK_REQUIREMENTS } from './SceneEffectRack.js';
+import { prepareSceneEffectRack, sceneEffectSourceBindings, SCENE_EFFECT_RACK_REQUIREMENTS } from './SceneEffectRack.js';
 import { validateSceneMorphMechanism } from './SceneMorphMechanism.js';
 import { validateSceneCavityBody, SCENE_CAVITY_REQUIREMENT } from './SceneCavityBody.js';
 import { validateCavitySoundRegion } from './physical/CavitySoundMap.js';
@@ -47,6 +47,7 @@ export function validatePerformanceSceneOrigin(raw) {
   if (recipe.initialFoundBellSource && (recipe.settings.laneCount !== 3 || !manifest.requirements.required.some(entry => entry.kind === 'quality-profile' && entry.hash === recipe.initialFoundBellSource.receiptHash) || manifest.causalMappings.instruments.length !== 3 || manifest.causalMappings.instruments.some(row => row.route !== 'local' || row.sourceKind !== 'ContactSpanBegan'))) fail();
   const rackRequirements = manifest.requirements.required.filter(entry => entry.kind === 'renderer' && SCENE_EFFECT_RACK_REQUIREMENTS.includes(entry.id));
   if (recipe.initialEffectRack ? rackRequirements.length !== 1 || rackRequirements[0].id !== prepareSceneEffectRack(recipe.initialEffectRack, 96000).requirementId || manifest.cost.sharedBodies !== 0 : rackRequirements.length) fail();
+  if (recipe.initialEffectRack) sceneEffectSourceBindings(prepareSceneEffectRack(recipe.initialEffectRack), manifest.patchRefs.map(patch => patch.laneId));
   if (!!recipe.initialCavityBody !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_CAVITY_REQUIREMENT)) fail();
   if (!!recipe.initialPreparedSurface !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_PREPARED_SURFACE_REQUIREMENT)) fail();
   if (recipe.initialPreparedSurface) { validateScenePreparedSurfaceMapping(recipe.initialPreparedSurface, manifest.causalMappings); if (manifest.cost.sharedBodies !== 1) fail(); }
