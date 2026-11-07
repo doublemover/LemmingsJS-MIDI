@@ -5,6 +5,7 @@ export function summarizePhysicalMusicStudyMetrics(trace, { throughTicks, source
   const seconds = (finalTimeMs - sourceTimeMs) / 1000, motifCounts = Object.create(null);
   for (const fact of trace.motifOccurrences) if (fact.kind === 'MotifCompleted') motifCounts[fact.motifId] = (motifCounts[fact.motifId] || 0) + 1;
   return freezeData({ scope: 'actual-causal-begin-end-voices-and-physical-observations;no-DSP-loudness-or-acoustic-silence-claim', throughTicks, sourceSeconds: seconds,
+    displacement: { actors: trace.actorDisplacements, scope: 'sum-of-actual-declared-motion-endpoint-displacements;not-an-unobserved-curved-path-length' },
     onsets: trace.onsets.length, onsetsPer100Ticks: throughTicks > 0 ? trace.onsets.length / throughTicks * 100 : null, onsetsPerSourceSecond: seconds > 0 ? trace.onsets.length / seconds : null,
     semanticPolyphony: { maximum: trace.maximumSemanticPolyphony, ending: trace.heldVoices.length, observedCompletedBoundaries: trace.polyphonyBoundaries,
       meanAtCompletedBoundaries: trace.polyphonyBoundaries ? trace.polyphonySum / trace.polyphonyBoundaries : null },

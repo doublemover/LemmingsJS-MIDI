@@ -113,7 +113,7 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
     if (disposed) return; const current = readSource(), state = readState();
     sourceLabel.textContent = current ? `Source tick ${current.tick}, generation ${current.generation}; ${current.actorIds.length} actors. Assistance ${current.assists ? 'on' : 'off'}; future births ${current.finiteCrew ? 'paused/exhausted' : 'active'}. Search needs a finite ordinary crew with assistance off. Sensitivity preserves adaptive policies.` : 'Open and pause a physical project.';
     exportStudy.disabled = !state?.study && !state?.partial;
-    const audio = readAudition(); audition.disabled = !state?.canApply || draftDirty || !!audio?.active || !!audio?.busy || !!audio?.checkpointHeld;
+    const audio = readAudition(); audition.disabled = !state?.canAudition || draftDirty || !!audio?.active || !!audio?.busy || !!audio?.checkpointHeld;
     run.disabled = !audio?.active || !!audio?.busy || audio.phase !== 'paused'; stopAudio.disabled = !audio?.active && !audio?.checkpointHeld && !audio?.busy;
     search.disabled = sensitivity.disabled = !current || !!state?.busy || !!audio?.active || !!audio?.checkpointHeld; stop.disabled = !state?.busy; applyButton.disabled = !state?.canApply || draftDirty;
     if (state?.progress) message.textContent = state.progress.phase + ' · ' + (state.progress.completed ?? 0) + '/' + (state.progress.total ?? '?');

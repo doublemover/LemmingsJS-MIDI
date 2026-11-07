@@ -13,13 +13,14 @@ const matches = (onset, selection) => Object.entries(selection).every(([key, val
 const weights = Object.freeze({ missed: 4, extra: 2, timing: 1, period: 1, edits: .01 });
 export function validatePhysicalMusicGoal(raw) {
   const goal = JSON.parse(canonicalDataText(raw, { maxBytes: 262144, maxNodes: 32768 }).text);
-  if (!keys(goal, ['schema', 'id', 'revision', 'timeDomain', 'referenceTimeline', 'targetOnsets', 'periodGoals', 'periodRatios', 'requiredCauseKinds', 'forbiddenCauses', 'allowedEdits', 'crewConstraints', 'skillInventory', 'horizon', 'objectiveWeights', 'musicalInvariants', 'budgets']) ||
+  if (!keys(goal, ['schema', 'id', 'revision', 'observationOnly', 'timeDomain', 'referenceTimeline', 'targetOnsets', 'periodGoals', 'periodRatios', 'requiredCauseKinds', 'forbiddenCauses', 'allowedEdits', 'crewConstraints', 'skillInventory', 'horizon', 'objectiveWeights', 'musicalInvariants', 'budgets']) ||
       goal.schema !== 'lemmings-physical-music-goal/v1' || !id(goal.id) || !integer(goal.revision, 1) || !['ticks', 'seconds', 'beats'].includes(goal.timeDomain) || !integer(goal.horizon, 1, 4096)) fail('Use a versioned finite physical-music goal and an explicit tick horizon.');
   if (goal.timeDomain !== 'ticks' && (!keys(goal.referenceTimeline, ['tickDurationMs', 'tempoBpm']) || !finite(goal.referenceTimeline.tickDurationMs, .001, 60000) || goal.timeDomain === 'beats' && !finite(goal.referenceTimeline.tempoBpm, .001, 1000000))) fail('Seconds or beats require an explicit fixed study clock; piecewise clocks need their own supported study.');
   if (goal.timeDomain === 'ticks' && goal.referenceTimeline != null) fail('A physical-tick goal does not imply a musical or wall-clock conversion.');
   const scale = goal.timeDomain === 'ticks' ? 1 : goal.timeDomain === 'seconds' ? 1000 / goal.referenceTimeline.tickDurationMs : 60000 / goal.referenceTimeline.tempoBpm / goal.referenceTimeline.tickDurationMs;
   const targets = goal.targetOnsets || [], periods = goal.periodGoals || [], ratios = goal.periodRatios || [];
-  if (!Array.isArray(targets) || targets.length > 128 || !Array.isArray(periods) || periods.length > 16 || !Array.isArray(ratios) || ratios.length > 16 || !targets.length && !periods.length && !ratios.length) fail('Choose one to128 desired onsets or an observed period/ratio goal.');
+  if (!Array.isArray(targets) || targets.length > 128 || !Array.isArray(periods) || periods.length > 16 || !Array.isArray(ratios) || ratios.length > 16 || !targets.length && !periods.length && !ratios.length && goal.observationOnly !== true) fail('Choose one to128 desired onsets or an observed period/ratio goal.');
+  if (goal.observationOnly != null && typeof goal.observationOnly !== 'boolean' || goal.observationOnly === true && (targets.length || periods.length || ratios.length)) fail('Observation-only comparison is separate from a requested onset/period search.');
   for (const target of targets) {
     if (!keys(target, ['time', 'tolerance', 'role', 'laneId', 'mappingId']) || !finite(target.time) || !finite(target.tolerance ?? 0) || target.time * scale > goal.horizon || (target.tolerance ?? 0) * scale > goal.horizon) fail('An onset goal/tolerance leaves the finite study horizon.');
     const selection = Object.fromEntries(Object.entries(target).filter(([key]) => !['time', 'tolerance'].includes(key))); if (Object.keys(selection).length) selector(selection);
@@ -108,7 +109,7 @@ export function evaluatePhysicalMusicGoal(raw, onsets, { causeKinds = [], editCo
     absoluteTimingError = matched.reduce((sum, pair) => sum + Math.abs(pair.errorTicks), 0), periodError = [...periods, ...ratios].reduce((sum, result) => sum + (result.errorTicks == null ? goal.horizon : Math.abs(result.errorTicks)), 0),
     score = missed.length * w.missed + extras.length * w.extra + absoluteTimingError * w.timing + periodError * w.period + editCost * w.edits;
   return freezeData({ status: 'evaluated', score, matched, missedTargets: missed, extraActualOnsets: extras, absoluteTimingErrorTicks: absoluteTimingError, periods, ratios, missingCauseKinds, forbiddenCauseKinds, editCost,
-    requestedMetricsMet: !missed.length && !extras.length && periods.every(result => result.satisfied) && ratios.every(result => result.satisfied) && !missingCauseKinds.length && !forbiddenCauseKinds.length,
+    requestedMetricsMet: goal.observationOnly !== true && !missed.length && !extras.length && periods.every(result => result.satisfied) && ratios.every(result => result.satisfied) && !missingCauseKinds.length && !forbiddenCauseKinds.length,
     authority: 'actual-onset-metrics;physical-safety-and-independent-fresh-finalist-replay-remain-required' });
 }
 

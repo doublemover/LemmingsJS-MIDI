@@ -1429,7 +1429,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const simulationExecutionPolicy = () => procgenSimulationExecutionPolicy({ schema: 'lemmings-simulation-execution-policy/v1', physicalFeedbackMode: physicalFeedback?.isArmed() ? 'preserve-live' : 'disabled' });
   const physicalMusicSourceIdentity = () => { const world = runtime()?.world, clock = transport.getState();
     if (world?.physicalFeedback !== feedbackSourceReference) { if (!Number.isSafeInteger(++feedbackSourceRevision)) throw new Error('Feedback source identity exhausted.'); feedbackSourceReference = world?.physicalFeedback; }
-    return JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId, world?.generation, world?.tickIndex, clock.playing, clock.bpm, clock.nominalSpeed, feedbackSourceRevision, physicalFeedback?.isArmed() === true]); };
+    return JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId, world?.generation, world?.tickIndex, clock.playing, clock.bpm, clock.nominalSpeed, feedbackSourceRevision, physicalFeedback?.isArmed() === true, world?.interventionState.sequence, world?.interventionState.pending.length]); };
   const getPhysicalMusicStudyWorkbench = () => physicalMusicStudyWorkbench ||= createPhysicalMusicStudyWorkbench({ jobs: backgroundJobs, resourceBudget, getSourceIdentity: physicalMusicSourceIdentity,
     onChange: () => view?.render(),
     captureSource: async ({ signal }) => {
@@ -2277,6 +2277,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalMusicAuditionState: () => physicalMusicAuditionCandidateId ? { ...simulationWorkbench?.state(), candidateId: physicalMusicAuditionCandidateId } : null,
     physicalMusicStudyState: () => physicalMusicStudyWorkbench?.state() || null,
     startPhysicalMusicStudy: input => getPhysicalMusicStudyWorkbench().start(input),
+    startPhysicalCounterfactual: async request => { const identity = physicalMusicSourceIdentity(), { compilePhysicalCounterfactualRequest } = await import('./PhysicalCounterfactual.js');
+      if (disposed || physicalMusicSourceIdentity() !== identity) throw new Error('The source changed while preparing its physical comparison.');
+      const compiled = compilePhysicalCounterfactualRequest(request); return getPhysicalMusicStudyWorkbench().start({ ...compiled, mode: 'comparison' });
+    },
     cancelPhysicalMusicStudy: () => physicalMusicStudyWorkbench?.cancel(),
     selectPhysicalMusicCandidate: id => getPhysicalMusicStudyWorkbench().select(id),
     applyPhysicalMusicCandidate: () => getPhysicalMusicStudyWorkbench().apply(),

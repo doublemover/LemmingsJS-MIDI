@@ -376,6 +376,8 @@
         "js/app/procgen/workstation/PerformanceScene.js",
         "js/app/procgen/workstation/PerformanceSceneRecipe.js",
         "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
+        "js/app/procgen/workstation/PhysicalCounterfactual.js",
+        "js/app/procgen/workstation/PhysicalCounterfactualFrame.js",
         "js/app/procgen/workstation/PhysicalJunctionProject.js",
         "js/app/procgen/workstation/PhysicalMidiTiming.js",
         "js/app/procgen/workstation/PhysicalMusicGoal.js",
@@ -722,8 +724,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 568,
-      "sha256": "febd817f1b04c1004d1fadd098d38a4cf7cdf4fd653667fffcd5e5642a14a203",
+      "fileCount": 570,
+      "sha256": "b79bcf7e1c39447a2ce70546cf56e9bae8bf2cb291572bdfcb64fc3d1917d3e9",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1091,6 +1093,8 @@
         "js/app/procgen/workstation/PerformanceScene.js",
         "js/app/procgen/workstation/PerformanceSceneRecipe.js",
         "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
+        "js/app/procgen/workstation/PhysicalCounterfactual.js",
+        "js/app/procgen/workstation/PhysicalCounterfactualFrame.js",
         "js/app/procgen/workstation/PhysicalJunctionProject.js",
         "js/app/procgen/workstation/PhysicalMidiTiming.js",
         "js/app/procgen/workstation/PhysicalMusicGoal.js",
@@ -1468,8 +1472,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 601,
-      "sha256": "aa216c4083f12f9e5e5f5cc4ac2274895d1120214c0493e1f02e6e0eaf5d0294",
+      "fileCount": 603,
+      "sha256": "a2ed4dbdf57f1cd8121d4964359dfd3b70d2d218d251f7a71c97e0cd06641473",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1717,6 +1721,8 @@
         "js/app/procgen/workstation/PerformanceScene.js",
         "js/app/procgen/workstation/PerformanceSceneRecipe.js",
         "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
+        "js/app/procgen/workstation/PhysicalCounterfactual.js",
+        "js/app/procgen/workstation/PhysicalCounterfactualFrame.js",
         "js/app/procgen/workstation/PhysicalJunctionProject.js",
         "js/app/procgen/workstation/PhysicalMidiTiming.js",
         "js/app/procgen/workstation/PhysicalMusicGoal.js",
@@ -2064,8 +2070,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 579,
-      "sha256": "0ba8e85e8ba7982be6b910b996c23dc82f394cb4d803ffda5a3fc6938636693c",
+      "fileCount": 581,
+      "sha256": "ea5d7d528f7c87025fea75853b7a2f472660c23c05a6283454fbd1bcc6a3184b",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2459,6 +2465,8 @@
         "js/app/procgen/workstation/PerformanceScene.js",
         "js/app/procgen/workstation/PerformanceSceneRecipe.js",
         "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
+        "js/app/procgen/workstation/PhysicalCounterfactual.js",
+        "js/app/procgen/workstation/PhysicalCounterfactualFrame.js",
         "js/app/procgen/workstation/PhysicalJunctionProject.js",
         "js/app/procgen/workstation/PhysicalMidiTiming.js",
         "js/app/procgen/workstation/PhysicalMusicGoal.js",
@@ -2819,8 +2827,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 652,
-      "sha256": "61294451f581e7f7c2d4c2d171f127cb8fa003ff403dd6734b2c3f3f3189de32",
+      "fileCount": 654,
+      "sha256": "40978d8961a0f50c6826a6019d9b6ba0e85363f4166084bf31fc27ecbca13ca0",
       "inventoryScope": "first-party-artifact"
     }
   ]

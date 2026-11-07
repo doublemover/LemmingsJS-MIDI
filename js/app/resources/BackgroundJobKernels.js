@@ -23,7 +23,8 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const { runPhysicalMusicStudy } = await import('../procgen/workstation/PhysicalMusicStudy.js'); guard(signal, current);
     const study = await runPhysicalMusicStudy(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
     let sensitivity = null; if (study.mode === 'sensitivity') { const { summarizePhysicalMusicSensitivity } = await import('../procgen/workstation/PhysicalMusicSensitivity.js'); sensitivity = summarizePhysicalMusicSensitivity(study); }
-    const value = { study, sensitivity }, size = canonicalDataText(value, { maxBytes, maxNodes }).bytes.length;
+    let comparison = null; if (study.mode === 'comparison') { const { summarizePhysicalCounterfactual } = await import('../procgen/workstation/PhysicalCounterfactual.js'); comparison = summarizePhysicalCounterfactual(study, input.comparisonPolicy || {}); }
+    const value = { study, sensitivity, comparison }, size = canonicalDataText(value, { maxBytes, maxNodes }).bytes.length;
     return { value, inputBytes: canonicalDataText(input, { maxBytes, maxNodes }).bytes.length, nodes: 64, retainedBytes: size * 6 + 1048576 };
   }
   if (kind === 'encode-physical-take-midi') {
