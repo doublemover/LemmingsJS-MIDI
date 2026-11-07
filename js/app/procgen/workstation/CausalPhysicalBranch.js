@@ -1,3 +1,4 @@
+import { procgenSimulationExecutionPolicy } from '../ProcgenSimulationExecutionPolicy.js';
 import { captureProcgenPausedProjection } from '../ProcgenPausedProjection.js';
 import { captureProcgenCheckpointCooperative } from './ProcgenCheckpoint.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -151,7 +152,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
         const options = { signal: captureSignal, isCurrent: current };
         const checkpoint = await captureProcgenCheckpointCooperative(world, { ...options, maxGraphBytes: 16 * 1048576 }), semantic = await session.engine.snapshotCooperative(options);
         captureSignal?.throwIfAborted(); if (!current()) throw journalError('cancelled', 'The paused physical branch publication changed.');
-        value = { world: checkpoint, engine: semantic, timeline: replayState().scoreTimeline ? session.clock.snapshot() : null, replay: replayState(),
+        value = { world: checkpoint, engine: semantic, executionPolicy: procgenSimulationExecutionPolicy({ schema: 'lemmings-simulation-execution-policy/v1', physicalFeedbackMode: feedback.isArmed() ? 'preserve-live' : 'disabled' }), timeline: replayState().scoreTimeline ? session.clock.snapshot() : null, replay: replayState(),
           authoring: cloneJournalData({ graph: currentGraph(), instances: world.physicalAuthoring?.instances || [], junctions: world.physicalJunctions?.definitions || [] }, { maxBytes: 4 * 1048576, maxNodes: 262144 }),
           ancestry: cloneJournalData({ takeId, parentTakeId, qualification, branchTick: world.tickIndex, branchGeneration: world.generation, completedBatches, outputState: 'paused-semantic-continuation;DSP-state-not-attached' }) };
         return Object.freeze({ read: () => { if (released) throw new Error('The branch publication snapshot retired.'); return value; }, release() { if (released) return false; released = true; value = null; capturing = false; return reservation.release(); } });

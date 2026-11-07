@@ -1,3 +1,4 @@
+import { procgenSimulationExecutionPolicy } from './ProcgenSimulationExecutionPolicy.js';
 import { cloneData } from '../../core/CanonicalData.js';
 import { captureProcgenPausedProjection } from './ProcgenPausedProjection.js';
 import { captureProcgenCheckpointCooperative } from './workstation/ProcgenCheckpoint.js';
@@ -7,9 +8,9 @@ import { createProcgenRetirementScope } from './ProcgenRetirement.js';
 
 export function createProcgenSimulationCore({ world, engine = null, clock = null, scoreTimeline = false, bpm = 120, playing = true,
   documentRevision = 0, nominalSpeed = world?.timer?.speedFactor > 0 ? world.timer.speedFactor : 1, requiredConsumer = () => {}, onState = () => {}, getPerformance = () => null, applyPerformance = null,
-  resourceBudget = null, disposeWorld = null, now = () => performance.now() } = {}) {
+  resourceBudget = null, disposeWorld = null, observePhysicalFeedback = () => {}, getExecutionPolicy = () => procgenSimulationExecutionPolicy(), now = () => performance.now() } = {}) {
   if (!world?.soundEvents?.onBatch || typeof world.step !== 'function' || world._stepping || !simulationInteger(documentRevision) ||
-      ![requiredConsumer, onState, getPerformance, now].every(value => typeof value === 'function') || !Number.isFinite(bpm) || bpm <= 0 || bpm > 1000000 || !Number.isFinite(nominalSpeed) || nominalSpeed <= 0 || nominalSpeed > 1000000)
+      ![requiredConsumer, onState, getPerformance, observePhysicalFeedback, getExecutionPolicy, now].every(value => typeof value === 'function') || !Number.isFinite(bpm) || bpm <= 0 || bpm > 1000000 || !Number.isFinite(nominalSpeed) || nominalSpeed <= 0 || nominalSpeed > 1000000)
     throw new TypeError('A simulation host needs one authoritative completed world and required causal consumer.');
   world.timer.speedFactor = nominalSpeed;
   const scope = createProcgenRetirementScope(), producers = createProcgenRetirementScope(), storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'authoritative-simulation',
@@ -31,7 +32,7 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
       const intents = playing && engine ? engine.processBatch(batch) : [];
       const packet = Object.freeze({ sequence: ++sequence, documentRevision, batch, intents, scoreTime, tempoBpm: bpm,
         bodyCommands: playing && engine ? engine.bodyPreparations()?.commands || Object.freeze([]) : Object.freeze([]) });
-      collecting.push(packet); latest = batch.snapshot;
+      collecting.push(packet); latest = batch.snapshot; observePhysicalFeedback(batch, engine?.physicalAnalysis?.() || null);
     } catch (error) { listenerError = error; }
   };
   world.soundEvents.onBatch.on(listener);
@@ -103,7 +104,7 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
         const checkpoint = await captureProcgenCheckpointCooperative(world, { signal, onSlice, maxGraphBytes, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation });
         signal?.throwIfAborted(); if (disposed || !isCurrent()) throw simulationFailure('checkpoint-stale', 'The simulation checkpoint owner changed.');
         const semantic = engine ? await engine.snapshotCooperative({ signal, onSlice, maxBytes: maxSemanticBytes, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation }) : null;
-        return Object.freeze({ world: checkpoint, engine: semantic, timeline: clock?.snapshot() || null, performance: getPerformance(),
+        return Object.freeze({ world: checkpoint, engine: semantic, timeline: clock?.snapshot() || null, performance: getPerformance(), executionPolicy: procgenSimulationExecutionPolicy(getExecutionPolicy()),
           authoring: cloneData({ graph: world.physicalAuthoring?.graph || null, instances: world.physicalAuthoring?.instances || [], junctions: world.physicalJunctions?.definitions || [] }, { maxBytes: 4 * 1048576, maxNodes: 262144 }),
           replay: Object.freeze({ version: 2, playing, bpm, scoreTimeline, nominalSpeed: world.timer.speedFactor }), boundary: state() });
       } finally { capturing = false; publish(); }

@@ -96,7 +96,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
     const prepare = async continuation => {
       realm = await prepareProcgenSimulationRealm({ resourceBudget: budget, signal, requiredConsumer: packet,
         manifest: { schema: 'lemmings-authoritative-simulation/v1', ownerId: 'physical-music-study', ownerEpoch: 1, documentRevision: input.projectRevision, resourceProfile: 'compact-v1', rootPath: input.rootPath,
-          checkpoint: continuation.world, semantic: continuation.engine, timeline: continuation.timeline, performance: continuation.performance, graph: continuation.authoring.graph,
+          executionPolicy: continuation.executionPolicy || null, checkpoint: continuation.world, semantic: continuation.engine, timeline: continuation.timeline, performance: continuation.performance, graph: continuation.authoring.graph,
           ...continuation.replay }, createWorld: async options => { const owner = await createWorld(options); world = owner.world; return owner; } });
     };
     try {
@@ -129,7 +129,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       }
       const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }), completed = world.tickIndex === endTick,
         metrics = evaluatePhysicalMusicGoal(goal, trace.onsets, { causeKinds: trace.causeKinds, editCost }), traceHash = await hashDataText(encoded(trace)),
-        continuationHash = await hashDataText(encoded({ world: continuation.world, engine: continuation.engine, timeline: continuation.timeline, replay: continuation.replay }));
+        continuationHash = await hashDataText(encoded({ world: continuation.world, engine: continuation.engine, timeline: continuation.timeline, replay: continuation.replay, executionPolicy: continuation.executionPolicy }));
       return { id: candidate.id, values: candidate.values, edits: candidate.edits, patchHash, baseContinuationHash: sourceIdentity.baseContinuationHash, mappingRevision: source.authoring.graph.revision, constraintRevision: goal.revision,
         status: completed && !trace.safetyFailures.length && !trace.rejectedInputs.length ? 'sample-safe' : trace.safetyFailures.length || trace.rejectedInputs.length ? 'sample-failed' : 'unknown', completed,
         metrics, trace, traceHash, continuationHash, throughTick: world.tickIndex, appliedInitial, auditionInitial, inputs };

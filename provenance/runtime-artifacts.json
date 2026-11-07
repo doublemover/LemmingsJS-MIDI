@@ -317,6 +317,7 @@
         "js/app/procgen/ProcgenScenery.js",
         "js/app/procgen/ProcgenScoredTerrain.js",
         "js/app/procgen/ProcgenSimulationCore.js",
+        "js/app/procgen/ProcgenSimulationExecutionPolicy.js",
         "js/app/procgen/ProcgenSimulationProfiles.js",
         "js/app/procgen/ProcgenSimulationProtocol.js",
         "js/app/procgen/ProcgenSimulationRealm.js",
@@ -720,8 +721,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 566,
-      "sha256": "1a08b7253d0a89078403b2c4135b71328c4bf9358f1f5d1afe801f8b365b09d1",
+      "fileCount": 567,
+      "sha256": "34ffec106311c5395e0fb8b4a838ac87292843ad8f2ec9c0f625384b5a139397",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1027,6 +1028,7 @@
         "js/app/procgen/ProcgenScoredTerrain.js",
         "js/app/procgen/ProcgenSimulationConsumer.js",
         "js/app/procgen/ProcgenSimulationCore.js",
+        "js/app/procgen/ProcgenSimulationExecutionPolicy.js",
         "js/app/procgen/ProcgenSimulationHost.js",
         "js/app/procgen/ProcgenSimulationOutputConsumer.js",
         "js/app/procgen/ProcgenSimulationProfiles.js",
@@ -1464,8 +1466,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 599,
-      "sha256": "4026923d516a4c518cd5e4f4d4b719166f0ce48f9196a4f3a741737c0b8bbbf4",
+      "fileCount": 600,
+      "sha256": "fa82cf82d11b5625609d17d683fd578f73d0df026965f09ab545d8a19ef4f9dc",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1658,6 +1660,7 @@
         "js/app/procgen/ProcgenScenery.js",
         "js/app/procgen/ProcgenScoredTerrain.js",
         "js/app/procgen/ProcgenSimulationCore.js",
+        "js/app/procgen/ProcgenSimulationExecutionPolicy.js",
         "js/app/procgen/ProcgenSimulationProfiles.js",
         "js/app/procgen/ProcgenSimulationProtocol.js",
         "js/app/procgen/ProcgenSimulationRealm.js",
@@ -2058,8 +2061,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 577,
-      "sha256": "18e450be84dbe2fb749687ea338e0297e5c95bbbb268002caf167d055c2a3d31",
+      "fileCount": 578,
+      "sha256": "6621a1fa64e3083d2920653b0a5542c6edcd852b266f02644cb193fd10a284e1",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2078,6 +2081,7 @@
         "js/app/procgen/ProcgenNativeOutputWorkerEndpoint.js",
         "js/app/procgen/ProcgenRetirement.js",
         "js/app/procgen/ProcgenSimulationConsumer.js",
+        "js/app/procgen/ProcgenSimulationExecutionPolicy.js",
         "js/app/procgen/ProcgenSimulationOutputConsumer.js",
         "js/app/procgen/ProcgenSimulationProfiles.js",
         "js/app/procgen/ProcgenSimulationProtocol.js",
@@ -2143,8 +2147,8 @@
         "js/midi/protocol/UmpPayloadCollector.js",
         "js/runtime/ActiveExecutionIdentity.js"
       ],
-      "fileCount": 69,
-      "sha256": "5582b4289813d18f62091a963fbdcee5cd2d49364efa497992f5258e9be43c28",
+      "fileCount": 70,
+      "sha256": "5dff4b7c80ea12a9a7046d97be49b7d4a9f4c472f348be39a2e4270aeee22c19",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2393,6 +2397,7 @@
         "js/app/procgen/ProcgenScoredTerrain.js",
         "js/app/procgen/ProcgenSimulationConsumer.js",
         "js/app/procgen/ProcgenSimulationCore.js",
+        "js/app/procgen/ProcgenSimulationExecutionPolicy.js",
         "js/app/procgen/ProcgenSimulationOutputConsumer.js",
         "js/app/procgen/ProcgenSimulationProfiles.js",
         "js/app/procgen/ProcgenSimulationProtocol.js",
@@ -2810,8 +2815,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 650,
-      "sha256": "0c6c021a30f545b17830fbd6d426a17a8350c3e9f141c3ca9e253bba2560bc51",
+      "fileCount": 651,
+      "sha256": "67377468269e41c50ff6e24666e93a468e84feeb7c124c9d8702802f0d8147bc",
       "inventoryScope": "first-party-artifact"
     }
   ]

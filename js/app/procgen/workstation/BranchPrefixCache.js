@@ -1,3 +1,4 @@
+import { procgenSimulationExecutionPolicy } from '../ProcgenSimulationExecutionPolicy.js';
 import { canonicalDataText, hashDataText, freezeData } from '../../../core/CanonicalData.js';
 import { inspectProcgenCheckpoint, hashProcgenContinuationCheckpoint } from './ProcgenCheckpointProvenance.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -11,6 +12,7 @@ function boundaryOf(value) {
   const world = value?.world, props = world?.graph?.owners?.find(owner => owner.name === 'world')?.props, cursor = value?.engine?.physicalCursor;
   if (inspectProcgenCheckpoint(world).continuation !== 'current-codec-continuation' || !props || !natural(props.tickIndex) || !natural(props.generation) || typeof props.worldId !== 'string' ||
       value.engine?.version !== 1 || value.engine.recoveryRequired || ![1, 2].includes(value.replay?.version) || !Number.isFinite(value.replay.bpm) || value.replay.bpm <= 0 || typeof value.replay.scoreTimeline !== 'boolean') throw error('Only complete current world and semantic continuations are cacheable.');
+  procgenSimulationExecutionPolicy(value.executionPolicy);
   const boundary = { worldId: props.worldId, tick: props.tickIndex, generation: props.generation, causalSequence: world.physicalIdentity.causalSequence };
   if (boundary.tick > 0 && (cursor?.worldId !== boundary.worldId || cursor.tick !== boundary.tick || cursor.generation !== boundary.generation || cursor.lastSequence !== boundary.causalSequence && !(cursor.lastSequence === -1 && boundary.causalSequence === 0))) throw error('The musical reducer and physical checkpoint do not share one completed batch.');
   if (value.replay.scoreTimeline && boundary.tick > 0 && (value.timeline?.worldId !== boundary.worldId || value.timeline.lastTick !== boundary.tick || value.timeline.generation !== boundary.generation)) throw error('The score timeline does not share the cached completed boundary.');
@@ -92,7 +94,7 @@ export function createBranchPrefixCache({ resourceBudget, maximumBytes = 8 * MiB
         if (released || verifying) throw error('Use the current independent reader for one completed restore verification.'); verifying = true;
         try { return await run(async check => { const started = now(); check(signal);
           const match = await hashProcgenContinuationCheckpoint(restored.world) === entry.worldHash &&
-            text(restored.engine) === text(value.engine) && text(restored.timeline) === text(value.timeline) && text(restored.replay) === text(value.replay);
+            text(restored.engine) === text(value.engine) && text(restored.timeline) === text(value.timeline) && text(restored.replay) === text(value.replay) && text(procgenSimulationExecutionPolicy(restored.executionPolicy)) === text(procgenSimulationExecutionPolicy(value.executionPolicy));
           check(signal); counters.validationMs += Math.max(0, now() - started); if (!match) { erase(entry.id); counters.integrityFailures++; return false; } counters.restoredCheckpoints++; return true;
         }); } finally { verifying = false; }
       },

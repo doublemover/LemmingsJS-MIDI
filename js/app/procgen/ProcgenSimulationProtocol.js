@@ -1,3 +1,4 @@
+import { procgenSimulationExecutionPolicy } from './ProcgenSimulationExecutionPolicy.js';
 import { procgenSimulationProfile } from './ProcgenSimulationProfiles.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 
@@ -7,7 +8,7 @@ export const SIMULATION_MAX_CONSUMERS = 4;
 export const simulationFailure = (code, message) => Object.assign(new Error(message), { name: 'ProcgenSimulationError', code });
 export const simulationInteger = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= min && value <= max;
 export function validateSimulationManifest(value) {
-  procgenSimulationProfile(value?.resourceProfile);
+  procgenSimulationProfile(value?.resourceProfile); procgenSimulationExecutionPolicy(value?.executionPolicy);
   if (!value || value.schema !== PROCGEN_SIMULATION_PROTOCOL || typeof value.ownerId !== 'string' || !value.ownerId || value.ownerId.length > 128 ||
       !simulationInteger(value.ownerEpoch, 1) || !simulationInteger(value.documentRevision) || value.checkpoint?.version !== 2 ||
       !simulationInteger(value.checkpoint.laneCount, 1, 1024) || typeof value.rootPath !== 'string' || value.rootPath.length > 4096 ||
