@@ -1,3 +1,4 @@
+import { verifyMaterialPalette } from '../../../midi/content/MaterialPalette.js';
 import { verifySceneMorphMechanism, sceneMorphMechanismCost } from './SceneMorphMechanism.js';
 import { sameActorBirthAbilities } from '../ActorBirthAbilities.js';
 import { materializePerformanceSceneProject } from './PerformanceSceneProject.js';
@@ -34,11 +35,21 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
       if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity?.buildId !== scene.sourceVersion.hash) throw failure('scene-source-unavailable', 'This scene requires its exact installed world and audio build.');
       const origin = await verifyPerformanceSceneOrigin(await getOrigin(scene, preflight.variants), { sourceHash: catalog.executionIdentity.buildId }); check();
       if (origin.sceneHash !== preflight.sceneHash || origin.variants.length || preflight.variants.length) throw failure('scene-variant-adapter-unavailable', 'This world adapter supports the authored original variant. A named replacement needs its own score materializer.');
-      if (scene.causalMappings.instruments.some(instrument => instrument.route !== 'local' || instrument.sourceLanes?.some(lane => lane >= scene.cost.lanes))) throw failure('scene-routing-unavailable', 'This scene profile requires explicit local mappings into its declared physical lanes.');
-      const source = origin.recipe, assets = preflight.dependencies.filter(entry => entry.status === 'available' && entry.dependency.kind === 'asset').map(entry => entry.dependency.hash), pools = new Map(), instances = new Set();
+      if (scene.causalMappings.instruments.some(instrument => !['local', ...(origin.recipe.initialPreparedSurface ? ['prepared-body'] : [])].includes(instrument.route) || instrument.sourceLanes?.some(lane => lane >= scene.cost.lanes))) throw failure('scene-routing-unavailable', 'This scene profile requires explicit local mappings into its declared physical lanes.');
+      const source = origin.recipe, assets = preflight.dependencies.filter(entry => entry.status === 'available' && entry.dependency.kind === 'asset').map(entry => entry.dependency.hash), pools = new Map(), instances = new Set(), paletteInstances = new Map(), paletteHashes = new Set();
       onPhase('sound-compile');
       if (source.initialMorphMechanism) { if (scene.cost.sharedBodies !== sceneMorphMechanismCost(source.initialMorphMechanism).bodyCount) throw failure('scene-body-cost-unbound', 'The score must count every body in its explicit paired or prepared-endpoint strategy.'); await verifySceneMorphMechanism(source.initialMorphMechanism, scene.causalMappings.instruments); check(); }
+      const registerSource = reference => {
+        const descriptor = catalog.descriptors.find(value => value.engineId === reference.engineRequirement.engineId), count = reference.definition.voicePolicy.maxVoices, instance = reference.packHash + ':' + reference.definitionHash;
+        if (!Number.isSafeInteger(count) || count < 1 || count > descriptor.maximumVoices) throw failure('scene-source-capacity', 'An individual prepared source exceeds its exact renderer voice limit.');
+        if (!instances.has(instance)) { instances.add(instance); pools.set(descriptor.engineId, (pools.get(descriptor.engineId) || 0) + count); }
+        return { instance, count };
+      };
       for (const patch of scene.patchRefs) {
+        if (patch.materialPalette && !paletteHashes.has(patch.materialPalette.identityHash)) {
+          const palette = await verifyMaterialPalette(patch.materialPalette, { descriptors: catalog.descriptors, signal }); check(); paletteHashes.add(palette.identityHash);
+          for (const reference of palette.references) { const registered = registerSource(reference); paletteInstances.set(registered.instance, { engineId: reference.engineRequirement.engineId, count: registered.count }); }
+        }
         let availableHashes = assets;
         if (patch.reference.assetHashes.length) {
           if (typeof getMaterialProvider !== 'function' || patch.reference.definition.engineId === 'native-sample') throw failure('scene-asset-adapter-unavailable', 'This scene needs the owned source-PCM pin adapter; native-context decoding cannot implicitly enable audio.');
@@ -50,11 +61,10 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
         }
         const resolved = await resolveSoundContentReference(patch.reference, { engineDescriptors: catalog.descriptors, availableHashes, signal }); check();
         if (resolved.status !== 'ready') throw failure('scene-patch-unavailable', 'A required pinned scene patch cannot be realized by this build: ' + resolved.status);
-        const instance = patch.reference.packHash + ':' + patch.reference.definitionHash;
-        if (!instances.has(instance)) { instances.add(instance); const key = patch.reference.engineRequirement.engineId, count = patch.reference.definition.voicePolicy.maxVoices; pools.set(key, (pools.get(key) || 0) + count); }
+        registerSource(patch.reference);
       }
       if ([...pools.values()].reduce((sum, count) => sum + count, 0) > scene.cost.maximumVoices) throw failure('scene-source-capacity', 'The complete source set exceeds the declared scene voice bound.');
-      for (const [engine, voices] of pools) if (voices > catalog.descriptors.find(value => value.engineId === engine).maximumVoices || voices > scene.cost.maximumVoices) throw failure('scene-source-capacity', 'The scene exceeds its shared source-pool or declared voice capacity.');
+      for (const [engine, voices] of pools) if (voices - [...paletteInstances.values()].filter(value => value.engineId === engine).reduce((sum, value) => sum + value.count, 0) > catalog.descriptors.find(value => value.engineId === engine).maximumVoices || voices > scene.cost.maximumVoices) throw failure('scene-source-capacity', 'The scene exceeds its shared source-pool or declared voice capacity.');
       if (source.initialEffectRack && scene.cost.sharedBodies !== 0) throw failure('scene-effects-composition-unavailable', 'An authored static rack and shared morph body need an explicit composed graph profile.');
       const recipe = materializePerformanceSceneProject(origin);
       onPhase('world-assets'); world = await prepareWorld({ sceneRecipe: recipe, lease: { id: 'performance-scene:' + preflight.sceneHash, signal } }); check();
@@ -66,7 +76,7 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
       if (source.initialTerrainLayout) { const receipt = world.world.terrain?.sourceReceipt?.(); if (canonicalDataText(world.world.terrain?.sceneTerrainLayout ?? null).text !== canonicalDataText(source.initialTerrainLayout).text || receipt?.status !== 'prepared' || receipt.method !== 'dedicated-worker' || receipt.activeExecution !== 'bound' || receipt.layoutHash !== await hashData(source.initialTerrainLayout)) throw failure('scene-source-geometry-unbound', 'The initial terrain requires its exact owned worker result before the first actor or recovery anchor.'); check(); }
       onPhase('world-geometry'); if (canonicalDataText(world.world.physicalAuthoring?.graph).text !== canonicalDataText(scene.causalMappings).text) throw failure('scene-mapping-unbound', 'The candidate recovery anchor must already own the exact prepared physical mapping.'); check(); onPhase('resource-admission');
       return Object.freeze({ sceneHash: preflight.sceneHash, variants: preflight.variants, baseIdentity, rehearsalRecipe: source,
-        admission: freezeData({ status: 'admitted', world: true, sound: true, mapping: true, sourcePools: Object.fromEntries(pools), sourceInstances: instances.size, soundPreparation: 'pinned-definition-and-pool-preflight;audio-context-enable-remains-explicit', ...(materialReports.length ? { materials: materialReports, materialPreparation: 'verified-source-rate-PCM-and-data-pins;live-renderers-prepare-on-explicit-audio-enable' } : {}) }),
+        admission: freezeData({ status: 'admitted', world: true, sound: true, mapping: true, sourcePools: Object.fromEntries(pools), sourceInstances: instances.size, materialPalettes: paletteHashes.size, materialBodyInstances: paletteInstances.size, capacityEvidence: 'bounded-prepared-inventory;live-density-still-requires-resource-admission', soundPreparation: 'pinned-definition-and-pool-preflight;audio-context-enable-remains-explicit', ...(materialReports.length ? { materials: materialReports, materialPreparation: 'verified-source-rate-PCM-and-data-pins;live-renderers-prepare-on-explicit-audio-enable' } : {}) }),
         async borrowRehearsalCheckpoint({ signal: readSignal, isCurrent: readCurrent = () => true } = {}) {
           check(); readSignal?.throwIfAborted(); if (!world.isCurrent() || world.world.tickIndex !== 0 || rehearsalReads.size || rehearsalLoans.size || retirement.getReceipt()) throw failure('scene-preview-capacity', 'One unadvanced scene checkpoint reader may be owned at a time.');
           const read = { controller: new AbortController(), promise: null }, reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'scene-rehearsal:' + preflight.sceneHash, kind: 'cooperative-scene-checkpoint-copy-and-encoding-estimate', bytes: 64 * 1048576 });
