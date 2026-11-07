@@ -1,6 +1,7 @@
 import { freezeData } from '../../core/CanonicalData.js';
+import { pickupWorldPoint } from './PickupWorldPoint.js';
 
-export const CIRCULAR_SPECTRUM_REVISION = 'original-octave-circular-spectrum-v2-route';
+export const CIRCULAR_SPECTRUM_REVISION = 'original-octave-circular-spectrum-v3-pickup';
 export const CIRCULAR_PARTIAL_CAPACITY = 10;
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const fail = message => { throw Object.assign(new Error(message), { name: 'CircularSpectrumError', code: 'circular-spectrum-unavailable' }); };
@@ -22,7 +23,7 @@ export function resolveCircularSpectrum(raw = {}, sampleRate, referenceRatio = 1
 
 export function validateCircularCoordinateControl(parameters) {
   const mode = parameters.circularControlMode ?? 0, scope = parameters.circularScope ?? 0, axis = parameters.circularAxis ?? 0, segments = parameters.circularRequireSegments ?? 0;
-  if (![0, 1, 2].includes(mode) || ![0, 1, 2].includes(scope) || ![0, 1].includes(axis) || ![0, 1].includes(segments) || mode === 1 && (scope !== 0 || segments !== 0) || mode === 2 && (scope !== 0 || axis !== 0 || segments !== 0)) fail('Circular coordinate mode has unsupported scope, axis or precision controls. Directed routes require actorJourney and completed endpoints; contacts sample one onset coordinate.');
+  if (![0, 1, 2, 3].includes(mode) || ![0, 1, 2].includes(scope) || ![0, 1].includes(axis) || ![0, 1].includes(segments) || [1, 3].includes(mode) && (scope !== 0 || segments !== 0) || mode === 2 && (scope !== 0 || axis !== 0 || segments !== 0)) fail('Circular coordinate mode has unsupported scope, axis or precision controls. Directed routes require actorJourney and completed endpoints; contacts sample one onset coordinate.');
   return mode;
 }
 
@@ -52,6 +53,36 @@ export function captureCircularContactCoordinate(batch, fact, mappingId, graphRe
     surfaceRevision: Number.isSafeInteger(fact.surfaceRevision) && fact.surfaceRevision >= 0 ? fact.surfaceRevision : resolved && Number.isSafeInteger(batch.terrainRevisionBefore) && batch.terrainRevisionBefore >= 0 && batch.terrainRevisionBefore === batch.terrainRevisionAfter ? batch.terrainRevisionBefore : null });
 }
 
+export function captureCircularPickupCoordinate(batch, fact, mappingId, graph) {
+  if (fact?.kind !== 'PickupCrossing' || fact.derivedObservation !== true || batch?.completeness?.status !== 'complete' || batch.completeness.dropped ||
+      typeof batch.worldId !== 'string' || !batch.worldId || !Number.isSafeInteger(batch.generation) || batch.generation < 0 || !Number.isSafeInteger(batch.tick) || batch.tick < 0 ||
+      typeof mappingId !== 'string' || !mappingId || !Number.isSafeInteger(graph?.revision) || graph.revision < 0 || !Number.isSafeInteger(fact.actorId) || fact.actorId < 0 ||
+      !Number.isSafeInteger(fact.causalSequence) || fact.causalSequence < 1 || typeof fact.observationId !== 'string' || !fact.observationId || !Array.isArray(fact.sourceEventIds)) return null;
+  const point = pickupWorldPoint(graph, fact.gateId, fact.gateRevision, fact.local01), motion = batch.facts.find(row => row.kind === 'MotionCommitted' && row.actorId === fact.actorId && fact.sourceEventIds.includes(row.eventId));
+  if (!point || !motion || motion.discontinuity || motion.physicalPayload?.discontinuity) return null;
+  return freezeData({ schema: 'lemmings-canonical-pickup-coordinate/v1', worldId: batch.worldId, generation: batch.generation, actorId: fact.actorId, mappingId, graphRevision: graph.revision,
+    gateId: fact.gateId, gateRevision: fact.gateRevision, local01: fact.local01, coordinate: point, observationId: fact.observationId, sourceEventId: motion.eventId,
+    sourceSequence: fact.causalSequence, observedTick: batch.tick, precision: 'derived-endpoint-interpolation', coordinateMeaning: 'observed-swept-gate-intersection' });
+}
+function planCircularPickup(parameters, intent, targetFrame, sampleRate) {
+  const o = intent?.articulationState?.pickupCoordinate;
+  if (intent?.kind !== 'begin' || intent.physicalSourceKind !== 'PickupCrossing' || o?.schema !== 'lemmings-canonical-pickup-coordinate/v1' || o.worldId !== intent.worldId || o.generation !== intent.generation || o.actorId !== intent.actorId || o.mappingId !== intent.mappingId ||
+      typeof o.worldId !== 'string' || !o.worldId || o.worldId.length > 512 || !Number.isSafeInteger(o.generation) || o.generation < 0 || !Number.isSafeInteger(o.actorId) || o.actorId < 0 || !Number.isSafeInteger(o.graphRevision) || o.graphRevision < 0 ||
+      typeof o.mappingId !== 'string' || !o.mappingId || o.mappingId.length > 128 || typeof o.gateId !== 'string' || !o.gateId || o.gateId.length > 128 || !Number.isSafeInteger(o.gateRevision) || o.gateRevision < 0 || !finite(o.local01, 0, 1) ||
+      typeof o.observationId !== 'string' || !o.observationId || o.observationId.length > 1024 || typeof o.sourceEventId !== 'string' || !intent.sourceEventIds?.includes(o.sourceEventId) ||
+      intent.observation?.gateId !== o.gateId || intent.observation.gateRevision !== o.gateRevision || intent.observation.local01 !== o.local01 || intent.observationId !== o.observationId ||
+      !Number.isSafeInteger(o.sourceSequence) || o.sourceSequence < 1 || !Number.isSafeInteger(o.observedTick) || o.observedTick < 0 || o.precision !== 'derived-endpoint-interpolation' || o.coordinateMeaning !== 'observed-swept-gate-intersection' ||
+      !Number.isSafeInteger(targetFrame) || targetFrame < 0 || !Number.isSafeInteger(targetFrame + 1) || ![44100, 48000, 96000].includes(sampleRate) || !finite(parameters.circularPixelsPerCycle, 1, 1000000) || !finite(parameters.circularOriginPixels, -1e9, 1e9) || !finite(parameters.circularPhaseOrigin, -1e6, 1e6)) fail('This circular onset requires its exact observed swept pickup coordinate.');
+  const coordinate = o.coordinate?.[parameters.circularAxis === 0 ? 'x' : 'y']; if (!finite(coordinate, -1e9, 1e9)) fail('The swept pickup has no bounded coordinate on this axis.');
+  const phase = parameters.circularPhaseOrigin + (coordinate - parameters.circularOriginPixels) / parameters.circularPixelsPerCycle;
+  if (!finite(phase, -1e6, 1e6)) fail('The swept pickup exceeds the declared circular coordinate domain.');
+  return freezeData({ from: phase, to: phase, firstFrame: targetFrame, endFrame: targetFrame + 1, sequence: o.sourceSequence,
+    ownerIdentity: JSON.stringify([o.worldId, o.generation, o.actorId, o.mappingId, o.graphRevision, o.gateId, o.gateRevision, o.observationId]),
+    receipt: { schema: 'lemmings-circular-pickup-receipt/v1', rendererRevision: CIRCULAR_SPECTRUM_REVISION, mappingId: o.mappingId, gateId: o.gateId, gateRevision: o.gateRevision,
+      observationId: o.observationId, sourceEventId: o.sourceEventId, observedTick: o.observedTick, coordinate, coordinateMeaning: o.coordinateMeaning, precision: o.precision,
+      orientation: parameters.circularAxis === 0 ? 'world-x' : 'world-y', phaseCycles: phase, originPixels: parameters.circularOriginPixels, pixelsPerCycle: parameters.circularPixelsPerCycle,
+      timing: 'one-observed-gate-coordinate-at-onset;no-hidden-phase-clock', firstFrame: targetFrame, endFrame: targetFrame + 1, acousticReceipt: false } });
+}
 function planCircularContact(parameters, intent, targetFrame, sampleRate) {
   const o = intent?.articulationState?.contactCoordinate;
   if (intent?.kind !== 'begin' || !o || o.schema !== 'lemmings-canonical-contact-coordinate/v1' || o.worldId !== intent.worldId || o.generation !== intent.generation || o.actorId !== intent.actorId || o.mappingId !== intent.mappingId ||
@@ -81,7 +112,8 @@ function circularRouteCoordinatesMatch(o) {
 export function planCircularTravel(parameters, intent, targetFrame, sampleRate) {
   if (parameters.sourceMode !== 2) return null;
   validateCircularCoordinateControl(parameters);
-  if (intent?.controlFixture === true && !intent?.articulationState?.travel && !intent?.articulationState?.contactCoordinate) return null;
+  if (intent?.controlFixture === true && !intent?.articulationState?.travel && !intent?.articulationState?.contactCoordinate && !intent?.articulationState?.pickupCoordinate) return null;
+  if (parameters.circularControlMode === 3) return planCircularPickup(parameters, intent, targetFrame, sampleRate);
   if (parameters.circularControlMode === 1) return planCircularContact(parameters, intent, targetFrame, sampleRate);
   const routed = parameters.circularControlMode === 2, o = intent?.articulationState?.travel, scope = ['actorJourney', 'contactSpan', 'actionInstance'][parameters.circularScope], orientation = routed ? 'directed-route' : parameters.circularAxis === 0 ? 'signedX' : 'signedY';
 

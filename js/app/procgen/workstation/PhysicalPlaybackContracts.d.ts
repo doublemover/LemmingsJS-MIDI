@@ -73,7 +73,7 @@ export type IntentProvenance =
 export interface PhysicalPlaybackOptions {
   audio: Partial<ReturnType<typeof createBrowserNotePreview>> | null;
   getGraph: () => PlaybackGraphSource;
-  scoreTimeline: { map(time: { simTick: number }): PhysicalScorePosition; currentSegment?(): { readonly tempoBpm: number } };
+  scoreTimeline: { map(time: { simTick: number; subTick?: number; precision?: string }): PhysicalScorePosition; currentSegment?(): { readonly tempoBpm: number } };
   now: () => HostMilliseconds;
   renderer?: PlaybackDisplayPort | null;
   resourceBudget?: ReturnType<typeof createResourceBudget> | null;

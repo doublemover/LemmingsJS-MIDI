@@ -658,6 +658,7 @@
         "js/midi/content/PercussionRoleIntent.js",
         "js/midi/content/PhysicalMappingRevision.js",
         "js/midi/content/PianoPerformanceIntent.js",
+        "js/midi/content/PickupWorldPoint.js",
         "js/midi/content/PreparedBodyStrike.js",
         "js/midi/content/PreparedSurface.js",
         "js/midi/content/ProceduralBiomeIdentities.js",
@@ -747,8 +748,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 593,
-      "sha256": "1c854372cd73239236012bb05a4ccc839be6a7d2398c987544e352ff71244426",
+      "fileCount": 594,
+      "sha256": "4b3a27817753bc1f2c03f825b04eb73be945482eb6bed1322f46d0ec04620fc7",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1396,6 +1397,7 @@
         "js/midi/content/PercussionRoleIntent.js",
         "js/midi/content/PhysicalMappingRevision.js",
         "js/midi/content/PianoPerformanceIntent.js",
+        "js/midi/content/PickupWorldPoint.js",
         "js/midi/content/PreparedBodyStrike.js",
         "js/midi/content/PreparedSurface.js",
         "js/midi/content/ProceduralBiomeIdentities.js",
@@ -1518,8 +1520,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 626,
-      "sha256": "63cb3b52dc77e4699afb9e52da9078b35a7847aa6eaba0ff4a3094c20077b072",
+      "fileCount": 627,
+      "sha256": "468739efd60179afd9c952a4414ccd95d93905a1eedc3b86495abb28416f071d",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2054,6 +2056,7 @@
         "js/midi/content/PercussionRoleIntent.js",
         "js/midi/content/PhysicalMappingRevision.js",
         "js/midi/content/PianoPerformanceIntent.js",
+        "js/midi/content/PickupWorldPoint.js",
         "js/midi/content/PreparedBodyStrike.js",
         "js/midi/content/PreparedSurface.js",
         "js/midi/content/ProceduralBiomeIdentities.js",
@@ -2140,8 +2143,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 605,
-      "sha256": "f481a7ff620e173a0a5c451463ffc457d5809d6aa77f413f02c781221f87bd0e",
+      "fileCount": 606,
+      "sha256": "20d0133039a75edb002e335fc91bb8a6740c9451b3cb7bb4d9bfda93a35566d0",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2824,6 +2827,7 @@
         "js/midi/content/PercussionRoleIntent.js",
         "js/midi/content/PhysicalMappingRevision.js",
         "js/midi/content/PianoPerformanceIntent.js",
+        "js/midi/content/PickupWorldPoint.js",
         "js/midi/content/PreparedBodyStrike.js",
         "js/midi/content/PreparedSurface.js",
         "js/midi/content/ProceduralBiomeIdentities.js",
@@ -2922,8 +2926,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 679,
-      "sha256": "635b1bb47310f29c595bac2c1f735f9094308b009f01928c390f0944ba334ba1",
+      "fileCount": 680,
+      "sha256": "bcaccf96f7749438e54c047ee4232eb64ef60de6d89b7a15210018fc8626beea",
       "inventoryScope": "first-party-artifact"
     }
   ]

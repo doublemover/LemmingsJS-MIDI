@@ -1,3 +1,4 @@
+import { createGlassOrbitCircularScores } from './GlassOrbitCircularScore.js';
 import { createGlassOrbitMetamorphicScores } from './GlassOrbitMetamorphicScore.js';
 import { createGlassOrbitTrellisScores } from './GlassOrbitTrellisScore.js';
 import { createWorkshopInteractionScores } from './WorkshopInteractionScore.js';
@@ -182,6 +183,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   if (modal?.maximumVoices >= 16 && spectrum?.maximumVoices >= 4) await registerAuthoredScores(await createWorkshopInteractionScores({ sourceHash, modalDescriptor: modal, spectrumDescriptor: spectrum, signal }));
   if (glassOrbitScores.length) { await registerAuthoredScores(await createGlassOrbitTrellisScores({ sourceHash, scores: glassOrbitScores, signal })); await registerAuthoredScores(await createGlassOrbitMetamorphicScores({ sourceHash, scores: glassOrbitScores, signal })); }
   if (fm?.capabilities.worldSpatialControl && fm.capabilities.sharedAcousticZoneSends && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitOrchestrations({ sourceHash, scores: glassOrbitScores, spectrumDescriptor: spectrum, signal }));
+  if (spectrum?.maximumVoices >= 8 && glassOrbitScores.length) await registerAuthoredScores(await createGlassOrbitCircularScores({ sourceHash, descriptor: spectrum, scores: glassOrbitScores, signal }));
   if (spectrum?.maximumVoices >= 8) await registerAuthoredScores(await createBentLadderScores({ sourceHash, descriptor: spectrum, signal }));
   if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
   for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) {

@@ -7,7 +7,7 @@ import { createOrchestralArticulationIntent } from '../../../midi/content/Orches
 import { createPercussionHitIntent } from '../../../midi/content/PercussionRoleIntent.js';
 import { validatePreparedSurfaceDefinitions, createPreparedSurfaceMapping } from './physical/PreparedSurfaceMapping.js';
 import { validatePreparedBodyStrike } from '../../../midi/content/PreparedBodyStrike.js';
-import { captureCircularContactCoordinate } from '../../../midi/content/CircularSpectrum.js';
+import { captureCircularContactCoordinate, captureCircularPickupCoordinate } from '../../../midi/content/CircularSpectrum.js';
 import { registerPhysicalGraphAdmission } from '../PhysicalGraphAdmission.js';
 import { createCausalObserverResources } from './CausalObserverResources.js';
 import { estimateJournalBytes, cloneJournalData } from './CausalJournalCanonical.js';
@@ -165,6 +165,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const qualifiedBodyContact = !instrument.preparedBodyStrike || fact?.kind !== 'ContactSpanBegan' || fact.physicalPayload?.evidence === 'completed-support-cell' && fact.causeKind === 'support';
     const contactCoordinate = kind === 'begin' && qualifiedBodyContact ? captureCircularContactCoordinate(batch, fact, instrument.id, graph?.revision ?? 0) : null;
     if (contactCoordinate) articulationState = { ...articulationState, contactCoordinate };
+    const pickupCoordinate = kind === 'begin' ? captureCircularPickupCoordinate(batch, fact, instrument.id, graph) : null;
+    if (pickupCoordinate) articulationState = { ...articulationState, pickupCoordinate };
     const materialState = kind === 'begin' && instrument.materialResponse ? resolveObservedMaterialResponse(instrument.materialResponse, batch, fact) : null;
     const baseCents = basePitchFor(instrument, fact);
     const tonal = kind === 'begin' && (instrument.formationId || instrument.harmonicFields) ? tones.resolve(instrument, fact?.actorId, baseCents) : null;

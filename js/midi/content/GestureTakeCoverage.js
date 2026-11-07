@@ -18,6 +18,7 @@ export async function summarizeGestureTakeCoverage({ manifest, revoice }, { sign
     const observed = kind => { evidence.add(kind); voice?.evidence.add(kind); };
     if (intent.topologyBinding?.status === 'complete') observed('topology-binding');
     if (intent.articulationState?.contactCoordinate?.schema === 'lemmings-canonical-contact-coordinate/v1') observed('canonical-contact-coordinate');
+    if (intent.articulationState?.pickupCoordinate?.schema === 'lemmings-canonical-pickup-coordinate/v1') observed('canonical-pickup-coordinate');
     const travel = intent.articulationState?.travel;
     if (travel?.schema === 'lemmings-canonical-travel-observation/v1' && travel.metric === 'qualified-route-arc-pixels' && travel.routeId && travel.routeRevision != null && travel.precision === 'completed-route-endpoint-projection') observed('retained-route-travel');
     if (travel?.schema === 'lemmings-canonical-travel-observation/v1' && travel.precision === 'committed-coordinate-write' && Number.isInteger(travel.segmentCount) && travel.segmentCount > 0 && travel.timing === 'completed-tick-equal-segments-v1') observed('retained-motion-segments');
