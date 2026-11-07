@@ -1620,6 +1620,63 @@
       },
       "macros": [
         {
+          "id": "attack",
+          "name": "ATTACK",
+          "mode": "onset-only",
+          "default01": 0.052631578947368425,
+          "smoothingMs": 0,
+          "perceptualDirection": "Softens the next contact attack without changing its physical onset.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "unit": "s",
+              "minimum": 0.001,
+              "maximum": 0.02,
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "level",
+          "name": "LEVEL",
+          "mode": "onset-only",
+          "default01": 0.7142857142857143,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the next tactile source amplitude; intensity-layer selection remains semantic.",
+          "targets": [
+            {
+              "parameter": "gain01",
+              "unit": "amplitude-linear",
+              "minimum": 0.2,
+              "maximum": 0.9,
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "balance",
+          "name": "BALANCE",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Places the next source in stereo without moving the actor or world listener.",
+          "targets": [
+            {
+              "parameter": "pan01",
+              "unit": "normalized",
+              "minimum": -1,
+              "maximum": 1,
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
           "id": "damp",
           "name": "DAMP",
           "mode": "onset-only",

@@ -1,4 +1,5 @@
 import { hashData } from '../../../core/CanonicalData.js';
+import { createEmbeddedScenePatch } from './EmbeddedScenePatch.js';
 import { validateSceneTerrainLayout } from '../SceneTerrainLayout.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { normalizeWorkerLimits } from '../ProcgenWorkerLimits.js';
@@ -13,8 +14,7 @@ export async function createFrictionPerformanceScore({ sourceHash, descriptor })
       parameters: { attackSeconds: 0.002, decaySeconds: 0, sustain01: 1, releaseSeconds: release, gain01: 0.6, pan01: 0, frictionKind: kind, frictionDragSlope: 0.5, frictionPressure01: pressure, frictionContact01: 0.18, frictionBodyMix01: body, frictionScope: 0, frictionAxis: 0, frictionRequireSegments: 0 },
       modulations: [], sampleRefs: [], causalBindings: [], voicePolicy: { maxVoices: 2, steal: 'reject' }, mix: { gain01: 0.6, pan01: 0 },
       macros: [{ id: 'press', name: 'PRESS', mode: 'onset-only', default01: (pressure - range[0]) / (range[1] - range[0]), smoothingMs: 0, perceptualDirection: 'More normalized friction pressure on new actor bodies; moving held actors also accept existing channel pressure expression.', targets: [{ parameter: 'frictionPressure01', unit: 'normalized', minimum: range[0], maximum: range[1], curve: 'linear', composition: 'replace', clamp: true }] }] };
-    const definitionHash = await hashData(definition), packHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash });
-    return { schema: 'lemmings-sound-reference/v1', packHash, patchId: definition.id, revision: 1, definitionHash, definition, assetHashes: [], engineRequirement: { engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash } };
+    return createEmbeddedScenePatch({ sourceHash, descriptor, definition });
   }));
   const laneIds = [0, 1], layout = validateSceneTerrainLayout({ schema: 'lemmings-scene-terrain/v1', id: 'terrain.bow-orchard', revision: 1, width: 1024, laneHeight: 96,
     lanes: laneIds.map(laneId => ({ laneId, regions: [{ kind: 'solid', x1: 0, x2: 1024, y1: 72, y2: 96, color: laneId ? 0xff8fbbbc : 0xffa4b18a }, { kind: 'steel', x1: 896, x2: 900, y1: 40, y2: 72, color: 0xffc2c9bf }] })) });
