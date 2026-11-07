@@ -1,3 +1,4 @@
+import { createRescueAirCrewScores } from './RescueAirCrewScore.js';
 import { createGlassOrbitCircularScores } from './GlassOrbitCircularScore.js';
 import { createGlassOrbitMetamorphicScores } from './GlassOrbitMetamorphicScore.js';
 import { createGlassOrbitTrellisScores } from './GlassOrbitTrellisScore.js';
@@ -187,7 +188,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   if (spectrum?.maximumVoices >= 8) await registerAuthoredScores(await createBentLadderScores({ sourceHash, descriptor: spectrum, signal }));
   if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
   for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) {
-    const scores = await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }); await registerAuthoredScores(scores); await registerAuthoredScores(await createRescueResonantScores({ sourceHash, scores, signal }));
+    const scores = await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }); await registerAuthoredScores(scores); await registerAuthoredScores(await createRescueResonantScores({ sourceHash, scores, signal })); if (crewDescriptor === choir && wind?.capabilities.sealedWindModel && wind.capabilities.pressureDrivenWind && wind.maximumVoices >= 2) await registerAuthoredScores(await createRescueAirCrewScores({ sourceHash, descriptor: wind, scores, signal }));
   }
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     getEmbeddedAsset(hash) { return embeddedAssets.get(hash) || null; },
