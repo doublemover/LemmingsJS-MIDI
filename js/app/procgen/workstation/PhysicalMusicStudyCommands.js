@@ -52,5 +52,5 @@ export async function buildPhysicalMusicStudyInputs(world, goal, candidate, { ba
     requestedAt, applyAtTick: baseTick + edit.value, target: { generation: world.generation, actorId: edit.actorId }, parameters: { workerKind: { builder: 'builders', basher: 'bashers', digger: 'diggers', miner: 'miners' }[edit.skillType] } } });
   // The atomic terrain edit precedes skills at the same boundary in every execution mode.
   inputs.sort((a, b) => a.tick - b.tick || (a.command.kind === 'physical-authoring' ? -1 : b.command.kind === 'physical-authoring' ? 1 : a.command.id < b.command.id ? -1 : a.command.id > b.command.id ? 1 : 0));
-  return { inputs, editCost, scope: 'explicit-rectangles-pickups-and-shared-worker-actions;other-source-state-preserved' };
+  return { inputs, editCost, patchHash: await hashDataText(canonicalDataText(inputs, { maxBytes: 2 * 1048576, maxNodes: 262144 }).text), scope: 'explicit-rectangles-pickups-and-shared-worker-actions;other-source-state-preserved' };
 }

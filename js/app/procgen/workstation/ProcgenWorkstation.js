@@ -2265,7 +2265,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     preparePhysicalMusicStarter: async () => {
       await openPerformanceScenes({ showBrowser: false }); const reference = sceneCatalog?.registry.findSupported({ id: 'physical-composition.two-walls' });
       if (!reference) throw new Error('The bound two-wall starter is unavailable in this build.');
-      sceneLoader.select(sceneCatalog.registry.resolve(reference)); const result = await sceneLoader.prepare(); sceneBrowser.open();
+      sceneBrowser.open({ sceneId: reference.id }); const result = await sceneLoader.prepare();
       status('Two-wall starter prepared for review. Apply it explicitly in Scenes, then Run until both ordinary entrants have landed, Pause and return to Compose.'); return result;
     },
     preparePhysicalMusicAudition: async () => { const id = physicalMusicStudyWorkbench?.state().selectedId, result = await startSimulationWorkbench({ ownedAudio: true, physicalMusicCandidate: true }); physicalMusicAuditionCandidateId = id; view?.renderInspector(); return result; },
@@ -2275,6 +2275,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     cancelPhysicalMusicStudy: () => physicalMusicStudyWorkbench?.cancel(),
     selectPhysicalMusicCandidate: id => getPhysicalMusicStudyWorkbench().select(id),
     applyPhysicalMusicCandidate: () => getPhysicalMusicStudyWorkbench().apply(),
+    exportPhysicalMusicStudyReport: async () => {
+      const owner = getPhysicalMusicStudyWorkbench(), source = owner.state(), report = owner.report(); let computed = null;
+      try { computed = await backgroundJobs.compute({ kind: 'encode-canonical-json', ownerId: 'physical-music-study-export', ownerEpoch: documentGeneration,
+        sourceRevision: report.sourceIdentity?.baseContinuationHash || report.partial?.baseContinuationHash || report.base.physicalHash, inputBytes: 0, estimatedPeakBytes: 64 * 1048576, maxBytes: 8 * 1048576, budgetAdapter: resourceBudget,
+        isCurrent: () => !disposed && owner.state().study === source.study && owner.state().partial === source.partial, prepareInput: () => report });
+      const artifact = prepareDownload({ bytes: new TextEncoder().encode(computed.value), filename: 'physical-music-study.json', type: 'application/json',
+        sourceRef: 'physical-study:' + (report.sourceIdentity?.baseContinuationHash || report.partial?.baseContinuationHash || report.base.physicalHash), formatVersion: 'lemmings-physical-music-study-report/v1' });
+      deliverPrepared(); return artifact.metadata();
+      } finally { computed?.release(); }
+    },
     openPhysicalScene() { physicalDomainEditor ||= createPhysicalDomainEditor({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, saveGraph: graph => dispatch({ type: 'procgen/physicalGraph', graph }), getInspection: () => ({ terrainRevision: runtime()?.world?.terrainRevision ?? null, preparedSurfaces: physicalPlayback?.engine.diagnostics().preparedSurfaces, bodyBindings: physicalPlayback?.preparedSurfaceBodies(), swarm: physicalPlayback?.engine.diagnostics().swarm, cargo: physicalPlayback?.engine.diagnostics().cargo, physical: physicalPlayback?.engine.physicalAnalysis() }), onStatus: status }); physicalDomainEditor.open(); },
     openPhysicalFeedback() { physicalFeedbackView ||= createPhysicalFeedbackView({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, getState: () => physicalFeedback?.diagnostics(), save: feedback => dispatch({ type: 'procgen/physicalGraph', graph: { ...project.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1, feedback } }), arm: () => handlers.armPhysicalFeedback(), disarm: () => physicalFeedback?.disarm(), mute: (id, muted) => physicalFeedback?.muteLayer(id, muted), capture: input => handlers.captureInterventionLayer(input), onStatus: status }); physicalFeedbackView.open(); },
     armPhysicalFeedback() { if (!physicalFeedback || worldBusy || pendingHistory || physicalAuthoringAbort) throw new Error('No writable live physical world.'); if (!Number.isSafeInteger(++feedbackEpoch)) throw new Error('Feedback epoch exhausted.'); return physicalFeedback.arm({ mode: 'live', epoch: `live:${documentGeneration}:${runtime().world.generation}:${runtime().world.tickIndex}:${feedbackEpoch}` }); },

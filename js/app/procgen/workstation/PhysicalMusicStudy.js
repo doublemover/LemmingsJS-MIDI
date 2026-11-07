@@ -55,19 +55,19 @@ function observeSafety(world, goal, trace, source, mode) {
 }
 export async function runPhysicalMusicStudy(input, { signal, current = () => true, estimatedPeakBytes = 384 * MiB, onProgress = () => {}, yieldControl = yieldBackgroundTask,
   createWorld = prepareProcgenInspectionWorld, executionIdentity = getActiveExecutionIdentity('browser-background-jobs'), now = () => globalThis.performance.now() } = {}) {
-  const goal = validatePhysicalMusicGoal(input?.goal), mode = input?.mode || 'search', source = input?.source;
-  if (!['search', 'sensitivity'].includes(mode) || estimatedPeakBytes < 256 * MiB || estimatedPeakBytes > 512 * MiB || !source?.world || !source.engine || !source.authoring || !source.performance || source.replay?.playing !== true || typeof input.rootPath !== 'string' ||
+  const goal = validatePhysicalMusicGoal(input?.goal), mode = input?.mode || 'search', source = input?.source, useCache = input?.cacheEnabled !== false;
+  if (input?.cacheEnabled != null && typeof input.cacheEnabled !== 'boolean' || !['search', 'sensitivity'].includes(mode) || estimatedPeakBytes < 256 * MiB || estimatedPeakBytes > 512 * MiB || !source?.world || !source.engine || !source.authoring || !source.performance || source.replay?.playing !== true || typeof input.rootPath !== 'string' ||
       input.applicationBuildId !== executionIdentity.buildId || executionIdentity.activeExecution !== 'bound') fail('physical-study-contract', 'An isolated study requires its bound executing build, complete physical/musical source and admitted world/cache workspace.');
   const sourceBytes = canonicalDataText(source, { maxBytes: 2 * MiB, maxNodes: 262144 }).bytes.length, start = boundaryOf(source), endTick = start.tickIndex + goal.horizon;
   if (!Number.isSafeInteger(endTick)) fail('physical-study-contract', 'The study horizon exceeds the exact physical tick range.');
   const budget = createResourceBudget({ limitBytes: estimatedPeakBytes }), storage = createOwnedResourceReservation({ budget, owner: 'physical-music-study', kind: 'bounded-source-trace-results-and-canonical-workspace', category: 'candidate', bytes: 80 * MiB }),
-    cache = createBranchPrefixCache({ resourceBudget: budget }), domain = enumeratePhysicalMusicCandidates(goal), rows = [], started = now(),
+    cache = useCache ? createBranchPrefixCache({ resourceBudget: budget }) : null, domain = enumeratePhysicalMusicCandidates(goal), candidateOrder = new Map(domain.candidates.map((candidate, index) => [candidate.id, index])), rows = [], started = now(),
     work = { logicalTicks: 0, computedTicks: 0, restoredTicks: 0, restoreMs: 0, verificationTicks: 0, verificationMs: 0, candidateCount: 0 };
-  let constraints = null, selected = null, timeout = false, logicalLimit = false, planningOwner = null, planningWorld = null;
+  let constraints = null, selected = null, timeout = false, logicalLimit = false, planningOwner = null, planningWorld = null, basePhysicalHash = null;
   const check = () => { signal?.throwIfAborted(); if (!current()) fail('physical-study-stale', 'The study source changed.'); };
-  let sourceIdentity;
+  let sourceIdentity = null;
   const run = async (candidate, { fresh = false, allUpfront = false } = {}) => {
-    let realm = null, world = null, reader = null, trace = emptyTrace(), consumed = 0, appliedInitial = null, auditionInitial = null, inputs = null, editCost = 0;
+    let realm = null, world = null, reader = null, trace = emptyTrace(), consumed = 0, appliedInitial = null, auditionInitial = null, inputs = null, editCost = 0, patchHash = null;
     const packet = async value => {
       const batch = value.batch; trace.factCount += batch.facts.length;
       if (trace.factCount > (goal.budgets.maximumFacts ?? 65536)) fail('physical-study-trace', 'The complete physical trace exceeds its admitted fact profile.');
@@ -100,8 +100,8 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
           ...continuation.replay }, createWorld: async options => { const owner = await createWorld(options); world = owner.world; return owner; } });
     };
     try {
-      ({ inputs, editCost } = await buildPhysicalMusicStudyInputs(planningWorld, goal, candidate, { baseTick: start.tickIndex, requestedAt: planningWorld.simulationTimeMs }));
-      if (!fresh) reader = await cache.borrow({ source: sourceIdentity, inputs, throughTick: endTick, signal });
+      ({ inputs, editCost, patchHash } = await buildPhysicalMusicStudyInputs(planningWorld, goal, candidate, { baseTick: start.tickIndex, requestedAt: planningWorld.simulationTimeMs }));
+      if (!fresh && cache) reader = await cache.borrow({ source: sourceIdentity, inputs, throughTick: endTick, signal });
       if (reader) {
         const restored = reader.read(), restoreStarted = now(); await prepare(restored);
         const actual = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB });
@@ -114,7 +114,8 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       if (allUpfront) { for (const item of inputs) admit(item); consumed = inputs.length; auditionInitial = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }); }
       while (world.tickIndex < endTick) {
         check();
-        if (!fresh && inputs[consumed]?.tick === world.tickIndex && world.tickIndex > start.tickIndex) {
+        if (!fresh && goal.budgets.wallTimeMs != null && now() - started >= goal.budgets.wallTimeMs) { timeout = true; break; }
+        if (!fresh && cache && inputs[consumed]?.tick === world.tickIndex && world.tickIndex > start.tickIndex) {
           const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB });
           await cache.remember({ source: sourceIdentity, inputs: inputs.slice(0, consumed), continuation: { ...continuation, study: trace }, signal });
         }
@@ -129,14 +130,16 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }), completed = world.tickIndex === endTick,
         metrics = evaluatePhysicalMusicGoal(goal, trace.onsets, { causeKinds: trace.causeKinds, editCost }), traceHash = await hashDataText(encoded(trace)),
         continuationHash = await hashDataText(encoded({ world: continuation.world, engine: continuation.engine, timeline: continuation.timeline, replay: continuation.replay }));
-      return { id: candidate.id, values: candidate.values, edits: candidate.edits, status: completed && !trace.safetyFailures.length && !trace.rejectedInputs.length ? 'sample-safe' : 'sample-failed', completed,
+      return { id: candidate.id, values: candidate.values, edits: candidate.edits, patchHash, baseContinuationHash: sourceIdentity.baseContinuationHash, mappingRevision: source.authoring.graph.revision, constraintRevision: goal.revision,
+        status: completed && !trace.safetyFailures.length && !trace.rejectedInputs.length ? 'sample-safe' : trace.safetyFailures.length || trace.rejectedInputs.length ? 'sample-failed' : 'unknown', completed,
         metrics, trace, traceHash, continuationHash, throughTick: world.tickIndex, appliedInitial, auditionInitial, inputs };
     } finally { reader?.release(); await retire(realm?.host); }
   };
   try {
     planningOwner = await createWorld({ checkpoint: source.world, rootPath: input.rootPath, resourceBudget: budget, signal }); planningWorld = planningOwner.world;
     restoreProcgenCheckpoint(planningWorld, source.world);
-    if (await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(planningWorld)) !== await hashProcgenContinuationCheckpoint(source.world)) fail('physical-study-source', 'The immutable planning world differs from the complete source.');
+    basePhysicalHash = await hashProcgenContinuationCheckpoint(source.world);
+    if (await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(planningWorld)) !== basePhysicalHash) fail('physical-study-source', 'The immutable planning world differs from the complete source.');
     constraints = admitSource(planningWorld, goal, mode);
     sourceIdentity = await createBranchPrefixSource({ continuation: source, graph: source.authoring.graph, performance: source.performance, sourceVersions: input.sourceVersions,
       executionIdentity, policy: { mode, goal, sourceDelivery: 'completed-tick-before-next-input', liveOutput: 'none' }, projectRevision: input.projectRevision, resourceBudget: budget });
@@ -149,11 +152,17 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         if (canonicalDataText([...rows, retained], { maxBytes: 4 * MiB, maxNodes: 262144 }).bytes.length > 4 * MiB) fail('physical-study-trace', 'Complete retained sample reports exceed the4MiB profile.');
         rows.push(retained); }
       catch (error) { check(); if (error.code === 'physical-study-retirement' || !constraints) throw error; rows.push({ id: candidate.id, values: candidate.values, edits: candidate.edits, status: 'unknown', reason: error.message }); }
-      onProgress({ phase: mode === 'search' ? 'searching-real-physical-candidates' : 'sampling-real-physical-sensitivity', completed: rows.length, total: domain.candidates.length, logicalTicks: work.logicalTicks, computedTicks: work.computedTicks });
+      onProgress({ phase: mode === 'search' ? 'searching-real-physical-candidates' : 'sampling-real-physical-sensitivity', completed: rows.length, total: domain.candidates.length, logicalTicks: work.logicalTicks, computedTicks: work.computedTicks,
+        partial: { status: 'completed-samples-only;no-fresh-qualification', goal, mode, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, physicalHash: basePhysicalHash, projectRevision: input.projectRevision }, completed: rows.length, totalCombinations: domain.totalCombinations, omittedEarlierSamples: Math.max(0, rows.length - 16),
+          baseContinuationHash: sourceIdentity.baseContinuationHash, mappingHash: sourceIdentity.mappingHash,
+          samples: rows.slice(-16).map(row => ({ id: row.id, values: row.values, status: row.status, reason: row.reason || null, patchHash: row.patchHash || null,
+            safetyFailures: row.trace?.safetyFailures || [], rejectedInputs: row.trace?.rejectedInputs || [],
+            metrics: row.metrics ? { score: row.metrics.score ?? null, requestedMetricsMet: row.metrics.requestedMetricsMet ?? false, missed: row.metrics.missedTargets?.length ?? null, extra: row.metrics.extraActualOnsets?.length ?? null,
+              periods: (row.metrics.periods || []).map(period => ({ selector: period.selector, observations: period.observations, meanTicks: period.meanTicks, minimumTicks: period.minimumTicks, maximumTicks: period.maximumTicks, satisfied: period.satisfied })) } : null })) } });
       await yieldControl();
     }
     if (mode === 'search') {
-      const finalists = rows.filter(row => row.status === 'sample-safe' && row.metrics?.status === 'evaluated').sort((a, b) => Number(b.metrics.requestedMetricsMet) - Number(a.metrics.requestedMetricsMet) || a.metrics.score - b.metrics.score || a.id.localeCompare(b.id)).slice(0, goal.budgets.finalists ?? 1);
+      const finalists = rows.filter(row => row.status === 'sample-safe' && row.metrics?.status === 'evaluated').sort((a, b) => Number(b.metrics.requestedMetricsMet) - Number(a.metrics.requestedMetricsMet) || a.metrics.score - b.metrics.score || candidateOrder.get(a.id) - candidateOrder.get(b.id)).slice(0, goal.budgets.finalists ?? 1);
       for (const finalist of finalists) {
         check(); const verifyStarted = now(), candidate = domain.candidates.find(candidate => candidate.id === finalist.id), verified = await run(candidate, { fresh: true, allUpfront: true });
         work.verificationMs += Math.max(0, now() - verifyStarted);
@@ -162,12 +171,19 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         if (matches) { selected = { candidateId: finalist.id, applyContinuation: verified.appliedInitial, auditionContinuation: verified.auditionInitial, verification: finalist.verification, requestedMetricsMet: verified.metrics.requestedMetricsMet }; break; }
       }
     }
-    const complete = rows.length === domain.totalCombinations, metricsMet = selected?.requestedMetricsMet === true;
-    return freezeData({ schema: 'lemmings-physical-music-study/v1', mode, goal, sourceIdentity, sourceBytes, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, projectRevision: input.projectRevision },
+    const complete = rows.length === domain.totalCombinations && rows.every(row => row.status === 'sample-failed' || row.status === 'sample-safe' && row.metrics?.status === 'evaluated'), metricsMet = selected?.requestedMetricsMet === true;
+    return freezeData({ schema: 'lemmings-physical-music-study/v1', mode, goal, sourceIdentity, sourceBytes, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, physicalHash: basePhysicalHash, projectRevision: input.projectRevision },
       status: mode === 'sensitivity' ? complete ? 'sampled' : timeout ? 'timeout' : 'partial' : metricsMet ? 'qualified' : timeout ? 'timeout' : selected ? complete ? 'no-match-in-finite-domain' : 'partial' : 'unknown',
       rows, selected, domain: { ...domain, candidates: domain.candidates.map(candidate => ({ id: candidate.id, values: candidate.values })) }, constraints,
-      work: { ...work, cache: cache.state(), peakAccountedBytes: budget.diagnostics().peakAccountedBytes, elapsedMs: Math.max(0, now() - started) },
-      coverage: { completeDomain: complete, logicalLimit, wallTimeBestEffort: goal.budgets.wallTimeMs != null, timeout, untestedCandidates: domain.totalCombinations - rows.length,
+      work: { ...work, cache: cache ? { ...cache.state(), enabled: true } : { enabled: false }, peakAccountedBytes: budget.diagnostics().peakAccountedBytes, elapsedMs: Math.max(0, now() - started) },
+      coverage: { completeDomain: complete, allCandidatesVisited: rows.length === domain.totalCombinations, unresolvedCandidates: rows.filter(row => row.status === 'unknown' || row.metrics?.status === 'unsupported').length, logicalLimit, wallTimeBestEffort: goal.budgets.wallTimeMs != null, timeout, untestedCandidates: domain.totalCombinations - rows.length,
         claim: 'only-the-declared-finite-grid;no-continuum-or-universal-satisfiability-claim', sourceUnchanged: true, outputs: 'none', validation: 'development-implementation;runtime-campaign-pending' } });
+  } catch (error) {
+    check(); if (error.code !== 'physical-study-domain') throw error;
+    return freezeData({ schema: 'lemmings-physical-music-study/v1', mode, status: 'unsupported', reason: error.message, goal, sourceIdentity, sourceBytes,
+      base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, physicalHash: basePhysicalHash, projectRevision: input.projectRevision }, rows, selected: null, constraints,
+      domain: { ...domain, candidates: domain.candidates.map(candidate => ({ id: candidate.id, values: candidate.values })) },
+      work: { ...work, cache: cache ? { ...cache.state(), enabled: true } : { enabled: false }, elapsedMs: Math.max(0, now() - started) },
+      coverage: { completeDomain: false, allCandidatesVisited: false, unresolvedCandidates: domain.totalCombinations, untestedCandidates: domain.totalCombinations - rows.length, sourceUnchanged: true, outputs: 'none', reason: error.message } });
   } finally { const settled = await Promise.allSettled([retire(cache), retire(planningOwner)]); if (settled.some(result => result.status === 'rejected')) throw new AggregateError(settled.filter(result => result.status === 'rejected').map(result => result.reason), 'Physical study retirement is unresolved.'); storage.release(); }
 }

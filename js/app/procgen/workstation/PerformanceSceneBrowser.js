@@ -94,6 +94,8 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
     if (proof?.missingOptional.length) status.textContent += ' Optional unavailable: ' + proof.missingOptional.map(entry => entry.dependency.description).join(', ');
   }
   dialog.append(title, live, qualification, filters, rows, paging, details, actions, status); (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
-  return Object.freeze({ open() { if (disposed) return; dialogOwner = {}; opener = document.activeElement; renderPage(); if (!dialog.open) dialog.showModal(); search.focus(); }, refresh, suspend: close,
-    dispose() { return retirement.retire([{ name: 'scene-browser', run: async () => { disposed = true; try { await loader.cancel(); } finally { for (const remove of [...rowListeners, ...listeners]) remove(); dialog.remove(); } } }]); } });
+  return Object.freeze({ open({ sceneId = null } = {}) { if (disposed) return;
+    if (sceneId != null) { const requested = registry.findSupported({ id: sceneId }); if (!requested) throw new Error('The requested installed scene is unavailable.'); search.value = requested.title; mechanism.value = density.value = lesson.value = ''; offset = 0; }
+    dialogOwner = {}; opener = document.activeElement; renderPage(); if (!dialog.open) dialog.showModal(); search.focus(); }, refresh, suspend: close,
+  dispose() { return retirement.retire([{ name: 'scene-browser', run: async () => { disposed = true; try { await loader.cancel(); } finally { for (const remove of [...rowListeners, ...listeners]) remove(); dialog.remove(); } } }]); } });
 }

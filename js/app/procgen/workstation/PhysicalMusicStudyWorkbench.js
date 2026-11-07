@@ -1,17 +1,19 @@
-import { canonicalDataText } from '../../../core/CanonicalData.js';
+import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
+import { canonicalDataText, freezeData } from '../../../core/CanonicalData.js';
 import { validatePhysicalMusicGoal } from './PhysicalMusicGoal.js';
 import { getActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captureSource, getSourceIdentity, applyContinuation, onChange = () => {} } = {}) {
   if (!jobs?.compute || typeof captureSource !== 'function' || typeof getSourceIdentity !== 'function' || typeof applyContinuation !== 'function') throw new TypeError('Composition requires the owned background service and reversible physical publication.');
-  const retirement = createProcgenRetirementScope(); let serial = 0, disposed = false, operation = null, retained = null, study = null, sensitivity = null, selectedId = null, progress = null, error = null, applied = false, sourceIdentity = null, applying = null;
+  const retirement = createProcgenRetirementScope(), partialStorage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'physical-music-study-progress', kind: 'bounded-completed-sample-receipts', category: 'candidate', bytes: 2 * 1048576 }); let partial = null;
+  let serial = 0, disposed = false, operation = null, retained = null, study = null, sensitivity = null, selectedId = null, progress = null, error = null, applied = false, sourceIdentity = null, applying = null;
   const stale = () => sourceIdentity != null && sourceIdentity !== getSourceIdentity();
   const state = () => Object.freeze({ phase: disposed ? 'closed' : operation ? 'working' : error ? 'failed' : study ? 'ready' : 'idle', busy: !!operation || !!applying, progress, error,
-    study, sensitivity, selectedId, selected: study?.rows.find(row => row.id === selectedId) || null, stale: stale(), applied,
+    study, sensitivity, partial, selectedId, selected: study?.rows.find(row => row.id === selectedId) || null, stale: stale(), applied,
     canApply: !disposed && !operation && !applying && !applied && !stale() && !!study?.selected && study.selected.candidateId === selectedId && study.selected.verification.matched });
   const publish = () => { try { onChange(state()); } catch {} };
-  const clearResult = () => { retained?.release(); retained = null; study = null; sensitivity = null; selectedId = null; applied = false; };
+  const clearResult = () => { retained?.release(); retained = null; study = null; sensitivity = null; partial = null; selectedId = null; applied = false; };
   const start = async ({ goal: raw, mode = 'search' } = {}) => {
     if (disposed || operation || applying) throw new Error('Finish or cancel the current composition operation first.');
     const goal = validatePhysicalMusicGoal(raw); clearResult(); error = null; progress = { phase: 'capturing-paused-source' }; sourceIdentity = getSourceIdentity();
@@ -24,7 +26,7 @@ export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captur
         const input = { ...capsule.input, mode, goal, applicationBuildId: getActiveExecutionIdentity('browser-background-jobs').buildId }, inputBytes = canonicalDataText(input, { maxBytes: 4 * 1048576, maxNodes: 300000 }).bytes.length;
         result = await jobs.compute({ kind: 'physical-music-study', ownerId: 'physical-music-compose', ownerEpoch, sourceRevision: sourceIdentity, inputBytes,
           estimatedPeakBytes: 384 * 1048576, maxBytes: 16 * 1048576, deadlineMs: 180000, signal: controller.signal, budgetAdapter: resourceBudget, isCurrent,
-          prepareInput: () => input, onProgress: value => { progress = value; publish(); } });
+          prepareInput: () => input, onProgress: value => { progress = value; if (value.partial) { canonicalDataText(value.partial, { maxBytes: 262144, maxNodes: 16384 }); partial = freezeData(value.partial); } publish(); } });
         controller.signal.throwIfAborted(); if (!isCurrent()) throw new Error('The completed study belongs to a stale source.');
         const value = result.value; retained = result; result = null; study = value.study; sensitivity = value.sensitivity;
         selectedId = study.selected?.candidateId || study.rows[0]?.id || null; progress = null; publish(); return study;
@@ -35,6 +37,14 @@ export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captur
   };
   return Object.freeze({ state, start,
     select(id) { if (!study?.rows.some(row => row.id === id)) throw new Error('Choose a retained candidate.'); selectedId = id; publish(); return state(); },
+    report() {
+      if (!study && !partial) throw new Error('Complete at least one physical sample before exporting a study report.');
+      return { schema: 'lemmings-physical-music-study-report/v1', staleAtExport: stale(), status: study?.status || 'partial', reason: study?.reason || error || null,
+        goal: study?.goal || partial?.goal || null, sourceIdentity: study?.sourceIdentity || null, base: study?.base || partial?.base || null, coverage: study?.coverage || null, work: study?.work || null, partial, sensitivity,
+        candidates: (study?.rows || []).map(row => ({ id: row.id, values: row.values, edits: row.edits, patchHash: row.patchHash || null, status: row.status, reason: row.reason || null, completed: row.completed ?? false,
+          metrics: row.metrics || null, traceHash: row.traceHash || null, continuationHash: row.continuationHash || null, verification: row.verification || null,
+          safetyFailures: row.trace?.safetyFailures || [], rejectedInputs: row.trace?.rejectedInputs || [], discontinuities: row.trace?.discontinuities || [], actualOnsetCount: row.trace?.onsets.length ?? null })) };
+    },
     auditionContinuation() {
       if (!state().canApply) throw new Error('Choose the independently verified candidate from the unchanged source before preparing its private audition.');
       return study.selected.auditionContinuation;
@@ -48,6 +58,6 @@ export function createPhysicalMusicStudyWorkbench({ jobs, resourceBudget, captur
       try { const published = await applying; if (published) applied = true; return published; } finally { applying = null; publish(); }
     },
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; operation?.controller.abort(new Error('Composition closed.')); publish();
-      return retirement.retire([{ name: 'composition-job-and-retained-report', run: async () => { await operation?.completion.catch(() => {}); await applying?.catch(() => {}); clearResult(); } }]); }
+      return retirement.retire([{ name: 'composition-job-and-retained-report', run: async () => { await operation?.completion.catch(() => {}); await applying?.catch(() => {}); clearResult(); partialStorage.release(); } }]); }
   });
 }

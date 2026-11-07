@@ -627,6 +627,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   function renderInspector() {
     if (disposed) return;
+    const composeFocus = state.tab === 'Compose' && composeView?.element.contains(document.activeElement) ? document.activeElement : null;
     const harmonyFocus = state.tab === 'Harmony' && harmonyView?.element.contains(document.activeElement) ? document.activeElement : null;
     if (state.tab !== 'Harmony' || !dock.visible()) handlers.closeHarmony?.();
     if (!dock.visible()) { viewRevision++; parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]); return; }
@@ -1028,7 +1029,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       composeView ||= createPhysicalMusicComposeView({ document, readSource: () => handlers.physicalMusicSource?.(), readState: () => handlers.physicalMusicStudyState?.(),
         start: input => handlers.startPhysicalMusicStudy?.(input), cancel: () => handlers.cancelPhysicalMusicStudy?.(), select: id => handlers.selectPhysicalMusicCandidate?.(id),
         apply: () => handlers.applyPhysicalMusicCandidate?.(), prepareStarter: () => handlers.preparePhysicalMusicStarter?.(), prepareAudition: () => handlers.preparePhysicalMusicAudition?.(),
-        readAudition: () => handlers.physicalMusicAuditionState?.(), runAudition: () => handlers.resumeSimulationWorkbench?.(), stopAudition: () => handlers.closeSimulationWorkbench?.(), onStatus: message => setStatus(message) });
+        readAudition: () => handlers.physicalMusicAuditionState?.(), runAudition: () => handlers.resumeSimulationWorkbench?.(), stopAudition: () => handlers.closeSimulationWorkbench?.(), exportReport: () => handlers.exportPhysicalMusicStudyReport?.(), onDraftChange: () => { draftRevision++; }, onStatus: message => setStatus(message) });
       nextFields.append(composeView.element); composeView.render();
     } else if (state.tab === 'Harmony') {
       if (harmonyFactory && !harmonyView && !harmonyError) {
@@ -1155,6 +1156,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     controlTree.reconcile(tabs, nextTabs, 'tabs:' + JSON.stringify([getDocumentIdentity(), !!pattern]));
     controlTree.reconcile(fields, nextFields, parameterScope);
+    if (composeFocus?.isConnected && state.tab === 'Compose' && document.activeElement !== composeFocus) /** @type {HTMLElement} */ (composeFocus).focus({ preventScroll: true });
     if (harmonyFocus?.isConnected && state.tab === 'Harmony' && document.activeElement !== harmonyFocus) /** @type {HTMLElement} */ (harmonyFocus).focus({ preventScroll: true });
     for (const entry of curveEditors.values()) if (entry.laneId === state.laneId) { const curve = lane.ccAutomation.find(curve => curve.id === entry.curveId); if (curve) entry.control.update(curve); }
     for (const [id, entry] of parameterCache) if (!parameterSeen.has(id)) {
