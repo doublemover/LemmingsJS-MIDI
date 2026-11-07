@@ -1,7 +1,7 @@
 import { createOriginalShapeBodySource } from '../../midi/content/OriginalShapeMeshes.js';
 import { canonicalDataText, hashData, freezeData } from '../../core/CanonicalData.js';
 import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
-import { createSoundContentReader } from './SoundContentReader.js';
+import { createSoundContentReader, borrowSoundContentStage } from './SoundContentReader.js';
 import { createSoundContentRegistry } from './SoundContentRegistry.js';
 import { createSoundContentInstallation } from './SoundContentInstallation.js';
 import { SOUND_ARCHIVE_FORMAT, SOUND_ARCHIVE_MAGIC } from './SoundContentArchive.js';
@@ -85,6 +85,15 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
     const receipt = await installation.audition(current.stage, current.identity, { signal: operation.controller.signal, sampleGesture: siteId, sampleHoldSeconds: Math.max(0.2, Math.min(8, current.config.seconds + 0.02)) }); check(); if (!isCurrent()) throw fail('The foundry target changed during audition.'); phase = 'site-audition-complete'; return receipt;
   });
   const install = () => run('saving-immutable-body', async (operation, check) => { if (!current) throw fail('Prepare and audition a body first.'); const receipt = await installation.install(current.stage, { signal: operation.controller.signal, isCurrent: () => !disposed && active === operation }); check(); current.installed = true; phase = 'durable-body'; return receipt; });
+  const saveSceneSource = ({ isCurrent = () => true } = {}) => run('saving-scene-source-reference', async (operation, check) => {
+    if (!current || !isCurrent()) throw fail('Prepare the current body before retaining its scene source.');
+    await installation.install(current.stage, { referenceOnly: true, signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent() }); check(); if (!isCurrent()) throw fail('The scene source target changed.');
+    const lease = borrowSoundContentStage(current.stage);
+    try { const patch = lease.prepared.patches.find(row => row.identity === current.identity); if (!patch) throw fail('The exact generated patch is unavailable.');
+      return freezeData({ reference: { schema: 'lemmings-sound-reference/v1', packHash: lease.prepared.contentHash, patchId: patch.definition.id, revision: patch.definition.revision, definitionHash: patch.definitionHash, definition: patch.archivedDefinition, engineRequirement: patch.engineRequirement, assetHashes: [...patch.dependencies].sort() },
+        overview: current.overview, contract: current.contract, storage: 'verified-durable-reference;no-audition-or-lane-application' });
+    } finally { lease.release(); }
+  });
   const apply = ({ isCurrent = () => true } = {}) => run('applying-body-to-selected-lane', async (operation, check) => { if (!current || !isCurrent()) throw fail('The prepared body or selected lane changed.'); const candidate = installation.applyCandidate(current.stage, current.identity); await onApply(candidate, { signal: operation.controller.signal }); check(); phase = 'applied'; return state(); });
   const stop = () => { active?.controller.abort(fail('Foundry operation canceled.')); installation.stop(); };
   return Object.freeze({ prepare, compareRefinement,
@@ -92,7 +101,7 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
       if (disposed || active || unknown.size || !current?.endpointFile || sourceLoans.size >= 2) throw fail('Prepare the exact foundry source and settle earlier source readers first.');
       const blob = current.endpointFile.blob, reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'shape-foundry-endpoint-reader', kind: 'independent-immutable-body-source-reader', category: 'candidate', bytes: blob.size + 8192 }); let released = false;
       const loan = Object.freeze({ assetHash: current.overview.assetHash, file: Object.freeze({ size: blob.size, text() { if (released) throw fail('This independent body source reader has retired.'); return blob.text(); } }), release() { if (released) return; try { reservation.release(); released = true; sourceLoans.delete(loan); } catch (caught) { unknown.add(loan); throw caught; } } }); sourceLoans.add(loan); return loan;
-    }, sharedMap: siteId => current?.sharedBody?.maps?.find(model => model.siteId === siteId) || null, audition, install, apply, stop, state,
+    }, sharedMap: siteId => current?.sharedBody?.maps?.find(model => model.siteId === siteId) || null, audition, install, saveSceneSource, apply, stop, state,
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); const pending = Promise.resolve(active?.promise).catch(() => {}), installationFinished = pending.then(async () => { const receipt = installation.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw fail('Foundry audition retirement is unresolved.'); });
       return retirement.retire([{ name: 'foundry-operation', run: () => pending }, { name: 'foundry-audition', run: () => installationFinished }, { name: 'foundry-material-stage', run: async () => { await installationFinished; if (unknown.size) throw fail('Generated foundry material retains unresolved ownership.'); discard(current); current = null; reader.dispose(); registry.close(); } }]); }
   });
