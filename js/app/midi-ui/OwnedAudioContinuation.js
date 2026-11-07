@@ -125,7 +125,7 @@ export async function restoreOwnedAudioContinuation({ continuation, context, sou
     if (armed.size === Math.max(1, entry.sources.length)) void (async () => {
       try {
         check(); const frontier = Object.freeze({ audioFrame, sourceAudioFrame: entry.metadata.audioFrame, sampleRate: context.sampleRate,
-          ownerRouteRevision: rack?.ownerRouteRevision ?? null, sourceOwnerRouteRevision: entry.rack?.state.sourceOwnerRouteRevision ?? null });
+          graphDefinitionHash: rack?.graphHash ?? null, ownerRouteRevision: rack?.ownerRouteRevision ?? null, sourceOwnerRouteRevision: entry.rack?.state.sourceOwnerRouteRevision ?? null });
         if (entry.metadata.bindings != null) await restoreBindings(entry.metadata.bindings, frontier);
         await beforeArm(frontier);
         check();

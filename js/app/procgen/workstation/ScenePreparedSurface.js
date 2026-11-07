@@ -3,6 +3,7 @@ import { prepareEffectGraphRevision } from '../../../midi/content/EffectGraphRev
 import { validatePreparedSurfaceDefinitions } from './physical/PreparedSurfaceMapping.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { captureSceneBodyContinuation, restoreSceneBodyContinuation } from './SceneBodyContinuation.js';
 
 export const SCENE_PREPARED_SURFACE_REQUIREMENT = 'owned-observed-prepared-surface';
 const fail = message => Object.assign(new Error(message), { code: 'scene-prepared-surface-unavailable' });
@@ -25,7 +26,7 @@ export function validateScenePreparedSurfaceMapping(raw, graph) {
 let ordinal = 0;
 export function createScenePreparedSurface({ mechanism: raw, getGraph, prepareGraph, bindSurface, getContext, getOwnerState, resourceBudget, onReceipt = () => {} } = {}) {
   const mechanism = validateScenePreparedSurface(raw), id = 'scene-surface-' + (++ordinal), scope = createProcgenRetirementScope(), metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-prepared-surface-map', category: 'audio', bytes: canonicalDataText(mechanism).bytes.length * 8 + 16384 });
-  let disposed = false, unknown = false, pending = null, source = null, version = 0, preparedVersion = -1, graphRevision = mechanism.graph.revision, expected = null, binding = null, context = null, error = null;
+  let restoredContext = null, disposed = false, unknown = false, pending = null, source = null, version = 0, preparedVersion = -1, graphRevision = mechanism.graph.revision, expected = null, binding = null, context = null, error = null;
   const active = () => { const state = getOwnerState(); return !!expected && state?.revision === expected.ownerRouteRevision && state.activeGraph?.hash === expected.graphDefinitionHash && ['active', 'mute'].includes(state.mode); };
   const state = () => Object.freeze({ prepared: !!binding && preparedVersion === version && context === getContext() && active(), preparing: !!pending, surfaceId: mechanism.surfaceId,
     bodyInstanceId: binding?.bodyInstanceId || null, mapId: binding?.surfaceMap.id || null, mapRevision: binding?.surfaceMap.revision ?? null, error, unknownRetirement: unknown,
@@ -34,7 +35,7 @@ export function createScenePreparedSurface({ mechanism: raw, getGraph, prepareGr
   const ensure = () => {
     if (disposed || unknown) return Promise.reject(fail('The shared surface owner has retired or retains unresolved storage.'));
     if (pending) return pending.promise;
-    if (!source || state().prepared) return Promise.resolve(state());
+    if (restoredContext === getContext() || !source || state().prepared) return Promise.resolve(state());
     const selected = getContext(); if (selected?.state !== 'running') return Promise.resolve(state());
     if (expected && preparedVersion === version && context === selected && !active()) { error = 'scene-body-route-replaced'; return Promise.resolve(state()); }
     if (getOwnerState()?.retiringGraphs) { error = 'waiting-for-previous-body-tail'; return Promise.resolve(state()); }
@@ -52,14 +53,28 @@ export function createScenePreparedSurface({ mechanism: raw, getGraph, prepareGr
       finally { try { workspace.release(); } catch (caught) { unknown = true; error = caught.message; throw caught; } finally { pending = null; if (!disposed && !unknown && source && version !== operation.version) ensure().catch(() => {}); } }
     })(); return operation.promise;
   };
-  const reset = () => { version++; pending?.controller.abort(fail('The shared surface execution stopped.')); source = expected = binding = context = null; preparedVersion = -1; error = null; };
+  const reset = () => { version++; pending?.controller.abort(fail('The shared surface execution stopped.')); source = expected = binding = context = restoredContext = null; preparedVersion = -1; error = null; };
   return Object.freeze({ state, ensure, reset,
+    snapshot() { return captureSceneBodyContinuation({ mechanism, expected, context, pending, active: active(), metadata: { source, version, preparedVersion, graphRevision, binding } }); },
+    restore(value, frontier) {
+      if (disposed || pending || expected || source || context) throw fail('Restore only a fresh scene surface owner.');
+      const selected = getContext(), restored = restoreSceneBodyContinuation(value, mechanism, selected, frontier), saved = restored.metadata;
+      if (!saved || !Number.isSafeInteger(saved.version) || !Number.isSafeInteger(saved.preparedVersion) || !Number.isSafeInteger(saved.graphRevision)) throw fail('The surface preparation frontier is missing.');
+      const surface = getGraph().preparedSurfaces?.find(row => row.id === mechanism.surfaceId);
+      if (saved.source && (!surface || saved.source.worldId !== frontier.worldId || saved.source.generation !== frontier.generation)) throw fail('The retained surface belongs to another physical execution.');
+      const identity = saved.binding && frontier.bodyInstances?.find(row => row.fromBodyInstanceId === saved.binding.bodyInstanceId);
+      if (saved.binding && !identity) throw fail('The retained surface has no matching restored body instance.');
+      source = saved.source ? { executionEpoch: frontier.executionEpoch, worldId: frontier.worldId, generation: frontier.generation,
+        key: canonicalDataText({ surface, executionEpoch: frontier.executionEpoch, worldId: frontier.worldId, generation: frontier.generation }).text } : null;
+      version = saved.version; preparedVersion = saved.preparedVersion; graphRevision = saved.graphRevision; binding = identity || null;
+      expected = restored.expected; context = selected; restoredContext = restored.retainedRoute ? selected : null; report('accepted'); return state();
+    },
     observe(batch, executionEpoch) {
       if (disposed || unknown) return;
       const surface = getGraph().preparedSurfaces?.find(row => row.id === mechanism.surfaceId), topology = batch.terrainRevisionAfter ?? batch.snapshot?.terrainRevision;
       const key = surface && surface.surfaceMap.boundTopologyRevision === topology ? canonicalDataText({ surface, executionEpoch, worldId: batch.worldId, generation: batch.generation }).text : null;
       if (key === source?.key || key === null && source === null) return;
-      version++; pending?.controller.abort(fail('A newer surface binding superseded preparation.')); source = key ? { key, executionEpoch, worldId: batch.worldId, generation: batch.generation } : null;
+      restoredContext = null; version++; pending?.controller.abort(fail('A newer surface binding superseded preparation.')); source = key ? { key, executionEpoch, worldId: batch.worldId, generation: batch.generation } : null;
       error = source ? null : 'surface-map-topology-unavailable';
     },
     dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; pending?.controller.abort(fail('The scene surface owner retired.')); const settled = pending?.promise;

@@ -185,16 +185,18 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     if (!surface || surface.surfaceMap.boundTopologyRevision !== previousTerrainRevision) throw new Error('The named surface map is missing or differs from the observed terrain revision.');
     return preparedBodies().bind({ ...options, preparationKinds: [...new Set(surface.preparations.map(preparation => preparation.kind))], lossMaskIds: surface.preparations.filter(preparation => preparation.kind === 'mode-loss').map(preparation => preparation.lossMaskId), surfaceRevision: surface.revision, surfaceMap: surface.surfaceMap, executionEpoch, worldId: previousWorldId, generation: previousGeneration });
   };
-  const capturePreparedBodyContinuation = ({ audioFrame, sampleRate, hostState = null, includeRouting = false }) => {
+  const capturePreparedBodyContinuation = ({ audioFrame, sampleRate, graphHash = null, sourceOwnerRouteRevision = null, hostState = null, includeRouting = false }) => {
     const timeTransform = dispatcher.captureTimeTransform(), preparedBodies = surfaceBodies?.snapshot({ audioFrame, sampleRate }) || null, finiteSources = bodyBackend?.snapshot({ audioFrame, sampleRate }) || null;
     if (finiteSources?.pending.length) {
       const actual = new Map((hostState?.bodies || []).map(row => [row.nodeId, new Set(row.state.pending.map(record => record.command.token))]));
       for (const record of finiteSources.pending) if (!actual.get(record.body.nodeId)?.delete(record.token)) throw new Error('The finite source has no matching exciter in the common body image.');
       if ([...actual.values()].some(tokens => tokens.size)) throw new Error('The body image contains finite exciters without captured semantic ownership.');
     }
+    const sceneOwners = { morph: sceneMorph?.snapshot() || null, network: sceneNetwork?.snapshot() || null, surface: sceneSurface?.snapshot() || null, cavity: cavityBody?.snapshot() || null };
+    const travel = travelEffects.snapshot({ audioFrame, sampleRate, graphDefinitionHash: graphHash, ownerRouteRevision: sourceOwnerRouteRevision });
     const routing = includeRouting ? routed?.captureContinuation({ audioFrame }) : null;
     if (includeRouting && !routing) throw new Error('A complete owned routed source inventory is unavailable.');
-    return routing || timeTransform || preparedBodies || finiteSources?.pending.length || finiteSources?.gates.length ? { schema: 'lemmings-physical-body-continuation/v1', preparedBodies, finiteSources, timeTransform, ...(routing ? { routing, sourceExecutionEpoch: executionEpoch } : {}) } : null;
+    return routing || timeTransform || preparedBodies || finiteSources?.pending.length || finiteSources?.gates.length || travel || Object.values(sceneOwners).some(Boolean) ? { schema: 'lemmings-physical-body-continuation/v1', preparedBodies, finiteSources, timeTransform, sceneOwners, travel, ...(routing ? { routing, sourceExecutionEpoch: executionEpoch } : {}) } : null;
   };
   const prepareRestorationExecution = ({ worldId = null, generation = null, fromExecutionEpoch = null } = {}) => {
     if (disposed || executionEpoch !== null || previousGeneration !== null || typeof worldId !== 'string' || !worldId || !Number.isSafeInteger(generation) || generation < 0 || !Number.isSafeInteger(executionSerial + 2)) throw new Error('Prepare a continuation execution only in a fresh physical playback owner.');
@@ -219,7 +221,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       return routed.stageContinuation({ state: state.routing, sources, bindings });
     } catch (error) { if (!error.retirement) error.retirement = createProcgenRetirementScope().retire(bindings.map((binding, index) => ({ name: 'fresh-routing-root-' + index, run: () => { const result = routed.backend.retireExecution(binding.execution); if (result.status !== 'accepted') throw new Error('Routing root retirement was not accepted.'); return result.retirement; } }))); throw error; }
   };
-  const restorePreparedBodyContinuation = async (state, { audioFrame = null, sampleRate = null, isCurrent = () => true, routingPlan = null } = {}) => {
+  const restorePreparedBodyContinuation = async (state, { audioFrame = null, sourceAudioFrame = null, sampleRate = null, graphDefinitionHash = null, ownerRouteRevision = null, sourceOwnerRouteRevision = null, isCurrent = () => true, routingPlan = null } = {}) => {
     if (state === null) return null;
     if (state?.schema !== 'lemmings-physical-body-continuation/v1' || !executionEpoch || state.preparedBodies &&
         (state.preparedBodies.worldId !== previousWorldId || state.preparedBodies.generation !== previousGeneration) || (state.finiteSources?.executions.length || 0) > 1) throw new Error('The body continuation requires its matching fresh physical execution.');
@@ -233,8 +235,17 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       executionBindings.push({ fromExecutionEpoch: source.executionEpoch, execution: binding.execution });
     }
     const finite = state.finiteSources ? bodyBackend.restore(state.finiteSources, { bodyInstances: restored.bodyInstances, executionBindings, audioFrame, sampleRate, isCurrent }) : null;
+    const frontier = { audioFrame, sourceAudioFrame, sampleRate, graphDefinitionHash, ownerRouteRevision, sourceOwnerRouteRevision, executionEpoch, worldId: previousWorldId, generation: previousGeneration, bodyInstances: restored.bodyInstances };
+    const scenes = {};
+    for (const [key, owner] of Object.entries({ morph: sceneMorph, network: sceneNetwork, surface: sceneSurface, cavity: cavityBody })) {
+      if (!!owner !== !!state.sceneOwners?.[key]) throw new Error('The audio image requires its complete matching scene body ownership inventory.');
+      if (owner) scenes[key] = owner.restore(state.sceneOwners[key], frontier);
+    }
+    const travel = travelEffects.restore(state.travel ?? null, { ...frontier, voices: travelEffectSources() });
+    if (!isCurrent()) throw new Error('Scene body restoration was superseded.');
+    previousTerrainRevision = state.preparedBodies?.bodies?.find(row => row.active)?.identity?.surfaceMap?.boundTopologyRevision ?? previousTerrainRevision;
     const timing = state.timeTransform ? dispatcher.restoreTimeTransform(state.timeTransform, { executionEpoch }) : null;
-    return Object.freeze({ preparedBodies: restored, finiteSources: finite, timeTransform: timing, routing, outputRequested: false });
+    return Object.freeze({ preparedBodies: restored, finiteSources: finite, timeTransform: timing, routing, sceneOwners: Object.freeze(scenes), travel, outputRequested: false });
   };
   const anchorAudioContinuation = ({ audioFrame = null, bpm = 120 } = {}) => {
     if (!executionEpoch || !world || typeof world !== 'object' || !('worldId' in world) || !('generation' in world) || !('tickIndex' in world) || typeof world.worldId !== 'string' || typeof world.generation !== 'number' || typeof world.tickIndex !== 'number' || !Number.isSafeInteger(world.tickIndex) || previousWorldId !== world.worldId || previousGeneration !== world.generation) throw new Error('Prepare the matching physical execution before anchoring its restored audio frame.');

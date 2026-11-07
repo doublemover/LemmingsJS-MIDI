@@ -11687,3 +11687,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Author grouped fixtures for camera-independent controls, fixed crossing attachment, normalized overlap, five-body scene dependency/materialization and canonical acoustic/focus commands. Compare acoustic/paired/Trellis variants against their exact original terrain, release, gates and junctions.
 - Add actual per-body DSP and shared-graph fixtures for source separation, sparse transfer, exact state continuation, Panic and aggregate input containment across44.1/48/96kHz. These fixtures are authored but unexecuted. Existing coverage inspection/execution remains part of the final consolidated campaign.
 - Preserve exact adopted body-control ratios in the Shared bodies panel instead of rounding a220/180 tuning to a one-percent slider step before explicit preparation. No functional, native/audio, browser, performance or listening campaign ran.
+
+### Continuation 627 — retain scene ownership across audio image restoration
+
+- Capture exact scene owner metadata at the common audio cut: sparse network routing, morph first-onset ownership, prepared surface identity/contact ancestry, qualified cavity topology and signed-distance control binding. Refuse an unsettled preparation rather than capturing an ambiguous owner.
+- Adopt the already restored graph lease in fresh owners without publishing a zero-state replacement or replaying held controls. Preserve an explicitly replaced route as inactive; rebind surface instances and execution identity, retain cavity geometry qualifications, and translate the last travel control frame to the new audio clock.
+- Add the staged graph hash and source route revision to restoration/capture frontiers so bindings cannot silently attach to a different rack. Functional/native/audio/browser/performance qualification remains deferred.

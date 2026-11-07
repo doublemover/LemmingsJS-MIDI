@@ -1,6 +1,7 @@
 import { canonicalDataText, freezeData } from '../../../core/CanonicalData.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { captureSceneBodyContinuation, restoreSceneBodyContinuation } from './SceneBodyContinuation.js';
 import { validateCavitySoundMap, validateCavitySoundRegion, compileCavitySoundMap } from './physical/CavitySoundMap.js';
 import { topologyResultMatchesRegion } from './physical/TopologyInstrumentRegion.js';
 
@@ -15,14 +16,14 @@ export function validateSceneCavityBody(raw) {
 let ordinal = 0;
 export function createSceneCavityBody({ mechanism: raw, getGraph, prepareGraph, getContext, getOwnerState, resourceBudget, onReceipt = () => {} } = {}) {
   const mechanism = validateSceneCavityBody(raw), map = mechanism.map, id = 'scene-cavity-' + (++ordinal), metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-cavity-map', category: 'audio', bytes: canonicalDataText(mechanism).bytes.length * 8 + 65536 }), scope = createProcgenRetirementScope(), qualifiedRevisions = new Set();
-  let disposed = false, unknown = false, pending = null, latest = null, selectedRegion = null, epoch = null, version = 0, preparedVersion = -1, expected = null, context = null, model = null, graphRevision = 0, error = null;
+  let restoredContext = null, disposed = false, unknown = false, pending = null, latest = null, selectedRegion = null, epoch = null, version = 0, preparedVersion = -1, expected = null, context = null, model = null, graphRevision = 0, error = null;
   const active = () => { try { const state = getOwnerState(); return !!expected && state?.revision === expected.ownerRouteRevision && state.activeGraph?.hash === expected.graphDefinitionHash && ['active', 'mute'].includes(state.mode); } catch { return false; } };
   const state = () => Object.freeze({ prepared: !!expected && preparedVersion === version && context === getContext() && active(), preparing: !!pending, active: active(), mapId: map.id, mapRevision: map.revision, boundTopologyRevision: latest?.sourceRevision ?? null, preparedTopologyRevision: model?.boundTopologyRevision ?? null, bodyIdentityHash: model?.bodyIdentityHash ?? null, bindings: model?.bindings || [], cost: model?.cost || null, maximumRetainedBodies: map.bodyRecipe === 'throat-duet' ? 4 : 2, error, unknownRetirement: unknown, latencyPolicy: 'original-frame-bounded-buffer;omit-unavailable-no-catch-up', semanticOnsetsAdded: 0 });
   const report = (status, reason = null) => { if (!disposed) try { onReceipt(Object.freeze({ status, stage: 'cavity-body-preparation', reason, ...state(), acousticReceipt: false })); } catch {} };
   const ensure = () => {
     if (disposed || unknown) return Promise.reject(fail('The cavity owner has retired or retains unresolved storage.'));
     if (pending) return pending.promise;
-    if (!latest || !selectedRegion) return Promise.resolve(state());
+    if (restoredContext === getContext() || !latest || !selectedRegion) return Promise.resolve(state());
     if (expected && preparedVersion === version && context === getContext()) return Promise.resolve(state());
     const selectedContext = getContext(); if (selectedContext?.state !== 'running') return Promise.resolve(state());
     if (getOwnerState()?.retiringGraphs >= 1) { error = 'waiting-for-previous-body-tail'; return Promise.resolve(state()); }
@@ -39,7 +40,7 @@ export function createSceneCavityBody({ mechanism: raw, getGraph, prepareGraph, 
       finally { try { workspace.release(); } catch (caught) { unknown = true; error = caught.message; throw caught; } finally { pending = null; if (!disposed && !unknown && latest && version !== operation.version && getContext()?.state === 'running') ensure().catch(() => {}); } }
     })(); return operation.promise;
   };
-  const reset = () => { pending?.controller.abort(fail('Cavity execution stopped.')); latest = selectedRegion = epoch = expected = model = context = null; preparedVersion = -1; version++; qualifiedRevisions.clear(); error = null; };
+  const reset = () => { pending?.controller.abort(fail('Cavity execution stopped.')); latest = selectedRegion = epoch = expected = model = context = restoredContext = null; preparedVersion = -1; version++; qualifiedRevisions.clear(); error = null; };
   const qualification = intent => {
     const binding = intent.topologyBinding, component = latest?.components.find(component => component.id === binding?.componentId), firstAnchor = map.componentSelector.anchorIds[0];
     if (!latest || intent.worldId !== latest.worldId || intent.generation !== latest.generation || binding?.regionId !== latest.regionId || !qualifiedRevisions.has(binding.boundTopologyRevision) || component?.enclosure !== 'closed' || component.musical.status !== 'complete' || (firstAnchor ? !component.anchors.includes(firstAnchor) : latest.components.length !== 1)) return null;
@@ -52,14 +53,27 @@ export function createSceneCavityBody({ mechanism: raw, getGraph, prepareGraph, 
   };
   const rememberRevision = revision => { qualifiedRevisions.add(revision); while (qualifiedRevisions.size > 4) qualifiedRevisions.delete(qualifiedRevisions.values().next().value); };
   return Object.freeze({ state, ensure,
+    snapshot() { return captureSceneBodyContinuation({ mechanism, expected, context, pending, active: active(), metadata: { latest, selectedRegion, model, version, preparedVersion, graphRevision, qualifiedRevisions: [...qualifiedRevisions] } }); },
+    restore(value, frontier) {
+      if (disposed || pending || expected || latest || context) throw fail('Restore only a fresh cavity owner.');
+      const selected = getContext(), restored = restoreSceneBodyContinuation(value, mechanism, selected, frontier), saved = restored.metadata;
+      if (!saved || !Number.isSafeInteger(saved.version) || !Number.isSafeInteger(saved.preparedVersion) || !Number.isSafeInteger(saved.graphRevision) || !Array.isArray(saved.qualifiedRevisions) || saved.qualifiedRevisions.length > 4 || saved.qualifiedRevisions.some(value => !Number.isSafeInteger(value) || value < 0)) throw fail('The cavity geometry frontier is missing.');
+      const region = getGraph().topologyRegions?.find(row => row.id === map.topologyRegionRef.id);
+      if (saved.latest && (!region || !topologyResultMatchesRegion(saved.latest, region) || saved.latest.worldId !== frontier.worldId || saved.latest.generation !== frontier.generation || canonicalDataText(region).text !== canonicalDataText(saved.selectedRegion).text)) throw fail('The retained cavity belongs to another topology or physical execution.');
+      if (restored.expected && !saved.model?.bodyIdentityHash) throw fail('The exact retained cavity realization is missing.');
+      latest = saved.latest; selectedRegion = latest ? region : null; model = saved.model; epoch = frontier.executionEpoch;
+      version = saved.version; preparedVersion = saved.preparedVersion; graphRevision = saved.graphRevision;
+      for (const revision of saved.qualifiedRevisions) qualifiedRevisions.add(revision);
+      expected = restored.expected; context = selected; restoredContext = restored.retainedRoute ? selected : null; report('accepted'); return state();
+    },
     observe(batch, executionEpoch) {
       if (disposed || unknown) return;
       const graph = getGraph(), region = graph.topologyRegions?.find(region => region.id === map.topologyRegionRef.id), result = batch.snapshot?.topology?.regions?.find(entry => entry.regionId === map.topologyRegionRef.id)?.current;
       let valid = false;
       try { if (region) { if (region !== selectedRegion) validateCavitySoundRegion(map, region); valid = topologyResultMatchesRegion(result, region) && result.coverage === 'complete' && result.worldId === batch.worldId && result.generation === batch.generation && result.sourceRevision === batch.snapshot.terrainRevision && result.tick <= batch.tick; } } catch {}
       if (!valid) { if (latest || epoch !== executionEpoch) { version++; pending?.controller.abort(fail('Qualified cavity geometry is unavailable.')); } latest = selectedRegion = null; qualifiedRevisions.clear(); epoch = executionEpoch; return; }
-      if (epoch === executionEpoch && (latest === result || latest && result.definitionSignature === latest.definitionSignature && result.work.reusedFromRevision === latest.sourceRevision)) { latest = result; rememberRevision(result.sourceRevision); return; }
-      epoch = executionEpoch; latest = result; selectedRegion = region; version++; qualifiedRevisions.clear(); rememberRevision(result.sourceRevision); pending?.controller.abort(fail('A newer cavity geometry superseded preparation.')); ensure().catch(() => {});
+      if (epoch === executionEpoch && (latest === result || latest && result.definitionSignature === latest.definitionSignature && (result.sourceRevision === latest.sourceRevision || result.work.reusedFromRevision === latest.sourceRevision))) { latest = result; rememberRevision(result.sourceRevision); return; }
+      restoredContext = null; epoch = executionEpoch; latest = result; selectedRegion = region; version++; qualifiedRevisions.clear(); rememberRevision(result.sourceRevision); pending?.controller.abort(fail('A newer cavity geometry superseded preparation.')); ensure().catch(() => {});
     },
     qualification, canEmit,
     resolveSharedTopologyBody(intent) { return canEmit(intent) ? Object.freeze({ bodyId: map.id, bodyRevision: map.revision, boundTopologyRevision: intent.topologyBinding.boundTopologyRevision, graphDefinitionHash: expected.graphDefinitionHash, ownerRouteRevision: expected.ownerRouteRevision, bodyIdentityHash: model.bodyIdentityHash }) : null; }, reset,

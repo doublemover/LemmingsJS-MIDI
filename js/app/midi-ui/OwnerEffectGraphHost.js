@@ -53,7 +53,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     let image = null, graphCut = null; continuationPhase = 'capturing'; report();
     try {
       const priorTarget = options.onTargetAudioFrame;
-      graphCut = await member.graph.detachState({ ...options, onTargetAudioFrame: audioFrame => {
+      graphCut = await member.graph.detachState({ ...options, beforeProducerRetire: frontier => options.beforeProducerRetire?.(Object.freeze({ ...frontier, sourceOwnerRouteRevision: member.routeRevision })), onTargetAudioFrame: audioFrame => {
         priorTarget?.(audioFrame);
         image = freezeData(cloneData({ schema: 'lemmings-owner-effect-cut/v1', graphHash: member.graph.hash, sampleRate: context.sampleRate, audioFrame,
           sourceOwnerRouteRevision: member.routeRevision, mode, dry: dryAutomation.snapshot(audioFrame / context.sampleRate), input: member.inAutomation.snapshot(audioFrame / context.sampleRate),

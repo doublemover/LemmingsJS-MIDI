@@ -3,6 +3,7 @@ import { createSympatheticMapRecipe, createBodyRoutedSympatheticMap } from '../.
 import { prepareEffectGraphRevision } from '../../../midi/content/EffectGraphRevision.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { captureSceneBodyContinuation, restoreSceneBodyContinuation } from './SceneBodyContinuation.js';
 
 export const SCENE_SYMPATHETIC_REQUIREMENT = 'owned-anchored-sympathetic-network';
 const fail = message => Object.assign(new Error(message), { code: 'scene-sympathetic-body-unavailable' });
@@ -36,7 +37,7 @@ export function validateSceneSympatheticMapping(raw, graph, laneIds = null) {
 let ordinal = 0;
 export function createSceneSympatheticBody({ mechanism: raw, prepareGraph, getContext, getOwnerState, resourceBudget, onReceipt = () => {} } = {}) {
   const mechanism = validateSceneSympatheticBody(raw), id = 'scene-network-' + (++ordinal), metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'anchored-sympathetic-map', category: 'audio', bytes: canonicalDataText(mechanism).bytes.length * 8 + 16384 }), scope = createProcgenRetirementScope();
-  let disposed = false, pending = null, expected = null, context = null, prepared = null, error = null, errorContext = null, unknown = false;
+  let restoredContext = null, disposed = false, pending = null, expected = null, context = null, prepared = null, error = null, errorContext = null, unknown = false;
   const active = () => { const state = getOwnerState(); return !!expected && state?.revision === expected.ownerRouteRevision && state.activeGraph?.hash === expected.graphDefinitionHash && ['active', 'mute'].includes(state.mode); };
   const isPrepared = () => !!expected && context === getContext();
   const state = () => Object.freeze({ prepared: isPrepared(), active: active(), preparing: !!pending, error, unknownRetirement: unknown, bodyCount: prepared?.bodyCount || 0, modeCount: prepared?.modeCount || 0, rootBody: mechanism.rootBody, anchors: mechanism.anchors, ...(mechanism.sourceInstrumentIds ? { sourceInstrumentIds: mechanism.sourceInstrumentIds, excitationPolicy: mechanism.bodySourceRoutes ? 'per-body-declared-lane-audio-inputs' : 'complete-declared-local-owner-mix-into-one-root', ...(mechanism.bodySourceRoutes ? { bodySourceRoutes: mechanism.bodySourceRoutes } : {}) } : {}), graphDefinitionHash: expected?.graphDefinitionHash || null, semanticOnsetsAdded: 0, physicalFeedback: false });
@@ -44,7 +45,7 @@ export function createSceneSympatheticBody({ mechanism: raw, prepareGraph, getCo
   return Object.freeze({ state, isPrepared,
     ensure() {
       if (disposed || unknown) return Promise.reject(fail('The scene body owner has retired or retains unknown storage.'));
-      if (pending) return pending.promise; if (isPrepared()) return Promise.resolve(state());
+      if (pending) return pending.promise; if (restoredContext === getContext() || isPrepared()) return Promise.resolve(state());
       const selected = getContext(); if (error && errorContext === selected) return Promise.resolve(state()); if (selected?.state !== 'running') return Promise.resolve(state());
       let workspace; try { workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-network-preparation', category: 'candidate', bytes: 2 * 1048576 }); } catch (caught) { error = caught.message; errorContext = selected; report('rejected'); return Promise.reject(caught); }
       const operation = { controller: new AbortController(), promise: null }; pending = operation; error = errorContext = null;
@@ -54,8 +55,15 @@ export function createSceneSympatheticBody({ mechanism: raw, prepareGraph, getCo
       } catch (caught) { if (!operation.controller.signal.aborted) { error = caught.message; errorContext = selected; report('rejected'); } throw caught; }
       finally { try { workspace.release(); } catch (caught) { unknown = true; error = caught.message; throw caught; } finally { pending = null; } } })(); return operation.promise;
     },
+    snapshot() { return captureSceneBodyContinuation({ mechanism, expected, context, pending, active: active(), metadata: prepared && { model: prepared.model, bodyCount: prepared.bodyCount, modeCount: prepared.modeCount } }); },
+    restore(value, frontier) {
+      if (disposed || pending || expected || context) throw fail('Restore only a fresh scene network owner.');
+      const selected = getContext(), restored = restoreSceneBodyContinuation(value, mechanism, selected, frontier);
+      if (restored.expected && (!restored.metadata?.model || !Number.isInteger(restored.metadata.bodyCount) || !Number.isInteger(restored.metadata.modeCount))) throw fail('The exact scene network model is missing.');
+      prepared = restored.metadata; expected = restored.expected; context = selected; restoredContext = restored.retainedRoute ? selected : null; report('accepted'); return state();
+    },
     source() { return !disposed && isPrepared() && active() ? Object.freeze({ model: prepared.model, expected, mechanism }) : null; },
-    reset() { pending?.controller.abort(fail('The scene network stopped.')); expected = context = prepared = null; error = errorContext = null; },
+    reset() { pending?.controller.abort(fail('The scene network stopped.')); expected = context = restoredContext = prepared = null; error = errorContext = null; },
     dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; pending?.controller.abort(fail('The scene network retired.')); const settled = pending?.promise;
       return scope.retire([{ name: 'scene-network-preparation', run: async () => { try { await settled; } catch {} if (unknown) throw fail('Network preparation storage remains unresolved.'); metadata.release(); prepared = expected = null; } }]); }
   });

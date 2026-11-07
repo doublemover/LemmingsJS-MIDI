@@ -1,4 +1,5 @@
 import { travelColorationValue } from '../../../midi/content/TravelColorationRecipes.js';
+import { cloneData, freezeData } from '../../../core/CanonicalData.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 
 let nextOwner = 0;
@@ -19,6 +20,26 @@ export function createTravelEffectMotion({ update, bypass, toFrame, onReceipt = 
       travelColorationValue(control, 0); clear('explicit-rebind', false);
       reservation = createOwnedResourceReservation({ budget: resourceBudget, owner, kind: 'travel-effect-control', category: 'audio', bytes: 8192 });
       current = { voiceId, generation, instrumentId, control: Object.freeze({ ...control }), expected: Object.freeze({ ...expected }), lastValue: null, lastFrame: -1 };
+    },
+    snapshot({ audioFrame, sampleRate, graphDefinitionHash = null, ownerRouteRevision = null }) {
+      if (disposed || blocked || !Number.isSafeInteger(audioFrame) || audioFrame < 0 || !Number.isFinite(sampleRate) || sampleRate <= 0) throw new Error('Capture travel controls only at a settled common audio frontier.');
+      if (!current || current.expected.graphDefinitionHash !== graphDefinitionHash || current.expected.ownerRouteRevision !== ownerRouteRevision) return null;
+      if (current.lastFrame > audioFrame) throw new Error('The common audio frontier precedes its last travel control.');
+      return freezeData(cloneData({ schema: 'lemmings-travel-effect-binding/v1', audioFrame, sampleRate, binding: current }, { maxBytes: 8192, maxNodes: 256 }));
+    },
+    restore(raw, { audioFrame, sourceAudioFrame, sampleRate, graphDefinitionHash, ownerRouteRevision, sourceOwnerRouteRevision, voices }) {
+      if (raw === null) return null;
+      const value = cloneData(raw, { maxBytes: 8192, maxNodes: 256 }), binding = value?.binding;
+      if (disposed || blocked || current || value?.schema !== 'lemmings-travel-effect-binding/v1' || value.audioFrame !== sourceAudioFrame || value.sampleRate !== sampleRate || !Number.isSafeInteger(audioFrame) || audioFrame < 0 ||
+          binding?.expected?.graphDefinitionHash !== graphDefinitionHash || binding.expected.ownerRouteRevision !== sourceOwnerRouteRevision || !Number.isSafeInteger(ownerRouteRevision) ||
+          !Number.isSafeInteger(binding.lastFrame) || binding.lastFrame < -1 || binding.lastFrame > sourceAudioFrame || binding.lastValue !== null && (!Number.isFinite(binding.lastValue) || binding.lastValue < binding.control?.minimum || binding.lastValue > binding.control?.maximum) ||
+          !voices?.some(voice => voice.voiceId === binding.voiceId && voice.generation === binding.generation && voice.instrumentId === binding.instrumentId)) throw new Error('The travel binding requires its exact restored graph, clock and active semantic voice.');
+      travelColorationValue(binding.control, 0);
+      if (typeof binding.control.nodeId !== 'string' || !binding.control.nodeId || typeof binding.control.parameter !== 'string' || !binding.control.parameter) throw new Error('The travel control destination is missing.');
+      reservation = createOwnedResourceReservation({ budget: resourceBudget, owner, kind: 'travel-effect-control', category: 'audio', bytes: 8192 });
+      current = { ...binding, control: freezeData(binding.control), expected: Object.freeze({ graphDefinitionHash, ownerRouteRevision }),
+        lastFrame: binding.lastFrame === -1 ? -1 : Math.max(0, audioFrame - (sourceAudioFrame - binding.lastFrame)) };
+      return Object.freeze({ restored: true, voiceId: current.voiceId, controlsRetransmitted: false });
     },
     consume(intents, executionEpoch) {
       if (!current || disposed) return;

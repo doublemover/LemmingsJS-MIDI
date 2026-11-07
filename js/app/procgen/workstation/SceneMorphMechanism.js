@@ -3,6 +3,7 @@ import { inspectResonatorMorphMap } from '../../../midi/content/ResonatorMorph.j
 import { createResonatorMorphGraph } from '../../../midi/content/ResonatorMorphGraph.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { captureSceneBodyContinuation, restoreSceneBodyContinuation } from './SceneBodyContinuation.js';
 
 const fail = message => Object.assign(new Error(message), { code: 'scene-morph-unavailable' });
 export function validateSceneMorphMechanism(raw) {
@@ -23,14 +24,14 @@ export async function verifySceneMorphMechanism(value, instruments) {
 let ordinal = 0;
 export function createSceneMorphMechanism({ mechanism: raw, prepareGraph, travelEffects, getContext, getOwnerState, resourceBudget, onState = () => {} } = {}) {
   const mechanism = validateSceneMorphMechanism(raw), cost = sceneMorphMechanismCost(mechanism), id = 'scene-morph-' + (++ordinal), metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-morph-source', category: 'audio', bytes: canonicalDataText(mechanism).bytes.length * 8 + 8192 }), scope = createProcgenRetirementScope();
-  let disposed = false, pending = null, expected = null, model = null, context = null, used = false, unknown = false, error = null;
+  let restoredContext = null, disposed = false, pending = null, expected = null, model = null, context = null, used = false, unknown = false, error = null;
   const active = () => { try { const state = getOwnerState(); return !!expected && state?.revision === expected.ownerRouteRevision && state.activeGraph?.hash === expected.graphDefinitionHash && ['active', 'mute'].includes(state.mode); } catch { return false; } };
   const state = () => Object.freeze({ prepared: !!expected && context === getContext(), preparing: !!pending, bound: used, active: active(), error, unknownRetirement: unknown, instrumentId: mechanism.instrumentId, mapHash: mechanism.map.hash, ...cost });
   const report = () => { if (!disposed) try { onState(state()); } catch {} };
   return Object.freeze({ state, isPrepared: () => !!expected && context === getContext(),
     async ensure() {
       if (disposed || unknown) return Promise.reject(fail('The score body owner has retired or retains unknown storage.'));
-      if (pending) return pending.promise; if (expected && context === getContext()) return Promise.resolve(state());
+      if (pending) return pending.promise; if (restoredContext === getContext() || expected && context === getContext()) return Promise.resolve(state());
       const selected = getContext(); if (selected?.state !== 'running') return Promise.reject(fail('Explicitly enable browser audio before preparing the score body.'));
       let workspace; try { workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-morph-preparation', category: 'candidate', bytes: 2 * 1048576 }); } catch (caught) { error = caught.message; report(); throw caught; }
       const operation = { controller: new AbortController(), workspace, promise: null }; pending = operation; error = null;
@@ -44,8 +45,15 @@ export function createSceneMorphMechanism({ mechanism: raw, prepareGraph, travel
       const intent = intents.find(value => value.kind === 'begin' && value.mappingId === mechanism.instrumentId && admissions.get(value.intentId) === 'accepted'); if (!intent) return;
       try { travelEffects.bind({ voiceId: intent.voiceId, generation: intent.generation, instrumentId: mechanism.instrumentId, control: model.control, expected }); used = true; report(); } catch (caught) { error = caught.message; report(); }
     },
+    snapshot() { return captureSceneBodyContinuation({ mechanism, expected, context, pending, active: active(), metadata: { model, used } }); },
+    restore(value, frontier) {
+      if (disposed || pending || expected || context) throw fail('Restore only a fresh scene morph owner.');
+      const selected = getContext(), restored = restoreSceneBodyContinuation(value, mechanism, selected, frontier);
+      if (typeof restored.metadata?.used !== 'boolean' || restored.expected && !restored.metadata.model?.control) throw fail('The morph model or first-onset ownership is missing.');
+      model = restored.metadata.model; used = restored.metadata.used; expected = restored.expected; context = selected; restoredContext = restored.retainedRoute ? selected : null; report(); return state();
+    },
     cancel() { pending?.controller.abort(fail('Score body preparation canceled.')); },
-    reset() { if (pending) { pending.reset = true; pending.controller.abort(fail('Score body preparation stopped.')); } expected = model = context = null; used = false; error = null; report(); },
+    reset() { if (pending) { pending.reset = true; pending.controller.abort(fail('Score body preparation stopped.')); } expected = model = context = restoredContext = null; used = false; error = null; report(); },
     dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; pending?.controller.abort(fail('Score body owner retired.')); const settled = pending?.promise; return scope.retire([{ name: 'scene-morph-preparation', run: async () => { try { await settled; } catch {} if (unknown) throw fail('Score preparation storage remains unresolved.'); metadata.release(); model = expected = null; } }]); }
   });
 }
