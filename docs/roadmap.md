@@ -11693,3 +11693,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Capture exact scene owner metadata at the common audio cut: sparse network routing, morph first-onset ownership, prepared surface identity/contact ancestry, qualified cavity topology and signed-distance control binding. Refuse an unsettled preparation rather than capturing an ambiguous owner.
 - Adopt the already restored graph lease in fresh owners without publishing a zero-state replacement or replaying held controls. Preserve an explicitly replaced route as inactive; rebind surface instances and execution identity, retain cavity geometry qualifications, and translate the last travel control frame to the new audio clock.
 - Add the staged graph hash and source route revision to restoration/capture frontiers so bindings cannot silently attach to a different rack. Functional/native/audio/browser/performance qualification remains deferred.
+
+### Continuation 628 — Glass Orbit correspondence and endpoint comparison
+
+- Add18 Metamorphic rail/blend variants on the exact nine original Glass Orbit world/tuning scores. One reviewed paired body or two independently prepared endpoint bodies receive the original gate audio. The strategy is explicit and dependency-pinned.
+- A v3 scene attachment binds the first actually admitted path-one/first-gate actor. Completed signed-X movement controls the shared body independently of the short gate source lifetime; real reversal reverses MORPH. This bounded audio-control owner adds no semantic onset. Missing coverage, termination and teleports freeze known control instead of inventing motion.
+- Share the observation owner with private rehearsal, bind its complete schedule into source/output hashes, capture actual effect commands, and retain actor ownership/control clock through exact audio-image restoration. Functional/native/audio/browser/performance qualification remains deferred.

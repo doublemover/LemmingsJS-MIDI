@@ -411,6 +411,7 @@
         "js/app/procgen/workstation/SceneCavityBody.js",
         "js/app/procgen/workstation/SceneCavityRehearsal.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
+        "js/app/procgen/workstation/SceneMorphActorMotion.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/ScenePreparedSurface.js",
@@ -746,8 +747,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 592,
-      "sha256": "c15b54b8c882d15708b5c8a93cfbed62d97da81ec32c4e98ae84a541ec976ff0",
+      "fileCount": 593,
+      "sha256": "1c854372cd73239236012bb05a4ccc839be6a7d2398c987544e352ff71244426",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1148,6 +1149,7 @@
         "js/app/procgen/workstation/SceneCavityBody.js",
         "js/app/procgen/workstation/SceneCavityRehearsal.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
+        "js/app/procgen/workstation/SceneMorphActorMotion.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/ScenePreparedSurface.js",
@@ -1516,8 +1518,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 625,
-      "sha256": "a8dbebb434b59864c21e3c2d53e66f62b7afac52ae61aa7db34d7ffa4ca0128d",
+      "fileCount": 626,
+      "sha256": "63cb3b52dc77e4699afb9e52da9078b35a7847aa6eaba0ff4a3094c20077b072",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1799,6 +1801,7 @@
         "js/app/procgen/workstation/SceneCavityBody.js",
         "js/app/procgen/workstation/SceneCavityRehearsal.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
+        "js/app/procgen/workstation/SceneMorphActorMotion.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/ScenePreparedSurface.js",
@@ -2137,8 +2140,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 604,
-      "sha256": "09cdd1a5e012f4c19838660a9ecd7a77d4db5a633de5ae69f6d98362c966e584",
+      "fileCount": 605,
+      "sha256": "f481a7ff620e173a0a5c451463ffc457d5809d6aa77f413f02c781221f87bd0e",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2567,6 +2570,7 @@
         "js/app/procgen/workstation/SceneCavityBody.js",
         "js/app/procgen/workstation/SceneCavityRehearsal.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
+        "js/app/procgen/workstation/SceneMorphActorMotion.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneNativeRackEncoding.js",
         "js/app/procgen/workstation/ScenePreparedSurface.js",
@@ -2918,8 +2922,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 678,
-      "sha256": "c8d9b8e01c809d6149fed716c410b1de8c3e19a2852963c85356c035a9a57f50",
+      "fileCount": 679,
+      "sha256": "635b1bb47310f29c595bac2c1f735f9094308b009f01928c390f0944ba334ba1",
       "inventoryScope": "first-party-artifact"
     }
   ]
