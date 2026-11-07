@@ -38,9 +38,9 @@ class ActionWalkSystem extends ActionBaseSystem {
           const contactId = `${level.worldId}:${level.generation}:${level.tickIndex}:${lem.id}:wall`;
           const position = { x: lem.x, y: lem.y };
           facts.emit({ kind: 'ContactResolved', contactId, actorId: lem.id, laneId: lem.laneIndex ?? null,
-            causeKind: 'wall', positionBefore: position, positionAfter: position, anchor,
+            causeKind: 'wall', positionBefore: position, positionAfter: position, anchor, observedTick: level.tickIndex,
             ...(Number.isSafeInteger(level.terrainRevision) ? { surfaceRevision: level.terrainRevision } : {}),
-            physicalPayload: { stepHeightPixels: upDelta } });
+            physicalPayload: { stepHeightPixels: upDelta, materialEvidence: 'resolved-obstacle-cell', surfaceCell: { ...anchor }, terrainProvenance: level.terrainContactProvenance?.(anchor.x, anchor.y) ?? { status: 'unknown' } } });
           facts.emit({ kind: 'DirectionChanged', contactId, actorId: lem.id, laneId: lem.laneIndex ?? null,
             directionBefore, directionAfter: lem.lookRight ? 'right' : 'left', causeKind: 'wall' });
           lem._physicalDirectionFactTick = level.tickIndex;

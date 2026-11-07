@@ -1,3 +1,4 @@
+import { validateObservedMaterialResponse } from '../../midi/content/MaterialResponseMap.js';
 import { createRoutedInstrumentContinuation } from './RoutedInstrumentContinuation.js';
 import { validateInstrumentSwitchPolicy, instrumentSwitchFidelity } from '../../midi/content/InstrumentSwitchPolicy.js';
 import { createInstrumentExecutionLifecycle } from './InstrumentExecutionLifecycle.js';
@@ -10,10 +11,10 @@ const validLane = lane => typeof lane === 'string' && lane.length > 0 && lane.le
 let nextRouter = 0;
 
 export function createRoutedInstrumentBackend({ defaultBackend, getContext, getGeneration, resolveLane = value => String(value), maxChildren = 17, maxVoices = 512,
-  defaultReleaseSeconds = null, defaultOneShotTailSeconds = null, maxLanes = 1024, resourceBudget = null, requiredInstrumentKey = () => null, getLaneMix = () => ({ gain: 1, pan: 0 }), getPerformanceControls = () => null, resolveSharedTopologyBody = null, onTopologyBody = null } = {}) {
+  defaultReleaseSeconds = null, defaultOneShotTailSeconds = null, maxLanes = 1024, resourceBudget = null, requiredInstrumentKey = () => null, getLaneMix = () => ({ gain: 1, pan: 0 }), getPerformanceControls = () => null, resolveSharedTopologyBody = null, resolveMaterialVariant = null, onTopologyBody = null } = {}) {
   if (!defaultBackend?.registerExecution || !defaultBackend?.inspectExecution || typeof getContext !== 'function' || typeof getGeneration !== 'function' || typeof resolveLane !== 'function' ||
       !Number.isInteger(maxChildren) || maxChildren < 2 || maxChildren > 65 || !Number.isInteger(maxVoices) || maxVoices < 1 || maxVoices > 2048 ||
-      !Number.isSafeInteger(maxLanes) || maxLanes < 1 || maxLanes > 1024 || typeof requiredInstrumentKey !== 'function' || [getPerformanceControls, resolveSharedTopologyBody, onTopologyBody].some(callback => callback != null && typeof callback !== 'function')) throw new TypeError('Invalid routed instrument owner.');
+      !Number.isSafeInteger(maxLanes) || maxLanes < 1 || maxLanes > 1024 || typeof requiredInstrumentKey !== 'function' || [getPerformanceControls, resolveSharedTopologyBody, resolveMaterialVariant, onTopologyBody].some(callback => callback != null && typeof callback !== 'function')) throw new TypeError('Invalid routed instrument owner.');
   if ([defaultReleaseSeconds, defaultOneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid default release policy.');
   const defaults = { key: 'default', backend: defaultBackend, retirement: null, assignedLanes: 0, releaseSeconds: defaultReleaseSeconds, oneShotTailSeconds: defaultOneShotTailSeconds },
     children = new Map([['default', defaults]]), assignments = new Map(), assignmentVersions = new Map(), executions = new Map(), voices = new Map(), switches = new Map();
@@ -112,9 +113,18 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (voices.size >= maxVoices || voices.has(keyFor(epoch, intent?.voiceId))) return reject('routed-voice-capacity-or-duplicate');
     let lane; try { lane = resolveLane(intent.laneId); } catch { return reject('lane-unavailable'); }
     const assigned = assignments.get(lane), plan = switches.get(lane), beforeBoundary = plan?.accepted && targetFrame < plan.frame;
-    const child = beforeBoundary ? plan.previous || defaults : assigned || defaults; if (child.blocked) return reject(child.reason);
-    let expected; try { expected = requiredInstrumentKey(lane, intent.laneId); } catch { return reject('lane-requirement-unavailable'); }
-    if (expected && (beforeBoundary ? assigned?.instrumentKey : child.instrumentKey || child.key) !== expected) return reject('pinned-instrument-not-prepared');
+    let child = beforeBoundary ? plan.previous || defaults : assigned || defaults;
+    let materialVariant = null;
+    if (intent.materialState) {
+      let material; try { material = validateObservedMaterialResponse(intent.materialState); } catch { return reject('invalid-observed-material'); }
+      if (material.worldId !== intent.worldId || material.generation !== intent.generation || material.actorId !== intent.actorId || !intent.sourceEventIds?.includes(material.sourceEventId) || switches.has(lane)) return reject('material-source-or-switch-unavailable');
+      try { materialVariant = resolveMaterialVariant?.(intent, lane) || null; } catch { return reject('material-palette-unavailable'); }
+      if (!materialVariant || materialVariant.patchId !== material.patchId || typeof materialVariant.key !== 'string' || typeof materialVariant.instrumentKey !== 'string') return reject('material-palette-not-prepared');
+      child = children.get(materialVariant.key); if (!child || child.retirementScope || child.instrumentKey !== materialVariant.instrumentKey || child.assignedLanes <= 0 && !child.pins) return reject('material-body-not-prepared');
+    }
+    if (child.blocked) return reject(child.reason);
+    let expected; try { expected = materialVariant?.instrumentKey || requiredInstrumentKey(lane, intent.laneId); } catch { return reject('lane-requirement-unavailable'); }
+    if (expected && (beforeBoundary && !materialVariant ? assigned?.instrumentKey : child.instrumentKey || child.key) !== expected) return reject('pinned-instrument-not-prepared');
     let sharedBody = null;
     if (intent.topologyBinding && (intent.topologyBinding.bodyId !== child.bodyId || intent.topologyBinding.dampingMacroId && !child.macroIds?.includes(intent.topologyBinding.dampingMacroId))) {
       try { sharedBody = resolveSharedTopologyBody?.(intent, targetFrame); } catch {}
@@ -178,7 +188,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (!Number.isSafeInteger(frame) || frame < 0 || disposed) return reject('performance-clock-unavailable');
     collectVoices(maxVoices); const outcomes = [];
     for (const voice of voices.values()) {
-      let input, expected; try { input = getPerformanceControls(voice.laneId, voice.sourceLaneId, voice.performanceIdentity); expected = requiredInstrumentKey(voice.laneId, voice.sourceLaneId); } catch { outcomes.push(Object.freeze({ laneId: voice.laneId, status: 'rejected', reason: 'performance-source-unavailable' })); continue; }
+      let input, expected; try { input = getPerformanceControls(voice.laneId, voice.sourceLaneId, voice.performanceIdentity); expected = voice.intent.materialState ? voice.child.instrumentKey : requiredInstrumentKey(voice.laneId, voice.sourceLaneId); } catch { outcomes.push(Object.freeze({ laneId: voice.laneId, status: 'rejected', reason: 'performance-source-unavailable' })); continue; }
       if (input == null || expected && expected !== (voice.child.instrumentKey || voice.child.key)) continue;
       const key = JSON.stringify(input.macros || {}); if (key === voice.performanceInput) continue;
       let result; try { result = voice.child.backend.updatePerformance?.(voice.voiceId, input, Math.max(frame, voice.startFrame), voice.execution); } catch { result = null; }
