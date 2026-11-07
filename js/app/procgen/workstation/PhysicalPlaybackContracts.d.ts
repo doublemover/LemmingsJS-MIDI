@@ -18,6 +18,7 @@ export interface PlaybackLaneSource {
 }
 export interface PlaybackGraphSource {
   readonly revision: number;
+  readonly acousticMap?: unknown;
   readonly instruments: readonly { readonly id: string; readonly articulation?: { readonly sustain?: boolean; readonly orientation?: string } }[];
   readonly preparedSurfaces?: readonly {
     readonly id: string;
@@ -27,6 +28,10 @@ export interface PlaybackGraphSource {
   }[];
 }
 export interface PlaybackDisplayPort {
+  presentation?: {
+    getSnapshot(): { readonly worldId: string; readonly generation: number; readonly originX: number; readonly viewWidth: number; readonly rows: readonly { readonly sourceY: number; readonly sourceHeight: number }[] } | null;
+    valid(snapshot: unknown): boolean;
+  };
   actorEffects?: { subscription?: (() => void) | null; retired?: boolean; visible?: boolean; inspectedActorId?: number; clear(options: { profiles: boolean }): void };
   effectTelemetryActors?: Iterable<number>;
 }

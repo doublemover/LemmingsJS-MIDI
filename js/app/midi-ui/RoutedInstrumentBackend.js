@@ -123,6 +123,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       if (!materialVariant || materialVariant.patchId !== material.patchId || typeof materialVariant.key !== 'string' || typeof materialVariant.instrumentKey !== 'string') return reject('material-palette-not-prepared');
       child = children.get(materialVariant.key); if (!child || child.retirementScope || child.instrumentKey !== materialVariant.instrumentKey || child.assignedLanes <= 0 && !child.pins) return reject('material-body-not-prepared');
     }
+    if (intent.spatialUnavailable) return reject(intent.spatialUnavailable);
     if (intent.spatialState && child.backend.capabilities?.worldSpatialControl !== true) return reject('world-spatial-renderer-unavailable');
     if (child.blocked) return reject(child.reason);
     let expected; try { expected = materialVariant?.instrumentKey || requiredInstrumentKey(lane, intent.laneId); } catch { return reject('lane-requirement-unavailable'); }
@@ -365,6 +366,16 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       reserveMetadata({ lanes: assignments.has(lane) ? 0 : 1 });
       const previous = assignments.get(lane); if (previous && !previous.blocked) previous.assignedLanes--;
       if (!assignments.get(lane)?.blocked || assignments.get(lane).reason !== reason) routeRevision++; assignments.set(lane, { blocked: true, reason }); assignmentVersions.set(lane, ++assignmentSerial); collect(); },
+    spatialSources() { collectVoices(maxVoices); return [...voices.values()].filter(voice => voice.intent.spatialState).map(voice => ({ voiceId: voice.voiceId, worldId: voice.intent.worldId, generation: voice.intent.generation, actorId: voice.intent.actorId, spatialState: voice.spatialState || voice.intent.spatialState })); },
+    updateSpatialStates(states, frame) {
+      if (!Array.isArray(states) || states.length > 128 || !Number.isSafeInteger(frame) || frame < 0) return [{ status: 'rejected', reason: 'spatial-source-capacity' }];
+      const byId = new Map(states.map(state => [JSON.stringify([state.worldId, state.generation, state.voiceId]), state])), outcomes = [];
+      for (const voice of voices.values()) {
+        const state = byId.get(JSON.stringify([voice.intent.worldId, voice.intent.generation, voice.voiceId])); if (!state || !voice.intent.spatialState) continue;
+        const delay = Number.isSafeInteger(voice.intent.spatialSourceFrame) ? Math.max(0, voice.startFrame - voice.intent.spatialSourceFrame) : 0, target = Math.max(voice.startFrame, frame + delay), outcome = voiceCall('updateSpatial', voice.voiceId, state, target, voice.epoch);
+        if (outcome.status === 'accepted') voice.spatialState = state; outcomes.push(Object.freeze({ ...outcome, voiceId: voice.voiceId, state, sourceOwnerDelayFrames: delay, timing: 'preserved-actual-owner-onset-delay', targetFrame: target }));
+      } return outcomes;
+    },
     synchronizeLaneMix, synchronizePerformance, routeRevision: () => routeRevision,
     collect, dispose: lifecycle.api.dispose
   });

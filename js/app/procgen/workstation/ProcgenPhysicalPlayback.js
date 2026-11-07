@@ -1,3 +1,5 @@
+import { createCausalSpatialPlayback } from './CausalSpatialPlayback.js';
+import { createSceneAcousticMap } from './SceneAcousticMap.js';
 import { createMaterialPalettePreparation } from '../../midi-ui/MaterialPalettePreparation.js';
 import { createSceneSympatheticBody } from './SceneSympatheticBody.js';
 import { createScenePreparedSurface } from './ScenePreparedSurface.js';
@@ -93,7 +95,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
   let commandCapture = false, disposed = false, prepared = false, armEnabled = true, enableLease = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
   let sourceTempoBpm = null, qualitySampledAt = null, qualityContextEpoch = null, qualitySeries = null;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, pendingAdmissions = 0, leaseFailures = 0;
-  let surfaceBodies = null, sceneMorph = null, sceneSurface = null, sceneNetwork = null;
+  let surfaceBodies = null, sceneMorph = null, sceneSurface = null, sceneNetwork = null, sceneAcoustics = null, spatialPlayback = null;
   const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectClockAnchor = null;
   const effectCapture = createEffectPerformanceCapture({ owner: documentEpoch + ':effect-capture', streamId: effectStreamId, resourceBudget, getContext: () => audio?.getAudioContext?.(), getExecutionEpoch: () => executionEpoch, getAnchor: () => effectClockAnchor, isEnabled: isEffectCaptureEnabled, onReceipt });
   let latestSinkOutcome = null, lastMixPublication = null, declaredSourceLanes = null;
@@ -109,7 +111,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     ]);
     if (receipt.outcome !== 'complete') { displayErrors++; displayBlocked = true; } return receipt;
   };
-  const prepareSceneBody = () => { if (continuationStaging) return; const lanes = getLanes(); if (lanes.some(lane => lane.materialPalette)) materialPalettes?.ensure(lanes, { isCurrent: () => !disposed && getLanes() === lanes }).catch(() => {}); if (sceneNetwork) sceneNetwork.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (sceneSurface) sceneSurface.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (sceneMorph && !sceneMorph.state().error && !sceneMorph.isPrepared()) sceneMorph.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (cavityBody) cavityBody.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); };
+  const prepareSceneBody = () => { if (continuationStaging) return; sceneAcoustics?.ensure().catch(() => {}); const lanes = getLanes(); if (lanes.some(lane => lane.materialPalette)) materialPalettes?.ensure(lanes, { isCurrent: () => !disposed && getLanes() === lanes }).catch(() => {}); if (sceneNetwork) sceneNetwork.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (sceneSurface) sceneSurface.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (sceneMorph && !sceneMorph.state().error && !sceneMorph.isPrepared()) sceneMorph.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); if (cavityBody) cavityBody.ensure().catch(error => { try { onInstrumentState({ laneId: 'score-body', state: 'unavailable', code: error.code || error.message }); } catch {} }); };
   const arm = () => {
     if (disposed || !armEnabled || !prepared || !session || !permitted() || !audio?.getState?.().enabled || enableLease) return;
     if (session.getState().enabled) { prepareSceneBody(); return; }
@@ -299,29 +301,38 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     if (external) for (const output of additionalOutputs) { try { if (output.enabled()) { const receipt = output.lastOutcome?.(); if (receipt) lastSinkOutcome = { status: receipt.status, stage: receipt.stage, reason: receipt.reason || null }; } } catch { /* One output observer cannot affect the physical score. */ } }
     return { status: external ? 'available' : !prepared || routingUnavailable || initialMorphMechanism && !sceneMorph?.isPrepared() || initialCavityBody && !cavityBody?.state().prepared || initialPreparedSurface && !sceneSurface?.state().prepared || initialSympatheticBody && !sceneNetwork?.isPrepared() ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome };
   };
-  try { unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, onIntentProvenance, getActivityOutputState: activityOutput,
-    getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
-    getPerformanceState: () => captureCausalPerformanceState(getLanes(), getActorTimbreLocks()),
-    getOnsetControls: (laneId, identity) => actorTimbreControls((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity),
-    getTimeTransformPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.timeTransform || null,
-    getScoreContextPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.scoreContext || null,
-    getPianoPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.piano || null,
-    getPianoControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.pianoControls || null,
-    getOrchestralPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.orchestral || null,
-    getPercussionPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.percussion || null,
-    getPhysicalControlKinds: laneId => causalLanePhysicalControlKinds(typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId)),
-    deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch); for (const output of additionalOutputs) output.flushSourceControls?.(batch); const admissions = new Map(), audioAdmissions = new Map();
-      for (const receipt of receipts) {
-        if (receipt.sinkId === 'physical-browser-audio') audioAdmissions.set(receipt.intentId, receipt.status);
-        if (!admissions.has(receipt.intentId) || ['accepted', 'degraded'].includes(receipt.status)) admissions.set(receipt.intentId, receipt.status);
-      }
-      if (harmony.enabled()) { try { harmony.observe(intents, receipts); } catch { try { harmony.selectLane(null); } catch {} } }
-      sceneMorph?.consume(intents, audioAdmissions); travelEffects.consume(intents, executionEpoch);
-      for (const command of bodyCommands) { if (surfaceBodies) surfaceBodies.consume(command, executionEpoch); else onReceipt({ status: 'rejected', stage: 'prepared-body-control', commandId: command.commandId, sourceEventIds: command.sourceEventIds, reason: 'prepared-surface-not-bound', acousticReceipt: false }); }
-      for (const intent of intents) if (intent.kind === 'begin') { const lane = typeof intent.laneId === 'number' ? getLanes()[intent.laneId] : getLanes().find(lane => lane.id === intent.laneId); if (lane) laneMix.record(lane.id, now(), admissions.get(intent.intentId) || 'unavailable'); } return receipts; } });
-  engine.prepareGraph(getGraph()).commit();
+  try {
+    if (session) sceneAcoustics = createSceneAcousticMap({ getGraph, getContext: () => audio?.getAudioContext?.(), session, onState: onInstrumentState });
+    spatialPlayback = createCausalSpatialPlayback({ getGraph, world, session, resourceBudget, onReceipt, getContext: () => audio?.getAudioContext?.(), getExecutionEpoch: () => executionEpoch, isCaptureEnabled: isEffectCaptureEnabled,
+      getSources: () => routed?.spatialSources() || [], updateSources: (states, frame) => routed?.updateSpatialStates(states, frame) || [],
+      toFrame: time => clock.toTargetFrame(time?.epoch ? time : scoreTimeline?.map(time), executionEpoch),
+      getCameraPosition: batch => { const snapshot = renderer?.presentation?.getSnapshot?.(); return snapshot && snapshot.worldId === batch.worldId && snapshot.generation === batch.generation && snapshot.rows.length && renderer?.presentation?.valid?.(snapshot) ? { x: snapshot.originX + snapshot.viewWidth / 2, y: (Math.min(...snapshot.rows.map(row => row.sourceY)) + Math.max(...snapshot.rows.map(row => row.sourceY + row.sourceHeight))) / 2 } : null; } });
+    unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, onIntentProvenance, getActivityOutputState: activityOutput,
+      getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
+      getPerformanceState: () => captureCausalPerformanceState(getLanes(), getActorTimbreLocks()),
+      getOnsetControls: (laneId, identity) => actorTimbreControls((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls, getActorTimbreLocks(), identity),
+      getTimeTransformPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.timeTransform || null,
+      getScoreContextPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.scoreContext || null,
+      getPianoPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.piano || null,
+      getPianoControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.pianoControls || null,
+      getOrchestralPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.orchestral || null,
+      getPercussionPolicy: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.percussion || null,
+      getPhysicalControlKinds: laneId => causalLanePhysicalControlKinds(typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId)),
+      deliver: (intents, batch, bodyCommands = []) => { let spatialIntents = intents, spatialObserved = false;
+        try { spatialIntents = spatialPlayback.before(intents, batch); spatialObserved = true; } catch { spatialIntents = intents.map(intent => intent.kind === 'begin' && getGraph().instruments.some(instrument => instrument.id === intent.mappingId && instrument.spatialAttachment) ? { ...intent, spatialUnavailable: 'spatial-observer-unavailable' } : intent); onReceipt({ status: 'rejected', stage: 'world-spatial-observation', reason: 'spatial-observer-unavailable', batchId: batch.batchId, acousticReceipt: false }); }
+        const receipts = dispatcher.dispatch(spatialIntents, batch); if (spatialObserved) try { spatialPlayback.after(); } catch { onReceipt({ status: 'rejected', stage: 'world-spatial-observation', reason: 'spatial-source-update-unavailable', batchId: batch.batchId, acousticReceipt: false }); } for (const output of additionalOutputs) output.flushSourceControls?.(batch); const admissions = new Map(), audioAdmissions = new Map();
+        for (const receipt of receipts) {
+          if (receipt.sinkId === 'physical-browser-audio') audioAdmissions.set(receipt.intentId, receipt.status);
+          if (!admissions.has(receipt.intentId) || ['accepted', 'degraded'].includes(receipt.status)) admissions.set(receipt.intentId, receipt.status);
+        }
+        if (harmony.enabled()) { try { harmony.observe(intents, receipts); } catch { try { harmony.selectLane(null); } catch {} } }
+        sceneMorph?.consume(intents, audioAdmissions); travelEffects.consume(intents, executionEpoch);
+        for (const command of bodyCommands) { if (surfaceBodies) surfaceBodies.consume(command, executionEpoch); else onReceipt({ status: 'rejected', stage: 'prepared-body-control', commandId: command.commandId, sourceEventIds: command.sourceEventIds, reason: 'prepared-surface-not-bound', acousticReceipt: false }); }
+        for (const intent of intents) if (intent.kind === 'begin') { const lane = typeof intent.laneId === 'number' ? getLanes()[intent.laneId] : getLanes().find(lane => lane.id === intent.laneId); if (lane) laneMix.record(lane.id, now(), admissions.get(intent.intentId) || 'unavailable'); } return receipts; } });
+    engine.prepareGraph(getGraph()).commit();
   } catch (error) { disposed = true; error.retirement = retirement.retire([
     ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() })),
+    { name: 'scene-acoustic-preparation', run: () => sceneAcoustics?.dispose() }, { name: 'world-spatial-controls', run: () => spatialPlayback?.dispose() },
     { name: 'scene-network-mechanism', run: () => sceneNetwork?.dispose() }, { name: 'scene-surface-mechanism', run: () => sceneSurface?.dispose() }, { name: 'scene-morph-mechanism', run: () => sceneMorph?.dispose() }, { name: 'scene-cavity-body', run: () => cavityBody?.dispose() }, { name: 'cavity-state-subscription', run: () => unsubscribeCavityState?.() }, { name: 'cavity-source-buffer', run: () => cavityBackend?.disposeCavityBuffer() }, { name: 'causal-observer-storage', run: () => engine?.dispose() }, { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
     { name: 'material-palette-owner', run: () => materialPalettes?.dispose() }, { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
   ]); throw error; }
@@ -419,6 +430,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     executionSerial++; previousGeneration = null; previousWorldId = null; previousTerrainRevision = null; executionEpoch = null;
     leaseUntil = null; leaseEpoch = null; leaseContext = null;
     return createProcgenRetirementScope().retire([
+      { name: 'scene-acoustic-stop', run: () => sceneAcoustics?.reset() }, { name: 'spatial-observation-stop', run: () => spatialPlayback?.reset() },
       { name: 'surface-contact-bindings', run: () => surfaceBodies?.clear('playback-stopped') },
       { name: 'scene-network-stop', run: () => sceneNetwork?.reset() }, { name: 'scene-surface-stop', run: () => sceneSurface?.reset() }, { name: 'scene-morph-stop', run: () => sceneMorph?.reset() }, { name: 'scene-cavity-stop', run: () => cavityBody?.reset() }, { name: 'travel-effect-control', run: () => travelEffects.clear('playback-stopped', true) },
       { name: 'display-observation', run: stopDisplay },
@@ -440,7 +452,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     disposed = true;
     return retirement.retire([
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
-      { name: 'playback-stop', run: stop }, { name: 'scene-network-owner', run: () => sceneNetwork?.dispose() }, { name: 'scene-surface-owner', run: () => sceneSurface?.dispose() }, { name: 'scene-morph-owner', run: () => sceneMorph?.dispose() }, { name: 'scene-cavity-owner', run: () => cavityBody?.dispose() }, { name: 'cavity-state-subscription', run: () => unsubscribeCavityState?.() }, { name: 'cavity-source-buffer', run: () => cavityBackend?.disposeCavityBuffer() }, { name: 'surface-body-binding-storage', run: () => surfaceBodies?.dispose() }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
+      { name: 'playback-stop', run: stop }, { name: 'scene-acoustic-source', run: () => sceneAcoustics?.dispose() }, { name: 'world-spatial-source', run: () => spatialPlayback?.dispose() }, { name: 'scene-network-owner', run: () => sceneNetwork?.dispose() }, { name: 'scene-surface-owner', run: () => sceneSurface?.dispose() }, { name: 'scene-morph-owner', run: () => sceneMorph?.dispose() }, { name: 'scene-cavity-owner', run: () => cavityBody?.dispose() }, { name: 'cavity-state-subscription', run: () => unsubscribeCavityState?.() }, { name: 'cavity-source-buffer', run: () => cavityBackend?.disposeCavityBuffer() }, { name: 'surface-body-binding-storage', run: () => surfaceBodies?.dispose() }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
       { name: 'causal-observer-storage', run: () => engine.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() },
       { name: 'harmony-observation', run: () => harmony.dispose() },
       { name: 'material-palette-preparation', run: () => materialPalettes?.dispose() }, { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
@@ -448,10 +460,10 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))
     ]);
   };
-  const api = { engine, processBatch, stop, dispose, capturePreparedBodyContinuation, prepareRestorationExecution, restorePreparedBodyContinuation, stageAudioRoutingContinuation, anchorAudioContinuation,
+  const api = { engine, processBatch, stop, dispose, spatialState: () => spatialPlayback?.diagnostics() || null, acousticMapState: () => sceneAcoustics?.state() || null, prepareAcousticMap: (map, options) => session?.prepareAcousticMap?.(map, options), retryAcousticMap: () => { sceneAcoustics?.retry(); return sceneAcoustics?.ensure(); }, capturePreparedBodyContinuation, prepareRestorationExecution, restorePreparedBodyContinuation, stageAudioRoutingContinuation, anchorAudioContinuation,
     audioContinuation: Object.freeze({ prepareSources: async options => { const { preparePhysicalContinuationSources } = await import('./PhysicalContinuationSources.js'); return preparePhysicalContinuationSources({ owner: api, lanes: getLanes(), ...options }); }, enable: () => session?.enable?.(), context: () => audio?.getAudioContext?.(), assignment: lane => routed?.assignmentBackend(lane) || null,
       provider: () => audio?.getSoundMaterialProvider?.(), createSource: options => session?.createWorkletInstrumentBackend?.(options),
-      capabilities: () => { const sources = session?.instrumentSources?.() || [], owned = sources.filter(row => typeof row.backend.detachSourceState === 'function'), uncovered = sources.some(row => !owned.includes(row) && row.backend.sourceCaptureStatus?.().quiescent !== true), ready = !!session?.getState().enabled && !!executionEpoch && !initialMorphMechanism && !initialCavityBody && !initialPreparedSurface && !initialSympatheticBody && !getLanes().some(lane => lane.materialPalette) && !externalEnabled() && owned.length > 0 && owned.length <= 16 && !uncovered && owned.every(row => row.backend.sourceContentReference?.() && row.backend.renderDiagnostics().readiness === 'ready');
+      capabilities: () => { const sources = session?.instrumentSources?.() || [], owned = sources.filter(row => typeof row.backend.detachSourceState === 'function'), uncovered = sources.some(row => !owned.includes(row) && row.backend.sourceCaptureStatus?.().quiescent !== true), ready = !!session?.getState().enabled && !!executionEpoch && !initialMorphMechanism && !initialCavityBody && !initialPreparedSurface && !initialSympatheticBody && !getGraph()?.acousticMap && !getLanes().some(lane => lane.materialPalette) && !externalEnabled() && owned.length > 0 && owned.length <= 16 && !uncovered && owned.every(row => row.backend.sourceContentReference?.() && row.backend.renderDiagnostics().readiness === 'ready');
         return Object.freeze({ ready, externalOutput: externalEnabled(), sceneBody: !!initialMorphMechanism || !!initialCavityBody || !!initialPreparedSurface || !!initialSympatheticBody, ownedSources: owned.length, uncoveredSources: uncovered, sourceEpoch: executionEpoch }); },
       setCommandCapture: value => { commandCapture = value === true; }, activate: () => { continuationStaging = false; return true; }, sources: () => session?.instrumentSources?.() || [], capture: captureAudioState, captureImage: captureAudioImage, encode: options => session?.encodeAudioImage?.(options), prepare: options => session?.prepareAudioCutContinuation?.(options), prepareImage: options => session?.prepareAudioImageContinuation?.(options), restore: options => session?.restoreAudioState?.({ ...options, route: 'owner-live' }) }),
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
