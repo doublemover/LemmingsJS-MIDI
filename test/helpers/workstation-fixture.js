@@ -6,7 +6,6 @@ import { createProcgenWorkstation } from '../../js/app/procgen/workstation/Procg
 import { createProcgenWorkstationProject } from '../../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { createMidiProject } from '../../js/midi/project/MidiProject.js';
 import { EventHandler } from '../../js/util/EventHandler.js';
-import { backgroundJobService } from '../../js/app/resources/BackgroundJobService.js';
 import { createTestBackgroundJobs } from './background-worker.js';
 
 export function target() {
@@ -26,9 +25,9 @@ export function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = '
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
   let throwCamera = false;
-  const makeRuntime = () => {
+  const makeRuntime = (settings = {}) => {
     const adapter = createMidiWorkstationAdapterOwner();
-    return { world: worldFactory ? worldFactory() : { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler(), onBatch: new EventHandler() } },
+    return { world: worldFactory ? worldFactory({ laneCount, seed: 7, ...settings }) : { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler(), onBatch: new EventHandler() } },
       lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { if (throwCamera) throw new Error('Camera unavailable'); this.restored = value; } } } },
       view: { midiPreviewRouter: { scheduler, resetClock() {}, bindWorkstationAdapter: adapter.bind, getAutomationSpanState(id, lane) { return adapter.automationProvider()?.(id, lane) || null; } },
         subscribeMidiPreviewRouter(listener) { return subscribeMidiPreviewRouter(this, listener); },
@@ -52,9 +51,9 @@ export function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = '
   const storage = storageOverride || { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
   let rejectRestart = false, returnFalseRestart = false, restartGate = null;
   const midiJobs = createTestBackgroundJobs();
-  const jobs = backgroundJobs || { compute: options => (options.kind === 'encode-recorded-midi' ? midiJobs : backgroundJobService).compute(options) };
+  const jobs = backgroundJobs || midiJobs;
   const studio = workstationFactory({ document, window, legacy, getRuntime: () => runtime,
-    restart: async request => { restarts.push(request); if (!request.session) studio.prepareSettings(); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
+    restart: async request => { restarts.push(request); if (!request.session) studio.prepareSettings(); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime({ laneCount: request.session?.world.laneCount || legacy.settings.laneCount, seed: request.session?.world.seed ?? legacy.settings.seed }); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
     captureCheckpoint: world => { captures.push(world); return world instanceof ProcgenLaneWorld ? captureProcgenCheckpoint(world) : { version: 2, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
     getInstrumentCatalog, resourceBudget, prepareInspectionWorld, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, backgroundJobs: jobs

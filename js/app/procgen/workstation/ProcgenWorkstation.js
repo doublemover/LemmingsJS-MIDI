@@ -553,7 +553,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile();
     if (!worldPreparation || restoringWorld) {
       physicalPlayback?.synchronizeLaneMix(); publishHeldMacros();
-      if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
+      if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(effectiveSoundLanes(project.procgen.lanes)).catch(error => status('Lane instrument requirements: ' + error.message));
     }
     if (!worldPreparation) editRevision++; storageStatus(); refreshSceneCue();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
@@ -2032,6 +2032,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'document-replacement' });
     signal?.throwIfAborted();
     if (disposed || admittedLease && !ownsOperation(admittedLease)) return false;
+    if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     const lease = admittedLease || beginOperation('load');
     lease.reportPhase('validating');
     let session, validatedProject;
@@ -2093,6 +2094,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'world-rebuild' });
     if (disposed || admittedLease && !ownsOperation(admittedLease)) return false;
+    if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
     const lease = admittedLease || beginOperation('rebuild');
     worldBusy = true;
     const previous = project, oldSettings = settingsFor(), previousTransport = transport.getState(), previousPatterns = engine.snapshot();

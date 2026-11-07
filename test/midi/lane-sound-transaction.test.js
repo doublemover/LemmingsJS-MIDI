@@ -51,7 +51,7 @@ describe('transactional incoming-event lane audition', () => {
   });
   it('rejects hidden physical/hardware edits and gives a named unsupported-crossfade fallback', async () => {
     const f = setup(); expect((await reject(f.owner.select(candidate, { laneId: 'lane', patch: { worldThemeId: 'fire' } }))).code).to.equal('invalid-sound-patch');
-    f.source.lane.soundChangePolicy = 'crossfade-held'; expect((await reject(f.owner.select(candidate, { laneId: 'lane' }))).message).to.include('new-notes-only'); expect(f.calls).to.have.length(0); await f.owner.dispose().completion;
+    f.source.lane.soundChangePolicy = 'crossfade-held'; expect((await reject(f.owner.select(candidate, { laneId: 'lane', hold: true }))).message).to.include('New notes only'); expect(f.calls).to.have.length(0); await f.owner.dispose().completion;
   });
   it('refuses an obsolete external recipe review before preparing or changing the previous sound', async () => {
     const f = setup();

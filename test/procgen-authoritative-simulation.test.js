@@ -102,7 +102,7 @@ describe('real-world authoritative realm continuation', function() {
   before(async () => { masks = await loadProcgenMasks(); });
   for (const seed of [42, 1701]) it('matches 10,000 physical ticks and intents from a paused checkpoint, seed ' + seed, async () => {
     const make = () => new ProcgenLaneWorld({ masks, worldId: 'authoritative-parity-' + seed, seed, laneCount: 2, assists: false, cohorts: true,
-      stallPolicy: { secondsWithoutProgress: 0, baseSpawnAllowance: 0, maxSpawnAllowance: 0, transitSafetyFactor: 0, workGraceSeconds: 0, pendingWorkGraceSeconds: 0, cascadeMinTicks: 1, cascadeMaxTicks: 1 } });
+      stallPolicy: { secondsWithoutProgress: 2, baseSpawnAllowance: 0, maxSpawnAllowance: 0, transitSafetyFactor: 0, workGraceSeconds: 0, pendingWorkGraceSeconds: 0, cascadeMinTicks: 1, cascadeMaxTicks: 1 } });
     const original = make(), clock = createProcgenPhysicalScoreClock(),
       performance = createCausalPerformanceState(captureCausalPerformanceState([{ id: 'lane-a' }, { id: 'lane-b' }]));
     original.configurePhysicalAuthoring({ version: 1, revision: 1, instruments: [

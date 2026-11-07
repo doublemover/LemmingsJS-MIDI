@@ -5,7 +5,7 @@ import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInst
 import { createInstrumentExecutionLifecycle } from '../../js/app/midi-ui/InstrumentExecutionLifecycle.js';
 import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetirement.js';
 export async function nativeSoundCandidates() {
-  const descriptors = await describeNativeInstrumentEngines(['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) })));
+  const descriptors = await describeNativeInstrumentEngines(['native-oscillator', 'native-fm', 'native-modal', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-friction', 'worklet-texture', 'worklet-wind', 'worklet-warp', 'worklet-seed-layers', 'worklet-sample'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) })));
   const candidates = [];
   for (const collection of NATIVE_SOUND_COLLECTIONS) {
     const source = JSON.parse(await readFile(collection.source, 'utf8')), result = await compileSoundContent(source, { targets: descriptors.map(descriptor => ({ descriptor })) }), patch = result.prepared.patches.find(entry => entry.definition.id === collection.patchIds[0]);

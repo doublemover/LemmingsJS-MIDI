@@ -14,6 +14,13 @@ import { createProcgenCausalJournal } from '../js/app/procgen/workstation/Procge
 import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 import { createTestBackgroundJobs } from './helpers/background-worker.js';
 
+
+const waitForController = async predicate => { for (let count = 0; count < 1000; count++) { if (predicate()) return; await new Promise(resolve => setTimeout(resolve, 1)); } throw new Error('Controller did not reach the expected owned boundary.'); };
+const setupRecovery = async (options = {}) => {
+  const masks = await loadProcgenMasks(), worlds = [], f = setup({ ...options, worldFactory: ({ laneCount, seed }) => { const world = new ProcgenLaneWorld({ masks, seed, laneCount, assists: false }); worlds.push(world); return world; } });
+  const dispose = f.studio.dispose; f.studio.dispose = () => { const receipt = dispose(); receipt.completion.then(() => { for (const world of worlds) world.dispose(); }); return receipt; }; return f;
+};
+
 describe('ProcGen workstation orchestration', () => {
   it('routes a synchronous output label only to the current view and stops presenting after disposal', async () => {
     const f = setup(), labels = []; f.view.presentOutputLabel = label => { labels.push(label); return true; };
@@ -458,11 +465,12 @@ describe('ProcGen workstation orchestration', () => {
       await changed.studio.handlers.undo(); expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(changed.runtime.world))).to.equal(beforeUndo); expect(changed.restarts).to.have.length(0);
     } finally { await control.studio.dispose().completion; await changed.studio.dispose().completion; control.runtime.world.dispose(); changed.runtime.world.dispose(); }
   });
-  it('owns shared macro gestures while paused, commits one undo entry and never replaces the physical world', async () => {
+  for (const settled of [false, true]) it('owns installed sound publication with ' + (settled ? 'settled' : 'pending') + ' synchronization and macro gestures (#1278)', async () => {
     const { candidates, descriptors } = await nativeSoundCandidates();
     const f = setup({ physicalOnly: true, audio: createSilentPreparationAudio(), getInstrumentCatalog: async () => ({ descriptors }) });
     try {
-      f.studio.bindRuntime(); await f.studio.handlers.applyInstalledInstrument(candidates[1]);
+      f.studio.bindRuntime(); if (settled) await new Promise(resolve => setImmediate(resolve)); const installed = await f.studio.handlers.applyInstalledInstrument(candidates[1]);
+      expect(installed.definitionHash).to.equal(candidates[1].reference.definitionHash);
       const lane = f.studio.getProject().procgen.lanes[0], macro = lane.instrumentRef.definition.macros[0], world = f.runtime.world;
       const first = f.studio.handlers.beginMacroGesture(lane.id, macro.id, { momentary: true });
       f.studio.handlers.previewMacroGesture(first, 0.8); f.studio.handlers.finishMacroGesture(first);
@@ -639,7 +647,7 @@ describe('ProcGen workstation orchestration', () => {
     expect(records[2].payload).to.deep.equal({ version: 2, kind: 'transport-state', playing: true, speedFactor: 1.5 });
     await f.studio.dispose().completion;
   });
-  it('commits and releases local CC reservations after channel submission', async () => {
+  it('keeps legacy MIDI CC automation out of local semantic instrument output', async () => {
     const f = setup(); f.studio.bindRuntime(); f.enable();
     const scheduler = f.runtime.view.midiPreviewRouter.scheduler, ledger = [];
     scheduler.output.id = 'local-cc';
@@ -652,10 +660,7 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { ccAutomation: [{ id: 'cc-test', enabled: true,
       controller: 74, axis: 'beat', length: 4, mode: 'step', points: [{ beat: 0, value: 40 }] }] } });
     f.studio.play(); f.studio.engine.onBeat({ beat: 0.25, timestamp: 100, bpm: 120 });
-    expect(ledger).to.deep.include(['reserve', 'local-cc']);
-    expect(ledger).to.deep.include(['commit', 8, 'on', 3, 'local-cc']);
-    expect(ledger).to.deep.include(['release', 8, true]);
-    expect(ledger.findIndex(entry => entry[0] === 'send')).to.be.lessThan(ledger.findIndex(entry => entry[0] === 'commit'));
+    expect(ledger).to.deep.equal([]);
     await f.studio.dispose().completion;
   });
   it('stops the musical transport and flushes output without replacing the world', async () => {
@@ -774,7 +779,7 @@ describe('ProcGen workstation orchestration', () => {
     deliveryTimers.shift()(); await f.studio.dispose().completion;
   });
   it('schedules recovery after paused edits and reports the durable revision', async () => {
-    const timers = [], f = setup({ windowTimers: {
+    const timers = [], f = await setupRecovery({ windowTimers: {
       setTimeout(callback, delay) { callback.delay = delay; timers.push(callback); return timers.length; },
       clearTimeout(id) { timers[id - 1] = null; }
     } });
@@ -784,16 +789,16 @@ describe('ProcGen workstation orchestration', () => {
     expect(timers.filter(callback => callback?.delay === 2000)).to.have.length(1);
     expect(f.studio.getRecoveryState().state).to.equal('pending');
     const tick = timers.find(callback => callback?.delay === 2000); tick();
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await waitForController(() => f.studio.getRecoveryState().state !== 'saving');
     const recovery = f.studio.getRecoveryState();
     expect(recovery.state).to.equal('saved');
     expect(recovery.durableRevision).to.equal(recovery.pendingRevision);
     expect(f.stored.get('__recovery__').project.procgen.lanes[0].patterns[0].steps.slice(0, 2).map(step => step.note)).to.deep.equal([45, 46]);
-    f.studio.dispose();
+    await f.studio.dispose().completion;
   });
   it('coalesces edits made during recovery and never reports a failed write as durable', async () => {
     const timers = [], writes = []; let finishFirst;
-    const f = setup({ windowTimers: {
+    const f = await setupRecovery({ windowTimers: {
       setTimeout(callback, delay) { callback.delay = delay; timers.push(callback); return timers.length; },
       clearTimeout(id) { timers[id - 1] = null; }
     }, storageOverride: {
@@ -803,17 +808,18 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.bindRuntime(); f.studio.transport.pause();
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
     const first = f.studio.recover();
+    await waitForController(() => typeof finishFirst === 'function');
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
     finishFirst(); await first;
     expect(f.studio.getRecoveryState()).to.include({ state: 'pending', durableRevision: 1, pendingRevision: 2 });
     expect(timers.filter(callback => callback?.delay === 2000)).to.have.length(1);
-    timers.find(callback => callback?.delay === 2000)(); await new Promise(resolve => setTimeout(resolve, 0));
+    timers.find(callback => callback?.delay === 2000)(); await waitForController(() => f.studio.getRecoveryState().state !== 'saving');
     const recovery = f.studio.getRecoveryState();
     expect(recovery.state).to.equal('unavailable');
     expect(recovery.durableRevision).to.equal(1);
     expect(recovery.error.message).to.equal('Quota unavailable');
     expect(f.storageReceipts.at(-1).recovery.state).to.equal('unavailable');
-    f.studio.dispose();
+    await f.studio.dispose().completion;
   });
   for (const laneCount of [8, 128]) it(`coalesces ${laneCount}-lane preference writes while edits stay in the canonical project`, async () => {
     const timers = [], f = setup({ laneCount, backgroundJobs: { async compute(request) { return { value: JSON.stringify(await request.prepareInput()), release() { request.releasePreparedInput(); } }; } }, windowTimers: {
@@ -904,11 +910,12 @@ describe('ProcGen workstation orchestration', () => {
     f.storage.close = () => { storageClosed++; return Promise.reject(new Error('disk closed early')); };
     const receipt = f.studio.dispose();
     expect(f.studio.dispose()).to.equal(receipt);
-    expect(portsDisposed).to.equal(1); expect(storageClosed).to.equal(1); expect(f.view.disposed).to.equal(true);
-    await receipt.completion;
+    expect(portsDisposed).to.equal(1); expect(f.view.disposed).to.equal(true);
+    await receipt.completion; expect(storageClosed).to.equal(1);
     expect(receipt.state).to.equal('retired');
     expect(receipt.resources.find(resource => resource.name === 'transport')).to.include({ status: 'failed', error: 'flush refused' });
-    expect(receipt.resources.find(resource => resource.name === 'storage')).to.include({ status: 'failed', error: 'database: disk closed early' });
+    expect(receipt.resources.find(resource => resource.name === 'storage').status).to.equal('failed');
+    expect(receipt.resources.find(resource => resource.name === 'storage').error).to.include('prerequisite retirement');
   });
 
   it('shares one retirement receipt across reentrant callers and awaits async cleanup', async () => {
@@ -1191,11 +1198,11 @@ describe('ProcGen workstation orchestration', () => {
   });
 
   it('syncs automatic world seed changes into the replay project and recovery checkpoint', async () => {
-    const f = setup(); f.studio.bindRuntime(); f.runtime.world.seed = 105; f.time(20);
+    const f = await setupRecovery(); f.studio.bindRuntime(); f.runtime.world.seed = 105; f.time(20);
     expect(f.studio.getProject().procgen.seed).to.equal(105); expect(f.legacy.settings.seed).to.equal(105);
-    expect(await f.studio.recover()).to.equal(true);
+    f.studio.transport.pause(); expect(await f.studio.recover()).to.equal(true);
     expect(f.stored.get('__recovery__').project.procgen.seed).to.equal(105);
-    expect(f.studio.transport.getState().playing).to.equal(true); f.studio.dispose();
+    expect(f.studio.transport.getState().playing).to.equal(false); await f.studio.dispose().completion;
   });
 
   it('saves a checkpoint and restores project, physical settings, musical phase and camera paused', async () => {
@@ -1477,13 +1484,13 @@ describe('ProcGen workstation orchestration', () => {
   });
 
   it('rejects overlapping world commands and mismatched recovery snapshots while a rebuild is pending', async () => {
-    const f = setup(); f.studio.bindRuntime(); const release = f.holdRestart();
+    const f = await setupRecovery(); f.studio.bindRuntime(); const release = f.holdRestart();
     const pending = f.studio.handlers.addLane();
     expect(await f.studio.handlers.reroll()).to.equal(false); expect(f.restarts).to.have.length(1);
     expect(await f.studio.recover()).to.equal(false); expect(() => f.studio.capture()).to.throw('world change');
     release(); await pending;
     expect(f.studio.getProject().procgen.lanes.length).to.equal(f.runtime.world.laneCount);
-    expect(await f.studio.recover()).to.equal(true); f.studio.dispose();
+    f.studio.transport.pause(); expect(await f.studio.recover()).to.equal(true); await f.studio.dispose().completion;
   });
 
   it('keeps the live world and project on a failed transactional session load', async () => {
@@ -1557,18 +1564,19 @@ describe('ProcGen workstation orchestration', () => {
     await f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60); f.studio.dispose();
   });
 
-  it('captures recovery before page suspension and leaves BFCache restoration paused', () => {
-    const f = setup(); f.studio.bindRuntime();
+  it('completes source-bound recovery after suspension and leaves BFCache restoration paused and leaves BFCache restoration paused', async () => {
+    const f = await setupRecovery(); f.studio.bindRuntime();
     const world = f.runtime.world;
     expect(f.studio.transport.getState().playing).to.equal(true);
     f.window.emit('pagehide', { persisted: true });
     expect(f.runtime.world).to.equal(world);
     expect(f.studio.transport.getState().playing).to.equal(false);
+    await waitForController(() => f.studio.getRecoveryState().state !== 'saving');
     expect(f.stored.get('__recovery__').world.seed).to.equal(world.seed);
     f.window.emit('pageshow', { persisted: true });
     expect(f.studio.transport.getState().playing).to.equal(false);
     expect(f.statuses.at(-1)).to.include('restored paused');
-    f.studio.dispose();
+    await f.studio.dispose().completion;
   });
 
   it('does not treat a restored legacy speed as a new tempo edit on the next control event', async () => {

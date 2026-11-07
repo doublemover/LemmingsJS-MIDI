@@ -166,6 +166,9 @@ const gameViewEditorModeMethods = {
   },
 
   async loadEditorPreviewLevel(options = {}) {
+    if (this._disposed) return null;
+    const generation = this._beginLevelLoad(), group = this.levelGroupIndex, index = this.levelIndex;
+    const current = () => !this._disposed && generation === this._levelLoadGeneration;
     if (this.autoMoveTimer !== null) {
       const clearTimeoutFn = globalThis.window?.clearTimeout || globalThis.clearTimeout;
       if (typeof clearTimeoutFn === 'function') {
@@ -175,7 +178,7 @@ const gameViewEditorModeMethods = {
     }
     if (!this.editorSession?.level || !this.gameFactory) return null;
     const config = this.gameResources?.config || await this.gameFactory.getConfig(this.gameType);
-    if (!config) return null;
+    if (!config || !current()) return null;
     if (this.game) {
       this.midiRouter?.detach?.();
       this._detachMidiPreview?.();
@@ -189,11 +192,11 @@ const gameViewEditorModeMethods = {
       config,
       this.gameFactory.fileProvider,
       {
-        levelGroupIndex: this.levelGroupIndex,
-        levelIndex: this.levelIndex
+        levelGroupIndex: group,
+        levelIndex: index
       }
     );
-    if (!level) return null;
+    if (!level || !current()) return null;
     if (this.elementSelectGameType && this.configs) {
       const idx = this.configs.findIndex(c => c.gametype === this.gameType);
       if (idx >= 0) this.elementSelectGameType.selectedIndex = idx;
@@ -231,6 +234,7 @@ const gameViewEditorModeMethods = {
     this.updateQuery();
     this.log.debug(level);
     await this._startWithLevel(level);
+    if (!current()) return null;
     if (prevViewport && this.stage) {
       this.stage.applyViewport(
         this.stage.gameImgProps,
@@ -277,6 +281,12 @@ const gameViewEditorModeMethods = {
   },
 
   dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
+    this._beginLevelLoad();
+    this.midiRouter?.detach?.();
+    this._detachMidiPreview?.();
+    this.game?.stop(); this.game = null;
     const appWindow = globalThis.window;
     // Fall back to the global timer helpers so disposal works in headless tests.
     if (this.autoMoveTimer != null) {

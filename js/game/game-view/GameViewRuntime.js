@@ -49,6 +49,23 @@ import {
   toMidiFlagTriggerType
 } from './GameViewShared.js';
 const gameViewRuntimeMethods = {
+  _cancelDeferredResume() {
+    this._resumeGeneration = (this._resumeGeneration || 0) + 1;
+    if (this.resumeTimer != null) (globalThis.window?.clearTimeout || globalThis.clearTimeout)?.(this.resumeTimer);
+    this.resumeTimer = null;
+  },
+
+  _invalidateGameStart() {
+    this._gameStartGeneration = (this._gameStartGeneration || 0) + 1;
+    const candidate = this._startingGame; this._startingGame = null;
+    if (candidate && candidate !== this.game) candidate.stop();
+  },
+
+  _beginLevelLoad() {
+    this._levelLoadGeneration = (this._levelLoadGeneration || 0) + 1;
+    this._invalidateGameStart(); this._cancelDeferredResume();
+    return this._levelLoadGeneration;
+  },
   set gameCanvas(el) {
     const appWindow = globalThis.window;
     if (this.stage && this.stage.dispose) {
@@ -72,14 +89,21 @@ const gameViewRuntimeMethods = {
   },
 
   async start(replayString) {
-    if (!this.gameFactory) return;
+    if (this._disposed || !this.gameFactory) return;
     if (this.game != null) {
       this.continue();
       return;
     }
+    this._invalidateGameStart();
+    const generation = this._gameStartGeneration, stage = this.stage, group = this.levelGroupIndex, index = this.levelIndex;
+    const current = () => !this._disposed && generation === this._gameStartGeneration && stage === this.stage;
+    let game;
     try {
-      const game = await this.gameFactory.getGame(this.gameType, this.gameResources);
-      await game.loadLevel(this.levelGroupIndex, this.levelIndex);
+      game = await this.gameFactory.getGame(this.gameType, this.gameResources);
+      if (!current()) { game.stop(); return; }
+      this._startingGame = game;
+      await game.loadLevel(group, index);
+      if (!current()) { game.stop(); return; }
       if (replayString != null) {
         game.getCommandManager().loadReplay(replayString);
       }
@@ -99,22 +123,26 @@ const gameViewRuntimeMethods = {
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
         await this.initMidiRouting();
+        if (!current()) { game.stop(); return; }
         if (this.midiEnabled) this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
       }
       this._attachMidiPreview?.(game);
       game.start();
       const gameStateTypes = getGameStateTypes();
       this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameStateTypes.RUNNING));
-      game.onGameEnd.on(state => this.onGameEnd(state));
+      game.onGameEnd.on(state => { if (this.game === game && current()) this.onGameEnd(state); });
       this.game = game;
+      this._startingGame = null;
       if (this.cheatEnabled) this.game.cheat();
       if (this.debug) this.game.showDebug = true;
     } catch (e) {
-      this.log.log('Error starting game:', e);
-    }
+      if (game && game !== this.game) game.stop();
+      if (current()) this.log.log('Error starting game:', e);
+    } finally { if (this._startingGame === game) this._startingGame = null; }
   },
 
   onGameEnd(gameResult) {
+    const endedGame = this.game, generation = this._levelLoadGeneration;
     this._detachMidiPreview?.();
     const gameStateTypes = getGameStateTypes();
     this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameResult.state));
@@ -126,6 +154,7 @@ const gameViewRuntimeMethods = {
       return;
     }
     this.autoMoveTimer = setTimeoutFn(() => {
+      if (this._disposed || this.game !== endedGame || generation !== this._levelLoadGeneration) return;
       const gameStateTypes = getGameStateTypes();
       if (gameResult.state === gameStateTypes.SUCCEEDED) {
         /// move to next level
@@ -150,6 +179,7 @@ const gameViewRuntimeMethods = {
   },
 
   suspend() {
+    this._cancelDeferredResume();
     if (this.game == null) {
       return;
     }
@@ -158,6 +188,7 @@ const gameViewRuntimeMethods = {
   },
 
   suspendWithColor(color) {
+    this._cancelDeferredResume();
     if (this.game == null) {
       return;
     }
@@ -189,13 +220,15 @@ const gameViewRuntimeMethods = {
     if (typeof setTimeoutFn !== 'function') {
       return;
     }
+    const resumeGame = this.game, resumeGeneration = this._resumeGeneration;
     this.resumeTimer = setTimeoutFn(() => {
-      if (this.game) this.game.getGameTimer().continue();
+      if (!this._disposed && this.game === resumeGame && resumeGeneration === this._resumeGeneration) resumeGame.getGameTimer().continue();
       this.resumeTimer = null;
     }, 2000);
   },
 
   continue () {
+    this._cancelDeferredResume();
     if (this.game == null) {
       return;
     }

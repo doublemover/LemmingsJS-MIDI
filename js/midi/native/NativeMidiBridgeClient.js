@@ -27,10 +27,12 @@ export class NativeMidiBridgeClient {
     if (this.#socket || typeof pairingCode !== 'string' || !pairingCode || pairingCode.length > 128) throw new Error('A fresh local pairing code is required');
     if (typeof this.WebSocketImpl !== 'function') throw new Error('WebSocket is unavailable');
     this.#setState('pairing'); this.#sequence = 0;
-    const socket = this.#socket = new this.WebSocketImpl(this.url); socket.binaryType = 'arraybuffer';
+    let socket;
+    try { socket = this.#socket = new this.WebSocketImpl(this.url); socket.binaryType = 'arraybuffer'; }
+    catch (error) { this.#socket = null; this.#setState('disconnected', error.message); throw error; }
     const connected = new Promise((resolve, reject) => { this.#connect = { resolve, reject }; });
-    socket.addEventListener('error', () => { if (this.#socket === socket) this.#retire('not-installed-or-unreachable'); });
-    socket.addEventListener('close', () => { if (this.#socket === socket) this.#retire('disconnected'); });
+    socket.addEventListener('error', () => { if (this.#socket === socket) this.#retire('not-installed-or-unreachable', socket); });
+    socket.addEventListener('close', () => { if (this.#socket === socket) this.#retire('disconnected', socket); });
     socket.addEventListener('message', event => {
       if (this.#socket !== socket) return;
       try {
@@ -38,15 +40,17 @@ export class NativeMidiBridgeClient {
         const row = JSON.parse(event.data); if (row.protocol !== NATIVE_MIDI_BRIDGE_PROTOCOL) throw new Error('Native MIDI version mismatch');
         if (row.event === 'hello') {
           if (row.version !== 1 || this.#state !== 'pairing') throw new Error('Native MIDI handshake mismatch');
-          this.#request('authorize', { pairingCode }, { pairing: true }).catch(error => this.#retire(error.message)); pairingCode = null; return;
+          this.#request('authorize', { pairingCode }, { pairing: true }).catch(error => this.#retire(error.message, socket)); pairingCode = null; return;
         }
         if (row.event === 'authorized') {
-          if (this.#session || !Number.isInteger(row.session) || row.session <= 0 || row.capabilities?.protocol !== NATIVE_MIDI_BRIDGE_PROTOCOL) throw new Error('Invalid native session');
+          if (this.#state !== 'pairing' || this.#requests.get(row.requestId)?.action !== 'authorize' || this.#session || !Number.isInteger(row.session) || row.session <= 0 || row.capabilities?.protocol !== NATIVE_MIDI_BRIDGE_PROTOCOL) throw new Error('Invalid native session');
           this.#session = row.session; this.#capabilities = Object.freeze(row.capabilities); this.#setState(row.capabilities.backendReady ? 'connected' : 'native-backend-unavailable');
+          if (this.#socket !== socket) return;
           const pending = this.#requests.get(row.requestId); if (pending) { clearTimeout(pending.timeout); this.#requests.delete(row.requestId); pending.resolve(row); }
           this.#timer = setInterval(() => {
-            this.#request('heartbeat', {}, { priority: true }).catch(error => this.#retire(error.message));
-            if (this.now() - this.#lastClock >= 2000) this.synchronizeClock().catch(error => this.#emit({ event: 'clock-unavailable', reason: error.message }));
+            if (this.#socket !== socket) return;
+            this.#request('heartbeat', {}, { priority: true }).catch(error => this.#retire(error.message, socket));
+            if (this.now() - this.#lastClock >= 2000) this.synchronizeClock().catch(error => { if (this.#socket === socket) this.#emit({ event: 'clock-unavailable', reason: error.message }); });
           }, 1000);
           this.#connect?.resolve(row); this.#connect = null; return;
         }
@@ -63,28 +67,28 @@ export class NativeMidiBridgeClient {
           if (row.kind === 'error') pending.reject(Object.assign(new Error(row.reason), { receipt: row })); else pending.resolve(Object.freeze(row));
         } else if (row.event === 'grant-retired') this.#grants.delete(row.grant);
         else if (row.event === 'grant-groups-retired' && this.#grants.has(row.grant)) this.#grants.set(row.grant, Object.freeze({ ...this.#grants.get(row.grant), groupMask: row.groupMask, endpointMetadata: row.endpointMetadata }));
-        else if (row.event === 'unavailable' || row.event === 'session-retired' || row.event === 'fatal') { this.#emit(row); this.#retire(row.reason || row.state || row.event); return; }
+        else if (row.event === 'unavailable' || row.event === 'session-retired' || row.event === 'fatal') { this.#emit(row); this.#retire(row.reason || row.state || row.event, socket); return; }
         this.#emit(row);
-      } catch (error) { this.#retire(error.message); }
+      } catch (error) { this.#retire(error.message, socket); }
     });
-    const timeout = setTimeout(() => this.#retire('pairing-timeout'), 15000);
-    try { await connected; await this.synchronizeClock(); return this; } finally { clearTimeout(timeout); }
+    const timeout = setTimeout(() => this.#retire('pairing-timeout', socket), 15000);
+    try { await connected; if (this.#socket !== socket) throw new Error('Native connection retired'); await this.synchronizeClock(); if (this.#socket !== socket) throw new Error('Native connection retired'); return this; } finally { clearTimeout(timeout); }
   }
   #request(action, fields = {}, { pairing = false, priority = false, binary = null, onReceipt } = {}) {
     if (!this.#socket || this.#socket.readyState !== 1 || !pairing && !this.#session || this.#sequence >= 0xffffffff || this.#requests.size >= (priority ? 64 : 56) || this.#socket.bufferedAmount > (priority ? 1048576 : 983040)) return Promise.reject(beforeSubmission('Native bridge unavailable or at capacity'));
-    const requestId = ++this.#sequence;
+    const socket = this.#socket, requestId = ++this.#sequence;
     let payload;
     try { payload = binary ? encodeNativeMidiBatch({ ...binary, session: this.#session, requestId }) : JSON.stringify({ protocol: NATIVE_MIDI_BRIDGE_PROTOCOL, session: this.#session, requestId, action, ...fields }); }
     catch (error) { error.notSubmitted = true; return Promise.reject(error); }
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => this.#retire('native-receipt-timeout'), 10000);
-      this.#requests.set(requestId, { resolve, reject, timeout, onReceipt });
-      try { this.#socket.send(payload); } catch (error) { clearTimeout(timeout); this.#requests.delete(requestId); reject(error); this.#retire('native-send-failed'); }
+      const timeout = setTimeout(() => this.#retire('native-receipt-timeout', socket), 10000);
+      this.#requests.set(requestId, { resolve, reject, timeout, onReceipt, action });
+      try { socket.send(payload); } catch (error) { clearTimeout(timeout); this.#requests.delete(requestId); reject(error); this.#retire('native-send-failed', socket); }
     });
   }
   async synchronizeClock() {
-    const session = this.#session, before = this.now(), row = await this.#request('clock'), after = this.now();
-    if (session !== this.#session) throw new Error('Clock session retired');
+    const socket = this.#socket, session = this.#session, before = this.now(), row = await this.#request('clock'), after = this.now();
+    if (socket !== this.#socket || session !== this.#session) throw new Error('Clock session retired');
     if (row.kind !== 'clock' || row.domain !== 'companion-steady-microseconds' || !Number.isSafeInteger(row.nativeMonoUs) || row.nativeMonoUs < 0 || after < before) { this.#clock.invalidate('invalid-native-clock-observation'); throw new Error('Native monotonic clock unavailable'); }
     const mapping = this.#clock.observe({ beforeMs: before, afterMs: after, nativeMonoUs: row.nativeMonoUs });
     this.#lastClock = after; this.#emit({ event: 'clock-updated', mapping }); return mapping;
@@ -130,8 +134,8 @@ export class NativeMidiBridgeClient {
     const deadlineUs = projected.deadlineUs; provenance = { ...provenance, timestampMapping: { sourceDomain: 'performance-ms', destinationDomain: clock.domain, epoch: clock.epoch, revision: clock.revision, rate: clock.rate, offsetUs: clock.offsetUs, uncertaintyUs: clock.uncertaintyUs, validUntilMs: clock.validUntilMs, sourceTargetMs: targetTimeMs, deadlineUs, policy: 'native-owned-deadline-queue;SDK-call-receipt-is-not-acoustic-timing' } };
     return this.#request('send', {}, { priority: priority === 0, binary: { grant, execution, deadlineUs, priority, words, provenance, leasePolicyIds }, onReceipt });
   }
-  #retire(reason) {
-    const socket = this.#socket; if (!socket && !this.#connect) return; this.#socket = null; clearInterval(this.#timer); this.#timer = null;
+  #retire(reason, socket = this.#socket) {
+    if (socket !== this.#socket) return; if (!socket && !this.#connect) return; this.#socket = null; clearInterval(this.#timer); this.#timer = null;
     for (const request of this.#requests.values()) { clearTimeout(request.timeout); request.reject(new Error(reason)); } this.#requests.clear();
     this.#connect?.reject(new Error(reason)); this.#connect = null; this.#session = 0; this.#clock.clear(); this.#grants.clear(); this.#capabilities = null;
     if (socket && socket.readyState < 2) socket.close(1000, 'Application session retired'); this.#setState('disconnected', reason);

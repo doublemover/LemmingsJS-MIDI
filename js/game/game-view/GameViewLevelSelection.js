@@ -429,6 +429,9 @@ const gameViewLevelSelectionMethods = {
   },
 
   async loadLevel() {
+    if (this._disposed) return;
+    const generation = this._beginLevelLoad();
+    const group = this.levelGroupIndex, index = this.levelIndex;
     if (this.autoMoveTimer !== null) {
       const clearTimeoutFn = globalThis.window?.clearTimeout || globalThis.clearTimeout;
       if (typeof clearTimeoutFn === 'function') {
@@ -450,7 +453,8 @@ const gameViewLevelSelectionMethods = {
     }
     const gameStateTypes = getGameStateTypes();
     this.changeHtmlText(this.elementGameState, gameStateTypes[gameStateTypes.UNKNOWN]);
-    const level = await this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex);
+    const level = await this.gameResources.getLevel(group, index);
+    if (this._disposed || generation !== this._levelLoadGeneration) return;
     if (!level) return;
     if (this.elementSelectGameType && this.configs) {
       const idx = this.configs.findIndex(c => c.gametype === this.gameType);
@@ -472,7 +476,7 @@ const gameViewLevelSelectionMethods = {
   },
 
   async _startWithLevel(level) {
-    if (!this.gameFactory) return;
+    if (this._disposed || !this.gameFactory) return;
     if (this.game != null) {
       this.continue();
       return;
@@ -481,9 +485,16 @@ const gameViewLevelSelectionMethods = {
     if (!baseResources) return;
     const editorResources = Object.create(baseResources);
     editorResources.getLevel = async () => level;
+    this._invalidateGameStart();
+    const generation = this._gameStartGeneration, stage = this.stage, group = this.levelGroupIndex, index = this.levelIndex;
+    const current = () => !this._disposed && generation === this._gameStartGeneration && stage === this.stage;
+    let game;
     try {
-      const game = await this.gameFactory.getGame(this.gameType, editorResources);
-      await game.loadLevel(this.levelGroupIndex, this.levelIndex);
+      game = await this.gameFactory.getGame(this.gameType, editorResources);
+      if (!current()) { game.stop(); return; }
+      this._startingGame = game;
+      await game.loadLevel(group, index);
+      if (!current()) { game.stop(); return; }
       game.setGameDisplay(this.stage.getGameDisplay());
       game.setGuiDisplay(this.stage.getGuiDisplay());
       if (this.stage && game.level) {
@@ -499,19 +510,22 @@ const gameViewLevelSelectionMethods = {
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
         await this.initMidiRouting();
+        if (!current()) { game.stop(); return; }
         if (this.midiEnabled) this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
       }
       this._attachMidiPreview?.(game);
       game.start();
       const gameStateTypes = getGameStateTypes();
       this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameStateTypes.RUNNING));
-      game.onGameEnd.on(state => this.onGameEnd(state));
+      game.onGameEnd.on(state => { if (this.game === game && current()) this.onGameEnd(state); });
       this.game = game;
+      this._startingGame = null;
       if (this.cheatEnabled) this.game.cheat();
       if (this.debug) this.game.showDebug = true;
     } catch (e) {
-      this.log.log('Error starting custom level:', e);
-    }
+      if (game && game !== this.game) game.stop();
+      if (current()) this.log.log('Error starting custom level:', e);
+    } finally { if (this._startingGame === game) this._startingGame = null; }
   },
 
   async loadSavedLevelFromSelection(savedEntries = null) {

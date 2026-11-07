@@ -45,7 +45,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
     try { previousAssignment = retainPrevious || gated ? routed.retainAssignment(laneId) : null; pin = gated ? null : routed.retain(runtimeKey); }
     catch (error) { previousAssignment?.release(); reserveInputs(); throw error; }
     const operation = { id: ++serial, laneId, referenceKey: key, controller: new AbortController(), backend: null, material: null, pin, rollbackFailed: false, committed: false, accepted: false, assignmentReceipt: null,
-      retired: false, preparing: true, retirement: null, nativeRetirement: null, completion: new Promise(resolve => { complete = resolve; }) };
+      retired: false, preparing: true, callerOwned: retainPrevious || gated, retirement: null, nativeRetirement: null, completion: new Promise(resolve => { complete = resolve; }) };
     const signal = operation.controller.signal, cancel = () => operation.controller.abort(externalSignal.reason);
     const check = () => { signal.throwIfAborted(); if (disposed || laneRequests.get(laneId) !== operation ||
         effectiveReference && (!getLane(laneId)?.instrumentRef || keyFor(getLane(laneId).instrumentRef) !== key)) throw failure('stale-owner', 'Lane instrument preparation source changed.'); };
@@ -174,6 +174,8 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
     for (const laneId of observedReferences.keys()) if (!live.has(laneId)) { laneRequests.get(laneId)?.controller.abort(); routed.unassign(laneId); observed.delete(laneId); observedReferences.delete(laneId); failures.delete(laneId); queued.delete(laneId);
       realizationRequests.get(laneId)?.abort(); realizations.remove(laneId).then(() => { realizationInventories.get(laneId)?.release(); realizationInventories.delete(laneId); }).catch(error => report(laneId, 'quality-unavailable', failureCode(error))); }
     for (const lane of lanes) {
+      const request = laneRequests.get(lane.id);
+      if (request?.callerOwned && !request.controller.signal.aborted) continue;
       const reference = lane.instrumentRef, key = reference && keyFor(reference);
       const sameReference = reference == null || Object.isFrozen(reference) && observedReferences.get(lane.id) === reference;
       if (sameReference && (observed.get(lane.id) === key || failures.get(lane.id)?.key === key || laneRequests.get(lane.id)?.referenceKey === key)) continue;

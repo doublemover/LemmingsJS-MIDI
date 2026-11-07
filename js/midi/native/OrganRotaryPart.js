@@ -92,10 +92,11 @@ export function createOrganRotaryPart({ routes, route, laneId, now, submit, getL
         const [bank, index] = key.split(':').map(Number); values[key] = before.value; words.push(...profileRegisteredWords(route, bank, index, before.value));
       }
       if (!words.length) return Object.freeze({ status: 'unknown', reason: 'Read isolated current controller values; only unchanged app-owned settings with an observed original can be restored', skipped: Object.freeze(skipped) });
+      suspended = true; emit();
       const accepted = queue({ words, values }, Object.freeze({ schema: 'lemmings-native-organ-registration-restore/v1', laneId, outputId: route.outputId, restored: Object.freeze(Object.keys(values)), skipped: Object.freeze(skipped), ownership: 'observed-original-and-fresh-matching-current-only' }), Math.round((now() + 10) * 1000));
       if (accepted.status !== 'accepted') throw new Error(accepted.reason);
       const receipt = await accepted.completion; if (receipt.kind !== 'driver-submitted') throw new Error(receipt.reason || 'Registration restore is unconfirmed');
-      suspended = true; emit(); return Object.freeze({ status: skipped.length ? 'partial' : 'submitted', receipt, skipped: Object.freeze(skipped), receiverState: 'unknown', reactivation: 'explicit-profile-rebind-required' });
+      emit(); return Object.freeze({ status: skipped.length ? 'partial' : 'submitted', receipt, skipped: Object.freeze(skipped), receiverState: 'unknown', reactivation: 'explicit-profile-rebind-required' });
     },
     state: () => Object.freeze({ laneId, outputId: route.outputId, grant: route.grant, pending, fault, suspended, contributors: contributors.size, formation, queued: Object.freeze(Object.fromEntries(queued)), submitted: Object.freeze(Object.fromEntries(submitted)),
       observed: Object.freeze(Object.fromEntries(observed)), observedOriginals: original.size, qualification: route.organ.qualification }),

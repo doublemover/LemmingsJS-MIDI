@@ -30,11 +30,11 @@ export function createNativeMidiBatchQueue({ client, maximumWords = 65536, maxim
       try { const receipt = await dependency.completion; return !dependency.requireSubmitted || receipt?.kind === 'driver-submitted'; } catch { return !dependency.requireSubmitted; }
     }));
     if (outcomes.some(allowed => !allowed)) { settle(group, { kind: 'cancelled', acceptedWords: 0, failedPacketUnconfirmed: false, reason: 'dependent-native-write-was-not-submitted' }); return false; }
-    if (group.settled || closed) { settle(group, { kind: 'cancelled', acceptedWords: 0, failedPacketUnconfirmed: false, reason: 'native-batch-owner-retired' }); return false; }
+    if (group.settled || closed || group.session !== client.session) { settle(group, { kind: 'cancelled', acceptedWords: 0, failedPacketUnconfirmed: false, reason: 'native-batch-owner-retired' }); return false; }
     const lookaheadMs = client.clockStatus?.().maximumLookaheadMs ?? 1950;
     const waitMs = group.targetTimeMs - (typeof client.now === 'function' ? client.now() : performance.now()) - lookaheadMs;
     if (waitMs > 0) await new Promise(resolve => { const timer = setTimeout(() => { group.cancelWait = null; resolve(); }, Math.min(waitMs + 1, 2000)); group.cancelWait = () => { clearTimeout(timer); group.cancelWait = null; resolve(); }; });
-    if (group.settled || closed) { settle(group, { kind: 'cancelled', acceptedWords: 0, failedPacketUnconfirmed: false, reason: 'native-batch-owner-retired' }); return false; }
+    if (group.settled || closed || group.session !== client.session) { settle(group, { kind: 'cancelled', acceptedWords: 0, failedPacketUnconfirmed: false, reason: 'native-batch-owner-retired' }); return false; }
     group.started = true;
     const words = new Array(group.wordCount); let at = 0; for (const job of group.jobs) for (const word of job.words) words[at++] = word;
     const first = group.jobs[0].provenance;
