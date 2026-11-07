@@ -1,3 +1,4 @@
+import { createWorkshopToolScores } from './WorkshopToolScore.js';
 import { createQuarryJourneyScores } from './QuarryJourneyScore.js';
 import { createGlassOrbitOrchestrations } from './GlassOrbitOrchestration.js';
 import { createPocketCathedralScore } from './PocketCathedralScore.js';
@@ -33,7 +34,7 @@ import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 // Larger named performances still need their authored geometry and qualification.
 export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal } = {}) {
   signal?.throwIfAborted(); const catalog = await getCatalog(); signal?.throwIfAborted();
-  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(), preparedWeather = new Map(); let nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
+  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(), preparedWeather = new Map(), preparedWorkshops = new Map(); let workshopPending = false, nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
   if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return Object.freeze({ registry, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } });
   const sourceHash = catalog.executionIdentity.buildId, descriptor = catalog.descriptors.find(value => value.engineId === 'worklet-sine');
   const put = (kind, id, revision, hash, storage = 'installed-runtime') => { const value = { kind, id, revision, hash, status: 'available', storage }; available.set(sceneDependencyKey(value), freezeData(value)); };
@@ -180,6 +181,13 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) await registerAuthoredScores(await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }));
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     getEmbeddedAsset(hash) { return embeddedAssets.get(hash) || null; },
+    async addWorkshopTool(reference, { signal: requestSignal } = {}) {
+      requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
+      if (preparedWorkshops.has(key)) return preparedWorkshops.get(key);
+      if (workshopPending || preparedWorkshops.size >= 8) throw new Error('Finish this tool preparation; at most eight immutable workshop grafts are retained.'); workshopPending = true;
+      try { const items = await createWorkshopToolScores({ sourceHash, modalDescriptor: modal, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWorkshops.set(key, rows); requestSignal?.throwIfAborted(); return rows; }
+      finally { workshopPending = false; }
+    },
     async addNurseryStrike(reference, { signal: requestSignal } = {}) {
       requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
       if (preparedNurseries.has(key)) return preparedNurseries.get(key);

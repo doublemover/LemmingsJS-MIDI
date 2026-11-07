@@ -1,5 +1,5 @@
 import { hashData } from '../../../core/CanonicalData.js';
-import { validateSoundContentReference, resolveSoundContentReference } from '../../../midi/content/SoundContentReference.js';
+import { resolveFiniteSceneBodyGraft } from './FiniteSceneBodyGraft.js';
 import { createTextureBodyGraftRecipe, createTextureBodyTravelBinding } from '../../../midi/content/TextureBodyGraftRecipe.js';
 import { createSealedBodyGraftRecipe } from '../../../midi/content/SealedBodyGraftRecipe.js';
 import { compileSoundContent } from '../../../midi/content/SoundContentCompiler.js';
@@ -40,11 +40,7 @@ async function createOriginalInstrumentNurseryScore({ sourceHash, textureDescrip
 
 export async function createInstrumentNurseryScore({ sourceHash, textureDescriptor, windDescriptor, sampleDescriptor = null, strikeReference = null, signal } = {}) {
   signal?.throwIfAborted(); let strike = null;
-  if (strikeReference !== null) {
-    strike = validateSoundContentReference(strikeReference); const p = strike.definition.parameters, map = strike.definition.sampleMap;
-    if (sampleDescriptor?.engineId !== 'worklet-sample' || sampleDescriptor.capabilities?.feedforwardSampleBody !== true || strike.definition.engineId !== 'worklet-sample' || strike.definition.voicePolicy.maxVoices > 8 || strike.definition.voicePolicy.maxVoices > sampleDescriptor.maximumVoices || !Number.isInteger(p?.graftModeCount) || p.graftModeCount < 1 || p.graftModeCount > 8 || p.graftExcitationMode !== 0 || !(p.graftSupportSeconds >= 0.001 && p.graftSupportSeconds <= 0.5) || strike.definition.sampleRefs.length < 1 || strike.definition.sampleRefs.length > 8 || !map?.zones?.length || map.zones.some(zone => zone.playbackMode !== 'forward' || zone.loop !== null || zone.pitchTracking !== 'fixed') || !['excite', 'body', 'damp', 'mix'].every(id => strike.definition.macros.some(macro => macro.id === id && macro.mode === 'onset-only'))) throw new TypeError('Choose an installed finite sample/FM → private modal body graft with fixed-rate forward excitation and EXCITE/BODY/DAMP/MIX. Travel playback, loops and an ungrafted sample cannot become the Nursery strike.');
-    const resolved = await resolveSoundContentReference(strike, { engineDescriptors: [sampleDescriptor], availableHashes: strike.assetHashes, signal }); if (resolved.status !== 'ready') throw new TypeError('The Nursery strike requires its exact current-build engine and immutable definition: ' + resolved.status);
-  }
+  if (strikeReference !== null) strike = await resolveFiniteSceneBodyGraft(strikeReference, sampleDescriptor, { signal });
   const base = await createOriginalInstrumentNurseryScore({ sourceHash, textureDescriptor, windDescriptor, signal }); if (!strike) return base;
   const suffix = (await hashData(strike, { maxBytes: 65536, maxNodes: 8192 })).slice(0, 24), id = 'instrument-nursery.prepared-strike.' + suffix, rawRecipe = structuredClone(base.recipe), rawLayout = rawRecipe.initialTerrainLayout, third = structuredClone(rawLayout.lanes[1]); third.laneId = 2; third.regions[1].x2 = 208;
   rawLayout.id = 'terrain.nursery.' + suffix; rawLayout.lanes.push(third); rawRecipe.id = 'score.nursery.' + suffix; rawRecipe.initialTerrainLayout = validateSceneTerrainLayout(rawLayout); rawRecipe.settings.laneCount = 3; rawRecipe.terrainFamilies.push('brick'); rawRecipe.initialReleaseGesture = validateReleaseGesture({ ...rawRecipe.initialReleaseGesture, id: 'nursery.entry.' + suffix, finiteBurstCount: 3, lanePhase: [...rawRecipe.initialReleaseGesture.lanePhase, { laneId: 2, offsetTicks: 32 }] }, 3);

@@ -1,9 +1,9 @@
 import { inspectSceneStationRehearsal } from './SceneStationPolicy.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export function createPerformanceSceneBrowser({ document, window, registry, loader, onApply = options => loader.apply(options), getDocumentIdentity = () => null, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onCreateNursery = null, onCreateFoundry = null, onStatus = () => {} } = {}) {
+export function createPerformanceSceneBrowser({ document, window, registry, loader, onApply = options => loader.apply(options), getDocumentIdentity = () => null, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onCreateWorkshop = null, onCreateNursery = null, onCreateFoundry = null, onStatus = () => {} } = {}) {
   if (!document?.createElement || !registry?.page || !loader?.select || !loader?.state) throw new TypeError('The scene browser requires metadata pages and the existing candidate owner.');
-  const listeners = [], rowListeners = [], retirement = createProcgenRetirementScope(); let disposed = false, selection = null, selectedManifest = null, page = null, offset = 0, opener = null, busy = false, dialogOwner = null, restoreFocus = null, foundryController = null, foundryWork = null;
+  const listeners = [], rowListeners = [], retirement = createProcgenRetirementScope(); let disposed = false, selection = null, selectedManifest = null, page = null, offset = 0, opener = null, busy = false, dialogOwner = null, restoreFocus = null, assemblyController = null, assemblyWork = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
   const listen = (target, event, handler, rows = false) => { target.addEventListener(event, handler); (rows ? rowListeners : listeners).push(() => target.removeEventListener(event, handler)); };
   const dialog = node('dialog'), title = node('h2', 'Playable physical scores'), live = node('p'), qualification = node('p', 'Prepare builds a separate candidate; Load fresh replaces the world and sound and leaves transport paused. Rehearse renders six seconds of actual private-world traffic through the selected Prelisten route. CURRENT and NEXT stay unchanged. Rehearsal on live output is included in master capture; a separate-device cue is excluded. Render and listening qualification remain pending.');
@@ -54,17 +54,21 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   };
   const previous = button(paging, 'Previous scores', () => { offset = Math.max(0, offset - 24); renderPage(); });
   const pageLabel = node('output'); paging.append(pageLabel); const next = button(paging, 'Next scores', () => { if (page.nextOffset !== null) { offset = page.nextOffset; renderPage(); } });
-  const nursery = typeof onCreateNursery === 'function' ? button(actions, 'Nursery · use selected finite body graft', run(async () => {
-    await loader.cancel(); const row = await onCreateNursery(); if (disposed || !row) return;
-    search.value = 'Instrument Nursery'; mechanism.value = density.value = lesson.value = ''; offset = 0; choose(row); renderPage(); say('Three-route Nursery selected. Prepare verifies its exact source material; Load fresh remains a separate paused replacement.');
-  })) : null;
+  const assemble = async (create, query, message) => {
+    await loader.cancel(); if (disposed || !dialogOwner) return; const owner = dialogOwner, sourceDocument = getDocumentIdentity(), controller = new AbortController(); assemblyController = controller;
+    try { assemblyWork = create({ signal: controller.signal }); const row = await assemblyWork; controller.signal.throwIfAborted(); if (disposed || dialogOwner !== owner || getDocumentIdentity() !== sourceDocument || !row) return;
+      search.value = query; mechanism.value = density.value = lesson.value = ''; offset = 0; choose(row); renderPage(); say(message);
+    } finally { if (assemblyController === controller) assemblyController = assemblyWork = null; }
+  };
+  const nursery = typeof onCreateNursery === 'function' ? button(actions, 'Nursery · use selected finite body graft', run(() => assemble(onCreateNursery, 'Instrument Nursery', 'Three-route Nursery selected. Prepare verifies its exact source material; Load fresh remains a separate paused replacement.'))) : null;
+  const workshop = typeof onCreateWorkshop === 'function' ? button(actions, 'Workshop · use selected tool graft', run(() => assemble(onCreateWorkshop, 'Tool transplant', 'Tool transplant variations assembled. Select dialogue, staggered or converging crew; Prepare verifies exact donor/body ancestry before a separate paused replacement.'))) : null;
   const foundryTier = typeof onCreateFoundry === 'function' ? select('Pocket Foundry mode tier', [['8', '8 selected modes'], ['16', '16 selected modes'], ['32', '32 selected modes']]) : null;
   const foundry = typeof onCreateFoundry === 'function' ? button(actions, 'Pocket Foundry · prepare three shapes', run(async () => {
-    await loader.cancel(); if (disposed || !dialogOwner) return; const owner = dialogOwner, sourceDocument = getDocumentIdentity(), controller = new AbortController(); foundryController = controller;
-    try { say('Preparing three original shape banks. The current world remains active.'); foundryWork = onCreateFoundry({ modeCount: Number(foundryTier.value), signal: controller.signal }); const row = await foundryWork;
+    await loader.cancel(); if (disposed || !dialogOwner) return; const owner = dialogOwner, sourceDocument = getDocumentIdentity(), controller = new AbortController(); assemblyController = controller;
+    try { say('Preparing three original shape banks. The current world remains active.'); assemblyWork = onCreateFoundry({ modeCount: Number(foundryTier.value), signal: controller.signal }); const row = await assemblyWork;
       controller.signal.throwIfAborted(); if (disposed || dialogOwner !== owner || getDocumentIdentity() !== sourceDocument || !row) return;
       search.value = 'Pocket Foundry'; mechanism.value = density.value = lesson.value = ''; offset = 0; choose(row); renderPage(); say('Three original zones selected. Prepare fresh verifies their exact saved material; Load fresh remains a separate paused replacement.');
-    } finally { if (foundryController === controller) { foundryController = foundryWork = null; } }
+    } finally { if (assemblyController === controller) { assemblyController = assemblyWork = null; } }
   })) : null;
   const prepare = button(actions, 'Prepare fresh', run(async () => { if (!selectedManifest) return; loader.select(selectedManifest); const result = await loader.prepare(); say(result.status === 'ready' ? 'Candidate ready. Inspect the changed scope, then use Load fresh.' : 'Required source or capabilities are unavailable. The live world remains active.'); }));
   const load = button(actions, 'Load fresh · stopped replacement', run(async () => {
@@ -80,9 +84,9 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   const stationRehearsal = button(actions, 'Rehearse with private work stations', run(() => loader.rehearse({ authoredStations: true }))); stationRehearsal.hidden = true; stationRehearsal.title = 'Explicitly arms one-shot skill stations only in the private rehearsal copy. CURRENT and NEXT feedback state is unchanged.';
   const learn = typeof onLesson === 'function' ? button(actions, 'Learn this physical cause', run(async () => { const scene = selectedManifest; if (!scene || !canTeachScene(scene)) return; await loader.cancel(); if (selectedManifest !== scene) return; if (dialog.open) dialog.close(); await onLesson(scene); })) : null;
   const stopRehearsal = button(actions, 'Stop rehearsal', () => { void loader.stopPreview().catch(error => say(error.message)); });
-  button(actions, 'Cancel preparation', () => { foundryController?.abort(new Error('Foundry score preparation canceled.')); void loader.cancel().catch(error => say(error.message)); });
+  button(actions, 'Cancel preparation', () => { assemblyController?.abort(new Error('Scene assembly canceled.')); void loader.cancel().catch(error => say(error.message)); });
   button(actions, 'Open saved takes', run(async () => { await loader.cancel(); if (dialog.open) dialog.close(); await onSavedTakes(); }));
-  const close = async () => { foundryController?.abort(new Error('The scene browser closed.')); dialogOwner = null; if (dialog.open) dialog.close(); if (keepPreparedOnClose() && loader.state().canApply) await loader.stopPreview(); else await loader.cancel(); opener?.focus?.(); };
+  const close = async () => { assemblyController?.abort(new Error('The scene browser closed.')); dialogOwner = null; if (dialog.open) dialog.close(); if (keepPreparedOnClose() && loader.state().canApply) await loader.stopPreview(); else await loader.cancel(); opener?.focus?.(); };
   const closeButton = button(actions, 'Close', () => { void close().catch(error => say(error.message)); }); listen(dialog, 'cancel', event => { event.preventDefault(); void close().catch(error => say(error.message)); });
   for (const input of [search, mechanism, density, lesson]) listen(input, input === search ? 'input' : 'change', () => { offset = 0; renderPage(); });
   listen(rows, 'keydown', event => { if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !page?.rows.length) return; event.preventDefault(); const at = page.rows.findIndex(chosen), index = event.key === 'Home' ? 0 : event.key === 'End' ? page.rows.length - 1 : Math.max(0, Math.min(page.rows.length - 1, at + (event.key === 'ArrowDown' ? 1 : -1))); choose(page.rows[index]); rows.children[index]?.focus(); });
@@ -90,6 +94,7 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
     if (disposed) return; const state = loader.state(), active = getLiveScene(); live.textContent = 'LIVE · ' + (active?.title || 'Current physical world');
     if (foundry) foundry.disabled = busy || state.retirementUnknown || state.disposed;
     if (foundryTier) foundryTier.disabled = busy;
+    if (workshop) workshop.disabled = busy || state.retirementUnknown || state.disposed;
     if (nursery) nursery.disabled = busy || state.retirementUnknown || state.disposed;
     if (learn) learn.disabled = busy || !selectedManifest || !canTeachScene(selectedManifest);
     prepare.disabled = busy || !selectedManifest || state.retirementUnknown || state.disposed; load.disabled = busy || !state.prepared || state.phase !== 'ready' || !state.canApply;
@@ -107,5 +112,5 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   return Object.freeze({ open({ sceneId = null } = {}) { if (disposed) return;
     if (sceneId != null) { const requested = registry.findSupported({ id: sceneId }); if (!requested) throw new Error('The requested installed scene is unavailable.'); search.value = requested.title; mechanism.value = density.value = lesson.value = ''; offset = 0; }
     dialogOwner = {}; opener = document.activeElement; renderPage(); if (!dialog.open) dialog.showModal(); search.focus(); }, refresh, suspend: close,
-  dispose() { return retirement.retire([{ name: 'scene-browser', run: async () => { disposed = true; foundryController?.abort(new Error('The scene browser retired.')); try { await foundryWork?.catch(() => {}); await loader.cancel(); } finally { for (const remove of [...rowListeners, ...listeners]) remove(); dialog.remove(); } } }]); } });
+  dispose() { return retirement.retire([{ name: 'scene-browser', run: async () => { disposed = true; assemblyController?.abort(new Error('The scene browser retired.')); try { await assemblyWork?.catch(() => {}); await loader.cancel(); } finally { for (const remove of [...rowListeners, ...listeners]) remove(); dialog.remove(); } } }]); } });
 }

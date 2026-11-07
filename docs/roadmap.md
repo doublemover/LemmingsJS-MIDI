@@ -11627,3 +11627,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Author three dry Journey echo variations on the existing finite Quarry routes. The real reply actor crosses two source pickups, captures their exact observed interval contour, carries one bounded token and delivers it once at its actual route-end crossing. Delivery is a simultaneous dyad with capture/arrival ancestry, explicitly not a timed motif or audio-delay repeat.
 - Retain real route/junction/release ownership and separate source failure, capture refusal, token expiry and actual delivery. No rack or automatic replacement actor fills a missing arrival. The six-second private prefix may correctly end before a long route completes.
 - Register each complete scene/recipe/observation dependency through the existing catalog. Functional/audio/browser/performance qualification remains deferred.
+
+### Continuation 618 — saved tool graft into actual workshop operations
+
+- Add dialogue/staggered/converging Tool transplant variations assembled explicitly from a selected saved finite sample/FM into modal-body graft. Reuse the exact original work geometry, station commands and successful-solid operation mappings. Only the builder source changes; its new work cause stays distinct from saved donor/body/calibration ancestry.
+- Share the strict finite-graft contract with Nursery, preserve EXCITE/BODY/DAMP/MIX preparation and exact source-rate assets, and expose the handoff in the score browser. Candidate failure preserves the current world; catalog assembly is bounded, cancellable and scoped to the selected document/graft.
+- Correct native source inventory semantics: each independent native patch is checked against its own descriptor limit, while the aggregate declared scene bound and eventual live resource admission remain separate. This also admits the existing converging native-modal work score without treating three independent sources as one shared worklet pool.
+- Functional/native/audio/browser/performance and listening campaigns remain deferred.

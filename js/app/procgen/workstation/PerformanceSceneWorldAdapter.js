@@ -1,3 +1,4 @@
+import { NATIVE_OFFLINE_SOURCE_IDS } from '../../midi-ui/NativeOfflineProfile.js';
 import { verifyMaterialPalette } from '../../../midi/content/MaterialPalette.js';
 import { verifySceneMorphMechanism, sceneMorphMechanismCost } from './SceneMorphMechanism.js';
 import { sameActorBirthAbilities } from '../ActorBirthAbilities.js';
@@ -64,7 +65,7 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
         registerSource(patch.reference);
       }
       if ([...pools.values()].reduce((sum, count) => sum + count, 0) > scene.cost.maximumVoices) throw failure('scene-source-capacity', 'The complete source set exceeds the declared scene voice bound.');
-      for (const [engine, voices] of pools) if (voices - [...paletteInstances.values()].filter(value => value.engineId === engine).reduce((sum, value) => sum + value.count, 0) > catalog.descriptors.find(value => value.engineId === engine).maximumVoices || voices > scene.cost.maximumVoices) throw failure('scene-source-capacity', 'The scene exceeds its shared source-pool or declared voice capacity.');
+      for (const [engine, voices] of pools) if (!NATIVE_OFFLINE_SOURCE_IDS.includes(engine) && voices > catalog.descriptors.find(value => value.engineId === engine).maximumVoices || voices > scene.cost.maximumVoices) throw failure('scene-source-capacity', 'The scene exceeds its shared source-pool or declared voice capacity.');
       if (source.initialEffectRack && scene.cost.sharedBodies !== 0) throw failure('scene-effects-composition-unavailable', 'An authored static rack and shared morph body need an explicit composed graph profile.');
       const recipe = materializePerformanceSceneProject(origin);
       onPhase('world-assets'); world = await prepareWorld({ sceneRecipe: recipe, lease: { id: 'performance-scene:' + preflight.sceneHash, signal } }); check();
