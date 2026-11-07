@@ -1,3 +1,4 @@
+import { readLessonPickupCrossing } from './PhysicalLessonCause.js';
 import { canonicalDataText } from '../../../core/CanonicalData.js';
 
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -58,17 +59,9 @@ export function createKeptSoundLessonObservation({ definition, graph, releaseGes
       if (phase === 'observe-next-contact' && (!reopened || !exactMaterial(context) || batch.tick <= saved.tick)) return result();
       const facts = new Map(batch.facts.map(fact => [fact.eventId, fact]));
       for (const intent of intents) {
-        if (intent.kind !== 'begin' || intent.worldId !== batch.worldId || intent.generation !== batch.generation || intent.batchId !== batch.batchId ||
-            !definition.success.mappingIds.includes(intent.mappingId) || intent.physicalSourceKind !== 'PickupCrossing' ||
-            intent.observation?.gateId !== definition.success.pickupId || typeof intent.intentId !== 'string' || !intent.intentId ||
-            !Array.isArray(intent.sourceEventIds) || !intent.sourceEventIds.length || intent.sourceEventIds.length > 8 ||
-            !intent.sourceEventIds.every(id => { const fact = facts.get(id); return fact?.kind === 'MotionCommitted' && fact.actorId === intent.actorId &&
-              fact.worldId === batch.worldId && fact.generation === batch.generation && fact.batchId === batch.batchId; }) ||
-            [...baseline, ...changed].some(record => record.intentId === intent.intentId)) continue;
-        const actor = batch.snapshot?.actors?.find(value => value.actorId === intent.actorId);
-        if (!actor || !integer(actor.spawnTick)) continue;
-        const record = { intentId: intent.intentId, batchId: batch.batchId, actorId: intent.actorId, sourceEventIds: [...intent.sourceEventIds], arrivalTick: batch.tick, birthTick: actor.spawnTick,
-          ...(kept ? { definitionHash: kept.definitionHash, packHash: kept.packHash } : {}) };
+        const cause = readLessonPickupCrossing(definition, batch, intent, facts);
+        if (!cause || [...baseline, ...changed].some(value => value.intentId === cause.intentId)) continue;
+        const record = { ...cause, ...(kept ? { definitionHash: kept.definitionHash, packHash: kept.packHash } : {}) };
         if (phase === 'observe-baseline') { baseline.push(record); phase = 'keep-sound'; reason = 'Record this real contact as a causal take if needed for A/B. Generate, compare, Keep and Apply one sound variation; leave the physical policy alone.'; }
         else { changed.push(record); phase = 'physical-evidence-observed'; reason = null; }
         break;

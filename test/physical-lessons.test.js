@@ -1,3 +1,4 @@
+import { createCausalOnsetCoverage } from '../js/midi/content/CausalOnsetCoverage.js';
 import { expect } from 'chai';
 import { JSDOM } from 'jsdom';
 import { validatePhysicalLessonDefinition } from '../js/app/procgen/workstation/PhysicalLessonDefinition.js';
@@ -11,7 +12,7 @@ import { describeNativeInstrumentEngines } from '../js/app/midi-ui/NativeInstrum
 const h = value => value.repeat(64), scene = (id, hash) => ({ id, version: 1, hash: h(hash) });
 const definition = (kind = 'pickup-relocation') => validatePhysicalLessonDefinition({ schema: 'lemmings-physical-lesson/v1', id: 'lesson.' + kind, version: 1, title: kind, setupScene: scene('practice.' + kind, 'a'), zeroNoteScene: scene('practice.quiet-control', 'b'),
   prediction: 'Predict the next actual crossing.', intervention: 'Change the declared cause using existing physical actions.', expectedPhysicalEvidence: 'Actual source-linked pickup crossings.', expectedMusicalDifference: 'Different physical location or actual birth/arrival intervals.', audibleEvidence: 'Backend acceptance and user-reported hearing are separate.', hint: 'A timer or unrelated click cannot complete this lesson.', permittedActions: ['finite-release'],
-  success: { kind, pickupId: 'practice-pickup', mappingIds: ['pluck'], minimumActors: kind === 'entry-spacing-change' ? 2 : 1 }, resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' });
+  success: { kind, pickupId: 'practice-pickup', mappingIds: ['pluck'], minimumActors: kind === 'entry-spacing-change' ? 2 : 1, ...(kind === 'hear-fossil' ? { minimumContacts: 2 } : {}) }, resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' });
 const graph = x => ({ version: 1, revision: x === 96 ? 1 : 2, pickups: [{ id: 'practice-pickup', revision: x === 96 ? 1 : 2, geometry: { kind: 'segment', points: [{ x, y: 0 }, { x, y: 96 }] } }], instruments: [{ id: 'pluck', route: 'local' }] });
 const gesture = spreadTicks => ({ nominalGapTicks: 54, spreadTicks, lanePhase: [{ laneId: 0, offsetTicks: 0 }, { laneId: 1, offsetTicks: spreadTicks }], phaseStepTicks: 0, grouping: 'free', clockMode: 'locked' });
 const context = (x = 96, spread = 12, documentEpoch = 2) => ({ documentEpoch, assists: false, activeActors: 0, graph: graph(x), releaseGesture: gesture(spread), soundIdentity: h('c') });
@@ -60,7 +61,7 @@ describe('observed physical lessons (runtime/browser acceptance deferred)', () =
   });
   it('uses all five actual pinned catalog scenes and retains an independent actor-free control', async () => {
     const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('d') }))), catalog = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('e') }, descriptors }) }), lessons = await createInstalledPhysicalLessons(catalog);
-    expect(lessons).to.have.length(6); expect(lessons.map(value => value.setupScene.id)).to.deep.equal(['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.work-becomes-percussion', 'practice.path-becomes-delay', 'practice.crowd-becomes-harmony']); expect(lessons.every(value => value.zeroNoteScene.id === 'practice.quiet-control')).to.equal(true);
+    expect(lessons).to.have.length(7); expect(lessons.map(value => value.setupScene.id)).to.deep.equal(['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.work-becomes-percussion', 'practice.path-becomes-delay', 'practice.crowd-becomes-harmony']); expect(lessons.every(value => value.zeroNoteScene.id === 'practice.quiet-control')).to.equal(true);
   });
   it('resolves every lesson and exact scene reference beyond the first sixty-four inventory rows', async () => {
     const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('d') }))), catalog = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('e') }, descriptors }) });
@@ -122,5 +123,35 @@ describe('observed make-and-keep lesson journey', () => {
     session.skip(); expect(session.observeMaterial(kept, source())).to.equal(false);
     expect(session.observeDocument({ ...save, kind: 'project-reopened' }, source(4))).to.equal(false);
     expect(session.state().journey).to.equal(null);
+  });
+});
+
+describe('source-linked frozen-contact lesson', () => {
+  const appliedContext = () => ({ ...context(), worldId: 'practice-world', generation: 3, soundIdentity: h('d'),
+    soundReferences: [{ laneId: 'lane:0', definitionHash: h('d'), packHash: h('e') }] });
+  const seedReceipt = original => ({ kind: 'saved-seed-applied', durable: true, transform: 'hammer-seed', assetHash: h('f'),
+    definitionHash: h('d'), packHash: h('e'), laneId: 'lane:0', assetHashes: [h('f')], bakedCausePolicy: 'new-actor-owns-playback;old-events-are-baked-ancestry-only',
+    causalOnsets: createCausalOnsetCoverage({ voices: [{ start: 200, laneId: 0, begin: original.intents[0] }], firstFrame: 0, frames: 1000, sampleRate: 48000,
+      takeId: 'take:fossil', takeRevision: 2, sourceCanonicalHash: h('a') }) });
+  it('separates one original baked contact from two later actual semantic playback onsets', () => {
+    const { session } = ready('hear-fossil'), original = packet(1, 1);
+    original.context.causalTakeId = 'take:fossil'; session.observe(original); expect(session.state().phase).to.equal('prepare-fossil');
+    session.observeMaterial(seedReceipt(original), appliedContext()); expect(session.state().phase).to.equal('observe-fossil-contacts');
+    expect(session.state().journey).to.include({ assetSaved: true, bakedOnsetsInRegion: 1, newSemanticOnsets: 0 });
+    session.observe(packet(2, null, 2, appliedContext())); expect(session.state().physicalObserved).to.equal(false);
+    session.observe(packet(3, 2, 2, appliedContext())); expect(session.state().journey.newSemanticOnsets).to.equal(1);
+    const second = packet(4, 3, 3, appliedContext()); session.observe(second);
+    expect(session.state()).to.include({ physicalObserved: true, soundAccepted: false, reportedHearing: false });
+    expect(session.state().changed).to.have.length(2); expect(session.state().changed.every(value => value.assetHash === h('f'))).to.equal(true);
+    expect(() => session.reportHearing()).to.throw('acceptance');
+  });
+  it('cannot infer a recorded contact or its frozen presence from waiting, another take or missing annotations', () => {
+    const { session } = ready('hear-fossil');
+    session.observe(packet(1, 1)); expect(session.state().phase).to.equal('observe-baseline');
+    const original = packet(2, 2); original.context.causalTakeId = 'take:fossil'; session.observe(original);
+    const wrong = seedReceipt(original); wrong.causalOnsets = { ...wrong.causalOnsets, takeId: 'take:other' };
+    session.observeMaterial(wrong, appliedContext()); expect(session.state().phase).to.equal('prepare-fossil');
+    session.observeMaterial({ ...seedReceipt(original), causalOnsets: null }, appliedContext()); expect(session.state().journey.assetSaved).to.equal(false);
+    session.skip(); expect(session.observeMaterial(seedReceipt(original), appliedContext())).to.equal(false);
   });
 });

@@ -2679,7 +2679,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     async applyInstalledInstrument(candidate, { signal, hold = false, isCurrent, compatibilityReceipt = null, sourceEvidence = null } = {}) {
       const laneId = selected().id, sourceDocument = documentGeneration, committed = await soundTransactions.select(candidate, { signal, hold, isCurrent, patch: { gestureCompatibilityReceipt: compatibilityReceipt }, laneId });
       if (!hold && sourceEvidence && sourceDocument === documentGeneration) { const reference = procgenLane(project.procgen.lanes, laneId)?.instrumentRef;
-        if (reference?.definitionHash === candidate.reference.definitionHash) physicalLessonView?.observeMaterial({ ...sourceEvidence, laneId, definitionHash: reference.definitionHash,
+        if (committed && typeof committed === 'object' && 'definitionHash' in committed && reference?.definitionHash === committed.definitionHash) physicalLessonView?.observeMaterial({ ...sourceEvidence, laneId, definitionHash: reference.definitionHash,
           packHash: reference.packHash, patchId: reference.patchId, revision: reference.revision, assetHashes: reference.assetHashes }, lessonContext()); }
       return committed;
     },

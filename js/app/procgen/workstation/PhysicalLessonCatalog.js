@@ -36,5 +36,16 @@ export async function createInstalledPhysicalLessons(catalog) {
     permittedActions: ['finite-release', 'play-pause', 'record-causal-take', 'keep-sound-fork', 'apply-sound', 'save-project', 'open-project'],
     success: { kind: 'make-and-keep', pickupId: 'practice-pickup', mappingIds: keptSetup.causalMappings.instruments.map(value => value.id), minimumActors: 1 },
     resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
+  if (keptSetup) lessons.push(validatePhysicalLessonDefinition({ schema: 'lemmings-physical-lesson/v1', id: 'lesson.hear-the-fossil', version: 1, title: 'Hear the fossil',
+    setupScene: await reference(keptSetup), zeroNoteScene,
+    prediction: 'Start a causal take explicitly before the contact. Predict which real pickup crossing will become baked material, and how many new onsets two later contacts will create.',
+    intervention: 'Record one actual contact, then stop and save the causal take. Render that take and harvest a short source window containing its annotated onset. In Seed Lab compile Hammer seed, audition, Save playable seed locally and Apply. Explicitly perform two later physical crossings with the same pickup and entry policy.',
+    expectedPhysicalEvidence: 'A recorded source-linked baseline crossing; the matching intent/fact IDs in the selected frozen material; the exact durable applied seed asset; and two distinct new physical pickup causes.',
+    expectedMusicalDifference: 'The two later physical contacts create two semantic playback onsets. Any attacks already printed into the seed remain original material ancestry and do not create new causes.',
+    audibleEvidence: 'The source annotation proves covered semantic onset identity in rendered material. It cannot prove cause separation, speaker output or hearing. Backend acceptance and your report remain separate.',
+    hint: 'A crop that misses the original onset, incomplete annotation, another take, undurable material or a general master capture cannot establish this source link. Optional Rebuild in Seed Lab is a separately reviewed branch; it never rewrites the frozen original or relabels its old causes.',
+    permittedActions: ['record-causal-take', 'render-causal-take', 'harvest-sound-seed', 'apply-saved-seed', 'finite-release', 'play-pause', 'inspect-rebuild-branch'],
+    success: { kind: 'hear-fossil', pickupId: 'practice-pickup', mappingIds: keptSetup.causalMappings.instruments.map(value => value.id), minimumActors: 1, minimumContacts: 2 },
+    resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
   return Object.freeze(lessons);
 }
