@@ -38,6 +38,7 @@ import { quarterMeterPosition } from '../../../midi/project/MidiMusicalPosition.
 import { createInstrumentDisplayScheduler } from '../../resources/InstrumentDisplayScheduler.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { createPerformanceSceneControlView } from './PerformanceSceneControlView.js';
+import { readSceneFocusControl } from './SceneFocusAction.js';
 import { readSceneAcousticControl } from './SceneAcousticControl.js';
 import { readSceneMacroControl } from './SceneMacroAction.js';
 import { createMidiRouteDiagnostics } from './MidiRouteDiagnostics.js';
@@ -1620,10 +1621,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const sceneControls = createPerformanceSceneControlView({ document, parent: presentationRoot, displayScheduler,
     getScene: () => getProject().procgen.sceneOrigin?.manifest || null, getWorld: () => getRuntime()?.world || null,
     performReleaseGesture: gesture => handlers.performReleaseGesture(gesture), performCavityEdit: input => handlers.performCavityEdit(input), requestJunction: (...args) => handlers.requestJunction(...args), onStatus: text => { setStatus(text); },
+    getSceneFocusState: id => readSceneFocusControl(getProject(), id), performSceneFocus: input => handlers.performSceneFocus(input),
     getSceneAcousticState: id => readSceneAcousticControl(getProject(), id), performSceneAcoustic: input => handlers.performSceneAcoustic(input),
     getSceneMacroState: id => readSceneMacroControl(getProject(), id), performSceneMacro: input => handlers.performSceneMacro(input),
     openControl: (control, scene) => {
       if (control.target.startsWith('effect-macro:THROW;') || control.target.startsWith('quarry-echo:')) return handlers.openQuarryEcho?.();
+      if (control.target.startsWith('sound-library:')) { if (stageActive) { setStatus('Exit stage to choose the selected lane’s material or instrument.'); return; } return handlers.openSoundLibrary?.(); }
       if (control.target.startsWith('acoustic-map:')) return handlers.openAcousticFields?.();
       if (control.target.startsWith('scene-browser:')) return handlers.scenes?.();
       if (control.target.startsWith('release-gesture:')) return handlers.openReleaseGestures?.();

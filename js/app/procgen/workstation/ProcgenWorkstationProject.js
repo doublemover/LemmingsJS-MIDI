@@ -17,6 +17,7 @@ import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { validateFragmentLibrary, validateFragmentInstances } from './PhysicalScoreFragment.js';
 import { validateProjectJunctions } from './PhysicalJunctionProject.js';
 import { procgenLaneIndex, inheritProcgenLaneIndex } from './ProcgenProjectIndex.js';
+import { applySceneFocusAction } from './SceneFocusAction.js';
 import { applySceneMacroAction } from './SceneMacroAction.js';
 import { validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
 import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolveProcgenSound } from './ProcgenSoundCollections.js';
@@ -254,6 +255,7 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
       lanes = procgen.lanes.map((lane, at) => at === index ? next : lane);
     inheritProcgenLaneIndex(procgen.lanes, lanes); return { ...project, procgen: { ...procgen, lanes, physicalGraph: previous.materialPalette && !next.materialPalette ? clearLaneMaterialInterpretation(physicalGraph, index, false) : physicalGraph } };
   }
+  if (action.type === 'procgen/sceneFocus') return applySceneFocusAction(project, action);
   if (action.type === 'procgen/sceneMacro') return applySceneMacroAction(project, action);
   if (action.type === 'procgen/releaseGesture') { const releaseGesture = validateReleaseGesture(action.gesture, procgen.lanes.length); if (sameValue(releaseGesture, procgen.releaseGesture)) return project; if (procgen.releaseGesture?.id === releaseGesture.id && releaseGesture.revision <= procgen.releaseGesture.revision) throw new Error('A saved release gesture change requires a newer revision.'); return { ...project, procgen: { ...procgen, releaseGesture } }; }
   if (action.type === 'procgen/fragments') {
@@ -375,7 +377,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (['procgen/lane', 'procgen/palette', 'procgen/materialPalette', 'procgen/timbreTuning', 'procgen/actorTimbreLocks', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/lane', 'procgen/palette', 'procgen/materialPalette', 'procgen/timbreTuning', 'procgen/actorTimbreLocks', 'procgen/sceneMacro', 'procgen/sceneFocus', 'procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, ...(Object.hasOwn(action.patch || {}, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id } : lane);

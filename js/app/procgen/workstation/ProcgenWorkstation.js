@@ -1,3 +1,4 @@
+import { prepareSceneFocusAction } from './SceneFocusAction.js';
 import { prepareSceneAcousticControl } from './SceneAcousticControl.js';
 import { createAcousticFieldEditor } from './AcousticFieldEditor.js';
 import { validateAcousticMap } from '../../../midi/content/AcousticMap.js';
@@ -91,7 +92,7 @@ const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
 const WORLD_HISTORY_ACTIONS = new Set(['procgen/worldTheme', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed',
   'procgen/physicalGraph', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment', 'procgen/releaseGesture']);
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/materialPalette', 'procgen/timbreTuning', 'procgen/sceneMacro', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/materialPalette', 'procgen/timbreTuning', 'procgen/sceneMacro', 'procgen/sceneFocus', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/nativeRoutes', 'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -104,6 +105,7 @@ const historyPatchBytes = (before, after, action) => {
     return commandBytes + JSON.stringify(pattern?.steps[action.index] ?? null).length * 2 + structuralBytes;
   }
   if (action.type === 'procgen/pattern') return commandBytes + JSON.stringify(lane?.patterns[action.slot ?? lane.activeSlot] ?? null).length * 2 + structuralBytes;
+  if (action.type === 'procgen/sceneFocus') return commandBytes + action.targets.length * 512 + structuralBytes;
   if (action.type === 'procgen/sceneMacro') return commandBytes + action.targets.reduce((bytes, target) => bytes + JSON.stringify(procgenLane(before.procgen.lanes, target.laneId)?.instrumentControls ?? null).length * 2, 0) + structuralBytes;
   if (action.type === 'procgen/nativeRoutes') { const ids = new Set(action.routes.map(route => route.laneId)); return commandBytes + JSON.stringify(before.procgen.lanes.filter(lane => ids.has(lane.id)).map(lane => ({ id: lane.id, outputId: lane.outputId, channel: lane.channel }))).length * 2 + structuralBytes; }
   if (action.type === 'procgen/lane') return commandBytes + JSON.stringify(Object.fromEntries(Object.keys(action.patch || {}).map(key => [key, lane?.[key]]))).length * 2 + structuralBytes;
@@ -1994,8 +1996,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             try { const bundle = await owner.prepare({ modeCount, sampleRate, signal, isCurrent: () => !disposed && sceneBaseIdentity() === identity }); signal.throwIfAborted(); return await sceneCatalog.addPocketFoundry(bundle, { signal }); }
             finally { const receipt = owner.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('The Pocket Foundry preparation retains unresolved source ownership.'); }
           } : null,
-          onCreateWorkshop: sceneCatalog.available ? async ({ signal } = {}) => { const identity = sceneBaseIdentity(), reference = selected().instrumentRef; if (!reference) throw new Error('Save and apply the intended finite tool/body graft in Seed Lab, then select its lane before assembling the workshop.'); const rows = await sceneCatalog.addWorkshopTool(reference, { signal }); signal?.throwIfAborted(); if (disposed || sceneBaseIdentity() !== identity) throw new Error('The selected graft or document changed during workshop assembly.'); return rows[0]; } : null,
-          onCreateNursery: sceneCatalog.available ? async ({ signal } = {}) => { const identity = sceneBaseIdentity(), reference = selected().instrumentRef; if (!reference) throw new Error('Prepare, save and apply a finite sample/FM → body graft in Seed Lab, then select that lane before opening Nursery.'); const row = await sceneCatalog.addNurseryStrike(reference, { signal }); signal?.throwIfAborted(); if (disposed || sceneBaseIdentity() !== identity) throw new Error('The selected lane or document changed during Nursery assembly. Select the current strike again.'); return row; } : null,
+          onCreateWorkshop: sceneCatalog.available ? async ({ signal } = { signal: undefined }) => { const identity = sceneBaseIdentity(), reference = selected().instrumentRef; if (!reference) throw new Error('Save and apply the intended finite tool/body graft in Seed Lab, then select its lane before assembling the workshop.'); const rows = await sceneCatalog.addWorkshopTool(reference, { signal }); signal?.throwIfAborted(); if (disposed || sceneBaseIdentity() !== identity) throw new Error('The selected graft or document changed during workshop assembly.'); return rows[0]; } : null,
+          onCreateNursery: sceneCatalog.available ? async ({ signal } = { signal: undefined }) => { const identity = sceneBaseIdentity(), reference = selected().instrumentRef; if (!reference) throw new Error('Prepare, save and apply a finite sample/FM → body graft in Seed Lab, then select that lane before opening Nursery.'); const row = await sceneCatalog.addNurseryStrike(reference, { signal }); signal?.throwIfAborted(); if (disposed || sceneBaseIdentity() !== identity) throw new Error('The selected lane or document changed during Nursery assembly. Select the current strike again.'); return row; } : null,
           canTeachScene: scene => definitions.some(value => value.setupScene.id === scene.id && value.setupScene.version === scene.version), onLesson: scene => physicalLessonView?.open(scene.id),
           keepPreparedOnClose: () => stageSession?.active(), unavailableReason: sceneCatalog.reason, getLiveScene: () => project.procgen.sceneOrigin?.manifest || null, onSavedTakes: () => handlers.load({ review: true }), onStatus: status });
       })().catch(error => { sceneToolsPending = null; throw error; });
@@ -2717,6 +2719,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!resourceBudget || !window.fetch) return Promise.reject(new Error('Native sound source ownership is unavailable. The prior sound is unchanged.'));
       nativeSoundSelection ||= createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs: backgroundJobs, resourceBudget, ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}) });
       return soundTransactions.select(signal => nativeSoundSelection.prepare(alias.patchId, { signal }), { laneId, patch: alias.lanePatch });
+    },
+    performSceneFocus(input) {
+      if (worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop) throw new Error('Finish the current score or take operation before changing scene balance.');
+      const action = prepareSceneFocusAction(project, input), before = project, result = dispatch(action); if (!result) throw new Error('The complete scene balance edit was not admitted.');
+      return Object.freeze({ status: result === before ? 'unchanged' : 'committed', physicalMutation: false, laneIds: Object.freeze(action.targets.map(target => target.laneId)) });
     },
     performSceneAcoustic(input) {
       if (worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop) throw new Error('Finish the current score or take operation before changing its acoustic map.');

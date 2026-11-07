@@ -11,8 +11,12 @@ const fail = message => { throw new Error('Scene macro: ' + message); };
 export function readSceneMacroControl(project, controlId) {
   const origin = project?.procgen?.sceneOrigin, scene = origin?.manifest, control = scene?.physicalControls.find(item => item.id === controlId), binding = control?.target.split(';')[0];
   if (!hash(origin?.sceneHash) || !binding?.startsWith('patch-macro:') || control.unit !== 'normalized' || control.minimum !== 0 || control.maximum !== 1) fail('Choose a normalized macro control declared by the current exact scene.');
-  const macroId = binding.slice('patch-macro:'.length), targets = [];
+  const macroId = binding.slice('patch-macro:'.length), targets = [], scopes = control.target.split(';').filter(part => part.startsWith('lane-scope:'));
+  if (scopes.length > 1) fail('A scene macro declares one exact lane scope.');
+  const scopedIds = scopes.length ? scopes[0].slice('lane-scope:'.length).split(',') : null;
+  if (scopedIds && (!scopedIds.length || scopedIds.length > 8 || new Set(scopedIds).size !== scopedIds.length || scopedIds.some(id => !scene.patchRefs.some(patch => patch.laneId === id)))) fail('A scene macro lane scope differs from its authored scene.');
   for (const patch of scene.patchRefs) {
+    if (scopedIds && !scopedIds.includes(patch.laneId)) continue;
     const authored = getSupportedInstrumentDefinition(patch.reference)?.macros?.find(macro => macro.id === macroId); if (!authored) continue;
     const lane = procgenLane(project.procgen.lanes, patch.laneId), reference = lane?.instrumentRef, macro = getSupportedInstrumentDefinition(reference)?.macros?.find(item => item.id === macroId);
     if (!lane || !reference || reference.packHash !== patch.reference.packHash || reference.definitionHash !== patch.reference.definitionHash || !macro || macro.mode !== 'onset-only') fail('An authored macro lane was replaced or no longer supports this control. Use its individual lane editor.');

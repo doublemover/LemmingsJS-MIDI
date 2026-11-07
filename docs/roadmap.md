@@ -11640,3 +11640,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Add nine shared Resonant crew orchestrations across the existing wooden/choir/modal sources and crossing/unresolved/loss outcomes. Exact three-member cohort, terrain, finite release, skill station and verified outcome rules stay intact. All declared real source audio drives one root of an original four-body220/275/330/440Hz sparse network; coupling adds no semantic attacks or success evidence.
 - Version world-point sympathetic anchors separately from pickup-bound maps. The v2 contract declares the complete exact local instrument inventory, prevents hidden omitted input sources and never fabricates pickups to justify body positions. Live state and private rehearsal receipts retain that inventory with their existing shared-body ownership and complete tails.
 - Functional, native/audio, browser, performance and listening campaigns remain deferred.
+
+### Continuation 620 — complete workshop sound and focus controls
+
+- Expose STAGGER/MATERIAL/DAMP/FOCUS on the original workshop scores. Material selection opens the selected lane’s existing sound library and verified palette Apply. DAMP maps normalized values to actual declared modal T60 or FM release for later work attacks. No control rebuilds the terrain or supplies missing work.
+- Add one bounded canonical scene focus action for the exact authored lanes. Constant authored gain power moves emphasis from the builder to the other workers; current mute/solo and world state retain their owners. Complete lane revisions/gains are verified before one history command, and the existing mix owner smooths live changes. Labels explicitly distinguish gain power from measured loudness.
+- Scope tool-transplant DAMP/MIX to its exact graft lane while retaining all-lane FOCUS. Shared scene macros now accept explicit authored lane scopes rather than affecting unrelated patches that happen to expose the same macro ID. Captured performance diffs use the existing lane/mix journal path.
+- Functional/audio/native/browser/performance qualification remains deferred.

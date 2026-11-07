@@ -1,6 +1,6 @@
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export function createPerformanceSceneControlView({ document, parent, displayScheduler, getScene, getWorld, performReleaseGesture, requestJunction, performCavityEdit = null, getSceneAcousticState = null, performSceneAcoustic = null, getSceneMacroState = null, performSceneMacro = null, openControl, onStatus = () => {} } = {}) {
+export function createPerformanceSceneControlView({ document, parent, displayScheduler, getScene, getWorld, performReleaseGesture, requestJunction, performCavityEdit = null, getSceneFocusState = null, performSceneFocus = null, getSceneAcousticState = null, performSceneAcoustic = null, getSceneMacroState = null, performSceneMacro = null, openControl, onStatus = () => {} } = {}) {
   const retirement = createProcgenRetirementScope(), rows = [], listeners = [];
   let disposed = false, selectedScene = null, selectedWorld = null, generation = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
@@ -39,6 +39,9 @@ export function createPerformanceSceneControlView({ document, parent, displaySch
           const receipt = performCavityEdit({ scene: selectedScene, world: selectedWorld, controlId: control.id, value: Number(input.value) });
           if (receipt?.status !== 'queued') throw new Error(receipt?.reason || 'The chamber edit was not admitted.'); row.transactionId = receipt.transactionId; report('Chamber edit queued for the next physical tick.');
         }, line); rows.push(row);
+      } else if (binding.startsWith('lane-focus:') && getSceneFocusState && performSceneFocus) {
+        const input = node('input'); input.type = 'number'; input.required = true; input.min = '0'; input.max = '1'; input.step = String(control.step); input.placeholder = 'Mixed'; input.setAttribute('aria-label', control.label); try { const state = getSceneFocusState(control.id); input.value = state.value01 == null ? '' : String(Math.round(state.value01 * 1000000) / 1000000); } catch {} line.append(input);
+        const apply = button('Apply lane focus', () => { if (!input.checkValidity()) throw new Error('Choose a normalized focus from zero to one.'); const state = getSceneFocusState(control.id), receipt = performSceneFocus({ sceneHash: state.sceneHash, controlId: control.id, value01: Number(input.value) }); if (!['committed', 'unchanged'].includes(receipt?.status)) throw new Error('The complete lane focus edit was not admitted.'); report('Lane gains saved in one edit. Their authored gain power is preserved; this is not measured loudness. Physics, mute and solo remain independently owned.'); }, line); rows.push({ kind: 'focus', control, input, result, apply });
       } else if (binding.startsWith('acoustic-map:') && getSceneAcousticState && performSceneAcoustic) {
         const input = node('input'); input.type = 'number'; input.required = true; input.min = String(control.minimum); input.max = String(control.maximum); input.step = String(control.step); input.setAttribute('aria-label', control.label);
         try { input.value = String(getSceneAcousticState(control.id).value); } catch { input.value = String(control.initial); } line.append(input);
@@ -83,6 +86,8 @@ export function createPerformanceSceneControlView({ document, parent, displaySch
       } else if (row.kind === 'cavity') {
         const receipt = row.transactionId ? world?.interventionState?.receipts.findLast(receipt => receipt.transactionId === row.transactionId || receipt.id === row.transactionId) : null;
         row.result.textContent = receipt ? receipt.status + (receipt.reason ? ' · ' + receipt.reason : '') : row.transactionId ? 'Waiting for physical commit' : 'Edit commits at the next physical tick'; row.apply.disabled = !world || typeof performCavityEdit !== 'function';
+      } else if (row.kind === 'focus') {
+        try { const state = getSceneFocusState(row.control.id); row.result.textContent = (state.value01 == null ? 'Independently edited levels' : 'Saved focus: ' + state.value01.toFixed(3)) + ' · authored gain power; not measured loudness'; row.apply.disabled = false; } catch (error) { row.result.textContent = error.message; row.apply.disabled = true; }
       } else if (row.kind === 'acoustic') {
         try { const state = getSceneAcousticState(row.control.id); row.result.textContent = 'Saved value: ' + state.value + ' · map revision ' + state.mapRevision + ' · preparation is separate from saved state'; row.apply.disabled = false; } catch (error) { row.result.textContent = error.message; row.apply.disabled = true; }
       } else if (row.kind === 'macro') {
