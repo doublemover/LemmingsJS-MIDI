@@ -1,4 +1,4 @@
-import { cloneData, freezeData } from '../../../core/CanonicalData.js';
+import { cloneData, cloneMutableData, freezeData } from '../../../core/CanonicalData.js';
 
 const limits = { maxBytes: 8192, maxNodes: 512 }, point = value => value && [value.x, value.y].every(number => Number.isFinite(number) && Math.abs(number) <= 1e9);
 export function createSceneMorphActorMotion({ instrumentId, scoreTimeFor = (batch, fact) => ({ simTick: batch.tick, subTick: fact.subTick ?? 0, precision: fact.precision ?? 'tick', sourceTimeMs: batch.sourceTimeMs, sourceTickDurationMs: batch.tickDurationMs }) } = {}) {
@@ -35,7 +35,7 @@ export function createSceneMorphActorMotion({ instrumentId, scoreTimeFor = (batc
     },
     snapshot: () => freezeData(cloneData({ schema: 'lemmings-scene-body-motion-owner/v1', instrumentId, used, source }, limits)),
     restore(raw, frontier) {
-      const value = cloneData(raw, limits), next = value?.source;
+      const value = cloneMutableData(raw, limits), next = value?.source;
       if (used || source || value?.schema !== 'lemmings-scene-body-motion-owner/v1' || value.instrumentId !== instrumentId || typeof value.used !== 'boolean' ||
           next && (!value.used || next.worldId !== frontier.worldId || next.generation !== frontier.generation || next.instrumentId !== instrumentId || !Number.isSafeInteger(next.actorId) || next.actorId < 0 ||
           typeof next.voiceId !== 'string' || !next.voiceId || !Number.isSafeInteger(next.lastTick) || next.lastTick < 0 || typeof next.stopped !== 'boolean' || !point(next.lastPosition) || !Number.isFinite(next.originX) || Math.abs(next.originX) > 1e9)) throw new Error('The scene body motion owner differs from its exact restored physical execution.');

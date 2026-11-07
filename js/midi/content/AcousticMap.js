@@ -1,4 +1,4 @@
-import { cloneData, freezeData } from '../../core/CanonicalData.js';
+import { cloneMutableData, freezeData } from '../../core/CanonicalData.js';
 import { validateWorldRegion, worldRegionDepth } from './WorldRegion.js';
 import { ORIGINAL_MATERIAL_PATCH_IDS } from './MaterialResponseMap.js';
 
@@ -10,7 +10,7 @@ const keys = (value, allowed) => value && Object.getPrototypeOf(value) === Objec
 const fail = message => { throw new TypeError('Acoustic map: ' + message); };
 export function validateAcousticMap(raw) {
   if (validated.has(raw)) return raw;
-  const value = cloneData(raw, { maxBytes: 131072, maxNodes: 16384 });
+  const value = cloneMutableData(raw, { maxBytes: 131072, maxNodes: 16384 });
   if (!keys(value, ['schema', 'id', 'revision', 'zones', 'materialResponses', 'listener', 'controls', 'controlRateHz', 'maximumVoices', 'occlusion', 'stalePolicy']) || value.schema !== 'lemmings-acoustic-map/v1' || !id(value.id) || !natural(value.revision) || !Array.isArray(value.zones) || value.zones.length > 8 || !Array.isArray(value.materialResponses) || value.materialResponses.length > 8 || !number(value.controlRateHz, 5, 30) || !Number.isSafeInteger(value.maximumVoices) || value.maximumVoices < 1 || value.maximumVoices > 128 || value.stalePolicy !== 'hold-then-fade') fail('Use up to eight explicit world zones and128 admitted spatial voices.');
   const responses = new Set();
   for (const response of value.materialResponses) {

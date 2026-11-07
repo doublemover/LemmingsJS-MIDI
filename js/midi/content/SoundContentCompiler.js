@@ -70,7 +70,7 @@ const nativeComponents = descriptor => {
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'native-fm' ? {
     exciter: ['carrierRatio', 'modulatorRatio', 'dualPair', 'secondaryCarrierRatio', 'secondaryModulatorRatio', 'pitchSettleCents', 'pitchSettleSeconds', 'maxBendCents'],
-    modulation: ['indexStart', 'indexEnd', 'indexSeconds', 'secondaryIndexStart', 'secondaryIndexEnd'],
+    modulation: ['indexStart', 'indexEnd', 'indexSeconds', 'secondaryIndexStart', 'secondaryIndexEnd', 'feedbackIndex'],
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01', 'secondaryMix01']
   } : { exciter: ['waveform'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] };
   if (!['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind', 'worklet-warp'].includes(descriptor.engineId)) return null;

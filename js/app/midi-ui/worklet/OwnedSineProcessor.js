@@ -3,7 +3,7 @@
 import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState, writeOwnedSourceStateChunks, restorePreparedOwnedSourceStateChunks } from './OwnedSourceState.js';
 import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState, writeOwnedKernelStateChunks, restorePreparedOwnedKernelStateChunks, OWNED_STATE_CHUNK_BYTES } from './OwnedSineState.js';
 import { claimOwnedStateCopy, releaseOwnedStateCopy } from './OwnedStateCopyBudget.js';
-import { SINE_LAYOUT, LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL, LIVE_LANE_ID_LIMIT } from '../OwnedSourceLayout.js';
+import { SINE_LAYOUT, OWNED_SOURCE_COMMAND_WIDTHS, LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL, LIVE_LANE_ID_LIMIT } from '../OwnedSourceLayout.js';
 const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
 const PERFORMANCE_GAIN = 65536;
 const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6, MIX = 7;
@@ -19,7 +19,7 @@ class OwnedSineKernel {
   constructor(sampleRate, maxVoices = MAX_VOICES, { source = null, width = WIDTH } = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000 ||
         !Number.isSafeInteger(maxVoices) || maxVoices < 1 || maxVoices > MAX_VOICES) throw new Error('Invalid sine kernel limits.');
-    if (![18, 24, 26, 33, 40, 48, 56, 73, 80, 82, 84].includes(width) || width !== 18 && !source || source && (width === 18 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function') || source.ownsEnvelope && typeof source.finished !== 'function')) throw new Error('Invalid owned source profile.');
+    if (!OWNED_SOURCE_COMMAND_WIDTHS.includes(width) || width !== 18 && !source || source && (width === 18 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function') || source.ownsEnvelope && typeof source.finished !== 'function')) throw new Error('Invalid owned source profile.');
     this.width = width; this.source = source;
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
     this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;

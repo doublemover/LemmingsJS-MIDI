@@ -17,6 +17,10 @@ export const SPECTRUM_LAYOUT = Object.freeze({ width: 78, voices: 8, state: 48, 
 export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32, displayVoices: 32, displayWidth: 6 });
 export const SAMPLE_LAYOUT = Object.freeze({ width: 44, voices: 16, state: 144, zones: 128, cursorCapacity: 32, cursorWidth: 7, cursorScalars: 21 });
 export const SEED_LAYER_LAYOUT = Object.freeze({ width: 56, voices: 2, state: 144 });
+export const OWNED_SOURCE_COMMAND_WIDTHS = Object.freeze([
+  SINE_LAYOUT.width, PLUCK_LAYOUT.width, CHOIR_LAYOUT.width, SPECTRUM_LAYOUT.width, GRANULAR_LAYOUT.width,
+  SAMPLE_LAYOUT.width, SEED_LAYER_LAYOUT.width, TEXTURE_LAYOUT.width, FRICTION_LAYOUT.width, WIND_LAYOUT.width
+]);
 export const CHOIR_SOURCE_HEAP_ESTIMATE = 65536;
 export const SPECTRUM_SOURCE_HEAP_ESTIMATE = 65536;
 export const GRANULAR_SOURCE_HEAP_ESTIMATE = 65536;

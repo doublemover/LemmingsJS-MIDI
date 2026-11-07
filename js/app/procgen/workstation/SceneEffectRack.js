@@ -15,12 +15,12 @@ export function prepareSceneEffectRack(raw, sampleRate = 48000) {
   const cross = plan.sidechainInputs.length > 0 || plan.nodes.some(node => ['multiband-vocoder', 'ring-modulator'].includes(node.kind));
   if (native && cross) throw new TypeError('A native reflection rack and external donor/carrier sources need an explicitly composed simultaneous-source profile.');
   if (plan.nodes.some(node => !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'envelope-detector', 'envelope-mapping', 'modulated-gain', 'nonlinear-chain', 'sidechain-in', 'multiband-vocoder', 'ring-modulator', 'mono-to-stereo', 'stereo-to-mono', 'polarity-invert', ...(native ? ['convolution-native'] : [])].includes(node.kind)) ||
-      !(native && plan.latencyFrames === null || Number.isSafeInteger(plan.latencyFrames) && plan.latencyFrames >= 0 && plan.latencyFrames <= 2048) ||
-      !Number.isSafeInteger(plan.maximumTailFrames) || plan.maximumTailFrames < 0 || plan.maximumTailFrames > sampleRate * 30 ||
+      !(native && plan.latencyFrames === null || Number.isFinite(plan.latencyFrames) && plan.latencyFrames >= 0 && plan.latencyFrames <= 2048) ||
+      !Number.isFinite(plan.maximumTailFrames) || plan.maximumTailFrames < 0 || plan.maximumTailFrames > sampleRate * 30 ||
       !Number.isSafeInteger(plan.stateBytes) || plan.stateBytes < 0 || plan.stateBytes > 16 * 1048576 ||
       native && (plan.impulseCount > 2 || plan.impulseDecodedBytes > 16 * 1048576 || plan.nativeNodeEstimateBytes > 32 * 1048576))
     throw new TypeError('This scene rack needs supported echo/duck/tape/body nodes, bounded declared latency and thirty seconds of admitted tail.');
-  return Object.freeze({ rack, plan, native, cross, requirementId: cross ? SCENE_CROSS_RACK_REQUIREMENT : native ? SCENE_NATIVE_RACK_REQUIREMENT : SCENE_EFFECT_RACK_REQUIREMENT, previewTailFrames: Math.min(plan.maximumTailFrames, sampleRate * 4) });
+  return Object.freeze({ rack, plan, native, cross, requirementId: cross ? SCENE_CROSS_RACK_REQUIREMENT : native ? SCENE_NATIVE_RACK_REQUIREMENT : SCENE_EFFECT_RACK_REQUIREMENT, previewTailFrames: Math.min(Math.ceil(plan.maximumTailFrames), sampleRate * 4) });
 }
 
 export function sceneEffectSourceBindings(effects, laneIds, voices = []) {

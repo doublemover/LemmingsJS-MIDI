@@ -9,7 +9,7 @@ const fail = () => { throw new TypeError('Causal onset coverage needs an exact b
 export function createCausalOnsetCoverage({ voices, firstFrame, frames, sampleRate, takeId, takeRevision, sourceCanonicalHash, laneId = null, panicFrame = null }) {
   if (!voices?.[Symbol.iterator] || !integer(firstFrame) || !integer(frames) || !frames || !integer(firstFrame + frames) ||
       !integer(sampleRate) || sampleRate < 8000 || sampleRate > 192000 || !text(takeId) || !integer(takeRevision) || !takeRevision ||
-      !hash(sourceCanonicalHash) || laneId != null && !integer(laneId) || panicFrame != null && !integer(panicFrame)) fail();
+      !hash(sourceCanonicalHash) || laneId != null && !text(laneId) && !integer(laneId) || panicFrame != null && !integer(panicFrame)) fail();
   const entries = []; let total = 0, bytes = 0, visited = 0;
   for (const voice of voices) {
     if (++visited > 32768) fail();

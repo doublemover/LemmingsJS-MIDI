@@ -99,7 +99,8 @@ export const freezeData = value => {
   }
   return value;
 };
-export const cloneData = (value, options) => freezeData(JSON.parse(canonicalDataText(value, options).text));
+export const cloneMutableData = (value, options) => JSON.parse(canonicalDataText(value, options).text);
+export const cloneData = (value, options) => freezeData(cloneMutableData(value, options));
 export const hashDataText = async (text, crypto = globalThis.crypto) => {
   if (!crypto?.subtle?.digest) throw new Error('SHA-256 is unavailable for canonical data.');
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', encodeUtf8(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
