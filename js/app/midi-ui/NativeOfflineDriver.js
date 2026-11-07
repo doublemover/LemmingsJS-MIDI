@@ -1,3 +1,6 @@
+import { createAcousticZoneAudioOwner } from './AcousticZoneAudioOwner.js';
+import { validateAcousticMap } from '../../midi/content/AcousticMap.js';
+import { validateSpatialState } from '../../midi/content/SpatialState.js';
 import { prepareEffectSourceBindings } from './EffectSourceBindings.js';
 import { createLiveLaneSourceBuses } from './LiveLaneSourceBuses.js';
 import { OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
@@ -20,7 +23,7 @@ let nextOwner = 0;
 
 // The destination belongs exclusively to an OfflineAudioContext. Every lane tap
 // and the master are rendered together; no live output or solo bounce is used.
-export async function renderNativeOfflineGraph({ patch, sourceVariants = null, events, frames, sampleRate, stemLaneIds = [], assets = [], effectGraph = null, effectReturnNodeIds = [], sourcePcm = null, panicFrame = null },
+export async function renderNativeOfflineGraph({ patch, sourceVariants = null, spatialMaps = null, events, frames, sampleRate, stemLaneIds = [], assets = [], effectGraph = null, effectReturnNodeIds = [], sourcePcm = null, panicFrame = null },
   { resources, signal: externalSignal, admission = backgroundWorkerAdmission, resourceBudget = null,
     OfflineAudioContext = globalThis.OfflineAudioContext, getMaterialProvider = null, jobs, createWorkletNode, effectInitializationTimeoutMs = 5000, onProgress = () => {}, isCurrent = () => true } = {}) {
   externalSignal?.throwIfAborted();
@@ -43,16 +46,17 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
   const channels = 2 + (stemLaneIds.length + effectReturnNodeIds.length) * 2, nativeBytes = frames * channels * 4;
   if (!(sourcePcm ? OWNED_SOURCE_IDS : NATIVE_OFFLINE_SOURCE_IDS).includes(patch?.engineId) || ![44100, 48000, 96000].includes(sampleRate) ||
       panicFrame != null && (!natural(panicFrame) || panicFrame >= frames || panicFrame % 128 || sourcePcm || effectGraph) || !natural(frames) || frames < 1 || frames > sampleRate * 150 || !natural(nativeBytes) || nativeBytes > 256 * 1048576 ||
-      !Array.isArray(assets) || assets.length > 32 || patch.engineId !== 'native-sample' && assets.length || !Array.isArray(events) || events.length > 32768 || !Array.isArray(stemLaneIds) || stemLaneIds.length + effectReturnNodeIds.length > 15 ||
+      !Array.isArray(assets) || assets.length > 32 || patch.engineId !== 'native-sample' && assets.length || !Array.isArray(events) || events.length > (spatialMaps ? 65536 : 32768) || !Array.isArray(stemLaneIds) || stemLaneIds.length + effectReturnNodeIds.length > 15 ||
       new Set(stemLaneIds).size !== stemLaneIds.length || stemLaneIds.some(id => typeof id !== 'string' || !id || id.length > 128) ||
       typeof OfflineAudioContext !== 'function' || typeof resources?.reserve !== 'function' || typeof admission?.acquire !== 'function' || typeof onProgress !== 'function' || typeof isCurrent !== 'function')
     throw failure('native-render-preflight', 'Native offline rendering requires a bounded native source, available OfflineAudioContext and at most fifteen stereo lane taps.');
-  if (sourceVariants != null && (patch.engineId !== 'native-modal' || sourcePcm || assets.length || !Array.isArray(sourceVariants) || !sourceVariants.length || sourceVariants.length > 15 || new Set(sourceVariants.map(variant => variant?.key)).size !== sourceVariants.length || sourceVariants.some(variant => typeof variant?.key !== 'string' || !variant.key || variant.key.length > 192 || variant.patch?.engineId !== 'native-modal'))) throw failure('native-source-variants', 'Native material readout needs a bounded unique preprepared modal source inventory.');
+  if (spatialMaps != null) { if (sourcePcm || !Array.isArray(spatialMaps) || !spatialMaps.length || spatialMaps.length > 3) throw failure('native-spatial-maps', 'Spatial readout needs up to three complete native source-map revisions.'); spatialMaps = spatialMaps.map(validateAcousticMap); }
+  if (sourceVariants != null && (patch.engineId !== 'native-modal' || sourcePcm || assets.length || !Array.isArray(sourceVariants) || !sourceVariants.length || sourceVariants.length > 16 || new Set(sourceVariants.map(variant => variant?.key)).size !== sourceVariants.length || sourceVariants.some(variant => typeof variant?.key !== 'string' || !variant.key || variant.key.length > 192 || variant.patch?.engineId !== 'native-modal'))) throw failure('native-source-variants', 'Native material readout needs a bounded unique preprepared modal source inventory.');
   const sourceKeys = new Set(sourceVariants?.map(variant => variant.key) || []);
   let prior = -1;
   for (const event of events) {
     if (sourceVariants ? !sourceKeys.has(event?.sourceKey) : event?.sourceKey != null) throw failure('native-source-variant-missing', 'Every material voice command must retain its original prepared source.');
-    if (!natural(event?.frame) || event.frame < prior || event.frame >= frames || !['begin', 'update', 'end', 'lane'].includes(event.kind) ||
+    if (!natural(event?.frame) || event.frame < prior || event.frame >= frames || !['begin', 'update', 'end', 'lane', 'spatial'].includes(event.kind) ||
         typeof event.voiceId !== 'string' || !event.voiceId || event.voiceId.length > 512 ||
         event.executionEpoch != null && (typeof event.executionEpoch !== 'string' || !event.executionEpoch || event.executionEpoch.length > 256) ||
         event.releaseVelocity01 != null && (!Number.isFinite(event.releaseVelocity01) || event.releaseVelocity01 < 0 || event.releaseVelocity01 > 1) ||
@@ -61,6 +65,7 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
         event.kind === 'begin' && (!natural(event.releaseFrame) || event.releaseFrame < event.frame ||
           !Number.isFinite(event.releaseSeconds) || event.releaseSeconds < 0.002 || event.releaseSeconds > 4))
       throw failure('native-event-preflight', 'Native scheduling needs ordered explicit frame targets and the complete release interval for every onset.');
+    if (event.kind === 'spatial') { if (!spatialMaps) throw failure('native-spatial-source-missing', 'Spatial commands need their exact shared return map.'); validateSpatialState(event.state); }
     prior = event.frame;
   }
   const sourceLaneIds = sourcePcm ? sourcePcm.sourceLaneIds ?? sourcePcmLaneIds : [...new Set(events.filter(event => event.kind === 'begin' || event.kind === 'lane').map(event => String(event.laneId ?? 'unassigned')))];
@@ -72,6 +77,7 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
   externalSignal?.addEventListener('abort', forwardAbort, { once: true }); if (externalSignal?.aborted) forwardAbort();
   const variantBackends = new Map();
   let context = null, host = null, backend = null, rendered = null, nativeWork = null, suspension = null;
+  let spatialOwner = null, spatialReceipt = null;
   let execution = null, effects = null, effectReceipt = null, inputLease = null, sourceNode = null, sourceBuffer = null, sourceStarted = false, retirementExecution = null, readiness = null;
   let panicReceipt = null;
   let sources = null; const stemPins = [];
@@ -104,10 +110,10 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
     if (context.state !== 'closed') throw failure('offline-context-retirement-unknown', 'Offline effect context did not acknowledge closure.');
   };
   const cancel = () => {
-    try { for (const child of variantBackends.values()) child.dispose(); if (sourceStarted) sourceNode?.stop(); effects?.panic(); } catch (error) { originalError ||= error; }
+    try { for (const child of variantBackends.values()) child.dispose(); if (sourceStarted) sourceNode?.stop(); effects?.panic(); spatialOwner?.panic(); } catch (error) { originalError ||= error; }
   };
   try {
-    if (!effectPlan) await acquireExecution();
+    if (!effectPlan && !spatialMaps) await acquireExecution();
     if (sourcePcm) {
       inputLease = resources.reserve({ kind: 'native-offline-source-copy', owner, bytes: sourceBytes, estimateBytes: sourceBytes + 65536, consumerOwned: true });
       const endian = new Uint32Array([0x01020304]), byteOrder = new Uint8Array(endian.buffer)[0] === 4 ? 'little-endian' : 'big-endian';
@@ -159,13 +165,17 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
       }
     } else master.connect(splitter);
     splitter.connect(merger, 0, 0); splitter.connect(merger, 1, 1);
+    if (spatialMaps) {
+      spatialOwner = createAcousticZoneAudioOwner({ context, resources, owner, generation: 1, destination: master, getMaterialProvider, jobs, offlineEndFrame: frames, retireOfflineContext, isCurrent: () => !signal.aborted && isCurrent() });
+      for (const definition of spatialMaps) { await spatialOwner.prepare(definition, { signal }); guard(); }
+    }
     if (!sourcePcm) {
       host = { _context: context, _generation: 1, _sessions: new Map([[owner, { generation: 1 }]]), _voices: new Set(),
         _semanticVoiceOwners: new Map(), _voicesByToken: new Map(), _retiredVoices: new Map(), _retirementFaults: new Set(),
         _maxNoteSeconds: 150, _maxScheduledVoices: 512, _maxLiveScheduledVoices: 512, _maxVoices: 256, _voiceSequence: 0,
         _audioResources: resources, _intervalAdmission: createAudioIntervalAdmission({ maxIntervals: 513 }),
         _ownerReady: () => context.state !== 'closed' && !signal?.aborted, getAudioContext: () => context,
-        _channel: () => ({ gain: master }), _laneSourcesFor: () => sources, _workloadClass: () => 'live', _nowMs: () => context.currentTime * 1000,
+        _channel: () => ({ gain: master, spatialZones: spatialOwner }), _laneSourcesFor: () => sources, _workloadClass: () => 'live', _nowMs: () => context.currentTime * 1000,
         _captureMetadata: fields => fields, _observe() {}, _emitPlayback() {}, _setStatus() {},
         _voiceFinished: nativeVoiceFinished, _renderVoiceCount: nativeRenderVoiceCount, _release: releaseNativeVoice,
         _destroyVoice: destroyNativeVoice, _workloadVoiceCount: workloadVoiceCount,
@@ -216,7 +226,8 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
           const selection = retainSampleSelectionReceipt(onset);
           if (selection) { selectedOnsets++; if (sourceSelections.length < selectionLimit) sourceSelections.push(Object.freeze({ intentId: event.intent.intentId, voiceId: event.voiceId, frame: event.frame, ...selection })); }
           accept(eventBackend.end(event.voiceId, { seconds: event.releaseSeconds, ...(event.releaseVelocity01 != null ? { velocity01: event.releaseVelocity01 } : {}) }, event.releaseFrame, event.executionEpoch || 'offline-render'), event);
-        } else if (event.kind === 'end') {
+        } else if (event.kind === 'spatial') accept(eventBackend.updateSpatial(event.voiceId, event.state, event.frame, event.executionEpoch || 'offline-render'), event);
+        else if (event.kind === 'end') {
           accept(eventBackend.end(event.voiceId, { seconds: event.releaseSeconds, ...(event.releaseVelocity01 != null ? { velocity01: event.releaseVelocity01 } : {}),
             ...(event.force != null ? { force: event.force } : {}) }, event.frame, event.executionEpoch || 'offline-render'), event);
         } else if (event.kind === 'lane') accept(eventBackend.updateLaneMix(event.voiceId, { gain: 1, pan: 0 }, event.frame, event.executionEpoch || 'offline-render', event.laneId), event);
@@ -232,6 +243,7 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
         const retirements = [...variantBackends.values()].map(child => child.dispose()); await Promise.all(retirements.map(receipt => receipt.completion));
         const retirement = { state: 'retired', outcome: retirements.every(receipt => receipt.outcome === 'complete') ? 'complete' : 'unknown' };
         if (retirement.outcome !== 'complete') throw failure('native-panic-rejected', 'Shared native source teardown did not acknowledge its qualification stop.');
+        spatialOwner?.panic();
         cursor = events.length; panicReceipt = { frame: frontier, retirement: { state: retirement.state, outcome: retirement.outcome },
           source: 'shared-native-source-hard-teardown', futureFixtureEvents: 'explicitly-suppressed-after-panic', livePanicControlDelivery: 'separate-conformance-required' };
       }
@@ -244,7 +256,7 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
         // sample to avoid a floating point quotient moving one quantum later.
         suspension = context.suspend((next - 0.25) / sampleRate); suspension.catch(() => {});
       }
-      if (!nativeWork) { startNativeWork(); readiness = effects?.confirmReady() || Promise.resolve(); readiness.catch(() => {}); }
+      if (!nativeWork) { startNativeWork(); readiness = Promise.all([effects?.confirmReady(), spatialOwner?.confirmReady()]); readiness.catch(() => {}); }
       else await context.resume();
       if (next < frames) {
         await Promise.all([suspension, readiness]); suspension = null;
@@ -255,6 +267,7 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
     }
     if (rendered?.length !== frames || rendered.sampleRate !== sampleRate || rendered.numberOfChannels !== channels)
       throw failure('native-output-mismatch', 'The browser returned a different offline PCM layout.');
+    if (spatialOwner) { await spatialOwner.confirmOfflineCompletion(); guard(); spatialReceipt = spatialOwner.state({ includeRealization: true }); }
     if (effects) {
       await effects.confirmOfflineCompletion(); guard();
       effectReceipt = Object.freeze({ hash: effects.hash, controls: 'explicit-authored-defaults-not-replayed-live-gestures',
@@ -275,6 +288,7 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
     const receipt = scope.retire([
       { name: 'native-producer', run: () => { if (originalError?.retirement && originalError.retirement.outcome !== 'complete') throw failure('native-preparation-retirement-unknown', 'Prepared IR producer custody remains unresolved.'); if (nativeWork && (!nativeSettled || nativeFailed && context.state !== 'closed')) throw failure('native-producer-unknown', 'Offline producer retirement could not be confirmed.'); } },
       ...[...variantBackends].map(([key, child]) => ({ name: 'native-voices-' + (key ?? 'default'), run: () => child.dispose() })),
+      { name: 'native-spatial-returns', run: () => spatialOwner?.dispose() },
       { name: 'native-effects', run: async () => { if (effects) { const retired = effects.dispose(); await retired.completion; if (retired.outcome !== 'complete') throw failure('native-effect-retirement-unknown', 'Native convolution and its IR pins remain owned.'); } } },
       { name: 'native-lane-sources', run: () => { for (const pin of stemPins) pin.release(); return sources?.dispose(); } },
       { name: 'native-graph', run: () => { for (const value of nodes) value.disconnect(); } },
@@ -282,7 +296,7 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
     ]); await receipt.completion;
     if (receipt.outcome !== 'complete') {
       const error = failure('native-retirement-unknown', 'Native offline resources remain reserved: ' + receipt.resources.filter(resource => resource.status !== 'completed').map(resource => resource.name + ': ' + (resource.error || resource.status)).join('; '), { cause: originalError, retirement: receipt });
-      error.retainedNative = { context, host, backend, variantBackends: new Map(variantBackends), sources, stemPins, effects, sourceNode, sourceBuffer, sourcePcm, nodes: nodes.slice(), rendered, nativeWork };
+      error.retainedNative = { context, host, backend, variantBackends: new Map(variantBackends), spatialOwner, sources, stemPins, effects, sourceNode, sourceBuffer, sourcePcm, nodes: nodes.slice(), rendered, nativeWork };
       pcmLease?.retainUnknown(error); graphLease?.retainUnknown(error); inputLease?.retainUnknown(error); execution?.retainUnknown(error); retirementExecution?.retainUnknown(error); originalError = error;
     } else {
       const storage = createProcgenRetirementScope().retire([
@@ -293,14 +307,14 @@ export async function renderNativeOfflineGraph({ patch, sourceVariants = null, e
       ]); await storage.completion;
       if (storage.outcome !== 'complete') { originalError = failure('native-retirement-unknown', 'Native resource bookkeeping remains unresolved.', { cause: originalError, retirement: storage }); pcmLease?.retainUnknown(originalError); }
     }
-    variantBackends.clear(); nodes.length = 0; context = host = backend = sources = effects = sourceNode = sourceBuffer = nativeWork = suspension = null;
+    variantBackends.clear(); nodes.length = 0; context = host = backend = sources = effects = spatialOwner = sourceNode = sourceBuffer = nativeWork = suspension = null;
   }
   if (originalError) throw originalError;
   const inputReceipt = sourcePcm ? Object.freeze({ frames, channels: sourcePcm.channels, bytes: sourceBytes, laneIds: Object.freeze(sourcePcmLaneIds.slice()), sourceLaneIds: Object.freeze(sourceLaneIds.slice()), planeByteHashes: Object.freeze(sourcePcm.planeByteHashes.slice()), planeHashByteOrder: sourcePcm.planeHashByteOrder, scope: 'whole-dry-source-history-before-crop' }) : null;
   sourcePcm = null;
   let released = false;
   return Object.freeze({ get buffer() { return rendered; }, frames, sampleRate, channels, stemLaneIds: Object.freeze(stemLaneIds.slice()),
-    receipt: Object.freeze({ method: 'native-offline-audio-context', frames, nativeSourceBackend: patch.engineId, sourceVariants: sourceVariants ? sourceVariants.map(variant => ({ key: variant.key, patchId: variant.patch.id, revision: variant.patch.revision })) : null, effectGraph: effectReceipt, sourcePcm: inputReceipt, batches, submitted, executionAdmission: execution.getState(),
+    receipt: Object.freeze({ method: 'native-offline-audio-context', frames, nativeSourceBackend: patch.engineId, sourceVariants: sourceVariants ? sourceVariants.map(variant => ({ key: variant.key, patchId: variant.patch.id, revision: variant.patch.revision })) : null, effectGraph: effectReceipt, spatial: spatialReceipt, sourcePcm: inputReceipt, batches, submitted, executionAdmission: execution.getState(),
       panic: panicReceipt, scheduling: 'explicit-native-frames-with-quantum-suspension', gates: 'bounded-offline-with-preflighted-terminal-intervals',
       renderTap: 'simultaneous-native-source-graph-before-live-master', crossBrowserBitIdentity: false,
       sourceSelections: Object.freeze(sourceSelections), sourceSelectionCoverage: Object.freeze({ selectedOnsets, retained: sourceSelections.length, limit: selectionLimit, omitted: selectedOnsets - sourceSelections.length, evidenceClass: 'native-source-selection-api', acousticReceipt: false }) }),

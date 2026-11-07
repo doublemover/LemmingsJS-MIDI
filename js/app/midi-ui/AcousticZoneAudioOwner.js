@@ -4,9 +4,9 @@ import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 import { prepareNativeEffectGraph } from './NativeEffectGraph.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createAcousticZoneAudioOwner({ context, resources, owner, generation, destination, getMaterialProvider, jobs, isCurrent = () => true, onState = () => {} } = {}) {
+export function createAcousticZoneAudioOwner({ context, resources, owner, generation, destination, getMaterialProvider, jobs, offlineEndFrame = null, retireOfflineContext = null, isCurrent = () => true, onState = () => {} } = {}) {
   if (!context?.createBiquadFilter || !resources?.reserve || !destination?.connect) throw new TypeError('Acoustic returns need an owned native context and output.');
-  const groups = new Map(), scope = createProcgenRetirementScope(); let current = null, pending = null, disposed = false, fault = null;
+  const offline = offlineEndFrame !== null, groups = new Map(), scope = createProcgenRetirementScope(); let current = null, pending = null, disposed = false, fault = null;
   const state = ({ includeRealization = false } = {}) => Object.freeze({ ready: !!current && !disposed && !fault, mapId: current?.map.id || null, mapRevision: current?.map.revision ?? null, mapHash: current?.hash || null, preparing: !!pending, retainedMaps: groups.size,
     groups: [...groups.values()].map(group => ({ hash: group.hash, mapId: group.map.id, revision: group.map.revision, references: group.references, retirement: group.retirement?.outcome || null, returns: group.returns.map(row => ({ responseId: row.id, recipeId: row.recipe.id, graphHash: row.graph?.hash || null, lowpassHz: row.recipe.lowpassHz, highpassHz: row.recipe.highpassHz, realization: includeRealization ? row.graph?.diagnostics() || null : null })) })), fault: fault?.message || null });
   const report = () => { try { onState(state()); } catch {} };
@@ -23,8 +23,8 @@ export function createAcousticZoneAudioOwner({ context, resources, owner, genera
     } }]); group.retirement = retirement;
     retirement.completion.then(receipt => { if (receipt.outcome === 'complete') groups.delete(group.hash); else fault ||= new Error('Acoustic return retirement remains unresolved.'); report(); }); return retirement;
   };
-  const collect = () => { for (const group of groups.values()) if (group !== current && !group.references && context.currentTime >= group.retainUntil) retire(group); };
-  const guard = (signal, check) => { signal?.throwIfAborted(); if (disposed || fault || !isCurrent() || context.state !== 'running' || check && !check()) throw new Error('The acoustic-map request changed before source publication.'); };
+  const collect = () => { if (offline) return; for (const group of groups.values()) if (group !== current && !group.references && context.currentTime >= group.retainUntil) retire(group); };
+  const guard = (signal, check) => { signal?.throwIfAborted(); if (disposed || fault || !isCurrent() || (offline ? context.state !== 'suspended' : context.state !== 'running') || check && !check()) throw new Error('The acoustic-map request changed before source publication.'); };
   return Object.freeze({ state, collect,
     matches(raw) { return !!current && !disposed && !fault && (raw === current.raw || canonicalDataText(raw, { maxBytes: 131072, maxNodes: 16384 }).text === current.signature); },
     async prepare(raw, { signal: externalSignal, isCurrent: check } = {}) {
@@ -48,22 +48,26 @@ export function createAcousticZoneAudioOwner({ context, resources, owner, genera
         for (const response of map.materialResponses) {
           guard(signal, check); const recipe = createAcousticZoneRecipe(response.effectRecipe.id, context.sampleRate, map.controls.absorb01), row = { id: response.id, recipe, graph: null, input: null, nodes: [] }; group.returns.push(row);
           if (!recipe.graph || !requestedReturns.has(response.id)) continue;
-          row.graph = await prepareNativeEffectGraph(recipe.graph, { context, resources, owner, generation, signal, getMaterialProvider, jobs, isCurrent: () => !disposed && isCurrent() && (!check || check()) }); guard(signal, check);
+          row.graph = await prepareNativeEffectGraph(recipe.graph, { context, resources, owner, generation, signal, getMaterialProvider, jobs, ...(offline ? { offlineEndFrame, offlineReturnNodeIds: [], retireOfflineContext } : {}), isCurrent: () => !disposed && isCurrent() && (!check || check()) }); guard(signal, check);
           row.input = row.graph.getInput('input');
           const low = context.createBiquadFilter(); row.nodes.push(low); const high = context.createBiquadFilter(); row.nodes.push(high);
           low.type = 'lowpass'; low.frequency.setValueAtTime(Math.min(context.sampleRate * 0.4, recipe.lowpassHz), context.currentTime); low.Q.setValueAtTime(Math.SQRT1_2, context.currentTime);
           high.type = 'highpass'; high.frequency.setValueAtTime(recipe.highpassHz, context.currentTime); high.Q.setValueAtTime(Math.SQRT1_2, context.currentTime);
           row.graph.getOutput('output').connect(high); high.connect(low); low.connect(destination);
-          await row.graph.confirmReady(); guard(signal, check);
+          if (!offline) await row.graph.confirmReady(); guard(signal, check);
         }
         const previous = current; current = group; if (previous) previous.retainUntil = Math.max(previous.retainUntil, context.currentTime + 3); collect(); report(); return state();
       } catch (error) { if (group) { const receipt = retire(group); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; } throw error; }
       finally { externalSignal?.removeEventListener('abort', abort); if (pending === token) pending = null; settle(); report(); }
     },
-    isPinnedCurrent: pin => !!current && !disposed && !fault && pin?.mapHash === current.hash,
+    isPinnedCurrent: pin => offline ? undefined : !!current && !disposed && !fault && pin?.mapHash === current.hash,
+    confirmReady: () => Promise.all([...groups.values()].flatMap(group => group.returns.filter(row => row.graph).map(row => row.graph.confirmReady()))),
+    confirmOfflineCompletion: () => Promise.all([...groups.values()].flatMap(group => group.returns.filter(row => row.graph).map(row => row.graph.confirmOfflineCompletion()))),
+    panic() { for (const group of groups.values()) for (const row of group.returns) row.graph?.panic(); },
     pin(state) {
-      if (!current || disposed || fault || !isCurrent() || state.mapId !== current.map.id || state.mapRevision !== current.map.revision) throw new Error('The exact acoustic-map revision is not prepared.');
-      const group = current; group.references++; let released = false;
+      const selected = offline && state.mapHash ? groups.get(state.mapHash) : current;
+      if (!selected || disposed || fault || !isCurrent() || state.mapId !== selected.map.id || state.mapRevision !== selected.map.revision || state.mapHash && state.mapHash !== selected.hash) throw new Error('The exact acoustic-map revision is not prepared.');
+      const group = selected; group.references++; let released = false;
       return Object.freeze({ mapHash: group.hash, mapId: group.map.id, mapRevision: group.map.revision, returns: Object.freeze(group.returns.map(row => Object.freeze({ id: row.id, node: row.input, dry: !row.graph }))),
         release() { if (released) return; released = true; group.references--; group.retainUntil = Math.max(group.retainUntil, context.currentTime + 3); collect(); report(); } });
     },

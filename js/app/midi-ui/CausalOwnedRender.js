@@ -134,7 +134,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       if (voice || !finite(intent.velocity01, 0, 1) || intent.laneId != null && !(natural(intent.laneId) || text(intent.laneId, 128)))
         throw failure('invalid-voice-history', 'Captured voice onsets are repeated or malformed.', { intentId: intent.intentId });
       const materialVariant = materialReadout?.resolve(intent);
-      if (materialReadout && !materialVariant) throw failure('material-render-onset', 'A material contact lost its captured source body.');
+      if (materialReadout && !materialReadout.allowUnmapped && !materialVariant) throw failure('material-render-onset', 'A material contact lost its captured source body.');
       const sourcePatch = materialVariant ? validateInstrumentPatchV2(materialVariant.patch, descriptor) : patch, onsetControls = materialVariant ? validateInstrumentControls(intent.performanceControls) : admittedTargetControls,
         onsetParameters = materialVariant ? Object.fromEntries(Object.entries(owned.fields).map(([key, spec]) => [key, sourcePatch.parameters[key] ?? spec[2]])) : parameters,
         onsetPerformancePlan = materialVariant ? compileInstrumentPerformance(sourcePatch, owned.parameters) : performancePlan;
@@ -290,7 +290,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   const outputFrames = outputEnd - firstFrame, fileCount = stemLaneIds.length + effectReturnNodeIds.length + 1, pcmBytes = outputFrames * 8 * fileCount;
   if (!natural(pcmBytes) || pcmBytes + 262208 * fileCount > MAX_OUTPUT_BYTES) throw failure('render-capacity', 'This render/stem/return set exceeds 64 MiB; choose a shorter range or fewer taps.');
   if (materialReadout && [...materialReadout.variants.values()].some(variant => !Number.isSafeInteger(variant.patch.voicePolicy.maxVoices) || variant.patch.voicePolicy.maxVoices < 1 || variant.patch.voicePolicy.maxVoices > owned.voices)) throw failure('material-render-capacity', 'Each prepared modal body must stay inside its source voice limit.');
-  const slotGroups = materialReadout ? new Map([...materialReadout.variants].map(([key, variant]) => [key, new Array(variant.patch.voicePolicy.maxVoices).fill(null)])) : new Map([[null, new Array(patch.voicePolicy.maxVoices).fill(null)]]), tokens = new Uint32Array(materialReadout ? 256 : owned.voices); let peakVoices = 0;
+  const slotGroups = materialReadout ? new Map([...(materialReadout.allowUnmapped ? [[null, new Array(patch.voicePolicy.maxVoices).fill(null)]] : []), ...[...materialReadout.variants].map(([key, variant]) => [key, new Array(variant.patch.voicePolicy.maxVoices).fill(null)])]) : new Map([[null, new Array(patch.voicePolicy.maxVoices).fill(null)]]), tokens = new Uint32Array(materialReadout ? 256 : owned.voices); let peakVoices = 0;
   if ([...slotGroups.values()].reduce((count, slots) => count + slots.length, 0) > 256) throw failure('material-render-capacity', 'Material bodies exceed the shared native voice inventory.');
   for (const voice of [...voices.values()].sort((left, right) => left.start - right.start || left.order - right.order)) {
     if (selectSample && voice.admissionEnd <= voice.start) { voice.silentChoke = true; continue; }

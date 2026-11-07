@@ -3,7 +3,7 @@ import { evaluateSpatialState, validateSpatialAttachment } from '../../../midi/c
 import { canonicalDataText, freezeData } from '../../../core/CanonicalData.js';
 
 export function createWorldSpatialControl({ getCameraPosition = () => null, hasSolidAt = null } = {}) {
-  let plan = null, actors = new Map(), listener = null, boundary = null, sourceTime = -Infinity, terrainRevision = null, tick = -1, valid = false, lastBatch = null;
+  let plan = null, actors = null, actorProjection = [], listener = null, boundary = null, sourceTime = -Infinity, terrainRevision = null, tick = -1, valid = false, lastBatch = null;
   const occlusion = new Map();
   const configure = raw => {
     if (plan?.map === raw) return; const next = raw ? compileAcousticMap(raw) : null, sameListener = !!plan && !!next && canonicalDataText(plan.map.listener).text === canonicalDataText(next.map.listener).text;
@@ -15,11 +15,10 @@ export function createWorldSpatialControl({ getCameraPosition = () => null, hasS
     const nextBoundary = batch.worldId + ':' + batch.generation, revision = batch.snapshot.terrainRevision ?? batch.terrainRevision;
     if (boundary !== nextBoundary || terrainRevision !== revision) occlusion.clear();
     if (boundary !== nextBoundary) { listener = plan.map.listener.position; sourceTime = -Infinity; }
-    boundary = nextBoundary; terrainRevision = revision; tick = batch.tick; actors = new Map(batch.snapshot.actors.map(actor => [actor.actorId, actor]));
+    boundary = nextBoundary; terrainRevision = revision; tick = batch.tick; actors = null; actorProjection = batch.snapshot.actors;
     const policy = plan.map.listener;
-    if (policy.mode === 'selected-actor') { const actor = actors.get(policy.actorId); if (actor && [actor.x, actor.y].every(Number.isFinite)) listener = { x: actor.x, y: actor.y }; else if (policy.removedPolicy === 'return-fixed') listener = policy.position; }
-    else if (policy.mode === 'camera-follow') { const camera = getCameraPosition(batch); if (camera && [camera.x, camera.y].every(Number.isFinite)) listener = { x: camera.x, y: camera.y }; else return false; }
-    else listener = policy.position;
+    if (policy.mode === 'camera-follow') { const camera = getCameraPosition(batch); if (camera && [camera.x, camera.y].every(Number.isFinite)) listener = { x: camera.x, y: camera.y }; else return false; }
+    else if (policy.mode === 'fixed-world') listener = policy.position;
     valid = true; return true;
   };
   const coarseOcclusion = source => {
@@ -37,6 +36,8 @@ export function createWorldSpatialControl({ getCameraPosition = () => null, hasS
   const state = ({ voiceId, actorId, attachment, sourcePosition }) => {
     if (!plan) return { status: 'disabled', state: null };
     if (!valid) return { status: 'unavailable', reason: 'committed-spatial-observation-unavailable', state: null };
+    if (!actors && (attachment.kind === 'actor' || plan.map.listener.mode === 'selected-actor')) actors = new Map(actorProjection.map(actor => [actor.actorId, actor]));
+    const policy = plan.map.listener; if (policy.mode === 'selected-actor') { const followed = actors.get(policy.actorId); if (followed && [followed.x, followed.y].every(Number.isFinite)) listener = { x: followed.x, y: followed.y }; else if (policy.removedPolicy === 'return-fixed') listener = policy.position; }
     const sourceAttachment = validateSpatialAttachment(attachment), actor = sourceAttachment.kind === 'actor' ? actors.get(actorId) : null,
       position = sourceAttachment.kind === 'persistent-body' ? sourceAttachment.position : sourceAttachment.kind === 'struck-point' ? sourcePosition : actor ? { x: actor.x, y: actor.y } : null;
     if (!position || ![position.x, position.y].every(Number.isFinite)) return { status: 'unavailable', reason: 'spatial-source-position-unavailable', state: null };
@@ -45,7 +46,7 @@ export function createWorldSpatialControl({ getCameraPosition = () => null, hasS
   };
   return Object.freeze({ configure, observe, state, enabled: () => !!plan, maximumVoices: () => plan?.map.maximumVoices || 0,
     due() { if (!valid || !plan || lastBatch.sourceTimeMs < sourceTime || lastBatch.sourceTimeMs - sourceTime + 1e-8 >= 1000 / plan.map.controlRateHz) { if (valid) sourceTime = lastBatch.sourceTimeMs; return valid; } return false; },
-    diagnostics: () => freezeData({ enabled: !!plan, mapId: plan?.map.id || null, revision: plan?.map.revision ?? null, listener, listenerMode: plan?.map.listener.mode || null, committedObservation: valid, sourceTick: tick, terrainRevision, actorCount: actors.size, cachedOcclusionCells: occlusion.size, maximumOcclusionSamples: plan?.map.occlusion.maximumSamples || 0, maximumVoices: plan?.map.maximumVoices || 0 }),
-    reset() { actors.clear(); occlusion.clear(); listener = plan?.map.listener.position || null; boundary = null; valid = false; sourceTime = -Infinity; lastBatch = null; }
+    diagnostics: () => freezeData({ enabled: !!plan, mapId: plan?.map.id || null, revision: plan?.map.revision ?? null, listener, listenerMode: plan?.map.listener.mode || null, committedObservation: valid, sourceTick: tick, terrainRevision, actorCount: actorProjection.length, cachedOcclusionCells: occlusion.size, maximumOcclusionSamples: plan?.map.occlusion.maximumSamples || 0, maximumVoices: plan?.map.maximumVoices || 0 }),
+    reset() { actors = null; actorProjection = []; occlusion.clear(); listener = plan?.map.listener.position || null; boundary = null; valid = false; sourceTime = -Infinity; lastBatch = null; }
   });
 }

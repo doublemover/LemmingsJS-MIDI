@@ -19,7 +19,7 @@ export interface PlaybackLaneSource {
 export interface PlaybackGraphSource {
   readonly revision: number;
   readonly acousticMap?: unknown;
-  readonly instruments: readonly { readonly id: string; readonly articulation?: { readonly sustain?: boolean; readonly orientation?: string } }[];
+  readonly instruments: readonly { readonly id: string; readonly spatialAttachment?: unknown; readonly articulation?: { readonly sustain?: boolean; readonly orientation?: string } }[];
   readonly preparedSurfaces?: readonly {
     readonly id: string;
     readonly revision: number;
