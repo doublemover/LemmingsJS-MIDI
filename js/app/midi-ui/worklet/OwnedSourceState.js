@@ -128,7 +128,7 @@ const inspectSource = (kernel, profile, view) => {
     if (!finite(low, Number.MIN_VALUE, kernel.sampleRate / 2) || !finite(high, low, kernel.sampleRate / 2) ||
         !finite(frequency, low, high) || !finite(target, low, high)) fail('Source pitch state disagrees with its owned gate.');
     if (profile.kind === 1 && (!integer(get(0), 2, source.stride) || !integer(get(1), 0, get(0) - 1) ||
-        !integer(get(6), 0, 0xffffffff) || !integer(get(7), 0, get(0) - 1) || !finite(get(16), -1, 1))) fail('Pluck fractional delay or seed state is invalid.');
+        !integer(get(6), 0, 0xffffffff) || !integer(get(7), 0, get(0) - 1) || !finite(get(16), -1, 1) || !finite(get(26), 0.05, 0.45) || !finite(get(27), 0, 1))) fail('Pluck fractional delay, excitation metadata or seed state is invalid.');
     if (profile.kind === 2 && (!finite(get(0), 0, 1) || !finite(get(1), 0, 1) || !integer(get(2), 0, 0xffffffff) || !integer(get(38), 0, Math.round(kernel.sampleRate * 0.08)) || !finite(get(39), 0, 1 / Math.round(kernel.sampleRate * 0.005)) || get(38) * get(39) > 1 + 1e-12)) fail('Choir phase, PRNG or finite consonant envelope state is invalid.');
     if (profile.kind === 3) {
       if (!finite(get(0), 0, 1) || ![0, 1, 2].includes(get(1)) || !integer(get(2), 1, 16)) fail('Spectrum phase or partial topology is invalid.');

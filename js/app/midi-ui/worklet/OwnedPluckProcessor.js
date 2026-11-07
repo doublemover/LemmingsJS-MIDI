@@ -8,6 +8,7 @@ export { pluckSourceBytes };
 export class OwnedPluckSource {
   constructor(rate, voices = PLUCK_VOICES) {
     pluckSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.stride = Math.ceil(rate / PLUCK_LAYOUT.delayFloorHz) + PLUCK_LAYOUT.delayMargin;
+    this.displayData = new Float64Array(PLUCK_LAYOUT.displayVoices * PLUCK_LAYOUT.displayWidth);
     this.buffer = new Float32Array(this.stride * voices); this.scratch = new Float64Array(this.stride); this.state = new Float64Array(voices * STATE_WIDTH);
     this.initializationWrites = 0; this.initializationDenials = 0; this.maxInitializationWrites = 65536; this.initializationBucket = -1; this.maxUpdateMask = 15;
   }
@@ -46,6 +47,7 @@ export class OwnedPluckSource {
     this.state[at + 13] = Math.exp(-LN1000 / (bodyT60 * this.rate)); this.state[at + 14] = 1;
     this.state[at + 15] = Math.max(0, Math.min(2, Math.floor(this.rate * 0.4 / (frequency * PITCH_RANGE * 1.6))));
     for (let field = 16; field < STATE_WIDTH; field++) this.state[at + field] = 0;
+    this.state[at + 26] = position; this.state[at + 27] = brightness;
     this.state[at + 21] = t60; this.state[at + 25] = this.state[at + 13];
     return 1;
   }
@@ -68,6 +70,11 @@ export class OwnedPluckSource {
     const integer = Math.floor(delay - 0.5), fraction = delay - integer, phaseRatio = Math.tan(omega * fraction * 0.5) / Math.tan(omega * 0.5);
     this.state[at + 7] = integer; this.state[at + 8] = frequency; this.state[at + 9] = Math.min(1, wantedGain / filterGain);
     this.state[at + 16] = (1 - phaseRatio) / (1 + phaseRatio); this.state[at + 19] = mix;
+  }
+  writeDisplay(slot, index) {
+    const at = slot * STATE_WIDTH, output = index * PLUCK_LAYOUT.displayWidth;
+    this.displayData[output] = this.state[at + 26]; this.displayData[output + 1] = this.state[at + 27]; this.displayData[output + 2] = this.state[at + 3];
+    this.displayData[output + 3] = this.state[at + 19]; this.displayData[output + 4] = this.state[at + 9]; this.displayData[output + 5] = this.state[at + 12];
   }
   sample(slot, frequency) {
     const at = slot * STATE_WIDTH, length = this.state[at], write = this.state[at + 1], base = slot * this.stride;
@@ -100,6 +107,6 @@ export class OwnedPluckKernel extends OwnedSineKernel {
 
 export class OwnedPluckProcessor extends OwnedSineProcessor {
   createKernel(rate, voices) { return new OwnedPluckKernel(rate, Math.min(voices, PLUCK_VOICES)); }
-  runtimeIdentity() { return { engineId: 'worklet-pluck', engineVersion: 1, runtimeABI: 'owned-pluck-f64-command-v1', buildId: 'owned-pluck-v7-held-macros-source-restore' }; }
+  runtimeIdentity() { return { engineId: 'worklet-pluck', engineVersion: 1, runtimeABI: 'owned-pluck-f64-command-v1', buildId: 'owned-pluck-v8-effective-source-readout' }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-pluck-v1', OwnedPluckProcessor);

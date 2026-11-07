@@ -12,6 +12,7 @@ export class OwnedSpectrumSource {
   constructor(rate, voices = SPECTRUM_VOICES, sourceBank = null) {
     spectrumSourceBytes(rate, voices); this.rate = rate; this.voices = voices; this.maxUpdateMask = 127;
     this.bank = validateOwnedSourceBank(sourceBank, 'spectrum-v1');
+    this.displayData = new Float64Array(SPECTRUM_LAYOUT.displayVoices * SPECTRUM_LAYOUT.displayWidth);
     this.state = new Float64Array(voices * STATE); this.partials = new Float64Array(voices * 16 * PARTIAL);
     [this.tables, this.sine, this.frames] = this.bank.planes;
     const recipe = resolveCircularSpectrum({}, rate);
@@ -76,6 +77,20 @@ export class OwnedSpectrumSource {
       if (!this.circular[slot].configure(p[at] * this.state[slot * STATE + 3] / 261.6255653005986, p[at + 1], p[at + 2], p[at + 3], Math.min(p[at + 4], this.rate * 0.4), p[at + 5], p[at + 6])) throw new Error('Invalid restored circular recipe.');
     }
   }
+  writeDisplay(slot, index) {
+    const at = slot * STATE, output = index * SPECTRUM_LAYOUT.displayWidth, mode = this.state[at + 1], frequency = this.state[at + 3]; let low = Infinity, high = 0;
+    if (mode === 0) { low = frequency; high = frequency * this.state[at + 20]; }
+    else if (mode === 1) {
+      for (let partial = 0; partial < this.state[at + 2]; partial++) { const offset = (slot * 16 + partial) * PARTIAL, hz = frequency * this.partials[offset];
+        if (hz < this.rate * 0.4 && this.partials[offset + 1] * this.partials[offset + 3] * this.partials[offset + 5] > 0) { low = Math.min(low, hz); high = Math.max(high, hz); } }
+    } else {
+      const circle = this.circular[slot]; for (let partial = 0; partial < circle.recipe.partialCountCap; partial++) { const offset = partial * 6, hz = circle.partials[offset + 2];
+        if (hz > circle.recipe.resolvedBandLowHz && hz < circle.recipe.resolvedBandHighHz && circle.partials[offset + 3] > 0) { low = Math.min(low, hz); high = Math.max(high, hz); } }
+    }
+    this.displayData[output] = mode; this.displayData[output + 1] = mode === 2 ? this.circular[slot].state[0] : this.state[at + 8] * 15;
+    this.displayData[output + 2] = this.state[at + 20]; this.displayData[output + 3] = high ? low : 0; this.displayData[output + 4] = high;
+    this.displayData[output + 5] = mode === 2 ? this.circular[slot].recipe.frequencyCenterHz : -this.rate * Math.log1p(-this.state[at + 21]) / (2 * Math.PI);
+  }
   sample(slot, frequency, frame) {
     const at = slot * STATE; if (!this.validFrequency(slot, frequency)) return NaN;
     if (this.state[at + 1] === 2) {
@@ -120,6 +135,6 @@ export class OwnedSpectrumKernel extends OwnedSineKernel {
 }
 export class OwnedSpectrumProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedSpectrumKernel(rate, Math.min(voices, SPECTRUM_VOICES), options?.sourceBank); }
-  runtimeIdentity() { return { engineId: 'worklet-spectrum', engineVersion: 1, runtimeABI: 'owned-spectrum-f64-command-v1', buildId: 'owned-spectrum-v10-held-macros-source-restore', sourceBankHash: this.kernel.source.bank.hash }; }
+  runtimeIdentity() { return { engineId: 'worklet-spectrum', engineVersion: 1, runtimeABI: 'owned-spectrum-f64-command-v1', buildId: 'owned-spectrum-v11-effective-source-readout', sourceBankHash: this.kernel.source.bank.hash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-spectrum-v1', OwnedSpectrumProcessor);

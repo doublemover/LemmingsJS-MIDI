@@ -79,7 +79,7 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
       if (!observers.size) return;
       if (packet.displayProtocol !== DISPLAY_PROTOCOL || packet.protocol !== PROTOCOL || !natural(serial) || serial < 1 || !natural(packet.count) || packet.count > DISPLAY_VOICES ||
           !(packet.data instanceof Float64Array) || packet.data.length !== DISPLAY_VOICES * DISPLAY_WIDTH || !natural(packet.droppedWindows)) { stats.rejected++; return; }
-      if (packet.sourceModelData !== undefined && (engineId !== 'worklet-choir' || packet.sourceModelProtocol !== 1 || !(packet.sourceModelData instanceof Float64Array) || packet.sourceModelData.length !== DISPLAY_VOICES * 6)) { stats.rejected++; return; }
+      if (packet.sourceModelData !== undefined && (!['worklet-choir', 'worklet-pluck', 'worklet-spectrum'].includes(engineId) || packet.sourceModelProtocol !== 1 || !(packet.sourceModelData instanceof Float64Array) || packet.sourceModelData.length !== DISPLAY_VOICES * 6)) { stats.rejected++; return; }
       stats.packets++; stats.droppedWindows = Math.max(stats.droppedWindows, packet.droppedWindows);
       const context = getContext(), now = Math.ceil(context.currentTime * context.sampleRate);
       let routeState = Object.freeze({ muted: null, evidenceClass: 'unknown', scope: 'pre-owner-bus', outputAudibility: 'unknown' });
@@ -107,9 +107,21 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
         if (sinePhase && !(flags & 6)) quantities.push(quantity('oscillator-phase', 'radians', data[at + 10], 'kernel-state'));
         if (packet.sourceModelData && !(flags & 6)) {
           const model = packet.sourceModelData, offset = index * 6; let validModel = true;
-          for (let band = 0; band < 3; band++) if (!Number.isFinite(model[offset + band]) || model[offset + band] < 60 || model[offset + band] > context.sampleRate * 0.4 || !Number.isFinite(model[offset + 3 + band]) || model[offset + 3 + band] < 0) validModel = false;
-          if (!validModel) { stats.rejected++; continue; }
-          for (let band = 0; band < 3; band++) { quantities.push(quantity('formant-' + (band + 1), 'Hz', model[offset + band], 'applied-parameter')); quantities.push(quantity('formant-' + (band + 1) + '-state-activity', 'linear-state-amplitude', model[offset + 3 + band], 'kernel-state')); }
+          if (engineId === 'worklet-choir') {
+            for (let band = 0; band < 3; band++) if (!Number.isFinite(model[offset + band]) || model[offset + band] < 60 || model[offset + band] > context.sampleRate * 0.4 || !Number.isFinite(model[offset + 3 + band]) || model[offset + 3 + band] < 0) validModel = false;
+            if (!validModel) { stats.rejected++; continue; }
+            for (let band = 0; band < 3; band++) { quantities.push(quantity('formant-' + (band + 1), 'Hz', model[offset + band], 'applied-parameter')); quantities.push(quantity('formant-' + (band + 1) + '-state-activity', 'linear-state-amplitude', model[offset + 3 + band], 'kernel-state')); }
+          } else if (engineId === 'worklet-pluck') {
+            for (let field = 0; field < 6; field++) if (!Number.isFinite(model[offset + field])) validModel = false;
+            if (!validModel || model[offset] < 0.05 || model[offset] > 0.45 || model[offset + 1] < 0 || model[offset + 1] > 1 || model[offset + 2] < 0.02 || model[offset + 2] > 4 || [3, 4, 5].some(field => model[offset + field] < 0 || model[offset + field] > 1)) { stats.rejected++; continue; }
+            for (const [field, name, unit] of [[0, 'initial-pluck-position', 'normalized'], [1, 'initial-excitation-brightness', 'normalized'], [2, 'effective-string-t60', 's'], [3, 'loop-lowpass-mix', 'normalized'], [4, 'loop-gain', 'normalized'], [5, 'body-readout-mix', 'normalized']]) quantities.push(quantity(name, unit, model[offset + field], 'kernel-state'));
+          } else {
+            for (let field = 0; field < 6; field++) if (!Number.isFinite(model[offset + field])) validModel = false;
+            const mode = model[offset], coordinate = model[offset + 1], count = model[offset + 2], low = model[offset + 3], high = model[offset + 4], filter = model[offset + 5];
+            if (!validModel || ![0, 1, 2].includes(mode) || !natural(count) || count > (mode === 2 ? 10 : 16) || (mode === 2 ? Math.abs(coordinate) > 1e6 : coordinate < 0 || coordinate > 15) || low < 0 || high < low || high > context.sampleRate * 0.4 + 1e-8 || filter < 0 || filter > context.sampleRate * 0.4 + 1e-8) { stats.rejected++; continue; }
+            quantities.push(quantity('spectrum-mode', 'enum-0-table-1-additive-2-circular', mode, 'kernel-state'), quantity(mode === 2 ? 'distance-spectral-phase' : 'prepared-frame', mode === 2 ? 'cycles' : 'fractional-frame', coordinate, 'kernel-state'),
+              quantity(mode === 0 ? 'prepared-harmonic-limit' : 'last-active-partials', 'count', count, 'kernel-state'), quantity('partial-support-low', 'Hz', low, 'kernel-state'), quantity('partial-support-high', 'Hz', high, 'kernel-state'), quantity(mode === 2 ? 'spectral-envelope-center' : 'source-filter-cutoff', 'Hz', filter, 'kernel-state'));
+          }
         }
         const sample = Object.freeze({ ...route.identity, scope: 'actorVoice', sequence: serial, appliedFrame: applied,
           effectiveFrame: last - 1, windowStartFrame: first, windowEndFrame: last, validUntilFrame: last + Math.ceil(context.sampleRate / 2),
