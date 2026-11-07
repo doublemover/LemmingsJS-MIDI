@@ -889,7 +889,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       const simulation = handlers.simulationWorkbenchState?.();
       if (simulation) {
         const worker = node('fieldset', null, 'studio-worker-simulation'); worker.append(node('legend', 'Isolated worker simulation'));
-        worker.append(node('p', 'Prepare the current physical world in a worker while the live world stays paused. The default candidate has output and recording off. Independent native output requires its separate explicit setup below.', 'studio-hint'));
+        worker.append(node('p', 'Prepare the current physical world in a worker while the live world stays paused. The default candidate has output and recording off. The explicitly selected reference sine owns browser audio; native output requires its separate reviewed setup below.', 'studio-hint'));
         const native = handlers.nativeSimulationState?.();
         if (native) {
           const setup = node('fieldset', null, 'studio-worker-native-output'); setup.append(node('legend', 'Independent native worker output'));

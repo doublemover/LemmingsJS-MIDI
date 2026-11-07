@@ -10,7 +10,7 @@ export async function prepareProcgenOwnedAudioOutputRealm({ resourceBudget, Work
   performance = validateDirectOwnedSinePerformance(performance);
   signal?.throwIfAborted(); const execution = getActiveExecutionIdentity();
   if (execution.activeExecution !== 'bound' || typeof Worker !== 'function' || typeof MessageChannel !== 'function' || !resourceBudget) throw new Error('Independent owned audio needs a coherent application build, dedicated worker, transferable port and aggregate budget.');
-  const ownerId = 'owned-audio-consumer:' + (++ownerSequence), storage = createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId, kind: 'independent-owned-audio-producer-worker', category: 'checkpoint', bytes: 64 * 1048576 }), scope = createProcgenRetirementScope(), requests = new Map();
+  const ownerId = 'owned-audio-consumer:' + (++ownerSequence), storage = createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId, kind: 'independent-owned-audio-producer-worker', category: 'checkpoint', bytes: 64 * 1048576 }), scope = createProcgenRetirementScope({ deadlineMs: 20000 }), requests = new Map();
   let preview = null, session = null, source = null, worker = null, channel = null, sourceContext = null, state = null, failure = null, disposed = false, serial = 0, attached = false, resolveRetired;
   const retired = new Promise(resolve => { resolveRetired = resolve; });
   const report = () => { try { onState({ phase: disposed ? 'retiring' : failure ? 'failed-paused' : attached ? 'attached' : 'preparing', failure: failure?.message || null, output: 'independent-owned-audio-worker', worker: state, source: source?.state() || null }); } catch {} };

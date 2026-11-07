@@ -11283,3 +11283,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Prepare remains paused and silent. Run starts the independent simulation/producer/worklet path. Pause parks a validated physical checkpoint, retires the direct output and closes its private context; further manual stepping belongs to output-off mode. The retained live project remains paused and changing it requires closing or parking the candidate.
 - Generalized workbench output ownership, cleanup, Panic and diagnostics across native MIDI and owned browser audio. The surface identifies the named reference realization and its fixed capability scope, reports actual render-applied controls and bounded pending commands, and keeps recording off.
 - Formatting and critical/boundary type checks pass. Full desktop/audio/worker qualification is still deferred until feature implementation is complete; this integration does not enable authoritative workers by default.
+
+
+### Continuation 573 — deferred independent-audio signal and desktop cases
+
+- Added a real transferred-MessagePort fixture feeding the actual OwnedSineKernel, with exact packet/reference PCM checks for two same-pitch actors and fractional expression, plus generation cancellation that waits for actual kernel terminal receipts and preserves another execution. This is a kernel protocol fixture, not a native AudioWorklet/context claim.
+- Added a production1920×1080Playwright journey for the explicit worker/reference source. It reads actual source PCM through a test-only native analyser while blocking UI JavaScript for450ms, checks independent worker progress/render receipts, then parks a physical checkpoint and verifies the original paused world/project, no MIDI/microphone access and actual private-context closure. It is collected by the existing workstation filename policy.
+- Kept retirement deadlines sufficient to terminate a failed producer and join actual context closure. These new functional cases are written but unexecuted. Formatting/static source checks remain the only validation during feature implementation.
