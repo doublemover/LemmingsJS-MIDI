@@ -63,7 +63,7 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
   if (!!preparedSurface !== scene.requirements?.required?.some(entry => entry.kind === 'renderer' && entry.id === SCENE_PREPARED_SURFACE_REQUIREMENT) || !preparedSurface && source.preparedSurface != null) throw failure('The prepared-surface stream cannot be omitted or inserted into an unrelated private score.');
   if (!!sympathetic !== scene.requirements?.required?.some(entry => entry.kind === 'renderer' && entry.id === SCENE_SYMPATHETIC_REQUIREMENT)) throw failure('The anchored sympathetic route cannot be omitted or inserted into another private score.');
   const sourceHash = await hashData(source, { maxBytes: 8 * 1048576, maxNodes: 524288 }), mix = createLaneMixState(); check(); mix.synchronize(scene.mix.map(row => ({ ...row, id: row.laneId })));
-  const effectSources = effects?.cross ? sceneEffectSourceBindings(effects, scene.patchRefs.map(row => row.laneId)) : null, tapIds = effectSources?.laneIds || [];
+  const effectSources = effects?.cross ? sceneEffectSourceBindings(effects, scene.patchRefs.map(row => row.laneId)) : null, networkSources = sympathetic ? sceneEffectSourceBindings(sympathetic, scene.patchRefs.map(row => row.laneId)) : null, tapIds = [...new Set([...(effectSources?.laneIds || []), ...(networkSources?.laneIds || [])])];
   const frames = Math.ceil((source.durationSeconds + 0.5) * rate) + (bodyPlan?.maximumTailFrames || effects?.previewTailFrames || 0);
   const tapBytes = frames * tapIds.length * 8; if (!Number.isSafeInteger(tapBytes) || frames * 48 + tapBytes + (effects?.plan.stateBytes || 0) + 32 * 1048576 > maxWorkingBytes) throw failure('The complete simultaneous lane taps, mix and rack exceed the admitted rehearsal workspace.');
   const tapChannels = tapIds.map(() => [new Float32Array(frames), new Float32Array(frames)]), left = new Float64Array(frames), right = new Float64Array(frames), lanes = [], ownedMaterial = []; let outputFrames = 0;
@@ -98,16 +98,16 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
   }
   let bodyReceipt = null;
   if (sympathetic) {
-    const graph = await createOwnedEffectGraphKernel({ definition: sympathetic.model.graph, sampleRate: rate }), sourceFrames = outputFrames; outputFrames += bodyPlan.maximumTailFrames;
+    const graph = await createOwnedEffectGraphKernel({ definition: sympathetic.model.graph, sampleRate: rate }), sampler = createEffectSourceSampler(networkSources, tapIds, tapChannels), sourceFrames = outputFrames; outputFrames += bodyPlan.maximumTailFrames;
     if (outputFrames > frames) throw failure('The anchored network exceeded its admitted source and complete body tail.');
     let maximumBodyEnergy = 0;
     try {
       for (let first = 0; first < outputFrames; first += 4096) { check(); const end = Math.min(outputFrames, first + 4096);
-        for (let frame = first; frame < end; frame++) { graph.sample(frame < sourceFrames ? Math.fround(left[frame]) : 0, frame < sourceFrames ? Math.fround(right[frame]) : 0); left[frame] = graph.leftSample; right[frame] = graph.rightSample; }
+        for (let frame = first; frame < end; frame++) { const sourceLeft = frame < sourceFrames ? Math.fround(left[frame]) : 0, sourceRight = frame < sourceFrames ? Math.fround(right[frame]) : 0; graph.sample(sourceLeft, sourceRight, sampler.fill(sourceLeft, sourceRight, frame), sampler.present); left[frame] = graph.leftSample; right[frame] = graph.rightSample; }
         graph.assertHealthy(); const health = graph.diagnostics().sympatheticStates[0]; if (!health || health.bodies.length !== sympathetic.bodyCount) throw failure('The private network omitted a persistent body.'); maximumBodyEnergy = Math.max(maximumBodyEnergy, ...health.bodies.map(body => body.energy)); await yieldControl();
       }
       const health = graph.diagnostics().sympatheticStates[0]; if (health.faults || health.muted) throw failure('The owned network faulted during its declared tail.');
-      bodyReceipt = { kind: 'anchored-sympathetic-network', strategy: sympathetic.strategy, bodyCount: sympathetic.bodyCount, modeCount: sympathetic.modeCount, graphHash: graph.hash, mapHash: await hashData(sympathetic.mechanism), rootBody: sympathetic.mechanism.rootBody, anchors: sympathetic.mechanism.anchors, ...(sympathetic.mechanism.sourceInstrumentIds ? { sourceInstrumentIds: sympathetic.mechanism.sourceInstrumentIds } : {}),
+      bodyReceipt = { kind: 'anchored-sympathetic-network', sourceBindings: networkSources, strategy: sympathetic.strategy, bodyCount: sympathetic.bodyCount, modeCount: sympathetic.modeCount, graphHash: graph.hash, mapHash: await hashData(sympathetic.mechanism), rootBody: sympathetic.mechanism.rootBody, anchors: sympathetic.mechanism.anchors, ...(sympathetic.mechanism.sourceInstrumentIds ? { sourceInstrumentIds: sympathetic.mechanism.sourceInstrumentIds } : {}),
         sourceOnsets: source.intents.filter(intent => intent.kind === 'begin').length, semanticOnsetsAdded: 0, faults: health.faults, modeledMaximumBodyEnergy: maximumBodyEnergy, sourceFrames, tailFrames: bodyPlan.maximumTailFrames, tailPolicy: 'declared-complete-network-tail;no-replayed-live-macro-gestures', historicalPerformanceEvidence: false, acousticReceipt: false };
     } finally { graph.panic(); }
   }

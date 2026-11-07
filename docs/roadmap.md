@@ -11667,3 +11667,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Fence lazy workbench preparation against the exact live identity and include performer-control revision in source/cache identity. Active gestures and retained sound operations must settle before capture instead of being silently canceled by private inspection.
 - Explicit reference output profiles refuse material palettes or world-spatial/shared-body interpretation they cannot realize. An output-off candidate remains available; no dry sine/native MIDI fallback is labeled as the acoustic scene renderer.
 - Functional/native/audio/browser/performance qualification remains deferred.
+
+### Continuation 624 — bounded per-body sympathetic audio inputs
+
+- Extend the owned/native sympathetic network with an explicit per-body stereo-input profile, capped at eight inputs and using one retained sparse network. Typed graph ports keep each body’s excitation separate; one per-channel input-vector norm bound preserves the declared contraction/gain model. Single-input compatibility, state identity, native initialization and retained workspace remain explicit. No per-frame allocation is added.
+- Route separate body inputs through native AudioWorklet preparation, the standalone processor, owned graph processing and continued native-cut rendering. The processor/kernel revision changes with the new contract; snapshots bind its exact configuration.
+- Correct private shared-network rehearsal to feed its declared owner/sidechain sources. Retain only requested lane planes, use the same source samples as the dry mix and carry source-binding receipts through cue verification. Earlier one-root scene graphs now excite their actual private network instead of only passing a dry bus.
+- Functional/native/audio/browser/performance qualification remains deferred. Per-lane Glass Orbit body orchestration is the next production span.

@@ -49,9 +49,9 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     else if (entry.kind === 'envelope-detector') kernel = new EnvelopeFollowerKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'envelope-mapping') kernel = new EnvelopeMappingKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'gain') { gain[index * 3] = gain[index * 3 + 1] = p.gain01; controls[at] = p.gain01; }
-    const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id).map(edge => ({ source: indices.get(edge.from.nodeId) * 2, edgeIndex: plan.edges.indexOf(edge), gain01: edge.gain01, port: edge.to.port, audio: isAudioEffectPort(entry.ports.inputs[edge.to.port]), donor: edge.to.port === 'donorAudio',
+    const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id).map(edge => ({ source: indices.get(edge.from.nodeId) * 2, edgeIndex: plan.edges.indexOf(edge), gain01: edge.gain01, port: edge.to.port, audio: isAudioEffectPort(entry.ports.inputs[edge.to.port]), donor: edge.to.port === 'donorAudio', bodyIndex: entry.network?.inputMode === 'per-body-stereo' ? entry.ports.inputs[edge.to.port].inputIndex : null,
       align: edge.alignmentFrames ? new FixedFractionalDelayKernel({ sampleRate, delayFrames: edge.alignmentFrames }) : null }));
-    return { entry, index, kernel, incoming, at, sidechainOffset: (sidechainIndices.get(entry.id) ?? -1) * 2 };
+    return { entry, index, kernel, incoming, at, bodyInputs: entry.network?.inputMode === 'per-body-stereo' ? new Float64Array(entry.network.bodyCount * 2) : null, sidechainOffset: (sidechainIndices.get(entry.id) ?? -1) * 2 };
   });
   const inputIndex = indices.get(plan.inputs[0]), outputIndex = indices.get(plan.outputs[0]) * 2, taps = returnNodeIds.map(id => indices.get(id) * 2), tapSamples = new Float32Array(taps.length * 2);
   let validationOnly = false, nativeCut = null;
@@ -106,11 +106,13 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32) quarantine('effect-input-headroom', 'Owned effect input is nonfinite or exceeds its declared absolute-32 bus profile.');
     nativeCut?.automation.step(frame);
     for (const record of records) {
+      record.bodyInputs?.fill(0);
       let a = record.index === inputIndex ? Math.fround(left) : 0, b = record.index === inputIndex ? Math.fround(right) : 0, modulation = 0, donorLeft = 0, donorRight = 0, audioPresent = record.index === inputIndex, donorPresent = false;
       for (const edge of record.incoming) {
         let x = Math.fround(values[edge.source] * edge.gain01), y = Math.fround(values[edge.source + 1] * edge.gain01);
         if (edge.align) { edge.align.sample(x, y); if (edge.align.faults) quarantine('effect-state-containment', 'The alignment branch quarantined invalid state.'); x = Math.fround(edge.align.leftSample); y = Math.fround(edge.align.rightSample); }
-        if (edge.donor) { donorPresent ||= Boolean(presence[edge.source / 2]); donorLeft = Math.fround(donorLeft + x); donorRight = Math.fround(donorRight + y); }
+        if (edge.bodyIndex !== null) { const offset = edge.bodyIndex * 2; record.bodyInputs[offset] = Math.fround(record.bodyInputs[offset] + x); record.bodyInputs[offset + 1] = Math.fround(record.bodyInputs[offset + 1] + y); audioPresent ||= Boolean(presence[edge.source / 2]); }
+        else if (edge.donor) { donorPresent ||= Boolean(presence[edge.source / 2]); donorLeft = Math.fround(donorLeft + x); donorRight = Math.fround(donorRight + y); }
         else if (edge.audio) { audioPresent ||= Boolean(presence[edge.source / 2]); a = Math.fround(a + x); b = Math.fround(b + y); }
         else modulation = Math.fround(modulation + x);
       }
@@ -137,7 +139,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
           } else if (entry.kind === 'sympathetic-network') {
             for (let mask = 0; mask < entry.network.lossMasks.length; mask++) kernel.setLossMask(mask, parameters[2 + mask]);
             if (entry.network.pickupGrid) for (let pickup = 0; pickup < NETWORK_PICKUP_CONTROLS.length; pickup++) kernel.setPickupPosition(NETWORK_PICKUP_CONTROLS[pickup], parameters[2 + NETWORK_LOSS_CONTROLS.length + pickup]);
-            kernel.sample(a, b, parameters[0], parameters[1]);
+            kernel.sample(a, b, parameters[0], parameters[1], record.bodyInputs);
           } else if (entry.kind === 'feedback-delay') {
             if (frame % native.blockFrames === 0 && !kernel.setFeedbackLowpassHz(parameters[3])) quarantine('effect-cut-delay-domain', 'The continued delay lowpass exceeds its prepared domain.');
             if (parameters[0] !== host.lastRequestedDelay) { kernel.setDelay(parameters[0]); host.lastRequestedDelay = parameters[0]; }
@@ -146,7 +148,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
           else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, parameters[0]);
           else if (entry.kind === 'paired-modal-body' || entry.kind === 'resonator-blend-body') kernel.sample(a, b, parameters[0]);
           else kernel.sample(a, b, parameters[0], parameters[1]);
-        } else if (entry.kind === 'paired-modal-body' || entry.kind === 'resonator-blend-body') kernel.sample(a, b, controls[at]); else if (entry.kind === 'rectangular-membrane') kernel.sample(a, b); else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
+        } else if (entry.kind === 'sympathetic-network') kernel.sample(a, b, controls[at], controls[at + 1], record.bodyInputs); else if (entry.kind === 'paired-modal-body' || entry.kind === 'resonator-blend-body') kernel.sample(a, b, controls[at]); else if (entry.kind === 'rectangular-membrane') kernel.sample(a, b); else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
         if (entry.membrane) kernel.strikes.discardReceipts();
         if (kernel.faults && !entry.membrane && !entry.network && !entry.pairedBody && !entry.blendBody) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
       }

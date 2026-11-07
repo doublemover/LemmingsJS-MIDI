@@ -25,6 +25,6 @@ export function prepareSceneEffectRack(raw, sampleRate = 48000) {
 
 export function sceneEffectSourceBindings(effects, laneIds, voices = []) {
   const bindings = prepareEffectSourceBindings(effects.plan, laneIds, voices);
-  if (bindings.routes.length > 8 || bindings.routes.some(route => !route.available || route.sourceBusId === 'voices:selected' || route.tap !== 'post-fader' || route.layout !== 'audioStereo')) throw new TypeError('This static scene profile needs up to eight exact post-fader stereo owner/lane taps; selected voices and pre-fader comparisons use separate explicit source schedules.');
+  if (bindings.routes.length > 8 || bindings.routes.some(route => !route.available || route.sourceBusId === 'voices:selected' || route.sourceBusId !== 'owner' && route.tap !== 'post-fader' || route.layout !== 'audioStereo')) throw new TypeError('This static scene profile needs up to eight exact post-fader stereo lane taps or the declared owner input; selected voices and pre-fader comparisons use separate explicit source schedules.');
   return bindings;
 }

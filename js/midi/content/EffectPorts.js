@@ -8,6 +8,7 @@ export function describeEffectNodePorts(kind, parameters = {}) {
   else if (kind === 'bus-out') outputs = {};
   else if (kind === 'sidechain-in') { inputs = {}; outputs = { audio: audio(parameters.inputLayout) }; }
   else if (['multiband-vocoder', 'ring-modulator'].includes(kind)) inputs = { donorAudio: audio(parameters.donorLayout, 0), carrierAudio: audio('audioStereo', 1) };
+  else if (kind === 'sympathetic-network' && parameters.excitationMode === 'per-body-stereo') inputs = Object.fromEntries(parameters.bodies.map((_, index) => ['body' + index, audio('audioStereo', index)]));
   else if (kind === 'envelope-detector') { inputs = { audio: audio(parameters.inputLayout) }; outputs = { envelope: envelope() }; }
   else if (kind === 'envelope-mapping') { inputs = { envelope: envelope() }; outputs = { modulation: modulation() }; }
   else if (kind === 'modulated-gain') inputs = { audio: audio(), gain: modulation() };

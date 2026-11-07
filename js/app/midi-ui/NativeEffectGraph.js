@@ -208,7 +208,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         value = await prepareProcessor(entry, { processorName: 'lemmings-rectangular-membrane-v1', revision: RECTANGULAR_MEMBRANE_REVISION, configurationKey: rectangularMembraneIdentity(entry.membrane),
           parameterData: Object.fromEntries(MEMBRANE_LIVE_CONTROLS.map(key => [key, membraneInitialControl(key, entry.parameters)] )), processorOptions: { parameters: entry.parameters } });
       } else if (entry.kind === 'sympathetic-network') {
-        value = await prepareProcessor(entry, { processorName: 'lemmings-sympathetic-network-v1', revision: SYMPATHETIC_NETWORK_REVISION, configurationKey: sympatheticNetworkIdentity(entry.network),
+        value = await prepareProcessor(entry, { processorName: 'lemmings-sympathetic-network-v1', numberOfInputs: entry.network.audioInputs, revision: SYMPATHETIC_NETWORK_REVISION, configurationKey: sympatheticNetworkIdentity(entry.network),
           parameterData: { couple: entry.parameters.couple01, damp: entry.parameters.damp01, ...Object.fromEntries(NETWORK_LOSS_CONTROLS.map(name => [name, 0])),
             ...Object.fromEntries(NETWORK_PICKUP_CONTROLS.map((name, index) => [name, entry.network.pickupGrid ? (index < 2 ? entry.network.pickupGrid.leftPosition : entry.network.pickupGrid.rightPosition)[index % 2 ? 'y01' : 'x01'] : 0.5])) }, processorOptions: { parameters: entry.parameters } });
       } else if (entry.kind === 'spectral-freeze') {

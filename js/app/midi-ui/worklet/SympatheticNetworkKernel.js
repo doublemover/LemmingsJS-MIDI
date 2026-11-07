@@ -47,9 +47,14 @@ export class SympatheticNetworkKernel {
       for (let mode = 0; mode < count; mode++) this.state[base + mode * 2] -= scale * this.lossDepths[offset + mode];
     }
   }
-  sample(left, right, couple = this.profile.parameters.couple01, damp = this.profile.parameters.damp01) {
+  sample(left, right, couple = this.profile.parameters.couple01, damp = this.profile.parameters.damp01, bodyInputs = null) {
     this.frame++; this.leftSample = this.rightSample = 0; if (this.muted) return;
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32 || !Number.isFinite(couple) || !Number.isFinite(damp) || couple < 0 || couple > 1 || damp < 0 || damp > 1) { this.faults++; this.panic(); return; }
+    if (this.profile.inputMode === 'per-body-stereo') {
+      if (!(bodyInputs instanceof Float32Array || bodyInputs instanceof Float64Array) || bodyInputs.length !== this.profile.bodyCount * 2 || left !== 0 || right !== 0) { this.faults++; this.panic(); return; }
+      let leftPower = 0, rightPower = 0; for (let index = 0; index < bodyInputs.length; index++) { const value = bodyInputs[index]; if (!Number.isFinite(value)) { this.faults++; this.panic(); return; } if (index % 2) rightPower += value * value; else leftPower += value * value; }
+      if (leftPower > 1024 || rightPower > 1024) { this.faults++; this.panic(); return; }
+    } else if (bodyInputs !== null) { this.faults++; this.panic(); return; }
     this.couple += (couple - this.couple) * this.smoothing; this.damp += (damp - this.damp) * this.smoothing;
     const count = this.profile.modeCount;
     this.updatePickups();
@@ -59,7 +64,8 @@ export class SympatheticNetworkKernel {
       const base = channel * count * 2, input = channel ? right : left; let energy = 0, output = 0;
       for (let index = 0; index < count; index++) {
         const at = base + index * 2, c = index * 6, real = this.state[at], imaginary = this.state[at + 1], radius = (this.coefficients[c + 2] + (this.coefficients[c + 3] - this.coefficients[c + 2]) * this.damp) * (this.profile.lossMasks.length ? this.lossFactors[index] : 1);
-        const a = (real * this.coefficients[c] - imaginary * this.coefficients[c + 1]) * radius + input * this.coefficients[c + 4], b = (real * this.coefficients[c + 1] + imaginary * this.coefficients[c]) * radius;
+        const drive = bodyInputs ? bodyInputs[this.profile.modes[index].bodyIndex * 2 + channel] : input;
+        const a = (real * this.coefficients[c] - imaginary * this.coefficients[c + 1]) * radius + drive * this.coefficients[c + 4], b = (real * this.coefficients[c + 1] + imaginary * this.coefficients[c]) * radius;
         this.state[at] = Math.abs(a) < 1e-24 ? 0 : a; this.state[at + 1] = Math.abs(b) < 1e-24 ? 0 : b;
       }
       for (let index = 0; index < this.profile.edges.length; index++) {
@@ -79,7 +85,7 @@ export class SympatheticNetworkKernel {
   diagnostics() {
     const energy = new Float64Array(this.profile.bodyCount), count = this.profile.modeCount;
     for (let index = 0; index < count; index++) { const at = index * 2, right = count * 2 + at; energy[this.profile.modes[index].bodyIndex] += this.state[at] ** 2 + this.state[at + 1] ** 2 + this.state[right] ** 2 + this.state[right + 1] ** 2; }
-    return { revision: this.profile.revision, frame: this.frame, faults: this.faults, muted: this.muted, couple: this.couple, damp: this.damp,
+    return { revision: this.profile.revision, inputMode: this.profile.inputMode, audioInputs: this.profile.audioInputs, frame: this.frame, faults: this.faults, muted: this.muted, couple: this.couple, damp: this.damp,
       bodies: this.profile.parameters.bodies.map((body, index) => ({ bodyId: body.id, energy: energy[index] })), lossMasks: this.profile.lossMasks.map((mask, index) => ({ id: mask.id, slot: index, amount01: this.lossMasks[index], target01: this.lossMasks[index + 4] })),
       pickups: this.profile.pickupGrid ? { gridId: this.profile.pickupGrid.id, left: { x01: this.pickupPositions[0], y01: this.pickupPositions[1] }, right: { x01: this.pickupPositions[2], y01: this.pickupPositions[3] }, targets: Array.from(this.pickupPositions.subarray(4)), ...this.profile.pickupPreparation } : null,
       preparation: this.profile.preparation, energyDomain: 'modeled-audio-complex-state-not-physical-terrain-energy', cost: this.profile.cost };
