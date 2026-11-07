@@ -6,6 +6,7 @@ import { createProcgenRetirementScope } from './ProcgenRetirement.js';
 import { attachProcgenSimulationConsumer } from './ProcgenSimulationConsumer.js';
 import { prepareProcgenSimulationRealm } from './ProcgenSimulationRealm.js';
 import { SIMULATION_MAX_CONSUMERS, simulationEnvelope, isSimulationEnvelope, simulationFailure, validateSimulationManifest } from './ProcgenSimulationProtocol.js';
+export { prepareProcgenNativeOutputRealm } from './ProcgenNativeOutputRealm.js';
 export { attachProcgenSimulationOutput, attachProcgenNativeSimulationOutput } from './ProcgenSimulationOutputConsumer.js';
 
 let activeHosts = 0;

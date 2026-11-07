@@ -39,3 +39,5 @@ export function prepareInProcessProcgenSimulationHost(options: {
   requiredConsumer?: (packet: SimulationPacket) => unknown | Promise<unknown>;
   onState?: (state: SimulationState) => void;
 }): Promise<{ host: unknown; restoredContinuationHash: string; execution: string }>;
+
+export { prepareProcgenNativeOutputRealm } from './ProcgenNativeOutputRealm.js';
