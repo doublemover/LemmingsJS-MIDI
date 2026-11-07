@@ -9,6 +9,8 @@ export const NATIVE_SOUND_COLLECTIONS = Object.freeze([
   collection('artificial-choir', 'Artificial choir', new URL('../../../../content/sounds/artificial-choir.json', import.meta.url), ['choir.hollow-ooh', 'choir.paper-aah', 'choir.tiny-ee', 'choir.robot-choir']),
   collection('liquid-drawbars', 'Liquid tables / drawbars', new URL('../../../../content/sounds/liquid-drawbars.json', import.meta.url), ['spectrum.bubble-reed', 'spectrum.prism-pad', 'spectrum.acid-current-dry', 'spectrum.pipe-crew', 'spectrum.glass-drawbars', 'spectrum.falling-stars']),
   collection('circular-travel', 'Circular travel spectra', new URL('../../../../content/sounds/circular-travel.json', import.meta.url), ['circular.endless-stair', 'circular.counter-walk', 'circular.action-stair', 'circular.stepping-stones', 'circular.route-stair']),
+  collection('granular-biomes', 'Synthetic granular biomes', new URL('../../../../content/sounds/granular-biomes.json', import.meta.url), ['biome.rain-glass', 'biome.gravel-choir', 'biome.water-lens', 'biome.rust-breath']),
+  collection('granular-biomes-recorded', 'Granular biomes · NPS recorded edition', new URL('../../../../content/sounds/granular-biomes-recorded.json', import.meta.url), ['biome.recorded-rain-glass', 'biome.recorded-gravel-choir', 'biome.recorded-water-lens', 'biome.recorded-rust-breath']),
   collection('ensemble-identities', 'Ensemble identities', new URL('../../../../content/sounds/ensemble-identities.json', import.meta.url), ['ensemble.timber-pickers'])
 ]);
 const byPatch = new Map(NATIVE_SOUND_COLLECTIONS.flatMap(entry => entry.patchIds.map(id => [id, entry])));

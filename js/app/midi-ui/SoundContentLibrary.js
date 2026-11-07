@@ -7,7 +7,7 @@ import { CIRCUIT_WORKSHOP_VARIANTS } from '../../midi/content/CircuitWorkshopPro
 import { NATIVE_SOUND_COLLECTIONS } from '../procgen/workstation/NativeSoundCollections.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
-import { getProceduralSoundMaterial } from '../../midi/content/ProceduralSoundMaterial.js';
+import { getBundledSoundMaterial } from '../../midi/content/BundledSoundMaterial.js';
 import { prepareSoundContentPack, planSoundContentSelection } from '../../midi/content/SoundContentPack.js';
 import { createSoundContentArchiver } from './SoundContentArchive.js';
 import { createSoundContentReader } from './SoundContentReader.js';
@@ -28,6 +28,7 @@ const PLUCK_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'plucke
 const ENSEMBLE_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'ensemble-identities').source;
 const CHOIR_SOURCE = NATIVE_SOUND_COLLECTIONS.find(entry => entry.id === 'artificial-choir').source;
 const BIOME_SOURCE = new URL('../../../content/sounds/granular-biomes.json', import.meta.url);
+const RECORDED_BIOME_SOURCE = new URL('../../../content/sounds/granular-biomes-recorded.json', import.meta.url);
 const WIND_SOURCE = new URL('../../../content/sounds/wind-bodies.json', import.meta.url);
 const FRICTION_SOURCE = new URL('../../../content/sounds/friction-bodies.json', import.meta.url);
 const TEXTURE_SOURCE = new URL('../../../content/sounds/procedural-textures.json', import.meta.url);
@@ -122,6 +123,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const pluckFactory = button('Prepare plucked garden', () => prepareFactory(PLUCK_SOURCE, 'Plucked garden'));
   const ensembleFactory = button('Prepare ensemble identities', () => prepareFactory(ENSEMBLE_SOURCE, 'Ensemble identities'));
   const biomeFactory = button('Prepare synthetic granular biomes', () => prepareFactory(BIOME_SOURCE, 'Synthetic granular biomes'));
+  const recordedBiomeFactory = button('Prepare recorded granular biomes · NPS', () => prepareFactory(RECORDED_BIOME_SOURCE, 'Recorded granular biomes · NPS'));
   const windFactory = button('Prepare breath / wind bodies', () => prepareFactory(WIND_SOURCE, 'Breath and modal wind bodies'));
   const frictionFactory = button('Prepare bowed / friction bodies', () => prepareFactory(FRICTION_SOURCE, 'Bowed and friction bodies'));
   const textureFactory = button('Prepare procedural material textures', () => prepareFactory(TEXTURE_SOURCE, 'Procedural material textures'));
@@ -217,7 +219,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     } };
     try {
       let blob = source.assetBlob(file.sha256) || (encoded = await registry.loadAsset(file.sha256, file.bytes, { signal }))?.blob;
-      if (!blob && getProceduralSoundMaterial(file)) { encoded = await audio.getSoundMaterialProvider().borrowEncoded(file, { signal }); blob = encoded.blob; }
+      if (!blob && getBundledSoundMaterial(file)) { encoded = await audio.getSoundMaterialProvider().borrowEncoded(file, { signal }); blob = encoded.blob; }
       signal.throwIfAborted(); if (!blob) throw failure('Required material is unavailable locally: ' + file.path);
       assetReader = blob.stream().getReader();
       const body = new globalThis.ReadableStream({
@@ -317,11 +319,11 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     if (plan?.unavailableEngines.length) summary.textContent += ' Required renderer: ' + plan.unavailableEngines.map(entry => entry.state).join(', ') + '.';
     if (plan?.missingReferences.length || plan?.missingAssetBytes.length) summary.textContent += ' Missing material: ' + (plan.missingReferences.length + plan.missingAssetBytes.length) + ' references.';
     const ready = !!plan, auditioned = ready && !!installation.getAudition(stage, selection);
-    let materialFamilyReady = false, renderable = false, localProceduralMaterial = false, sourceComparable = false, sampleMap = null, sampleMapSource = null, sharedSpaceReady = false; modelInfo.textContent = '';
+    let materialFamilyReady = false, renderable = false, localBundledMaterial = false, sourceComparable = false, sampleMap = null, sampleMapSource = null, sharedSpaceReady = false; modelInfo.textContent = '';
     if (ready) { const lease = stage.borrow(); try { materialFamilyReady = ORIGINAL_MATERIAL_PATCH_IDS.every(id => lease.prepared.patches.some(row => row.state === 'definition-admitted' && row.definition.id === id)); const patch = lease.prepared.patches.find(entry => entry.identity === selection);
       sharedSpaceReady = patch?.state === 'definition-admitted' && (patch.definition.tags.includes('circuit-workshop') || patch.definition.engineId === 'native-fm' || patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2);
       sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
-      localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralSoundMaterial(file)));
+      localBundledMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getBundledSoundMaterial(file)));
       renderable = patch?.state === 'definition-admitted' && (NATIVE_OFFLINE_SOURCE_IDS.includes(patch.definition.engineId) || OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender);
       if (patch?.state === 'definition-admitted' && ['native-sample', 'worklet-sample'].includes(patch.definition.engineId)) {
         const map = patch.definition.sampleMap, chosen = installation.getAudition(stage, selection)?.sourceSelections?.[0]?.selection;
@@ -361,7 +363,8 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular') {
         const parameters = patch.definition.parameters;
-        modelInfo.textContent = 'Patch model: one pinned local WAV per cloud · ' + parameters.grainMilliseconds + ' ms Hann grains at ' + parameters.densityHz +
+        const recorded = patch.definition.tags.includes('field-recording');
+        modelInfo.textContent = (recorded ? 'Recorded edition: credited NPS rain, rockfall, stream or rotary snowplow excerpt. ' : 'Synthetic edition: original generated texture. ') + 'Patch model: one pinned local WAV per cloud · ' + parameters.grainMilliseconds + ' ms Hann grains at ' + parameters.densityHz +
           '/s · source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, 16 grain slots per cloud, 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore is unavailable. Fixed control WAVs use the same pinned source; causal rendering requires its saved material reference.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2) {
@@ -376,7 +379,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       const realization = lease.prepared.pack.compilation?.realizationGroups?.find(group => group.profiles.some(profile => profile.patchIdentity === selection)), profile = realization?.profiles.find(profile => profile.patchIdentity === selection);
       if (realization && profile) modelInfo.textContent += ' Authored realization ' + profile.id + ' · ' + realization.profiles.length + ' explicit profile(s). ' + (realization.singleProfileLimit || profile.changedAudibleProperties.join(' ')) + ' Preserved invariant claims: ' + profile.preservedInvariants.join(', ') + '. Device cost, listening and numerical equivalence are unqualified; automatic quality substitution is unavailable.';
     } finally { lease.release(); } }
-    for (const element of [circuitFactory, circuitVariant, factory, fmFactory, materialFactory, pluckFactory, ensembleFactory, choirFactory, spectrumFactory, biomeFactory, tactileFactory, textureFactory, frictionFactory, windFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
+    for (const element of [circuitFactory, circuitVariant, factory, fmFactory, materialFactory, pluckFactory, ensembleFactory, choirFactory, spectrumFactory, biomeFactory, recordedBiomeFactory, tactileFactory, textureFactory, frictionFactory, windFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     if (gestureSource !== sampleMapSource) {
       gestureSource = sampleMapSource; gesture.replaceChildren();
       for (const entry of sampleMap?.articulations || []) { const option = node('option', entry.name); option.value = entry.id; gesture.append(option); }
@@ -385,13 +388,13 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     sharedSpace.hidden = typeof onSharedSpace !== 'function' || !sharedSpaceReady; sharedSpace.disabled = busy || !sharedSpaceReady;
     materialApply.disabled = busy || !materialFamilyReady; materialArticulation.disabled = materialSite.disabled = busy;
     gestureLabel.hidden = !sampleMap; gesture.disabled = busy || !sampleMap;
-    audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed && !localProceduralMaterial;
+    audition.disabled = busy || !ready || !!plan?.missingReferences.length || !!plan?.unavailableEngines.length || !!plan?.missingAssetBytes.length && !installed && !localBundledMaterial;
     originalSource.disabled = sourceRegion.disabled = audition.disabled || !sourceComparable;
     stop.disabled = !current; install.disabled = busy || !auditioned; referenceInstall.disabled = busy || !ready;
     hold.disabled = busy && current?.mode !== 'lane-preview' || !installed || !auditioned;
     apply.disabled = busy && !current?.previewLease || !installed || !auditioned; referenceExport.disabled = busy || !ready;
     portableExport.disabled = busy || !ready || plan.portability === 'reference-only' || !!plan.unavailableEngines.length;
-    renderAudio.disabled = busy || !renderable || !!plan?.missingReferences.length || !!plan?.missingAssetBytes.length && !localProceduralMaterial && !installed; renderRate.disabled = busy || !renderable;
+    renderAudio.disabled = busy || !renderable || !!plan?.missingReferences.length || !!plan?.missingAssetBytes.length && !localBundledMaterial && !installed; renderRate.disabled = busy || !renderable;
     download.disabled = busy || !artifact?.metadata().retained; save.disabled = download.disabled || typeof window.showSaveFilePicker !== 'function';
     more.hidden = !pageCursor; close.disabled = false; credits.replaceChildren();
     if (plan) for (const entry of plan.credits) credits.append(node('li', entry.subject + ' · ' + (entry.rights.creator || 'creator unknown') + ' · ' + entry.rights.licenseId + ' · redistribution ' + entry.redistribution));

@@ -224,18 +224,20 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const { decodeWaveSource } = await import('./WaveSourceDecode.js'); guard(signal, current);
     return decodeWaveSource(input, { signal, current, maxBytes, estimatedPeakBytes, crypto, yieldControl });
   }
-  if (kind === 'generate-procedural-sound') {
-    if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid original procedural sound request.');
-    const { getProceduralSoundById } = await import('../../midi/content/ProceduralSoundMaterial.js'); guard(signal, current);
-    const expected = getProceduralSoundById(input.id);
-    if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Procedural source needs its worker startup and copy reservation.');
-    const { generateProceduralSoundSource } = await import('../../midi/content/ProceduralSoundSources.js'); guard(signal, current);
+  if (kind === 'generate-procedural-sound' || kind === 'load-bundled-sound') {
+    if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid bundled sound request.');
+    const { getBundledSoundById } = await import('../../midi/content/BundledSoundMaterial.js'); guard(signal, current);
+    const expected = getBundledSoundById(input.id);
+    if (kind === 'generate-procedural-sound' && expected.materialType === 'recording') throw problem('invalid-contract', 'A recording is not a procedural generator.');
+    if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Bundled material needs its worker startup and copy reservation.');
+    const { loadBundledSoundSource } = await import('../../midi/content/BundledSoundSources.js'); guard(signal, current);
     const { inspectWaveContainer } = await import('../midi-ui/AudioAssetRef.js'); guard(signal, current);
-    const bytes = generateProceduralSoundSource(expected), format = inspectWaveContainer(bytes, { maxChannels: expected.kind === 'impulse-response' ? 4 : 2 });
+    const bytes = await loadBundledSoundSource(expected, { signal }); guard(signal, current);
+    const format = inspectWaveContainer(bytes, { maxChannels: expected.kind === 'impulse-response' ? 4 : 2 });
     const digest = await crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
     const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
     if (hash !== expected.sha256 || bytes.byteLength !== expected.bytes || format.frames !== expected.frames || format.channels !== expected.channels || format.sampleRate !== expected.sampleRate)
-      throw problem('content-mismatch', 'Procedural source differs from its original immutable identity.');
+      throw problem('content-mismatch', 'Bundled material differs from its immutable source identity.');
     return { value: { id: expected.id, hash, bytes }, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
   }
   if (kind === 'inspect-wave-asset') {

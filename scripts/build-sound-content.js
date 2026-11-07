@@ -7,8 +7,8 @@ import { compileSoundContent, reviewSoundContentChanges } from '../js/midi/conte
 import { describeNativeInstrumentEngines } from '../js/app/midi-ui/NativeInstrumentSchema.js';
 import { collectInstrumentArtifactProfiles } from './InstrumentArtifactClosure.js';
 import { computeInstrumentArtifacts } from '../js/runtime/InstrumentArtifactManifest.js';
-import { getProceduralSoundMaterial } from '../js/midi/content/ProceduralSoundMaterial.js';
-import { generateProceduralSoundSource } from '../js/midi/content/ProceduralSoundSources.js';
+import { getBundledSoundMaterial } from '../js/midi/content/BundledSoundMaterial.js';
+import { loadBundledSoundSource } from '../js/midi/content/BundledSoundSources.js';
 import { extendSoundIdentityLedger, loadSoundIdentityLedger } from './SoundContentIdentityLedger.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url)), args = process.argv.slice(2), options = {};
@@ -102,8 +102,8 @@ try {
       if (stagedMetadataBytes > 64 * 1048576) throw new Error('Compiled sound metadata exceeds the catalog byte budget.');
       await fs.writeFile(path.join(folder, 'pack.json'), packText); await fs.writeFile(path.join(folder, 'artifacts.json'), artifactText);
       for (const file of content.prepared.pack.files) {
-        const original = getProceduralSoundMaterial(file); let bytes;
-        if (original) bytes = generateProceduralSoundSource(original);
+        const original = getBundledSoundMaterial(file); let bytes;
+        if (original) bytes = await loadBundledSoundSource(original, { readAsset: url => fs.readFile(url) });
         else {
           const source = await fs.realpath(path.resolve(input, 'assets', file.path));
           if (!inside(path.join(inputReal, 'assets'), source)) throw new Error('Sound material escapes the authoring asset directory.');

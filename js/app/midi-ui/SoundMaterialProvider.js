@@ -2,7 +2,7 @@ import { sharedContentJobsFor } from '../resources/SharedContentJobs.js';
 import { cloneData, freezeData } from '../../core/CanonicalData.js';
 import { validateSoundContentReference } from '../../midi/content/SoundContentReference.js';
 import { verifyDrumKitDecodedSources } from '../../midi/content/DrumKitDefinition.js';
-import { getProceduralSoundMaterial } from '../../midi/content/ProceduralSoundMaterial.js';
+import { getBundledSoundMaterial } from '../../midi/content/BundledSoundMaterial.js';
 import { createAudioAssetLoader } from './AudioAssetLoader.js';
 import { validateAudioAssetRef, DECODER_VERSION } from './AudioAssetRef.js';
 import { createSoundContentRegistry } from './SoundContentRegistry.js';
@@ -25,8 +25,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
   let realizationMetadata = null;
   const retirement = createProcgenRetirementScope(); let disposed = false, sequence = 0;
   const generateSource = async (file, signal) => {
-    const original = getProceduralSoundMaterial(file); if (!original) return null;
-    const workspace = resources.reserve({ kind: 'procedural-sound-material', estimateBytes: 16 * 1048576, consumerOwned: true });
+    const original = getBundledSoundMaterial(file); if (!original) return null;
+    const workspace = resources.reserve({ kind: 'bundled-sound-material', estimateBytes: 16 * 1048576, consumerOwned: true });
     let result = null, receipt = null, storage = null, blob = null;
     const release = () => {
       receipt ||= createProcgenRetirementScope().retire([{ name: 'original-source-worker', run: () => {
@@ -40,7 +40,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       return receipt;
     };
     try {
-      result = await contentJobs.acquire({ kind: 'generate-procedural-sound', contentHash: original.sha256, decoderVersion: 'procedural-v1.' + original.id, budgetAdapter: budget, inputBytes: 128, maxBytes: 1048576, estimatedPeakBytes: 16 * 1048576, signal,
+      result = await contentJobs.acquire({ kind: 'load-bundled-sound', contentHash: original.sha256, decoderVersion: 'bundled-wave-v1.' + original.id, budgetAdapter: budget, inputBytes: 128, maxBytes: 1048576, estimatedPeakBytes: 16 * 1048576, signal,
         isCurrent: () => !disposed, deadlineMs: 60000, prepareInput: () => ({ id: original.id }) });
       signal?.throwIfAborted();
       if (!(result.value.bytes instanceof Uint8Array) || result.value.bytes.byteLength !== original.bytes || result.value.hash !== original.sha256 || result.value.id !== original.id)
@@ -75,7 +75,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       loan = stage ? borrowSoundContentStage(stage) : null; blob = loan?.assetBlob(file.sha256);
       if (!blob) {
         loan?.release(); loan = null;
-        loan = getProceduralSoundMaterial(file) ? await generateSource(file, signal) : await registry.loadAsset(file.sha256, file.bytes, { signal }); blob = loan?.blob;
+        loan = getBundledSoundMaterial(file) ? await generateSource(file, signal) : await registry.loadAsset(file.sha256, file.bytes, { signal }); blob = loan?.blob;
       }
       if (!blob || blob.size !== file.bytes) throw failure('asset-missing', 'Exact local sound material is unavailable: ' + file.path);
       return reader;
@@ -90,7 +90,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
       finally { loan.release(); }
     } });
   const inspect = async (file, stage, operation) => {
-    const original = getProceduralSoundMaterial(file);
+    const original = getBundledSoundMaterial(file);
     if (original) return { bytes: original.bytes, channels: original.channels, sourceSampleRate: original.sampleRate, frames: original.frames };
     let format = formats.get(file.sha256);
     if (format) {

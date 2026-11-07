@@ -1,0 +1,1491 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.granular-biomes-recorded",
+    "version": "0.1.0",
+    "name": "Granular biomes · NPS recorded edition",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Four short National Park Service field-recording excerpts; original granular recipes by LemmingsJS-MIDI contributors. Rockfall supplies the rough source and rotary snowplow the mechanical source. Excerpt conversion is documented; listening, alias and device qualification are pending.",
+    "modifications": [
+      "nps-excerpt-pcm16-v1; source inventory and conversion in content/sounds/field-recordings/provenance.json."
+    ],
+    "redistributionPolicy": "unknown",
+    "licenses": [
+      {
+        "id": "LicenseRef-NPS-Public-Domain",
+        "sha256": "c36774361752d354881023c203c3b93d10daea69cdde2df89294a8743445e0bf",
+        "text": "NPS Sound Gallery source notice, observed 2026-11-07:\nThe files are in the public domain and may be downloaded. Enjoy, and please give the appropriate credit.\nSource: https://www.nps.gov/subjects/sound/gallery.htm\n",
+        "url": "https://www.nps.gov/subjects/sound/gallery.htm"
+      }
+    ]
+  },
+  "files": [
+    {
+      "path": "field-recordings/nps-rain.wav",
+      "sha256": "50fd58bf2c9ee084b1b734f33bfceb576e6c49dfa07d2bf7d73372d0a714e642",
+      "bytes": 317694,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "sample-recording",
+        "creator": "National Park Service",
+        "sourceUrl": "https://www.nps.gov/subjects/sound/sounds-rain.htm",
+        "licenseId": "LicenseRef-NPS-Public-Domain",
+        "licenseUrl": "https://www.nps.gov/subjects/sound/gallery.htm",
+        "licenseTextHash": "c36774361752d354881023c203c3b93d10daea69cdde2df89294a8743445e0bf",
+        "attribution": "National Park Service, Natural Sounds and Night Skies Division · Rain. NPS Rain.",
+        "modifications": [
+          "First up to 6 seconds, mono 32000 Hz signed PCM16; bitexact flags; no peak normalization; 320-frame linear edge fades truncated toward zero; canonical 44-byte RIFF header.",
+          "Original MP3 8f349402462580e1faca6a51bc13fea4655698624966e976195d2b2fd08a5337; https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-RainDEPO.mp3",
+          "Decoder: ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers"
+        ],
+        "declaredUse": "redistributable"
+      }
+    },
+    {
+      "path": "field-recordings/nps-rockfall.wav",
+      "sha256": "ee898ad43e16eb17fe765a72162bc0b160171a485d87895280236622480c6394",
+      "bytes": 384044,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "sample-recording",
+        "creator": "National Park Service",
+        "sourceUrl": "https://www.nps.gov/subjects/sound/rockfall.htm",
+        "licenseId": "LicenseRef-NPS-Public-Domain",
+        "licenseUrl": "https://www.nps.gov/subjects/sound/gallery.htm",
+        "licenseTextHash": "c36774361752d354881023c203c3b93d10daea69cdde2df89294a8743445e0bf",
+        "attribution": "National Park Service, Natural Sounds and Night Skies Division · Rockfall. NPS Rockfall. The legacy MP3 filename and page park label differ; no precise location is asserted.",
+        "modifications": [
+          "First up to 6 seconds, mono 32000 Hz signed PCM16; bitexact flags; no peak normalization; 320-frame linear edge fades truncated toward zero; canonical 44-byte RIFF header.",
+          "Original MP3 090c20e5496977cd627d2bfff45006ebcae7da246c3599abf56994c283cd0588; https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-RockslideYOSE.mp3",
+          "Decoder: ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers"
+        ],
+        "declaredUse": "redistributable"
+      }
+    },
+    {
+      "path": "field-recordings/nps-stream.wav",
+      "sha256": "4dda18dfc00ac3a912d6e486d13f2c200b3fbfefc359c412d11ad0da76b7ade6",
+      "bytes": 324382,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "sample-recording",
+        "creator": "National Park Service",
+        "sourceUrl": "https://www.nps.gov/subjects/sound/sounds-stream.htm",
+        "licenseId": "LicenseRef-NPS-Public-Domain",
+        "licenseUrl": "https://www.nps.gov/subjects/sound/gallery.htm",
+        "licenseTextHash": "c36774361752d354881023c203c3b93d10daea69cdde2df89294a8743445e0bf",
+        "attribution": "National Park Service, Natural Sounds and Night Skies Division · Stream. NPS Stream.",
+        "modifications": [
+          "First up to 6 seconds, mono 32000 Hz signed PCM16; bitexact flags; no peak normalization; 320-frame linear edge fades truncated toward zero; canonical 44-byte RIFF header.",
+          "Original MP3 4d55ce7e299b7d2d9ab50aee2d28233f05662886cbb57e792aa210d39dd73744; https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-StreamMUWO.mp3",
+          "Decoder: ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers"
+        ],
+        "declaredUse": "redistributable"
+      }
+    },
+    {
+      "path": "field-recordings/nps-snowplow.wav",
+      "sha256": "bb8b16a0f369a1c34cb8422c164292297a6a1b71b24573008d26a4d3a5db2e2b",
+      "bytes": 382896,
+      "kind": "sample",
+      "mediaType": "audio/wav",
+      "parents": [],
+      "rights": {
+        "kind": "sample-recording",
+        "creator": "National Park Service",
+        "sourceUrl": "https://www.nps.gov/subjects/sound/sounds-snowplow.htm",
+        "licenseId": "LicenseRef-NPS-Public-Domain",
+        "licenseUrl": "https://www.nps.gov/subjects/sound/gallery.htm",
+        "licenseTextHash": "c36774361752d354881023c203c3b93d10daea69cdde2df89294a8743445e0bf",
+        "attribution": "National Park Service, Natural Sounds and Night Skies Division · Rotary snowplow. NPS Rotary snowplow.",
+        "modifications": [
+          "First up to 6 seconds, mono 32000 Hz signed PCM16; bitexact flags; no peak normalization; 320-frame linear edge fades truncated toward zero; canonical 44-byte RIFF header.",
+          "Original MP3 d86ea031d4ea439ef0dc408258d542de01f8b640cd5caaa8d72c4de014af63c8; https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-RotarySnowPlow.mp3",
+          "Decoder: ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers"
+        ],
+        "declaredUse": "redistributable"
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "id": "biome.recorded-rain-glass",
+      "revision": 1,
+      "name": "Rain Glass · recorded rain",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "granular",
+        "field-recording",
+        "actor-owned-cloud",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-granular",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original actor-owned granular cloud recipe over the credited NPS recording excerpt. Internal grains remain DSP children of one held action gate.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pitchRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "regionStart01": {
+              "value": 0.04,
+              "unit": "normalized"
+            },
+            "regionEnd01": {
+              "value": 0.96,
+              "unit": "normalized"
+            },
+            "motionRequired": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "reverse": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "rootHz": {
+              "value": 261.6255653005986,
+              "unit": "Hz"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "position01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "densityHz": {
+              "value": 24,
+              "unit": "Hz"
+            },
+            "grainMilliseconds": {
+              "value": 25,
+              "unit": "ms"
+            },
+            "spread01": {
+              "value": 0.1,
+              "unit": "normalized"
+            },
+            "activity01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "tone01": {
+              "value": 0.85,
+              "unit": "normalized"
+            },
+            "freezePosition": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.012,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "source",
+          "sha256": "50fd58bf2c9ee084b1b734f33bfceb576e6c49dfa07d2bf7d73372d0a714e642",
+          "bytes": 317694,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "50fd58bf2c9ee084b1b734f33bfceb576e6c49dfa07d2bf7d73372d0a714e642"
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      },
+      "macros": [
+        {
+          "id": "crowd",
+          "name": "CROWD",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Sparse to dense grain children within one held cloud.",
+          "targets": [
+            {
+              "parameter": "densityHz",
+              "minimum": {
+                "value": 12,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 36,
+                "unit": "Hz"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "SCALE",
+          "mode": "continuous",
+          "default01": 0.041666666666666664,
+          "smoothingMs": 20,
+          "perceptualDirection": "Short grain flecks to overlapping source texture.",
+          "targets": [
+            {
+              "parameter": "grainMilliseconds",
+              "minimum": {
+                "value": 20,
+                "unit": "ms"
+              },
+              "maximum": {
+                "value": 140,
+                "unit": "ms"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scan",
+          "name": "SCAN",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Earlier to later positions in the permitted source region.",
+          "targets": [
+            {
+              "parameter": "position01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "weather",
+          "name": "WEATHER",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
+          "targets": [
+            {
+              "parameter": "spread01",
+              "minimum": {
+                "value": 0.2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "scale"
+            },
+            {
+              "parameter": "tone01",
+              "minimum": {
+                "value": -0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "add"
+            }
+          ]
+        }
+      ],
+      "causalBindings": [
+        {
+          "id": "completed-motion-density",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "densityHz",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "Hz",
+          "outputMin": -2,
+          "outputMax": 6,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "completed-height-scan",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "position01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 19114775,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-scan",
+            "parameter": "position01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "cloud-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      }
+    },
+    {
+      "id": "biome.recorded-gravel-choir",
+      "revision": 1,
+      "name": "Gravel Choir · recorded rockfall",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "granular",
+        "field-recording",
+        "actor-owned-cloud",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-granular",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original actor-owned granular cloud recipe over the credited NPS recording excerpt. Internal grains remain DSP children of one held action gate.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pitchRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "regionStart01": {
+              "value": 0.04,
+              "unit": "normalized"
+            },
+            "regionEnd01": {
+              "value": 0.96,
+              "unit": "normalized"
+            },
+            "motionRequired": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "reverse": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "rootHz": {
+              "value": 261.6255653005986,
+              "unit": "Hz"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "position01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "densityHz": {
+              "value": 12,
+              "unit": "Hz"
+            },
+            "grainMilliseconds": {
+              "value": 70,
+              "unit": "ms"
+            },
+            "spread01": {
+              "value": 0.65,
+              "unit": "normalized"
+            },
+            "activity01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "tone01": {
+              "value": 0.6,
+              "unit": "normalized"
+            },
+            "freezePosition": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.012,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "source",
+          "sha256": "ee898ad43e16eb17fe765a72162bc0b160171a485d87895280236622480c6394",
+          "bytes": 384044,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "ee898ad43e16eb17fe765a72162bc0b160171a485d87895280236622480c6394"
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      },
+      "macros": [
+        {
+          "id": "crowd",
+          "name": "CROWD",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Sparse to dense grain children within one held cloud.",
+          "targets": [
+            {
+              "parameter": "densityHz",
+              "minimum": {
+                "value": 6,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 18,
+                "unit": "Hz"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "SCALE",
+          "mode": "continuous",
+          "default01": 0.4166666666666667,
+          "smoothingMs": 20,
+          "perceptualDirection": "Short grain flecks to overlapping source texture.",
+          "targets": [
+            {
+              "parameter": "grainMilliseconds",
+              "minimum": {
+                "value": 20,
+                "unit": "ms"
+              },
+              "maximum": {
+                "value": 140,
+                "unit": "ms"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scan",
+          "name": "SCAN",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Earlier to later positions in the permitted source region.",
+          "targets": [
+            {
+              "parameter": "position01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "weather",
+          "name": "WEATHER",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
+          "targets": [
+            {
+              "parameter": "spread01",
+              "minimum": {
+                "value": 0.2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "scale"
+            },
+            {
+              "parameter": "tone01",
+              "minimum": {
+                "value": -0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "add"
+            }
+          ]
+        }
+      ],
+      "causalBindings": [
+        {
+          "id": "completed-motion-density",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "densityHz",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "Hz",
+          "outputMin": -2,
+          "outputMax": 6,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "completed-height-scan",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "position01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 164117793,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-scan",
+            "parameter": "position01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "cloud-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      }
+    },
+    {
+      "id": "biome.recorded-water-lens",
+      "revision": 1,
+      "name": "Water Lens · recorded stream",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "granular",
+        "field-recording",
+        "actor-owned-cloud",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-granular",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original actor-owned granular cloud recipe over the credited NPS recording excerpt. Internal grains remain DSP children of one held action gate.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pitchRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "regionStart01": {
+              "value": 0.04,
+              "unit": "normalized"
+            },
+            "regionEnd01": {
+              "value": 0.96,
+              "unit": "normalized"
+            },
+            "motionRequired": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "reverse": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "rootHz": {
+              "value": 261.6255653005986,
+              "unit": "Hz"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "position01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "densityHz": {
+              "value": 8,
+              "unit": "Hz"
+            },
+            "grainMilliseconds": {
+              "value": 120,
+              "unit": "ms"
+            },
+            "spread01": {
+              "value": 0.2,
+              "unit": "normalized"
+            },
+            "activity01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "tone01": {
+              "value": 0.75,
+              "unit": "normalized"
+            },
+            "freezePosition": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.012,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "source",
+          "sha256": "4dda18dfc00ac3a912d6e486d13f2c200b3fbfefc359c412d11ad0da76b7ade6",
+          "bytes": 324382,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "4dda18dfc00ac3a912d6e486d13f2c200b3fbfefc359c412d11ad0da76b7ade6"
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      },
+      "macros": [
+        {
+          "id": "crowd",
+          "name": "CROWD",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Sparse to dense grain children within one held cloud.",
+          "targets": [
+            {
+              "parameter": "densityHz",
+              "minimum": {
+                "value": 4,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 12,
+                "unit": "Hz"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "SCALE",
+          "mode": "continuous",
+          "default01": 0.8333333333333334,
+          "smoothingMs": 20,
+          "perceptualDirection": "Short grain flecks to overlapping source texture.",
+          "targets": [
+            {
+              "parameter": "grainMilliseconds",
+              "minimum": {
+                "value": 20,
+                "unit": "ms"
+              },
+              "maximum": {
+                "value": 140,
+                "unit": "ms"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scan",
+          "name": "SCAN",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Earlier to later positions in the permitted source region.",
+          "targets": [
+            {
+              "parameter": "position01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "weather",
+          "name": "WEATHER",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
+          "targets": [
+            {
+              "parameter": "spread01",
+              "minimum": {
+                "value": 0.2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "scale"
+            },
+            {
+              "parameter": "tone01",
+              "minimum": {
+                "value": -0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "add"
+            }
+          ]
+        }
+      ],
+      "causalBindings": [
+        {
+          "id": "completed-motion-density",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "densityHz",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "Hz",
+          "outputMin": -2,
+          "outputMax": 6,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "completed-height-scan",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "position01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 82272683,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-scan",
+            "parameter": "position01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "cloud-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      }
+    },
+    {
+      "id": "biome.recorded-rust-breath",
+      "revision": 1,
+      "name": "Rust Breath · recorded rotary snowplow",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "granular",
+        "field-recording",
+        "actor-owned-cloud",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-granular",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original actor-owned granular cloud recipe over the credited NPS recording excerpt. Internal grains remain DSP children of one held action gate.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pitchRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "regionStart01": {
+              "value": 0.04,
+              "unit": "normalized"
+            },
+            "regionEnd01": {
+              "value": 0.96,
+              "unit": "normalized"
+            },
+            "motionRequired": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "reverse": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "rootHz": {
+              "value": 261.6255653005986,
+              "unit": "Hz"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "position01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "densityHz": {
+              "value": 32,
+              "unit": "Hz"
+            },
+            "grainMilliseconds": {
+              "value": 45,
+              "unit": "ms"
+            },
+            "spread01": {
+              "value": 0.4,
+              "unit": "normalized"
+            },
+            "activity01": {
+              "value": 0,
+              "unit": "normalized"
+            },
+            "tone01": {
+              "value": 0.35,
+              "unit": "normalized"
+            },
+            "freezePosition": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.012,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "sampleRefs": [
+        {
+          "id": "source",
+          "sha256": "bb8b16a0f369a1c34cb8422c164292297a6a1b71b24573008d26a4d3a5db2e2b",
+          "bytes": 382896,
+          "kind": "sample",
+          "required": true
+        }
+      ],
+      "dependencies": [
+        "bb8b16a0f369a1c34cb8422c164292297a6a1b71b24573008d26a4d3a5db2e2b"
+      ],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.65,
+        "pan01": 0
+      },
+      "macros": [
+        {
+          "id": "crowd",
+          "name": "CROWD",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Sparse to dense grain children within one held cloud.",
+          "targets": [
+            {
+              "parameter": "densityHz",
+              "minimum": {
+                "value": 16,
+                "unit": "Hz"
+              },
+              "maximum": {
+                "value": 48,
+                "unit": "Hz"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scale",
+          "name": "SCALE",
+          "mode": "continuous",
+          "default01": 0.20833333333333334,
+          "smoothingMs": 20,
+          "perceptualDirection": "Short grain flecks to overlapping source texture.",
+          "targets": [
+            {
+              "parameter": "grainMilliseconds",
+              "minimum": {
+                "value": 20,
+                "unit": "ms"
+              },
+              "maximum": {
+                "value": 140,
+                "unit": "ms"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "scan",
+          "name": "SCAN",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Earlier to later positions in the permitted source region.",
+          "targets": [
+            {
+              "parameter": "position01",
+              "minimum": {
+                "value": 0.1,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.9,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "replace"
+            }
+          ]
+        },
+        {
+          "id": "weather",
+          "name": "WEATHER",
+          "mode": "continuous",
+          "default01": 0.5,
+          "smoothingMs": 20,
+          "perceptualDirection": "Narrow dark source to wide bright scatter; dry source only.",
+          "targets": [
+            {
+              "parameter": "spread01",
+              "minimum": {
+                "value": 0.2,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.8,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "scale"
+            },
+            {
+              "parameter": "tone01",
+              "minimum": {
+                "value": -0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "clamp": true,
+              "composition": "add"
+            }
+          ]
+        }
+      ],
+      "causalBindings": [
+        {
+          "id": "completed-motion-density",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "displacementPixels",
+          "target": "densityHz",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 8,
+          "outputUnit": "Hz",
+          "outputMin": -2,
+          "outputMax": 6,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        },
+        {
+          "id": "completed-height-scan",
+          "sourceKind": "MotionCommitted",
+          "payloadField": "positionYWorldPixels",
+          "target": "position01",
+          "unit": "world-pixel",
+          "inputMin": 0,
+          "inputMax": 512,
+          "outputUnit": "normalized",
+          "outputMin": -0.2,
+          "outputMax": 0.2,
+          "curve": "linear",
+          "composition": "add",
+          "mode": "continuous",
+          "smoothingMs": 24
+        }
+      ],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 111617217,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "sibling-scan",
+            "parameter": "position01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.025,
+            "factors": [
+              {
+                "id": "cloud-sibling",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": []
+      }
+    }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.rain-glass",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.rain-glass",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.gravel-choir",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.gravel-choir",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.water-lens",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.water-lens",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.rust-breath",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.rust-breath",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    }
+  ]
+}
