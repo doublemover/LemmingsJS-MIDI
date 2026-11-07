@@ -52,7 +52,7 @@ export function validatePerformanceSceneOrigin(raw) {
   if (!!recipe.initialPreparedSurface !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_PREPARED_SURFACE_REQUIREMENT)) fail();
   if (recipe.initialPreparedSurface) { validateScenePreparedSurfaceMapping(recipe.initialPreparedSurface, manifest.causalMappings); if (manifest.cost.sharedBodies !== 1) fail(); }
   if (!!recipe.initialSympatheticBody !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_SYMPATHETIC_REQUIREMENT)) fail();
-  if (recipe.initialSympatheticBody) { validateSceneSympatheticMapping(recipe.initialSympatheticBody, manifest.causalMappings); if (manifest.cost.sharedBodies !== sceneSympatheticBodyModel(recipe.initialSympatheticBody).bodyCount) fail(); }
+  if (recipe.initialSympatheticBody) { validateSceneSympatheticMapping(recipe.initialSympatheticBody, manifest.causalMappings, manifest.patchRefs.map(patch => patch.laneId)); if (manifest.cost.sharedBodies !== sceneSympatheticBodyModel(recipe.initialSympatheticBody).bodyCount) fail(); }
   if (recipe.initialCavityBody) {
     const map = recipe.initialCavityBody.map, region = manifest.causalMappings.topologyRegions?.find(region => region.id === map.topologyRegionRef.id); if (!region) fail(); validateCavitySoundRegion(map, region);
     if (manifest.cost.sharedBodies !== (map.bodyRecipe === 'throat-duet' ? 4 : 2) || !manifest.causalMappings.instruments.length || manifest.causalMappings.instruments.some(instrument => instrument.route !== 'local' || instrument.topologyRegionId !== region.id || !['TerrainWorkCommitted', 'ContactSpanBegan', 'ContactResolved'].includes(instrument.sourceKind))) fail();

@@ -11674,3 +11674,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Route separate body inputs through native AudioWorklet preparation, the standalone processor, owned graph processing and continued native-cut rendering. The processor/kernel revision changes with the new contract; snapshots bind its exact configuration.
 - Correct private shared-network rehearsal to feed its declared owner/sidechain sources. Retain only requested lane planes, use the same source samples as the dry mix and carry source-binding receipts through cue verification. Earlier one-root scene graphs now excite their actual private network instead of only passing a dry bus.
 - Functional/native/audio/browser/performance qualification remains deferred. Per-lane Glass Orbit body orchestration is the next production span.
+
+### Continuation 625 — Glass Orbit Trellis with separate source/body routes
+
+- Author nine Trellis orchestrations on the existing solo/duet/flock geometry and tunings. Each physical path’s actual FM gate audio feeds its declared body input in one four-body sparse network; the fourth body is directly unexcited. Concurrent paths retain their identity instead of changing a common root while old sources ring. Dry attacks, actors, routes and semantic onset ownership remain unchanged.
+- Save a v3 world-anchor map with a complete exact source-instrument and lane/body inventory. Validate actual static pickup lane bindings against the scene lane IDs; exact graph hashes include per-body ports and source buses. Private rehearsal retains the same lane taps, map and declared complete tail with verified source-binding receipts.
+- The Shared bodies panel adopts the active routed graph. COUPLE/DAMP remain live; TUNE prepares the same routed map and retains the old tail. Source/TOUCH controls stay unavailable until an explicit new mapping/recipe is selected, preventing a silent return to one-root excitation.
+- Functional/native/audio/browser/performance and listening qualification remains deferred.

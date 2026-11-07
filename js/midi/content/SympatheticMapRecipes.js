@@ -31,3 +31,16 @@ export function createSympatheticMapRecipe({ recipe = 'string-trellis', sourceBu
     causalPolicy: 'actual-local-bus-excites-persistent-audio-state;no-extra-semantic-onset-or-simulation-intervention',
     qualification: 'implementation-awaiting-full-macro-level-listening-and-network-cost-qualification' });
 }
+
+export function createBodyRoutedSympatheticMap({ bodySourceBusIds, ...options } = {}) {
+  const base = createSympatheticMapRecipe({ ...options, sourceBusId: 'owner', tap: 'post-fader' });
+  if (!Array.isArray(bodySourceBusIds) || bodySourceBusIds.length !== base.bodyIds.length || bodySourceBusIds.length > 8 || !bodySourceBusIds.some(Boolean) || bodySourceBusIds.some(id => id !== null && (typeof id !== 'string' || !/^lane:[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(id)))) throw new TypeError('Declare one exact lane input or no excitation for each of at most eight prepared bodies.');
+  const graph = structuredClone(base.graph), body = graph.nodes.find(node => node.id === 'bodies'), audition = options.audition || 'all';
+  body.parameters.excitationMode = 'per-body-stereo'; body.parameters.bodies = body.parameters.bodies.map((value, index) => ({ ...value, excitation01: bodySourceBusIds[index] ? 1 : 0, pickup01: audition === 'all' || (audition === 'direct') === Boolean(bodySourceBusIds[index]) ? 1 : 0 }));
+  graph.id += '.body-inputs'; graph.nodes = graph.nodes.filter(node => !['excitation', 'send'].includes(node.id)); graph.edges = graph.edges.filter(edge => !['excitation', 'send'].includes(edge.from.nodeId) && !['excitation', 'send'].includes(edge.to.nodeId));
+  for (const [index, sourceBusId] of bodySourceBusIds.entries()) {
+    const id = 'body-source-' + index; if (sourceBusId) graph.nodes.push({ id, kind: 'sidechain-in', parameters: { sourceBusId, tap: 'post-fader', inputLayout: 'audioStereo' } });
+    graph.edges.push({ from: { nodeId: sourceBusId ? id : 'source', port: 'audio' }, to: { nodeId: 'bodies', port: 'body' + index }, gain01: sourceBusId ? 1 : 0 });
+  }
+  return freezeData({ ...base, graph: prepareEffectGraphRevision(graph).definition, sourceBusId: 'scene-body-routes', bodySourceBusIds: [...bodySourceBusIds], anchorPolicy: 'explicit-lane-to-body-audio-inputs;unexcited-bodies-answer-only-through-sparse-coupling', controlPolicy: 'COUPLE-DAMP-continuous;TUNE-prepares-the-same-body-input-map;input-and-TOUCH-changes-need-a-new-explicit-route-map' });
+}
