@@ -8,7 +8,7 @@ export interface NativeOutputRealmState {
 }
 export interface NativeOutputRealm {
   state(): NativeOutputRealmState | null; readonly identity: Readonly<{ ownerId: string; applicationBuildId: string }>;
-  connect(options: { pairingCode: string; url?: string }): Promise<unknown>; enumerate(): Promise<unknown>; selectBackend(api: string): Promise<unknown>;
+  connect(options: { pairingCode: string; url?: string }): Promise<unknown>; enumerate(): Promise<unknown>; selectBackend(api: number): Promise<unknown>;
   open(options: { inventoryEpoch: number; endpointToken: string; groupMask: number }): Promise<unknown>;
   assign(options: { grant: number; protocol: 'midi1' | 'midi2'; laneIds: readonly string[] }): Promise<unknown>;
   attach(options: { port: MessagePort; manifest: { ownerId: string; ownerEpoch: number; documentRevision: number }; initialHeldVoices: 0; lanes: readonly unknown[]; scoreContext?: unknown }): Promise<unknown>;

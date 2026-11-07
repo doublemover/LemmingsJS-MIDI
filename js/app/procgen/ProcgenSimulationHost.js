@@ -75,7 +75,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       if (disposed) return;
       if (message.type === 'failed') { fail(simulationFailure(message.error?.code || 'worker-failed', message.error?.message || 'The authoritative worker paused after failure.')); return; }
       if (message.type === 'input-ack') { if (!inputAck || inputAck.sequence !== message.sequence) throw simulationFailure('input-ack-invalid', 'A worker initialization acknowledgment is out of order.'); const pending = inputAck; inputAck = null; pending.resolve(); return; }
-      if (message.type === 'state') { publish(message.state); return; }
+      if (message.type === 'state') { publish(message.state); if (Number.isSafeInteger(message.sequence) && message.sequence > 0) send('state-ack', { sequence: message.sequence }); return; }
       if (message.type === 'suspended') { publish(Object.freeze({ ...latestState, paused: true, phase: 'suspended-paused', reason: message.reason })); return; }
       if (message.type === 'ready') {
         if (!compareActiveExecutionIdentity(message.executionIdentity).matched) throw simulationFailure('worker-build-mismatch', 'The simulation worker executes a different application generation.');

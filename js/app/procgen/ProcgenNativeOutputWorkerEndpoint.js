@@ -6,17 +6,17 @@ import { cloneData } from '../../core/CanonicalData.js';
 const PROTOCOL = 'lemmings-native-simulation-output/v1';
 export function createProcgenNativeOutputWorkerEndpoint({ postMessage, close, timers = globalThis } = {}) {
   const budget = createResourceBudget({ limitBytes: 96 * 1048576 }), assignments = new Map();
-  let owner = null, routes = null, output = null, lanes = [], scoreContext = null, pending = null, closing = null, timer = null, failure = null, sequence = 0, receipts = 0;
+  let owner = null, routes = null, output = null, lanes = [], scoreContext = null, pending = null, closing = null, timer = null, failure = null, sequence = 0, receipts = 0, stateSequence = 0, statePending = 0, stateDirty = false;
   const send = (type, fields = {}) => postMessage({ protocol: PROTOCOL, ownerId: owner, type, ...fields });
   const state = () => {
     const route = routes?.state(), direct = output?.state();
     return { phase: closing ? 'retiring' : failure ? 'failed' : output ? 'attached-paused-or-running-by-simulation-owner' : route?.state || 'uninitialized', failure: failure?.message || null,
       connectionEpoch: route?.connectionEpoch || 0, inventory: route?.inventory || null, grants: (route?.grants || []).map(row => ({ grant: row.grant, direction: row.direction, groupMask: row.groupMask, name: row.name || row.endpoint?.name || 'Native output' })),
-      assignments: [...assignments].map(([laneId, outputId]) => ({ laneId, outputId })), clock: route?.clock || null, capabilities: routes?.client.capabilities || null,
+      assignments: [...assignments].filter(([laneId, outputId]) => routes.resolve(outputId, laneId)).map(([laneId, outputId]) => ({ laneId, outputId })), clock: route?.clock || null, capabilities: routes?.client.capabilities || null,
       attached: !!output, batches: direct?.batches || 0, submittedIntents: direct?.submittedIntents || 0, receipts, sourceIdentity: output ? { worldId: direct.worldId, generation: direct.generation } : null,
       path: 'authoritative-simulation-worker-to-native-client-worker;no-ui-event-relay', profile: 'fresh-pairing-and-grants;baseline-dedicated-native-routes;quiescent-initial-voice-boundary', acousticReceipt: false };
   };
-  const report = () => { if (timer !== null || closing) return; timer = timers.setTimeout(() => { timer = null; send('state', { state: state() }); }, 250); };
+  const report = () => { stateDirty = true; if (timer !== null || closing || statePending) return; timer = timers.setTimeout(() => { timer = null; if (closing || statePending) return; statePending = ++stateSequence; stateDirty = false; send('state', { state: state(), sequence: statePending }); }, 250); };
   const fail = error => { failure ||= error instanceof Error ? error : new Error(String(error)); if (owner) send('state', { state: state() }); };
   const retire = () => {
     if (closing) return closing;
@@ -31,6 +31,7 @@ export function createProcgenNativeOutputWorkerEndpoint({ postMessage, close, ti
   return Object.freeze({ fail, dispose: retire, receive(request) {
     if (request?.protocol !== PROTOCOL || typeof request.ownerId !== 'string' || !request.ownerId || request.ownerId.length > 128) return;
     if (owner && request.ownerId !== owner) return;
+    if (request.type === 'state-ack') { if (owner && request.sequence === statePending) { statePending = 0; if (stateDirty) report(); } return; }
     if (request.type === 'dispose') { if (owner) void retire(); return; }
     if (closing || pending || !Number.isSafeInteger(request.requestId) || request.requestId <= sequence) { if (owner) send('response', { requestId: request.requestId, error: 'Finish the active native worker operation first.' }); return; }
     sequence = request.requestId;

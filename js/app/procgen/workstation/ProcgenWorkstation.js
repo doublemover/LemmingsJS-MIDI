@@ -204,7 +204,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let transportStopGeneration = 0, lastOwnedAudioResumeId = null;
   const historySizes = new WeakMap();
   const physicalHistory = createPhysicalAuthoringHistory({ resourceBudget, maxBytes: Math.max(1048576, Math.min(128 * 1048576, historyBytesLimit)) });
-  const simulationCandidates = new Set(); let simulationPreparation = null, simulationCandidateSerial = 0, simulationWorkbench = null, simulationWorkbenchLoading = null;
+  const simulationCandidates = new Set(); let simulationPreparation = null, simulationCandidateSerial = 0, simulationWorkbench = null, simulationWorkbenchLoading = null, nativeSimulationWorkbench = null, nativeSimulationLoading = null;
   let physicalAuthoringAbort = null, pendingPhysicalAuthoring = null, physicalAuthoringSerial = 0;
   let historyDropped = 0;
   const historyBytes = value => {
@@ -461,6 +461,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } });
   };
   const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false, restoringWorld = false } = {}) => {
+    if (simulationWorkbench?.state().output !== undefined && simulationWorkbench.state().output !== 'off' && simulationWorkbench.state().active) throw new Error('Park or close the independent native worker performance before changing its physical project.');
     if (physicalAuthoringAbort && !restoringWorld) throw new Error('Physical authoring owns this paused project boundary.');
     if (ownedCausalArm && !['complete', 'discarded', 'failed'].includes(ownedCausalArm.state().phase) && !(ownedCausalArm.state().phase === 'activating-world' && ['procgen/launched', 'procgen/launchedBatch'].includes(renderAction?.type))) throw new Error('Finish or discard the retained owned sound-state transaction before editing its project.');
     const change = procgenProjectChange(project, next);
@@ -1455,21 +1456,31 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       }
     })(); try { return await pending.completion; } finally { signal?.removeEventListener('abort', abort); if (simulationPreparation === pending) simulationPreparation = null; }
   };
+  const getNativeSimulationWorkbench = async () => {
+    if (disposed) throw new Error('The workstation closed.');
+    if (nativeSimulationWorkbench?.state().disposed) nativeSimulationWorkbench = null;
+    if (nativeSimulationWorkbench) return nativeSimulationWorkbench;
+    if (!nativeSimulationLoading) nativeSimulationLoading = import('./ProcgenNativeOutputWorkbench.js').then(({ createProcgenNativeOutputWorkbench }) => {
+      if (disposed) throw new Error('The workstation retired during native output setup.');
+      return nativeSimulationWorkbench = createProcgenNativeOutputWorkbench({ resourceBudget, getLanes: () => project.procgen.lanes,
+        getSourceIdentity: () => documentGeneration + ':' + projectRevision + ':' + runtime()?.world?.worldId, onState: () => { if (!disposed) view?.renderInspector?.(); } });
+    }).finally(() => { nativeSimulationLoading = null; }); return nativeSimulationLoading;
+  };
   const getSimulationWorkbench = async () => {
     if (disposed) throw new Error('The workstation has closed.');
     if (simulationWorkbench?.state().phase === 'disposed') simulationWorkbench = null;
     if (simulationWorkbench) return simulationWorkbench;
     if (!simulationWorkbenchLoading) simulationWorkbenchLoading = import('./ProcgenSimulationWorkbench.js').then(({ createProcgenSimulationWorkbench }) => {
       if (disposed) throw new Error('The workstation closed before worker simulation preparation.');
-      return simulationWorkbench = createProcgenSimulationWorkbench({ prepareHost: stageAuthoritativeSimulation, getSourceIdentity: () => documentGeneration + ':' + projectRevision + ':' + runtime()?.world?.worldId + ':' + runtime()?.world?.generation + ':' + runtime()?.world?.tickIndex, onState: () => view?.renderInspector?.() });
+      return simulationWorkbench = createProcgenSimulationWorkbench({ prepareHost: stageAuthoritativeSimulation, prepareOutput: async () => { if (!nativeSimulationWorkbench) throw new Error('Prepare the independent native client and dedicated output routes first.'); return nativeSimulationWorkbench.prepareAttachment({ semantic: physicalPlayback?.engine.snapshot(), graph: project.procgen.physicalGraph, lanes: project.procgen.lanes, scoreContext: { meter: project.transport?.timeSignature || null } }); }, getSourceIdentity: () => documentGeneration + ':' + projectRevision + ':' + runtime()?.world?.worldId + ':' + runtime()?.world?.generation + ':' + runtime()?.world?.tickIndex, onState: () => view?.renderInspector?.() });
     }).finally(() => { simulationWorkbenchLoading = null; });
     return simulationWorkbenchLoading;
   };
-  const startSimulationWorkbench = async () => {
+  const startSimulationWorkbench = async ({ nativeOutput = false } = {}) => {
     if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish recording and world operations before preparing an isolated worker candidate.');
     beforeRestart(); const owner = await getSimulationWorkbench();
-    const result = await owner.start({ viewport: { firstLane: Math.max(0, project.procgen.lanes.findIndex(lane => lane.id === state.laneId)) } });
-    status('Worker candidate prepared paused with output and recording off. The live world remains frozen until you close the candidate.'); return result;
+    const result = await owner.start({ nativeOutput, viewport: { firstLane: Math.max(0, project.procgen.lanes.findIndex(lane => lane.id === state.laneId)) } });
+    status(nativeOutput ? 'Native worker performance prepared paused. Run explicitly to start its independent output; Pause parks a physical checkpoint and retires its device generation.' : 'Worker candidate prepared paused with output and recording off. The live world remains frozen until you close the candidate.'); return result;
   };
   const applyPausedPhysicalCommand = async buildCommand => {
     if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing) throw new Error('Pause playback and finish the take/world operation before physical authoring. Use a physical branch for recorded performance edits.');
@@ -2506,6 +2517,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       physicalPlayback?.engine.rearm({ discardUnknownHeldState: true });
       status('Physical music rearmed at the next complete boundary; unknown held state was discarded.'); view.renderInspector();
     }),
+    nativeSimulationState: () => ({ ...(nativeSimulationWorkbench?.state() || { phase: nativeSimulationLoading ? 'loading' : 'idle', busy: !!nativeSimulationLoading, inUse: false, ready: false, realm: null, failure: null, sourceCurrent: false }), initialHeldVoices: physicalPlayback?.engine.diagnostics().activeVoices || 0, mainPlaying: transport.getState().playing }),
+    prepareNativeWorkerBoundary: safe(async () => { if (disposed || transport.getState().playing || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || simulationWorkbench?.state().active || simulationWorkbench?.state().busy || simulationWorkbench?.state().checkpointHeld) throw new Error('Pause live playback and finish source/take operations before clearing its held semantic state.'); const receipt = physicalPlayback?.stop(); await receipt?.completion; if (receipt && receipt.outcome !== 'complete') throw new Error('The outgoing local source retains unresolved ownership.'); physicalPlayback?.engine.rearm({ discardUnknownHeldState: true }); status('Held semantic voices cleared explicitly for a fresh native performance. Physical world state is unchanged.'); view?.renderInspector?.(); }),
+    connectNativeSimulation: safe(/** @param {{url: string, pairingCode: string}} options */ async options => (await getNativeSimulationWorkbench()).connect(options)),
+    enumerateNativeSimulation: safe(async () => (await getNativeSimulationWorkbench()).enumerate()),
+    selectNativeSimulationBackend: safe(/** @param {number} api */ async api => (await getNativeSimulationWorkbench()).selectBackend(api)),
+    openNativeSimulationOutput: safe(/** @param {{inventoryEpoch:number,endpointToken:string,groupMask:number}} options */ async options => (await getNativeSimulationWorkbench()).open(options)),
+    assignNativeSimulationLanes: safe(/** @param {{grant:number,protocol:'midi1'|'midi2'}} options */ async options => (await getNativeSimulationWorkbench()).assign(options)),
+    closeNativeSimulationOutput: safe(async () => nativeSimulationWorkbench?.close()),
     simulationWorkbenchState: () => simulationWorkbench?.state() || { phase: simulationWorkbenchLoading ? 'loading' : 'idle', active: false, checkpointHeld: false, checkpointReceipt: null, busy: !!simulationWorkbenchLoading, worker: null, counts: null, failure: null, output: 'off' },
     simulationWorkbenchProjection: () => simulationWorkbench?.projection() || null, startSimulationWorkbench: safe(startSimulationWorkbench),
     advanceSimulationWorkbench: safe(() => simulationWorkbench?.advance(32)), pauseSimulationWorkbench: safe(() => simulationWorkbench?.pause()), resumeSimulationWorkbench: safe(() => simulationWorkbench?.resume()),
@@ -2542,7 +2561,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }),
     stageExit: safe(async () => { const result = await stageSession?.exit(); legacy.refreshShortcutHints?.(); return result; }), stageGo: safe(() => stageSession?.go()),
     stagePlay: () => play(), stagePause() { transport.pause(); },
-    panicOutput() { midiConnectSerial++; soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.stop(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
+    panicOutput() { if (simulationWorkbench?.state().output !== undefined && simulationWorkbench.state().output !== 'off') void simulationWorkbench.close({ urgent: true }).then(() => status('Independent native worker execution and device closure confirmed.'), error => status('Native worker Panic: ' + error.message)); else if (nativeSimulationWorkbench) { const receipt = nativeSimulationWorkbench.dispose(); receipt.completion.then(() => { if (receipt.outcome !== 'complete') status('Native worker device cleanup remains unconfirmed.'); }); } midiConnectSerial++; soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.stop(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output Panic requested; native device closure is reported separately.'); },
     scenes: safe(openPerformanceScenes),
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed, { owned: true }); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
@@ -3053,7 +3072,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'storage-readers', run: () => storageReaders.retire([
           { name: 'causal-take', run: async () => { if (causalTake || causalTakeStart || causalTakeStop) await stopCausalTake({ reason: 'workstation-disposed' }); await discardOwnedCausalArm({ restoreSemantic: false }); } },
           { name: 'causal-workbench', run: () => causalWorkbench?.dispose() },
-          { name: 'simulation-workbench', run: () => simulationWorkbench?.dispose() },
+          { name: 'simulation-workbench', run: async () => { const receipt = simulationWorkbench?.dispose(); await receipt?.completion; if (receipt && receipt.outcome !== 'complete') throw new Error('The simulation output generation is still owned.'); await nativeSimulationLoading?.catch(() => {}); return nativeSimulationWorkbench?.dispose(); } },
           { name: 'archive-exports', run: () => archiveExportTasks.size ? Promise.allSettled([...archiveExportTasks]) : null }
         ]) },
         { name: 'preference-writer', run: () => preferenceWriter?.dispose({ flush: true }) },

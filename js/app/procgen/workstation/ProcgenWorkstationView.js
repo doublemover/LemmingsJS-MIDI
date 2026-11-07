@@ -196,6 +196,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const operationalSurface = displayScheduler.register({ id: 'workstation-operational', element: operationalView.element, intervalMs: 100,
     write: () => { const snapshot = handlers.operationalState?.() || null; operationalView.render(snapshot); audioSettings.render(); noticeView.refresh(snapshot); replacementDialog.refresh(); nameDialog.refresh(); refreshCommandControls(); refreshProjectStatus(); } }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
+  let nativePairingDraft = '', nativeAddressDraft = (window.location?.protocol === 'https:' ? 'wss:' : 'ws:') + '//127.0.0.1:8765/midi', nativeEndpointDraft = '', nativeGrantDraft = '', nativeGroupMaskDraft = 1, nativeProtocolDraft = 'midi2', nativeApiDraft = '';
   let physicalHistoryView = null, physicalHistoryViewError = null, simulationPreview = null, simulationPreviewError = null;
   let harmonyView = null, harmonyFactory = null, harmonyPreparing = null, harmonyError = null;
   const owner = {};
@@ -888,19 +889,53 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       const simulation = handlers.simulationWorkbenchState?.();
       if (simulation) {
         const worker = node('fieldset', null, 'studio-worker-simulation'); worker.append(node('legend', 'Isolated worker simulation'));
-        worker.append(node('p', 'Prepare the current physical world in a worker. The live world stays paused; this candidate keeps its prepared mapping. Audio, MIDI and recording stay off.', 'studio-hint'));
+        worker.append(node('p', 'Prepare the current physical world in a worker while the live world stays paused. The default candidate has output and recording off. Independent native output requires its separate explicit setup below.', 'studio-hint'));
+        const native = handlers.nativeSimulationState?.();
+        if (native) {
+          const setup = node('fieldset', null, 'studio-worker-native-output'); setup.append(node('legend', 'Independent native worker output'));
+          setup.append(node('p', 'Pair a separate native client and explicitly grant its output. Start from an empty held-voice boundary with physical lanes and dedicated MIDI addresses. Device profiles, saved device state and shared bodies require separate bindings. Pause parks a checkpoint and closes this native generation.', 'studio-hint'));
+          const nativeBusy = native.busy || native.inUse || simulation.busy;
+          const address = input(nativeAddressDraft, value => { nativeAddressDraft = value; }, { type: 'url' }); address.disabled = nativeBusy; labeled('Independent companion address', address, setup);
+          const pairing = input(nativePairingDraft, value => { nativePairingDraft = value.slice(0, 128); }, { type: 'password' }); pairing.autocomplete = 'off'; pairing.maxLength = 128; pairing.spellcheck = false; pairing.disabled = nativeBusy; labeled('Fresh local pairing code', pairing, setup);
+          const connect = button('Pair native worker client', () => { const pairingCode = nativePairingDraft; nativePairingDraft = ''; pairing.value = ''; return handlers.connectNativeSimulation?.({ url: nativeAddressDraft, pairingCode }); }); connect.disabled = nativeBusy; setup.append(connect);
+          const capabilities = native.realm?.capabilities, apis = Array.isArray(capabilities?.compiledApis) ? capabilities.compiledApis.slice(0, 64) : [];
+          if (apis.length) { nativeApiDraft ||= String(capabilities.selectedApi ?? apis[0].id); const backend = select(apis.map(api => [String(api.id), api.name]), nativeApiDraft, value => { nativeApiDraft = value; }, 'Independent native backend'); backend.disabled = nativeBusy; labeled('Native backend', backend, setup);
+            const choose = button('Select independent backend', () => handlers.selectNativeSimulationBackend?.(Number(nativeApiDraft))); choose.disabled = nativeBusy; setup.append(choose); }
+          const enumerate = button('Read native worker endpoints', () => handlers.enumerateNativeSimulation?.()); enumerate.disabled = nativeBusy || !native.realm?.connectionEpoch; setup.append(enumerate);
+          const inventory = native.realm?.inventory, endpoints = Array.isArray(inventory?.endpoints) ? inventory.endpoints.filter(row => row.direction === 'output').slice(0, 1024) : [];
+          if (endpoints.length) {
+            if (!endpoints.some(row => row.endpointToken === nativeEndpointDraft)) nativeEndpointDraft = endpoints[0].endpointToken;
+            const endpoint = select(endpoints.map(row => [row.endpointToken, row.name || row.endpointToken]), nativeEndpointDraft, value => { nativeEndpointDraft = value; }, 'Reviewed native output'); endpoint.disabled = nativeBusy; labeled('Native output endpoint', endpoint, setup);
+            const groups = input(nativeGroupMaskDraft, value => { nativeGroupMaskDraft = Number(value); }, { min: 1, max: 65535, step: 1 }); groups.disabled = nativeBusy; labeled('Output group mask · bits 0–15', groups, setup);
+            const grant = button('Grant selected worker output', () => handlers.openNativeSimulationOutput?.({ inventoryEpoch: inventory.inventoryEpoch, endpointToken: nativeEndpointDraft, groupMask: nativeGroupMaskDraft })); grant.disabled = nativeBusy; setup.append(grant);
+          }
+          const grants = native.realm?.grants?.filter(row => row.direction === 'output') || [];
+          if (grants.length) {
+            if (!grants.some(row => String(row.grant) === nativeGrantDraft)) nativeGrantDraft = String(grants[0].grant);
+            const grant = select(grants.map(row => [String(row.grant), row.name + ' · group mask ' + row.groupMask]), nativeGrantDraft, value => { nativeGrantDraft = value; }, 'Owned native worker grant'); grant.disabled = nativeBusy; labeled('Owned output grant', grant, setup);
+            const protocol = select([['midi2', 'MIDI2 · explicit native protocol'], ['midi1', 'MIDI1 · declared translation and expression limits']], nativeProtocolDraft, value => { nativeProtocolDraft = value; }, 'Worker output protocol'); protocol.disabled = nativeBusy; labeled('Native wire protocol', protocol, setup);
+            const assign = button('Assign unassigned physical lanes · dedicated addresses', () => handlers.assignNativeSimulationLanes?.({ grant: Number(nativeGrantDraft), protocol: nativeProtocolDraft })); assign.disabled = nativeBusy; setup.append(assign);
+          }
+          const closeNative = button('Close independent native client', () => handlers.closeNativeSimulationOutput?.()); closeNative.disabled = nativeBusy || !native.realm; setup.append(closeNative);
+          setup.append(node('p', native.phase + ' · ' + (native.realm?.assignments?.length || 0) + '/' + (native.requiredLanes || 0) + ' current lane routes · ' + (native.realm?.batches || 0) + ' complete packets admitted. Device submission is separate from receiver or acoustic evidence.', 'studio-hint'));
+          if (native.failure || native.realm?.failure) setup.append(node('p', native.failure || native.realm.failure, 'studio-hint'));
+          if (native.ready && native.initialHeldVoices > 0) { const clear = button('Clear held semantic voices for fresh native start', () => handlers.prepareNativeWorkerBoundary?.()); clear.disabled = nativeBusy || native.mainPlaying; setup.append(clear); }
+          if (native.realm?.assignments?.length && !native.sourceCurrent && !native.inUse) setup.append(node('p', 'Review the current project and confirm its dedicated assignments before preparing the native worker source.', 'studio-hint'));
+          worker.append(setup);
+        }
         if (simulation.checkpointHeld) {
           const receipt = simulation.checkpointReceipt, adopt = button('Use worker checkpoint as live world · paused', () => handlers.publishWorkerContinuation?.()), discard = button('Discard retained worker checkpoint', () => handlers.closeSimulationWorkbench?.());
           adopt.disabled = simulation.busy; discard.disabled = simulation.busy; worker.append(adopt, discard);
           worker.append(node('p', 'Retained in memory at tick ' + (receipt?.tick ?? 'unknown') + '. The worker producer has retired. Adoption restores world, physical mapping and timeline; current patch, macro and lane mix choices remain. Output stays disarmed and audio resumes semantically. Keep the source project unchanged while reviewing.', 'studio-hint'));
         } else if (!simulation.active) {
           const prepare = button('Prepare worker world · paused', () => handlers.startSimulationWorkbench?.()); prepare.disabled = simulation.busy || take?.recording || take?.starting || take?.recovering; worker.append(prepare);
+          if (native?.ready) { const direct = button('Prepare worker performance · native output', () => handlers.startSimulationWorkbench?.({ nativeOutput: true })); direct.disabled = prepare.disabled; worker.append(direct); }
         } else {
-          const step = button('Step worker 32 ticks', () => handlers.advanceSimulationWorkbench?.()), run = button('Run worker · output off', () => handlers.resumeSimulationWorkbench?.()), pause = button('Pause worker and inspect', () => handlers.pauseSimulationWorkbench?.()), close = button('Close worker · return to paused live world', () => handlers.closeSimulationWorkbench?.());
+          const step = button(simulation.output === 'off' ? 'Step worker 32 ticks' : 'Step native performance 32 ticks', () => handlers.advanceSimulationWorkbench?.()), run = button(simulation.output === 'off' ? 'Run worker · output off' : 'Run independent native output', () => handlers.resumeSimulationWorkbench?.()), pause = button(simulation.output === 'off' ? 'Pause worker and inspect' : 'Park native performance · paused checkpoint', () => handlers.pauseSimulationWorkbench?.()), close = button('Close worker · return to paused live world', () => handlers.closeSimulationWorkbench?.());
           step.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; run.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; pause.disabled = simulation.busy || !!simulation.failure || simulation.worker?.paused; close.disabled = simulation.busy; worker.append(step, run, pause, close);
           const detach = button('Park worker and retain checkpoint', () => handlers.detachSimulationCheckpoint?.()); detach.disabled = simulation.busy || !!simulation.failure || !simulation.worker?.paused; worker.append(detach);
-          const retainRecovery = button('Retain current worker recovery point', () => handlers.retainSimulationRecovery?.()); retainRecovery.disabled = simulation.busy || !!simulation.failure; worker.append(retainRecovery);
-          const automatic = input(simulation.automaticRecovery, value => handlers.setSimulationRecovery?.(value), { type: 'checkbox' }); automatic.disabled = simulation.busy || !!simulation.failure; labeled('Retain recovery every 256 completed ticks · briefly pauses worker', automatic, worker);
+          const retainRecovery = button(simulation.output === 'off' ? 'Retain current worker recovery point' : 'Park native output with checkpoint', () => handlers.retainSimulationRecovery?.()); retainRecovery.disabled = simulation.busy || !!simulation.failure; worker.append(retainRecovery);
+          const automatic = input(simulation.automaticRecovery, value => handlers.setSimulationRecovery?.(value), { type: 'checkbox' }); automatic.disabled = simulation.busy || !!simulation.failure || simulation.output !== 'off'; labeled('Retain recovery every 256 completed ticks · briefly pauses worker', automatic, worker);
           if (simulation.recovery) {
             const recover = button('Recover retained checkpoint · paused', () => handlers.recoverSimulationCheckpoint?.()); recover.disabled = simulation.busy; worker.append(recover);
             worker.append(node('p', 'Independent in-memory recovery point: tick ' + simulation.recovery.tick + ' · ' + simulation.recovery.physicsHash.slice(0, 16) + '. Later uncaptured progress is not recovered. The broken/current worker generation retires before this point can be adopted.', 'studio-hint'));
@@ -910,7 +945,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           if (simulationPreview) { simulationPreview.render(handlers.simulationWorkbenchProjection?.()); worker.append(simulationPreview.element); }
           if (simulationPreviewError) worker.append(node('p', simulationPreviewError, 'studio-hint'));
         }
-        worker.append(node('p', simulation.phase + ' · tick ' + (simulation.worker?.tick ?? '—') + ' · ' + (simulation.counts?.batches ?? 0) + ' complete batches observed · ' + (simulation.counts?.intents ?? 0) + ' intents · output off', 'studio-hint'));
+        worker.append(node('p', simulation.phase + ' · tick ' + (simulation.worker?.tick ?? '—') + ' · ' + (simulation.output === 'off' ? simulation.counts?.batches ?? 0 : native?.realm?.batches ?? 0) + ' complete batches admitted · ' + (simulation.output === 'off' ? simulation.counts?.intents ?? 0 : native?.realm?.submittedIntents ?? 0) + ' intents · ' + simulation.output, 'studio-hint'));
         const workerOrigin = handlers.workerContinuationOrigin?.(); if (workerOrigin) worker.append(node('p', 'Current world continues worker ' + workerOrigin.ownerId + ' from tick ' + workerOrigin.tick + ' with preserved physical checkpoint hashes.', 'studio-hint'));
         if (simulation.failure) worker.append(node('p', simulation.failure.message, 'studio-hint'));
         if (simulation.failure && simulation.active) worker.append(node('p', simulation.recovery ? 'Recover the retained completed checkpoint, or close this failed candidate to return to the original paused source world.' : 'Close this failed candidate to return to the retained paused source world. No later completed recovery point was captured.', 'studio-hint'));

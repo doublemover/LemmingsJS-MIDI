@@ -12,8 +12,9 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
   const controller = new AbortController(); let profile = procgenSimulationProfile(), budget = null;
   let manifest = null, receiver = null, inputSequence = 0, host = null, phase = 'new', timer = null, pumping = null, lastTime = null, elapsed = 0,
     transferStorage = null, inputStorage = null, inputLimit = null, consumers = [], outputAck = null, closing = null, activeRequest = false,
-    preparingWork = null, activeWork = null;
+    preparingWork = null, activeWork = null, stateSequence = 0, statePending = 0, nextState = null;
   const send = (type, fields = {}, transfers = []) => postMessage(simulationEnvelope(manifest, type, fields), transfers);
+  const publishState = state => { nextState = state; if (statePending || phase === 'closed' || phase === 'retiring') return; statePending = ++stateSequence; send('state', { state: nextState, sequence: statePending }); nextState = null; };
   const pauseTimer = () => { if (timer !== null) timers.clearTimeout(timer); timer = null; lastTime = null; elapsed = 0; };
   const failure = error => {
     if (phase === 'closed' || phase === 'retiring') return;
@@ -119,6 +120,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
       }
       if (!isSimulationEnvelope(request, manifest)) throw simulationFailure('host-envelope-stale', 'A simulation request belongs to a different document or generation.');
       if (request.type === 'dispose') return retire();
+      if (request.type === 'state-ack') { if (request.sequence === statePending) { statePending = 0; if (nextState) publishState(nextState); } return; }
       if (request.type === 'checkpoint-ack') { if (!outputAck || request.sequence !== outputAck.sequence) throw simulationFailure('checkpoint-ack-invalid', 'A checkpoint acknowledgment does not match its packet.'); const pending = outputAck; outputAck = null; pending.resolve(); return; }
       if (phase === 'receiving') {
         if (request.type === 'input-page') { const receipt = receiver.push(request.packet); inputSequence = receipt.sequence; send('input-ack', { sequence: inputSequence }); return; }
@@ -127,7 +129,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
         if (!isSimulationEnvelope(simulationEnvelope(input, 'identity'), manifest)) throw simulationFailure('manifest-stale', 'The initialization manifest changed its admitted owner.');
         manifest = input; phase = 'preparing';
         preparingWork = Promise.resolve().then(() => prepare({ manifest, resourceBudget: budget, signal: controller.signal, requiredConsumer: deliver,
-          onState: state => { if (phase !== 'closed' && phase !== 'retiring') send('state', { state }); } })).then(prepared => { host = prepared.host; return prepared; });
+          onState: publishState })).then(prepared => { host = prepared.host; return prepared; });
         const prepared = await preparingWork; controller.signal.throwIfAborted(); inputStorage.release(); inputStorage = null;
         manifest = { ...manifest, checkpoint: { clock: { speedFactor: manifest.checkpoint.clock.speedFactor } }, semantic: null, graph: null, performance: null, timeline: null };
         phase = 'ready'; send('ready', { state: host.state(), restoredContinuationHash: prepared.restoredContinuationHash, executionIdentity: identity() }); return;

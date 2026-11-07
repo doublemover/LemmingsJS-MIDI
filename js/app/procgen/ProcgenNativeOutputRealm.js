@@ -24,7 +24,7 @@ export async function prepareProcgenNativeOutputRealm({ resourceBudget, Worker =
   const receive = event => {
     const message = event.data; if (message?.protocol !== PROTOCOL || message.ownerId !== ownerId) return;
     if (message.type === 'retired') { confirmed = message.outcome === 'complete'; resolveRetirement(message); return; }
-    if (message.type === 'state') { if (!disposed) try { report(message.state); } catch (error) { fail(error); } return; }
+    if (message.type === 'state') { if (!disposed) try { report(message.state); if (Number.isSafeInteger(message.sequence) && message.sequence > 0) worker.postMessage({ protocol: PROTOCOL, ownerId, type: 'state-ack', sequence: message.sequence }); } catch (error) { fail(error); } return; }
     if (message.type !== 'response') { fail(new Error('Unsupported native worker response.')); return; }
     const pending = requests.get(message.requestId); if (!pending) { if (!disposed) fail(new Error('Stale native consumer worker response.')); return; }
     requests.delete(message.requestId); timers.clearTimeout(pending.timer);
