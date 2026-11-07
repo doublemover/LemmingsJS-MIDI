@@ -55,6 +55,6 @@ export function createPhysicalLessonView({ document, window, definitions, loadSc
     observeMaterial(receipt, context) { if (!disposed && !root.hidden) return session.observeMaterial(receipt, context); return false; },
     observeDocument(receipt, context) { if (!disposed && !root.hidden) return session.observeDocument(receipt, context); return false; },
     observeReceipt(receipt, documentEpoch) { if (!disposed && !root.hidden) session.observeReceipt(receipt, documentEpoch); },
-    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); session.dispose(); return retirement.retire([{ name: 'lesson-preparation', run: async () => { await active?.promise.catch(() => {}); await cancelLoad(); } }, { name: 'lesson-view', run: () => { for (const remove of listeners) remove(); root.remove(); } }]); }
+    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); session.dispose(); return retirement.retire([{ name: 'lesson-preparation', run: async () => { await active?.promise.catch(() => {}); await cancelLoad(); } }, { name: 'lesson-view', run: () => { for (const remove of listeners) remove(); root.replaceChildren(); root.remove(); definitions = []; } }]); }
   });
 }

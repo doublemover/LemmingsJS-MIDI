@@ -7,6 +7,7 @@ import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 
 export const PERFORMANCE_SCENE_SCHEMA = 'lemmings-performance-scene/v1';
 const admittedScenes = new WeakSet();
+export const isAdmittedPerformanceScene = value => !!value && typeof value === 'object' && admittedScenes.has(value);
 const limits = { maxBytes: 1048576, maxNodes: 65536, domain: 'Performance scene' };
 const fail = message => { throw Object.assign(new Error(message), { name: 'PerformanceSceneError', code: 'invalid-performance-scene' }); };
 const text = (value, max = 128) => typeof value === 'string' && value.length > 0 && value.length <= max;

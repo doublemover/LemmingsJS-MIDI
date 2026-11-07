@@ -1,3 +1,4 @@
+import { createSceneCatalogStorage } from './SceneCatalogStorage.js';
 import { createQuarryWorldScores } from './QuarryWorldScore.js';
 import { createWorkshopSharedBodyScores } from './WorkshopSharedBodyScore.js';
 import { createPreparedWorkshopScores } from './PreparedWorkshopScore.js';
@@ -46,17 +47,21 @@ import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 // Larger named performances still need their authored geometry and qualification.
 export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal, resourceBudget = null } = {}) {
   signal?.throwIfAborted(); const catalog = await getCatalog(); signal?.throwIfAborted();
-  const registry = createPerformanceSceneRegistry({ resourceBudget }), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(), preparedFoundries = new Map(), preparedFoundBells = new Map(), preparedWeather = new Map(), preparedWorkshops = new Map(), preparedSampleWorkshops = new Map(), preparedCircuitWorkshops = new Map(); let workshopPending = false, nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
-  const retirement = createProcgenRetirementScope(); let disposed = false, quarryScores = [], glassOrbitScores = [], modalWorkshopScores = [];
+  const auxiliary = createSceneCatalogStorage({ resourceBudget }), trackFactory = auxiliary.trackFactory;
+  let registry;
+  try { registry = createPerformanceSceneRegistry({ resourceBudget }); } catch (error) { await auxiliary.dispose(); throw error; }
+  const recipes = auxiliary.makeMap(), available = auxiliary.makeMap(), embeddedAssets = auxiliary.makeMap(), preparedNurseries = auxiliary.makeMap(), preparedFoundries = auxiliary.makeMap(), preparedFoundBells = auxiliary.makeMap(), preparedWeather = auxiliary.makeMap(), preparedWorkshops = auxiliary.makeMap(), preparedSampleWorkshops = auxiliary.makeMap(), preparedCircuitWorkshops = auxiliary.makeMap(); let workshopPending = false, nurseryPending = false, foundryPending = false, foundBellPending = false, weatherPending = false;
+  const retirement = createProcgenRetirementScope(); let disposed = false, quarryScores = [], glassOrbitScores = [], modalWorkshopScores = [], installedLessons = null, lessonsPending = null;
   const checkActive = () => { if (disposed) throw new Error('The installed scene catalog has retired.'); };
   const dispose = () => {
-    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; auxiliary.closeAdmission();
+    const factoryComplete = auxiliary.settled();
     const registryReceipt = registry.dispose(), registryComplete = Promise.resolve(registryReceipt.completion).then(() => { if (registryReceipt.outcome !== 'complete') throw new Error('Scene registry ownership remains unresolved.'); });
-    return retirement.retire([{ name: 'scene-registry', run: () => registryComplete },
-      { name: 'installed-scene-caches', run: async () => { await registryComplete; for (const map of [recipes, available, embeddedAssets, preparedNurseries, preparedFoundries, preparedFoundBells, preparedWeather, preparedWorkshops, preparedSampleWorkshops, preparedCircuitWorkshops]) map.clear(); quarryScores = []; glassOrbitScores = []; modalWorkshopScores = []; } }]);
+    return retirement.retire([{ name: 'scene-registry', run: () => registryComplete }, { name: 'scene-factories', run: () => factoryComplete },
+      { name: 'installed-scene-caches', run: async () => { await Promise.all([registryComplete, factoryComplete]); quarryScores = []; glassOrbitScores = []; modalWorkshopScores = []; installedLessons = lessonsPending = null; await auxiliary.dispose(); } }]);
   };
   try {
-    if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return Object.freeze({ registry, dispose, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } });
+    if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return (auxiliary.finishConstruction(), Object.freeze({ registry, dispose, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } }));
     const sourceHash = catalog.executionIdentity.buildId, descriptor = catalog.descriptors.find(value => value.engineId === 'worklet-sine');
     const put = (kind, id, revision, hash, storage = 'installed-runtime') => { const value = { kind, id, revision, hash, status: 'available', storage }; available.set(sceneDependencyKey(value), freezeData(value)); };
     put('world-source', 'procgen-workstation-source', 2, sourceHash);
@@ -177,14 +182,20 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     }
     const registerAuthoredScores = async items => {
       for (const item of items) {
-        checkActive();
-        signal?.throwIfAborted(); await registry.register(item.scene); checkActive(); recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, item.recipe.revision, item.recipeHash, 'embedded');
-        for (const asset of item.embeddedAssets || []) embeddedAssets.set(asset.hash, freezeData({ ...asset }));
-        for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+        checkActive(); signal?.throwIfAborted();
+        const writes = [], add = (kind, id, revision, hash, storage = 'installed-runtime') => {
+          const value = freezeData({ kind, id, revision, hash, status: 'available', storage }); writes.push([available, sceneDependencyKey(value), value]);
+        };
+        writes.push([recipes, item.recipeHash, item.recipe]); add('score-recipe', item.recipe.id, item.recipe.revision, item.recipeHash, 'embedded');
+        for (const asset of item.embeddedAssets || []) writes.push([embeddedAssets, asset.hash, freezeData({ ...asset })]);
+        for (const dependency of item.dependencies) add(dependency.kind, dependency.id, dependency.revision, dependency.hash);
         for (const reference of item.scene.patchRefs.flatMap(patch => patch.materialPalette ? patch.materialPalette.references : [patch.reference])) {
-          const engine = reference.engineRequirement; put('engine', engine.engineId, engine.engineVersion, engine.artifactHash); put('parameter-schema', engine.engineId, engine.engineVersion, engine.parameterSchemaHash);
-          put('patch', reference.patchId, reference.revision, reference.definitionHash, 'embedded');
+          const engine = reference.engineRequirement; add('engine', engine.engineId, engine.engineVersion, engine.artifactHash); add('parameter-schema', engine.engineId, engine.engineVersion, engine.parameterSchemaHash);
+          add('patch', reference.patchId, reference.revision, reference.definitionHash, 'embedded');
         }
+        const funding = auxiliary.prepay(writes);
+        try { await registry.register(item.scene); checkActive(); for (const [store, key, value] of writes) store.set(key, value); }
+        finally { funding.release(); }
       }
     };
     await registerAuthoredScores([await createPhysicalMusicStarter({ sourceHash, reference })]);
@@ -207,66 +218,75 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) {
       const scores = await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }); await registerAuthoredScores(scores); await registerAuthoredScores(await createRescueResonantScores({ sourceHash, scores, signal })); if (crewDescriptor === choir && wind?.capabilities.sealedWindModel && wind.capabilities.pressureDrivenWind && wind.maximumVoices >= 2) await registerAuthoredScores(await createRescueAirCrewScores({ sourceHash, descriptor: wind, scores, signal }));
     }
-    return Object.freeze({ registry, dispose, metadataState: () => registry.diagnostics(), available: true, reason: null, sourceHash,
+    const buildLessons = trackFactory(async (workspace, builder) => {
+      workspace.resize(16 * 1048576); auxiliary.retainWindow('lesson-observation-and-view', 4 * 1048576, 'graphics');
+      const value = await builder(); checkActive(); auxiliary.retain('installed-lessons', value); installedLessons = value; return value;
+    });
+    auxiliary.finishConstruction([quarryScores, glassOrbitScores, modalWorkshopScores]);
+    return Object.freeze({ registry, dispose, metadataState: () => Object.freeze({ ...registry.diagnostics(), auxiliary: auxiliary.diagnostics() }), available: true, reason: null, sourceHash,
+      prepareLessonDefinitions(builder) { checkActive(); if (typeof builder !== 'function') throw new TypeError('Build installed lessons through their definition owner.');
+        if (installedLessons) return Promise.resolve(installedLessons);
+        return lessonsPending ||= buildLessons(builder).finally(() => { lessonsPending = null; });
+      },
       getEmbeddedAsset(hash) { checkActive(); return embeddedAssets.get(hash) || null; },
-      async addCircuitWorkshop(reference, { signal: requestSignal } = {}) {
+      addCircuitWorkshop: trackFactory(async (workspace, reference, { signal: requestSignal } = {}) => {
         checkActive(); requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); checkActive(); requestSignal?.throwIfAborted();
         if (preparedCircuitWorkshops.has(key)) return preparedCircuitWorkshops.get(key);
         if (workshopPending || preparedCircuitWorkshops.size >= 8) throw new Error('Finish this workshop preparation; at most eight exact component-kit workshops are retained.'); workshopPending = true;
-        try { const items = await createCircuitWorkshopScores({ sourceHash, scores: modalWorkshopScores, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedCircuitWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
+        try { workspace.resize(16 * 1048576); const items = await createCircuitWorkshopScores({ sourceHash, scores: modalWorkshopScores, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedCircuitWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
         finally { workshopPending = false; }
-      },
-      async addPreparedWorkshop(reference, { signal: requestSignal } = {}) {
+      }),
+      addPreparedWorkshop: trackFactory(async (workspace, reference, { signal: requestSignal } = {}) => {
         checkActive(); requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); checkActive(); requestSignal?.throwIfAborted();
         if (preparedSampleWorkshops.has(key)) return preparedSampleWorkshops.get(key);
         if (workshopPending || preparedSampleWorkshops.size >= 8) throw new Error('Finish this workshop preparation; at most eight immutable multisample workshops are retained.'); workshopPending = true;
-        try { const items = await createPreparedWorkshopScores({ sourceHash, scores: modalWorkshopScores, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), frictionDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-friction'), reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedSampleWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
+        try { workspace.resize(16 * 1048576); const items = await createPreparedWorkshopScores({ sourceHash, scores: modalWorkshopScores, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), frictionDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-friction'), reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedSampleWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
         finally { workshopPending = false; }
-      },
-      async addWorkshopTool(reference, { signal: requestSignal } = {}) {
+      }),
+      addWorkshopTool: trackFactory(async (workspace, reference, { signal: requestSignal } = {}) => {
         checkActive(); requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); checkActive(); requestSignal?.throwIfAborted();
         if (preparedWorkshops.has(key)) return preparedWorkshops.get(key);
         if (workshopPending || preparedWorkshops.size >= 8) throw new Error('Finish this tool preparation; at most eight immutable workshop grafts are retained.'); workshopPending = true;
-        try { const items = await createWorkshopToolScores({ sourceHash, modalDescriptor: modal, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
+        try { workspace.resize(16 * 1048576); const items = await createWorkshopToolScores({ sourceHash, modalDescriptor: modal, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWorkshops.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
         finally { workshopPending = false; }
-      },
-      async addNurseryStrike(reference, { signal: requestSignal } = {}) {
+      }),
+      addNurseryStrike: trackFactory(async (workspace, reference, { signal: requestSignal } = {}) => {
         checkActive(); requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); checkActive(); requestSignal?.throwIfAborted();
         if (preparedNurseries.has(key)) return preparedNurseries.get(key);
         if (nurseryPending || preparedNurseries.size >= 8) throw new Error('The Nursery catalog admits one preparation at a time and at most eight distinct prepared strike scores.');
         nurseryPending = true;
         try {
-          const item = await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedNurseries.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row;
+          workspace.resize(16 * 1048576); const item = await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedNurseries.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row;
         } finally { nurseryPending = false; }
-      },
-      async addGlacierWeather(prepared, { signal: requestSignal } = {}) {
+      }),
+      addGlacierWeather: trackFactory(async (workspace, prepared, { signal: requestSignal } = {}) => {
         checkActive(); requestSignal?.throwIfAborted(); const key = prepared.reference.definitionHash;
         if (preparedWeather.has(key)) return preparedWeather.get(key);
         if (weatherPending || preparedWeather.size >= 8) throw new Error('Finish this weather preparation; at most eight captured seed palettes are retained.'); weatherPending = true;
-        try { const items = await createGlacierWeatherScores({ sourceHash, choirDescriptor: choir, granularDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-granular'), prepared, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWeather.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
+        try { workspace.resize(16 * 1048576); const items = await createGlacierWeatherScores({ sourceHash, choirDescriptor: choir, granularDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-granular'), prepared, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores(items); const rows = items.map(item => registry.findSupported({ id: item.scene.id })); preparedWeather.set(key, rows); checkActive(); requestSignal?.throwIfAborted(); return rows; }
         finally { weatherPending = false; }
-      },
-      async addFoundBell(prepared, sourceReceipt, { signal: requestSignal } = {}) {
+      }),
+      addFoundBell: trackFactory(async (workspace, prepared, sourceReceipt, { signal: requestSignal } = {}) => {
         checkActive(); requestSignal?.throwIfAborted(); const key = sourceReceipt.receiptHash + ':' + prepared.reference.definitionHash;
         if (preparedFoundBells.has(key)) return preparedFoundBells.get(key);
         if (foundBellPending || preparedFoundBells.size >= 8) throw new Error('Finish this Found Bell preparation; at most eight reviewed source lessons are retained.');
         foundBellPending = true;
-        try { const item = await createFoundBellScore({ sourceHash, descriptor: modal, prepared, sourceReceipt, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedFoundBells.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row; }
+        try { workspace.resize(16 * 1048576); const item = await createFoundBellScore({ sourceHash, descriptor: modal, prepared, sourceReceipt, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedFoundBells.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row; }
         finally { foundBellPending = false; }
-      },
+      }),
       getPreparedFoundry({ modeCount, sampleRate }) { return preparedFoundries.get(modeCount + ':' + sampleRate) || null; },
-      async addPocketFoundry(bundle, { signal: requestSignal } = {}) {
+      addPocketFoundry: trackFactory(async (workspace, bundle, { signal: requestSignal } = {}) => {
         checkActive(); requestSignal?.throwIfAborted(); const key = bundle.modeCount + ':' + bundle.sampleRate;
         if (preparedFoundries.has(key)) return preparedFoundries.get(key);
         if (foundryPending || preparedFoundries.size >= 9) throw new Error('Finish the current foundry assembly; at most nine explicit tier/rate scores are retained.');
         foundryPending = true;
-        try { const item = await createPocketFoundryScore({ sourceHash, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), bundle, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedFoundries.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row; }
+        try { workspace.resize(16 * 1048576); const item = await createPocketFoundryScore({ sourceHash, descriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), bundle, signal: requestSignal }); checkActive(); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedFoundries.set(key, row); checkActive(); requestSignal?.throwIfAborted(); return row; }
         finally { foundryPending = false; }
-      },
+      }),
       resolveDependency: async dependency => { checkActive(); return available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' }; },
       getRecipe(scene) { checkActive(); const recipe = recipes.get(scene.worldRecipeRef.hash); if (!recipe || recipe.id !== scene.worldRecipeRef.id || recipe.revision !== scene.worldRecipeRef.revision) throw new Error('The exact physical score recipe is unavailable.'); return recipe; },
-      async origin(scene, variants = []) { checkActive(); return freezeData({ schema: 'lemmings-performance-scene-origin/v1', manifest: scene, sceneHash: await performanceSceneHash(scene), recipe: recipes.get(scene.worldRecipeRef.hash), variants }); } });
+      origin: trackFactory(async (workspace, scene, variants = []) => { checkActive(); workspace.resize(16 * 1048576); return freezeData({ schema: 'lemmings-performance-scene-origin/v1', manifest: scene, sceneHash: await performanceSceneHash(scene), recipe: recipes.get(scene.worldRecipeRef.hash), variants }); }) });
   } catch (error) {
-    const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { error.retirement = receipt; error.sceneCatalogOwnership = { registry, retirement }; } throw error;
+    const receipt = dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { error.retirement = receipt; error.sceneCatalogOwnership = { registry, auxiliary, retirement }; } throw error;
   }
 }
