@@ -4,16 +4,16 @@ import { fixedSourceBank } from './fixed-source-bank-fixture.js';
 import { expect } from 'chai';
 import { inspectVoiceInterval, workloadVoiceCount } from '../../js/app/midi-ui/AudioVoiceAdmission.js';
 import { createAudioIntervalAdmission } from '../../js/app/midi-ui/AudioIntervalAdmission.js';
-import { OwnedSineKernel, WIDTH, PROTOCOL, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
+import { OwnedSineKernel, OwnedSineProcessor, WIDTH, PROTOCOL, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   APPLIED, REJECTED, ENDED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
 import { createWorkletInstrumentBackend } from '../../js/app/midi-ui/workletInstrumentBackend.js';
 import { createAudioCommandQueue } from '../../js/app/midi-ui/AudioCommandQueue.js';
 import { createAudioResourceLeases } from '../../js/app/midi-ui/AudioResourceLeases.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
-import { OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES } from '../../js/app/midi-ui/worklet/OwnedChoirProcessor.js';
-import { OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES } from '../../js/app/midi-ui/worklet/OwnedPluckProcessor.js';
-import { OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
-import { OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES } from '../../js/app/midi-ui/worklet/OwnedGranularProcessor.js';
+import { OwnedChoirKernel, OwnedChoirProcessor, CHOIR_WIDTH, CHOIR_VOICES } from '../../js/app/midi-ui/worklet/OwnedChoirProcessor.js';
+import { OwnedPluckKernel, OwnedPluckProcessor, PLUCK_WIDTH, PLUCK_VOICES } from '../../js/app/midi-ui/worklet/OwnedPluckProcessor.js';
+import { OwnedSpectrumKernel, OwnedSpectrumProcessor, SPECTRUM_WIDTH, SPECTRUM_VOICES } from '../../js/app/midi-ui/worklet/OwnedSpectrumProcessor.js';
+import { OwnedGranularKernel, OwnedGranularProcessor, GRANULAR_WIDTH, GRANULAR_VOICES } from '../../js/app/midi-ui/worklet/OwnedGranularProcessor.js';
 import { getOwnedSourceProfile } from '../../js/app/midi-ui/OwnedSourceProfiles.js';
 
 const expectReady = async work => { const result = await work; expect(result.status, result.reason).to.equal('ready'); return result; };
@@ -151,11 +151,11 @@ describe('Owned sine worklet kernel', () => {
 });
 
 const setupHost = (engineId = 'worklet-sine') => {
-  const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, 'owned-sine-v7-owned-retirement', 'owned-sine-f64-command-v1'],
-    'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v8-owned-consonant-formants', 'owned-choir-f64-command-v2'],
-    'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v6-owned-retirement', 'owned-pluck-f64-command-v1'],
-    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v13-owned-organ-onset', 'owned-spectrum-f64-command-v3'] }[engineId];
-  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v6-owned-retirement', 'owned-granular-f64-command-v2'] : source;
+  const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, OwnedSineProcessor],
+    'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, OwnedChoirProcessor],
+    'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, OwnedPluckProcessor],
+    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, OwnedSpectrumProcessor] }[engineId];
+  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, OwnedGranularProcessor] : source;
   const nodes = [], contextListeners = new Set(); let contextState = 'running';
   const context = { get state() { return contextState; }, set state(value) { contextState = value; for (const listener of contextListeners) listener(); },
     addEventListener: (type, listener) => { if (type === 'statechange') contextListeners.add(listener); }, removeEventListener: (type, listener) => { if (type === 'statechange') contextListeners.delete(listener); },
@@ -179,7 +179,7 @@ const setupHost = (engineId = 'worklet-sine') => {
         kernel.receiptCount = 0;
       }, render(frames, start = 0) { const result = render(kernel, frames, start); this.flush(); return result; } };
     nodes.push(node); queueMicrotask(() => node.port.onmessage?.({ data: { type: 'ready', protocol: PROTOCOL, engineId, engineVersion: 1,
-      runtimeABI: actualSource[4], buildId: actualSource[3], maxVoices: actualSource[2], ...(kernel.source?.bank ? { sourceBankHash: kernel.source.bank.hash } : {}), ...(granular ? { pcmBankHash: kernel.source.descriptor.bankHash } : {}),
+      ...actualSource[3].prototype.runtimeIdentity.call({ kernel }), maxVoices: kernel.maxVoices, ...(kernel.source?.bank ? { sourceBankHash: kernel.source.bank.hash } : {}), ...(granular ? { pcmBankHash: kernel.source.descriptor.bankHash } : {}),
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: 48000, width: actualSource[1], capacity: 512 } })); return node;
   };

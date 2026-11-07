@@ -48,20 +48,22 @@ describe('app boot helpers', function () {
           observe(target) { expect(target).to.equal(slot); }
         },
         visualViewport: {
-          width: 1600,
-          height: 800,
+          width: 1920,
+          height: 1080,
           addEventListener(type, handler) {
             listeners.push({ type, handler });
           }
         },
-        innerWidth: 1600,
-        innerHeight: 800,
+        innerWidth: 1920,
+        innerHeight: 1080,
         addEventListener(type, handler) {
           listeners.push({ type, handler });
         },
         removeEventListener() {}
       };
       const documentStub = {
+        addEventListener() {},
+        removeEventListener() {},
         body: {
           classList: {
             toggle(name, enabled) {
@@ -71,8 +73,8 @@ describe('app boot helpers', function () {
           }
         },
         documentElement: {
-          clientWidth: 1600,
-          clientHeight: 800
+          clientWidth: 1920,
+          clientHeight: 1080
         },
         querySelector(selector) {
           if (selector === '.game_container') return container;
@@ -112,7 +114,7 @@ describe('app boot helpers', function () {
       expect(stageResizeCalls).to.equal(1);
       expect(classSet.has('portrait-small')).to.equal(false);
       expect(listeners.map((entry) => entry.type)).to.deep.equal(['resize', 'orientationchange', 'resize']);
-      for (const [width, height] of [[340, 640], [794, 286], [270, 370], [1540, 704]]) {
+      for (const [width, height] of [[1280, 800], [1540, 904], [960, 704], [1540, 704]]) {
         slot.clientWidth = width;
         slot.clientHeight = height;
         resizeObserverCallback();
@@ -125,7 +127,7 @@ describe('app boot helpers', function () {
         expect(container.style.marginLeft).to.equal('');
       }
       dock.hidden = false;
-      for (const [width, height] of [[340, 640], [794, 286]]) {
+      for (const [width, height] of [[1280, 800], [1540, 904]]) {
         slot.clientWidth = width; slot.clientHeight = height; boot.setSize();
         const drawnWidth = parseFloat(canvas.style.width), drawnHeight = parseFloat(canvas.style.height);
         expect(drawnWidth / drawnHeight).to.be.closeTo(800 / 480, 0.00001);
@@ -145,22 +147,24 @@ describe('app boot helpers', function () {
       const listeners = [];
       globalThis.window = {
         visualViewport: {
-          width: 500,
-          height: 700,
+          width: 1920,
+          height: 1080,
           addEventListener(type, handler) {
             listeners.push({ type, handler });
           }
         },
-        innerWidth: 500,
-        innerHeight: 700,
+        innerWidth: 1920,
+        innerHeight: 1080,
         addEventListener(type, handler) {
           listeners.push({ type, handler });
         },
         removeEventListener() {}
       };
       globalThis.document = {
+        addEventListener() {},
+        removeEventListener() {},
         body: { classList: { toggle() {} } },
-        documentElement: { clientWidth: 500, clientHeight: 700 },
+        documentElement: { clientWidth: 1920, clientHeight: 1080 },
         querySelector() {
           return null;
         },
@@ -186,12 +190,14 @@ describe('app boot helpers', function () {
       globalThis.window = {
         location: { search: '?embed=1' },
         visualViewport: null,
-        innerWidth: 800,
-        innerHeight: 480,
+        innerWidth: 1920,
+        innerHeight: 1080,
         addEventListener() {},
         removeEventListener() {}
       };
       globalThis.document = {
+        addEventListener() {},
+        removeEventListener() {},
         readyState: 'complete',
         body: {
           appendChild(node) {

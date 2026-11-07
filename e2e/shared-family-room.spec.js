@@ -22,7 +22,7 @@ for (const family of [
   const room = page.getByRole('dialog', { name: 'Quarry Echo · physical owner', exact: true }); await expect(room).toBeVisible(); await expect(library).not.toBeVisible();
   await expect(room.getByLabel('Quarry effect recipe')).toHaveValue(family.body); await expect(room.getByLabel('SPACE · shared send', { exact: true })).toHaveValue('0.2');
   await room.getByLabel('SPACE · shared send', { exact: true }).fill('0.31'); await room.getByLabel('RETURN · shared level', { exact: true }).fill('0.12');
-  await room.getByRole('button', { name: 'Save defaults', exact: true }).click(); await expect(room.getByRole('status')).toContainText('Shared send, return and rack defaults saved');
+  await room.getByRole('button', { name: 'Save defaults', exact: true }).click(); await expect(room.getByRole('status', { name: 'Quarry effect status', exact: true })).toContainText('Shared send, return and rack defaults saved');
   const after = await page.evaluate(() => { const project = window.__PROCGEN_STUDIO__.getProject(); return { graph: project.procgen.physicalGraph, lanes: project.procgen.lanes, tick: window.__PROCGEN_LANES__.world.tickIndex, rack: project.procgen.effectRack }; });
   expect({ graph: after.graph, lanes: after.lanes, tick: after.tick }).toEqual(before);
   expect(after.rack.graph.nodes.find(node => node.id === 'send').parameters.gain01).toBe(0.31); expect(after.rack.graph.nodes.find(node => node.id === 'return').parameters.gain01).toBe(0.12);

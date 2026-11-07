@@ -11,7 +11,7 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   const title = node('h2', 'Quarry Echo · physical owner'); title.id = 'quarryEchoTitle';
   const description = node('p', 'Enable browser audio, choose a delay or original reflection body, then prepare it. SPACE sends the running physical owner into one shared return. THROW temporarily raises that send; release returns to SPACE and leaves the stored tail. Dry attacks remain independent.');
   const qualification = node('p', 'Experimental original effects. Body normalization and conservative gain bounds are checked before activation; native convolution latency is unmeasured. Browser, PCM and listening qualification is pending. Causal takes can store effect API commands. The captured-command revoice mode supports one unchanged owned graph with cleared initial memory; master capture retains the actual digital output.');
-  const fields = node('div'), actions = node('div'), status = node('output', 'No echo prepared.'); status.setAttribute('role', 'status');
+  const fields = node('div'), actions = node('div'), status = node('output', 'No echo prepared.'); status.setAttribute('role', 'status'); status.setAttribute('aria-label', 'Quarry effect status');
   const say = value => { if (!disposed) { status.textContent = value; try { onStatus(value); } catch { /* Status cannot alter the rack. */ } } };
   const live = (id, values, expected) => { const playback = getPlayback(); if (!playback?.updateEffectGraph) throw new Error('The physical owner is unavailable.'); const token = expected || preparedToken; if (!token) return null; return playback.updateEffectGraph(id, values, undefined, token); };
   const slider = (name, min, max, step, initial, update) => {
