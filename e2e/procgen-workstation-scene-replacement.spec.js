@@ -48,3 +48,16 @@ test('native private Prelisten retains its owner during replacement review until
   await dialog.getByRole('button', { name: 'Load fresh · stopped replacement', exact: true }).click(); await expect(review(page)).toContainText('Stop preview'); await expect(review(page).getByRole('button', { name: /^(?:Discard changes and replace|Replace project)$/ })).toBeDisabled(); await expect(review(page).getByRole('button', { name: 'Save project, then replace', exact: true })).toBeHidden(); await review(page).getByRole('button', { name: 'Cancel replacement', exact: true }).click(); const retained = await unchanged(page); expect(retained.world && retained.project).toBe(true);
   await dialog.getByRole('button', { name: 'Stop rehearsal', exact: true }).click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getScenePreparationState()?.preview)).toBeNull(); await dialog.getByRole('button', { name: 'Load fresh · stopped replacement', exact: true }).click(); await discard(page); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.sceneOrigin?.manifest.title)).toBe('One Foot, One Sound'); await info.attach('native-scene-prelisten-review', { body: JSON.stringify(retained), contentType: 'application/json' });
 });
+
+
+test('native lesson Skip and Close return focus without loading a world or enabling output', { tag: ['@boundary', '@workstation-physical-music', '@workstation-save-cancel'] }, async ({ page }, info) => {
+  test.setTimeout(150000); await ready(page); await source(page);
+  const scenes = page.locator('#procgenStudioFooter').getByRole('button', { name: 'Scenes', exact: true }), lesson = page.getByRole('region', { name: 'Learn physical music', exact: true });
+  for (const action of ['Skip · explore freely', 'Close lessons']) {
+    const dialog = await prepare(page); await dialog.getByRole('button', { name: 'Learn this physical cause', exact: true }).click(); await expect(lesson).toBeVisible();
+    await lesson.getByRole('button', { name: action, exact: true }).click(); await expect(lesson).toBeHidden(); await expect(scenes).toBeFocused();
+    const retained = await unchanged(page); expect(retained.world && retained.project).toBe(true); expect(retained.document).toEqual(retained.original);
+    expect(await page.evaluate(() => ({ playing: window.__PROCGEN_STUDIO__.transport.getState().playing, operation: window.__PROCGEN_STUDIO__.getOperationState() }))).toEqual({ playing: false, operation: null });
+  }
+  await info.attach('native-lesson-skip-close-context', { body: JSON.stringify(await unchanged(page)), contentType: 'application/json' });
+});

@@ -19,7 +19,7 @@ export function explainPhysicalCause({ lane, evidence, operational, mix } = {}) 
   ]);
   const recover = operational?.recoveryAction;
   const action = muted ? Object.freeze({ id: 'inspect-mix', label: 'Review selected lane mix', identity: operational?.identity, laneId: lane?.id }) :
-    recover?.enabled && operational.blockedReason?.code !== 'no-source-events' ? Object.freeze({ ...recover, identity: operational.identity, laneId: lane?.id }) : null;
+    recover?.enabled ? Object.freeze({ ...recover, identity: operational.identity, laneId: lane?.id }) : null;
   return Object.freeze({ laneId: lane?.id ?? null, eventId: event?.intentId ?? null, sourceTick: record?.sourceTick ?? null,
     evidenceRevision: evidence?.revision ?? null, coverage: record?.completeness || 'unrecorded', stages, action,
     evidence: 'frozen-causal-lineage-and-current-owner-reports;no-acoustic-inference' });

@@ -1,3 +1,4 @@
+import { explainPhysicalCause } from '../js/app/procgen/workstation/PhysicalCauseExplanation.js';
 import { createCausalOnsetCoverage } from '../js/midi/content/CausalOnsetCoverage.js';
 import { expect } from 'chai';
 import { JSDOM } from 'jsdom';
@@ -77,7 +78,7 @@ describe('observed physical lessons (runtime/browser acceptance deferred)', () =
     const button = text => [...dom.window.document.querySelectorAll('button')].find(value => value.textContent === text);
     view.open(definitions[0].setupScene.id); button('Load empty control').click(); await settle(); view.observe(packet(1, null, 1, context(96, 12, 1))); expect(button('Load lesson setup').disabled).to.equal(false);
     button('Load lesson setup').click(); await settle(); const prediction = dom.window.document.querySelector('textarea'); prediction.value = 'The new cause will be at the moved pickup.'; button('Keep prediction · observe baseline').click(); view.observe(packet(1)); expect(button('I heard the difference · self report').disabled).to.equal(true);
-    button('Next lesson').click(); button('Back').click(); button('Skip · explore freely').click(); expect(dom.window.document.querySelector('output').textContent).to.include('Physical evidence: pending'); button('Reset attempt').click(); await settle(); expect(loads).to.equal(3);
+    button('Next lesson').click(); button('Back').click(); button('Skip · explore freely').click(); expect(dom.window.document.querySelector('output').textContent).to.include('Physical evidence: pending'); expect(dom.window.document.querySelector('.studio-physical-lesson').hidden).to.equal(true); view.open(definitions[0].setupScene.id); button('Reset attempt').click(); await settle(); expect(loads).to.equal(3);
     button('Close lessons').click(); view.open(definitions[0].setupScene.id); const retired = view.dispose(); await retired.completion; expect(retired.outcome).to.equal('complete'); expect(dom.window.document.querySelector('.studio-physical-lesson')).to.equal(null); dom.window.close();
   });
   it('retires a canceled setup before re-entry and ignores its stale completion', async () => {
@@ -153,5 +154,19 @@ describe('source-linked frozen-contact lesson', () => {
     session.observeMaterial(wrong, appliedContext()); expect(session.state().phase).to.equal('prepare-fossil');
     session.observeMaterial({ ...seedReceipt(original), causalOnsets: null }, appliedContext()); expect(session.state().journey.assetSaved).to.equal(false);
     session.skip(); expect(session.observeMaterial(seedReceipt(original), appliedContext())).to.equal(false);
+  });
+});
+
+
+describe('selected-cause lesson recovery (functional campaign deferred)', () => {
+  it('offers the actual explicit lesson action when the owner observes no eligible source', () => {
+    const explanation = explainPhysicalCause({ lane: { id: 'quiet-lane', mode: 'physical', gain: 1 }, operational: { identity: 'source-window:1', blockedReason: { code: 'no-source-events' }, recoveryAction: { id: 'lesson', label: 'Open an isolated lesson', enabled: true } } });
+    expect(explanation.stages[0]).to.include({ state: 'unknown' }); expect(explanation.stages[0].detail).to.include('No eligible event observed');
+    expect(explanation.action).to.include({ id: 'lesson', identity: 'source-window:1', laneId: 'quiet-lane' });
+  });
+  it('keeps unavailable recovery absent and a muted lane directed to its mix owner', () => {
+    const operational = { identity: 'source-window:2', blockedReason: { code: 'no-source-events' }, recoveryAction: { id: 'lesson', label: 'Open an isolated lesson', enabled: false } };
+    expect(explainPhysicalCause({ lane: { id: 'quiet-lane', gain: 1 }, operational }).action).to.equal(null);
+    expect(explainPhysicalCause({ lane: { id: 'quiet-lane', mute: true, gain: 1 }, operational }).action).to.include({ id: 'inspect-mix', laneId: 'quiet-lane', identity: 'source-window:2' });
   });
 });

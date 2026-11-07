@@ -4,7 +4,7 @@ import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 export function createPhysicalLessonView({ document, window, definitions, loadScene, cancelLoad = async () => {}, onStatus = () => {} } = {}) {
   if (!document?.createElement || !Array.isArray(definitions) || !definitions.length || definitions.length > 32 || typeof loadScene !== 'function') throw new TypeError('Lesson view needs installed definitions and the existing scene publication owner.');
-  const retirement = createProcgenRetirementScope(), listeners = []; let disposed = false, serial = 0, active = null, index = 0, navigation = Promise.resolve();
+  const retirement = createProcgenRetirementScope(), listeners = []; let disposed = false, serial = 0, active = null, index = 0, navigation = Promise.resolve(), previousFocus = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
   const root = node('section'), title = node('h2'), prompt = node('p'), instructions = node('p'), hint = node('details'), hintTitle = node('summary', 'Hint'), hintText = node('p'), evidence = node('output'), status = node('p'), actions = node('div');
   root.hidden = true; root.className = 'studio-physical-lesson'; root.setAttribute('aria-label', 'Learn physical music'); evidence.setAttribute('role', 'status'); status.setAttribute('role', 'status'); hint.append(hintTitle, hintText);
@@ -13,7 +13,8 @@ export function createPhysicalLessonView({ document, window, definitions, loadSc
   let storage = null; try { storage = window?.localStorage || null; } catch {}
   const progress = createPhysicalLessonProgress({ storage });
   const session = createPhysicalLessonSession({ progress, onState: () => refresh() });
-  const button = (text, handler) => { const value = node('button', text); value.type = 'button'; const run = () => { try { Promise.resolve(handler()).catch(error => say(error.message)); } catch (error) { say(error.message); } }; value.addEventListener('click', run); listeners.push(() => value.removeEventListener('click', run)); actions.append(value); return value; };
+  const button = (text, handler) => { const value = node('button', text); value.type = 'button'; const run = () => { if (disposed || root.hidden || value.disabled) return; try { Promise.resolve(handler()).catch(error => say(error.message)); } catch (error) { say(error.message); } }; value.addEventListener('click', run); listeners.push(() => value.removeEventListener('click', run)); actions.append(value); return value; };
+  const hide = () => { root.hidden = true; const target = previousFocus; previousFocus = null; if (target?.isConnected) target.focus?.({ preventScroll: true }); };
   const stop = () => { serial++; active?.controller.abort(new Error('Lesson navigation canceled this preparation.')); navigation = Promise.resolve().then(cancelLoad).catch(error => say(error.message)); };
   const load = async reference => {
     if (active || disposed) return; const operation = { controller: new AbortController(), serial: ++serial, promise: null }; active = operation; refresh();
@@ -32,10 +33,10 @@ export function createPhysicalLessonView({ document, window, definitions, loadSc
   const reset = button('Reset attempt', async () => { if (active) return; session.reset(); prediction.value = ''; await load(definitions[index].zeroNoteScene); });
   const choose = next => { stop(); index = next; prediction.value = ''; session.select(definitions[index]); };
   const back = button('Back', () => { if (index > 0) choose(index - 1); });
-  const skip = button('Skip · explore freely', () => { stop(); progress.dismiss(definitions[index].id, definitions[index].version); session.skip(); say('Skipped without a completion grade. This preference is saved separately from your project.'); });
+  const skip = button('Skip · explore freely', () => { stop(); progress.dismiss(definitions[index].id, definitions[index].version); session.skip(); say('Skipped without a completion grade. This preference is saved separately from your project.'); hide(); });
   button('Reset saved lesson progress', () => { progress.reset(); refresh(); say('Saved lesson completion and dismissal preferences cleared. The current project and active attempt are unchanged.'); });
   const next = button('Next lesson', () => { if (index + 1 < definitions.length) choose(index + 1); });
-  button('Close lessons', () => { stop(); session.suspend(); root.hidden = true; });
+  button('Close lessons', () => { stop(); session.suspend(); hide(); });
   function refresh() {
     if (disposed) return; const state = session.state(), definition = state.definition; if (!definition) return;
     title.textContent = (index + 1) + '/' + definitions.length + ' · ' + definition.title; hintText.textContent = definition.hint;
@@ -49,12 +50,12 @@ export function createPhysicalLessonView({ document, window, definitions, loadSc
   return Object.freeze({
     usesBodyEvidence() { return !disposed && !root.hidden && definitions[index].success.kind === 'body-outlives-actor'; },
     isObserving() { return !disposed && !root.hidden; },
-    open(id) { if (disposed) return; const selected = definitions.findIndex(value => value.id === id || value.setupScene.id === id); if (selected < 0) throw new Error('This score has no installed observed lesson.'); choose(selected); root.hidden = false; title.tabIndex = -1; title.focus?.(); },
+    open(id) { if (disposed) return; const selected = definitions.findIndex(value => value.id === id || value.setupScene.id === id); if (selected < 0) throw new Error('This score has no installed observed lesson.'); if (root.hidden) previousFocus = document.activeElement; choose(selected); root.hidden = false; title.tabIndex = -1; title.focus?.(); },
     observe(value) { if (!disposed && !root.hidden) { try { session.observe(value); } catch (error) { session.reset(); say('Lesson evidence was unavailable: ' + error.message); } } },
     observeEffect(receipt, context) { if (!disposed && !root.hidden) return session.observeEffect(receipt, context); return false; },
     observeMaterial(receipt, context) { if (!disposed && !root.hidden) return session.observeMaterial(receipt, context); return false; },
     observeDocument(receipt, context) { if (!disposed && !root.hidden) return session.observeDocument(receipt, context); return false; },
     observeReceipt(receipt, documentEpoch) { if (!disposed && !root.hidden) session.observeReceipt(receipt, documentEpoch); },
-    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); session.dispose(); return retirement.retire([{ name: 'lesson-preparation', run: async () => { await active?.promise.catch(() => {}); await cancelLoad(); } }, { name: 'lesson-view', run: () => { for (const remove of listeners) remove(); root.replaceChildren(); root.remove(); definitions = []; } }]); }
+    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); session.dispose(); return retirement.retire([{ name: 'lesson-preparation', run: async () => { await active?.promise.catch(() => {}); await cancelLoad(); } }, { name: 'lesson-view', run: () => { for (const remove of listeners) remove(); root.replaceChildren(); root.remove(); definitions = []; previousFocus = null; } }]); }
   });
 }
