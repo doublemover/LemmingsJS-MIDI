@@ -2,6 +2,7 @@ import { cloneData, freezeData } from '../../core/CanonicalData.js';
 import { validateWorldRegion, worldRegionDepth } from './WorldRegion.js';
 import { ORIGINAL_MATERIAL_PATCH_IDS } from './MaterialResponseMap.js';
 
+export const WORLD_ACOUSTIC_RENDERER_REQUIREMENT = 'owned-world-spatial-controls-and-shared-zone-returns';
 export const ACOUSTIC_ZONE_RECIPES = Object.freeze(['felt-pocket', 'glass-arcade', 'pipe-corridor', 'open-clearing']);
 const validated = new WeakSet(), id = value => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value), natural = value => Number.isSafeInteger(value) && value >= 0;
 const number = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;

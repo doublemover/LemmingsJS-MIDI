@@ -1,3 +1,5 @@
+import { validateMaterialPalette } from '../../../midi/content/MaterialPalette.js';
+import { WORLD_ACOUSTIC_RENDERER_REQUIREMENT } from '../../../midi/content/AcousticMap.js';
 import { validateTimbreTuningBinding, physicalTuningForTimbreSet } from '../../../midi/content/TimbreTuningSet.js';
 import { cloneData, freezeData, hashData, canonicalDataText } from '../../../core/CanonicalData.js';
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
@@ -29,8 +31,9 @@ export function validatePerformanceScene(raw) {
   scene.causalMappings = validateCausalInstrumentGraph(scene.causalMappings);
   if (!Array.isArray(scene.patchRefs) || !scene.patchRefs.length || scene.patchRefs.length > 1024 || !Array.isArray(scene.mix) || scene.mix.length !== scene.patchRefs.length) fail('Scene lanes require pinned patches and a complete mix.');
   const lanes = new Set();
-  for (const patch of scene.patchRefs) { if (!keys(patch, ['laneId', 'reference', 'timbreTuningSet', 'timbreTuningFieldId']) || !id(patch.laneId) || lanes.has(patch.laneId) || !patch.reference) fail('Invalid or duplicate scene patch lane.'); patch.reference = validateSoundContentReference(patch.reference); lanes.add(patch.laneId); }
+  for (const patch of scene.patchRefs) { if (!keys(patch, ['laneId', 'reference', 'materialPalette', 'timbreTuningSet', 'timbreTuningFieldId']) || !id(patch.laneId) || lanes.has(patch.laneId) || !patch.reference) fail('Invalid or duplicate scene patch lane.'); patch.reference = validateSoundContentReference(patch.reference); lanes.add(patch.laneId); }
   for (const [index, patch] of scene.patchRefs.entries()) {
+    if (patch.materialPalette) { patch.materialPalette = validateMaterialPalette(patch.materialPalette); if (patch.timbreTuningSet || canonicalDataText(patch.reference).text !== canonicalDataText(patch.materialPalette.references.find(reference => reference.patchId === 'material.unclassified')).text) fail('A scene material palette requires its exact unclassified default and independent onset bodies.'); }
     if (!patch.timbreTuningSet) { if (patch.timbreTuningFieldId != null) fail('A paired field reference requires the spectrum/tuning artifact.'); continue; }
     patch.timbreTuningSet = validateTimbreTuningBinding(patch.timbreTuningSet, patch.reference);
     const field = scene.causalMappings.harmonicFields?.find(value => value.id === patch.timbreTuningFieldId), tuning = physicalTuningForTimbreSet(patch.timbreTuningSet);
@@ -55,6 +58,7 @@ export function validatePerformanceScene(raw) {
     accept(substitution.requirement); variants.add(substitution.variantId);
   }
   for (const instrument of scene.causalMappings.instruments) if (!required.some(value => value.kind === 'physical-observation' && value.id === instrument.sourceKind) && !substitutions.some(value => value.requirement.kind === 'physical-observation' && value.requirement.id === instrument.sourceKind)) fail('Every enabled physical observation must have an explicit versioned requirement.');
+  if (!!scene.causalMappings.acousticMap !== required.some(value => value.kind === 'renderer' && value.id === WORLD_ACOUSTIC_RENDERER_REQUIREMENT)) fail('An acoustic scene must declare its owned spatial controls and shared return renderer.');
   if (!keys(scene.cost, ['lanes', 'maximumVoices', 'sharedBodies', 'estimateClass']) || scene.cost.lanes !== lanes.size || !integer(scene.cost.maximumVoices, 1, 65536) || !integer(scene.cost.sharedBodies, 0, 64) || scene.cost.estimateClass !== 'authored-upper-bound-not-measured-realtime-capacity') fail('Scene costs need explicit authored bounds.');
   if (!Array.isArray(scene.mechanisms) || !scene.mechanisms.length || scene.mechanisms.length > 8 || new Set(scene.mechanisms).size !== scene.mechanisms.length || scene.mechanisms.some(value => !['crossing', 'work', 'flight', 'encounter', 'travel', 'contact', 'terrain', 'cooperation'].includes(value)) || !['sparse', 'medium', 'dense'].includes(scene.density) || !integer(scene.lessonLevel, 0, 5)) fail('Scene browsing metadata is invalid.');
   if (!Array.isArray(scene.credits) || scene.credits.length > 64 || scene.credits.some(value => !keys(value, ['name', 'role', 'source']) || !text(value.name, 256) || !text(value.role, 256) || value.source !== null && !text(value.source, 2048))) fail('Scene credits are invalid.');

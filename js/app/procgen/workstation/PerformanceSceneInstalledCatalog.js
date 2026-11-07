@@ -1,3 +1,4 @@
+import { createPocketCathedralScore } from './PocketCathedralScore.js';
 import { createGlacierWeatherScores } from './GlacierWeatherScore.js';
 import { createFoundBellScore } from './FoundBellScore.js';
 import { createResonanceTerrariumScores } from './ResonanceTerrariumScore.js';
@@ -152,7 +153,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
       signal?.throwIfAborted(); recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, item.recipe.revision, item.recipeHash, 'embedded');
       for (const asset of item.embeddedAssets || []) embeddedAssets.set(asset.hash, freezeData({ ...asset }));
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
-      for (const { reference } of item.scene.patchRefs) {
+      for (const reference of item.scene.patchRefs.flatMap(patch => patch.materialPalette ? patch.materialPalette.references : [patch.reference])) {
         const engine = reference.engineRequirement; put('engine', engine.engineId, engine.engineVersion, engine.artifactHash); put('parameter-schema', engine.engineId, engine.engineVersion, engine.parameterSchemaHash);
         put('patch', reference.patchId, reference.revision, reference.definitionHash, 'embedded');
       }
@@ -163,6 +164,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createThreeHandsScores({ sourceHash, descriptor, signal }));
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createResonanceTerrariumScores({ sourceHash, descriptor, signal }));
   if (modal?.maximumVoices >= 3) await registerAuthoredScores([await createFoundBellScore({ sourceHash, descriptor: modal, signal })]);
+  if (modal?.capabilities.worldSpatialControl && modal.capabilities.sharedAcousticZoneSends) await registerAuthoredScores([await createPocketCathedralScore({ sourceHash, descriptor: modal, signal })]);
   const texture = catalog.descriptors.find(value => value.engineId === 'worklet-texture');
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
   if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);

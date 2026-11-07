@@ -1,3 +1,4 @@
+import { createMaterialPalette } from '../../../midi/content/MaterialPalette.js';
 import { freezeData, hashData } from '../../../core/CanonicalData.js';
 import { validatePerformanceScene, sceneDependencyKey, performanceSceneHash } from './PerformanceScene.js';
 
@@ -21,12 +22,15 @@ export async function checkPerformanceSceneRequirements(raw, { resolveDependency
   for (const value of scene.requirements.optional) add(value, 'optional', true);
   for (const entry of substitutions) add(selected.has(entry.variantId) ? entry.approximation : entry.requirement, selected.has(entry.variantId) ? entry.variantId : 'original:' + entry.variantId);
   for (const patch of scene.patchRefs) {
-    const ref = patch.reference, engine = ref.engineRequirement;
-    if (await hashData(ref.definition, { maxBytes: 65536, maxNodes: 8192 }) !== ref.definitionHash) throw failure('scene-patch-mismatch', 'The pinned scene patch definition has changed.'); check();
-    pin('patch', { id: ref.patchId, revision: ref.revision, hash: ref.definitionHash }, patch.laneId);
-    pin('engine', { id: engine.engineId, revision: engine.engineVersion, hash: engine.artifactHash }, patch.laneId);
-    pin('parameter-schema', { id: engine.engineId, revision: engine.engineVersion, hash: engine.parameterSchemaHash }, patch.laneId);
-    for (const hash of ref.assetHashes) pin('asset', { id: 'sha256:' + hash, revision: 1, hash }, patch.laneId);
+    if (patch.materialPalette && (await createMaterialPalette(patch.materialPalette.references)).identityHash !== patch.materialPalette.identityHash) throw failure('scene-palette-mismatch', 'The complete pinned scene material palette changed.');
+    for (const ref of patch.materialPalette ? patch.materialPalette.references : [patch.reference]) {
+      const engine = ref.engineRequirement;
+      if (await hashData(ref.definition, { maxBytes: 65536, maxNodes: 8192 }) !== ref.definitionHash) throw failure('scene-patch-mismatch', 'The pinned scene patch definition has changed.'); check();
+      pin('patch', { id: ref.patchId, revision: ref.revision, hash: ref.definitionHash }, patch.laneId);
+      pin('engine', { id: engine.engineId, revision: engine.engineVersion, hash: engine.artifactHash }, patch.laneId);
+      pin('parameter-schema', { id: engine.engineId, revision: engine.engineVersion, hash: engine.parameterSchemaHash }, patch.laneId);
+      for (const hash of ref.assetHashes) pin('asset', { id: 'sha256:' + hash, revision: 1, hash }, patch.laneId);
+    }
   }
   if (dependencies.size > 2048) throw failure('scene-dependency-capacity', 'The complete enabled scene variant exceeds the dependency limit.');
   const entries = [...dependencies.values()], receipts = new Array(entries.length); let next = 0;

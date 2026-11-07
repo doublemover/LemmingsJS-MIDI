@@ -11595,3 +11595,10 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Use the shared presented-world transform, including an explicit unclipped projection option for row-clipped vector geometry. Fields clip correctly across visible lane rows and viewport edges without replacing off-screen source coordinates. Marker visibility requires matching observed world/generation/tick; no nearest actor or screen coordinate becomes a listener implicitly.
 - Keep overlay controls, SVG storage, display cadence and renderer subscriptions under their existing owners. Selected-actor listeners resolve once per consumed control observation even with no active voice, retain their explicit removed-actor policy and expose their own observed tick.
 - Formatting/static checks remain the only validation in this frontloaded production pass. Pocket Cathedral content and private spatial scene rehearsal continue next.
+
+### Continuation 613 — Pocket Cathedral and exact scene material dependencies
+
+- Author the original three-path/four-boundary Pocket Cathedral score from finite ordinary entrants and swept pickup crossings. Onsets bind a fixed world strike, original material body and shared Felt/Glass/Pipe/Clearing response; camera and map edits supply no additional attacks.
+- Carry complete five-body material palettes through scene validation, exact dependency hashing, catalog registration and project materialization. Generate the embedded definitions from the existing original recipe compiler, avoiding a separate runtime recipe implementation. Native descriptors now expose their actual spatial/send capability.
+- Connect MATERIAL/ABSORB/CHAMBER/BORDER to canonical graph commands with exact scene/map/revision checks, visible saved state and prepared-map transition semantics. Preserve onset body ownership, Undo and world geometry/RNG independence.
+- Functional, native/audio, browser and performance qualification remain deferred. Private spatial scene rehearsal is the next production integration; no acceptance or issue closure is claimed.

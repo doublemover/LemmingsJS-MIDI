@@ -33,7 +33,7 @@ export function createAcousticFieldOverlay({ document, window, stage, actions, g
       const mark = point(state.listener.x, state.listener.y); if (mark) {
         const group = node('g', { fill: 'none', stroke: '#fff', 'stroke-width': 2 }); group.append(node('circle', { cx: mark.x, cy: mark.y, r: 7 }), node('path', { d: 'M' + (mark.x - 12) + ',' + mark.y + 'h24M' + mark.x + ',' + (mark.y - 12) + 'v24' })); svg.append(group);
         const text = node('text', { x: mark.x + 14, y: mark.y - 10, fill: '#fff', stroke: '#172331', 'stroke-width': 3, 'paint-order': 'stroke', 'font-size': 12 }); text.textContent = 'Listener · ' + state.listenerMode; svg.append(text);
-        const lane = Math.floor(state.listener.y / projection.laneHeight), left = point(state.listener.x - (state.panWidthPixels ?? map.listener.panWidthPixels), state.listener.y, lane, false), right = point(state.listener.x + map.listener.panWidthPixels, state.listener.y, lane, false);
+        const lane = Math.floor(state.listener.y / projection.laneHeight), left = point(state.listener.x - (state.panWidthPixels ?? map.listener.panWidthPixels), state.listener.y, lane, false), right = point(state.listener.x + (state.panWidthPixels ?? map.listener.panWidthPixels), state.listener.y, lane, false);
         if (left && right) svg.append(node('line', { x1: left.x, y1: mark.y + 14, x2: right.x, y2: mark.y + 14, stroke: '#fff', 'stroke-width': 1, 'stroke-dasharray': '5 5' }));
       }
     }

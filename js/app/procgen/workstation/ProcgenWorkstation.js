@@ -1,3 +1,4 @@
+import { prepareSceneAcousticControl } from './SceneAcousticControl.js';
 import { createAcousticFieldEditor } from './AcousticFieldEditor.js';
 import { validateAcousticMap } from '../../../midi/content/AcousticMap.js';
 import { validateSpatialAttachment } from '../../../midi/content/SpatialState.js';
@@ -2715,6 +2716,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!resourceBudget || !window.fetch) return Promise.reject(new Error('Native sound source ownership is unavailable. The prior sound is unchanged.'));
       nativeSoundSelection ||= createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs: backgroundJobs, resourceBudget, ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}) });
       return soundTransactions.select(signal => nativeSoundSelection.prepare(alias.patchId, { signal }), { laneId, patch: alias.lanePatch });
+    },
+    performSceneAcoustic(input) {
+      if (worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop) throw new Error('Finish the current score or take operation before changing its acoustic map.');
+      const action = prepareSceneAcousticControl(project, input); if (!action) return Object.freeze({ status: 'unchanged' });
+      if (!dispatch(action)) throw new Error('The acoustic map edit was not admitted.');
+      return Object.freeze({ status: 'committed', mapRevision: action.graph.acousticMap.revision, physicalMutation: false, application: 'prepared-map-transition;retain-onset-body' });
     },
     performSceneMacro(input) {
       if (worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop || soundTransactions.diagnostics().active || macroGestures.diagnostics().active) throw new Error('Finish the current world, sound, take or macro gesture before applying a scene macro.');
