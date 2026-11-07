@@ -20,7 +20,7 @@ export class OwnedSpectrumSource {
     this.circularSineAt = phase => this.lookup(this.sine, 0, phase);
   }
   beginCircular(slot, frequency, command, frame) {
-    if (!Number.isInteger(slot) || slot < 0 || slot >= this.voices || !valid(frequency, SPECTRUM_MIN_HZ, SPECTRUM_MAX_HZ) || !Number.isInteger(command[18]) || !valid(command[18], 0, 0xffffffff) || !valid(command[32], -1000000, 1000000) || command[33] !== 2 || command[73] || command[74]) return 0;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.voices || !valid(frequency, SPECTRUM_MIN_HZ, SPECTRUM_MAX_HZ) || !Number.isInteger(command[18]) || !valid(command[18], 0, 0xffffffff) || !valid(command[32], -1000000, 1000000) || command[33] !== 2 || command[73] || command[74] || command[75]) return 0;
     if (![0, 1].includes(command[38]) || command[38] === 1 && (!Number.isSafeInteger(command[34]) || command[34] < frame || !Number.isSafeInteger(command[35]) || command[35] <= command[34] || command[35] - command[34] > this.rate * 2 || command[36] !== command[32] || !valid(command[37], -1000000, 1000000) || Math.abs(command[37] - command[36]) / (command[35] - command[34]) * this.rate > 4)) return 0;
     const reference = command[25] * frequency / 261.6255653005986, high = Math.min(command[29], this.rate * 0.4), circle = this.circular[slot];
     if (!circle.configure(reference, command[26], command[27], command[28], high, command[30], command[31])) return 0;
@@ -33,7 +33,7 @@ export class OwnedSpectrumSource {
   begin(slot, frequency, command, frame = command[1]) {
     if (command[19] === 2) return this.beginCircular(slot, frequency, command, frame);
     if (!Number.isInteger(slot) || slot < 0 || slot >= this.voices || !valid(frequency, SPECTRUM_MIN_HZ, SPECTRUM_MAX_HZ) || !Number.isInteger(command[18]) || !valid(command[18], 0, 0xffffffff) ||
-        ![0, 1].includes(command[19]) || !Number.isInteger(command[20]) || !valid(command[20], 1, 16) || !valid(command[21], 0, 1) || !valid(command[22], 0, 1) || !valid(command[23], 0, 1) || !valid(command[24], 0, 4) || !valid(command[73], 0, 1) || !valid(command[74], 0, 1)) return 0;
+        ![0, 1].includes(command[19]) || !Number.isInteger(command[20]) || !valid(command[20], 1, 16) || !valid(command[21], 0, 1) || !valid(command[22], 0, 1) || !valid(command[23], 0, 1) || !valid(command[24], 0, 4) || !valid(command[73], 0, 1) || !valid(command[74], 0, 1) || !valid(command[75], 0, 0.2) || !valid(command[76], 0.03, 1) || !valid(command[77], 1, 4) || !command[19] && command[75]) return 0;
     if (!command[19] && command[20] !== 16) return 0;
     for (let index = 0; index < 16; index++) {
       if (!valid(command[25 + index], 0.125, 32) || !valid(command[41 + index], 0, 1) || !valid(command[57 + index], 0.01, 1)) return 0;
@@ -42,6 +42,7 @@ export class OwnedSpectrumSource {
     const at = slot * STATE, phase = command[18] / 4294967296;
     for (let field = 0; field < STATE; field++) this.state[at + field] = 0;
     this.state[at + 36] = command[73]; this.state[at + 37] = command[74];
+    this.state[at + 44] = command[75]; this.state[at + 45] = Math.exp(-LN1000 / (command[76] * this.rate)); this.state[at + 46] = phase * command[77] % 1; this.state[at + 47] = command[77];
     this.state[at] = phase; this.state[at + 1] = command[19]; this.state[at + 2] = command[20]; this.state[at + 3] = frequency;
     this.state[at + 4] = frequency * 2 ** (-SPECTRUM_BEND_CENTS * 2 / 1200); this.state[at + 5] = frequency * 2 ** (SPECTRUM_BEND_CENTS * 2 / 1200);
     for (let parameter = 0; parameter < 3; parameter++) { this.state[at + 8 + parameter] = command[21 + parameter]; this.state[at + 12 + parameter] = command[21 + parameter]; }
@@ -95,6 +96,7 @@ export class OwnedSpectrumSource {
     else if (mode === 1) {
       for (let partial = 0; partial < this.state[at + 2]; partial++) { const offset = (slot * 16 + partial) * PARTIAL, hz = frequency * this.partials[offset];
         if (hz < sourceBand && this.partials[offset + 1] * this.partials[offset + 3] * this.partials[offset + 5] > 0) { low = Math.min(low, hz); high = Math.max(high, hz); } }
+      const onsetHz = frequency * this.state[at + 47]; if (this.state[at + 44] > 0 && onsetHz < sourceBand) { low = Math.min(low, onsetHz); high = Math.max(high, onsetHz); }
     } else {
       const circle = this.circular[slot]; for (let partial = 0; partial < circle.recipe.partialCountCap; partial++) { const offset = partial * 6, hz = circle.partials[offset + 2];
         if (hz > circle.recipe.resolvedBandLowHz && hz < circle.recipe.resolvedBandHighHz && circle.partials[offset + 3] > 0) { low = Math.min(low, hz); high = Math.max(high, hz); } }
@@ -142,6 +144,11 @@ export class OwnedSpectrumSource {
       }
       output *= this.state[at + 6];
     }
+    if (this.state[at + 44] > 0) {
+      const hz = frequency * this.state[at + 47], phase = this.state[at + 46], next = phase + hz / this.rate, taper = Math.max(0, Math.min(1, (sourceBand - hz) / (sourceBand * 0.1)));
+      if (taper > 0) active++; output += this.lookup(this.sine, 0, phase) * this.state[at + 44] * taper; this.state[at + 46] = next - Math.floor(next); this.state[at + 44] *= this.state[at + 45];
+      if (this.state[at + 44] < 1e-20) this.state[at + 44] = 0;
+    }
     this.state[at + 20] = active;
     if (drive > 0) output = output * (1 + drive) - drive * output * output * output;
     if (this.state[at + 36] > 0) {
@@ -158,6 +165,6 @@ export class OwnedSpectrumKernel extends OwnedSineKernel {
 }
 export class OwnedSpectrumProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedSpectrumKernel(rate, Math.min(voices, SPECTRUM_VOICES), options?.sourceBank); }
-  runtimeIdentity() { return { engineId: 'worklet-spectrum', engineVersion: 1, runtimeABI: 'owned-spectrum-f64-command-v2', buildId: 'owned-spectrum-v12-resonance-drive-drawbars', sourceBankHash: this.kernel.source.bank.hash }; }
+  runtimeIdentity() { return { engineId: 'worklet-spectrum', engineVersion: 1, runtimeABI: 'owned-spectrum-f64-command-v3', buildId: 'owned-spectrum-v13-owned-organ-onset', sourceBankHash: this.kernel.source.bank.hash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-spectrum-v1', OwnedSpectrumProcessor);

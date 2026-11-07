@@ -16,6 +16,7 @@ import { NATIVE_WIND_FIELDS, NATIVE_WIND_PARAMETERS, NATIVE_FRICTION_FIELDS, NAT
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const spectrumPartials = Object.freeze(Array.from({ length: 16 }, (_, index) => Object.freeze(['Ratio', 'Gain', 'T60Scale'].map(suffix => 'partial' + index + suffix))));
 const acceptsSpectrum = parameters => {
+  if (parameters.sourceMode !== 1 && parameters.percussionGain01) return false;
   if (parameters.sourceMode === 2) { if (parameters.resonance01 || parameters.drive01) return false; try { resolveCircularSpectrum(circularSpectrumParameters(parameters), 48000); validateCircularCoordinateControl(parameters); return true; } catch { return false; } }
   if (parameters.sourceMode) return true;
   if (parameters.partialCount !== 16) return false;
@@ -121,14 +122,14 @@ const profiles = Object.freeze({
     beginFields: (parameters, seed) => ({ 18: seed, 19: parameters.vowel01, 20: parameters.breath01, 21: parameters.sizeRatio, 22: parameters.chorusCents,
       23: parameters.vibratoCents, 24: parameters.vowelStep, 25: parameters.bandwidthScale, 26: parameters.consonant01, 27: parameters.consonantMilliseconds }) }),
   'worklet-spectrum': createProfile({ id: 'worklet-spectrum', controlReferenceRender: true, bankId: 'spectrum-v1', width: SPECTRUM_LAYOUT.width, voices: SPECTRUM_LAYOUT.voices, fields: NATIVE_SPECTRUM_FIELDS, parameters: NATIVE_SPECTRUM_PARAMETERS,
-    buildId: 'owned-spectrum-v12-resonance-drive-drawbars', abi: 'owned-spectrum-f64-command-v2', workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
+    buildId: 'owned-spectrum-v13-owned-organ-onset', abi: 'owned-spectrum-f64-command-v3', workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
     travelPlanner: planCircularTravel, acceptsExpression: (expression, voice) => (voice.sourceValues?.sourceMode !== 2 || !['scan01', 'body01', 'edge01'].some(id => expression[id] != null)) && !spectrumPartials.some((names, index) => expression[names[1]] != null && (voice.sourceValues?.sourceMode !== 1 || index >= voice.sourceValues.partialCount)),
     acceptsOnset: (parameters, frequency, pcm, rate) => { if (parameters.sourceMode !== 2) return true; try { resolveCircularSpectrum(circularSpectrumParameters(parameters), rate, frequency / 261.6255653005986); return true; } catch { return false; } },
     storageBytes: spectrumSourceBytes, heapEstimate: SPECTRUM_SOURCE_HEAP_ESTIMATE, acceptsParameters: acceptsSpectrum,
-    cost: parameters => parameters.sourceMode === 2 ? parameters.circularPartialCap : (parameters.sourceMode ? parameters.partialCount * 2 : 4) + (parameters.resonance01 > 0 ? 5 : 0) + (parameters.drive01 > 0 ? 3 : 0), minimumControlSeconds: 0.008, expressions: [['scan01', 8, 21], ['body01', 16, 22], ['edge01', 32, 23], ...spectrumPartials.map((names, index) => [names[1], SPECTRUM_DRAWBAR_BITS[index], 41 + index])],
+    cost: parameters => parameters.sourceMode === 2 ? parameters.circularPartialCap : (parameters.sourceMode ? parameters.partialCount * 2 : 4) + (parameters.resonance01 > 0 ? 5 : 0) + (parameters.drive01 > 0 ? 3 : 0) + (parameters.percussionGain01 > 0 ? 2 : 0), minimumControlSeconds: 0.008, expressions: [['scan01', 8, 21], ['body01', 16, 22], ['edge01', 32, 23], ...spectrumPartials.map((names, index) => [names[1], SPECTRUM_DRAWBAR_BITS[index], 41 + index])],
     beginFields: (parameters, seed, pcm, selected, travel) => {
       if (parameters.sourceMode === 2) return { 18: seed, 19: 2, 25: parameters.circularReferenceHz, 26: parameters.circularCenterHz, 27: parameters.circularWidthOctaves, 28: parameters.circularLowHz, 29: parameters.circularHighHz, 30: parameters.circularPartialCap, 31: parameters.circularWeight01, 32: travel?.from ?? parameters.circularPhaseOrigin, 33: parameters.circularPeriodRatio, ...(travel ? { 34: travel.firstFrame, 35: travel.endFrame, 36: travel.from, 37: travel.to, 38: 1 } : {}) };
-      const fields = { 18: seed, 19: parameters.sourceMode, 20: parameters.partialCount, 21: parameters.scan01, 22: parameters.body01, 23: parameters.edge01, 24: parameters.partialDecaySeconds, 73: parameters.resonance01, 74: parameters.drive01 };
+      const fields = { 18: seed, 19: parameters.sourceMode, 20: parameters.partialCount, 21: parameters.scan01, 22: parameters.body01, 23: parameters.edge01, 24: parameters.partialDecaySeconds, 73: parameters.resonance01, 74: parameters.drive01, 75: parameters.percussionGain01, 76: parameters.percussionT60Seconds, 77: parameters.percussionRatio };
       for (let index = 0; index < spectrumPartials.length; index++) {
         const names = spectrumPartials[index]; fields[25 + index] = parameters[names[0]]; fields[41 + index] = parameters[names[1]]; fields[57 + index] = parameters[names[2]];
       } return fields;

@@ -137,7 +137,7 @@ const inspectSource = (kernel, profile, view) => {
         const meta = (slot * 16 + 10) * SPECTRUM_LAYOUT.partialState; let recipe;
         try { recipe = resolveCircularSpectrum({ referenceFrequencyHz: partial(meta), frequencyCenterHz: partial(meta + 1), spectralWidthOctaves: partial(meta + 2), bandLowHz: partial(meta + 3), bandHighHz: partial(meta + 4), partialCountCap: partial(meta + 5), weight01: partial(meta + 6) }, kernel.sampleRate, get(3) / 261.6255653005986); } catch { fail('Circular source recipe is invalid.'); }
         const base = at + 24, phase = state(base), targetPhase = state(base + 1), remaining = state(base + 2), step = state(base + 3), whole = state(base + 4);
-        if (Array.from({ length: 8 }, (_, index) => get(36 + index)).some(value => value !== 0) || get(2) !== recipe.partialCountCap || !finite(phase, -1000000, 1000000) || !finite(targetPhase, -1000000, 1000000) || !integer(remaining, 0, kernel.sampleRate * 2) || !finite(step, -4 / kernel.sampleRate, 4 / kernel.sampleRate) ||
+        if (Array.from({ length: 12 }, (_, index) => get(36 + index)).some(value => value !== 0) || get(2) !== recipe.partialCountCap || !finite(phase, -1000000, 1000000) || !finite(targetPhase, -1000000, 1000000) || !integer(remaining, 0, kernel.sampleRate * 2) || !finite(step, -4 / kernel.sampleRate, 4 / kernel.sampleRate) ||
             !integer(whole, -1000001, 1000001) || Math.abs(Math.floor(phase) - whole) > 1 || !integer(state(base + 5), 0, 0xffffffff) || !integer(state(base + 7), 0, 8) || !integer(state(base + 8), 0, recipe.partialCountCap) || !integer(state(base + 9), 0) || state(base + 10) || state(base + 11) ||
             remaining && Math.abs(targetPhase - phase - remaining * step) > 1e-6 || remaining && Math.abs(state(base + 6) - 2 ** step) > 1e-12) fail('Circular distance-phase or interpolation frontier is invalid.');
         const indices = new Set(); let amplitude = 0, targetAmplitude = 0;
@@ -150,6 +150,7 @@ const inspectSource = (kernel, profile, view) => {
         if (amplitude > 0.800000001 || targetAmplitude > 0.800000001) fail('Circular amplitude normalization exceeds the declared peak bound.');
         continue;
       }
+      if (!finite(get(44), 0, 0.2) || !finite(get(45), 0, 1) || !finite(get(46), 0, 1) || !finite(get(47), 1, 4)) fail('Organ percussion envelope or phase is invalid.');
       if (!finite(get(43), 0, kernel.sampleRate * 0.4) || !integer(get(16), 0, kernel.sampleRate * 60)) fail('Spectrum cutoff or drawbar interpolation frontier is invalid.');
       if (get(36) > 0) {
         const g = Math.tan(Math.PI * get(43) / kernel.sampleRate), damping = 1 / (Math.SQRT1_2 + get(36) * (3 - Math.SQRT1_2)), a1 = 1 / (1 + g * (g + damping));

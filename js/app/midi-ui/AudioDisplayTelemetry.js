@@ -118,7 +118,7 @@ export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', 
           } else {
             for (let field = 0; field < 6; field++) if (!Number.isFinite(model[offset + field])) validModel = false;
             const mode = model[offset], coordinate = model[offset + 1], count = model[offset + 2], low = model[offset + 3], high = model[offset + 4], filter = model[offset + 5];
-            if (!validModel || ![0, 1, 2].includes(mode) || !natural(count) || count > (mode === 2 ? 10 : 16) || (mode === 2 ? Math.abs(coordinate) > 1e6 : coordinate < 0 || coordinate > 15) || low < 0 || high < low || high > context.sampleRate * 0.4 + 1e-8 || filter < 0 || filter > context.sampleRate * 0.4 + 1e-8) { stats.rejected++; continue; }
+            if (!validModel || ![0, 1, 2].includes(mode) || !natural(count) || count > (mode === 2 ? 10 : mode === 1 ? 17 : 16) || (mode === 2 ? Math.abs(coordinate) > 1e6 : coordinate < 0 || coordinate > 15) || low < 0 || high < low || high > context.sampleRate * 0.4 + 1e-8 || filter < 0 || filter > context.sampleRate * 0.4 + 1e-8) { stats.rejected++; continue; }
             quantities.push(quantity('spectrum-mode', 'enum-0-table-1-additive-2-circular', mode, 'kernel-state'), quantity(mode === 2 ? 'distance-spectral-phase' : 'prepared-frame', mode === 2 ? 'cycles' : 'fractional-frame', coordinate, 'kernel-state'),
               quantity(mode === 0 ? 'prepared-harmonic-limit' : 'last-active-partials', 'count', count, 'kernel-state'), quantity('partial-support-low', 'Hz', low, 'kernel-state'), quantity('partial-support-high', 'Hz', high, 'kernel-state'), quantity(mode === 2 ? 'spectral-envelope-center' : 'source-filter-cutoff', 'Hz', filter, 'kernel-state'));
           }

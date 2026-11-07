@@ -54,6 +54,7 @@ const schemas = freezeData({
     parameter('circularPartialCap', 8, 10, 10, 'count', true), parameter('circularWeight01', 0, 1, 1, 'ratio'), parameter('circularPixelsPerCycle', 1, 1000000, 512, 'world-pixel'),
     parameter('circularOriginPixels', -1000000000, 1000000000, 0, 'world-pixel'), parameter('circularPhaseOrigin', -1000000, 1000000, 0, 'cycles'),
     parameter('circularControlMode', 0, 3, 0, 'enum', true), parameter('circularScope', 0, 2, 0, 'enum', true), parameter('circularAxis', 0, 1, 0, 'enum', true), parameter('circularRequireSegments', 0, 1, 0, 'enum', true), parameter('partialCount', 1, 16, 16, 'enum', true), parameter('partialDecaySeconds', 0, 4, 0, 's'), parameter('resonance01', 0, 1, 0, 'normalized'), parameter('drive01', 0, 1, 0, 'normalized'),
+    parameter('percussionGain01', 0, 0.2, 0, 'amplitude-linear'), parameter('percussionT60Seconds', 0.03, 1, 0.2, 's'), parameter('percussionRatio', 1, 4, 2, 'ratio'),
     ...Array.from({ length: 16 }, (_, index) => [parameter('partial' + index + 'Ratio', 0.125, 32, index + 1, 'ratio'), parameter('partial' + index + 'Gain', 0, 1, 1 / (index + 1), 'amplitude-linear'),
       parameter('partial' + index + 'T60Scale', 0.01, 1, 1, 'ratio')]).flat()].map(spec => Object.freeze({ ...spec, liveSafe: /^partial\d+Gain$/.test(spec.id), causalLiveSafe: /^partial\d+Gain$/.test(spec.id) })).concat(
     ['scan01', 'body01', 'edge01'].map(name => Object.freeze({ ...parameter(name, 0, 1, name === 'scan01' ? 0 : 0.5, 'normalized'), causalLiveSafe: true })), envelope(0.008, 0.1, 0.7, 0.5)),

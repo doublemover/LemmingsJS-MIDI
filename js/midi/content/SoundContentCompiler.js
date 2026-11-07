@@ -57,7 +57,7 @@ const nativeComponents = descriptor => {
     resonator: ['position01', 'densityHz', 'grainMilliseconds', 'spread01', 'activity01', 'tone01', 'freezePosition'],
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-spectrum' ? {
-    exciter: descriptor.parameters.map(parameter => parameter.id).filter(name => /^partial\d|^partialCount$|^partialDecaySeconds$|^sourceMode$|^circular/.test(name)),
+    exciter: descriptor.parameters.map(parameter => parameter.id).filter(name => /^partial\d|^partialCount$|^partialDecaySeconds$|^percussion|^sourceMode$|^circular/.test(name)),
     resonator: ['scan01', 'body01', 'edge01', 'resonance01', 'drive01'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-choir' ? {
     exciter: ['breath01', 'chorusCents', 'vibratoCents', 'consonant01', 'consonantMilliseconds'], resonator: ['vowel01', 'sizeRatio', 'vowelStep', 'bandwidthScale'],

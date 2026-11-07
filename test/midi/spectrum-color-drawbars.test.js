@@ -41,3 +41,17 @@ describe('retained spectrum color and independent drawbars', () => {
     assert.equal(SPECTRUM_DRAWBAR_BITS.some(bit => bit & 65536), false); assert.equal(SPECTRUM_LAYOUT.width, profile.width);
   });
 });
+
+describe('same-owned-voice organ onset component', () => {
+  it('decays through held pitch and drawbar motion without a new onset or another PRNG stream', () => {
+    const values = parameters({ sourceMode: 1, percussionGain01: 0.14, percussionRatio: 2, percussionT60Seconds: 0.16 }), source = new OwnedSpectrumSource(48000, 2, fixedSourceBank('spectrum-v1'));
+    assert.equal(source.begin(0, 440, onset(values), 0), 1); assert.equal(source.begin(1, 440, onset(values, 1), 0), 1);
+    for (let frame = 0; frame < 128; frame++) { source.sample(0, 440, frame); source.sample(1, 440, frame); }
+    const before = source.state[44], update = new Float64Array(profile.width); update[41] = 0.25; update[14] = 400;
+    assert.equal(source.validUpdate(0, SPECTRUM_DRAWBAR_BITS[0], update), true); source.applyUpdate(0, SPECTRUM_DRAWBAR_BITS[0], update);
+    for (let frame = 128; frame < 640; frame++) { source.sample(0, 442, frame); source.sample(1, 440, frame); assert.equal(source.state[44], source.state[SPECTRUM_LAYOUT.state + 44]); }
+    assert.ok(source.state[44] < before); assert.ok(source.state[44] > 0); assert.equal(source.state[47], 2);
+    assert.equal(source.begin(1, 440, onset(values, 1), 640), 1); assert.equal(source.state[SPECTRUM_LAYOUT.state + 44], 0.14); assert.ok(source.state[44] < 0.14);
+    assert.equal(profile.acceptsParameters(parameters({ sourceMode: 0, percussionGain01: 0.1 })), false); assert.equal(profile.acceptsParameters(parameters({ sourceMode: 2, percussionGain01: 0.1 })), false);
+  });
+});

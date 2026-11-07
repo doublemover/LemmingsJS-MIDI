@@ -19,7 +19,9 @@ export function resolveOwnedArticulationPolicy(patch) {
   if (patch.engineId === 'worklet-spectrum') {
     const t60 = parameters.partialDecaySeconds ?? 0;
     if (!Number.isFinite(t60) || t60 < 0 || t60 > 4) throw new RangeError('Invalid partial decay profile.');
-    holdSeconds = Math.max(holdSeconds, t60 * 1.5);
+    const percussion = parameters.percussionGain01 > 0 ? parameters.percussionT60Seconds : 0;
+    if (!Number.isFinite(percussion) || percussion < 0 || percussion > 1) throw new RangeError('Invalid organ onset component.');
+    holdSeconds = Math.max(holdSeconds, t60 * 1.5, percussion * 1.5);
   }
   if (patch.engineId === 'worklet-pluck') {
     const stringT60 = parameters.stringT60Seconds ?? 0.9, bodyT60 = parameters.bodyT60Seconds ?? 0.3;
@@ -35,5 +37,6 @@ export function resolveOwnedArticulationPolicy(patch) {
     holdSeconds = Math.max(holdSeconds, longest * 1.5);
   }
   return Object.freeze({ version: 1, releaseSeconds, oneShotTailSeconds: Math.min(4, Math.max(0.04, holdSeconds)),
-    policy: 'owned-local-envelope-hold-v1', semanticEndsRewritten: false });
+    policy: 'owned-local-envelope-hold-v1', semanticEndsRewritten: false,
+    ...(patch.engineId === 'worklet-spectrum' && parameters.percussionGain01 > 0 ? { onsetComponent: { kind: 'organ-percussion-partial', gain01: parameters.percussionGain01, ratio: parameters.percussionRatio, t60Seconds: parameters.percussionT60Seconds, legatoPolicy: 'same-owned-voice-pitch-and-drawbar-updates-never-retrigger;new-begin-is-a-new-onset' } } : {}) });
 }

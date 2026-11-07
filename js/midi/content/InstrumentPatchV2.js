@@ -114,9 +114,10 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
   if (input.engineId === 'worklet-friction') prepareFrictionModel({ kind: FRICTION_MODEL_KINDS[input.parameters.frictionKind ?? 0], dragSlope: input.parameters.frictionDragSlope ?? 0.5, pressure01: input.parameters.frictionPressure01 ?? 0.4, contactPosition01: input.parameters.frictionContact01 ?? 0.18, bodyMix01: input.parameters.frictionBodyMix01 ?? 0.12 });
   if (input.engineId === 'worklet-texture' && !validTextureBodyCommand(textureBodyCommandFields(input.parameters), 20, 48000)) throw new TypeError('Invalid texture body calibration or signed observation.');
   if (input.engineId === 'worklet-texture') prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[input.parameters.textureKind ?? 0], roughnessPerPixel: input.parameters.roughnessPerPixel ?? 0.4, dragSlope: input.parameters.dragSlope ?? 0.5, shade01: input.parameters.shade01 ?? 0.5, bodySeconds: input.parameters.textureBodySeconds ?? 0.05 });
+  if (input.engineId === 'worklet-spectrum' && input.parameters.sourceMode !== 1 && input.parameters.percussionGain01) throw new TypeError('The organ onset component requires an additive source.');
   if (input.engineId === 'worklet-spectrum' && input.parameters.sourceMode === 2) {
     const resolved = Object.fromEntries(engine.parameters.map(spec => [spec.id, input.parameters[spec.id] ?? spec.default]));
-    if (resolved.resonance01 || resolved.drive01) throw new TypeError('Circular sources do not realize liquid-source resonance or drive.');
+    if (resolved.resonance01 || resolved.drive01 || resolved.percussionGain01) throw new TypeError('Circular sources do not realize liquid-source resonance or drive.');
     resolveCircularSpectrum(circularSpectrumParameters(resolved), 48000); validateCircularCoordinateControl(resolved);
   }
   const sampleIds = new Set();

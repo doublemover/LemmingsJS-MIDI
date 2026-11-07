@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.liquid-drawbars",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "name": "Liquid tables and additive drawbars",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -635,7 +635,7 @@
     },
     {
       "id": "spectrum.pipe-crew",
-      "revision": 2,
+      "revision": 3,
       "extends": "spectrum.base",
       "name": "Pipe Crew",
       "components": [
@@ -846,6 +846,18 @@
             "partial15T60Scale": {
               "value": 1,
               "unit": "ratio"
+            },
+            "percussionGain01": {
+              "value": 0.14,
+              "unit": "amplitude-linear"
+            },
+            "percussionRatio": {
+              "value": 2,
+              "unit": "ratio"
+            },
+            "percussionT60Seconds": {
+              "value": 0.16,
+              "unit": "s"
             }
           }
         },
@@ -991,7 +1003,7 @@
     },
     {
       "id": "spectrum.glass-drawbars",
-      "revision": 2,
+      "revision": 3,
       "extends": "spectrum.base",
       "name": "Glass Drawbars",
       "components": [
@@ -1202,6 +1214,18 @@
             "partial15T60Scale": {
               "value": 1,
               "unit": "ratio"
+            },
+            "percussionGain01": {
+              "value": 0.09,
+              "unit": "amplitude-linear"
+            },
+            "percussionRatio": {
+              "value": 3,
+              "unit": "ratio"
+            },
+            "percussionT60Seconds": {
+              "value": 0.24,
+              "unit": "s"
             }
           }
         },
