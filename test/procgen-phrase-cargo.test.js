@@ -12,6 +12,18 @@ const batch = (tick, list = actors) => ({ worldId: 'world', generation: 1, tick,
 const crossing = (tick, gateId, actorId = 1, pitchCents = 6000) => ({ kind: 'PickupCrossing', actorId, laneId: actorId - 1, gateId, pitchCents, eventId: `root:${tick}:${actorId}:${gateId}`, observationId: `cross:${tick}:${actorId}:${gateId}`, sourceEventIds: [`root:${tick}:${actorId}:${gateId}`], causalSequence: tick * 100 + actorId, fraction: 1 });
 const encounter = tick => ({ kind: 'EncounterBegan', encounterId: 'meeting', actorId: 1, participants: [1, 2], participantCount: 2, rootCoverage: 'complete', eventId: `meeting:${tick}:1`, observationId: `meeting:${tick}`, sourceEventIds: [`meeting:${tick}:1`, `meeting:${tick}:2`], causalSequence: tick * 100, fraction: 1 });
 describe('actor-borne physical phrase cargo', () => {
+  it('captures only real successful work ancestry and delivers once on the same actor arrival', () => {
+    const mapping = { id: 'builder', sourceKind: 'TerrainWorkCommitted', sourceLanes: [0], operationKind: 'build', workChangePolicy: 'solid', changedOnly: true, pitchCents: 5700, route: 'local' },
+      raw = [{ id: 'work-capture', kind: 'capture', source: { kind: 'work', operationKind: 'build' }, mode: 'recent-work-contour', history: { mappingId: 'builder', eventCount: 3, windowTicks: 100, includeCaptureWork: true }, maximumCopies: 1, maximumDeliveries: 1 }, { id: 'drop', kind: 'delivery', source: { kind: 'pickup', id: 'deliver' }, representation: 'one-item' }],
+      scope = { ...domain, instruments: [mapping] }, config = validatePhraseCargoStations(raw, scope), a = observer(config), work = (tick, changed = 1) => ({ kind: 'TerrainWorkCommitted', actorId: 1, laneId: 0, operationKind: 'build', eventId: 'stroke:' + tick, causalSequence: tick * 100, physicalPayload: { changedSolidCells: changed } });
+    expect(validatePhraseCargoStations(config, scope)).to.deep.equal(config);
+    a.observe(batch(1), [work(1)]); a.observe(batch(2), [work(2, 0)]); a.observe(batch(3), [work(3)]); expect(a.snapshot().tokens).to.have.length(0);
+    const captured = a.observe(batch(4), [work(4)]); expect(captured.facts[0].sourceEventIds).to.have.members(['stroke:1', 'stroke:3', 'stroke:4']);
+    const b = observer(config); b.restore(a.snapshot()); const actual = a.observe(batch(5), [crossing(5, 'deliver')]); expect(b.observe(batch(5), [crossing(5, 'deliver')])).to.deep.equal(actual);
+    expect(actual.responses.map(row => row.pitchCents)).to.deep.equal([5700]); expect(actual.responses[0].responseDescriptor.timedSequence).to.equal(false);
+    expect(a.observe(batch(6), [crossing(6, 'deliver')]).responses).to.have.length(0);
+    for (const change of [{ harmonicFields: true }, { mute: true }, { probability01: 0.5 }, { workChangePolicy: 'appearance' }]) expect(() => validatePhraseCargoStations(raw, { ...scope, instruments: [{ ...mapping, ...change }] })).to.throw();
+  });
   it('validates rational and interval payloads without accepting live voices or unsafe pitches', () => {
     expect(validatePhraseCargoPayload({ version: 1, kind: 'ratio', baseCents: 6000, numerator: 3, denominator: 2 }).kind).to.equal('ratio');
     for (const payload of [{ version: 1, kind: 'voice', voice: {} }, { version: 1, kind: 'ratio', baseCents: 6000, numerator: 3, denominator: 0 }, { version: 1, kind: 'interval-contour', baseCents: 24000, intervals: [0, 1] }]) expect(() => validatePhraseCargoPayload(payload)).to.throw();

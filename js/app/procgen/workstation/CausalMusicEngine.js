@@ -51,7 +51,7 @@ const validateCausalInstrumentGraph = value => {
   const acousticMap = value.acousticMap == null ? null : validateAcousticMap(value.acousticMap);
   const preparedSurfaces = validatePreparedSurfaceDefinitions(value.preparedSurfaces);
   const domain = validatePhysicalDomain(value), tonal = validateTonalDomain(value, domain), topologyRegions = validateTopologyRegions(value.topologyRegions), encounterDefinitions = validateEncounterDomain(value, domain), activityDefinitions = validateActivityWindows(value, { ...domain, topologyRegions }), motifDefinitions = validatePhysicalMotifs(value, { ...domain, encounters: encounterDefinitions, activityWindows: activityDefinitions });
-  const cargoStations = validatePhraseCargoStations(value.cargoStations, { ...domain, encounters: encounterDefinitions });
+  const cargoStations = validatePhraseCargoStations(value.cargoStations, { ...domain, encounters: encounterDefinitions, instruments: value.instruments });
   const swarm = validateSwarmReducer(value.swarm), randomSeeds = validateCausalSeedSet(value.randomSeeds, ['musical-response', 'physical-route']);
   const feedback = validatePhysicalFeedback(value.feedback, { ...domain, motifs: motifDefinitions, cargoStations });
   const ids = new Set();

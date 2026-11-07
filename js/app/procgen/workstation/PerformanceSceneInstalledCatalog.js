@@ -1,3 +1,4 @@
+import { createWorkshopCourierScores } from './WorkshopCourierScore.js';
 import { createRescueAirCrewScores } from './RescueAirCrewScore.js';
 import { createGlassOrbitCircularScores } from './GlassOrbitCircularScore.js';
 import { createGlassOrbitMetamorphicScores } from './GlassOrbitMetamorphicScore.js';
@@ -138,7 +139,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
     await registry.register(item.scene); signal?.throwIfAborted();
   }
-  let glassOrbitScores = [];
+  let glassOrbitScores = [], modalWorkshopScores = [];
   const fm = catalog.descriptors.find(value => value.engineId === 'native-fm');
   if (fm?.capabilities.perVoicePitch && fm.maximumVoices >= 8) {
     put('engine', fm.engineId, fm.engineVersion, fm.artifactHash); put('parameter-schema', fm.engineId, fm.engineVersion, fm.parameterSchemaHash);
@@ -153,7 +154,8 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   const modal = catalog.descriptors.find(value => value.engineId === 'native-modal');
   if (modal?.maximumVoices >= 8) {
     put('engine', modal.engineId, modal.engineVersion, modal.artifactHash); put('parameter-schema', modal.engineId, modal.engineVersion, modal.parameterSchemaHash);
-    for (const item of await createBuilderMinerScores({ sourceHash, descriptor: modal, signal })) {
+    modalWorkshopScores = await createBuilderMinerScores({ sourceHash, descriptor: modal, signal });
+    for (const item of modalWorkshopScores) {
       recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
       for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
@@ -180,6 +182,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   const texture = catalog.descriptors.find(value => value.engineId === 'worklet-texture');
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
   if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
+  if (modalWorkshopScores.length) await registerAuthoredScores(await createWorkshopCourierScores({ sourceHash, scores: modalWorkshopScores, signal }));
   const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
   if (modal?.maximumVoices >= 16 && spectrum?.maximumVoices >= 4) await registerAuthoredScores(await createWorkshopInteractionScores({ sourceHash, modalDescriptor: modal, spectrumDescriptor: spectrum, signal }));
   if (glassOrbitScores.length) { await registerAuthoredScores(await createGlassOrbitTrellisScores({ sourceHash, scores: glassOrbitScores, signal })); await registerAuthoredScores(await createGlassOrbitMetamorphicScores({ sourceHash, scores: glassOrbitScores, signal })); }
