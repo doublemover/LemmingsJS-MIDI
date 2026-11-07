@@ -280,7 +280,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     try {
       const patch = lease.prepared.patches.find(entry => entry.identity === selection);
       if (patch?.state !== 'definition-admitted') throw failure('Prepare an actual family source before opening its shared room.');
-      const family = patch.definition.tags.includes('circuit-workshop') ? 'circuit' : patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2 ? 'liquid' : null;
+      const family = patch.definition.tags.includes('circuit-workshop') ? 'circuit' : patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2 ? 'liquid' : patch.definition.engineId === 'native-fm' ? 'forge' : null;
       if (!family) throw failure('This source has no authored family-room handoff.'); request = { family, sourceLabel: patch.definition.name };
     } catch (error) { setStatus(error.message); return; } finally { lease.release(); }
     dialog.close(); Promise.resolve().then(() => onSharedSpace(request)).catch(error => setStatus(error.message));
@@ -319,7 +319,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     const ready = !!plan, auditioned = ready && !!installation.getAudition(stage, selection);
     let materialFamilyReady = false, renderable = false, localProceduralMaterial = false, sourceComparable = false, sampleMap = null, sampleMapSource = null, sharedSpaceReady = false; modelInfo.textContent = '';
     if (ready) { const lease = stage.borrow(); try { materialFamilyReady = ORIGINAL_MATERIAL_PATCH_IDS.every(id => lease.prepared.patches.some(row => row.state === 'definition-admitted' && row.definition.id === id)); const patch = lease.prepared.patches.find(entry => entry.identity === selection);
-      sharedSpaceReady = patch?.state === 'definition-admitted' && (patch.definition.tags.includes('circuit-workshop') || patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2);
+      sharedSpaceReady = patch?.state === 'definition-admitted' && (patch.definition.tags.includes('circuit-workshop') || patch.definition.engineId === 'native-fm' || patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2);
       sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
       localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralSoundMaterial(file)));
       renderable = patch?.state === 'definition-admitted' && (NATIVE_OFFLINE_SOURCE_IDS.includes(patch.definition.engineId) || OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender);
@@ -336,7 +336,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         const parameters = Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, parameter]) => [id, parameter.default])); Object.assign(parameters, patch.definition.parameters);
         modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources · carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
           ' · index ' + parameters.indexStart + ' → ' + parameters.indexEnd + ' over ' + parameters.indexSeconds + ' s · bend ±' + parameters.maxBendCents +
-          ' cents. Register limits are estimates; spectral/listening qualification is pending. Feedback and effect sends are unavailable.';
+          ' cents. Register limits are estimates; spectral/listening qualification is pending. Actual successful work size and completed safe landing descent can scale onset hardness. Shared SPACE uses Physical shared SPACE / ROOM after applying the source; feedback remains unavailable in this native source.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-modal') {
         const parameters = patch.definition.parameters;

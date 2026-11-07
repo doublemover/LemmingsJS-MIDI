@@ -70,3 +70,22 @@ describe('typed effective onset controls', () => {
     }
   });
 });
+
+describe('completed safe-landing source controls', () => {
+  const fact = { kind: 'FlightArcEnded', eventId: 'flight:land', arcId: 'actor:flight:1', terminationReason: 'safe-landing', contactAtEnd: 'terrain-landing', startPosition: { x: 8, y: 40 }, positionAfter: { x: 8, y: 72 }, peakY: 8, verticalDisplacementPixels: 999, cameraY: 500, physicalPayload: { descentFromPeakPixels: 999 } };
+  it('derives descent from the actual completed peak and contact, separately from signed displacement', () => {
+    expect(captureInstrumentCause(fact).values).to.deep.equal({ descentFromPeakPixels: { value: 64, unit: 'world-pixel' }, verticalDisplacementPixels: { value: 32, unit: 'world-pixel' } });
+    for (const change of [{ terminationReason: 'unsafe-fall' }, { terminationReason: 'action-interrupted' }, { contactAtEnd: null }, { peakY: 80 }, { startPosition: null }, { arcId: null }]) expect(captureInstrumentCause({ ...fact, ...change }).values).to.deep.equal({});
+  });
+  it('composes the actual landing into Forge onset index without altering its time, topology or decay', async () => {
+    const source = JSON.parse(await readFile(new URL('../../content/sounds/fm-forge.json', import.meta.url), 'utf8'));
+    const targets = (await describeNativeInstrumentEngines([{ engineId: 'native-fm', engineVersion: 1, artifactHash: 'a'.repeat(64) }])).map(descriptor => ({ descriptor }));
+    const content = await compileSoundContent(source, { targets });
+    for (const entry of content.prepared.patches) {
+      const plan = compileInstrumentPerformance(entry.definition, Object.values(NATIVE_FM_PARAMETERS)), base = plan.resolve({ variationAmount01: 0 }, 128), landed = plan.resolve({ variationAmount01: 0 }, 128, { performanceCause: captureInstrumentCause(fact) });
+      expect(landed.values.indexStart).to.be.closeTo(Math.min(8, base.values.indexStart * 1.3), 1e-12); expect(landed.values.decaySeconds).to.equal(base.values.decaySeconds); expect(landed.values.modulatorRatio).to.equal(base.values.modulatorRatio);
+      expect(landed.deltas.find(delta => delta.bindingId === 'safe-landing-hardness')).to.include({ applyFrame: 128, interpolation: 'onset-only', origin: 'physical' });
+      const absent = plan.resolve({ variationAmount01: 0 }, 128, { performanceCause: captureInstrumentCause({ ...fact, terminationReason: 'unsafe-fall' }) }); expect(absent.values).to.deep.equal(base.values);
+    }
+  });
+});

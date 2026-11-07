@@ -49,11 +49,11 @@ export function validateInstrumentControls(input = {}) {
 }
 
 const physicalInputs = Object.freeze({ TerrainWorkCommitted: Object.freeze({ attemptedCells: 'cells', changedSolidCells: 'cells', changedAppearanceCells: 'cells' }),
-  MotionCommitted: Object.freeze({ displacementPixels: 'world-pixel', positionXWorldPixels: 'world-pixel', positionYWorldPixels: 'world-pixel', displacementXWorldPixels: 'world-pixel', displacementYWorldPixels: 'world-pixel' }), ContactResolved: Object.freeze({ stepHeightPixels: 'world-pixel' }) });
+  MotionCommitted: Object.freeze({ displacementPixels: 'world-pixel', positionXWorldPixels: 'world-pixel', positionYWorldPixels: 'world-pixel', displacementXWorldPixels: 'world-pixel', displacementYWorldPixels: 'world-pixel' }), ContactResolved: Object.freeze({ stepHeightPixels: 'world-pixel' }), FlightArcEnded: Object.freeze({ descentFromPeakPixels: 'world-pixel', verticalDisplacementPixels: 'world-pixel' }) });
 export const INSTRUMENT_PHYSICAL_SOURCE_KINDS = Object.freeze(Object.keys(physicalInputs));
 export const INSTRUMENT_PHYSICAL_QUANTITIES = Object.freeze(Object.entries(physicalInputs).flatMap(([sourceKind, fields]) => Object.entries(fields).map(([payloadField, unit]) =>
   Object.freeze({ id: sourceKind + '.' + payloadField, sourceKind, payloadField, unit, evidence: 'completed-world-fact',
-    group: sourceKind === 'TerrainWorkCommitted' ? 'action' : sourceKind === 'ContactResolved' ? 'contact' : 'actor',
+    group: sourceKind === 'TerrainWorkCommitted' ? 'action' : sourceKind === 'ContactResolved' ? 'contact' : sourceKind === 'FlightArcEnded' ? 'flight' : 'actor',
     scope: 'causal-voice-owner', coordinate: payloadField.startsWith('position') ? 'world-coordinate' : payloadField.startsWith('displacement') ? 'observed-displacement;not-route-distance' : 'completed-physical-quantity' }))));
 
 const validateBindingScope = raw => {
@@ -83,11 +83,18 @@ export function captureInstrumentCause(fact) {
   if (!Object.hasOwn(physicalInputs, fact?.kind)) return null;
   const values = {};
   for (const [field, unit] of Object.entries(physicalInputs[fact.kind])) { const value = fact.physicalPayload?.[field];
+    if (fact.kind === 'FlightArcEnded') continue;
     if (fact.kind === 'MotionCommitted' && ['positionXWorldPixels', 'positionYWorldPixels', 'displacementXWorldPixels', 'displacementYWorldPixels'].includes(field)) continue;
     if (finite(value, -1000000000, 1000000000)) values[field] = Object.freeze({ value, unit }); }
   if (fact.kind === 'MotionCommitted' && finite(fact.positionAfter?.x, -1000000000, 1000000000)) values.positionXWorldPixels = Object.freeze({ value: fact.positionAfter.x, unit: 'world-pixel' });
   if (fact.kind === 'MotionCommitted' && finite(fact.positionAfter?.y, -1000000000, 1000000000)) values.positionYWorldPixels = Object.freeze({ value: fact.positionAfter.y, unit: 'world-pixel' });
   if (fact.kind === 'MotionCommitted') for (const [axis, field] of [['x', 'displacementXWorldPixels'], ['y', 'displacementYWorldPixels']]) if (finite(fact.positionBefore?.[axis], -1000000000, 1000000000) && finite(fact.positionAfter?.[axis], -1000000000, 1000000000)) values[field] = Object.freeze({ value: fact.positionAfter[axis] - fact.positionBefore[axis], unit: 'world-pixel' });
+  if (fact.kind === 'FlightArcEnded' && fact.terminationReason === 'safe-landing' && fact.contactAtEnd === 'terrain-landing' && typeof fact.arcId === 'string' && fact.arcId.length > 0 &&
+      finite(fact.startPosition?.y, -1000000000, 1000000000) && finite(fact.positionAfter?.y, -1000000000, 1000000000) && finite(fact.peakY, -1000000000, Math.min(fact.startPosition.y, fact.positionAfter.y))) {
+    const descent = fact.positionAfter.y - fact.peakY, displacement = fact.positionAfter.y - fact.startPosition.y;
+    if (finite(descent, 0, 1000000000)) values.descentFromPeakPixels = Object.freeze({ value: descent, unit: 'world-pixel' });
+    if (finite(displacement, -1000000000, 1000000000)) values.verticalDisplacementPixels = Object.freeze({ value: displacement, unit: 'world-pixel' });
+  }
   return Object.freeze({ sourceKind: fact.kind, eventId: fact.eventId, evidence: 'completed-world-fact', values: Object.freeze(values) });
 }
 

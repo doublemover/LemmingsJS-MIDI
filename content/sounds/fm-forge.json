@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.fm-forge",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "name": "FM Forge",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -17,7 +17,7 @@
   "recipes": [
     {
       "id": "forge.base",
-      "revision": 3,
+      "revision": 4,
       "abstract": true,
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -223,12 +223,28 @@
           "composition": "scale",
           "mode": "onset-only",
           "smoothingMs": 0
+        },
+        {
+          "id": "safe-landing-hardness",
+          "sourceKind": "FlightArcEnded",
+          "payloadField": "descentFromPeakPixels",
+          "target": "indexStart",
+          "unit": "world-pixel",
+          "curve": "linear",
+          "inputMin": 0,
+          "inputMax": 64,
+          "outputUnit": "ratio",
+          "outputMin": 0.7,
+          "outputMax": 1.3,
+          "composition": "scale",
+          "mode": "onset-only",
+          "smoothingMs": 0
         }
       ]
     },
     {
       "id": "forge.glass-rivet",
-      "revision": 4,
+      "revision": 5,
       "extends": "forge.base",
       "name": "Glass Rivet",
       "components": [
@@ -363,7 +379,7 @@
     },
     {
       "id": "forge.copper-tine",
-      "revision": 4,
+      "revision": 5,
       "extends": "forge.base",
       "name": "Copper Tine",
       "components": [
@@ -522,7 +538,7 @@
     },
     {
       "id": "forge.alarm-bloom",
-      "revision": 4,
+      "revision": 5,
       "extends": "forge.base",
       "name": "Alarm Bloom",
       "components": [
@@ -685,7 +701,7 @@
     },
     {
       "id": "forge.rubber-bolt",
-      "revision": 4,
+      "revision": 5,
       "extends": "forge.base",
       "name": "Rubber Bolt",
       "components": [
@@ -762,11 +778,11 @@
             {
               "parameter": "indexStart",
               "minimum": {
-                "value": 2.0,
+                "value": 2,
                 "unit": "dimensionless"
               },
               "maximum": {
-                "value": 6.0,
+                "value": 6,
                 "unit": "dimensionless"
               },
               "curve": "linear",

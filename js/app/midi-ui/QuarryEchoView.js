@@ -121,10 +121,10 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
   dialog.append(title, description, qualification, fields, actions, activity, status); (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
   return Object.freeze({ open(request = null) {
     if (disposed) return;
-    if (request !== null && (!request || Object.getPrototypeOf(request) !== Object.prototype || Object.keys(request).some(key => !['family', 'sourceLabel'].includes(key)) || !['liquid', 'circuit'].includes(request.family) || typeof request.sourceLabel !== 'string' || request.sourceLabel.length > 160)) throw new TypeError('Unknown shared family-room request.');
+    if (request !== null && (!request || Object.getPrototypeOf(request) !== Object.prototype || Object.keys(request).some(key => !['family', 'sourceLabel'].includes(key)) || !['liquid', 'circuit', 'forge'].includes(request.family) || typeof request.sourceLabel !== 'string' || request.sourceLabel.length > 160)) throw new TypeError('Unknown shared family-room request.');
     release(); load();
     if (request) {
-      preset.value = request.family === 'circuit' ? 'quarry-stone-courtyard' : 'quarry-hollow-spring'; space.set(0.2); level.set(0.15); scope.value = 'owner'; voicePicker.hidden = tap.hidden = refreshVoices.hidden = true; preparedToken = preparedVoices = null; showPreset();
+      preset.value = request.family === 'circuit' ? 'quarry-stone-courtyard' : request.family === 'forge' ? 'quarry-crossed-gallery' : 'quarry-hollow-spring'; space.set(0.2); level.set(request.family === 'forge' ? 0.1 : 0.15); scope.value = 'owner'; voicePicker.hidden = tap.hidden = refreshVoices.hidden = true; preparedToken = preparedVoices = null; showPreset();
       say(request.sourceLabel + ': shared ' + (request.family === 'circuit' ? 'ROOM' : 'SPACE') + ' is staged for the physical owner sum. Apply the instrument to its lane separately, then Prepare this return. This does not affect the library audition or create a note.');
     }
     if (!dialog.open) dialog.showModal(); if (inspectionTimer === null) inspectionTimer = setInterval(inspect, 250); inspect();
