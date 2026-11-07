@@ -69,7 +69,7 @@ function observeSafety(world, goal, trace, source, mode) {
 export async function runPhysicalMusicStudy(input, { signal, current = () => true, estimatedPeakBytes = 384 * MiB, onProgress = () => {}, yieldControl = yieldBackgroundTask,
   createWorld = prepareProcgenInspectionWorld, executionIdentity = getActiveExecutionIdentity('browser-background-jobs'), now = () => globalThis.performance.now() } = {}) {
   const goal = validatePhysicalMusicGoal(input?.goal), mode = input?.mode || 'search', source = input?.source, useCache = input?.cacheEnabled !== false;
-  if (input?.cacheEnabled != null && typeof input.cacheEnabled !== 'boolean' || !['search', 'sensitivity', 'comparison'].includes(mode) || estimatedPeakBytes < 256 * MiB || estimatedPeakBytes > 512 * MiB || !source?.world || !source.engine || !source.authoring || !source.performance || source.replay?.playing !== true || typeof input.rootPath !== 'string' ||
+  if (input?.cacheEnabled != null && typeof input.cacheEnabled !== 'boolean' || !['search', 'sensitivity', 'comparison'].includes(mode) || estimatedPeakBytes < 192 * MiB || estimatedPeakBytes > 512 * MiB || !source?.world || !source.engine || !source.authoring || !source.performance || source.replay?.playing !== true || typeof input.rootPath !== 'string' ||
       input.applicationBuildId !== executionIdentity.buildId || executionIdentity.activeExecution !== 'bound') fail('physical-study-contract', 'An isolated study requires its bound executing build, complete physical/musical source and admitted world/cache workspace.');
   const sourceBytes = canonicalDataText(source, { maxBytes: 2 * MiB, maxNodes: 262144 }).bytes.length, start = boundaryOf(source), endTick = start.tickIndex + goal.horizon;
   if (!Number.isSafeInteger(endTick)) fail('physical-study-contract', 'The study horizon exceeds the exact physical tick range.');
@@ -77,10 +77,15 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
   if (mode === 'search' && goal.observationOnly || mode === 'comparison' && (!goal.observationOnly || goal.budgets.maximumCandidates < 2 || goal.allowedEdits.some(edit => edit.values.length !== 1))) fail('physical-study-contract', 'Comparison observes one concrete proposal; inverse search requires an actual requested metric.');
   const domain = mode === 'comparison' ? { ...enumerated, candidates: [{ id: goal.id + ':reference', values: {}, edits: [], reference: true }, ...enumerated.candidates], totalCombinations: 2, completeDomainEnumerated: true, order: 'original-A-then-concrete-proposed-B' } : enumerated,
     comparisonPolicy = mode === 'comparison' ? physicalCounterfactualPolicy(input.comparisonPolicy || {}) : null;
-  const budget = createResourceBudget({ limitBytes: estimatedPeakBytes }), storage = createOwnedResourceReservation({ budget, owner: 'physical-music-study', kind: 'bounded-source-trace-results-and-canonical-workspace', category: 'candidate', bytes: 80 * MiB }),
-    cache = useCache ? createBranchPrefixCache({ resourceBudget: budget }) : null, candidateOrder = new Map(domain.candidates.map((candidate, index) => [candidate.id, index])), rows = [], started = now(),
-    work = { logicalTicks: 0, computedTicks: 0, restoredTicks: 0, restoreMs: 0, verificationTicks: 0, verificationMs: 0, candidateCount: 0, retainedResultBytes: 2, retainedResultNodes: 1 };
   const rowLimits = { maxBytes: mode === 'comparison' ? 2 * MiB : 262144, maxNodes: mode === 'comparison' ? 131072 : 32768 };
+  // Charge the complete bounded report domain, not the largest64-row workspace
+  // for every small search. Source/trace/planned-command scratch stays separate.
+  const reportBytes = Math.min(4 * MiB, domain.candidates.length * rowLimits.maxBytes),
+    workspaceBytes = 16 * MiB + sourceBytes * 8 + reportBytes * 16;
+  const budget = createResourceBudget({ limitBytes: estimatedPeakBytes }), storage = createOwnedResourceReservation({ budget, owner: 'physical-music-study', kind: 'bounded-source-trace-results-and-canonical-workspace', category: 'candidate', bytes: workspaceBytes }),
+    candidateOrder = new Map(domain.candidates.map((candidate, index) => [candidate.id, index])), plannedInputs = new Map(), rows = [], started = now(),
+    work = { logicalTicks: 0, computedTicks: 0, restoredTicks: 0, restoreMs: 0, verificationTicks: 0, verificationMs: 0, candidateCount: 0, retainedResultBytes: 2, retainedResultNodes: 1 };
+  let cache = null, sourceTimeMs = null;
   const resultNodeLimit = 1 + domain.candidates.length * rowLimits.maxNodes;
   const retainRow = row => {
     const inventory = canonicalDataText(row, rowLimits), bytes = work.retainedResultBytes + inventory.bytes.length + (rows.length ? 1 : 0), nodes = work.retainedResultNodes + inventory.nodes;
@@ -159,11 +164,12 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       } catch (error) { check(); trace.projectionFailures.push({ tick, reason: error.message }); } finally { frame?.release(); }
     };
     try {
-      ({ inputs, editCost, patchHash } = await buildPhysicalMusicStudyInputs(planningWorld, goal, candidate, { baseTick: start.tickIndex, requestedAt: planningWorld.simulationTimeMs }));
+      const planned = plannedInputs.get(candidate.id); if (planned.error) throw planned.error;
+      ({ inputs, editCost, patchHash } = planned);
       if (!fresh && cache) reader = await cache.borrow({ source: sourceIdentity, inputs, throughTick: endTick, signal });
       if (reader) {
         const restored = reader.read(), restoreStarted = now(); await prepare(restored);
-        const actual = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB });
+        const actual = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB, semanticPeakBytes: 16 * MiB });
         if (await reader.verify(actual)) { trace = copy(restored.study); held = new Set(trace.heldVoices); consumed = reader.receipt.appliedInputCount; work.restoredTicks += world.tickIndex - start.tickIndex; work.restoreMs += Math.max(0, now() - restoreStarted); }
         else { reader.invalidate(); await retire(realm.host); realm = null; await prepare(source); trace = emptyTrace(initialHeld); held = new Set(initialHeld); }
         reader.release(); reader = null;
@@ -171,13 +177,13 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
       observeSafety(world, goal, trace, constraints, mode);
       const admit = item => { if (item.feedbackControl) { if (item.tick !== world.tickIndex) fail('physical-study-input', 'A sampled layer control must execute at its declared completed boundary.'); realm.controlPhysicalFeedback(item.feedbackControl); return; }
         const proposal = world.prepareIntervention(item.command); if (proposal.outcome.status !== 'queued') fail('physical-study-input', 'Candidate input refused: ' + (proposal.outcome.reason || proposal.outcome.status)); proposal.commit(); };
-      if (allUpfront) { for (const item of inputs) admit(item); consumed = inputs.length; auditionInitial = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }); }
+      if (allUpfront) { for (const item of inputs) admit(item); consumed = inputs.length; auditionInitial = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB, semanticPeakBytes: 16 * MiB }); }
       await captureFrame();
       while (world.tickIndex < endTick) {
         check();
         if (!fresh && goal.budgets.wallTimeMs != null && now() - started >= goal.budgets.wallTimeMs) { timeout = true; break; }
         if (!fresh && cache && inputs[consumed]?.tick === world.tickIndex && world.tickIndex > start.tickIndex) {
-          const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB });
+          const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB, semanticPeakBytes: 16 * MiB });
           await cache.remember({ source: sourceIdentity, inputs: inputs.slice(0, consumed), continuation: { ...continuation, study: trace }, signal });
         }
         while (consumed < inputs.length && inputs[consumed].tick === world.tickIndex) admit(inputs[consumed++]);
@@ -185,12 +191,12 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         await realm.host.advance({ steps: 1, timestamp: 0, signal });
         if (fresh) work.verificationTicks++; else work.computedTicks++;
         await captureFrame();
-        if (allUpfront && world.tickIndex === start.tickIndex + 1) appliedInitial = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB });
+        if (allUpfront && world.tickIndex === start.tickIndex + 1) appliedInitial = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB, semanticPeakBytes: 16 * MiB });
         if (world.generation !== constraints.generation || mode !== 'sensitivity' && trace.safetyFailures.length) break;
         if ((world.tickIndex - start.tickIndex) % 16 === 0) { await yieldControl(); check(); }
       }
-      const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB }), completed = world.tickIndex === endTick,
-        semanticMetrics = summarizePhysicalMusicStudyMetrics(trace, { throughTicks: world.tickIndex - start.tickIndex, sourceTimeMs: planningWorld.simulationTimeMs, finalTimeMs: world.simulationTimeMs, finalPopulation: copy(world.population.snapshot()),
+      const continuation = await realm.host.checkpoint({ signal, maxGraphBytes: 2 * MiB, maxSemanticBytes: MiB, semanticPeakBytes: 16 * MiB }), completed = world.tickIndex === endTick,
+        semanticMetrics = summarizePhysicalMusicStudyMetrics(trace, { throughTicks: world.tickIndex - start.tickIndex, sourceTimeMs, finalTimeMs: world.simulationTimeMs, finalPopulation: copy(world.population.snapshot()),
           finalJunctions: world.physicalJunctions.definitions.map(definition => copy(world.queryJunction(definition.id, { includeDefinition: false }))),
           finalLayers: { mode: world.physicalFeedback.mode, epoch: world.physicalFeedback.epoch, muted: [...world.physicalFeedback.muted], totalProposals: world.physicalFeedback.total,
             rules: world.physicalFeedback.rules.map(rule => ({ key: rule.key, status: rule.status || 'unknown', fuel: rule.fuel, occurrences: rule.occurrences })), pendingCommandIds: world.interventionState.pending.filter(command => command.causality).map(command => command.id) } }),
@@ -212,6 +218,20 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
     if (goal.allowedEdits.some(edit => edit.kind === 'layer-muted') && source.executionPolicy?.physicalFeedbackMode !== 'preserve-live') fail('physical-study-domain', 'Layer-mute sensitivity requires an explicitly armed source controller; the study does not arm a loaded project.');
     sourceIdentity = await createBranchPrefixSource({ continuation: source, graph: source.authoring.graph, performance: source.performance, sourceVersions: input.sourceVersions,
       executionIdentity, policy: { mode, goal, comparisonPolicy, sourceDelivery: 'completed-tick-before-next-input', liveOutput: 'none' }, projectRevision: input.projectRevision, resourceBudget: budget });
+    sourceTimeMs = planningWorld.simulationTimeMs; let plannedBytes = 0;
+    for (const candidate of domain.candidates) {
+      check(); let plan;
+      try { plan = await buildPhysicalMusicStudyInputs(planningWorld, goal, candidate, { baseTick: start.tickIndex, requestedAt: sourceTimeMs }); }
+      catch (error) { check(); plannedInputs.set(candidate.id, { error }); continue; }
+      plannedBytes += canonicalDataText(plan, { maxBytes: MiB, maxNodes: 65536 }).bytes.length;
+      if (plannedBytes > MiB) fail('physical-study-plan-capacity', 'Complete planned command rows exceed the admitted workspace.');
+      plannedInputs.set(candidate.id, plan);
+    }
+    // Only immutable plans and source metadata cross into candidate execution.
+    // Retire the planning world before creating a replay world or cache.
+    await retire(planningOwner); planningOwner = null; planningWorld = null;
+    const reusablePrefixes = [...plannedInputs.values()].some(plan => plan.inputs?.some(input => input.tick > start.tickIndex));
+    cache = useCache && reusablePrefixes ? createBranchPrefixCache({ resourceBudget: budget }) : null;
     for (const candidate of domain.candidates) {
       check(); if (goal.budgets.wallTimeMs != null && now() - started >= goal.budgets.wallTimeMs) { timeout = true; break; }
       if (work.logicalTicks + goal.horizon > goal.budgets.logicalTicks) { logicalLimit = true; break; }
@@ -220,7 +240,7 @@ export async function runPhysicalMusicStudy(input, { signal, current = () => tru
         retainRow(retained); }
       catch (error) { check(); if (['physical-study-retirement', 'physical-study-report-capacity'].includes(error.code) || !constraints) throw error;
         retainRow({ id: candidate.id, reference: candidate.reference === true, values: candidate.values, edits: candidate.edits, status: 'unknown', reason: error.message }); }
-      onProgress({ phase: mode === 'comparison' ? 'comparing-original-and-proposed-real-futures' : mode === 'search' ? 'searching-real-physical-candidates' : 'sampling-real-physical-sensitivity', completed: rows.length, total: domain.candidates.length, logicalTicks: work.logicalTicks, computedTicks: work.computedTicks,
+      onProgress({ phase: mode === 'comparison' ? 'comparing-original-and-proposed-real-futures' : mode === 'search' ? 'searching-real-physical-candidates' : 'sampling-real-physical-sensitivity', completedUnits: rows.length, totalUnits: domain.candidates.length, logicalTicks: work.logicalTicks, computedTicks: work.computedTicks,
         partial: { status: 'completed-samples-only;no-fresh-qualification', goal, mode, base: { worldId: start.worldId, generation: start.generation, tick: start.tickIndex, seed: source.world.seed, physicalHash: basePhysicalHash, projectRevision: input.projectRevision }, completed: rows.length, totalCombinations: domain.totalCombinations, omittedEarlierSamples: Math.max(0, rows.length - 16),
           baseContinuationHash: sourceIdentity.baseContinuationHash, mappingHash: sourceIdentity.mappingHash,
           samples: rows.slice(-16).map(row => ({ id: row.id, values: row.values, status: row.status, reason: row.reason || null, patchHash: row.patchHash || null,

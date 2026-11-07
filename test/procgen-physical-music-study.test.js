@@ -1,4 +1,4 @@
-import { PHYSICAL_MUSIC_STUDY_PEAK_BYTES } from '../js/app/procgen/workstation/PhysicalMusicStudyWorkbench.js';
+import { physicalMusicStudyPeakBytes } from '../js/app/procgen/workstation/PhysicalMusicStudyWorkbench.js';
 import { expect } from 'chai';
 import { canonicalDataText, hashDataText } from '../js/core/CanonicalData.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
@@ -15,7 +15,7 @@ import { evaluatePhysicalMusicGoal } from '../js/app/procgen/workstation/Physica
 import { runPhysicalMusicStudy } from '../js/app/procgen/workstation/PhysicalMusicStudy.js';
 import { summarizePhysicalMusicSensitivity } from '../js/app/procgen/workstation/PhysicalMusicSensitivity.js';
 
-const runWorkbenchProfileStudy = (input, options) => runPhysicalMusicStudy(input, { estimatedPeakBytes: PHYSICAL_MUSIC_STUDY_PEAK_BYTES, ...options });
+const runWorkbenchProfileStudy = (input, options) => runPhysicalMusicStudy(input, { estimatedPeakBytes: physicalMusicStudyPeakBytes(input.goal, input.mode), ...options });
 const build = 'a'.repeat(64), executionIdentity = { activeExecution: 'bound', buildId: build, closureDigest: 'b'.repeat(64), harnessVersion: 1, stateSchema: 2, assetDigest: 'c'.repeat(64), capabilityProfile: 'browser-background-jobs' };
 const mutable = value => JSON.parse(JSON.stringify(value));
 const traceRows = study => study.rows.map(row => ({ id: row.id, status: row.status, metrics: row.metrics, traceHash: row.traceHash, continuationHash: row.continuationHash, verification: row.verification }));
@@ -33,15 +33,18 @@ describe('real physical musical-goal composition', function() {
     world.timer.speedFactor = 0;
     const source = { world: captureProcgenCheckpoint(world), engine: engine.snapshot(), timeline: clock.snapshot(), performance: captureCausalPerformanceState([{ id: 'lane0' }, { id: 'lane1' }]),
       authoring: { graph: world.physicalAuthoring.graph, instances: world.physicalAuthoring.instances, junctions: world.physicalJunctions.definitions }, replay: { version: 2, playing: true, bpm: 120, scoreTimeline: true, nominalSpeed: 3 } };
-    const createWorld = async () => { const isolated = await factory(layout), scope = createProcgenRetirementScope(); return { world: isolated.world, dispose: () => scope.retire([{ name: 'actual-fixture-world', run: isolated.dispose }]) }; };
-    return { world, source, createWorld, input: { source, projectRevision: 1, applicationBuildId: build, sourceVersions: { physical: 2, musical: 1, applicationBuildId: build }, rootPath: '/' },
+    let liveWorlds = 0, peakWorlds = 0;
+    const createWorld = async () => { const isolated = await factory(layout), scope = createProcgenRetirementScope(); liveWorlds++; peakWorlds = Math.max(peakWorlds, liveWorlds);
+      return { world: isolated.world, dispose: () => scope.retire([{ name: 'actual-fixture-world', run: async () => { await isolated.dispose(); liveWorlds--; } }]) }; };
+    return { world, source, createWorld, worldOwnership: () => ({ liveWorlds, peakWorlds }), input: { source, projectRevision: 1, applicationBuildId: build, sourceVersions: { physical: 2, musical: 1, applicationBuildId: build }, rootPath: '/' },
       async dispose() { world.soundEvents.onBatch.off(observe); engine.dispose(); await owner.dispose(); } };
   };
   it('finds120/160 from real crossings, agrees with a cache-off search and keeps the original source unchanged', async () => {
     const fixture = await setup(), before = await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(fixture.world));
     try {
-      const goal = createPhysicalMusicStarterGoal(), run = cacheEnabled => runWorkbenchProfileStudy({ ...fixture.input, goal, cacheEnabled }, { createWorld: fixture.createWorld, executionIdentity });
+      const goal = createPhysicalMusicStarterGoal(), run = cacheEnabled => runWorkbenchProfileStudy({ ...fixture.input, goal, cacheEnabled }, { createWorld: fixture.createWorld, executionIdentity, onProgress: value => { expect(value.completedUnits).to.be.a('number'); expect(Number.isSafeInteger(value.completedUnits)).to.equal(true); expect(value.totalUnits).to.be.at.least(value.completedUnits); expect(value.phase.length).to.be.at.most(64); } });
       const cached = await run(true), baseline = await run(false);
+      expect(fixture.worldOwnership()).to.deep.equal({ liveWorlds: 0, peakWorlds: 1 });
       expect(cached.status).to.equal('qualified'); expect(cached.selected.verification.matched).to.equal(true);
       expect(cached.rows.find(row => row.id === cached.selected.candidateId).values['right-wall-0']).to.equal(81);
       expect(cached.rows.find(row => row.id === cached.selected.candidateId).metrics.periods.map(period => period.meanTicks)).to.deep.equal([120, 160]);

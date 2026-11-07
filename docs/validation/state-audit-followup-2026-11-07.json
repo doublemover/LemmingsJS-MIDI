@@ -479,12 +479,16 @@
       "diffWhitespace": "passed before final fixture/config edits"
     },
     "pendingIssues": [
-      1289,
       1291,
-      1292,
       1293,
-      1294
+      1295,
+      1296
     ],
-    "note": "No second complete Node suite. 341/341 grouped Node cases pass; remaining native failures are explicit. Profile changes preserve bounded refusal and do not establish full worker/composition qualification."
+    "note": "No second complete Node suite. 341/341 grouped Node cases pass; remaining native failures are explicit. Profile changes preserve bounded refusal and do not establish full worker/composition qualification.",
+    "closedIssues": [
+      1289,
+      1292,
+      1294
+    ]
   }
 }

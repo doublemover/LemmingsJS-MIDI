@@ -30,7 +30,7 @@ const resolvePlaywrightWebServer = (baseUrl, { externalServer = false } = {}) =>
   if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error('Remote E2E origins require LEMMINGS_E2E_EXTERNAL_SERVER=1 for an explicitly managed server.');
   const address = url.hostname === '[::1]' ? '::1' : '127.0.0.1';
   const secure = url.protocol === 'https:' ? ' -S -C certs/localhost.pem -K certs/localhost-key.pem' : '';
-  return { command: 'node node_modules/http-server/bin/http-server -a ' + address + ' -p ' + resolvePlaywrightWebServerPort(baseUrl) + ' -c-1 --silent' + secure,
+  return { command: 'node node_modules/http-server/bin/http-server -a ' + address + ' -p ' + resolvePlaywrightWebServerPort(baseUrl) + ' -c0 --silent' + secure,
     url: baseUrl, ignoreHTTPSErrors: true, reuseExistingServer: false, timeout: 30000 };
 };
 

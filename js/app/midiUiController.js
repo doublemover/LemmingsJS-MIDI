@@ -2455,7 +2455,7 @@ const createMidiUiController = ({
   const createLocalAudioOwner = owner => {
     const callbacks = { onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner }) };
     if (!localAudioGraph) {
-      const audio = createPreviewAudio({ masterVolume, resourceBudget, cueVoices: 4, cueCostUnits: 16, ...callbacks, onStateChange: () => { if (!localAudioGraph) renderLocalSummary(); } });
+      const audio = createPreviewAudio({ masterVolume, resourceBudget, cueVoices: 4, cueCostUnits: 32, ...callbacks, onStateChange: () => { if (!localAudioGraph) renderLocalSummary(); } });
       // Existing injected adapters may lack sessions; the built-in synth always shares one graph.
       if (typeof audio.createSession !== 'function') return audio;
       localAudioGraph = audio;

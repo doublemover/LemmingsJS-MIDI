@@ -22,7 +22,7 @@ export async function prepareWorkerProcgenSimulationHost({ manifest: input, reso
       !requiredPorts.length && typeof consume !== 'function' || activeHosts >= 2)
     throw simulationFailure('worker-admission', 'This explicit worker mode requires an immutable build, an aggregate reservation and one to four required consumers.');
   const profile = procgenSimulationProfile(input.resourceProfile);
-  const manifest = { ownerId: input.ownerId, ownerEpoch: input.ownerEpoch, documentRevision: input.documentRevision },
+  const manifest = { ownerId: input.ownerId, ownerEpoch: input.ownerEpoch, documentRevision: input.documentRevision, resourceProfile: profile.id },
     reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'simulation-worker:' + manifest.ownerId,
       generation: manifest.ownerEpoch, kind: 'worker-world-semantic-state-and-transfer-overlap', category: 'candidate', bytes: profile.aggregateBytes });
   activeHosts++;

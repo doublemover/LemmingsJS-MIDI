@@ -35,6 +35,15 @@ const inspectImages = (ground, terrainLength, objectLength, limit) => {
   return total;
 };
 
+// Bound preparation from the small ground header before copying graphics or
+// starting a worker. Include source copies, decoded images and transport/JS slack.
+export function estimateGroundAssetDecodePeakBytes(groundBytes, graphicsBytes) {
+  if (!(groundBytes instanceof Uint8Array) || groundBytes.length !== 1056 || !Number.isSafeInteger(graphicsBytes) || graphicsBytes < 0 || graphicsBytes > 16 * 1048576)
+    throw failure('invalid-data', 'Unsupported ground decode inventory.');
+  const decoded = inspectImages({ bytes: groundBytes }, Infinity, Infinity, 16 * 1048576);
+  return Math.max(4 * 1048576, (groundBytes.length + graphicsBytes) * 4 + decoded * 8 + 1048576);
+}
+
 export async function decodeGroundAssetSnapshot(input, { estimatedPeakBytes, maxBytes, maxDecodedBytes = 16 * 1048576,
   signal, current, crypto = globalThis.crypto, yieldControl = async () => {}, onProgress = () => {} } = {}) {
   const check = () => { signal?.throwIfAborted(); if (current && !current()) throw failure('stale-owner', 'Ground decode owner changed.'); };

@@ -92,6 +92,22 @@ describe('ParticleTable', function() {
     ParticleTable._frameCache = originalCache;
   });
 
+  it('decodes exact particle coordinates in a worker realm without Window or Buffer', function() {
+    const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    const originalBuffer = Object.getOwnPropertyDescriptor(globalThis, 'Buffer');
+    const expected = Buffer.from(ParticleTable.particleDataBase64, 'base64');
+    try {
+      delete globalThis.window; delete globalThis.Buffer;
+      const table = new ParticleTable(makePalette());
+      expect(table.particleData).to.have.length(51);
+      const decoded = Uint8Array.from(table.particleData.flatMap(frame => [...frame]));
+      expect([...decoded]).to.deep.equal([...expected]);
+    } finally {
+      if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+      if (originalBuffer) Object.defineProperty(globalThis, 'Buffer', originalBuffer);
+    }
+  });
+
   it('uses window.atob when available', function() {
     const originalWindow = globalThis.window;
     globalThis.window = {

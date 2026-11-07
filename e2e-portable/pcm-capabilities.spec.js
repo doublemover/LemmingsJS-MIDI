@@ -103,11 +103,20 @@ test('main audio runtime changes profiles transactionally and retires availabili
     scope: 'Actual native profile/rate context replacement and explicit enable. Separately controlled EventTarget device-availability signal; no physical unplug, per-device permission, DSP CPU or acoustic measurement.' };
   if (!available) { await testInfo.attach('native-runtime-transitions.json', { body: JSON.stringify(receipt), contentType: 'application/json' }); return; }
   await page.evaluate(async () => {
+    const { createNativeAudioFixture } = await import('/e2e/helpers/nativeAudioFixture.js');
     const { BrowserNotePreview } = await import('/js/app/midi-ui/browserNotePreview.js'), Native = globalThis.AudioContext || globalThis.webkitAudioContext;
     const contexts = [], devices = new globalThis.EventTarget();
     const preview = new BrowserNotePreview({ performanceCoordinator: null, mediaDevices: devices, createAudioContext: options => { const context = new Native(options); contexts.push({ context, options }); return context; } });
-    const button = document.createElement('button'); button.textContent = 'Enable changed runtime'; button.onclick = () => { window.changedRuntimeEnable = preview.enable(); }; document.body.append(button);
-    window.changedRuntime = { contexts, devices, preview };
+    const session = preview.createSession('native-runtime-transition');
+    window.changedRuntime = { contexts, devices, preview, session, fixture: null, voiceSerial: 0 };
+    const button = document.createElement('button'); button.textContent = 'Enable changed runtime'; button.onclick = () => {
+      window.changedRuntimeEnable = (async () => {
+        const q = window.changedRuntime, retired = q.fixture?.dispose(); await retired?.completion;
+        if (retired && retired.outcome !== 'complete') throw new Error('Native fixture retirement is incomplete.');
+        q.fixture = null; const enabled = await session.enable(); if (!enabled) return false;
+        q.fixture = await createNativeAudioFixture(session, { leaseSeconds: 20 }); return true;
+      })();
+    }; document.body.append(button);
   });
   const enable = async () => {
     await page.getByRole('button', { name: 'Enable changed runtime', exact: true }).click();
@@ -117,7 +126,8 @@ test('main audio runtime changes profiles transactionally and retires availabili
     await enable();
     receipt.deviceSignal = await page.evaluate(() => {
       const q = window.changedRuntime, context = q.preview.getAudioContext(), before = q.preview.getState();
-      q.preview.output.channels[1].sendNoteOn(60, { rawAttack: 80, time: performance.now() + 10000 }); q.devices.dispatchEvent(new Event('devicechange'));
+      const scheduled = q.fixture.begin({ id: 'future-runtime-' + (++q.voiceSerial), pitchCents: 6000, targetFrame: Math.ceil((context.currentTime + 10) * context.sampleRate), endFrame: Math.ceil((context.currentTime + 11) * context.sampleRate) });
+      if (scheduled.status !== 'accepted') throw new Error('Actual queued semantic voice rejected: ' + scheduled.reason); q.devices.dispatchEvent(new Event('devicechange'));
       const after = q.preview.getState(); return { controlled: true, beforeEpoch: before.contextEpoch, afterEpoch: after.contextEpoch,
         enabled: after.enabled, activeVoices: after.activeVoices, sameContext: context === q.preview.getAudioContext(), contexts: q.contexts.length };
     });
@@ -125,8 +135,9 @@ test('main audio runtime changes profiles transactionally and retires availabili
     expect(receipt.deviceSignal.afterEpoch).toBeGreaterThan(receipt.deviceSignal.beforeEpoch); await enable();
     for (const config of [{ latencyProfile: 'balanced', preferredSampleRate: 44100 }, { latencyProfile: 'performance', preferredSampleRate: 48000 }, { latencyProfile: 'robust', preferredSampleRate: 96000 }]) {
       const cycle = await page.evaluate(async next => {
-        const q = window.changedRuntime, old = q.preview.getAudioContext(), count = q.contexts.length, before = q.preview.getAudioRuntimeObservation();
-        q.preview.output.channels[1].sendNoteOn(60, { rawAttack: 80, time: performance.now() + 10000 });
+        const q = window.changedRuntime, old = q.preview.getAudioContext(), context = old, count = q.contexts.length, before = q.preview.getAudioRuntimeObservation();
+        const scheduled = q.fixture.begin({ id: 'future-runtime-' + (++q.voiceSerial), pitchCents: 6000, targetFrame: Math.ceil((context.currentTime + 10) * context.sampleRate), endFrame: Math.ceil((context.currentTime + 11) * context.sampleRate) });
+        if (scheduled.status !== 'accepted') throw new Error('Actual queued semantic voice rejected: ' + scheduled.reason);
         const start = performance.now(), result = await q.preview.configureAudioRuntime(next), wallMs = performance.now() - start;
         return { config: next, before, result, wallMs, contextsBefore: count, contextsAfter: q.contexts.length, oldClosed: old.state === 'closed', currentNull: q.preview.getAudioContext() === null,
           activeVoices: q.preview.getState().activeVoices, enabled: q.preview.getState().enabled };

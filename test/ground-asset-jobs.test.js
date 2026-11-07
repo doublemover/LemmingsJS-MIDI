@@ -5,7 +5,7 @@ import { BinaryReader } from '../js/data/BinaryReader.js';
 import { FileContainer } from '../js/data/FileContainer.js';
 import { GroundReader } from '../js/level/GroundReader.js';
 import { DEFAULT_STEEL_SPRITES } from '../js/steelSpritesData.js';
-import { GROUND_DECODE_VERSION, hydrateGroundAssets } from '../js/app/resources/GroundAssetDecode.js';
+import { GROUND_DECODE_VERSION, hydrateGroundAssets, estimateGroundAssetDecodePeakBytes } from '../js/app/resources/GroundAssetDecode.js';
 import { acquireSharedGroundAssets } from '../js/app/resources/GroundAssetRegistry.js';
 import { runBackgroundJobKernel } from '../js/app/resources/BackgroundJobKernels.js';
 import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
@@ -37,6 +37,15 @@ describe('shared verified terrain decode jobs', () => {
       expect(hydrateGroundAssets(result.value)).to.equal(assets); expect(Object.isFrozen(assets.terrainImages[0])).to.equal(true);
       expect(result.retainedBytes).to.be.at.least(assets.decodedBytes);
     } finally { terrain.release(); objects.release(); container.dispose(); source.release(); graphics.release(); }
+  });
+  it('decodes the actual shipped source within its header-derived workspace', async () => {
+    const snapshot = input(), peak = estimateGroundAssetDecodePeakBytes(snapshot.ground.bytes, snapshot.vgagr.bytes.length);
+    expect(peak).to.be.lessThan(16 * 1048576);
+    const result = await runBackgroundJobKernel('asset-decode', snapshot, { ...limits, estimatedPeakBytes: peak });
+    const assets = hydrateGroundAssets(result.value);
+    expect(assets.terrainImages).to.have.length(64); expect(result.retainedBytes).to.be.lessThan(peak);
+    const changed = snapshot.ground.bytes.slice(); changed[3] = 65;
+    expect(() => estimateGroundAssetDecodePeakBytes(changed, snapshot.vgagr.bytes.length)).to.throw('frame bound');
   });
   it('rejects changed source bytes and decoded capacity before creating image buffers', async () => {
     const changed = input(); changed.ground.bytes[0] ^= 1;

@@ -18,7 +18,7 @@ const localConfig = (source) => {
 };
 
 const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), immutableConfig = false, getRoutingMode = () => 'game-events',
-  onStateChange, resourceBudget = null, audio = createBrowserNotePreview({ resourceBudget, cueVoices: resourceBudget ? 4 : 0, cueCostUnits: resourceBudget ? 16 : 0 }) } = {}) => {
+  onStateChange, resourceBudget = null, audio = createBrowserNotePreview({ resourceBudget, cueVoices: resourceBudget ? 4 : 0, cueCostUnits: resourceBudget ? 32 : 0 }) } = {}) => {
   let router = null, capture = null, liveInstruments = null, liveInstrumentLease = null, prepareSerial = 0;
   const instrumentRetirements = new Set();
   let attachedView = null, attachedMode = null;

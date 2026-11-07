@@ -590,7 +590,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       check = () => { controller.signal.throwIfAborted(); if (disposed || revision !== continuationRevision || graph !== sourceGraph || options.isCurrent?.() === false) throw continuationCaptureStale(); },
       settings = { ...options, signal: controller.signal, yieldTask, check, isCurrent: () => !disposed && revision === continuationRevision && graph === sourceGraph && options.isCurrent?.() !== false };
     options.signal?.addEventListener('abort', cancel, { once: true }); if (options.signal?.aborted) cancel(); continuationAbort = controller;
-    continuationWork = resourceOwner.stageCooperative('causal-continuation-paged-copy', async () => {
+    continuationWork = resourceOwner.stageCooperative('causal-continuation-paged-copy', async ({ estimatedPeakBytes }) => {
+      settings.estimatedPeakBytes = estimatedPeakBytes;
       check(); const result = { version: 1, generation, graphRevision: sourceGraph.revision, recoveryRequired }, parts = [
         ['preparedSurfaces', sourceGraph.preparedSurfaces?.length || bodyPreparations.diagnostics().heldPreparations, () => bodyPreparations.snapshotCooperative(settings)],
         ['swarm', true, () => swarm.snapshotCooperative(settings)], ['cargo', sourceGraph.cargoStations?.length, () => cargo.snapshotCooperative(settings)],
@@ -610,7 +611,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       result.active = await collectContinuationEntries((function*() { for (const record of active.values()) yield serializeVoice(record); })(), settings);
       if (suppressed.size) result.suppressed = await collectContinuationEntries((function*() { for (const record of suppressed.values()) yield serializeVoice(record); })(), settings);
       check(); return copyContinuationCooperative(result, settings);
-    }).finally(() => { options.signal?.removeEventListener('abort', cancel); continuationWork = null; continuationAbort = null; });
+    }, options.maxBytes, options.estimatedPeakBytes).finally(() => { options.signal?.removeEventListener('abort', cancel); continuationWork = null; continuationAbort = null; });
     return continuationWork;
   };
   const restore = value => {

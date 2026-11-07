@@ -1,10 +1,12 @@
-import { decodeSimulationPacket, isSimulationEnvelope, simulationEnvelope, simulationFailure, SIMULATION_PACKET_BYTES } from './ProcgenSimulationProtocol.js';
+import { procgenSimulationProfile } from './ProcgenSimulationProfiles.js';
+import { decodeSimulationPacket, isSimulationEnvelope, simulationEnvelope, simulationFailure } from './ProcgenSimulationProtocol.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 
 export function attachProcgenSimulationConsumer({ port, manifest, consume, resourceBudget = null, onFailure = () => {}, now = () => performance.now() }) {
   if (!port?.postMessage || typeof consume !== 'function') throw new TypeError('A required simulation consumer needs its independent MessagePort and admission callback.');
+  const packetBytes = procgenSimulationProfile(manifest.resourceProfile).packetBytes;
   const storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'simulation-consumer:' + manifest.ownerId,
-    kind: 'decoded-canonical-batch-and-transfer-lease', category: 'live', bytes: 4 * SIMULATION_PACKET_BYTES });
+    kind: 'decoded-canonical-batch-and-transfer-lease', category: 'live', bytes: 4 * packetBytes });
   let disposed = false, failed = null, frontier = 0, pending = null, bytesReceived = 0, maximumConsumeMs = 0;
   const fail = error => { failed ||= error; try { onFailure(error); } catch {} };
   const receive = event => {
@@ -13,7 +15,7 @@ export function attachProcgenSimulationConsumer({ port, manifest, consume, resou
     if (message.type !== 'causal-batch' || pending || message.sequence !== frontier + 1) { fail(simulationFailure('consumer-order', 'A required consumer received overlapping or out-of-order causal delivery.')); return; }
     const buffer = message.buffer, started = now();
     pending = Promise.resolve().then(async () => {
-      const packet = decodeSimulationPacket(buffer, message.bytes);
+      const packet = decodeSimulationPacket(buffer, message.bytes, packetBytes);
       if (packet.sequence !== message.sequence || packet.documentRevision !== manifest.documentRevision || packet.batch.generation !== message.generation ||
           packet.batch.tick !== message.tick || packet.batch.worldId !== message.worldId) throw simulationFailure('consumer-boundary', 'The transferred causal packet differs from its completed boundary.');
       const receipt = await consume(packet);
@@ -22,7 +24,7 @@ export function attachProcgenSimulationConsumer({ port, manifest, consume, resou
       port.postMessage(simulationEnvelope(manifest, 'causal-ack', { sequence: frontier, generation: message.generation, tick: message.tick, worldId: message.worldId, accepted: true, buffer }), [buffer]);
     }).catch(error => {
       fail(error);
-      try { if (buffer instanceof ArrayBuffer && buffer.byteLength === SIMULATION_PACKET_BYTES) port.postMessage(simulationEnvelope(manifest, 'causal-ack', {
+      try { if (buffer instanceof ArrayBuffer && buffer.byteLength === packetBytes) port.postMessage(simulationEnvelope(manifest, 'causal-ack', {
         sequence: message.sequence, generation: message.generation, tick: message.tick, worldId: message.worldId, accepted: false, reason: String(error.message).slice(0, 256), buffer }), [buffer]); } catch {}
     }).finally(() => { pending = null; });
   };

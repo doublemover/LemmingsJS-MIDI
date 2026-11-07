@@ -5,7 +5,7 @@ import { expect, test } from './helpers/workstationValidation.js';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
-import { enableComplementaryPatterns } from './helpers/procgenPatterns.js';
+import { enableComplementaryPatterns, selectNativePatternInstrument } from './helpers/procgenPatterns.js';
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 const ready = async (page, { patterns = false } = {}) => {
@@ -45,6 +45,7 @@ test('live musical edits undo and survive save/load, reroll and same-seed replay
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page, { patterns: true });
   await useWorkstationControl(page, page.getByLabel('Global key', { exact: true }), {}, 'selectOption', '9');
+  await selectNativePatternInstrument(page);
   await page.locator('#procgenListen').click();
   await page.evaluate(() => { window.soundSelectionWorld = window.__PROCGEN_LANES__.world; });
   await page.getByLabel('Sound collection', { exact: true }).selectOption('bubble');
@@ -130,6 +131,7 @@ test('browser synth produces measurable audio from the authoritative pattern clo
     };
   });
   await ready(page, { patterns: true });
+  await selectNativePatternInstrument(page);
   await page.locator('#procgenListen').click();
   await page.locator('#procgenPause').click();
   await expect.poll(() => page.evaluate(() => window.workstationAudioMeters.reduce((peak, analyser) => {

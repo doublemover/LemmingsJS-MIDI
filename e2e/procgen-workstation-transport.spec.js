@@ -1,3 +1,4 @@
+import { selectNativePatternInstrument } from './helpers/procgenPatterns.js';
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 
@@ -52,7 +53,7 @@ async function ready(page) {
 
 test('sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices', { tag: ['@boundary', '@workstation-transport'] }, async ({ page }) => {
   test.setTimeout(90000); const errors = []; page.on('pageerror', error => errors.push(error.message));
-  await ready(page); await page.locator('#procgenListen').click();
+  await ready(page); await selectNativePatternInstrument(page); await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
   await page.evaluate(() => {
     const studio = window.__PROCGEN_STUDIO__, project = studio.getProject();

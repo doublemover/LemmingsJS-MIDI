@@ -47,6 +47,18 @@ describe('shared physical observer reservation owners', () => {
     const invalid = JSON.parse(JSON.stringify(accepted)); invalid.active = [{ voiceId: 'foreign' }]; expect(() => engine.restore(invalid)).to.throw(); expect(engine.snapshot()).to.equal(accepted);
     engine.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
+  it('copies a bounded semantic continuation without reserving the full engine capacity', async () => {
+    const profile = causalObserverResourceProfile(empty, { traceLimit: 0 }), base = Math.ceil((profile.stateBytes + profile.scratchBytes) * 1.25), budget = createResourceBudget({ limitBytes: base + 6 * 1048576 });
+    const engine = createCausalMusicEngine({ resourceBudget: budget, getGraph: () => empty, traceLimit: 0 });
+    try {
+      engine.processBatch(source(1));
+      const saved = await engine.snapshotCooperative({ maxBytes: 65536 });
+      expect(saved.physicalCursor.tick).to.equal(1); expect(Object.isFrozen(saved)).to.equal(true);
+      expect(budget.diagnostics().peakAccountedBytes).to.be.at.most(base + 6 * 1048576);
+      engine.restore(saved); expect(engine.snapshot()).to.deep.equal(saved);
+    } finally { engine.dispose(); }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('rejects input staging before its operation and retains unresolved temporary ownership', () => {
     const profile = causalObserverResourceProfile(empty, { traceLimit: 0 }), base = Math.ceil((profile.stateBytes + profile.scratchBytes) * 1.25), budget = createResourceBudget({ limitBytes: base + 4096 }), owner = createCausalObserverResources({ resourceBudget: budget, traceLimit: 0 }); let touched = false;
     expect(() => owner.stageInput('restore-copy', { active: [] }, () => { touched = true; })).to.throw('accounted bytes'); expect(touched).to.equal(false); expect(budget.diagnostics().accountedBytes).to.equal(base); owner.dispose();

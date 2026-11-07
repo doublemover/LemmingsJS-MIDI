@@ -49,11 +49,13 @@ export function createCausalObserverResources({ resourceBudget, ...capacity } = 
     try { return operation(); } finally { activeOperation = false; try { lease.release(); } catch (error) { retirementError = error; throw error; } }
   };
   const stage = (kind, operation) => admitStage(kind, operation, profile.stateBytes + profile.scratchBytes);
-  const stageCooperative = async (kind, operation) => {
+  const stageCooperative = async (kind, operation, maxBytes = null, estimatedPeakBytes = null) => {
+    if (estimatedPeakBytes != null && (!Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < 4096 || estimatedPeakBytes > 512 * MiB)) throw new RangeError('Invalid admitted continuation workspace.');
+    if (maxBytes != null && (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 128 * MiB)) throw new RangeError('Invalid bounded continuation workspace.');
     check(); if (activeOperation) throw new Error('Causal observer staging is already active.');
-    const lease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-observer-staging', kind, category: 'candidate', bytes: profile.stateBytes + profile.scratchBytes });
+    const lease = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-observer-staging', kind, category: 'candidate', bytes: Math.min(profile.stateBytes + profile.scratchBytes, estimatedPeakBytes ?? (maxBytes == null ? profile.stateBytes + profile.scratchBytes : maxBytes * 32 + MiB)) });
     activeOperation = true;
-    try { return await operation(); } finally { activeOperation = false; try { lease.release(); } catch (error) { retirementError = error; throw error; } }
+    try { return await operation({ estimatedPeakBytes: lease.receipt().declaredBytes }); } finally { activeOperation = false; try { lease.release(); } catch (error) { retirementError = error; throw error; } }
   };
   const stageInput = (kind, input, operation) => {
     check(); const inventory = estimateJournalFootprint(input, { maxBytes: 128 * MiB, maxNodes: 2097152 });

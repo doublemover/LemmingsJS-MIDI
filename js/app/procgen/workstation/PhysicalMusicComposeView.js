@@ -116,7 +116,7 @@ export function createPhysicalMusicComposeView({ document, readSource, readState
     const audio = readAudition(); audition.disabled = !state?.canAudition || draftDirty || !!audio?.active || !!audio?.busy || !!audio?.checkpointHeld;
     run.disabled = !audio?.active || !!audio?.busy || audio.phase !== 'paused'; stopAudio.disabled = !audio?.active && !audio?.checkpointHeld && !audio?.busy;
     search.disabled = sensitivity.disabled = !current || !!ownedState?.busy || !!audio?.active || !!audio?.checkpointHeld; stop.disabled = !state?.busy; applyButton.disabled = !state?.canApply || draftDirty;
-    if (state?.progress) message.textContent = state.progress.phase + ' · ' + (state.progress.completed ?? 0) + '/' + (state.progress.total ?? '?');
+    if (state?.progress) message.textContent = state.progress.phase + ' · ' + (state.progress.completedUnits ?? 0) + '/' + (state.progress.totalUnits ?? '?');
     else if (state?.error) message.textContent = state.error;
     else if (state?.study) message.textContent = state.study.status + (state.stale ? ' · source changed; Apply unavailable' : state.applied ? ' · queued paused with one Undo step' : ' · source unchanged; output off');
     results.replaceChildren(); ghost.replaceChildren();

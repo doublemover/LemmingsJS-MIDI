@@ -120,9 +120,9 @@ class ParticleTable {
    * @returns {Int8Array[]} Array of 51 Int8Arrays, each of length 160
    */
   static #decodeBase64Frames(b64) {
-    // Browsers: window.atob, Node: Buffer.from
-    const bin = typeof window !== 'undefined' && window.atob
-      ? window.atob(b64)
+    // Window and dedicated workers share the global base64 decoder.
+    const bin = typeof globalThis.atob === 'function'
+      ? globalThis.atob(b64)
       : Buffer.from(b64, 'base64').toString('binary');
     const frames = [];
     let pos = 0;

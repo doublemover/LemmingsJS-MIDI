@@ -98,13 +98,13 @@ export function createProcgenSimulationCore({ world, engine = null, clock = null
       try { return await captureProcgenPausedProjection(world, { ...viewport, sourcePaused: paused, cellBuffer, ...(allowRunning ? { yieldControl: () => Promise.resolve() } : {}), resourceBudget, signal, isCurrent: () => !disposed && !failed && isCurrent() }); }
       finally { projecting = false; capturing = false; publish(); }
     },
-    async checkpoint({ signal, isCurrent = () => true, onSlice, maxGraphBytes = 128 * 1048576, maxSemanticBytes = 32 * 1048576 } = {}) {
+    async checkpoint({ signal, isCurrent = () => true, onSlice, maxGraphBytes = 128 * 1048576, maxSemanticBytes = 32 * 1048576, semanticPeakBytes = null } = {}) {
       check(); if (!paused) throw simulationFailure('checkpoint-needs-pause', 'Pause at a completed tick before capturing an authoritative continuation.');
       capturing = true; publish(); const tick = world.tickIndex, generation = world.generation;
       try {
         const checkpoint = await captureProcgenCheckpointCooperative(world, { signal, onSlice, maxGraphBytes, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation });
         signal?.throwIfAborted(); if (disposed || !isCurrent()) throw simulationFailure('checkpoint-stale', 'The simulation checkpoint owner changed.');
-        const semantic = engine ? await engine.snapshotCooperative({ signal, onSlice, maxBytes: maxSemanticBytes, isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation }) : null;
+        const semantic = engine ? await engine.snapshotCooperative({ signal, onSlice, maxBytes: maxSemanticBytes, ...(semanticPeakBytes == null ? {} : { estimatedPeakBytes: semanticPeakBytes }), isCurrent: () => !disposed && !failed && isCurrent() && world.tickIndex === tick && world.generation === generation }) : null;
         return Object.freeze({ world: checkpoint, engine: semantic, timeline: clock?.snapshot() || null, performance: getPerformance(), executionPolicy: procgenSimulationExecutionPolicy(getExecutionPolicy()),
           authoring: cloneData({ graph: world.physicalAuthoring?.graph || null, instances: world.physicalAuthoring?.instances || [], junctions: world.physicalJunctions?.definitions || [] }, { maxBytes: 4 * 1048576, maxNodes: 262144 }),
           replay: Object.freeze({ version: 2, playing, bpm, scoreTimeline, nominalSpeed: world.timer.speedFactor }), boundary: state() });

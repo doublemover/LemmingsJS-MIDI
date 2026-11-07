@@ -22,18 +22,18 @@ export function simulationEnvelope(manifest, type, fields = {}) {
 }
 export const isSimulationEnvelope = (value, manifest) => value?.protocol === PROCGEN_SIMULATION_PROTOCOL && value.ownerId === manifest.ownerId &&
   value.ownerEpoch === manifest.ownerEpoch && value.documentRevision === manifest.documentRevision;
-export function encodeSimulationPacket(value, buffer) {
-  if (!(buffer instanceof ArrayBuffer) || buffer.byteLength !== SIMULATION_PACKET_BYTES) throw simulationFailure('packet-ownership', 'A simulation packet needs its exclusively owned pool buffer.');
+export function encodeSimulationPacket(value, buffer, packetBytes = SIMULATION_PACKET_BYTES) {
+  if (![2 * 1048576, SIMULATION_PACKET_BYTES].includes(packetBytes) || !(buffer instanceof ArrayBuffer) || buffer.byteLength !== packetBytes) throw simulationFailure('packet-ownership', 'A simulation packet needs its exclusively owned pool buffer.');
   const text = JSON.stringify(value);
-  if (typeof text !== 'string' || text.length > SIMULATION_PACKET_BYTES) throw simulationFailure('causal-capacity', 'The completed causal packet exceeds the admitted transfer capacity.');
+  if (typeof text !== 'string' || text.length > packetBytes) throw simulationFailure('causal-capacity', 'The completed causal packet exceeds the admitted transfer capacity.');
   const encoded = new TextEncoder().encodeInto(text, new Uint8Array(buffer));
   if (encoded.read !== text.length) throw simulationFailure('causal-capacity', 'The completed causal packet exceeds the admitted transfer capacity.');
   return encoded.written;
 }
-export function decodeSimulationPacket(buffer, bytes) {
-  if (!(buffer instanceof ArrayBuffer) || buffer.byteLength !== SIMULATION_PACKET_BYTES || !simulationInteger(bytes, 1, buffer.byteLength)) throw simulationFailure('packet-invalid', 'Invalid simulation transfer lease.');
+export function decodeSimulationPacket(buffer, bytes, packetBytes = SIMULATION_PACKET_BYTES) {
+  if (![2 * 1048576, SIMULATION_PACKET_BYTES].includes(packetBytes) || !(buffer instanceof ArrayBuffer) || buffer.byteLength !== packetBytes || !simulationInteger(bytes, 1, buffer.byteLength)) throw simulationFailure('packet-invalid', 'Invalid simulation transfer lease.');
   const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(buffer, 0, bytes)));
-  canonicalDataText(value, { maxBytes: SIMULATION_PACKET_BYTES, maxNodes: 500000 });
+  canonicalDataText(value, { maxBytes: packetBytes, maxNodes: 500000 });
   if (value?.batch?.version !== 1 || !Array.isArray(value.batch.facts) || !Array.isArray(value.intents) ||
       value.batch.snapshot?.tick !== value.batch.tick || value.batch.snapshot?.generation !== value.batch.generation ||
       !simulationInteger(value.sequence, 1)) throw simulationFailure('packet-invalid', 'A completed packet must carry the canonical PhysicalEventBatch and its matching snapshot.');

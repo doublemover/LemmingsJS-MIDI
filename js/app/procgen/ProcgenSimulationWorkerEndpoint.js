@@ -5,7 +5,7 @@ import { createBackgroundSnapshotReceiver, encodeBackgroundSnapshotPages, backgr
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { prepareProcgenSimulationRealm } from './ProcgenSimulationRealm.js';
-import { PROCGEN_SIMULATION_PROTOCOL, SIMULATION_MAX_CONSUMERS, SIMULATION_PACKET_BYTES, encodeSimulationPacket, isSimulationEnvelope,
+import { PROCGEN_SIMULATION_PROTOCOL, SIMULATION_MAX_CONSUMERS, encodeSimulationPacket, isSimulationEnvelope,
   simulationEnvelope, simulationFailure, simulationInteger, validateSimulationManifest } from './ProcgenSimulationProtocol.js';
 
 export function createProcgenSimulationWorkerEndpoint({ postMessage, close, timers = globalThis, now = () => performance.now(),
@@ -45,7 +45,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
       if (consumer.pending || !consumer.buffer) { reject(simulationFailure('consumer-backpressure', 'The previous causal buffer is still leased.')); return; }
       const buffer = consumer.buffer;
       try {
-        const bytes = encodeSimulationPacket(packet, buffer);
+        const bytes = encodeSimulationPacket(packet, buffer, profile.packetBytes);
         const pending = { sequence: packet.sequence, generation: packet.batch.generation, tick: packet.batch.tick, worldId: packet.batch.worldId, resolve, reject, timer: null };
         consumer.pending = pending; pending.timer = timers.setTimeout(() => { if (consumer.pending === pending) { consumer.pending = null; reject(simulationFailure('consumer-timeout', 'A required consumer did not acknowledge its causal lease; the authoritative world is paused.')); } }, 3000);
         consumer.port.postMessage(simulationEnvelope(manifest, 'causal-batch', { sequence: packet.sequence, generation: packet.batch.generation,
@@ -55,14 +55,14 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
   };
   const connect = ports => {
     if (!Array.isArray(ports) || !ports.length || ports.length > SIMULATION_MAX_CONSUMERS || new Set(ports).size !== ports.length) throw simulationFailure('consumer-inventory', 'Declare one to four independently owned required consumers.');
-    transferStorage = createOwnedResourceReservation({ budget, owner: 'simulation-causal-transfers', kind: 'exclusive-pool-and-encoding-workspace', category: 'live', bytes: (ports.length + 4) * SIMULATION_PACKET_BYTES });
+    transferStorage = createOwnedResourceReservation({ budget, owner: 'simulation-causal-transfers', kind: 'exclusive-pool-and-encoding-workspace', category: 'live', bytes: (ports.length + 4) * profile.packetBytes });
     consumers = ports.map(port => {
-      const consumer = { port, buffer: new ArrayBuffer(SIMULATION_PACKET_BYTES), pending: null, receive: null, error: null };
+      const consumer = { port, buffer: new ArrayBuffer(profile.packetBytes), pending: null, receive: null, error: null };
       consumer.receive = event => {
         const message = event.data, pending = consumer.pending;
         if (!isSimulationEnvelope(message, manifest)) return;
         if (!pending || message.type !== 'causal-ack' || ['sequence', 'generation', 'tick', 'worldId'].some(key => message[key] !== pending[key]) ||
-            !(message.buffer instanceof ArrayBuffer) || message.buffer.byteLength !== SIMULATION_PACKET_BYTES) { failure(simulationFailure('causal-ack-invalid', 'A returned causal buffer does not match its outstanding completed-tick lease.')); return; }
+            !(message.buffer instanceof ArrayBuffer) || message.buffer.byteLength !== profile.packetBytes) { failure(simulationFailure('causal-ack-invalid', 'A returned causal buffer does not match its outstanding completed-tick lease.')); return; }
         consumer.pending = null; timers.clearTimeout(pending.timer); consumer.buffer = message.buffer;
         if (message.accepted === true) pending.resolve(); else pending.reject(simulationFailure('consumer-refused', message.reason || 'A required causal consumer refused its batch.'));
       };
@@ -100,7 +100,7 @@ export function createProcgenSimulationWorkerEndpoint({ postMessage, close, time
     })().catch(error => { try { send('retired', { outcome: 'unknown', error: String(error.message).slice(0, 512) }); } finally { phase = 'closed'; close(); } }); return closing;
   };
   const sendCheckpoint = async (requestId, detached = false, recovery = false) => {
-    let value; try { value = await host.checkpoint({ signal: controller.signal, ...(recovery ? { maxGraphBytes: 4 * 1048576, maxSemanticBytes: 2 * 1048576 } : detached ? { maxGraphBytes: 8 * 1048576, maxSemanticBytes: 8 * 1048576 } : { maxGraphBytes: profile.checkpointGraphBytes, maxSemanticBytes: profile.checkpointSemanticBytes }) });
+    let value; try { value = await host.checkpoint({ signal: controller.signal, ...(profile.checkpointSemanticPeakBytes ? { semanticPeakBytes: profile.checkpointSemanticPeakBytes } : {}), ...(recovery ? { maxGraphBytes: 4 * 1048576, maxSemanticBytes: 2 * 1048576 } : detached ? { maxGraphBytes: 8 * 1048576, maxSemanticBytes: 8 * 1048576 } : { maxGraphBytes: profile.checkpointGraphBytes, maxSemanticBytes: profile.checkpointSemanticBytes }) });
       if (detached || recovery) {
         const { hashData } = await import('../../core/CanonicalData.js'), { hashProcgenContinuationCheckpoint, hashProcgenPhysicsCheckpoint } = await import('./workstation/ProcgenCheckpointProvenance.js');
         const sourceHash = await hashData(value, { maxBytes: (recovery ? 8 : 16) * 1048576 - 4096, maxNodes: recovery ? 262144 : 1000000 }), continuationHash = await hashProcgenContinuationCheckpoint(value.world), physicsHash = await hashProcgenPhysicsCheckpoint(value.world);

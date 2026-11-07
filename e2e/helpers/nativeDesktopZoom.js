@@ -7,7 +7,7 @@ const minimum = { width: 1920, height: 1080 };
 
 export const withNativeDesktopZoom = async (baseURL, run) => {
   const context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: true, viewport: null, ignoreHTTPSErrors: true,
-    args: ['--disable-extensions-except=' + extension, '--load-extension=' + extension, '--window-size=4000,2400', '--force-device-scale-factor=1', '--allow-insecure-localhost'] });
+    args: ['--disable-extensions-except=' + extension, '--load-extension=' + extension, '--window-size=4000,2400', '--force-device-scale-factor=1', '--allow-insecure-localhost', '--ignore-certificate-errors'] });
   try {
     const page = context.pages()[0], worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', { timeout: 15000 });
     await page.goto(baseURL + '/test/support/workstation-zoom/blank.html');

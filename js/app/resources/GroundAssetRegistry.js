@@ -1,6 +1,6 @@
 import { BinaryReader } from '../../data/BinaryReader.js';
 import { getApplicationBuild } from '../../runtime/ActiveExecutionIdentity.js';
-import { GROUND_DECODE_VERSION, hydrateGroundAssets } from './GroundAssetDecode.js';
+import { GROUND_DECODE_VERSION, hydrateGroundAssets, estimateGroundAssetDecodePeakBytes } from './GroundAssetDecode.js';
 import { sharedContentJobs } from './SharedContentJobs.js';
 
 export async function acquireSharedGroundAssets({ ground, vgagr, steelIds, signal, budgetAdapter, contentJobs = sharedContentJobs, onProgress } = {}) {
@@ -21,7 +21,7 @@ export async function acquireSharedGroundAssets({ ground, vgagr, steelIds, signa
   let pending;
   try {
     pending = contentJobs.acquire({ kind: 'asset-decode', contentHash, decoderVersion: GROUND_DECODE_VERSION,
-      inputBytes: groundPin.length + vgaPin.length, estimatedPeakBytes: 64 * 1048576, maxBytes: 16 * 1048576, priority: 'interactive',
+      inputBytes: groundPin.length + vgaPin.length, estimatedPeakBytes: estimateGroundAssetDecodePeakBytes(groundPin.copyBytes(), vgaPin.length), maxBytes: 16 * 1048576, priority: 'interactive',
       signal, budgetAdapter, onProgress, releasePreparedInput: releasePins,
       prepareInput() {
         try { return { version: GROUND_DECODE_VERSION, ground: { ...ground.source, bytes: groundPin.copyBytes() },

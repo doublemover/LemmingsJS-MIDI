@@ -38,7 +38,7 @@ test('Artificial Choir stages four recipes and only applies a real auditioned wo
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare artificial choir', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
-  await revisions.selectOption('choir.hollow-ooh@1'); await expect(dialog.getByLabel('Instrument source model')).toContainText('artificial three-band formants');
+  await revisions.selectOption('choir.hollow-ooh@3'); await expect(dialog.getByLabel('Instrument source model')).toContainText('artificial three-band formants');
   await expect(dialog.getByRole('button', { name: 'Install auditioned pack', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click(); await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
   await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click();
