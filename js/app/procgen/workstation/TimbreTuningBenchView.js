@@ -1,4 +1,4 @@
-export function createTimbreTuningBenchView({ document, readSource, readState, open, edit, analyze, invalidateAnalysis, prepare, commit, restore, cancel, compareTake, prepareProofScene, onDraftChange = () => {}, onStatus = () => {} } = {}) {
+export function createTimbreTuningBenchView({ document, readSource, readState, open, edit, analyze, invalidateAnalysis, prepare, commit, restore, cancel, compareTake, prepareProofScene, revealFit, onDraftChange = () => {}, onStatus = () => {} } = {}) {
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; }, element = node('section');
   element.__ownedControl = true; element.className = 'studio-timbre-bench'; element.setAttribute('aria-label', 'Spectrum and tuning bench');
   const header = node('h2', 'SPECTRUM / TUNING'), voice = node('p'), message = node('output'), actions = node('div'), small = node('fieldset'), partials = node('div'), tuning = node('div'), curves = node('div'), receipt = node('pre');
@@ -45,6 +45,7 @@ export function createTimbreTuningBenchView({ document, readSource, readState, o
   const analyzeButton = button('Analyze declared spectra · offline', () => analyze(analysisOptions(false))), bypass = button('Bypass model · record explicit bypass', () => analyze(analysisOptions(true))),
     stop = button('Cancel bench work · keep draft', cancel), prepareButton = button('Prepare both exact revisions · silent', () => { if (jsonDirty) throw new Error('Use or discard the pending JSON draft before Prepare.'); return prepare({ externalPolicy: output.value }); }),
     commitButton = button('Commit prepared spectrum + tuning · one Undo', () => { const result = commit(); dirty = jsonDirty = false; return result; });
+  actions.append(button('Review estimated source modes in Seed Lab', revealFit));
   actions.append(button('Prepare Bent Ladder for review', prepareProofScene), button('Compare prepared pair on saved physical take', compareTake));
   actions.append(analyzeButton, bypass, stop, prepareButton, commitButton, button('Restore saved baseline as draft', () => { restore(); dirty = true; onDraftChange(); }));
   output.addEventListener('change', () => { cancel(); dirty = true; onDraftChange(); });
@@ -75,7 +76,7 @@ export function createTimbreTuningBenchView({ document, readSource, readState, o
     }
     for (const [index, row] of rows.entries()) {
       setValue(row.ratio, draft.partialRatios[index]); setValue(row.gain, draft.partialGains[index]); setValue(row.slider, draft.partialGains[index]); setValue(row.t60, draft.partialT60Seconds[index]);
-      const provenance = draft.partialProvenance[index]; row.origin.textContent = provenance.kind + ' · ' + draft.partialRatios[index] * draft.referenceHz + 'Hz' + (provenance.fitRef ? ' · fit ' + provenance.fitRef.id + ' r' + provenance.fitRef.revision + ' · estimates require the source-fit pin/remove workflow' : '');
+      const provenance = draft.partialProvenance[index]; row.origin.textContent = provenance.kind + (provenance.confidence ? ' · ' + provenance.confidence + (provenance.pinned ? ' · manually pinned' : ' · unpinned estimate') : '') + ' · ' + draft.partialRatios[index] * draft.referenceHz + 'Hz' + (provenance.fitRef ? ' · fit ' + provenance.fitRef.id + ' r' + provenance.fitRef.revision + ' · estimates require the source-fit pin/remove workflow' : '');
       row.ratio.readOnly = row.gain.readOnly = row.t60.readOnly = provenance.kind !== 'authored'; row.slider.disabled = provenance.kind !== 'authored'; partials.append(row.element);
     }
   };
@@ -110,11 +111,11 @@ export function createTimbreTuningBenchView({ document, readSource, readState, o
     else if (state?.prepared) message.textContent = 'Both exact revisions prepared silently; Commit publishes one sound edit.';
     if (!draft) return;
     if (shownDraft !== draft) {
-      shownDraft = draft; setValue(stretch, draft.coupledMorph.stretch); linked.checked = draft.coupledMorph.linked; setValue(reference, draft.referenceHz); setValue(period, draft.periodRatio); setValue(degrees, draft.degreeRatios.join(','));
+      shownDraft = draft; stretch.disabled = damping.disabled = draft.partialProvenance.some(provenance => provenance.kind === 'estimated'); setValue(stretch, draft.coupledMorph.stretch); linked.checked = draft.coupledMorph.linked; setValue(reference, draft.referenceHz); setValue(period, draft.periodRatio); setValue(degrees, draft.degreeRatios.join(','));
       setValue(minimum, draft.registerDomain.minimumHz); setValue(maximum, draft.registerDomain.maximumHz); if (!jsonDirty) setValue(json, JSON.stringify(draft, null, 2)); renderSpectrum(draft); renderTuning(draft);
     }
     if (shownAnalysis !== state.analysis || state.analysisStale) { shownAnalysis = state.analysis; renderCurves(state); }
-    receipt.textContent = JSON.stringify({ draftReferenceState: state.prepared ? 'freshly-hashed-in-prepared-set' : 'local-draft;content-hashes-recomputed-by-offline-analysis-or-prepare', spectrumRef: draft.spectrumRef, tuningRef: draft.tuningRef, heldPolicy: draft.heldPolicy, prepared: state.prepared, analysisStale: state.analysisStale, analysisReceipt: state.analysis?.receipt || null }, null, 2);
+    receipt.textContent = JSON.stringify({ draftReferenceState: state.prepared ? 'freshly-hashed-in-prepared-set' : 'local-draft;content-hashes-recomputed-by-offline-analysis-or-prepare', spectrumRef: draft.spectrumRef, tuningRef: draft.tuningRef, heldPolicy: draft.heldPolicy, prepared: state.prepared, analysisStale: state.analysisStale, analysisReceipt: state.analysis?.receipt || null, fittedSourceReferences: draft.fitSources || [] }, null, 2);
   }
   element.append(header, voice, actions, message, small, partials, tuning, details, curves, jsonDetails, receipt);
   return Object.freeze({ element, render, hasDraft: () => dirty || jsonDirty, dispose() { disposed = true; rows = []; element.remove(); } });

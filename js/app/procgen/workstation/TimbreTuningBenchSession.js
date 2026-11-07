@@ -41,6 +41,15 @@ export function createTimbreTuningBenchSession({ jobs, resourceBudget, getSource
       draft = validateTimbreTuningSet(next); draftRevision++; notify(); return draft;
     },
     invalidateAnalysis() { operation?.controller.abort(new Error('The requested analysis window/grid changed.')); clearPrepared(); analysisRevision = null; notify(); },
+    offerFit(fit, options = {}) { return run('offering-reviewed-fit', async token => {
+      const source = getSource(), workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'paired-spectrum-fit-offer', kind: 'bounded-fit-selection-hash-and-conversion', category: 'candidate', bytes: 16 * 1048576 });
+      try {
+        const { createTimbreTuningFromModalFit } = await import('../../../midi/content/TimbreTuningModalFit.js'), candidate = await createTimbreTuningFromModalFit({ fit, ...options });
+        token.controller.signal.throwIfAborted();
+        if (disposed || operation !== token || token.revision !== draftRevision || source.identity !== getSource().identity) throw new Error('The target voice changed before the reviewed fit could be offered.');
+        clearPrepared(); analysis?.release(); analysis = null; analysisRevision = null; baseline = source.lane.timbreTuningSet || null; sourceIdentity = source.identity; draft = candidate; draftRevision++; committed = false; error = null; notify(); return draft;
+      } finally { workspace.release(); }
+    }); },
     restoreBaseline() { if (!baseline) throw new Error('This voice has no saved paired baseline.'); return edit(baseline); },
     analyze(options) { return run('analyzing-offline', async token => {
       if (!draft || stale()) throw new Error('Reopen the current voice before analyzing.');

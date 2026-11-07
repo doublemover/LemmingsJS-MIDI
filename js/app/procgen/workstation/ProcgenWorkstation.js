@@ -2164,7 +2164,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return committed;
   };
   const ensureSoundSeedLab = () => { if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound authoring ownership is unavailable.'); return soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, getPlayback: () => physicalPlayback, resourceBudget, jobs: backgroundJobs,
-    displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
+    displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }), onOfferTimbreTuningFit: (fit, options) => handlers.offerTimbreTuningFit(fit, options),
     getTravelMappings: () => { const lane = project.procgen.lanes.findIndex(value => value.id === selected().id); return (runtime()?.world.physicalAuthoring?.graph?.instruments || []).filter(value => { const a = value.articulation; return value.route === 'local' && (!value.sourceLanes || value.sourceLanes.includes(lane)) && (value.sourceKind === 'ContactSpanBegan' && value.causeKind === 'support' && value.contactTravel?.lifetimeScope === 'contactSpan' || value.sourceKind === 'MotionCommitted' && a?.sustain && a.lifetimeScope === 'actorJourney' && a.metric === 'axis-projection' && ['signedX', 'signedY'].includes(a.orientation) && a.phaseMode === 'direction-reversing'); }); }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status }); };
   const getOperationalSnapshot = () => {
     const world = runtime()?.world, laneRuntime = runtime()?.lanes?.getOperationalState?.(), output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState(), position = transport.getState(), metrics = legacy.getOperationalMetrics?.();
@@ -2332,6 +2332,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     analyzeTimbreTuningDraft: options => timbreTuningBench?.analyze(options),
     prepareTimbreTuningPair: options => timbreTuningBench?.prepare(options),
     commitTimbreTuningPair: () => timbreTuningBench?.commit(),
+    offerTimbreTuningFit: async (fit, options) => {
+      const owner = await getTimbreTuningBench(), source = timbreTuningSource();
+      if (!source.lane || source.lane.mode === 'pattern') throw new Error('Select a physical voice before offering a fitted paired spectrum.');
+      const result = await owner.offerFit(fit, options); state.tab = 'Spectrum'; view?.openInspector(); return result;
+    },
+    revealTimbreTuningFit: () => {
+      const reference = timbreTuningBench?.state().draft?.fitSources?.[0]?.fitRef;
+      if (!reference) throw new Error('The selected paired draft has no retained source-fit revision.');
+      return ensureSoundSeedLab().revealReviewedFit(reference);
+    },
     compareTimbreTuningTake: async () => {
       const bench = timbreTuningBench?.state();
       if (!bench?.canCommit || !bench.baseline || !bench.prepared?.set) throw new Error('Load a saved source pair, record/select its take, then prepare a proposed pair before fixed-take A/B.');

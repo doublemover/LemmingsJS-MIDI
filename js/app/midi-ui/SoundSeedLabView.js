@@ -15,7 +15,7 @@ import { createInstrumentDisplayScheduler } from '../resources/InstrumentDisplay
 import { deliverArtifactToAnchor } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createSoundSeedLabView({ document, window, audio, getPlayback = () => null, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], coreMaterial: suppliedCoreMaterial = null, onStatus = () => {} } = {}) {
+export function createSoundSeedLabView({ document, window, audio, getPlayback = () => null, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], coreMaterial: suppliedCoreMaterial = null, onOfferTimbreTuningFit = null, onStatus = () => {} } = {}) {
   const listeners = [], modeListeners = [], fitOfferButtons = [], retirement = createProcgenRetirementScope();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
   let streamingMaterial, streamingAudition, streamingFingerprint = null;
@@ -331,6 +331,17 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
   const morphPane = createResonatorMorphView({ document, window, audio, getPlayback, resourceBudget, jobs });
   for (const index of [0, 1]) { const offer = node('button', 'Offer reviewed fit to MORPH ' + (index ? 'B' : 'A')); offer.type = 'button'; offer.disabled = true; fitOfferButtons.push(offer); listen(offer, 'click', () => { if (disposed || active) return; const fit = modal.state().analysis; if (!fit || modalDraft !== draft || preparedModalRevision !== modalRevision) { say('Prepare the current reviewed fit before offering an endpoint.'); return; } const ids = [...selectedModes]; active = Promise.resolve().then(() => morphPane.offerEndpointSource(index, 'fitted', fit, ids.length ? { modeIds: ids } : {})).then(() => say('Fitted endpoint offered with unknown interaction signatures. Author and review explicit couplings in MORPH.')).catch(error => say(error.message)).finally(() => { active = null; refresh(); }); refresh(); }); bodyPage.append(offer); }
 
+  if (typeof onOfferTimbreTuningFit === 'function') {
+    const offer = node('button', 'Offer reviewed modes to SPECTRUM / TUNING'); offer.type = 'button'; offer.disabled = true; fitOfferButtons.push(offer);
+    listen(offer, 'click', () => {
+      if (disposed || active) return; const fit = modal.state().analysis;
+      if (!fit || modalDraft !== draft || preparedModalRevision !== modalRevision || pitch.value !== 'pitched' || !rootPitch.value.trim() || !Number.isFinite(Number(rootPitch.value))) { say('Refit the current mode selection and declare its independent root before offering a paired spectrum.'); return; }
+      const revision = draft, fitRevision = modalRevision, ids = [...selectedModes], referenceHz = 440 * 2 ** ((Number(rootPitch.value) - 6900) / 1200);
+      active = Promise.resolve().then(() => { if (revision !== draft || fitRevision !== modalRevision) throw new Error('The reviewed fit changed before offer.'); return onOfferTimbreTuningFit(fit, { modeIds: ids, referenceHz, selectionRevision: fitRevision + 1 }); })
+        .then(() => say('Reviewed modes offered as an estimated spectrum draft. Exact original/reconstruction/residual and fit revision are retained. Tuning stays independently authored; prepare/commit remains explicit.'))
+        .catch(error => say(error.message)).finally(() => { active = null; refresh(); }); refresh();
+    }); bodyPage.append(offer);
+  }
   root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, anatomy, cause, advanced, bodyPage, morphPane.element, rebuildPage, actions);
   const stage = document.getElementById('procgenStudio'); if (stage) stage.after(root); else (document.getElementById('procgenPresentationRoot') || document.body).append(root);
   surface = scheduler.register({ id: 'sound-seed-lab', element: root, intervalMs: 100, write: paint, onError: message => say(String(message)) });
@@ -351,7 +362,11 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
     await instrument.clear(); await rebuild.clear(); rebuildPlan = null; await modal.clear(); await warp.clear(); warpDraft = -1; warpParentSelection = null; modalSelection = null; modalDraft = -1; await composition.clear(); compositionDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1; if (selection !== sourceSelection || disposed) return;
     await analysis.selectSource(source); if (selection !== sourceSelection || disposed) return; resetRange(); root.scrollIntoView?.({ block: 'nearest' }); first.focus(); say('Choose an exact parent-frame range. The original source is retained by its capture or render owner.');
   }
-  return Object.freeze({ async offerMorphSource(index, kind, sourceFile, options = {}) { if (disposed || active) throw new Error('Finish the current seed operation before offering a resonator source.'); root.hidden = false; await (typeof sourceFile?.text === 'function' ? morphPane.offerEndpointFile(index, kind, sourceFile, options) : morphPane.offerEndpointSource(index, kind, sourceFile, options)); refresh(); return morphPane.state(); }, async open(source) {
+  return Object.freeze({ revealReviewedFit(reference) {
+    const fit = modal?.state().analysis;
+    if (disposed || active || !fit || reference?.id !== 'seed-fit.' + fit.recipeHash.slice(0, 24) || reference.revision !== preparedModalRevision + 1 || modalDraft !== draft || preparedModalRevision !== modalRevision) throw new Error('This exact reviewed fit is not retained in Seed Lab. Reopen its original frozen source and fit receipt before editing estimates.');
+    root.hidden = false; bodyPage.open = true; bodyModes.querySelector('input[type="number"]')?.focus(); return true;
+  }, async offerMorphSource(index, kind, sourceFile, options = {}) { if (disposed || active) throw new Error('Finish the current seed operation before offering a resonator source.'); root.hidden = false; await (typeof sourceFile?.text === 'function' ? morphPane.offerEndpointFile(index, kind, sourceFile, options) : morphPane.offerEndpointSource(index, kind, sourceFile, options)); refresh(); return morphPane.state(); }, async open(source) {
     if (disposed) return; refreshTravelChoices(); if (analysis.candidate()?.metadata().assetReady) { offeredSource = source; offeredSerial++; rebuild.stop(); rebuildPlan = null; root.hidden = false; rebuildPage.open = true; refresh(); say('New source offered. The current frozen material is unchanged.'); return; }
     await active?.catch(() => {}); await loadSource(source);
   }, state: () => Object.freeze({ morph: morphPane.state(), analysis: analysis.state(), derived: derived.state(), warp: warp.state(), warpSource: coreMaterial.state(), streaming: streamingMaterial.state(), streamingAudition: streamingAudition.state(), warpCurrent: warpCurrent(), composition: composition.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),

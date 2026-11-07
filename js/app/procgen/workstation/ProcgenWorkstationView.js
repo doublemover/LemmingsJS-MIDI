@@ -1037,7 +1037,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       timbreTuningView ||= createTimbreTuningBenchView({ document, readSource: () => handlers.timbreTuningSource?.(), readState: () => handlers.timbreTuningBenchState?.(),
         open: recipe => handlers.openTimbreTuningBench?.(recipe), edit: raw => handlers.editTimbreTuningDraft?.(raw), analyze: options => handlers.analyzeTimbreTuningDraft?.(options),
         invalidateAnalysis: () => handlers.invalidateTimbreTuningAnalysis?.(), prepare: options => handlers.prepareTimbreTuningPair?.(options), commit: () => handlers.commitTimbreTuningPair?.(),
-        compareTake: () => handlers.compareTimbreTuningTake?.(), prepareProofScene: () => handlers.prepareBentLadder?.(), restore: () => handlers.restoreTimbreTuningBaseline?.(), cancel: () => handlers.cancelTimbreTuningBench?.(), onDraftChange: () => { draftRevision++; }, onStatus: message => setStatus(message) });
+        revealFit: () => handlers.revealTimbreTuningFit?.(), compareTake: () => handlers.compareTimbreTuningTake?.(), prepareProofScene: () => handlers.prepareBentLadder?.(), restore: () => handlers.restoreTimbreTuningBaseline?.(), cancel: () => handlers.cancelTimbreTuningBench?.(), onDraftChange: () => { draftRevision++; }, onStatus: message => setStatus(message) });
       nextFields.append(timbreTuningView.element); timbreTuningView.render();
     } else if (state.tab === 'Compare') {
       counterfactualView ||= createPhysicalCounterfactualView({ document, resourceBudget, readSource: () => handlers.physicalMusicSource?.(), readState: () => handlers.physicalMusicStudyState?.(),

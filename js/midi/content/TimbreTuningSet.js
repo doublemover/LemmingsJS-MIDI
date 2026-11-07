@@ -8,14 +8,27 @@ const ref = value => value && id(value.id) && Number.isSafeInteger(value.revisio
 export function validateTimbreTuningSet(raw) {
   const value = JSON.parse(canonicalDataText(raw, limits).text);
   if (value.schema !== 'lemmings-timbre-tuning-set/v1' || !id(value.id) || !Number.isSafeInteger(value.revision) || value.revision < 1 ||
-      Object.keys(value).some(key => !['schema', 'id', 'revision', 'name', 'spectrumRef', 'partialRatios', 'partialGains', 'partialT60Seconds', 'partialProvenance', 'tuningRef', 'degreeRatios', 'periodRatio', 'referenceHz', 'referenceCents', 'registerDomain', 'coupledMorph', 'heldPolicy', 'renderer', 'analysisReceipt'].includes(key)) ||
+      Object.keys(value).some(key => !['schema', 'id', 'revision', 'name', 'spectrumRef', 'partialRatios', 'partialGains', 'partialT60Seconds', 'partialProvenance', 'fitSources', 'tuningRef', 'degreeRatios', 'periodRatio', 'referenceHz', 'referenceCents', 'registerDomain', 'coupledMorph', 'heldPolicy', 'renderer', 'analysisReceipt'].includes(key)) ||
       typeof value.name !== 'string' || !value.name || value.name.length > 160 || !ref(value.spectrumRef) || !ref(value.tuningRef) ||
       !Array.isArray(value.partialRatios) || !value.partialRatios.length || value.partialRatios.length > 16 || !value.partialRatios.every(ratio => finite(ratio, 0.125, 32)) ||
       !Array.isArray(value.partialGains) || value.partialGains.length !== value.partialRatios.length || !value.partialGains.every(gain => finite(gain, 0, 1)) ||
       !Array.isArray(value.partialT60Seconds) || value.partialT60Seconds.length !== value.partialRatios.length || !value.partialT60Seconds.every(seconds => finite(seconds, 0.04, 4)) ||
       !Array.isArray(value.partialProvenance) || value.partialProvenance.length !== value.partialRatios.length ||
-      value.partialProvenance.some(item => !item || !['authored', 'estimated', 'disabled'].includes(item.kind) || Object.keys(item).some(key => !['kind', 'fitRef'].includes(key)) || (item.kind === 'estimated' ? !ref(item.fitRef) : item.fitRef != null)) ||
+      value.partialProvenance.some(item => !item || !['authored', 'estimated', 'disabled'].includes(item.kind) || Object.keys(item).some(key => !['kind', 'fitRef', 'modeId', 'confidence', 'pinned'].includes(key)) || (item.kind === 'estimated' ? !ref(item.fitRef) : item.fitRef != null)) ||
       !value.partialGains.some((gain, index) => gain > 0 && value.partialProvenance[index].kind !== 'disabled')) fail('Use one to16 finite positive partial ratios, declared amplitude gains, T60 seconds and exact provenance.');
+  const fitSources = value.fitSources || [];
+  if (!Array.isArray(fitSources) || fitSources.length > 16 || fitSources.some(source => !source || !ref(source.fitRef) || !['parentAssetHash', 'recipeHash', 'residualAssetHash', 'reconstructionAssetHash', 'receiptHash'].every(key => hash(source[key])) ||
+      !Number.isSafeInteger(source.selectionRevision) || source.selectionRevision < 1 || !Number.isSafeInteger(source.sourceRate) || source.sourceRate < 8000 || source.sourceRate > 192000 ||
+      !Number.isSafeInteger(source.observationFrames) || source.observationFrames < 64 || !Number.isSafeInteger(source.fftSize) || source.fftSize < source.observationFrames ||
+      !Array.isArray(source.selectedModeIds) || !source.selectedModeIds.length || source.selectedModeIds.length > 16 || source.selectedModeIds.some(mode => typeof mode !== 'string' || mode.length > 64) ||
+      Object.keys(source).some(key => !['fitRef', 'parentAssetHash', 'recipeHash', 'residualAssetHash', 'reconstructionAssetHash', 'receiptHash', 'receipt', 'selectionRevision', 'sourceRate', 'observationFrames', 'fftSize', 'selectedModeIds', 'evidence'].includes(key)))) fail('A fitted spectrum retains its exact source asset, reconstruction/residual, recipe/selection and observation/padding receipt.');
+  for (const [index, provenance] of value.partialProvenance.entries()) if (provenance.kind === 'estimated') {
+    const source = fitSources.find(source => source.fitRef.hash === provenance.fitRef.hash), mode = source?.receipt?.selectedModes?.find(mode => mode.id === provenance.modeId), total = source?.receipt?.selectedModes?.reduce((sum, mode) => sum + mode.amplitude, 0);
+    if (!mode || !finite(source.receipt.referenceHz, 20, 2000) || mode.frequencyHz / source.receipt.referenceHz !== value.partialRatios[index] || mode.amplitude / total !== value.partialGains[index] || mode.t60Seconds !== value.partialT60Seconds[index]) fail('Edit, remove or refit estimated modes through the exact source-fit selection before offering a revised spectrum.');
+    if (!fitSources.some(source => source.fitRef.hash === provenance.fitRef.hash && source.fitRef.revision === provenance.fitRef.revision && source.fitRef.id === provenance.fitRef.id && source.selectedModeIds.includes(provenance.modeId)) ||
+        typeof provenance.confidence !== 'string' || provenance.confidence.length > 256 || typeof provenance.pinned !== 'boolean') fail('Estimated partials require their exact selected source-fit revision and uncertainty.');
+  }
+  for (const source of fitSources) if (source.selectedModeIds.length !== value.partialProvenance.filter(provenance => provenance.kind === 'estimated' && provenance.fitRef.hash === source.fitRef.hash).length) fail('A paired fitted selection must retain exactly its reviewed source mode set.');
   if (!finite(value.periodRatio, 1 + 1e-9, 16) || !finite(value.referenceHz, 20, 2000) || !finite(value.referenceCents, -24000, 24000) ||
       !Array.isArray(value.degreeRatios) || !value.degreeRatios.length || value.degreeRatios.length > 128 || value.degreeRatios[0] !== 1 ||
       value.degreeRatios.some((ratio, index) => !finite(ratio, 1, value.periodRatio) || ratio >= value.periodRatio || index && ratio <= value.degreeRatios[index - 1]) ||
@@ -38,6 +51,7 @@ export async function stampTimbreTuningSet(raw) {
 export async function verifyTimbreTuningSet(raw) {
   const set = validateTimbreTuningSet(raw);
   if (await hashData(timbreSpectrumData(set), limits) !== set.spectrumRef.hash || await hashData(timbreTuningData(set), limits) !== set.tuningRef.hash) fail('The saved spectrum or tuning differs from its immutable reference.');
+  for (const source of set.fitSources || []) if (await hashData(source.receipt, { maxBytes: 262144, maxNodes: 16384 }) !== source.receiptHash || source.fitRef.hash !== source.receiptHash || source.parentAssetHash !== source.receipt.parentAssetHash || source.recipeHash !== source.receipt.recipeHash || source.residualAssetHash !== source.receipt.residualAssetHash || source.reconstructionAssetHash !== source.receipt.reconstructionAssetHash) fail('The retained fit/source/residual receipt changed.');
   return set;
 }
 export function physicalTuningForTimbreSet(set) {
