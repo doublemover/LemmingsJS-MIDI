@@ -8,13 +8,14 @@
     "networkMidi2": "explicit OS-managed Windows NET2UDP endpoints; no application UDP session engine; independent-peer/link qualification pending"
   },
   "workerSources": [
+    "js/app/midi-ui/BufferedWarpVoiceOwner.js",
+    "js/app/midi-ui/LiveInputWarpOwner.js",
+    "js/app/procgen/ProcgenNativeOutputRealm.js",
+    "js/app/procgen/ProcgenOwnedAudioOutputRealm.js",
+    "js/app/procgen/ProcgenSimulationHost.js",
     "js/app/procgen/survey/ProcgenSurveyReplaySession.js",
     "js/app/procgen/workstation/ProcgenTimingDriver.js",
-    "js/app/resources/BackgroundJobService.js",
-    "js/app/procgen/ProcgenSimulationHost.js",
-    "js/app/midi-ui/BufferedWarpVoiceOwner.js",
-    "js/app/procgen/ProcgenOwnedAudioOutputRealm.js",
-    "js/app/procgen/ProcgenOwnedAudioOutputWorker.js"
+    "js/app/resources/BackgroundJobService.js"
   ],
   "components": [
     {
@@ -112,7 +113,8 @@
         "service-worker.js"
       ],
       "fileCount": 1,
-      "sha256": "7343667833e5eecfb3d291788721678aad563b614728e0e994304538d78615d9"
+      "sha256": "7343667833e5eecfb3d291788721678aad563b614728e0e994304538d78615d9",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-survey-replay-worker",
@@ -131,7 +133,8 @@
         "js/app/procgen/survey/ProcgenSurveyReplayWorker.js"
       ],
       "fileCount": 4,
-      "sha256": "6d5adf7256666b74ef8bef66cc70f9a7b5b2797450c092f64565219f70b32bdf"
+      "sha256": "6d5adf7256666b74ef8bef66cc70f9a7b5b2797450c092f64565219f70b32bdf",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-background-job-worker",
@@ -492,7 +495,8 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 340,
-      "sha256": "bdec3a77433098ee9eb06fc535de5e22dc1be7522c4ff51fb4df91138e8093aa"
+      "sha256": "bdec3a77433098ee9eb06fc535de5e22dc1be7522c4ff51fb4df91138e8093aa",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -508,7 +512,8 @@
         "js/app/procgen/workstation/ProcgenTimingDriver.js"
       ],
       "fileCount": 1,
-      "sha256": "b60fa0011a6f0f62db23aa2f193b3e9609b6184c576f197d3d81c1cf50cc6718"
+      "sha256": "b60fa0011a6f0f62db23aa2f193b3e9609b6184c576f197d3d81c1cf50cc6718",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-master-pcm-capture",
@@ -525,7 +530,8 @@
         "js/app/midi-ui/worklet/OwnedPcmCaptureProcessor.js"
       ],
       "fileCount": 2,
-      "sha256": "7cabfd706de035e54dbf835e35a6141330dac4df16715d3991c1ebe2ca50b48b"
+      "sha256": "7cabfd706de035e54dbf835e35a6141330dac4df16715d3991c1ebe2ca50b48b",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-native-midi-companion-source",
@@ -618,7 +624,8 @@
         "scripts/native-midi/NativeMidiProcess.js"
       ],
       "fileCount": 76,
-      "sha256": "0a49c8b28cb05044e3e1ebac414b05bd162cb83af5c4703da4548d045e1104cd"
+      "sha256": "0a49c8b28cb05044e3e1ebac414b05bd162cb83af5c4703da4548d045e1104cd",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-authoritative-simulation-worker",
@@ -1227,7 +1234,8 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 594,
-      "sha256": "790c99ab95760fe6df6233944e4953b1cd5d1daeda8e14eabd5b1c603a7acc30"
+      "sha256": "790c99ab95760fe6df6233944e4953b1cd5d1daeda8e14eabd5b1c603a7acc30",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1591,7 +1599,8 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 348,
-      "sha256": "ccf615daa69fea6f460515e8caa5740724910a0f45a8c627ffc2ce5b01e3de29"
+      "sha256": "ccf615daa69fea6f460515e8caa5740724910a0f45a8c627ffc2ce5b01e3de29",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-independent-native-simulation-output",
@@ -1675,7 +1684,8 @@
         "js/runtime/ActiveExecutionIdentity.js"
       ],
       "fileCount": 69,
-      "sha256": "5582b4289813d18f62091a963fbdcee5cd2d49364efa497992f5258e9be43c28"
+      "sha256": "5582b4289813d18f62091a963fbdcee5cd2d49364efa497992f5258e9be43c28",
+      "inventoryScope": "first-party-artifact"
     },
     {
       "id": "lemmings-independent-owned-audio-output",
@@ -2115,7 +2125,8 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 424,
-      "sha256": "aa9fc1474fc3decf9d83a43d14df83a01d6bdc05429e229712f272d18cafd30f"
+      "sha256": "aa9fc1474fc3decf9d83a43d14df83a01d6bdc05429e229712f272d18cafd30f",
+      "inventoryScope": "first-party-artifact"
     }
   ]
 }
