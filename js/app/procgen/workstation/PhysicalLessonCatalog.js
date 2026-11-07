@@ -47,5 +47,17 @@ export async function createInstalledPhysicalLessons(catalog) {
     permittedActions: ['record-causal-take', 'render-causal-take', 'harvest-sound-seed', 'apply-saved-seed', 'finite-release', 'play-pause', 'inspect-rebuild-branch'],
     success: { kind: 'hear-fossil', pickupId: 'practice-pickup', mappingIds: keptSetup.causalMappings.instruments.map(value => value.id), minimumActors: 1, minimumContacts: 2 },
     resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
+  const memorySetup = resolve('bow-orchard');
+  if (memorySetup) lessons.push(validatePhysicalLessonDefinition({ schema: 'lemmings-physical-lesson/v1', id: 'lesson.move-the-memory', version: 1, title: 'Move the memory',
+    setupScene: await reference(memorySetup), zeroNoteScene,
+    prediction: 'Predict what outbound signed travel, a real stationary tick and return will do to a frozen source coordinate. Source-region reflection is separate from the signed travel metric.',
+    intervention: 'Pause and select the first Bow Orchard lane. In Seed Lab choose retained frozen material and Observed travel audio → modal body. Select bow-orchard-travel-0, declare the body root and source frames per world pixel, then compile, audition, save and Apply. Write your source-region prediction and explicitly release a fresh finite entrant. Observe its trip to the steel stop and return.',
+    expectedPhysicalEvidence: 'One original actor-journey voice with at least16 positive signed world pixels, an adjacent complete stationary tick with no committed motion, and negative signed travel on that same actor/scope/voice. Every segment remains linked to its committed coordinate write.',
+    expectedMusicalDifference: 'New physical motion moves the declared original-source coordinate. Rest creates no hidden travel; the admitted segment may finish, then the cursor holds/fades while its modal body can decay. Actual return reverses the unwrapped source coordinate without a new semantic onset.',
+    audibleEvidence: 'The lesson observes physical travel and the declared source-coordinate model. Requested coordinates before region reflection are not measured cursor PCM. Backend acceptance and reported hearing remain independent.',
+    hint: 'Old held bodies keep their onset source: release a fresh finite actor after Apply. Waiting, a camera pan, another actor, an unsigned rubbing map, a source discontinuity or retriggering a new voice cannot complete the return. A missing asset/engine leaves the last playable patch active.',
+    permittedActions: ['apply-saved-seed', 'finite-release', 'play-pause', 'inspect-source-region'],
+    success: { kind: 'move-memory', mappingIds: ['bow-orchard-travel-0'], minimumActors: 1, minimumTravelPixels: 16 },
+    resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
   return Object.freeze(lessons);
 }
