@@ -160,6 +160,7 @@
         "js/app/midi-ui/CausalOwnedRackHistory.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalOwnedSourceReplay.js",
+        "js/app/midi-ui/CausalRealtimePrintFinalize.js",
         "js/app/midi-ui/CausalRenderTiming.js",
         "js/app/midi-ui/CausalSineRender.js",
         "js/app/midi-ui/EffectRenderPlan.js",
@@ -487,8 +488,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 339,
-      "sha256": "8200d281494c86d7d3d117b0266f7e1b50535791e5d91bc683715c5e415bbe50"
+      "fileCount": 340,
+      "sha256": "dabb18e1d7b311800d985027b258ff3cd2e1ce9ce71b2adfb3826ddacc09137d"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -521,7 +522,7 @@
         "js/app/midi-ui/worklet/OwnedPcmCaptureProcessor.js"
       ],
       "fileCount": 2,
-      "sha256": "db886b32ceefe1261fe1bafc07570c970f114df63d68c35ae5fd95beaeb8e15e"
+      "sha256": "7cabfd706de035e54dbf835e35a6141330dac4df16715d3991c1ebe2ca50b48b"
     },
     {
       "id": "lemmings-native-midi-companion-source",
@@ -664,6 +665,7 @@
         "js/app/midi-ui/CausalOwnedRackHistory.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalOwnedSourceReplay.js",
+        "js/app/midi-ui/CausalRealtimePrintFinalize.js",
         "js/app/midi-ui/CausalRenderTiming.js",
         "js/app/midi-ui/EffectRenderPlan.js",
         "js/app/midi-ui/EffectSourceBindings.js",
@@ -1220,8 +1222,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 592,
-      "sha256": "afe7fb3f3c9988f2eeff8cc766b01691fa3bc2d93395532549e84832ecd56990"
+      "fileCount": 593,
+      "sha256": "458c53e45346bd58e0269e599b45c7acd1487cb6ded078068c91dd87acfc8323"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1254,6 +1256,7 @@
         "js/app/midi-ui/CausalOwnedRackHistory.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalOwnedSourceReplay.js",
+        "js/app/midi-ui/CausalRealtimePrintFinalize.js",
         "js/app/midi-ui/CausalRenderTiming.js",
         "js/app/midi-ui/EffectRenderPlan.js",
         "js/app/midi-ui/EffectSourceBindings.js",
@@ -1583,8 +1586,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 347,
-      "sha256": "12f52f461eade2d5e627c01d87e8d61b0024b68d07b85268e7491180586b0654"
+      "fileCount": 348,
+      "sha256": "663cde15f8746378cb3919094e77c755191b225701ed5e858b251d6612458e80"
     },
     {
       "id": "lemmings-independent-native-simulation-output",

@@ -152,7 +152,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     const provenance = operation.provenance.finish({ sourceStartFrame: operation.sourceStartFrame, endFrameExclusive: end,
       terminationReason: reason || operation.stopRequested || 'capture-interrupted' });
     operation.manifest = freezeData({ schema: 'lemmings-master-pcm/v1', ownerId: operation.ownerId, contextEpoch: operation.contextEpoch,
-      tap: 'post-protection-shared-browser-master', includesCurrentMasterOwnersAndAuditions: true, separateCueBusExcluded: true,
+      tap: operation.monitorOutput === 'capture-only' ? 'post-protection-private-capture-only-browser-graph' : 'post-protection-shared-browser-master', monitorOutput: operation.monitorOutput, ...(operation.printMetadata ? { renderJob: operation.printMetadata } : {}), includesCurrentMasterOwnersAndAuditions: true, separateCueBusExcluded: true,
       rehearsalOnMasterIncluded: true, monitorAtStart: operation.monitorAtStart,
       provenance, segments: provenance.segments,
       externalMidiAudio: false, microphone: false, acousticEvidence: false, sampleRate: operation.sampleRate, channels: CHANNELS, format: 'float32-le',
@@ -188,11 +188,13 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     if (operation.context.state !== 'running') finish(operation, null, reason);
     report(); return operation.completion;
   };
-  const start = async ({ seconds = 60, includeCue = false } = {}) => {
+  const start = async ({ seconds = 60, includeCue = false, targetStartFrame = null, renderJob = null } = {}) => {
     if (disposed || hasUnknownOwnership() || current && !current.finished || current?.artifact?.metadata().retained ||
-        includeCue !== false || typeof AudioWorkletNodeType !== 'function' || !Number.isFinite(seconds) || seconds <= 0 || seconds > 300) throw fail('Master capture is unavailable; finish and discard the previous capture first. Separate cue inclusion is unsupported.');
+        includeCue !== false || typeof AudioWorkletNodeType !== 'function' || !Number.isFinite(seconds) || seconds <= 0 || seconds > 300 || targetStartFrame !== null && (!integer(targetStartFrame) || targetStartFrame < 0)) throw fail('Master capture is unavailable; finish and discard the previous capture first. Separate cue inclusion is unsupported.');
     const context = preview.getAudioContext(), source = preview.getState(), sampleRate = context?.sampleRate;
     if (!source.enabled || context?.state !== 'running' || !context.audioWorklet?.addModule || !integer(sampleRate) || sampleRate < 8000 || sampleRate > 192000) throw fail('Enable browser audio before starting capture.');
+    const printMetadata = renderJob === null ? null : JSON.parse(canonicalDataText(renderJob, { maxBytes: 32768, maxNodes: 4096 }).text);
+    if (targetStartFrame !== null && (targetStartFrame < Math.ceil(context.currentTime * sampleRate) || targetStartFrame > (context.currentTime + 121) * sampleRate)) throw fail('Choose an exact future capture frame within the admitted real-time print horizon.');
     const maxFrames = Math.ceil(seconds * sampleRate), ownerId = 'master-pcm-' + (++captureSequence), contextEpoch = source.contextEpoch;
     const nativeLease = resources.reserve({ kind: 'pcm-capture-runtime', owner: ownerId, generation: contextEpoch,
       bytes: 2 * CHUNK_FRAMES * CHANNELS * 4 + MAX_GAPS * 3 * 8, estimateBytes: 256 * 1024 });
@@ -201,7 +203,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     catch (error) { try { nativeLease.release(); } catch { ownershipFault = true; } throw error; }
     const operation = { ownerId, context, contextEpoch, sampleRate, maxFrames, nativeLease, storageLease, storage: null, phase: 'preparing',
       frames: 0, capturedFrames: 0, sequence: 0, tokens: new Uint32Array(2), sourceStartFrame: null, lastFrame: null, packetGaps: [], finished: false,
-      complete: null, completion: null, targetStartFrame: 0, error: null, monitorAtStart: source.monitorRoute || null };
+      complete: null, completion: null, targetStartFrame: 0, error: null, monitorAtStart: source.monitorRoute || null, monitorOutput: source.monitorOutput || 'audible', printMetadata };
     operation.completion = new Promise(resolve => { operation.complete = resolve; }); current = operation; report();
     operation.provenance = createMasterCaptureProvenance({ contextEpoch, sampleRate });
     try {
@@ -219,7 +221,8 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
       // addModule is an accepted native operation: its ownership survives stop.
       await context.audioWorklet.addModule(new URL('./worklet/OwnedPcmCaptureProcessor.js', import.meta.url));
       if (!checkContext(operation) || operation.stopRequested) { finish(operation, null, operation.stopRequested || 'context-interrupted'); return state(); }
-      operation.targetStartFrame = Math.ceil(context.currentTime * sampleRate);
+      operation.targetStartFrame = targetStartFrame ?? Math.ceil(context.currentTime * sampleRate);
+      if (operation.targetStartFrame < Math.ceil(context.currentTime * sampleRate)) throw fail('The requested capture frame passed before its processor was prepared. Retry with a new explicit print origin.');
       operation.node = new AudioWorkletNodeType(context, 'lemmings-owned-pcm-capture-v1', { numberOfInputs: 1, numberOfOutputs: 1,
         outputChannelCount: [CHANNELS], channelCount: CHANNELS, channelCountMode: 'explicit', channelInterpretation: 'speakers',
         processorOptions: { protocol: PROTOCOL, epoch: ownerId, maxFrames, targetStartFrame: operation.targetStartFrame, chunkFrames: CHUNK_FRAMES } });
@@ -264,7 +267,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
       operation.readyTimer = setTimeout(() => finish(operation, null, 'capture-readiness-timeout'), 3000);
       operation.onContextState = () => { if (context.state !== 'running') void stop('context-interrupted'); };
       context.addEventListener?.('statechange', operation.onContextState);
-      operation.watchdog = setTimeout(() => { if (!operation.finished) void stop('context-interrupted'); }, seconds * 1000 + 5000);
+      operation.watchdog = setTimeout(() => { if (!operation.finished) void stop('context-interrupted'); }, Math.max(0, operation.targetStartFrame / sampleRate - context.currentTime) * 1000 + seconds * 1000 + 5000);
       report(); return state();
     } catch (error) { operation.error = error; finish(operation, null, 'capture-start-failed'); throw error; }
   };

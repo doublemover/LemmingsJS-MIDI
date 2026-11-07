@@ -269,7 +269,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   if (kind === 'snapshot-canonical-data') return runCanonicalSnapshotKernel(kind, input, options);
-  const metadata = await inspectValue(input, options, { allowBinary: ['render-causal-owned-image', 'owned-audio-image', 'prepare-owned-effect-cut', 'prepare-owned-source-cut', 'decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
+  const metadata = await inspectValue(input, options, { allowBinary: ['finalize-causal-realtime-print', 'render-causal-owned-image', 'owned-audio-image', 'prepare-owned-effect-cut', 'prepare-owned-source-cut', 'decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
   if (kind === 'encode-causal-checkpoint') {
     const encoded = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 32 * 1048576), maxNodes }); guard(signal, current);
     if (encoded.bytes.length * 4 + encoded.nodes * 96 + metadata.bytes * 2 > estimatedPeakBytes) throw problem('checkpoint-capacity', 'The canonical checkpoint exceeds its admitted encoding/hash overlap.');
@@ -332,8 +332,15 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Native encoded files exceed their admitted retained storage.');
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
+  if (kind === 'finalize-causal-realtime-print') {
+    if (!input || Object.keys(input).some(key => !['bytes', 'manifest'].includes(key)) || !(input.bytes instanceof Uint8Array) || estimatedPeakBytes < metadata.bytes * 5 + 16 * 1048576) throw problem('invalid-contract', 'Real-time print finalization needs its actual captured WAV and admitted PCM/encoding overlap.');
+    const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); const catalog = await getNativeInstrumentCatalog(); guard(signal,current);
+    const { finalizeCausalRealtimePrint } = await import('../midi-ui/CausalRealtimePrintFinalize.js');
+    const value = await finalizeCausalRealtimePrint(input, { signal, current, yieldControl, applicationBuildId: catalog.executionIdentity.buildId }); guard(signal,current);
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes: value.files[0].bytes.byteLength + 262144 };
+  }
   if (kind === 'render-causal-owned-image') {
-    if (!input || Object.keys(input).some(key => !['checkpoint', 'source', 'materials', 'startSeconds', 'endSeconds'].includes(key))) throw problem('invalid-contract', 'Captured owned image rendering requires its complete checkpoint, source commands and immutable materials.');
+    if (!input || Object.keys(input).some(key => !['checkpoint', 'source', 'materials', 'startSeconds', 'endSeconds', 'includeRack', 'includeStems', 'stemLaneIds', 'includeAllLaneStems'].includes(key))) throw problem('invalid-contract', 'Captured owned image rendering requires its complete checkpoint, source commands and immutable materials.');
     const footprint = metadata.bytes * 4 + metadata.nodes * 128;
     if (estimatedPeakBytes < footprint + 64 * 1048576) throw problem('memory-capacity', 'The image/command input and actual restoration workspace exceed their admitted profile.');
     const { getNativeInstrumentCatalog } = await import('../midi-ui/NativeInstrumentSchema.js'); const catalog = await getNativeInstrumentCatalog(); guard(signal, current);

@@ -788,6 +788,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return true;
   }
   const play = () => {
+    if (causalAudioRender?.state().realtimePrint?.active) { status('Finish or cancel the private real-time print before resuming live playback.'); return; }
     if (ownedCausalArm && !['complete', 'discarded', 'failed'].includes(ownedCausalArm.state().phase)) { status('Finish or discard the retained owned sound-state transaction before ordinary Play.'); return; }
     if (causalClockBlocked && causalTake) { status('Save or recover the stopped take before playing.'); return; }
     if (physicalAuthoringAbort) { status('Wait for physical history preparation before playing.'); return; }
@@ -2215,6 +2216,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         audio: legacy.local.audio, onPrelisten: () => handlers.openPrelistenMonitor(),
         getMaterialProvider: () => legacy.local.audio?.getSoundMaterialProvider(),
         getSavedRack: () => project.procgen.effectRack || null,
+        beforeRealtimePrint: async () => {
+          if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || state.recording || masterCapture?.state().capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(masterCapture?.state().capture?.state) || causalTake || causalTakeStart || causalTakeStop || ownedCausalArm || simulationWorkbench?.state().active || simulationWorkbench?.state().busy) throw new Error('Finish capture and park the isolated worker before stopping live browser output for an explicit real-time print.');
+          transport.pause(); return Object.freeze({ paused: true, documentGeneration, source: 'explicit-real-time-print;live-browser-output-stop-authorized' });
+        },
         onHarvest: source => handlers.harvestSoundSeed(source), displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId, instrumentRef: selected().instrumentRef || null });
     }),
     openPrelistenMonitor() {

@@ -6,40 +6,50 @@ product and tooling direction.
 
 ## Active feature implementation — November 6, 2026
 
-Continue solo through the remaining issue features. Frontload production changes;
-keep functional tests, generated campaigns and native browser qualification for one
-consolidated pass after implementation. Formatting and necessary type checks may
-run during development. Commit and push progress; leave automatic CI alone.
+Continue solo through the open issue requirements. Frontload production changes and
+new workflow fixtures before one consolidated functional validation/fix campaign.
+Formatting and necessary type checks may run during development. Commit and push
+completed batches; leave automatic CI alone. Target1920×1080 desktop minimum.
 
-Prioritize shared feature dependencies: complete local semantic instrument delivery
-and default-sound/project migration (#973/#1111), then live authored performance
-controls (#971/#1018), live DSP continuation and effect-state restoration (#1138),
-and the remaining protocol, creative-tool and desktop integration features. The
-ordinary event editor now selects/saves pinned instruments. Test Sound, live
-game events and complementary patterns use prepared semantic backends; the
-local MIDI1/program/noise facade is removed. Explicit native default conversion
-preserves event mapping semantics and external programs with approximation
-receipts. Continue with held performance controls and live DSP restoration;
-#973 still needs the consolidated backend/render/native qualification.
-Held macros now reach existing native/worklet voices through execution-scoped controls,
-including smoothed gain, additive pan and supported source parameters. New choir,
-spectral and granular recipe revisions expose these controls in the performer UI.
-Continue with live DSP source/effect state transfer and remaining protocol features.
-Implementation details and unvalidated scope are recorded in the implementation
-ledger; recent feature commits do not imply rendered or browser qualification.
+The local semantic instrument migration and held controls are implemented. The
+ordinary event editor, Test Sound, game events and complementary patterns use
+pinned prepared instruments; held gain/pan/source controls retain their execution
+and actor identities. The retired MIDI1/program/noise facade is removed.
 
-The native companion has a compiled C++20 transport target with pinned Windows SDK
-inputs, explicit device and virtual publication grants, bounded raw ingress, native
-monotonic scheduling, cancellation and exact-prefix receipts (#978–#981, #1061,
-#1143, #1199). Paired loopback access, workstation connection/publication controls,
-canonical physical output, explicit group/channel allocation and wire trace export
-are implemented. Continue with native ingress/control-plane integration, protocol
-capability discovery and throughput batching.
-Owned source/effect cuts, worker preparation and common-frame owner-session restoration
-are implemented for a stable owned rack, excluding native hidden DSP and shared final
-master protection. Continue canonical semantic/body binding restoration, initial-image
-journal publication and the remaining creative/platform features before the consolidated
-functional validation pass. These changes await rendered, browser and device qualification.
+The compiled native C++20 companion and browser owners implement explicit physical
+and virtual grants, native scheduling and exact-prefix output receipts, raw
+input/provenance, endpoint/protocol/function-block discovery, clock/JR boundaries,
+MIDI-CI profiles, Message Reports, Property Exchange and typed device expression.
+Device/driver, receiver, acoustic and listening qualification remain separate.
+
+Common-frame owned sound cuts are connected through source/body/semantic rebinding,
+fresh playback executions, durable mid-held take arming and actual processor-ingress
+capture. Image-aware export and private seek restore the initial sources and rack,
+including committed control curves and original logical clocks. One coordinated
+render reconstructs actual donor taps, captured rack replacements/retained tails,
+and aligned source/dry-route/shared-return/dry-lane WAVs. Native hidden DSP,
+unsupported new-body/analysis transitions and cross-worklet status-message lag keep
+explicit capability boundaries; no live PCM equivalence is inferred.
+
+An explicit real-time print path preflights a frozen take and selected saved live
+instrument, then stops live browser output only on its separate Start action. A
+private capture-only context realizes original intent times through the prepared
+backend, silently prerolls to the crop, captures exact future frames and finalizes
+actual PCM in an admitted worker. Gaps/refusals preserve partial digital capture;
+this is a new selected-engine realization without microphone or external MIDI.
+
+Physical history, isolated branch review, paused adoption/undo and worker checkpoint
+handoff are implemented. The authoritative simulation workbench has pooled completed
+views and independent recovery points. Its directly connected native client worker
+uses independently reviewed pairing/grants and complete baseline lane assignment;
+UI painting does not relay causal output. Shared compact/balanced admission profiles
+bind actual memory limits. Default worker activation stays off pending measured
+benefit, parity, recovery and downstream timing qualification.
+
+Finish the remaining cross-feature requirement audit and meaningful end-to-end
+fixtures, then run the consolidated functional/desktop/audio/native campaign and
+frontload its complete failure fixes before a batch retest. Recent feature commits
+are implementation progress, not acceptance receipts or grounds for issue closure.
 
 ## Format
 
@@ -11228,3 +11238,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - The initial graph keeps its independent saved processor memory, automation and donor routes. Replacement graphs prepare at their actual output-frame boundary; captured controls feed their owned kernels. The old graph fades its input and sidechain gates while retaining its declared tail. No new physical onset or source realization is generated for a rack replacement.
 - Complete output, raw-source and dry-route/shared-return stems come from the same source stream and sum of retained graph returns. Changing-rack receipts list each publication/detachment/retirement and peak state ownership. Later publications currently support owned input graphs; native convolution, new external donors, new spectral grids and new finite-strike bodies require their specific continuation profiles. Message-time Panic/bypass remains an explicit boundary.
 - Formatting/static checks only; live/offline PCM equivalence and functional qualification remain deferred with the final consolidated development pass.
+
+### Continuation 567 — explicit isolated real-time take print
+
+- Added staged real-time print for a complete empty-boundary, single-generation causal take and an installed saved live instrument, including WarpVoice paths without an offline control renderer. Resolve the actual immutable material closure before the performer explicitly starts; source preflight does not stop live play.
+- The separate Start action requires an acknowledged paused workstation and stops live browser output through its existing performance owner. A bounded private context prepares the same semantic backend, schedules original immutable intent/frame identities through a rolling feeder and keeps its monitor at zero. Live master, microphone and external MIDI are excluded. Eight print voices and a120-second source horizon are explicit initial bounds.
+- Owned PCM capture now supports an exact future frame and crop duration, so muted real-time history preroll does not become leading silence in the selected WAV. Suspension, missed feeder deadlines, refused output and capture gaps retain partial digital evidence. Native source/context cleanup is joined before releasing the frozen schedule.
+- An admitted worker checks the original capture container/receipt, hashes actual PCM and writes the prepared immutable WAV with its source/engine/clock/format scope. Prepared file delivery and PRELISTEN reuse the shared owners. Finalization failure keeps the original private capture downloadable.
+- Complete the captured-image worker option allowlist and explicit IEEE-float32 metadata needed by the existing cue reader. Formatting and critical/boundary checks only; no functional suite, browser journey, native campaign or listening review is run during this feature pass.

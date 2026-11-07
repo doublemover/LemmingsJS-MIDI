@@ -31,7 +31,7 @@ const MAX_MASTER_VOLUME = 4;
 const MIX_MAKEUP_COMPENSATION = 0.647;
 const MIX_LOOKAHEAD_SECONDS = 0.006;
 let captureScopeSequence = 0;
-const createOutputCeiling = context => {
+const createOutputCeiling = (context, monitorOutput) => {
   const limiter = context.createWaveShaper();
   const curve = new Float32Array(4097);
   for (let index = 0; index < curve.length; index += 1) {
@@ -40,8 +40,10 @@ const createOutputCeiling = context => {
     curve[index] = magnitude <= 0.7 ? sample : Math.sign(sample) * (0.7 + 0.2 * (1 - Math.exp(-(magnitude - 0.7) / 0.2)));
   }
   limiter.curve = curve;
-  limiter.connect(context.destination);
-  return limiter;
+  let monitorPull = null;
+  if (monitorOutput === 'audible') limiter.connect(context.destination);
+  else { monitorPull = context.createGain(); monitorPull.gain.setValueAtTime(0, context.currentTime); limiter.connect(monitorPull); monitorPull.connect(context.destination); }
+  return { limiter, monitorPull };
 };
 
 const createMixCompressor = context => {
@@ -60,7 +62,9 @@ class BrowserNotePreview {
   constructor({ createAudioContext, nowMs, onStateChange, onPlayback, maxVoices = 32, maxNoteSeconds = 8,
     volume = 0.15, masterVolume = 0.7, resourceBudget = null, cueVoices = 0, cueCostUnits = cueVoices, maxInstrumentBackends = 20,
     createMediaElement = tag => globalThis.document?.createElement(tag), mediaDevices = globalThis.navigator?.mediaDevices, permissions = globalThis.navigator?.permissions, performanceCoordinator, runtimeConfig = {},
-    getQualifiedSoundRealization = () => null } = {}) {
+    getQualifiedSoundRealization = () => null, monitorOutput = 'audible' } = {}) {
+    if (!['audible', 'capture-only'].includes(monitorOutput)) throw new TypeError('Choose an audible monitor or an explicit private capture-only graph.');
+    this._monitorOutput = monitorOutput;
     if (typeof getQualifiedSoundRealization !== 'function') throw new TypeError('Runtime sound qualification must be supplied by the executing host, never imported content.');
     this._getQualifiedSoundRealization = getQualifiedSoundRealization;
     const AudioContextType = globalThis.AudioContext || globalThis.webkitAudioContext;
@@ -94,7 +98,7 @@ class BrowserNotePreview {
     this._context = null;
     this._contextEpoch = 0;
     this._master = null;
-    this._limiter = null;
+    this._limiter = null; this._monitorPull = null;
     this._compressor = null;
     this._compressorOutput = null;
     this._resumePromise = null;
@@ -538,7 +542,7 @@ class BrowserNotePreview {
       status: this._status,
       message: this._message,
       enabled: this._ready(), performanceLease: this._performanceCoordinator?.state() || null,
-      contextEpoch: this._contextEpoch, contextState: this._context?.state || 'not-created',
+      monitorOutput: this._monitorOutput, contextEpoch: this._contextEpoch, contextState: this._context?.state || 'not-created',
       audioRuntime: this.getAudioRuntimeObservation(), deploymentCapabilities: readBrowserRuntimeCapabilities(globalThis, this._context),
       audioRuntimeTransition: this._runtimeTransition?.state() || null,
       resourceAccounting: this._audioResources.diagnostics(),
@@ -742,18 +746,18 @@ class BrowserNotePreview {
       if (!this._context) {
         let context;
         let master;
-        let limiter;
+        let limiter; let monitorPull;
         let compressor;
         let compressorOutput;
         let resourceLease;
         try {
           resourceLease = this._audioResources.reserve({ kind: 'mix-graph', generation: this._generation,
-            bytes: 4097 * 4 + audioIntervalStorageBytes(this._maxScheduledVoices + 1), estimateBytes: 65536 });
+            bytes: 4097 * 4 + audioIntervalStorageBytes(this._maxScheduledVoices + 1), estimateBytes: 65536 + (this._monitorOutput === 'capture-only' ? 4096 : 0) });
           this._intervalAdmission = createAudioIntervalAdmission({ maxIntervals: this._maxScheduledVoices + 1 });
           context = this._createContext(audioRuntimeContextOptions(this._runtimeConfig));
           master = context.createGain();
           master.gain.value = this._volume * this._masterVolume;
-          limiter = createOutputCeiling(context);
+          ({ limiter, monitorPull } = createOutputCeiling(context, this._monitorOutput));
           compressor = createMixCompressor(context);
           master.connect(compressor || limiter);
           if (compressor) {
@@ -768,7 +772,7 @@ class BrowserNotePreview {
           this._context = context;
           this._contextEpoch++;
           this._master = master;
-          this._limiter = limiter;
+          this._limiter = limiter; this._monitorPull = monitorPull;
           this._compressor = compressor;
           this._compressorOutput = compressorOutput;
           this._graphResourceLease = resourceLease;
@@ -787,7 +791,7 @@ class BrowserNotePreview {
           this._intervalAdmission = null;
           resourceLease?.release();
           master?.disconnect();
-          limiter?.disconnect();
+          limiter?.disconnect(); monitorPull?.disconnect();
           compressor?.disconnect();
           compressorOutput?.disconnect();
           try { Promise.resolve(context?.close?.()).catch(() => {}); } catch { /* Failed audio initialization. */ }
@@ -862,11 +866,11 @@ class BrowserNotePreview {
       { name: 'output-availability-watch', run: () => this._runtimeOutputWatch?.dispose() },
       { name: 'context-route-listeners', run: () => { context.removeEventListener?.('sinkchange', this._onRuntimeRouteChange); context.removeEventListener?.('error', this._onRuntimeRouteError); } },
       ...[...this._channels].map(([key, channel]) => ({ name: 'channel-' + key, run: () => this._retireChannel(key, channel) })),
-      ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => this[field]?.disconnect() })),
+      ...['_master', '_limiter', '_monitorPull', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => this[field]?.disconnect() })),
       { name: 'graph-reservation', run: () => this._graphResourceLease?.release() },
       { name: 'closed-context-acknowledgment', run: () => { acknowledgment = this._reconcileClosedContext(context); return acknowledgment; } },
       { name: 'context-references', run: () => {
-        this._channels.clear(); this._master = null; this._limiter = null; this._compressor = null; this._compressorOutput = null;
+        this._channels.clear(); this._master = null; this._limiter = null; this._monitorPull = null; this._compressor = null; this._compressorOutput = null;
         this._captureAnalyser = null; this._captureSamples = null; this._context = null; this._runtimeOutputWatch = null; this._graphResourceLease = null; this._cueRouting = null; this._intervalAdmission = null;
         if (acknowledgment?.outcome === 'complete') this._retirementFaults.clear();
       } }
@@ -993,7 +997,7 @@ class BrowserNotePreview {
       { name: 'context-listener', run: () => context?.removeEventListener?.('statechange', this._onContextState) },
       { name: 'output-availability-watch', run: () => this._runtimeOutputWatch?.dispose() },
       ...[...this._channels].map(([key, channel]) => ({ name: `channel-${key}`, run: () => this._retireChannel(key, channel) })),
-      ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),
+      ...['_master', '_limiter', '_monitorPull', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => { this[field]?.disconnect(); this[field] = null; } })),
       { name: 'buffers', run: () => { this._captureSamples = null; this._intervalAdmission = null; } },
       { name: 'resource-reservations', run: () => this._audioResources.dispose() },
       { name: 'runtime-observation', run: () => this._runtimeObservation.dispose() },
