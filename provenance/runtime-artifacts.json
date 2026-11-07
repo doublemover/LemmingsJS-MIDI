@@ -354,6 +354,7 @@
         "js/app/procgen/TerrainAuthoringAdapter.js",
         "js/app/procgen/TerrainScoreLayer.js",
         "js/app/procgen/TerrainTopologyInvalidation.js",
+        "js/app/procgen/TerrainWorkMaterial.js",
         "js/app/procgen/survey/ProcgenSurveyCanonical.js",
         "js/app/procgen/workstation/BranchPrefixCache.js",
         "js/app/procgen/workstation/CausalArchiveEntry.js",
@@ -738,8 +739,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 584,
-      "sha256": "bf5daa08e5b7f11d3726edb41fe2c1704b9a72b34ab1b71b96c2fba38356a76c",
+      "fileCount": 585,
+      "sha256": "f536f2040e374ded64f52234cd7087ffd32a6c0239fc94fdaba3cbd5a5a5aea9",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1086,6 +1087,7 @@
         "js/app/procgen/TerrainAuthoringAdapter.js",
         "js/app/procgen/TerrainScoreLayer.js",
         "js/app/procgen/TerrainTopologyInvalidation.js",
+        "js/app/procgen/TerrainWorkMaterial.js",
         "js/app/procgen/survey/ProcgenSurveyCanonical.js",
         "js/app/procgen/workstation/BranchPrefixCache.js",
         "js/app/procgen/workstation/CausalArchiveEntry.js",
@@ -1500,8 +1502,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 617,
-      "sha256": "f01578849ad8399b4b01c0834baf9e81bb9e5c0f49902527103782f4839e00fa",
+      "fileCount": 618,
+      "sha256": "29e6a1e3806f9e6c0cf789f24dc351736dd4c4406cdf1d650858b4ddd9773f5c",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1731,6 +1733,7 @@
         "js/app/procgen/TerrainAuthoringAdapter.js",
         "js/app/procgen/TerrainScoreLayer.js",
         "js/app/procgen/TerrainTopologyInvalidation.js",
+        "js/app/procgen/TerrainWorkMaterial.js",
         "js/app/procgen/survey/ProcgenSurveyCanonical.js",
         "js/app/procgen/workstation/BranchPrefixCache.js",
         "js/app/procgen/workstation/CausalArchiveEntry.js",
@@ -2112,8 +2115,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 595,
-      "sha256": "e995fec027b3f92d5742d8b0a6bafb414de9b6a745543473b1cd097bab8c6e5b",
+      "fileCount": 596,
+      "sha256": "bd3f66e14c58f2c14086914e5374f2f9122d0fcafcbcc0fa1e46e73df03ecc64",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2486,6 +2489,7 @@
         "js/app/procgen/TerrainAuthoringAdapter.js",
         "js/app/procgen/TerrainScoreLayer.js",
         "js/app/procgen/TerrainTopologyInvalidation.js",
+        "js/app/procgen/TerrainWorkMaterial.js",
         "js/app/procgen/survey/ProcgenSurveyCanonical.js",
         "js/app/procgen/workstation/BranchPrefixCache.js",
         "js/app/procgen/workstation/CausalArchiveEntry.js",
@@ -2883,8 +2887,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 668,
-      "sha256": "b540c6ed553a0ba8f2e86247721010456f97912edbd3515f56addc81c8fbf665",
+      "fileCount": 669,
+      "sha256": "03b3bdb8f862c7a2752c57cf49b60518166c568e00ba03d28786bba5124a91b9",
       "inventoryScope": "first-party-artifact"
     }
   ]

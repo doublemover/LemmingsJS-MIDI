@@ -1,3 +1,5 @@
+import { observeTerrainWorkMaterial } from './TerrainWorkMaterial.js';
+
 const CHUNK = 16, MAX_CHUNKS = 512, MAX_CELLS = 16384, MAX_VERSIONS = 4, MAX_TRANSACTIONS = 256, MAX_OPERATION_CELLS = 8192;
 const keyFor = (x, y) => `${Math.floor(x / CHUNK)}:${Math.floor(y / CHUNK)}`;
 const indexFor = (x, y) => (y % CHUNK) * CHUNK + x % CHUNK;
@@ -27,6 +29,7 @@ const commitTerrainScore = (world, metadata = {}, suppliedCells = null) => {
   const actual = [...unique.values()].filter(cell => cell.before !== cell.after || cell.annotationChanged || metadata.operation === 'annotate');
   const revisionBefore = metadata.revisionBefore ?? pending.revisionBefore, revisionAfter = world.terrainRevision;
   const incomplete = !suppliedCells && pending.overflow;
+  const destructive = ['dig', 'mine', 'bash', 'explode'].includes(metadata.operation), materialBefore = destructive && !incomplete ? observeTerrainWorkMaterial(world, actual, revisionBefore, 'removed-solid-before-edit', terrainScoreAt) : null;
   world.terrainScorePending = { cells: [], overflow: false, revisionBefore: revisionAfter };
   if (!actual.length && !incomplete) return null;
   const editId = `${world.worldId}:${world.generation}:terrain:${++state.serial}`;
@@ -53,6 +56,8 @@ const commitTerrainScore = (world, metadata = {}, suppliedCells = null) => {
   while (state.chunks.size > MAX_CHUNKS || state.cells > MAX_CELLS) {
     const key = state.chunks.keys().next().value; state.cells -= state.chunks.get(key).size; state.chunks.delete(key); state.retiredChunks++;
   }
+  if (materialBefore) record.materialObservation = materialBefore;
+  else if (metadata.operation === 'build' && !incomplete) record.materialObservation = observeTerrainWorkMaterial(world, actual, revisionAfter, 'added-solid-after-edit', terrainScoreAt);
   state.transactions.push(record); state.spans += record.spans.length;
   while (state.transactions.length > MAX_TRANSACTIONS || state.spans > 16384) state.spans -= state.transactions.shift().spans.length;
   world.captureTerrainTopology?.('postTransaction');
