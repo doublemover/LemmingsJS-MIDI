@@ -8,7 +8,7 @@ export function createWorldSpatialControl({ getCameraPosition = () => null, hasS
   const configure = raw => { if (plan?.map === raw) return; plan = raw ? compileAcousticMap(raw) : null; listener = plan?.map.listener.position || null; boundary = null; sourceTime = -Infinity; valid = false; occlusion.clear(); };
   const observe = batch => {
     lastBatch = batch; valid = false;
-    if (!plan || batch.completeness?.status !== 'complete' || !Array.isArray(batch.snapshot?.actors) || batch.snapshot.actors.length > 1024 || batch.snapshot.completeness?.status && batch.snapshot.completeness.status !== 'complete' || !Number.isFinite(batch.sourceTimeMs) || !Number.isSafeInteger(batch.snapshot.terrainRevision ?? batch.terrainRevision)) return false;
+    if (!plan || batch.completeness?.status !== 'complete' || !Array.isArray(batch.snapshot?.actors) || batch.snapshot.actors.length > 1024 || batch.snapshot.completeness?.status && batch.snapshot.completeness.status !== 'complete' || !Number.isFinite(batch.tickDurationMs) || batch.tickDurationMs <= 0 || !Number.isFinite(batch.sourceTimeMs) || !Number.isSafeInteger(batch.snapshot.terrainRevision ?? batch.terrainRevision)) return false;
     const nextBoundary = batch.worldId + ':' + batch.generation, revision = batch.snapshot.terrainRevision ?? batch.terrainRevision;
     if (boundary !== nextBoundary || terrainRevision !== revision) occlusion.clear();
     if (boundary !== nextBoundary) { listener = plan.map.listener.position; sourceTime = -Infinity; }

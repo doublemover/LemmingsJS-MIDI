@@ -123,6 +123,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       if (!materialVariant || materialVariant.patchId !== material.patchId || typeof materialVariant.key !== 'string' || typeof materialVariant.instrumentKey !== 'string') return reject('material-palette-not-prepared');
       child = children.get(materialVariant.key); if (!child || child.retirementScope || child.instrumentKey !== materialVariant.instrumentKey || child.assignedLanes <= 0 && !child.pins) return reject('material-body-not-prepared');
     }
+    if (intent.spatialState && child.backend.capabilities?.worldSpatialControl !== true) return reject('world-spatial-renderer-unavailable');
     if (child.blocked) return reject(child.reason);
     let expected; try { expected = materialVariant?.instrumentKey || requiredInstrumentKey(lane, intent.laneId); } catch { return reject('lane-requirement-unavailable'); }
     if (expected && (beforeBoundary && !materialVariant ? assigned?.instrumentKey : child.instrumentKey || child.key) !== expected) return reject('pinned-instrument-not-prepared');
@@ -224,7 +225,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   };
   const continuation = createRoutedInstrumentContinuation({ children, assignments, executions, voices, switches, getContext, executionFor, reserveMetadata, retireChild, collect, maxVoices, maxChildren, resourceBudget,
     getBindings: () => lifecycle.api.captureExecutionBindings(), retireExecution: execution => lifecycle.api.retireExecution(execution), isDisposed: () => disposed });
-  const backend = { captureRoutingContinuation: continuation.capture, stageRoutingContinuation: continuation.stage, begin, transferVoiceLane, updatePerformance: (...args) => voiceCall('updatePerformance', ...args), update: (...args) => voiceCall('update', ...args), updatePhysical: (...args) => voiceCall('updatePhysical', ...args), updateSamplePosition: (...args) => voiceCall('updateSamplePosition', ...args), updateSampleTravel: (...args) => voiceCall('updateSampleTravel', ...args), updateCanonicalTravel: (...args) => voiceCall('updateCanonicalTravel', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
+  const backend = { captureRoutingContinuation: continuation.capture, stageRoutingContinuation: continuation.stage, begin, transferVoiceLane, updateSpatial: (...args) => voiceCall('updateSpatial', ...args), updatePerformance: (...args) => voiceCall('updatePerformance', ...args), update: (...args) => voiceCall('update', ...args), updatePhysical: (...args) => voiceCall('updatePhysical', ...args), updateSamplePosition: (...args) => voiceCall('updateSamplePosition', ...args), updateSampleTravel: (...args) => voiceCall('updateSampleTravel', ...args), updateCanonicalTravel: (...args) => voiceCall('updateCanonicalTravel', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
     setDisplayContext(value) {
       if (!value || typeof value.worldId !== 'string' || !Number.isSafeInteger(value.graphRevision) || value.graphRevision < 0 ||
           !Number.isSafeInteger(value.routeRevision) || value.routeRevision < 0) throw new TypeError('Invalid routed display context.');

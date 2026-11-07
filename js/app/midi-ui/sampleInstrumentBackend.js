@@ -16,7 +16,7 @@ const finite = (value, min, max) => Number.isFinite(value) && value >= min && va
 const integer = (value, min, max) => Number.isSafeInteger(value) && value >= min && value <= max;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const text = (value, max = 256) => typeof value === 'string' && value.length > 0 && value.length <= max;
-const capabilities = Object.freeze({ independentSamePitch: true, perVoicePitch: true, perVoicePressure: true,
+const capabilities = Object.freeze({ worldSpatialControl: true, sharedAcousticZoneSends: true, independentSamePitch: true, perVoicePitch: true, perVoicePressure: true,
   perVoicePan: true, ownedGates: true, sampleMaps: true, releaseVelocity: true, releaseRegion: true, forwardLoops: true,
   crossfadeLoops: false, reverse: false, positionDriven: false, independentTimeStretch: false,
   renderAcknowledgment: false, offlineRender: true, maximumVoices: 64, latencyFrames: 0,
@@ -274,7 +274,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         }
       }
       const channel = preview._channel(0, owner), values = prepared.parameters;
-      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, value: intent.laneMix });
+      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, spatialState: intent.spatialState || null, value: intent.laneMix });
       pressureGain = context.createGain(); pan = context.createStereoPanner?.() || null;
       for (const component of components) component.gain.connect(pressureGain);
       voicePublication = publicationFor(); publicationGain = voicePublication.addGate();
@@ -447,6 +447,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     catch { errors++; preview._destroyVoice(voice, 'sample-update-failure'); return reject('sample-update-failure', voiceId); }
     return trace({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame, smoothingFrames: Math.ceil(Math.max(smoothingSeconds, rampSeconds) * context.sampleRate) });
   };
+  const updateSpatial = (voiceId, state, frame, epoch = 'live') => voices.get(keyFor(epoch, voiceId))?.laneMix?.updateSpatial(state, frame) || Object.freeze({ status: 'rejected', reason: 'voice-not-active' });
   const updateLaneMix = (voiceId, mix, frame, epoch = 'live', laneId = undefined) => {
     const voice = voices.get(keyFor(epoch, voiceId));
     return voice?.laneMix?.update(mix, frame, laneId) || Object.freeze({ status: 'rejected', reason: 'voice-not-active' });
@@ -517,7 +518,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       { name: 'patch', run: () => { prepared = null; } }
     ]);
   };
-  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updateLaneMix, end, renewExecutionLease, cancelGenerationWithReceipt,
+  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updateSpatial, updateLaneMix, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, executionEpoch = 'live') => cancelGenerationWithReceipt(generation, executionEpoch).count || 0,
     setRendererPublication: (gain01, frame) => { if (disposed) throw new Error('This renderer has retired.'); return publicationFor().schedule(gain01, frame); },
     sourceCaptureStatus: () => Object.freeze({ mode: 'unsupported-native-hidden-state', quiescent: voices.size === 0 }), renderDiagnostics, onOwnerStop, dispose }, {

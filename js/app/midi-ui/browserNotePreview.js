@@ -441,6 +441,17 @@ class BrowserNotePreview {
         if (this._laneSourceBuses.has(id)) this._laneSourcesFor(id, this._context).declare(laneIds);
         session.laneSourceIds = laneIds.slice();
       },
+      prepareAcousticMap: async (definition, options = {}) => {
+        if (session.disposed || !this._ownerReady(id) || session.audioOperation) throw new Error('Enable this local owner before preparing acoustic zones.');
+        const context = this._context, generation = session.generation, channel = this._channel(0, id), { createAcousticZoneAudioOwner } = await import('./AcousticZoneAudioOwner.js');
+        if (session.disposed || generation !== session.generation || context !== this._context) throw new Error('The acoustic source owner changed.');
+        channel.spatialZones ||= createAcousticZoneAudioOwner({ context, resources: this._audioResources, owner: id, generation, destination: channel.sourceInput, getMaterialProvider: () => this.getSoundMaterialProvider(),
+          isCurrent: () => !session.disposed && generation === session.generation && context === this._context, onState: () => session.report() });
+        return channel.spatialZones.prepare(definition, options);
+      },
+      acousticMapState: () => this._channels.get(id + ':0')?.spatialZones?.state() || null,
+      acousticMapMatches: definition => this._channels.get(id + ':0')?.spatialZones?.matches(definition) === true,
+      collectAcousticTails: () => this._channels.get(id + ':0')?.spatialZones?.collect(),
       prepareEffectGraph: async (definition, options = {}) => {
         const generation = session.generation, context = this._context;
         if (session.disposed || !this._ownerReady(id) || session.audioOperation && !options.continuation) throw new Error('Enable an available local audio owner before preparing its effect rack.');
@@ -1067,13 +1078,15 @@ class BrowserNotePreview {
 
   _retireOwnerEffects(owner) {
     const current = this._effectRetirements.get(owner); if (current) return current.scope.getReceipt();
-    const members = [...this._channels.values()].filter(channel => channel.owner === owner && channel.effects).map(channel => ({ channel, effects: channel.effects }));
+    const members = [...this._channels.values()].filter(channel => channel.owner === owner).flatMap(channel => [
+      ...(channel.effects ? [{ channel, effects: channel.effects, property: 'effects' }] : []), ...(channel.spatialZones ? [{ channel, effects: channel.spatialZones, property: 'spatialZones' }] : [])
+    ]);
     if (!members.length) return null;
     const scope = createProcgenRetirementScope({ deadlineMs: 16000 }), entry = { scope }; this._effectRetirements.set(owner, entry);
-    const receipt = scope.retire(members.map(({ channel, effects }, index) => ({ name: 'owner-effect-' + index, run: async () => {
+    const receipt = scope.retire(members.map(({ channel, effects, property }, index) => ({ name: 'owner-effect-' + index, run: async () => {
       const retired = effects.dispose(); await retired.completion;
       if (retired.outcome !== 'complete') throw new Error('Owner effect producer retirement is unresolved.');
-      if (channel.effects === effects) { channel.effects = null; if (this._context?.state !== 'closed') channel.effectDry.gain.setValueAtTime(1, this._context.currentTime); }
+      if (channel[property] === effects) { channel[property] = null; if (property === 'effects' && this._context?.state !== 'closed') channel.effectDry.gain.setValueAtTime(1, this._context.currentTime); }
     } })));
     receipt.completion.then(() => { if (receipt.outcome === 'complete' && this._effectRetirements.get(owner) === entry) this._effectRetirements.delete(owner); else if (receipt.outcome !== 'complete') this._retirementFaults.add(owner); });
     return receipt;
@@ -1082,9 +1095,9 @@ class BrowserNotePreview {
   _retireChannel(key, channel) {
     channel.retirement ||= createProcgenRetirementScope({ deadlineMs: 16000 });
     const receipt = channel.retirement.retire([{ name: 'channel-lifetime', run: () => {
-      const effects = channel.effects?.dispose();
+      const children = [channel.effects, channel.spatialZones].filter(Boolean).map(owner => owner.dispose());
       const finish = () => {
-        if (effects && effects.outcome !== 'complete') {
+        if (children.some(receipt => receipt.outcome !== 'complete')) {
           const error = new Error('Effect graph retirement remains unresolved.'); channel.resourceLease.retainUnknown(error); throw error;
         }
         const native = createProcgenRetirementScope().retire([
@@ -1094,7 +1107,7 @@ class BrowserNotePreview {
         const released = releaseAudioResourceAfterRetirement(channel.resourceLease, native);
         return released?.then ? released.then(() => native) : native;
       };
-      return effects && effects.state !== 'retired' ? effects.completion.then(finish) : finish();
+      return children.some(receipt => receipt.state !== 'retired') ? Promise.all(children.map(receipt => receipt.completion)).then(finish) : finish();
     } }]);
     const settle = value => { if (value.outcome === 'complete' && this._channels.get(key) === channel) this._channels.delete(key); };
     if (receipt.state === 'retired') settle(receipt); else receipt.completion.then(settle);

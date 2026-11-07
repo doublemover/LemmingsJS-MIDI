@@ -37,7 +37,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       !Number.isSafeInteger(maxControlEvents) || maxControlEvents < 1 || maxControlEvents > 4096 ||
       !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 || !['native-oscillator', 'native-fm', 'native-modal'].includes(engineId)) throw new Error('Invalid native audio backend options.');
   const parameters = engineId === 'native-modal' ? NATIVE_MODAL_PARAMETERS : engineId === 'native-fm' ? NATIVE_FM_PARAMETERS : NATIVE_OSCILLATOR_PARAMETERS;
-  const capabilities = Object.freeze({ ...baseCapabilities, maximumVoices: engineId === 'native-modal' ? 16 : engineId === 'native-fm' ? 32 : 64, supportedParameterIds: Object.freeze(Object.keys(parameters)) });
+  const capabilities = Object.freeze({ ...baseCapabilities, worldSpatialControl: true, sharedAcousticZoneSends: true, maximumVoices: engineId === 'native-modal' ? 16 : engineId === 'native-fm' ? 32 : 64, supportedParameterIds: Object.freeze(Object.keys(parameters)) });
   let prepared = null, disposed = false, deliveryErrors = 0, preparationRevision = 0, traceSequence = 0, truncatedTraces = 0;
   const voices = new Map(); let publication = null;
   const publicationFor = () => { const context = preview.getAudioContext(); if (publication && publication.context !== context) { if (publication.context.state !== 'closed' && voices.size) throw new Error('Retire the prior renderer context before publication.'); const receipt = publication.dispose({ producerRetired: true }); if (receipt.outcome !== 'complete') throw Object.assign(new Error('Prior publication retirement is unresolved.'), { retirement: receipt }); publication = null; } return publication ||= createRendererPublicationOwner({ context, resources: preview._audioResources, owner, generation: preview._generation, initiallyMuted: publicationMuted, maxGates: 128 }); };
@@ -189,7 +189,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     try {
       const frequency = frequencyFor(intent.pitch);
       const channel = preview._channel(0, owner), release = values.releaseSeconds;
-      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, value: intent.laneMix });
+      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, spatialState: intent.spatialState || null, value: intent.laneMix });
       oscillator = fmPlan ? createNativeFmSourceOwner(context, fmPlan, start) : modalPlan ? createNativeModalSourceOwner(context, modalPlan, start) : context.createOscillator();
       if (sourcePlan) oscillator.prepare(); gain = context.createGain(); macroGain = context.createGain();
       pressureGain = context.createGain();
@@ -322,6 +322,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     const receipt = Object.freeze({ status: 'accepted', stage: changes.length ? 'scheduled' : 'unchanged', voiceId, executionEpoch, targetFrame, performance, smoothingFrames: Math.ceil(duration * context.sampleRate), acousticReceipt: false });
     if (changes.length) trace({ ...receipt, generation: voice.semanticGeneration, performance: undefined, effectiveValues: performance.values }); return receipt;
   };
+  const updateSpatial = (voiceId, state, frame, epoch = 'live') => voices.get(keyFor(epoch, voiceId))?.laneMix?.updateSpatial(state, frame) || Object.freeze({ status: 'rejected', reason: 'voice-not-active' });
   const updateLaneMix = (voiceId, mix, frame, epoch = 'live', laneId = undefined) => {
     const voice = voices.get(keyFor(epoch, voiceId));
     return voice?.laneMix?.update(mix, frame, laneId) || Object.freeze({ status: 'rejected', reason: 'voice-not-active' });
@@ -401,7 +402,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     { name: 'publication-owner', run: () => publication?.dispose({ producerRetired: retirement.getReceipt().resources.filter(resource => resource.name.startsWith('voice-')).every(resource => resource.status === 'completed') }) },
     { name: 'leases', run: () => leases.clear() }, { name: 'patch', run: () => { prepared = null; } }
   ]);
-  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updatePerformance, updateLaneMix, end, renewExecutionLease, cancelGeneration,
+  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updateSpatial, updatePerformance, updateLaneMix, end, renewExecutionLease, cancelGeneration,
     cancelGenerationWithReceipt, setRendererPublication: (gain01, frame) => { if (disposed) throw new Error('This renderer has retired.'); return publicationFor().schedule(gain01, frame); }, sourceCaptureStatus: () => Object.freeze({ mode: 'unsupported-native-hidden-state', quiescent: voices.size === 0 }), renderDiagnostics, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epoch => !preview._retirementFaults?.has(owner) && ![...voices.values()].some(voice => voice.semanticEpoch === epoch),

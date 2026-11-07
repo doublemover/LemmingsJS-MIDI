@@ -743,7 +743,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 588,
-      "sha256": "745ba2f94757350061f5bed1adfade1e1e47e2fe203a1c8bbc38d743d8bfc711",
+      "sha256": "4e562aea491bc522eb6a5f05b1c391eff2e51030aae3cfc4743b98f14320ef2c",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1509,7 +1509,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 621,
-      "sha256": "19ece3409327ab3622a35bde5f52b9e98ff8bdac652f81d844fe7a32ffa94ebc",
+      "sha256": "ba4a3c03bc071217a458ed811c0343c756d8f42c8b94f95fc4aee46119c7ccb5",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1604,6 +1604,7 @@
         "js/app/midi-ui/StretchImageMaterial.js",
         "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/VoiceLaneMix.js",
+        "js/app/midi-ui/VoiceSpatialRoute.js",
         "js/app/midi-ui/WarpSegmentQueue.js",
         "js/app/midi-ui/WaveSourceProfile.js",
         "js/app/midi-ui/worklet/AllpassNotchProcessor.js",
@@ -2124,8 +2125,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 599,
-      "sha256": "c738d1cc142bc9e28a503df476cc9208facb3d87b13e46c6ea99615315b181fd",
+      "fileCount": 600,
+      "sha256": "4937a449d0c695119c7f51bc51ad52059cc1687ec7a5b410efc4875a525a9a7e",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2254,6 +2255,7 @@
         "js/app/export/BrowserDownload.js",
         "js/app/export/ExportArtifact.js",
         "js/app/export/NativeExportDeliveryOwner.js",
+        "js/app/midi-ui/AcousticZoneAudioOwner.js",
         "js/app/midi-ui/AudioAssetLoader.js",
         "js/app/midi-ui/AudioAssetRef.js",
         "js/app/midi-ui/AudioCommandQueue.js",
@@ -2352,6 +2354,7 @@
         "js/app/midi-ui/StretchImageMaterial.js",
         "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/VoiceLaneMix.js",
+        "js/app/midi-ui/VoiceSpatialRoute.js",
         "js/app/midi-ui/VoiceTransition.js",
         "js/app/midi-ui/WarpSegmentQueue.js",
         "js/app/midi-ui/WaveSourceProfile.js",
@@ -2760,6 +2763,7 @@
         "js/level/level/LevelShared.js",
         "js/level/packMechanics.js",
         "js/midi/content/AcousticMap.js",
+        "js/midi/content/AcousticZoneRecipes.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircuitWorkshopProfile.js",
@@ -2899,8 +2903,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 672,
-      "sha256": "0123731da55d6d5861092a8926c21ac8b26c0ad9482d7a21be8eddec7921c0b8",
+      "fileCount": 675,
+      "sha256": "2f5390595d6d4be5fcded8c67fa5b7b57e727fbae46d0f4d09545f689d2672be",
       "inventoryScope": "first-party-artifact"
     }
   ]
