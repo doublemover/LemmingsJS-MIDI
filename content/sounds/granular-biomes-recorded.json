@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.granular-biomes-recorded",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "name": "Granular biomes · NPS recorded edition",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -119,7 +119,7 @@
   "recipes": [
     {
       "id": "biome.recorded-rain-glass",
-      "revision": 1,
+      "revision": 2,
       "name": "Rain Glass · recorded rain",
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -170,6 +170,10 @@
             "rootHz": {
               "value": 261.6255653005986,
               "unit": "Hz"
+            },
+            "maximumGrainChildren": {
+              "value": 8,
+              "unit": "count"
             }
           }
         },
@@ -435,7 +439,7 @@
     },
     {
       "id": "biome.recorded-gravel-choir",
-      "revision": 1,
+      "revision": 2,
       "name": "Gravel Choir · recorded rockfall",
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -486,6 +490,10 @@
             "rootHz": {
               "value": 261.6255653005986,
               "unit": "Hz"
+            },
+            "maximumGrainChildren": {
+              "value": 8,
+              "unit": "count"
             }
           }
         },
@@ -751,7 +759,7 @@
     },
     {
       "id": "biome.recorded-water-lens",
-      "revision": 1,
+      "revision": 2,
       "name": "Water Lens · recorded stream",
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -802,6 +810,10 @@
             "rootHz": {
               "value": 261.6255653005986,
               "unit": "Hz"
+            },
+            "maximumGrainChildren": {
+              "value": 8,
+              "unit": "count"
             }
           }
         },
@@ -1067,7 +1079,7 @@
     },
     {
       "id": "biome.recorded-rust-breath",
-      "revision": 1,
+      "revision": 2,
       "name": "Rust Breath · recorded rotary snowplow",
       "author": "LemmingsJS-MIDI contributors",
       "tags": [
@@ -1118,6 +1130,10 @@
             "rootHz": {
               "value": 261.6255653005986,
               "unit": "Hz"
+            },
+            "maximumGrainChildren": {
+              "value": 8,
+              "unit": "count"
             }
           }
         },
@@ -1385,22 +1401,24 @@
   "realizationGroups": [
     {
       "schema": "lemmings-authored-sound-realizations/v1",
-      "id": "realization.biome.rain-glass",
+      "id": "realization.biome.recorded-rain-glass",
       "defaultProfileId": "authored",
       "requiredInvariants": [
         "single-source-cloud-ownership",
         "declared-source-rate-and-root",
-        "semantic-end-and-child-retirement"
+        "semantic-end-and-child-retirement",
+        "declared-maximum-grain-children"
       ],
       "profiles": [
         {
           "id": "authored",
-          "recipeId": "biome.rain-glass",
-          "algorithmRevision": "owned-granular-authored-v1",
+          "recipeId": "biome.recorded-rain-glass",
+          "algorithmRevision": "owned-granular-child-caps-v2",
           "preservedInvariants": [
             "single-source-cloud-ownership",
             "declared-source-rate-and-root",
-            "semantic-end-and-child-retirement"
+            "semantic-end-and-child-retirement",
+            "declared-maximum-grain-children"
           ],
           "changedAudibleProperties": [],
           "fallbackProfileId": null
@@ -1411,22 +1429,24 @@
     },
     {
       "schema": "lemmings-authored-sound-realizations/v1",
-      "id": "realization.biome.gravel-choir",
+      "id": "realization.biome.recorded-gravel-choir",
       "defaultProfileId": "authored",
       "requiredInvariants": [
         "single-source-cloud-ownership",
         "declared-source-rate-and-root",
-        "semantic-end-and-child-retirement"
+        "semantic-end-and-child-retirement",
+        "declared-maximum-grain-children"
       ],
       "profiles": [
         {
           "id": "authored",
-          "recipeId": "biome.gravel-choir",
-          "algorithmRevision": "owned-granular-authored-v1",
+          "recipeId": "biome.recorded-gravel-choir",
+          "algorithmRevision": "owned-granular-child-caps-v2",
           "preservedInvariants": [
             "single-source-cloud-ownership",
             "declared-source-rate-and-root",
-            "semantic-end-and-child-retirement"
+            "semantic-end-and-child-retirement",
+            "declared-maximum-grain-children"
           ],
           "changedAudibleProperties": [],
           "fallbackProfileId": null
@@ -1437,22 +1457,24 @@
     },
     {
       "schema": "lemmings-authored-sound-realizations/v1",
-      "id": "realization.biome.water-lens",
+      "id": "realization.biome.recorded-water-lens",
       "defaultProfileId": "authored",
       "requiredInvariants": [
         "single-source-cloud-ownership",
         "declared-source-rate-and-root",
-        "semantic-end-and-child-retirement"
+        "semantic-end-and-child-retirement",
+        "declared-maximum-grain-children"
       ],
       "profiles": [
         {
           "id": "authored",
-          "recipeId": "biome.water-lens",
-          "algorithmRevision": "owned-granular-authored-v1",
+          "recipeId": "biome.recorded-water-lens",
+          "algorithmRevision": "owned-granular-child-caps-v2",
           "preservedInvariants": [
             "single-source-cloud-ownership",
             "declared-source-rate-and-root",
-            "semantic-end-and-child-retirement"
+            "semantic-end-and-child-retirement",
+            "declared-maximum-grain-children"
           ],
           "changedAudibleProperties": [],
           "fallbackProfileId": null
@@ -1463,22 +1485,24 @@
     },
     {
       "schema": "lemmings-authored-sound-realizations/v1",
-      "id": "realization.biome.rust-breath",
+      "id": "realization.biome.recorded-rust-breath",
       "defaultProfileId": "authored",
       "requiredInvariants": [
         "single-source-cloud-ownership",
         "declared-source-rate-and-root",
-        "semantic-end-and-child-retirement"
+        "semantic-end-and-child-retirement",
+        "declared-maximum-grain-children"
       ],
       "profiles": [
         {
           "id": "authored",
-          "recipeId": "biome.rust-breath",
-          "algorithmRevision": "owned-granular-authored-v1",
+          "recipeId": "biome.recorded-rust-breath",
+          "algorithmRevision": "owned-granular-child-caps-v2",
           "preservedInvariants": [
             "single-source-cloud-ownership",
             "declared-source-rate-and-root",
-            "semantic-end-and-child-retirement"
+            "semantic-end-and-child-retirement",
+            "declared-maximum-grain-children"
           ],
           "changedAudibleProperties": [],
           "fallbackProfileId": null

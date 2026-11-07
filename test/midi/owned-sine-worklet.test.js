@@ -155,7 +155,7 @@ const setupHost = (engineId = 'worklet-sine') => {
     'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v8-owned-consonant-formants', 'owned-choir-f64-command-v2'],
     'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v6-owned-retirement', 'owned-pluck-f64-command-v1'],
     'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v13-owned-organ-onset', 'owned-spectrum-f64-command-v3'] }[engineId];
-  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v6-owned-retirement', 'owned-granular-f64-command-v1'] : source;
+  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v6-owned-retirement', 'owned-granular-f64-command-v2'] : source;
   const nodes = [], contextListeners = new Set(); let contextState = 'running';
   const context = { get state() { return contextState; }, set state(value) { contextState = value; for (const listener of contextListeners) listener(); },
     addEventListener: (type, listener) => { if (type === 'statechange') contextListeners.add(listener); }, removeEventListener: (type, listener) => { if (type === 'statechange') contextListeners.delete(listener); },

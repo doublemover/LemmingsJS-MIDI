@@ -37,7 +37,7 @@ export class OwnedSeedLayerSource {
     this.sourceGain = 0.9 / (3 * this.reader.maximumL1 * Math.max(1, ...this.descriptor.banks.map(bank => bank.peak)));
     this.cloudInputGain = 0.9 / (GRANULAR_LAYOUT.grains * this.cloud.sourceGain * Math.max(1, this.cloud.descriptor.peak));
     this.cloudOutputGain = this.body ? 0.75 : 1 / 3;
-    this.configuration = canonicalDataText({ profile: 'owned-seed-layers-v2-held-macros-source-restore', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
+    this.configuration = canonicalDataText({ profile: 'owned-seed-layers-v3-cloud-admission-state', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
     this.stereo = this.ownsEnvelope = this.cancelQueuedOnForcedEnd = true; this.maxUpdateMask = this.contactDriven ? 2047 : 1023;
     this.leftSample = this.rightSample = 0;
   }
@@ -154,7 +154,7 @@ export class OwnedSeedLayerSource {
       if (!integer(cloud(ca), 0, 0xffffffff) || ![15, 17, 18, 37].every(field => [0, 1].includes(cloud(ca + field))) || cloud(ca + 17) !== Number(this.contactDriven) || cloud(ca + 22) !== 0 || cloud(ca + 23) !== this.plan.regions[1].end || cloud(ca + 40) !== get(S.epoch) || cloud(ca + 41) !== get(S.generation) || cloud(ca + 42) !== get(S.token) || cloud(ca + 38) !== get(S.frame) || cloud(ca + 21) !== Number(!get(S.released) && get(S.active))) fail('Sustained child has a different clock, region or owner.');
       const ranges = [[0, 1], [0, 48], [Math.round(this.rate * 0.02), Math.round(this.rate * 0.14)], [0, 1], [0, 1], [0, 1]];
       for (let field = 0; field < ranges.length; field++) for (const first of [2, 8]) if (!finite(cloud(ca + first + field), ...ranges[field])) fail('Sustained child control exceeds its bounded cloud profile.');
-      if (!integer(cloud(ca + 14), 0, this.rate * 60) || !finite(cloud(ca + 16), 0, 1) || !finite(cloud(ca + 19), 20, 20000) || !finite(cloud(ca + 20), 0, 1 + 48 / this.rate) || !finite(cloud(ca + 24), 0.25, 4) || cloud(ca + 25) !== get(S.frequency) * 2 ** (-400 / 1200) || cloud(ca + 26) !== get(S.frequency) * 2 ** (400 / 1200) || ![1, 27, 28, 29, 30].every(field => integer(cloud(ca + field), 0)) || !finite(cloud(ca + 31), 0, 48) || ![32, 33].every(field => finite(cloud(ca + field), -4, 4)) || !finite(cloud(ca + 34), 0, 1) || !integer(cloud(ca + 35), -1, 7) || cloud(ca + 36) || !finite(cloud(ca + 39), 0, 1) || cloud(ca + 43)) fail('Sustained child filter, pitch or grain admission state is invalid.');
+      if (!integer(cloud(ca + 14), 0, this.rate * 60) || !finite(cloud(ca + 16), 0, 1) || !finite(cloud(ca + 19), 20, 20000) || !finite(cloud(ca + 20), 0, 1 + 48 / this.rate) || !finite(cloud(ca + 24), 0.25, 4) || cloud(ca + 25) !== get(S.frequency) * 2 ** (-400 / 1200) || cloud(ca + 26) !== get(S.frequency) * 2 ** (400 / 1200) || ![1, 27, 28, 29, 30].every(field => integer(cloud(ca + field), 0)) || !finite(cloud(ca + 31), 0, 48) || ![32, 33].every(field => finite(cloud(ca + field), -4, 4)) || !finite(cloud(ca + 34), 0, 1) || !integer(cloud(ca + 35), -1, 7) || cloud(ca + 36) !== get(S.start) || !finite(cloud(ca + 39), 0, 1) || cloud(ca + 43) !== GRANULAR_LAYOUT.grains) fail('Sustained child filter, pitch or grain admission state is invalid.');
       let active = 0;
       for (let index = 0; index < GRANULAR_LAYOUT.grains; index++) {
         const offset = (slot * GRANULAR_LAYOUT.grains + index) * GRAIN, remaining = grain(offset); if (!remaining) continue; active++;
@@ -169,7 +169,7 @@ export class OwnedSeedLayerKernel extends OwnedSineKernel {
 }
 export class OwnedSeedLayerProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedSeedLayerKernel(rate, options?.pcm, options?.samplePatch, Math.min(voices, SEED_LAYER_LAYOUT.voices), options?.sourceBank, options?.auxiliarySourceBanks); }
-  runtimeIdentity() { const source = this.kernel.source; return { engineId: 'worklet-seed-layers', engineVersion: 1, runtimeABI: 'owned-seed-layers-f64-command-v1', buildId: 'owned-seed-layers-v2-held-macros-source-restore', sourceBankHash: source.bank.hash,
+  runtimeIdentity() { const source = this.kernel.source; return { engineId: 'worklet-seed-layers', engineVersion: 1, runtimeABI: 'owned-seed-layers-f64-command-v1', buildId: 'owned-seed-layers-v3-cloud-admission-state', sourceBankHash: source.bank.hash,
     auxiliarySourceBankHashes: { 'grain-window-v1': source.cloud.bank.hash }, pcmBankHash: source.descriptor.bankHash, samplePlanIdentity: source.plan.identity }; }
 }
-if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-seed-layers-v2-held-macros-source-restore', OwnedSeedLayerProcessor);
+if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-seed-layers-v1', OwnedSeedLayerProcessor);

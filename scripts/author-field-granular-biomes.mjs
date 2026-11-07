@@ -69,7 +69,7 @@ await fs.writeFile(path.join(dataDir, 'provenance.json'), JSON.stringify({ schem
 const recipes = JSON.parse(await fs.readFile(path.join(root, 'content/sounds/granular-biomes.json'), 'utf8'));
 const licenseId = 'LicenseRef-NPS-Public-Domain', notice = 'NPS Sound Gallery source notice, observed 2026-11-07:\nThe files are in the public domain and may be downloaded. Enjoy, and please give the appropriate credit.\nSource: ' + gallery + '\n';
 const licenseTextHash = digest(notice);
-recipes.pack = { ...recipes.pack, id: 'lemmings.granular-biomes-recorded', version: '0.1.0', name: 'Granular biomes · NPS recorded edition',
+recipes.pack = { ...recipes.pack, id: 'lemmings.granular-biomes-recorded', version: '0.2.0', name: 'Granular biomes · NPS recorded edition',
   attribution: 'Four short National Park Service field-recording excerpts; original granular recipes by LemmingsJS-MIDI contributors. Rockfall supplies the rough source and rotary snowplow the mechanical source. Excerpt conversion is documented; listening, alias and device qualification are pending.',
   modifications: [revision + '; source inventory and conversion in content/sounds/field-recordings/provenance.json.'],
   licenses: [{ id: licenseId, sha256: licenseTextHash, text: notice, url: gallery }] };
@@ -80,10 +80,14 @@ recipes.files = identities.map((asset, index) => ({ path: asset.path, sha256: as
     declaredUse: 'redistributable' } }));
 recipes.recipes.forEach((recipe, index) => {
   const asset = identities[index];
-  recipe.id = 'biome.recorded-' + specs[index].biome; recipe.revision = 1; recipe.name += ' · recorded ' + specs[index].title.toLowerCase();
+  recipe.id = 'biome.recorded-' + specs[index].biome; recipe.revision = 2; recipe.name += ' · recorded ' + specs[index].title.toLowerCase();
   recipe.tags = recipe.tags.map(tag => tag === 'synthetic-source' ? 'field-recording' : tag);
   recipe.rights.attribution = 'Original actor-owned granular cloud recipe over the credited NPS recording excerpt. Internal grains remain DSP children of one held action gate.';
   recipe.sampleRefs[0].sha256 = asset.sha256; recipe.sampleRefs[0].bytes = asset.bytes; recipe.dependencies = [asset.sha256];
 });
+for (const group of recipes.realizationGroups) {
+  group.id = group.id.replace('realization.biome.', 'realization.biome.recorded-');
+  for (const profile of group.profiles) profile.recipeId = profile.recipeId.replace('biome.', 'biome.recorded-');
+}
 await fs.writeFile(path.join(root, 'content/sounds/granular-biomes-recorded.json'), JSON.stringify(recipes, null, 2) + '\n');
 console.log(JSON.stringify({ author: options.name || null, authoringRevision: revision, recordings: identities.map(({ id, bytes, frames, sha256 }) => ({ id, bytes, frames, sha256 })) }));

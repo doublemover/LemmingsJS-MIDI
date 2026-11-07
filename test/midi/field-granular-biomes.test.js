@@ -40,7 +40,7 @@ describe('bundled NPS recorded granular biomes', () => {
     for (const entry of result.prepared.patches) {
       expect(entry.state).to.equal('definition-admitted'); expect(entry.definition.id).to.match(/^biome\.recorded-/);
       expect(entry.definition.tags).to.include('field-recording').and.not.include('synthetic-source');
-      expect(entry.definition.voicePolicy.maxVoices).to.equal(8);
+      expect(entry.definition.voicePolicy.maxVoices).to.equal(8); expect(entry.definition.parameters.maximumGrainChildren).to.equal(8);
       expect(entry.definition.macros.map(macro => macro.id)).to.deep.equal(['crowd', 'scale', 'scan', 'weather']);
       expect(entry.definition.causalBindings.every(binding => binding.sourceKind === 'MotionCommitted')).to.equal(true);
     }

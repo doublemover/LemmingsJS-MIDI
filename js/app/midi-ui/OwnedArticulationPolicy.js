@@ -38,5 +38,6 @@ export function resolveOwnedArticulationPolicy(patch) {
   }
   return Object.freeze({ version: 1, releaseSeconds, oneShotTailSeconds: Math.min(4, Math.max(0.04, holdSeconds)),
     policy: 'owned-local-envelope-hold-v1', semanticEndsRewritten: false,
+    ...(patch.engineId === 'worklet-granular' ? { cloud: { maximumGrainChildren: parameters.maximumGrainChildren ?? 16, window: 'hann-2048-v1', freezePolicy: parameters.freezePosition ? 'source-position-hold' : 'none' } } : {}),
     ...(patch.engineId === 'worklet-spectrum' && parameters.percussionGain01 > 0 ? { onsetComponent: { kind: 'organ-percussion-partial', gain01: parameters.percussionGain01, ratio: parameters.percussionRatio, t60Seconds: parameters.percussionT60Seconds, legatoPolicy: 'same-owned-voice-pitch-and-drawbar-updates-never-retrigger;new-begin-is-a-new-onset' } } : {}) });
 }

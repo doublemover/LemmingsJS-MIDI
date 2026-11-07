@@ -366,7 +366,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         const parameters = patch.definition.parameters;
         const recorded = patch.definition.tags.includes('field-recording');
         modelInfo.textContent = (recorded ? 'Recorded edition: credited NPS rain, rockfall, stream or rotary snowplow excerpt. ' : 'Synthetic edition: original generated texture. ') + 'Patch model: one pinned local WAV per cloud · ' + parameters.grainMilliseconds + ' ms Hann grains at ' + parameters.densityHz +
-          '/s · source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, 16 grain slots per cloud, 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore is unavailable. Fixed control WAVs use the same pinned source; causal rendering requires its saved material reference.';
+          '/s · source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, ' + parameters.maximumGrainChildren + ' declared grain children per cloud (16 preallocated slots maximum), 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore is unavailable. Fixed control WAVs use the same pinned source; causal rendering requires its saved material reference.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2) {
         const parameters = patch.definition.parameters;

@@ -25,7 +25,7 @@ export class OwnedGranularSource {
   begin(slot, frequency, command, frame) {
     if (!integer(slot, 0, this.voices - 1) || !integer(frame, 0, Number.MAX_SAFE_INTEGER) || !valid(frequency, 20, 2000) || !integer(command[18], 0, 0xffffffff) ||
         !this.validUpdate(slot, 1023, command) || !valid(command[22], 0.25, 4) || !integer(command[24], 0, this.descriptor.sourceFrames - 2) ||
-        !integer(command[25], command[24] + 2, this.descriptor.sourceFrames) || ![0, 1].includes(command[27]) || command[29] !== 0 || ![0, 1].includes(command[30]) || !valid(command[31], 20, 20000) ||
+        !integer(command[25], command[24] + 2, this.descriptor.sourceFrames) || ![0, 1].includes(command[27]) || !integer(command[29], 0, GRAINS_PER_VOICE) || ![0, 1].includes(command[30]) || !valid(command[31], 20, 20000) ||
         !valid(frequency / command[31] * command[22], 0.25, 4)) return 0;
     const start = Math.floor(command[24] * this.descriptor.sampleRate / this.descriptor.sourceSampleRate), end = Math.min(this.descriptor.frames, Math.ceil(command[25] * this.descriptor.sampleRate / this.descriptor.sourceSampleRate));
     if (end - start < 2) return 0;
@@ -39,6 +39,7 @@ export class OwnedGranularSource {
     this.state[at + 15] = command[26]; this.state[at + 16] = command[19]; this.state[at + 17] = command[27]; this.state[at + 18] = command[30]; this.state[at + 19] = command[31];
     this.state[at + 20] = 1; this.state[at + 21] = 1; this.state[at + 22] = start; this.state[at + 23] = end; this.state[at + 24] = command[22];
     this.state[at + 25] = frequency * 2 ** (-400 / 1200); this.state[at + 26] = frequency * 2 ** (400 / 1200);
+    this.state[at + 36] = frame; this.state[at + 43] = command[29] || GRAINS_PER_VOICE;
     this.state[at + 37] = 1; this.state[at + 38] = frame - 1; this.state[at + 40] = command[0]; this.state[at + 41] = command[17]; this.state[at + 42] = command[5];
     this.tune(at); return 1;
   }
@@ -67,7 +68,7 @@ export class OwnedGranularSource {
     const at = slot * CLOUD, positionRandom = this.random(at), stereoRandom = this.random(at); this.state[at + 1]++; this.state[at + 28]++;
     const bucket = Math.floor(frame / 128); if (bucket !== this.birthBucket) { this.birthBucket = bucket; this.bucketBirths = 0; }
     let offset = -1;
-    if (this.bucketBirths < GRANULAR_BIRTHS_PER_BUCKET) for (let index = 0; index < GRAINS_PER_VOICE; index++) {
+    if (this.bucketBirths < GRANULAR_BIRTHS_PER_BUCKET) for (let index = 0; index < this.state[at + 43]; index++) {
       const candidate = (slot * GRAINS_PER_VOICE + index) * GRAIN; if (!this.grains[candidate]) { offset = candidate; break; }
     }
     if (offset < 0) { this.state[at + 30]++; return; }
@@ -99,7 +100,7 @@ export class OwnedGranularSource {
     this.state[at + 31] = density;
     if (density > 0) { if (this.state[at + 20] >= 1) { this.spawn(slot, frequency, frame); this.state[at + 20] -= 1; } this.state[at + 20] += density / this.rate; }
     let left = 0, right = 0; const start = this.state[at + 22], end = this.state[at + 23];
-    if (this.state[at + 27] > 0) for (let grain = 0; grain < GRAINS_PER_VOICE; grain++) {
+    if (this.state[at + 27] > 0) for (let grain = 0; grain < this.state[at + 43]; grain++) {
       const offset = (slot * GRAINS_PER_VOICE + grain) * GRAIN, remaining = this.grains[offset]; if (!remaining) continue;
       const duration = this.grains[offset + 1], position = (duration - remaining) / (duration - 1) * 2048, index = Math.min(2047, Math.floor(position)), fraction = position - index,
         window = (this.window[index] + (this.window[index + 1] - this.window[index]) * fraction) * this.grains[offset + 4], cursor = this.grains[offset + 2], other = this.grains[offset + 6];
@@ -116,8 +117,10 @@ export class OwnedGranularSource {
     for (let slot = 0; slot < this.voices; slot++) {
       const at = slot * CLOUD; activeGrains += this.state[at + 27]; if (!this.state[at + 37]) continue;
       clouds.push({ slot, token: this.state[at + 42], epoch: this.state[at + 40], generation: this.state[at + 41], frame: this.state[at + 38],
+        maximumGrainChildren: this.state[at + 43], densityMeasurement: 'mean-admitted-births-since-cloud-onset;includes-initial-grain',
+        densityWindowFrames: Math.max(0, this.state[at + 38] - this.state[at + 36] + 1),
         activeGrains: this.state[at + 27], requestedGrains: this.state[at + 28], admittedGrains: this.state[at + 29], rejectedGrains: this.state[at + 30],
-        effectiveDensityHz: this.state[at + 31], sourcePosition01: this.state[at + 15] ? this.state[at + 16] : this.state[at + 2], freezeMode: this.state[at + 15] ? 'source-position-hold' : 'none' });
+        requestedDensityHz: this.state[at + 31], effectiveDensityHz: this.state[at + 38] >= this.state[at + 36] ? this.state[at + 29] * this.rate / (this.state[at + 38] - this.state[at + 36] + 1) : 0, sourcePosition01: this.state[at + 15] ? this.state[at + 16] : this.state[at + 2], freezeMode: this.state[at + 15] ? 'source-position-hold' : 'none' });
     }
     return { kind: 'owned-granular-source', bankHash: this.descriptor.bankHash, pcmHash: this.descriptor.pcmHash, activeGrains, grainLimit: this.voices * GRAINS_PER_VOICE, sourceGain: this.sourceGain,
       resampling: 'linear-unqualified', seedAlgorithm: 'xorshift32-zero-to-6d2b79f5-v1', window: 'hann-2048-v1', clouds };
@@ -128,6 +131,6 @@ export class OwnedGranularKernel extends OwnedSineKernel {
 }
 export class OwnedGranularProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedGranularKernel(rate, options?.pcm, Math.min(voices, GRANULAR_VOICES), options?.sourceBank); }
-  runtimeIdentity() { return { engineId: 'worklet-granular', engineVersion: 1, runtimeABI: 'owned-granular-f64-command-v1', buildId: 'owned-granular-v7-held-macros-source-restore', sourceBankHash: this.kernel.source.bank.hash, pcmBankHash: this.kernel.source.descriptor.bankHash }; }
+  runtimeIdentity() { return { engineId: 'worklet-granular', engineVersion: 1, runtimeABI: 'owned-granular-f64-command-v2', buildId: 'owned-granular-v8-authored-child-caps', sourceBankHash: this.kernel.source.bank.hash, pcmBankHash: this.kernel.source.descriptor.bankHash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-granular-v1', OwnedGranularProcessor);

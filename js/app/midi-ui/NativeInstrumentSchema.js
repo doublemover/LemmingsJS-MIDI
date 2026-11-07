@@ -42,7 +42,7 @@ const schemas = freezeData({
     .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(
       [parameter('position01', 0, 1, 0.5, 'normalized'), parameter('densityHz', 0, 48, 12, 'Hz'), parameter('grainMilliseconds', 20, 140, 70, 'ms'), parameter('spread01', 0, 1, 0.2, 'normalized'), parameter('activity01', 0, 1, 1, 'normalized'), parameter('tone01', 0, 1, 0.7, 'normalized')]
         .map(spec => Object.freeze({ ...spec, causalLiveSafe: true })), parameter('freezePosition', 0, 1, 0, 'enum', true), envelope(0, 0, 1, 0.5)),
-  'worklet-granular': [parameter('pitchRatio', 0.25, 4, 1, 'ratio'), parameter('regionStart01', 0, 1, 0, 'normalized'), parameter('regionEnd01', 0, 1, 1, 'normalized'),
+  'worklet-granular': [parameter('maximumGrainChildren', 1, 16, 16, 'count', true), parameter('pitchRatio', 0.25, 4, 1, 'ratio'), parameter('regionStart01', 0, 1, 0, 'normalized'), parameter('regionEnd01', 0, 1, 1, 'normalized'),
     parameter('motionRequired', 0, 1, 1, 'enum', true), parameter('reverse', 0, 1, 0, 'enum', true), parameter('rootHz', 20, 20000, 261.6255653005986, 'Hz')]
     .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(
       [parameter('position01', 0, 1, 0.5, 'normalized'), parameter('densityHz', 0, 48, 12, 'Hz'), parameter('grainMilliseconds', 20, 140, 70, 'ms'),

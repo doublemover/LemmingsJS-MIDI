@@ -80,7 +80,7 @@ const profiles = Object.freeze({
     beginFields: (p, seed, pcm, selected, travel) => ({ ...textureBodyCommandFields(p), 18: seed, 19: p.textureKind, 20: p.roughnessPerPixel, 21: p.dragSlope, 22: p.shade01, 23: p.textureBodySeconds,
       ...(travel ? { 34: travel.firstFrame, 35: travel.endFrame, 36: travel.from, 37: travel.to, 38: 1 } : {}) }) }),
   'worklet-seed-layers': createProfile({ id: 'worklet-seed-layers', controlReferenceRender: true, width: SEED_LAYER_LAYOUT.width, voices: SEED_LAYER_LAYOUT.voices, fields: NATIVE_SEED_LAYER_FIELDS, parameters: NATIVE_SEED_LAYER_PARAMETERS,
-    buildId: 'owned-seed-layers-v2-held-macros-source-restore', abi: 'owned-seed-layers-f64-command-v1', workletUrl: new URL('./worklet/OwnedSeedLayerProcessor.js', import.meta.url).href,
+    buildId: 'owned-seed-layers-v3-cloud-admission-state', abi: 'owned-seed-layers-f64-command-v1', workletUrl: new URL('./worklet/OwnedSeedLayerProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', auxiliaryBankIds: () => ['grain-window-v1'], storageBytes: seedLayerSourceBytes, heapEstimate: 2 * 1048576,
     seedDomain: 'decomposed-seed-grain-choices-v1', cost: () => 96, minHz: 20, maxHz: 2000, bendCents: 0, minimumControlSeconds: 0.008,
     acceptsExpression: (expression, voice) => (expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0) && (!voice.seedLayerMotion || !['activity01', 'position01', 'freezePosition'].some(key => expression[key] != null)),
@@ -97,8 +97,8 @@ const profiles = Object.freeze({
       for (let index = 0; index < 4; index++) if ((parameters['sampleLayer' + index + 'Gain01'] ?? 1) !== 1 && !selected.articulation?.componentGainSlots?.includes(index)) throw new TypeError('A sample component control has no selected source-map slot.');
       return { 18: selected.zoneIndex, 19: selected.region.selectionSeed, 31: parameters.sampleLowpassHz ?? 20000, 32: parameters.sampleVelocityTone01 ?? 0, 33: selected.velocity01 ?? 1, 34: parameters.graftMix01 ?? 0.7, 35: parameters.graftT60Seconds ?? 0.7, 36: parameters.graftDamping01 ?? 0, 37: parameters.graftExcite01 ?? 1, 38: parameters.graftPickup01 ?? 0.5, 39: parameters.graftModeCount ?? 0, 40: parameters.sampleLayer0Gain01 ?? 1, 41: parameters.sampleLayer1Gain01 ?? 1, 42: parameters.sampleLayer2Gain01 ?? 1, 43: parameters.sampleLayer3Gain01 ?? 1 }; } }),
   'worklet-granular': createProfile({ id: 'worklet-granular', controlReferenceRender: true, bankId: 'grain-window-v1', width: GRANULAR_LAYOUT.width, voices: GRANULAR_LAYOUT.voices, fields: NATIVE_GRANULAR_FIELDS, parameters: NATIVE_GRANULAR_PARAMETERS,
-    buildId: 'owned-granular-v7-held-macros-source-restore', abi: 'owned-granular-f64-command-v1', workletUrl: new URL('./worklet/OwnedGranularProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'grain-choices-v1', minHz: 20, maxHz: 2000, bendCents: 200,
-    storageBytes: granularSourceBytes, heapEstimate: GRANULAR_SOURCE_HEAP_ESTIMATE, cost: () => 16, minimumControlSeconds: 0.008, requiresPCM: true,
+    buildId: 'owned-granular-v8-authored-child-caps', abi: 'owned-granular-f64-command-v2', workletUrl: new URL('./worklet/OwnedGranularProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'grain-choices-v1', minHz: 20, maxHz: 2000, bendCents: 200,
+    storageBytes: granularSourceBytes, heapEstimate: GRANULAR_SOURCE_HEAP_ESTIMATE, cost: parameters => parameters?.maximumGrainChildren ?? 16, minimumControlSeconds: 0.008, requiresPCM: true,
     acceptsParameters: parameters => parameters.regionStart01 < parameters.regionEnd01,
     acceptsOnset: (parameters, frequency, pcm) => {
       if (!pcm || !finite(frequency / parameters.rootHz * parameters.pitchRatio, 0.25, 4)) return false;
@@ -108,7 +108,7 @@ const profiles = Object.freeze({
     expressions: [['position01', 8, 19], ['densityHz', 16, 20], ['grainMilliseconds', 32, 21], ['spread01', 64, 23], ['freezePosition', 128, 26], ['activity01', 256, 28], ['tone01', 512, 32]],
     beginFields: (parameters, seed, pcm) => ({ 18: seed, 19: parameters.position01, 20: parameters.densityHz, 21: parameters.grainMilliseconds, 22: parameters.pitchRatio, 23: parameters.spread01,
       24: Math.floor(parameters.regionStart01 * pcm.sourceFrames), 25: Math.ceil(parameters.regionEnd01 * pcm.sourceFrames), 26: parameters.freezePosition, 27: parameters.motionRequired,
-      28: parameters.activity01, 29: 0, 30: parameters.reverse, 31: parameters.rootHz, 32: parameters.tone01 }) }),
+      28: parameters.activity01, 29: parameters.maximumGrainChildren ?? 16, 30: parameters.reverse, 31: parameters.rootHz, 32: parameters.tone01 }) }),
   'worklet-sine': createProfile({ id: 'worklet-sine', controlReferenceRender: true, width: SINE_LAYOUT.width, voices: SINE_LAYOUT.voices, fields: NATIVE_WORKLET_FIELDS,
     buildId: 'owned-sine-v8-held-macros-source-restore', abi: 'owned-sine-f64-command-v1', workletUrl: new URL('./worklet/OwnedSineProcessor.js', import.meta.url).href }),
   'worklet-pluck': createProfile({ id: 'worklet-pluck', controlReferenceRender: true, width: PLUCK_LAYOUT.width, voices: PLUCK_LAYOUT.voices, fields: NATIVE_PLUCK_FIELDS, parameters: NATIVE_PLUCK_PARAMETERS,

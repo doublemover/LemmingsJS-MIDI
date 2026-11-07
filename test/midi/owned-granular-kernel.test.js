@@ -45,6 +45,20 @@ describe('owned deterministic granular source', () => {
       expect(output.slice(-256).every(value => value === 0)).to.equal(true); expect(kernel.source.inspect().activeGrains).to.equal(0); expect(kernel.source.grains.every((value, index) => index % 14 || value === 0)).to.equal(true);
     }
   });
+  it('limits actual child slots from the patch and distinguishes requested from admitted density', () => {
+    const source = new OwnedGranularSource(48000, pcm()), command = begin(); command[29] = 2;
+    expect(source.begin(0, 220, command, 0)).to.equal(1);
+    for (let frame = 0; frame < 48000; frame++) source.sample(0, 220, frame);
+    const cloud = source.inspect().clouds[0];
+    expect(cloud.maximumGrainChildren).to.equal(2); expect(cloud.activeGrains).to.be.at.most(2);
+    expect(cloud.rejectedGrains).to.be.greaterThan(0); expect(cloud.requestedDensityHz).to.equal(48);
+    expect(cloud.effectiveDensityHz).to.equal(cloud.admittedGrains); expect(cloud.effectiveDensityHz).to.be.lessThan(48);
+    expect(cloud.densityWindowFrames).to.equal(48000);
+    for (let index = 2; index < 16; index++) expect(source.grains[index * 14]).to.equal(0);
+    command[29] = 17; expect(source.begin(0, 220, command, 48000)).to.equal(0);
+    command[29] = 0; expect(source.begin(0, 220, command, 48000)).to.equal(1);
+    expect(source.inspect().clouds[0].maximumGrainChildren).to.equal(16);
+  });
   it('does not replenish a motion-gated stationary cloud and reports rejected births without allocating beyond its pool', () => {
     const source = new OwnedGranularSource(48000, pcm()), command = begin(); command[27] = 1; command[28] = 0; expect(source.begin(0, 220, command, 0)).to.equal(1);
     for (let frame = 0; frame < 2000; frame++) source.sample(0, 220, frame); expect(source.inspect().clouds[0].requestedGrains).to.equal(0);

@@ -32,7 +32,7 @@ describe('original synthetic granular biome content', () => {
       expect(entry.definition.macros).to.have.length(4); expect(entry.definition.sampleRefs).to.have.length(1);
       expect(entry.definition.causalBindings.every(binding => binding.sourceKind === 'MotionCommitted' && binding.mode === 'continuous')).to.equal(true);
       expect(entry.dependencies).to.deep.equal(entry.definition.sampleRefs.map(ref => ref.sha256));
-      expect(entry.definition.parameters.motionRequired).to.equal(0);
+      expect(entry.definition.parameters.motionRequired).to.equal(0); expect(entry.definition.parameters.maximumGrainChildren).to.equal(8);
     }
   });
 });

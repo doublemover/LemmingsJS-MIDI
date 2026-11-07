@@ -163,11 +163,12 @@ const inspectSource = (kernel, profile, view) => {
     if (profile.kind === 4) {
       if (!integer(get(0), 0, 0xffffffff) || ![0, 1].includes(get(15)) || ![0, 1].includes(get(17)) || ![0, 1].includes(get(18)) ||
           !integer(get(22), 0, source.descriptor.frames - 2) || !integer(get(23), get(22) + 2, source.descriptor.frames) ||
-          !integer(get(27), 0, GRANULAR_LAYOUT.grains) || !integer(get(38), -1)) fail('Granular region, seed or time frontier is invalid.');
+          !integer(get(43), 1, GRANULAR_LAYOUT.grains) || !integer(get(27), 0, get(43)) || !integer(get(38), -1) || !integer(get(36), 0, get(38) + 1)) fail('Granular region, seed or time frontier is invalid.');
       const grains = data.arrays[1].get; let active = 0;
       for (let g = 0; g < GRANULAR_LAYOUT.grains; g++) { const offset = (slot * GRANULAR_LAYOUT.grains + g) * GRANULAR_LAYOUT.grainState, remaining = grains(offset);
         if (!integer(remaining, 0, Math.ceil(kernel.sampleRate * 0.14))) fail('Grain lifetime is invalid.');
         if (!remaining) continue; active++;
+        if (g >= get(43)) fail('An active grain exceeds the authored cloud child limit.');
         if (!integer(grains(offset + 1), remaining, Math.ceil(kernel.sampleRate * 0.14)) || !integer(grains(offset + 7), 1) ||
             !integer(grains(offset + 8), 1) || !integer(grains(offset + 9), 0)) fail('Grain birth identity is invalid.');
       }
