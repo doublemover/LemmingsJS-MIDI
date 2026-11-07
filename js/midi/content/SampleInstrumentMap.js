@@ -62,8 +62,8 @@ export function validateSampleInstrumentMap(input, sampleRefs, { rendererProfile
   }).sort(before);
   if (!articulations.has(input.neutralArticulationId)) fail('missing neutral articulation');
   const region = (value, child = false) => {
-    keys(value, child ? ['assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', ...(advanced ? ['pitchTracking'] : [])] :
-      ['id', 'articulationId', 'roundRobinGroup', 'alternateIndex', 'velocityMin01', 'velocityMax01', 'assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', 'loop', 'releaseRegion', 'chokeGroup', ...(advanced ? ['playbackMode', 'positionPolicy', 'pitchTracking'] : [])]);
+    keys(value, child ? ['assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', ...(advanced ? ['pitchTracking', 'gainControl'] : [])] :
+      ['id', 'articulationId', 'roundRobinGroup', 'alternateIndex', 'velocityMin01', 'velocityMax01', 'assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', 'loop', 'releaseRegion', 'chokeGroup', ...(advanced ? ['playbackMode', 'positionPolicy', 'pitchTracking', 'gainControl', 'layers'] : [])]);
     if (!assets.has(value.assetHash) || !integer(value.onsetFrame, 0, 7999999) || !integer(value.endFrame, value.onsetFrame + 1, 8000000) ||
         !finite(value.rootCents, -24000, 24000) || !finite(value.gain01, 0, 1) || !finite(value.tuningCents, -1200, 1200)) fail('invalid source frame region or authored trim');
     keys(value.pitchRange, ['minCents', 'maxCents', 'maxTransposeCents']);
@@ -72,6 +72,7 @@ export function validateSampleInstrumentMap(input, sampleRefs, { rendererProfile
     if (!finite(range.minCents, -24000, value.rootCents) || !finite(range.maxCents, value.rootCents, 24000) ||
         !finite(range.maxTransposeCents, 0, 4800) || (pitchTracking === 'fixed' ? range.maxTransposeCents !== 0 : Math.max(value.rootCents - range.minCents, range.maxCents - value.rootCents) > range.maxTransposeCents))
       fail('pitch range exceeds its declared varispeed transposition');
+    if (value.gainControl != null && (!advanced || !integer(value.gainControl, 0, 3))) fail('invalid component gain slot');
     const playbackMode = advanced && !child ? value.playbackMode ?? 'forward' : 'forward';
     if (!['forward', 'reverse', 'positionDriven'].includes(playbackMode)) fail('unsupported owned sample playback mode');
     let positionPolicy = null;
@@ -92,8 +93,19 @@ export function validateSampleInstrumentMap(input, sampleRefs, { rendererProfile
       loop = { mode: value.loop.mode, startFrame: value.loop.startFrame, endFrame: value.loop.endFrame, crossfadeFrames: value.loop.crossfadeFrames,
         ...(advanced ? { gainLaw: value.loop.gainLaw ?? 'linear' } : {}) };
     }
+    let layers;
+    if (!child && value.layers != null) {
+      if (!advanced || !Array.isArray(value.layers) || value.layers.length < 1 || value.layers.length > 3 || playbackMode !== 'forward' || pitchTracking !== 'fixed' || loop || value.releaseRegion != null || value.gainControl == null) fail('parallel components require a fixed forward parent without loops or release children');
+      const slots = new Set([value.gainControl]);
+      layers = value.layers.map(layer => {
+        const result = region(layer, true);
+        if (result.gainControl == null || slots.has(result.gainControl) || result.assetHash !== value.assetHash || result.pitchTracking !== 'fixed' || result.rootCents !== value.rootCents || result.endFrame - result.onsetFrame > value.endFrame - value.onsetFrame || result.pitchRange.minCents !== range.minCents || result.pitchRange.maxCents !== range.maxCents) fail('parallel components require unique slots, one actual atlas/source clock and matching fixed-note selection');
+        slots.add(result.gainControl); return result;
+      });
+    }
+    if (!child && value.releaseRegion?.gainControl != null) fail('release children do not support component gain slots');
     return { assetHash: value.assetHash, onsetFrame: value.onsetFrame, endFrame: value.endFrame, rootCents: value.rootCents,
-      ...(value.pitchTracking != null ? { pitchTracking } : {}), gain01: value.gain01, tuningCents: value.tuningCents, pitchRange: { minCents: range.minCents, maxCents: range.maxCents, maxTransposeCents: range.maxTransposeCents },
+      ...(value.pitchTracking != null ? { pitchTracking } : {}), ...(value.gainControl == null ? {} : { gainControl: value.gainControl }), ...(layers ? { layers } : {}), gain01: value.gain01, tuningCents: value.tuningCents, pitchRange: { minCents: range.minCents, maxCents: range.maxCents, maxTransposeCents: range.maxTransposeCents },
       ...(!child ? { ...(advanced ? { playbackMode, positionPolicy } : {}), loop, releaseRegion: value.releaseRegion == null ? null : region(value.releaseRegion, true), chokeGroup: value.chokeGroup ?? null } : {}) };
   };
   const ids = new Set(), groups = new Map();
@@ -127,7 +139,7 @@ export function validateSampleInstrumentMap(input, sampleRefs, { rendererProfile
 export function validateSampleMapAssets(map, pins) {
   if (!Array.isArray(pins) || pins.length > 32) fail('invalid decoded material inventory');
   const available = new Map(pins.map(pin => [pin?.ref?.contentHash, pin]));
-  for (const zone of map.zones) for (const region of [zone, zone.releaseRegion].filter(Boolean)) {
+  for (const zone of map.zones) for (const region of [zone, ...(zone.layers || []), zone.releaseRegion].filter(Boolean)) {
     const pin = available.get(region.assetHash);
     if (!pin?.isActive?.() || !integer(pin.ref.frames, region.endFrame, 8000000) || !integer(pin.ref.channels, 1, 2)) fail('authored region exceeds its actual pinned source');
   }
@@ -174,10 +186,10 @@ export function createSampleMapResolver(input, sampleRefs, { patchId, patchRevis
       selected.alternates.map(zone => [zone.id, zone.assetHash])]) + 1) * 2147483648));
     const zone = selected.alternates[seed % selected.alternates.length];
     const toRegion = entry => ({ domain: 'source-frames', assetHash: entry.assetHash, onsetFrame: entry.onsetFrame, endFrame: entry.endFrame, rootCents: entry.rootCents,
-      ...(entry.pitchTracking ? { pitchTracking: entry.pitchTracking } : {}), gain01: entry.gain01, tuningCents: entry.tuningCents, pitchRange: { minCents: entry.pitchRange.minCents, maxCents: entry.pitchRange.maxCents }, playbackMode: entry.playbackMode ?? 'forward' });
+      ...(entry.pitchTracking ? { pitchTracking: entry.pitchTracking } : {}), ...(entry.gainControl == null ? {} : { gainControl: entry.gainControl }), gain01: entry.gain01, tuningCents: entry.tuningCents, pitchRange: { minCents: entry.pitchRange.minCents, maxCents: entry.pitchRange.maxCents }, playbackMode: entry.playbackMode ?? 'forward' });
     const scope = JSON.stringify([intent.worldId ?? null, intent.generation, intent.laneId ?? null, intent.sampleKitId ?? intent.mappingId ?? 'control', map.mapId, map.revision]);
     if (scope.length > 1024) fail('sample kit scope exceeds its bounded identity');
-    return freezeData({ ...toRegion(zone), ...(advancedMap(map) ? { positionPolicy: zone.positionPolicy } : {}), loop: zone.loop, releaseRegion: zone.releaseRegion ? toRegion(zone.releaseRegion) : null,
+    return freezeData({ ...toRegion(zone), ...(advancedMap(map) ? { positionPolicy: zone.positionPolicy, ...(zone.gainControl == null ? {} : { gainControl: zone.gainControl }), ...(zone.layers ? { layers: zone.layers.map(toRegion) } : {}) } : {}), loop: zone.loop, releaseRegion: zone.releaseRegion ? toRegion(zone.releaseRegion) : null,
       chokeGroup: zone.chokeGroup, chokeScope: scope, selectionSeed: seed,
       selection: { mapId: map.mapId, mapRevision: map.revision, zoneId: zone.id, articulationId: gesture, requestedArticulationId: requested, neutralFallback: fallback,
         roundRobinGroup: zone.roundRobinGroup, alternateIndex: zone.alternateIndex, alternates: selected.alternates.length, velocityMin01: zone.velocityMin01,

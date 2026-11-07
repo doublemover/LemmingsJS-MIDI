@@ -6,7 +6,7 @@ import { prepareSampleCursorProfile } from '../../midi/content/SampleCursorProfi
 import { sampleRegionRate, sampleRegionArticulation } from './NativeSamplePlan.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 
-export const OWNED_SAMPLE_PLAN_REVISION = 'owned-sample-region-plan-motion-body-v2';
+export const OWNED_SAMPLE_PLAN_REVISION = 'owned-sample-region-plan-components-v3';
 export const OWNED_SAMPLE_VOICES = SAMPLE_LAYOUT.voices;
 export const OWNED_SAMPLE_CURSOR_CAPACITY = 32;
 const fail = message => { throw Object.assign(new Error(message), { name: 'OwnedSamplePreflightError', code: 'owned-sample-preflight' }); };
@@ -39,12 +39,15 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
     if (positionSeam && (positionSeam.crossfade < 2 || positionSeam.crossfade > (end - first) / 2)) fail('The position wrap seam is outside the decoded region bound.');
     return freezeData({ assetIndex, assetHash: region.assetHash, first, end, guardFirst: Math.floor(first), guardEnd: Math.ceil(end),
       sourceFirst: region.onsetFrame, sourceEnd: region.endFrame, sourceSampleRate: bank.sourceSampleRate, decodedSampleRate: bank.sampleRate,
-      rootCents: region.rootCents, tuningCents: region.tuningCents, rootFrequencyHz: 440 * 2 ** ((region.rootCents - region.tuningCents - 6900) / 1200), pitchRange: region.pitchRange, pitchTracking: region.pitchTracking ?? 'varispeed', gain01: region.gain01, mode, loop, cursorProfile,
+      rootCents: region.rootCents, tuningCents: region.tuningCents, rootFrequencyHz: 440 * 2 ** ((region.rootCents - region.tuningCents - 6900) / 1200), pitchRange: region.pitchRange, pitchTracking: region.pitchTracking ?? 'varispeed', gain01: region.gain01, gainControl: region.gainControl ?? null, mode, loop, cursorProfile,
       positionSeam, traversal: policy?.traversal ?? null,
       filterGuard: 'clamp-actual-region-sample-indices', periodDomain: 'fractional-decoded-source-frames;crossfade-does-not-shorten-loop' });
   };
-  if (body && map.zones.some(zone => zone.loop || zone.releaseRegion || (body.excitationMode ? zone.playbackMode !== 'positionDriven' || !zone.positionPolicy?.traversal : zone.playbackMode !== 'forward'))) fail('A body graft requires its exact finite one-shot or canonical-motion cursor source without loop/release-trigger children.');
-  const entries = map.zones.map(zone => freezeData({ zoneId: zone.id, attack: compile(zone), release: zone.releaseRegion ? compile(zone.releaseRegion, true) : null }));
+  if (body && map.zones.some(zone => zone.layers?.length || zone.loop || zone.releaseRegion || (body.excitationMode ? zone.playbackMode !== 'positionDriven' || !zone.positionPolicy?.traversal : zone.playbackMode !== 'forward'))) fail('A body graft requires its exact finite one-shot or canonical-motion cursor source without loop/release-trigger children.');
+  const entries = map.zones.map(zone => freezeData({ zoneId: zone.id, attack: compile(zone), layers: (zone.layers || []).map(layer => compile(layer, true)), release: zone.releaseRegion ? compile(zone.releaseRegion, true) : null }));
+  const controlledSlots = new Set(map.zones.flatMap(zone => [zone, ...(zone.layers || [])]).filter(region => region.gainControl != null).map(region => region.gainControl));
+  for (let index = 0; index < 4; index++) if (!controlledSlots.has(index) && (patch.parameters?.['sampleLayer' + index + 'Gain01'] ?? 1) !== 1) fail('A component gain cannot control an absent sample-map slot.');
+  const maximumLayers = Math.max(2, ...entries.map(entry => 1 + entry.layers.length));
   const byZone = new Map(entries.map((entry, index) => [entry.zoneId, index]));
   let cursorBytes = 0, cursorTransferBytes = 0, cursorCount = 0;
   for (const entry of entries) if (entry.attack.cursorProfile) {
@@ -57,9 +60,9 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
     const ratio = sampleRegionRate(entry, pitch, offset), derivative = ratio == null ? NaN : ratio * entry.decodedSampleRate / sampleRate;
     return Number.isFinite(derivative) && derivative > 0 && (entry.mode === 'positionDriven' || derivative <= 4) ? { ratio, derivative } : null;
   };
-  return Object.freeze({ revision: OWNED_SAMPLE_PLAN_REVISION, map, entries: Object.freeze(entries), descriptor, sampleRate, identity, body,
+  return Object.freeze({ revision: OWNED_SAMPLE_PLAN_REVISION, map, entries: Object.freeze(entries), descriptor, sampleRate, identity, body, maximumLayers,
     footprint: freezeData({ cursorCount, cursorBytes, maximumCursorTransferBytes: cursorTransferBytes, metadataEstimateBytes: 524288 + cursorCount * 6144,
-      layersPerVoice: 2, maximumReadHeadsPerVoice: 4, maximumVoices: patch.voicePolicy.maxVoices, realTimeCapacityQualified: false }),
+      layersPerVoice: maximumLayers, maximumReadHeadsPerVoice: 4, maximumVoices: patch.voicePolicy.maxVoices, realTimeCapacityQualified: false }),
     select(intent) {
       const region = resolve(intent), zoneIndex = byZone.get(region.selection.zoneId), entry = entries[zoneIndex], offset = intent.expression?.pitchOffsetCents ?? 0;
       const attack = rateFor(entry.attack, intent.pitch, offset), release = entry.release ? rateFor(entry.release, intent.pitch, offset) : null;
@@ -68,7 +71,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
       if (entry.attack.mode === 'positionDriven' && offset !== 0) fail('Position-driven varispeed uses observed cursor derivative; an independent pitch offset is unavailable.');
       return freezeData({ zoneIndex, region, velocity01: intent.velocity01, rateRatio: attack.ratio, readDerivative: entry.attack.mode === 'reverse' ? -attack.derivative : entry.attack.mode === 'positionDriven' ? 0 : attack.derivative,
         releaseRateRatio: release?.ratio ?? null, releaseReadDerivative: release?.derivative ?? null,
-        articulation: { ...sampleRegionArticulation(region, entry.attack.sourceSampleRate, attack.ratio, patch.parameters?.releaseSeconds ?? 0.04), ...(body ? { bodyTailSeconds: 4, policy: body.excitationMode ? 'observed-motion-exciter-plus-independent-body;bounded-four-second-release-tail' : 'finite-exciter-plus-independent-body;bounded-four-second-tail' } : {}) },
+        articulation: { componentCount: 1 + entry.layers.length, componentGainSlots: [entry.attack, ...entry.layers].filter(region => region.gainControl != null).map(region => region.gainControl), ...sampleRegionArticulation(region, entry.attack.sourceSampleRate, attack.ratio, patch.parameters?.releaseSeconds ?? 0.04), ...(body ? { bodyTailSeconds: 4, policy: body.excitationMode ? 'observed-motion-exciter-plus-independent-body;bounded-four-second-release-tail' : 'finite-exciter-plus-independent-body;bounded-four-second-tail' } : {}) },
         pitchPolicy: entry.attack.mode === 'positionDriven' ? 'note-selects-zone;observed-position-derivative-owns-varispeed-pitch' : entry.attack.pitchTracking === 'fixed' ? 'unpitched-fixed-source-rate;note-selects-zone-only' : 'independent-varispeed-ratio',
         evidenceClass: 'prepared-source-region-selection', acousticReceipt: false });
     }, rateFor

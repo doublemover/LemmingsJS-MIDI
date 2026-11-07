@@ -11788,3 +11788,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Update the draft PR at the requested twenty-commit boundary. Static formatting/types/provenance are separate from the still-deferred full functional, desktop Playwright, audio, native, device and listening campaign. No issue acceptance or CI result is inferred from implementation.
 
 Checkpoint642: formatting and critical/boundary type checks pass; static provenance verifies15components/2726files. These are development checks, not runtime acceptance.
+
+### Continuation 643 — actual co-owned sampler components
+
+- Add up to three parallel atlas components to the existing owned forward sampler. One fixed-note selected source owns all component positions, envelope, release/choke/cancel, onset seed and Panic lifecycle. Require one pinned atlas/source clock, unique gain slots and matching note selection; loops, independent motion, release children and graft combinations remain refused for this profile. No new scheduler or semantic child note is introduced.
+- Four onset-only linear component gains occupy reserved source-state slots. Render directly through the existing bounded reader with no per-sample allocation and at most four read heads. Normalize the declared maximum layer sum, keep the existing four-head DSP cost bound, and include exact component identities/gains in plan, selection, diagnostics and state cuts. Update command/layout/build pins and source-state validation.
+- This renderer foundation supports real Circuit Workshop body/noise/metal balances in the next production pass. Existing single-source prepared kits remain explicitly named until their content producer uses these components. Author actual-kernel co-ownership/release/restore fixtures; functional validation remains deferred.

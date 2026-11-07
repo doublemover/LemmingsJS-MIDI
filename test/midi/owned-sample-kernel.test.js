@@ -136,4 +136,17 @@ describe('pooled owned sample source and logical release children (runtime quali
     expect(value(quiet, F.filterAlpha)).to.be.greaterThan(0).and.lessThan(1);
   });
 
+  it('owns atlas body/noise components inside one strike and retains their actual gains through a cut', () => {
+    const definition = patch(), zone = definition.sampleMap.zones[0];
+    zone.loop = zone.releaseRegion = null; zone.pitchTracking = 'fixed'; zone.pitchRange = { minCents: 0, maxCents: 12700, maxTransposeCents: 0 }; zone.onsetFrame = 0; zone.endFrame = 2000; zone.gainControl = 0;
+    zone.layers = [1, 2, 3].map(gainControl => ({ assetHash: a, onsetFrame: gainControl * 2000, endFrame: (gainControl + 1) * 2000, rootCents: zone.rootCents, gain01: zone.gain01, tuningCents: 0, pitchTracking: 'fixed', pitchRange: { ...zone.pitchRange }, gainControl }));
+    const kernel = new OwnedSampleKernel(48000, pcm, definition, 2, sourceBank); submit(kernel, [row(BEGIN, 0, 1, { 40: 1, 41: 0.25, 42: 0.5, 43: 0.75 }), row(END, 900, 2, { 13: 64 })]); const [audio] = render(kernel, 256);
+    expect(audio.every(Number.isFinite)).to.equal(true); expect(audio.some(value => value !== 0)).to.equal(true); expect(value(kernel, F.heads)).to.equal(4); expect(kernel.active[0]).to.equal(1); expect(kernel.active[1]).to.equal(0);
+    expect(kernel.source.inspect().voices[0].componentGains.map(row => row.gain01)).to.deep.equal([1, 0.25, 0.5, 0.75]);
+    const bytes = new Uint8Array(ownedSourceStateBytes(kernel)); writeOwnedSourceState(kernel, bytes, identity); const clone = new OwnedSampleKernel(48000, pcm, definition, 2, sourceBank); restoreOwnedSourceState(clone, bytes, identity);
+    expect(render(clone, 1024)).to.deep.equal(render(kernel, 1024)); expect(kernel.active[0]).to.equal(0); expect(receipts(kernel).filter(row => row[0] === APPLIED && row[1] === 1)).to.have.length(1);
+    const invalid = structuredClone(definition); invalid.sampleMap.zones[0].loop = { mode: 'forward', startFrame: 0, endFrame: 2000, crossfadeFrames: 0 };
+    expect(() => new OwnedSampleKernel(48000, pcm, invalid, 2, sourceBank)).to.throw('parallel components');
+  });
+
 });

@@ -19,7 +19,7 @@ const profiles = Object.freeze({
   24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
   [CHOIR_LAYOUT.width]: { id: 'worklet-choir', kind: 2, layout: CHOIR_LAYOUT, arrays: ['state', 'bands'], scalars: [] },
   [SPECTRUM_LAYOUT.width]: { id: 'worklet-spectrum', kind: 3, layout: SPECTRUM_LAYOUT, arrays: ['state', 'partials', 'drawbars'], scalars: [] },
-  40: { id: 'worklet-sample', kind: 5, layout: SAMPLE_LAYOUT, arrays: ['state', 'cursorQueues', 'cursorScalars'], scalars: ['leftSample', 'rightSample', 'readLeft', 'readRight'] },
+  [SAMPLE_LAYOUT.width]: { id: 'worklet-sample', kind: 5, layout: SAMPLE_LAYOUT, arrays: ['state', 'cursorQueues', 'cursorScalars'], scalars: ['leftSample', 'rightSample', 'readLeft', 'readRight'] },
   33: { id: 'worklet-granular', kind: 4, layout: GRANULAR_LAYOUT, arrays: ['state', 'grains'], scalars: ['birthBucket', 'bucketBirths', 'leftSample', 'rightSample'] }
 });
 const fail = message => { throw Object.assign(new Error(message), { name: 'AudioRestoreError', code: 'incompatible-owned-source-state' }); };
@@ -54,7 +54,7 @@ const profileFor = kernel => {
       source.sourceGain !== 0.9 / Math.max(1, source.descriptor.peak) / 4)) fail('Source asset identity or derived gain is unavailable.');
   if (profile.kind === 5 && (!(source.configuration instanceof Uint8Array) || !(source.configuration.buffer instanceof ArrayBuffer) || source.configuration.length > 524288 ||
       !hash(source.descriptor?.bankHash) || source.ownsEnvelope !== true || typeof source.validateStoredState !== 'function' || typeof source.synchronizeState !== 'function' || typeof source.rehydrateState !== 'function' ||
-      source.sourceGain !== 0.9 / (2 * Math.SQRT2 * source.reader.maximumL1 * Math.max(1, ...source.descriptor.banks.map(bank => bank.peak))))) fail('Sample source configuration, PCM identity or layer ownership differs.');
+      source.sourceGain !== 0.9 / (source.plan.maximumLayers * Math.SQRT2 * source.reader.maximumL1 * Math.max(1, ...source.descriptor.banks.map(bank => bank.peak))))) fail('Sample source configuration, PCM identity or layer ownership differs.');
   if (profile.kind === 9 && (!(source.configuration instanceof Uint8Array) || !(source.configuration.buffer instanceof ArrayBuffer) || source.configuration.length > 524288 || !hash(source.descriptor?.bankHash) || !hash(source.cloud?.bank?.hash) || source.ownsEnvelope !== true || typeof source.validateStoredState !== 'function' || source.sourceGain !== 0.9 / (3 * source.reader.maximumL1 * Math.max(1, ...source.descriptor.banks.map(bank => bank.peak))))) fail('Layered source configuration or composite ownership differs.');
   return profile;
 };
