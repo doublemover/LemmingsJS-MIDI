@@ -1,3 +1,4 @@
+import { validateDirectOwnedSinePerformance } from '../midi-ui/DirectOwnedSinePerformance.js';
 import { createBrowserNotePreview } from '../midi-ui/browserNotePreview.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from './ProcgenRetirement.js';
@@ -6,6 +7,7 @@ import { OWNED_AUDIO_OUTPUT_PROTOCOL } from './ProcgenOwnedAudioOutputProtocol.j
 
 let ownerSequence = 0;
 export async function prepareProcgenOwnedAudioOutputRealm({ resourceBudget, Worker = globalThis.Worker, MessageChannel = globalThis.MessageChannel, signal, performance, onState = () => {}, timers = globalThis } = {}) {
+  performance = validateDirectOwnedSinePerformance(performance);
   signal?.throwIfAborted(); const execution = getActiveExecutionIdentity();
   if (execution.activeExecution !== 'bound' || typeof Worker !== 'function' || typeof MessageChannel !== 'function' || !resourceBudget) throw new Error('Independent owned audio needs a coherent application build, dedicated worker, transferable port and aggregate budget.');
   const ownerId = 'owned-audio-consumer:' + (++ownerSequence), storage = createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId, kind: 'independent-owned-audio-producer-worker', category: 'checkpoint', bytes: 64 * 1048576 }), scope = createProcgenRetirementScope(), requests = new Map();

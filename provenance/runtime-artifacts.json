@@ -1717,6 +1717,7 @@
         "js/app/midi-ui/CausalRealtimePrintFinalize.js",
         "js/app/midi-ui/CausalRenderTiming.js",
         "js/app/midi-ui/DirectOwnedSineOutput.js",
+        "js/app/midi-ui/DirectOwnedSinePerformance.js",
         "js/app/midi-ui/DirectOwnedSineSource.js",
         "js/app/midi-ui/EffectRenderPlan.js",
         "js/app/midi-ui/EffectSourceBindings.js",
@@ -2108,8 +2109,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 423,
-      "sha256": "1db67c6f64638435def8a90fe9cf1068d8ec240ed5488bd2d45903697fcbb1cd"
+      "fileCount": 424,
+      "sha256": "8795249eb51a39d4a691ea992d8b180ecf5abf1c19d9c6f08e038781eac00644"
     }
   ]
 }

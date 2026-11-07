@@ -1,4 +1,5 @@
 import { PROTOCOL, WIDTH, CAPACITY, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE, SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED } from './worklet/OwnedSineProcessor.js';
+import { validateDirectOwnedSinePerformance } from './DirectOwnedSinePerformance.js';
 import { createCausalPerformanceState } from '../procgen/workstation/CausalPerformanceState.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
@@ -7,8 +8,7 @@ const fail = message => Object.assign(new Error(message), { code: 'direct-owned-
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 export async function createDirectOwnedSineOutput({ port, sampleRate, maxVoices = 8, resourceBudget, performance = null, onFailure = () => {}, onReceipt = () => {}, timers = globalThis, now = () => globalThis.performance.now() } = {}) {
   if (!port?.postMessage || ![44100, 48000, 96000].includes(sampleRate) || !Number.isInteger(maxVoices) || maxVoices < 1 || maxVoices > 8) throw fail('A direct owned source needs its transferred control port, exact rate and at most eight voices.');
-  const lanePerformance = createCausalPerformanceState(performance || { version: 1, lanes: [] });
-  if (lanePerformance.snapshot().lanes.some(lane => Object.keys(lane.controls.macros).length || lane.controls.variationAmount01 || lane.controls.actorTimbreLocks?.length || lane.percussion || lane.orchestral || lane.piano || lane.organ) || lanePerformance.snapshot().actorTimbreLocks?.length) { throw fail('The explicit reference sine cannot realize authored macros, timbral variation or device-profile controls.'); }
+  const lanePerformance = createCausalPerformanceState(validateDirectOwnedSinePerformance(performance || { version: 1, lanes: [] }));
   const storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'direct-owned-sine-output', kind: 'bounded-semantic-producer-and-in-flight-receipts', category: 'audio', bytes: 2 * 1048576 }), retirement = createProcgenRetirementScope();
   const voices = new Map(), pending = new Map(), executions = new Map(), handles = new WeakMap(), slots = new Array(maxVoices).fill(null), tokens = new Uint32Array(maxVoices), queued = [];
   let sequence = 0, packetSequence = 0, executionSequence = 0, disposed = false, failure = null, anchor = null, clock = null, poll = null, clockRequest = null, requestId = 0,

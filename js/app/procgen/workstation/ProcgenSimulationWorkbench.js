@@ -6,7 +6,7 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
   let directOutput = null, host = null, checkpoint = null, sourceIdentity = null, projection = null, pending = null, closing = null, disposed = false, phase = 'idle', failure = null, timer = null, viewport = {}, notifications = 0;
   const counts = { batches: 0, facts: 0, intents: 0, bodyCommands: 0, lastSequence: 0, lastTick: null, generation: null };
   const state = () => Object.freeze({ phase, busy: !!pending || !!closing, active: !!host || !!directOutput, checkpointHeld: !!checkpoint, checkpointReceipt: checkpoint?.receipt() || null, worker: host?.state() || null, failure,
-    recovery: recovery?.receipt() || null, automaticRecovery: automaticRecovery && !directOutput, recoveryNotice, unresolvedRecovery: recoveryFaults.size, counts: Object.freeze({ ...counts }), liveViewport: host?.viewportState?.() || { active: false, phase: 'off', failure: null }, output: directOutput ? 'independent-native-worker' : 'off', nativeOutput: directOutput?.state() || null, journal: 'not-recording', mainWorld: 'retained-paused', defaultEnabled: false, performanceQualification: 'awaiting-consolidated-parity-and-latency-validation', notifications });
+    recovery: recovery?.receipt() || null, automaticRecovery: automaticRecovery && !directOutput, recoveryNotice, unresolvedRecovery: recoveryFaults.size, counts: Object.freeze({ ...counts }), liveViewport: host?.viewportState?.() || { active: false, phase: 'off', failure: null }, output: directOutput ? directOutput.kind === 'owned-audio' ? 'independent-owned-audio-worker' : 'independent-native-worker' : 'off', outputState: directOutput?.state() || null, nativeOutput: directOutput?.kind === 'owned-audio' ? null : directOutput?.state() || null, journal: 'not-recording', mainWorld: 'retained-paused', defaultEnabled: false, performanceQualification: 'awaiting-consolidated-parity-and-latency-validation', notifications });
   const report = () => { if (disposed) return; notifications++; try { onState(state()); } catch {} };
   const scheduleReport = () => { scheduleRecovery(); if (disposed || timer !== null) return; timer = timers.setTimeout(() => { timer = null; report(); }, 250); };
   const run = (name, work) => {
@@ -25,8 +25,9 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
     let candidate = null, outputCandidate = null;
     try {
       for (const key of Object.keys(counts)) counts[key] = ['lastTick', 'generation'].includes(key) ? null : 0;
-      if (options.nativeOutput) { if (typeof prepareOutput !== 'function') throw new Error('Independent native output is unavailable.'); outputCandidate = await prepareOutput(); operation.controller.signal.throwIfAborted(); }
-      candidate = await prepareHost({ ...(outputCandidate ? { requiredPorts: [outputCandidate.requiredPort] } : {}), signal: operation.controller.signal, consume: options.nativeOutput ? null : function(packet) {
+      if (options.nativeOutput && options.ownedAudio) throw new Error('Choose one explicitly owned output for this candidate.');
+      if (options.nativeOutput || options.ownedAudio) { if (typeof prepareOutput !== 'function') throw new Error('Independent output is unavailable.'); outputCandidate = await prepareOutput({ kind: options.ownedAudio ? 'owned-audio' : 'native', signal: operation.controller.signal }); operation.controller.signal.throwIfAborted(); }
+      candidate = await prepareHost({ ...(outputCandidate ? { requiredPorts: [outputCandidate.requiredPort] } : {}), signal: operation.controller.signal, consume: outputCandidate ? null : function(packet) {
         if (disposed || closing || packet.sequence !== counts.lastSequence + 1 || !Number.isSafeInteger(packet.batch?.tick) || !Array.isArray(packet.batch.facts) || !Array.isArray(packet.intents) || !Array.isArray(packet.bodyCommands)) throw new Error('The worker candidate observation lost its ordered canonical batch.');
         counts.batches++; counts.facts += packet.batch.facts.length; counts.intents += packet.intents.length; counts.bodyCommands += packet.bodyCommands.length;
         counts.lastSequence = packet.sequence; counts.lastTick = packet.batch.tick; counts.generation = packet.batch.generation;
@@ -37,7 +38,7 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
       await replaceProjection(candidate, options.viewport || {}); operation.controller.signal.throwIfAborted();
       try { await candidate.watchViewport({ ...viewport, pixelWidth: 256, pixelHeight: 128 }); } catch (error) { if (candidate.state()?.failure) throw error; recoveryNotice = 'Live viewport unavailable: ' + error.message; } operation.controller.signal.throwIfAborted();
       host = candidate; candidate = null; directOutput = outputCandidate; outputCandidate = null; recoveryOriginTick = host.state()?.tick || 0; phase = 'paused'; return state();
-    } finally { try { if (candidate) { projection?.release(); projection = null; const receipt = candidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { host = candidate; throw Object.assign(new Error('Worker candidate retirement is unresolved.'), { retirement: receipt }); } } } finally { if (outputCandidate) { const receipt = outputCandidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { directOutput = outputCandidate; throw Object.assign(new Error('Independent native source preparation retirement is unresolved.'), { retirement: receipt }); } } } }
+    } finally { try { if (candidate) { projection?.release(); projection = null; const receipt = candidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { host = candidate; throw Object.assign(new Error('Worker candidate retirement is unresolved.'), { retirement: receipt }); } } } finally { if (outputCandidate) { const receipt = outputCandidate.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { directOutput = outputCandidate; throw Object.assign(new Error('Independent output source preparation retirement is unresolved.'), { retirement: receipt }); } } } }
   });
   const retainRecovery = () => directOutput ? pause() : run('retaining-worker-recovery', async operation => {
     if (!host || checkpoint || host.state()?.failure || getSourceIdentity() !== sourceIdentity) throw new Error('Retain a recovery point from the current unchanged worker source.');
@@ -62,21 +63,21 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
     if (!recovery || checkpoint || !host || getSourceIdentity() !== sourceIdentity) throw new Error('A current independently retained recovery point is required.');
     projection?.release(); projection = null; const receipt = host.dispose(); await receipt.completion; operation.controller.signal.throwIfAborted();
     if (receipt.outcome !== 'complete') throw Object.assign(new Error('The broken worker generation retains unresolved producers.'), { retirement: receipt });
-    if (directOutput) { const outputReceipt = directOutput.dispose(); await outputReceipt.completion; if (outputReceipt.outcome !== 'complete') throw new Error('Native output retirement remains unconfirmed.'); directOutput = null; }
+    if (directOutput) { const outputReceipt = directOutput.dispose(); await outputReceipt.completion; if (outputReceipt.outcome !== 'complete') throw new Error('Independent output retirement remains unconfirmed.'); directOutput = null; }
     host = null; checkpoint = recovery; recovery = null; failure = null; recoveryNotice = null; phase = 'checkpoint-held'; return state();
   });
-  const advance = (steps = 32) => directOutput ? Promise.reject(new Error('Run independent native output in real time. Manual stepping belongs to the output-off candidate.')) : run('stepping-worker', async operation => {
+  const advance = (steps = 32) => directOutput ? Promise.reject(new Error('Run independent output in real time. Manual stepping belongs to the output-off candidate.')) : run('stepping-worker', async operation => {
     if (!host || !host.state()?.paused || !Number.isSafeInteger(steps) || steps < 1 || steps > 64) throw new Error('Step one to sixty-four ticks in a paused worker candidate.');
     await host.advance(steps); operation.controller.signal.throwIfAborted(); await replaceProjection(host); phase = 'paused'; return state();
   });
-  const pause = () => directOutput ? run('parking-native-performance', async operation => { if (!host) throw new Error('The native worker source is unavailable.'); await host.pause(); operation.controller.signal.throwIfAborted(); return parkCheckpoint(operation); }) : run('pausing-worker', async operation => { if (!host) throw new Error('Prepare a worker candidate first.'); await host.pause(); operation.controller.signal.throwIfAborted(); await replaceProjection(host); phase = 'paused'; return state(); });
+  const pause = () => directOutput ? run('parking-output-performance', async operation => { if (!host) throw new Error('The native worker source is unavailable.'); await host.pause(); operation.controller.signal.throwIfAborted(); return parkCheckpoint(operation); }) : run('pausing-worker', async operation => { if (!host) throw new Error('Prepare a worker candidate first.'); await host.pause(); operation.controller.signal.throwIfAborted(); await replaceProjection(host); phase = 'paused'; return state(); });
   const resume = () => run('starting-worker', async () => { if (!host) throw new Error('Prepare a worker candidate first.'); await host.resume(); phase = 'running'; return state(); });
   const project = (options = {}) => run('projecting-worker', async () => { if (!host || !host.state()?.paused) throw new Error('Pause the worker before selecting its completed viewport.'); await replaceProjection(host, options); await host.stopViewport(); try { await host.watchViewport({ ...viewport, pixelWidth: 256, pixelHeight: 128 }); } catch (error) { if (host.state()?.failure) throw error; recoveryNotice = 'Live viewport unavailable: ' + error.message; } phase = 'paused'; return state(); });
   const parkCheckpoint = async operation => {
     if (!host || !host.state()?.paused || checkpoint) throw new Error('Pause a current worker candidate before detaching its physical checkpoint.');
     projection?.release(); projection = null;
     const owned = await host.detachCheckpoint(); host = null;
-    try { operation.controller.signal.throwIfAborted(); if (directOutput) { const receipt = directOutput.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw Object.assign(new Error('Native execution/grant closure remains unconfirmed.'), { retirement: receipt }); directOutput = null; } recovery?.release(); recovery = null; checkpoint = owned; phase = 'checkpoint-held'; return state(); }
+    try { operation.controller.signal.throwIfAborted(); if (directOutput) { const receipt = directOutput.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw Object.assign(new Error('Independent output closure remains unconfirmed.'), { retirement: receipt }); directOutput = null; } recovery?.release(); recovery = null; checkpoint = owned; phase = 'checkpoint-held'; return state(); }
     catch (error) { owned.release(); throw error; }
   };
   const detachCheckpoint = () => run('detaching-worker-checkpoint', parkCheckpoint);
@@ -93,7 +94,7 @@ export function createProcgenSimulationWorkbench({ prepareHost, prepareOutput = 
     closing = (async () => {
       await operation?.catch(() => {}); projection?.release(); projection = null;
       if (producerRetirement) { await producerRetirement.completion; if (producerRetirement.outcome !== 'complete') throw Object.assign(new Error('The worker producer retains unresolved ownership.'), { retirement: producerRetirement }); }
-      if (directOutput) { const receipt = urgentOutputRetirement || directOutput.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('The native output consumer retains unconfirmed device ownership.'); directOutput = null; }
+      if (directOutput) { const receipt = urgentOutputRetirement || directOutput.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('The direct output consumer retains unconfirmed ownership.'); directOutput = null; }
       checkpoint?.release(); checkpoint = null; recovery?.release(); recovery = null; for (const point of recoveryFaults) { point.release(); recoveryFaults.delete(point); }
       if (host) { const receipt = host.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw Object.assign(new Error('The worker candidate retains unresolved ownership.'), { retirement: receipt }); host = null; }
       if (timer !== null) timers.clearTimeout(timer); timer = null; viewport = {}; phase = retire ? 'disposed' : 'closed'; disposed = retire; return state();
