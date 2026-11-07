@@ -1,4 +1,4 @@
-export function createTimbreTuningBenchView({ document, readSource, readState, open, edit, analyze, invalidateAnalysis, prepare, commit, restore, cancel, onDraftChange = () => {}, onStatus = () => {} } = {}) {
+export function createTimbreTuningBenchView({ document, readSource, readState, open, edit, analyze, invalidateAnalysis, prepare, commit, restore, cancel, compareTake, prepareProofScene, onDraftChange = () => {}, onStatus = () => {} } = {}) {
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; }, element = node('section');
   element.__ownedControl = true; element.className = 'studio-timbre-bench'; element.setAttribute('aria-label', 'Spectrum and tuning bench');
   const header = node('h2', 'SPECTRUM / TUNING'), voice = node('p'), message = node('output'), actions = node('div'), small = node('fieldset'), partials = node('div'), tuning = node('div'), curves = node('div'), receipt = node('pre');
@@ -45,6 +45,7 @@ export function createTimbreTuningBenchView({ document, readSource, readState, o
   const analyzeButton = button('Analyze declared spectra · offline', () => analyze(analysisOptions(false))), bypass = button('Bypass model · record explicit bypass', () => analyze(analysisOptions(true))),
     stop = button('Cancel bench work · keep draft', cancel), prepareButton = button('Prepare both exact revisions · silent', () => { if (jsonDirty) throw new Error('Use or discard the pending JSON draft before Prepare.'); return prepare({ externalPolicy: output.value }); }),
     commitButton = button('Commit prepared spectrum + tuning · one Undo', () => { const result = commit(); dirty = jsonDirty = false; return result; });
+  actions.append(button('Prepare Bent Ladder for review', prepareProofScene), button('Compare prepared pair on saved physical take', compareTake));
   actions.append(analyzeButton, bypass, stop, prepareButton, commitButton, button('Restore saved baseline as draft', () => { restore(); dirty = true; onDraftChange(); }));
   output.addEventListener('change', () => { cancel(); dirty = true; onDraftChange(); });
   const svg = (height, label) => { const value = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); value.setAttribute('viewBox', '0 0 600 ' + height); value.setAttribute('role', 'img'); value.setAttribute('aria-label', label); value.style.width = '100%'; return value; };

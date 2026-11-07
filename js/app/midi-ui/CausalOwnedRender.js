@@ -60,7 +60,7 @@ export const encodeCausalRenderWave = (pcm, frames, rate, manifest) => {
 };
 
 export async function planCausalSourceRender({ revoice, definition, descriptor, sampleRate = 48000, startSeconds = 0, endSeconds,
-  timeTransformMode = 'captured-live', requestedEndSeconds = endSeconds, targetControls = {}, tail = { mode: 'exact-crop' }, stemLaneIds = [], effectGraph = null, effectReturnNodeIds = [], capturedEffects = false, effectReplayHash = null, applicationBuildId = null, pcm = null, nativeAssets = null, signal = null, yieldControl, maxPlanningBytes = 128 * 1048576 } = {}, { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
+  timbreTuningReadoutReceipt = null, timeTransformMode = 'captured-live', requestedEndSeconds = endSeconds, targetControls = {}, tail = { mode: 'exact-crop' }, stemLaneIds = [], effectGraph = null, effectReturnNodeIds = [], capturedEffects = false, effectReplayHash = null, applicationBuildId = null, pcm = null, nativeAssets = null, signal = null, yieldControl, maxPlanningBytes = 128 * 1048576 } = {}, { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
   if (!['captured-live', 'literal', 'offline-bidirectional'].includes(timeTransformMode) || capturedEffects && timeTransformMode !== 'captured-live' || typeof capturedEffects !== 'boolean' || capturedEffects && (!effectGraph || !hash(effectReplayHash) || NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor?.engineId)) || !capturedEffects && effectReplayHash != null) throw failure('effect-command-render-profile', 'Captured effect commands require their bound owned-source graph and replay hash.');
   if (effectGraph != null && (!effectGraph || Object.getPrototypeOf(effectGraph) !== Object.prototype)) throw failure('effect-render-preflight', 'Effect rendering requires an explicit declarative graph.');
   if (revoice?.operation !== 'sound-only-revoice' || revoice.version !== 1 || !text(revoice.takeId, 256) || !hash(revoice.sourceCanonicalHash) ||
@@ -300,7 +300,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(owned.id) && captureLaneIds.length > 16) throw failure('sidechain-tap-capacity', 'Choose at most sixteen combined dry-lane and lane/voice-selection source taps.');
   for (let index = events.length - 1; index >= 0; index--) if (events[index].voice?.silentChoke) events.splice(index, 1);
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
-  return { owned, sourcePCM, pcmDescriptor, sampleSourcePlan, seedLayerPlan, renderVoices: patch.voicePolicy.maxVoices, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
+  return { timbreTuningReadoutReceipt, owned, sourcePCM, pcmDescriptor, sampleSourcePlan, seedLayerPlan, renderVoices: patch.voicePolicy.maxVoices, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
     circularTravel: { policy: parameters.circularControlMode === 2 ? 'canonical-qualified-route-arc;completed-endpoint-projection;no-inferred-segment-precision' : parameters.circularControlMode === 1 ? 'observed-contact-coordinate-at-onset;no-inter-contact-motion' : 'canonical-signed-axis;completed-observation-interpolation;no-time-driven-ascent', voices: [...voices.values()].filter(voice => voice.circularTravel).length, segments: [...voices.values()].reduce((count, voice) => count + (voice.circularTravel?.segments || 0), 0) }, sampleTraversal: { policy: 'canonical-completed-observations;no-private-distance-clock;no-extrapolation', voices: [...voices.values()].filter(voice => voice.traversalIdentity).length, segments: [...voices.values()].reduce((count, voice) => count + voice.sampleTraversalSegments, 0) }, sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, derivedLaneTransfers, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, sourceLaneTokens, pcmBytes,
     laneRoutingReceipt: revoice.laneRouting ? { schema: revoice.laneRouting.schema, hash: await hashData(revoice.laneRouting, { maxBytes: 4194304, maxNodes: 524288 }), initialLanes: revoice.laneRouting.initial.length, changes: revoice.laneRouting.changes.length, policy: 'captured-index-to-stable-id-at-onset-and-explicit-transfer;eight-millisecond-nonoverlapping-route-fades;semantic-intents-unchanged' } : null,
     effectReplay, effectPlan, effectSourceBindings, captureLaneIds, effectReturnNodeIds, effectHash: effectPlan ? await effectGraphHash(effectPlan) : null, effectTailTruncated: !!effectPlan && tail.mode !== 'exact-crop' && naturalEnd > outputEnd,
@@ -310,6 +310,8 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
 
 export async function planCausalOwnedRender(input = {}, { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
   if (!OWNED_SOURCE_IDS.includes(input.descriptor?.engineId)) throw failure('unsupported-owned-source', 'Choose a realized owned source for this kernel render.');
+  if (input.timbreTuningReadoutReceipt != null) throw failure('paired-readout-receipt-input', 'Paired readout evidence must be computed from the captured source inside this worker.');
+  if (input.timbreTuningReadout) { const { prepareTimbreTuningReadout } = await import('./TimbreTuningTakeReadout.js'); input = await prepareTimbreTuningReadout(input, { signal: input.signal, yieldControl: input.yieldControl }); }
   return planCausalSourceRender(input, { nativeConvolution, nativeOwnedProcessors });
 }
 
@@ -429,7 +431,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash,
     ...(plan.laneRoutingReceipt ? { sourceLaneRouting: plan.laneRoutingReceipt } : {}), sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,
     sourceEvidence: 'provided-covered-semantic-snapshot', sourceOriginMs: plan.sourceOriginMs, timeDomain: 'captured-source-time', inputRange: { startSeconds: plan.startSeconds, endSeconds: plan.endSeconds },
-    timing: plan.timing,
+    timing: plan.timing, ...(plan.timbreTuningReadoutReceipt ? { timbreTuningReadout: plan.timbreTuningReadoutReceipt } : {}),
     sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', frames: outputFrames, timelineZeroSourceFrame: firstFrame, exactEndSourceFrame: endFrame, renderedEndSourceFrame: outputEnd,
     restoration: { mode: stateCut ? 'forward-preroll-and-owned-state-cut' : 'deterministic-preroll', stateCut: stateReceipt, fromSourceFrame: 0, prerollFrames: firstFrame, initialVoices: 0, maxHistorySeconds: MAX_SECONDS },
     tail: { mode: plan.tail.mode, maxSeconds: plan.tail.maxSeconds ?? 4, derivedBoundaryReleases: plan.derivedReleases, truncated: kernel.active.some(Boolean) || plan.effectTailTruncated, effectTailBoundFrames: plan.effectReplay?.maximumTailFrames ?? plan.effectPlan?.maximumTailFrames ?? 0 },

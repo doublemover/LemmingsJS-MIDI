@@ -1,3 +1,4 @@
+import { validateTimbreTuningBinding, physicalTuningForTimbreSet } from '../../../midi/content/TimbreTuningSet.js';
 import { cloneData, freezeData, hashData, canonicalDataText } from '../../../core/CanonicalData.js';
 import { validateSoundContentReference } from '../../../midi/content/SoundContentReference.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
@@ -28,7 +29,13 @@ export function validatePerformanceScene(raw) {
   scene.causalMappings = validateCausalInstrumentGraph(scene.causalMappings);
   if (!Array.isArray(scene.patchRefs) || !scene.patchRefs.length || scene.patchRefs.length > 1024 || !Array.isArray(scene.mix) || scene.mix.length !== scene.patchRefs.length) fail('Scene lanes require pinned patches and a complete mix.');
   const lanes = new Set();
-  for (const patch of scene.patchRefs) { if (!keys(patch, ['laneId', 'reference']) || !id(patch.laneId) || lanes.has(patch.laneId) || !patch.reference) fail('Invalid or duplicate scene patch lane.'); patch.reference = validateSoundContentReference(patch.reference); lanes.add(patch.laneId); }
+  for (const patch of scene.patchRefs) { if (!keys(patch, ['laneId', 'reference', 'timbreTuningSet', 'timbreTuningFieldId']) || !id(patch.laneId) || lanes.has(patch.laneId) || !patch.reference) fail('Invalid or duplicate scene patch lane.'); patch.reference = validateSoundContentReference(patch.reference); lanes.add(patch.laneId); }
+  for (const [index, patch] of scene.patchRefs.entries()) {
+    if (!patch.timbreTuningSet) { if (patch.timbreTuningFieldId != null) fail('A paired field reference requires the spectrum/tuning artifact.'); continue; }
+    patch.timbreTuningSet = validateTimbreTuningBinding(patch.timbreTuningSet, patch.reference);
+    const field = scene.causalMappings.harmonicFields?.find(value => value.id === patch.timbreTuningFieldId), tuning = physicalTuningForTimbreSet(patch.timbreTuningSet);
+    if (!field || field.heldPolicy !== 'retain-onset' || JSON.stringify(field.laneScope) !== JSON.stringify([index]) || canonicalDataText(field.tuning).text !== canonicalDataText(tuning).text) fail('The paired scene field differs from its exact tuning artifact.');
+  }
   const mixed = new Set();
   for (const lane of scene.mix) { if (!keys(lane, ['laneId', 'gain', 'pan', 'mute', 'solo']) || !lanes.has(lane.laneId) || mixed.has(lane.laneId) || !finite(lane.gain, 0, 2) || !finite(lane.pan, -127, 127) || typeof lane.mute !== 'boolean' || typeof lane.solo !== 'boolean') fail('Invalid scene lane mix.'); mixed.add(lane.laneId); }
   if (!keys(scene.initialTransport, ['playing', 'bpm', 'gameSpeed', 'speedMode', 'clockSource', 'linked']) || scene.initialTransport.playing !== false || scene.initialTransport.clockSource !== undefined && scene.initialTransport.clockSource !== 'internal' || scene.initialTransport.linked !== undefined && scene.initialTransport.linked !== true || !finite(scene.initialTransport.bpm, 20, 400) || !finite(scene.initialTransport.gameSpeed, 0.1, 12) || !['bpm', 'game'].includes(scene.initialTransport.speedMode)) fail('Scenes start paused with an explicit transport configuration.');

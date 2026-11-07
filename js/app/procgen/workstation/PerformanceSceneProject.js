@@ -10,7 +10,7 @@ export function materializePerformanceSceneProject(raw) {
     ...(source.initialReleaseGesture ? { releaseGesture: source.initialReleaseGesture } : {}), ...(source.initialJunctions ? { junctions: source.initialJunctions } : {}),
     ...(source.initialEffectRack ? { effectRack: source.initialEffectRack } : {}), physicalGraph: scene.causalMappings, sceneOrigin: origin,
     lanes: scene.patchRefs.map((patch, index) => ({ id: patch.laneId, name: 'Corridor ' + (index + 1), mode: 'physical', family: source.terrainFamilies[index], worldThemeId: source.terrainFamilies[index],
-      instrumentPatchId: patch.reference.patchId, instrumentRef: patch.reference, linkedThemePresetId: null,
+      instrumentPatchId: patch.reference.patchId, instrumentRef: patch.reference, ...(patch.timbreTuningSet ? { timbreTuningSet: patch.timbreTuningSet, timbreTuningFieldId: patch.timbreTuningFieldId } : {}), linkedThemePresetId: null,
       gain: mix.get(patch.laneId).gain, pan: mix.get(patch.laneId).pan, mute: mix.get(patch.laneId).mute, solo: mix.get(patch.laneId).solo })) });
   return freezeData({ project, settings: { ...source.settings, seed: scene.seed }, transport: { ...scene.initialTransport, playing: false }, name: scene.title, origin,
     ...(source.actorBirthAbilities ? { actorBirthAbilities: source.actorBirthAbilities } : {}), ...(source.assistPolicy ? { assistPolicy: source.assistPolicy } : {}),

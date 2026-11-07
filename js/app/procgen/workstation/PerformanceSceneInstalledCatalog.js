@@ -1,3 +1,4 @@
+import { createBentLadderScores } from './BentLadderScore.js';
 import { createPhysicalMusicStarter } from './PhysicalMusicStarter.js';
 import { createInstrumentNurseryScore } from './InstrumentNurseryScore.js';
 import { createDiggingOcarinaScores } from './DiggingOcarinaScore.js';
@@ -158,6 +159,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
   if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
   const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
+  if (spectrum?.maximumVoices >= 8) await registerAuthoredScores(await createBentLadderScores({ sourceHash, descriptor: spectrum, signal }));
   if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
   for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor && crewDescriptor.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) await registerAuthoredScores(await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }));
   return Object.freeze({ registry, available: true, reason: null, sourceHash,

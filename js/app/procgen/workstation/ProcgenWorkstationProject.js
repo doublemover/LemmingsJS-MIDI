@@ -215,7 +215,12 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
     if (!previous || previous.mode === 'pattern') throw new Error('Select a physical lane for paired spectrum/tuning publication.');
     const set = validateTimbreTuningBinding(action.set, action.reference), field = action.field;
     if (!field || field.id !== action.fieldId || field.heldPolicy !== 'retain-onset' || !sameValue(field.tuning, physicalTuningForTimbreSet(set)) || !sameValue(field.laneScope, [index])) throw new Error('The paired field differs from its exact tuning or onset-only scope.');
-    const physicalGraph = validateCausalInstrumentGraph({ ...procgen.physicalGraph, revision: procgen.physicalGraph.revision + 1,
+    const instruments = procgen.physicalGraph.instruments.map(instrument => {
+      if (instrument.sourceLanes && !instrument.sourceLanes.includes(index) || instrument.harmonicFields) return instrument;
+      if (!instrument.sourceLanes || instrument.sourceLanes.some(lane => lane !== index)) throw new Error('Enable field interpretation explicitly on shared mappings before committing a lane-specific pair.');
+      return { ...instrument, harmonicFields: true };
+    });
+    const physicalGraph = validateCausalInstrumentGraph({ ...procgen.physicalGraph, instruments, revision: procgen.physicalGraph.revision + 1,
       harmonicFields: [...(procgen.physicalGraph.harmonicFields || []).filter(item => item.id !== field.id), field] });
     const next = createProcgenLane(index, { ...previous, revision: previous.revision + 1, instrumentRef: action.reference, instrumentPatchId: action.reference.patchId,
         timbreTuningSet: set, timbreTuningFieldId: field.id, instrumentControls: { macros: {} }, soundChangePolicy: 'new-notes-only', soundChangeBoundary: 'immediate' }, previous),

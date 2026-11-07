@@ -58,7 +58,7 @@ export function createTakeReadoutComparisonOwner({ journal, resourceBudget, jobs
           const metadata = file.artifact.metadata(); if (!Number.isSafeInteger(metadata.byteLength) || metadata.byteLength < manifest.frames * 8 || (bytes += metadata.byteLength) > 64 * 1048576) throw fail('Comparison output exceeds its 64 MiB cap.');
           const artifactHash = await file.artifact.digest(); check(); if (!hash(artifactHash)) throw fail('A readout lacks its immutable file digest.');
           files.push({ ...file, id: variant.id, label: variant.label });
-          readouts.push({ id: variant.id, tail: manifest.tail, artifactHash, pcmHash: file.manifest.pcmHash, definitionHash: manifest.definitionHash, engineRequirement: manifest.engineRequirement, ...(variant.sourceReference ? { sourceReference: variant.sourceReference } : {}), ...(result.comparison ? { comparison: result.comparison } : {}) });
+          readouts.push({ id: variant.id, tail: manifest.tail, artifactHash, pcmHash: file.manifest.pcmHash, definitionHash: manifest.definitionHash, engineRequirement: manifest.engineRequirement, ...(variant.sourceReference ? { sourceReference: variant.sourceReference } : {}), ...(manifest.timbreTuningReadout ? { timbreTuningReadout: manifest.timbreTuningReadout } : {}), ...(result.comparison ? { comparison: result.comparison } : {}) });
         }
         const description = await describeComparison({ plan, files, readouts, request: snapshot }); check();
         const manifest = { schema, ...baseline, readouts, outputBytes: bytes, source: 'same-exact-captured-intents;new-isolated-realizations;not-recorded-live-PCM', acousticReceipt: false, quality: 'listening-unqualified', ...description };

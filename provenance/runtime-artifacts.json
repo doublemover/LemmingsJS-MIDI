@@ -220,6 +220,7 @@
         "js/app/midi-ui/OwnedSourceSeed.js",
         "js/app/midi-ui/SeedLayerPlan.js",
         "js/app/midi-ui/SmoothedAudioParameter.js",
+        "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/WaveSourceProfile.js",
         "js/app/midi-ui/worklet/AllpassNotchProcessor.js",
         "js/app/midi-ui/worklet/BoundedDelayProcessor.js",
@@ -727,8 +728,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 573,
-      "sha256": "7a659c4ffae532945886220f871052fa073adbb4f565e3b152c611b6e23ff10d",
+      "fileCount": 574,
+      "sha256": "318afeec44deca8e7c0777795de408a1e304b41de09a2d40e1e5d6ad795ac943",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -933,6 +934,7 @@
         "js/app/midi-ui/OwnedSourceSeed.js",
         "js/app/midi-ui/SeedLayerPlan.js",
         "js/app/midi-ui/SmoothedAudioParameter.js",
+        "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/WaveSourceProfile.js",
         "js/app/midi-ui/worklet/AllpassNotchProcessor.js",
         "js/app/midi-ui/worklet/BoundedDelayProcessor.js",
@@ -1478,8 +1480,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 606,
-      "sha256": "ef2ce1c3006c5f2a1bed163fc1ffbc98a6346e955b9a2758930e8d751847dc3f",
+      "fileCount": 607,
+      "sha256": "f6479725961eac0ef4f785616a8926283d57ee5d16bcafd071b5ac22a43c02a1",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1572,6 +1574,7 @@
         "js/app/midi-ui/StreamingWarpAudition.js",
         "js/app/midi-ui/StreamingWarpMaterialOwner.js",
         "js/app/midi-ui/StretchImageMaterial.js",
+        "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/VoiceLaneMix.js",
         "js/app/midi-ui/WarpSegmentQueue.js",
         "js/app/midi-ui/WaveSourceProfile.js",
@@ -2079,8 +2082,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 584,
-      "sha256": "cdc7b7764cf3563308a366e98d35310948cbcdb3e66b0a15544d3b3526d636c3",
+      "fileCount": 585,
+      "sha256": "f128b0a1f873d8e697368a9d2081e03b18fe13f41b945369a3d7c6665918edb7",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2305,6 +2308,7 @@
         "js/app/midi-ui/SoundContentRegistry.js",
         "js/app/midi-ui/SoundMaterialProvider.js",
         "js/app/midi-ui/StretchImageMaterial.js",
+        "js/app/midi-ui/TimbreTuningTakeReadout.js",
         "js/app/midi-ui/VoiceLaneMix.js",
         "js/app/midi-ui/VoiceTransition.js",
         "js/app/midi-ui/WarpSegmentQueue.js",
@@ -2839,8 +2843,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 657,
-      "sha256": "4817d890c0e7f26fd0ef8563db1cb359054ff14750cb56b72baf508a5c577290",
+      "fileCount": 658,
+      "sha256": "5b4aba6ce56fe5ec2648e43206ec08154cd380966bad5575392c3d3c91e296ce",
       "inventoryScope": "first-party-artifact"
     }
   ]

@@ -2301,7 +2301,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!Number.isSafeInteger(project.procgen.revision + 1)) throw new Error('Project revision exhausted.');
       syncProject(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, lanes: project.procgen.lanes.map(lane => lane.solo ? { ...lane, solo: false } : lane) } }));
     },
-    openCausalAudioRender: safe(async () => {
+    openCausalAudioRender: safe(async (options = {}) => {
       const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
       if (disposed || !resourceBudget || !takeId || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish and select a saved causal take before rendering its intent.');
       const generation = documentGeneration;
@@ -2316,7 +2316,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || state.recording || masterCapture?.state().capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(masterCapture?.state().capture?.state) || causalTake || causalTakeStart || causalTakeStop || ownedCausalArm || simulationWorkbench?.state().active || simulationWorkbench?.state().busy) throw new Error('Finish capture and park the isolated worker before stopping live browser output for an explicit real-time print.');
           transport.pause(); return Object.freeze({ paused: true, documentGeneration, source: 'explicit-real-time-print;live-browser-output-stop-authorized' });
         },
-        onHarvest: source => handlers.harvestSoundSeed(source), displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId, instrumentRef: selected().instrumentRef || null });
+        onHarvest: source => handlers.harvestSoundSeed(source), displayScheduler: view?.displayScheduler, onStatus: status }); await causalAudioRender.open({ takeId, instrumentRef: selected().instrumentRef || null, timbreTuningPairs: options && typeof options === 'object' && 'timbreTuningPairs' in options ? options.timbreTuningPairs : null });
     }),
     openPrelistenMonitor() {
       if (disposed || !legacy.local.audio) return;
@@ -2332,6 +2332,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     analyzeTimbreTuningDraft: options => timbreTuningBench?.analyze(options),
     prepareTimbreTuningPair: options => timbreTuningBench?.prepare(options),
     commitTimbreTuningPair: () => timbreTuningBench?.commit(),
+    compareTimbreTuningTake: async () => {
+      const bench = timbreTuningBench?.state();
+      if (!bench?.canCommit || !bench.baseline || !bench.prepared?.set) throw new Error('Load a saved source pair, record/select its take, then prepare a proposed pair before fixed-take A/B.');
+      return handlers.openCausalAudioRender({ timbreTuningPairs: { sourceSet: bench.baseline, targetSet: bench.prepared.set } });
+    },
+    prepareBentLadder: async () => {
+      await openPerformanceScenes({ showBrowser: false }); const reference = sceneCatalog?.registry.findSupported({ id: 'bent-ladder.harmonic' });
+      if (!reference) throw new Error('The pinned sparse-spectrum Bent Ladder score is unavailable in this build.');
+      sceneBrowser.open({ sceneId: reference.id }); const result = await sceneLoader.prepare();
+      status('Bent Ladder harmonic pair prepared for review. Load it explicitly, record one empty-boundary take, then prepare a stretched Spectrum / Tuning draft for fixed-take A/B.'); return result;
+    },
     restoreTimbreTuningBaseline: () => timbreTuningBench?.restoreBaseline(),
     cancelTimbreTuningBench: () => timbreTuningBench?.cancel(),
     physicalMusicSource() { const world = runtime()?.world; if (!world) return null; const population = world.population, gesture = population.releaseGesture;
