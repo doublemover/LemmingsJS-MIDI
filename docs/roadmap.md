@@ -11621,3 +11621,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Verify and count every immutable child in a saved scene material palette before preparing its world. Deduplicate shared references across lanes, enforce each exact renderer’s per-source voice limit, and account for independently prepared palette children separately from ordinary shared engine pools. The authored aggregate bound remains enforced; actual live density is still admitted by the existing resource/voice owner.
 - Permit the already-validated prepared-body route only for a scene carrying its exact finite prepared-surface recipe. This closes the candidate-load seam for Three Hands/Felt Bridge without weakening ordinary local-route checks. Candidate receipts expose palette and child inventory counts.
 - No functional, native/audio, browser or performance execution ran. Formatting and critical/boundary type checks remain the only planned checks in this production batch.
+
+### Continuation 617 — actor-carried Quarry Journey reply
+
+- Author three dry Journey echo variations on the existing finite Quarry routes. The real reply actor crosses two source pickups, captures their exact observed interval contour, carries one bounded token and delivers it once at its actual route-end crossing. Delivery is a simultaneous dyad with capture/arrival ancestry, explicitly not a timed motif or audio-delay repeat.
+- Retain real route/junction/release ownership and separate source failure, capture refusal, token expiry and actual delivery. No rack or automatic replacement actor fills a missing arrival. The six-second private prefix may correctly end before a long route completes.
+- Register each complete scene/recipe/observation dependency through the existing catalog. Functional/audio/browser/performance qualification remains deferred.

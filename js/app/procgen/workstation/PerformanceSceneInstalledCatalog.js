@@ -1,3 +1,4 @@
+import { createQuarryJourneyScores } from './QuarryJourneyScore.js';
 import { createGlassOrbitOrchestrations } from './GlassOrbitOrchestration.js';
 import { createPocketCathedralScore } from './PocketCathedralScore.js';
 import { createGlacierWeatherScores } from './GlacierWeatherScore.js';
@@ -98,7 +99,8 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     }
   }
   if (pluck?.maximumVoices >= 12) {
-    for (const item of await createDubQuarryScores({ sourceHash, descriptor: pluck, signal })) {
+    const quarryScores = await createDubQuarryScores({ sourceHash, descriptor: pluck, signal });
+    for (const item of [...quarryScores, ...await createQuarryJourneyScores({ sourceHash, scores: quarryScores, signal })]) {
       recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
       for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
