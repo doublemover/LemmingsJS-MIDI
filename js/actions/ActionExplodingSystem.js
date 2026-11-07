@@ -63,7 +63,6 @@ class ActionExplodingSystem extends ActionBaseSystem {
           mask.height
         );
       }
-      if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
     if (lem.frameIndex === 52) {
       return LemmingStateType.OUT_OF_LEVEL;

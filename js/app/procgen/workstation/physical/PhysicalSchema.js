@@ -1,0 +1,10 @@
+export const plain = value => value && typeof value === 'object' && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+export const identity = value => typeof value === 'string' && /^[a-z0-9][a-z0-9._:/-]{0,255}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
+export const finite = (value, maximum = 1e9) => Number.isFinite(value) && Math.abs(value) <= maximum;
+export const integer = (value, maximum = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= 0 && value <= maximum;
+export const point = value => { if (!plain(value) || !finite(value.x) || !finite(value.y)) throw new Error('Expected a finite world-space point.'); return Object.freeze({ x: value.x, y: value.y }); };
+export const bounds = value => { if (!plain(value) || !['x1', 'y1', 'x2', 'y2'].every(key => finite(value[key])) || value.x2 <= value.x1 || value.y2 <= value.y1) throw new Error('Expected nonempty world-space bounds.'); return Object.freeze({ x1: value.x1, y1: value.y1, x2: value.x2, y2: value.y2 }); };
+export const actorKey = (worldId, generation, actorId) => `${worldId}/${generation}/${actorId}`;
+export const freeze = value => { if (value && typeof value === 'object' && !Object.isFrozen(value)) { for (const item of Object.values(value)) freeze(item); Object.freeze(value); } return value; };
+export const copy = value => JSON.parse(JSON.stringify(value));
+export const boundedList = (value, maximum, read, label) => { if (!Array.isArray(value) || value.length > maximum) throw new Error(`Invalid ${label} capacity.`); return Object.freeze(value.map(read)); };

@@ -1,0 +1,106 @@
+{
+  "schema": "lemmings-field-recording-provenance/v1",
+  "authoringRevision": "nps-excerpt-pcm16-v1",
+  "sources": [
+    {
+      "id": "nps-rain",
+      "materialType": "recording",
+      "authoringRevision": "nps-excerpt-pcm16-v1",
+      "channels": 1,
+      "sampleRate": 32000,
+      "frames": 158825,
+      "path": "field-recordings/nps-rain.wav",
+      "bytes": 317694,
+      "sha256": "50fd58bf2c9ee084b1b734f33bfceb576e6c49dfa07d2bf7d73372d0a714e642",
+      "title": "Rain",
+      "pageUrl": "https://www.nps.gov/subjects/sound/sounds-rain.htm",
+      "sourceUrl": "https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-RainDEPO.mp3",
+      "original": {
+        "bytes": 81986,
+        "sha256": "8f349402462580e1faca6a51bc13fea4655698624966e976195d2b2fd08a5337",
+        "mediaType": "audio/mpeg"
+      },
+      "decoder": "ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers",
+      "conversion": "First up to 6 seconds, mono 32000 Hz signed PCM16; bitexact flags; no peak normalization; 320-frame linear edge fades truncated toward zero; canonical 44-byte RIFF header.",
+      "sourceDescription": "NPS Rain.",
+      "credit": "National Park Service, Natural Sounds and Night Skies Division",
+      "rightsUrl": "https://www.nps.gov/subjects/sound/gallery.htm",
+      "observedDate": "2026-11-07"
+    },
+    {
+      "id": "nps-rockfall",
+      "materialType": "recording",
+      "authoringRevision": "nps-excerpt-pcm16-v1",
+      "channels": 1,
+      "sampleRate": 32000,
+      "frames": 192000,
+      "path": "field-recordings/nps-rockfall.wav",
+      "bytes": 384044,
+      "sha256": "ee898ad43e16eb17fe765a72162bc0b160171a485d87895280236622480c6394",
+      "title": "Rockfall",
+      "pageUrl": "https://www.nps.gov/subjects/sound/rockfall.htm",
+      "sourceUrl": "https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-RockslideYOSE.mp3",
+      "original": {
+        "bytes": 161398,
+        "sha256": "090c20e5496977cd627d2bfff45006ebcae7da246c3599abf56994c283cd0588",
+        "mediaType": "audio/mpeg"
+      },
+      "decoder": "ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers",
+      "conversion": "First up to 6 seconds, mono 32000 Hz signed PCM16; bitexact flags; no peak normalization; 320-frame linear edge fades truncated toward zero; canonical 44-byte RIFF header.",
+      "sourceDescription": "NPS Rockfall. The legacy MP3 filename and page park label differ; no precise location is asserted.",
+      "credit": "National Park Service, Natural Sounds and Night Skies Division",
+      "rightsUrl": "https://www.nps.gov/subjects/sound/gallery.htm",
+      "observedDate": "2026-11-07"
+    },
+    {
+      "id": "nps-stream",
+      "materialType": "recording",
+      "authoringRevision": "nps-excerpt-pcm16-v1",
+      "channels": 1,
+      "sampleRate": 32000,
+      "frames": 162169,
+      "path": "field-recordings/nps-stream.wav",
+      "bytes": 324382,
+      "sha256": "4dda18dfc00ac3a912d6e486d13f2c200b3fbfefc359c412d11ad0da76b7ade6",
+      "title": "Stream",
+      "pageUrl": "https://www.nps.gov/subjects/sound/sounds-stream.htm",
+      "sourceUrl": "https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-StreamMUWO.mp3",
+      "original": {
+        "bytes": 63536,
+        "sha256": "4d55ce7e299b7d2d9ab50aee2d28233f05662886cbb57e792aa210d39dd73744",
+        "mediaType": "audio/mpeg"
+      },
+      "decoder": "ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers",
+      "conversion": "First up to 6 seconds, mono 32000 Hz signed PCM16; bitexact flags; no peak normalization; 320-frame linear edge fades truncated toward zero; canonical 44-byte RIFF header.",
+      "sourceDescription": "NPS Stream.",
+      "credit": "National Park Service, Natural Sounds and Night Skies Division",
+      "rightsUrl": "https://www.nps.gov/subjects/sound/gallery.htm",
+      "observedDate": "2026-11-07"
+    },
+    {
+      "id": "nps-snowplow",
+      "materialType": "recording",
+      "authoringRevision": "nps-excerpt-pcm16-v1",
+      "channels": 1,
+      "sampleRate": 32000,
+      "frames": 191426,
+      "path": "field-recordings/nps-snowplow.wav",
+      "bytes": 382896,
+      "sha256": "bb8b16a0f369a1c34cb8422c164292297a6a1b71b24573008d26a4d3a5db2e2b",
+      "title": "Rotary snowplow",
+      "pageUrl": "https://www.nps.gov/subjects/sound/sounds-snowplow.htm",
+      "sourceUrl": "https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-RotarySnowPlow.mp3",
+      "original": {
+        "bytes": 98287,
+        "sha256": "d86ea031d4ea439ef0dc408258d542de01f8b640cd5caaa8d72c4de014af63c8",
+        "mediaType": "audio/mpeg"
+      },
+      "decoder": "ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers",
+      "conversion": "First up to 6 seconds, mono 32000 Hz signed PCM16; bitexact flags; no peak normalization; 320-frame linear edge fades truncated toward zero; canonical 44-byte RIFF header.",
+      "sourceDescription": "NPS Rotary snowplow.",
+      "credit": "National Park Service, Natural Sounds and Night Skies Division",
+      "rightsUrl": "https://www.nps.gov/subjects/sound/gallery.htm",
+      "observedDate": "2026-11-07"
+    }
+  ]
+}

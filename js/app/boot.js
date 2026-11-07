@@ -1,4 +1,6 @@
 import './bootstrap.js';
+
+document.addEventListener('contextmenu', event => event.preventDefault());
 import { createProcgenRedirectUrl } from './StartupUrlConfig.js';
 import { GameView } from '../game/GameView.js';
 import { MidiInputController } from '../midi/input/MidiInputController.js';

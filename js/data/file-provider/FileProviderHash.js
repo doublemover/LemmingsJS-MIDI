@@ -15,6 +15,10 @@ import {
   sanitizeCacheBust
 } from './FileProviderShared.js';
 const fileProviderHashMethods = {
+  canVerifyContent() {
+    return !!(this._crypto || globalThis.crypto)?.subtle;
+  },
+
   async _tryHashBuffer(buffer) {
     const cryptoRef = this._crypto || (typeof globalThis !== 'undefined' ? globalThis.crypto : null);
     if (cryptoRef?.subtle) {
@@ -53,7 +57,7 @@ const fileProviderHashMethods = {
   },
 
   _arrayBufferToBase64(buffer) {
-    const bytes = new Uint8Array(buffer);
+    const bytes = ArrayBuffer.isView(buffer) ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength) : new Uint8Array(buffer);
     const chunkSize = 0x8000;
     const chunks = [];
     for (let i = 0; i < bytes.byteLength; i += chunkSize) {

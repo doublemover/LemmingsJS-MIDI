@@ -121,6 +121,19 @@ describe('existing cell inspector independent voices and ordered layers', functi
     expect(f.getProject().clips[0].steps[1].note).to.equal(72); expect(f.getProject().enabled).to.equal(false);
     f.editor.dispose();
   });
+  it('preserves equivalent typed pitch spelling while focused and reveals external note changes', function() {
+    const f = createEditorFixture({ steps: [{ voices: [{ note: 60 }, { note: 67 }] }] });
+    const voices = f.doc.getElementById('midiEventClipVoices');
+    const pitch = voices.querySelectorAll('.midi-clip-voice-note')[1];
+    pitch.focus(); pitch.value = 'F#4'; pitch.setSelectionRange(1, 2, 'forward');
+    pitch.dispatchEvent({ type: 'change', target: pitch });
+    const current = voices.querySelectorAll('.midi-clip-voice-note')[1];
+    expect(current.value).to.equal('F#4');
+    expect([current.selectionStart, current.selectionEnd]).to.deep.equal([1, 2]);
+    f.dispatch({ type: 'clip.step.update', clipId: 'poly', stepIndex: 0, patch: { voices: [{ note: 60 }, { note: 69 }] } });
+    expect(voices.querySelectorAll('.midi-clip-voice-note')[1].value).to.equal('A4');
+    f.editor.dispose();
+  });
   it('keeps repeated keyboard Earlier/Later activation on the moved layer without saved layer IDs', function() {
     const f = createEditorFixture({ steps: [{ note: 60, transformLayers: [{ type: 'pitch', transpose: 1 }, { type: 'repeat', count: 3 }, { type: 'pitch', transpose: 7 }] }, { note: 72 }] });
     const root = f.doc.getElementById('midiEventClipLayers'), button = (index, text) => root.children[index].children.find(element => element.textContent === text && element.tagName === 'BUTTON');

@@ -5,7 +5,7 @@ import { EventHandler } from '../../js/util/EventHandler.js';
 import { makeOutput } from '../support/midi-output.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
-const fixture = (backend = 'midi') => {
+const fixture = (backend = 'midi', reviewed = true, deferredLibrary = false) => {
   const calls = [], secondCalls = [], outputs = [makeOutput([1], calls, 'first'), makeOutput([1], secondCalls, 'second')]; outputs[0].name = 'First device'; outputs[1].name = 'Second device';
   const listeners = new Map(), webMidi = { enabled: false, outputs, requests: 0,
     async enable(options) { expect(options.sysex).to.equal(false); this.requests++; this.enabled = true; },
@@ -20,10 +20,108 @@ const fixture = (backend = 'midi') => {
   let view = makeView();
   const config = { enabled: false, mpe: { enabled: false }, defaultChannel: 1, timing: { scheduleAheadMs: 0 }, position: { mappings: [] },
     sfx: { [SoundEffectIds.SPAWN]: { note: 61, velocity: 90, durationTicks: 2, outputId: 'unrelated-saved-device' } } };
-  const output = createProcgenMidiOutput({ local, backend, getView: () => view, getConfig: () => config, getWebMidi: () => webMidi });
-  return { output, webMidi, local, calls, secondCalls, config, get view() { return view; }, changeView() { view = makeView(); }, disconnect() { webMidi.outputs = []; listeners.get('disconnected')(); } };
+  let library = deferredLibrary ? null : webMidi, resolveLibrary, loads = 0;
+  const loading = deferredLibrary ? new Promise(resolve => { resolveLibrary = resolve; }) : null;
+  const output = createProcgenMidiOutput({ local, backend, getView: () => view, getConfig: () => config, getWebMidi: () => library,
+    loadWebMidi: deferredLibrary ? () => { loads++; return loading; } : null });
+  if (backend === 'midi' && reviewed) output.setOutputId('first');
+  return { output, webMidi, local, calls, secondCalls, config, get loads() { return loads; }, supplyLibrary() { library = webMidi; resolveLibrary(webMidi); }, get view() { return view; }, changeView() { view = makeView(); }, disconnect() { webMidi.outputs = []; listeners.get('disconnected')(); } };
 };
 describe('procgen selected audible destination', () => {
+  for (const name of ['NotAllowedError', 'SecurityError']) for (const reviewed of [false, true]) it('keeps ' + name + ' explicit during ' + (reviewed ? 'activation' : 'discovery') + ' without automatic retry or local fallback', async () => {
+    const f = fixture('midi', reviewed);
+    f.webMidi.enable = async () => { f.webMidi.requests++; throw Object.assign(new Error('Browser blocked MIDI access'), { name }); };
+    try {
+      expect(await f.output.start()).to.equal(false);
+      for (let index = 0; index < 3; index++) expect(f.output.getState()).to.include({ midiPermission: 'denied', failureKind: 'permission-denied', enabled: false });
+      expect(f.webMidi.requests).to.equal(1); expect(f.local.starts).to.equal(0); expect(f.calls).to.have.length(0);
+      expect(f.output.getState().message).to.include('denied or blocked');
+    } finally { await f.output.dispose()?.completion; }
+  });
+  it('loads MIDI only on explicit discovery and shares a pending discovery without activating a route', async () => {
+    const f = fixture('midi', false, true);
+    try {
+      expect(f.loads).to.equal(0); expect(f.output.getOperationalState().midiPermission).to.equal('unknown');
+      const first = f.output.discover(), second = f.output.discover(); expect(first).to.equal(second); expect(f.loads).to.equal(1);
+      expect(f.webMidi.requests).to.equal(0); f.supplyLibrary(); expect(await first).to.have.length(2);
+      expect(f.webMidi.requests).to.equal(1); expect(f.view.midiPreviewRouter).to.equal(null); expect(f.calls).to.have.length(0);
+      f.output.setOutputId('first'); expect(await f.output.start()).to.equal(true); expect(f.loads).to.equal(1);
+      f.disconnect(); expect(f.output.getState().enabled).to.equal(false);
+    } finally { f.output.dispose(); }
+  });
+  it('does not request permission after a pending library load is stopped, disposed or replaced', async () => {
+    for (const operation of ['discover', 'start']) for (const cancel of ['stop', 'dispose']) {
+      const f = fixture('midi', operation === 'start', true);
+      try {
+        const work = f.output[operation](); f.output[cancel](); f.supplyLibrary(); await work;
+        expect(f.webMidi.requests).to.equal(0); expect(f.view.midiPreviewRouter).to.equal(null); expect(f.calls).to.have.length(0);
+      } finally { f.output.dispose(); }
+    }
+    const f = fixture('midi', true, true);
+    try { const work = f.output.start(); f.changeView(); f.supplyLibrary(); expect(await work).to.equal(false); expect(f.webMidi.requests).to.equal(0); }
+    finally { f.output.dispose(); }
+  });
+  it('discovers without choosing or activating a port, then requires a reviewed ID independent of enumeration order', async () => {
+    const f = fixture('midi', false);
+    try {
+      expect(f.output.getState()).to.include({ enabled: false, selectedOutputId: null }); expect(f.webMidi.requests).to.equal(0);
+      expect(await f.output.start()).to.equal(false); expect(f.webMidi.requests).to.equal(1); expect(f.view.midiPreviewRouter).to.equal(null);
+      expect(f.output.getState()).to.include({ status: 'needs-selection', enabled: false, selectedOutputId: null, discoveredOutputCount: 2, midiPermission: 'granted' });
+      expect(f.calls).to.have.length(0); expect(f.secondCalls).to.have.length(0);
+      f.webMidi.outputs.reverse(); await f.output.discover(); expect(f.output.getState().selectedOutputId).to.equal(null);
+      f.output.setOutputId('first'); expect(f.output.getState()).to.include({ enabled: false, selectedOutputId: 'first', selectedOutputName: 'First device' });
+      expect(await f.output.start()).to.equal(true); expect(f.output.getState()).to.include({ enabled: true, outputId: 'first' }); expect(f.secondCalls).to.have.length(0);
+    } finally { f.output.dispose(); }
+  });
+  it('isolates duplicate names, inactive endpoint removal and discovery from the activated route', async () => {
+    const f = fixture('midi', false); f.webMidi.outputs.forEach(port => { port.name = 'Identical keyboard'; });
+    try {
+      await f.output.discover(); f.output.setOutputId('second'); expect(await f.output.start()).to.equal(true); const router = f.view.midiPreviewRouter, writes = f.secondCalls.length;
+      await f.output.discover(); expect(f.view.midiPreviewRouter).to.equal(router); expect(f.secondCalls).to.have.length(writes); expect(f.calls).to.have.length(0);
+      f.webMidi.outputs = f.webMidi.outputs.filter(port => port.id === 'second'); f.output.refreshDevices();
+      expect(f.view.midiPreviewRouter).to.equal(router); expect(f.output.getState()).to.include({ outputId: 'second', enabled: true }); expect(f.secondCalls).to.have.length(writes);
+      f.webMidi.outputs = []; f.output.refreshDevices(); expect(f.output.getState()).to.include({ enabled: false, selectedOutputId: 'second', selectedOutputName: 'Identical keyboard', failureKind: 'destination-missing' });
+      f.webMidi.outputs = [makeOutput([1], [], 'second')]; f.output.refreshDevices(); expect(f.output.getState().enabled).to.equal(false);
+    } finally { f.output.dispose(); }
+  });
+  it('cancels discovery publication and keeps denied access separate from a missing device', async () => {
+    const f = fixture('midi', false); let resolve;
+    try {
+      f.webMidi.enable = () => new Promise(done => { resolve = () => { f.webMidi.enabled = true; done(); }; });
+      const pending = f.output.discover(); f.output.stop(); resolve(); await pending;
+      expect(f.output.getState()).to.include({ status: 'off', enabled: false, selectedOutputId: null }); expect(f.view.midiPreviewRouter).to.equal(null);
+      f.webMidi.enabled = false; f.webMidi.enable = async () => { throw Object.assign(new Error('denied'), { name: 'NotAllowedError' }); };
+      f.output.setOutputId('first'); expect(await f.output.start()).to.equal(false); expect(f.output.getState()).to.include({ midiPermission: 'denied', failureKind: 'permission-denied', enabled: false });
+      expect(f.calls).to.have.length(0); expect(f.secondCalls).to.have.length(0); expect(f.local.starts).to.equal(0);
+    } finally { f.output.dispose(); }
+  });
+  it('reports revoked permission without mutating a route during a state read, then retires it at the existing cadence', async () => {
+    const f = fixture();
+    try {
+      await f.output.start(); const router = f.view.midiPreviewRouter, writes = f.calls.length; f.webMidi.enabled = false;
+      for (let index = 0; index < 20; index++) expect(f.output.getOperationalState()).to.include({ enabled: false, failureKind: 'permission-revoked' });
+      expect(f.view.midiPreviewRouter).to.equal(router); expect(f.calls).to.have.length(writes); expect(f.output.syncStatus()).to.equal(true); expect(f.view.midiPreviewRouter).to.equal(null);
+    } finally { f.output.dispose(); }
+  });
+  it('requires current activation admission both before and after pending permission', async () => {
+    const f = fixture('midi', false); let allowed = false, resolve;
+    const output = createProcgenMidiOutput({ local: f.local, backend: 'midi', getView: () => f.view, getConfig: () => f.config, getWebMidi: () => f.webMidi, canActivate: () => allowed });
+    try {
+      output.setOutputId('first'); expect(await output.start()).to.equal(false); expect(f.webMidi.requests).to.equal(0);
+      allowed = true; f.webMidi.enable = () => new Promise(done => { resolve = () => { f.webMidi.enabled = true; done(); }; });
+      const pending = output.start(); allowed = false; resolve(); expect(await pending).to.equal(false); expect(output.getState().status).to.equal('selected');
+      expect(f.view.midiPreviewRouter).to.equal(null); expect(f.calls).to.have.length(0);
+    } finally { output.dispose(); f.output.dispose(); }
+  });
+  it('publishes completed MIDI activation to bounded subscribers and isolates a failed consumer', async () => {
+    const f = fixture(), states = [];
+    const remove = f.output.subscribe(state => states.push(state)); f.output.subscribe(() => { throw new Error('Detached presentation'); });
+    try {
+      expect(await f.output.start()).to.equal(true); expect(states.at(-1)).to.include({ selectedBackend: 'midi', enabled: true, status: 'live', outputId: 'first' });
+      expect(Object.isFrozen(states.at(-1))).to.equal(true); expect(f.webMidi.requests).to.equal(1);
+      remove(); const count = states.length; f.output.stop(); expect(states).to.have.length(count);
+    } finally { f.output.dispose(); }
+  });
   it('retains held gates, unsounded phrases and sent history for span/tension edits, with deliberate source-tail cancellation', async () => {
     await withFakeClockAndPerformance(async clock => {
       const f = fixture(), source = f.config.sfx[SoundEffectIds.SPAWN];
@@ -47,8 +145,8 @@ describe('procgen selected audible destination', () => {
       expect([...scheduler._activeNotes.values()][0]).to.equal(gate); expect(scheduler._rateSent).to.deep.equal(history);
       expect(scheduler.gamePhrases.voices.size).to.equal(0);
       source.disabled = true; expect(f.output.syncConfig()).to.equal(true);
-      expect(scheduler._activeNotes.size).to.equal(0); expect(scheduler._rateSent).to.deep.equal(history);
-      expect(f.calls.some(call => call.type === 'cc' && call.cc === 120)).to.equal(true); f.output.dispose();
+      expect(scheduler._activeNotes.size).to.equal(0); expect(scheduler._rateSent.slice(0, history.length)).to.deep.equal(history);
+      expect(f.calls.some(call => call.type === 'noteOff')).to.equal(true); f.output.dispose();
     });
   });
 
@@ -96,7 +194,7 @@ describe('procgen selected audible destination', () => {
       expect(f.output.getState()).to.include({ backend: 'web-midi', outputId: 'second', outputName: 'Second device' }); expect(f.local.starts).to.equal(0);
       const scheduler = f.view.midiPreviewRouter.scheduler;
       f.output.stop(); expect(f.view.midiPreviewRouter).to.equal(null); expect(f.output.getState().backend).to.equal('no-active-output');
-      expect(f.secondCalls.some(call => call.type === 'cc' && call.cc === 120 && call.value === 0)).to.equal(true);
+      expect(f.secondCalls.some(call => call.type === 'noteOff' && call.note === 61)).to.equal(true);
       expect(scheduler._activeNotes.size).to.equal(0); expect(scheduler._pendingNoteOns.size).to.equal(0); f.output.dispose();
     });
   });

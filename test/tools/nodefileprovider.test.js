@@ -166,6 +166,18 @@ describe('NodeFileProvider', function() {
     );
   });
 
+  it('classifies missing loose files and archive entries as typed absence', async function() {
+    const provider = makeProvider();
+    for (const root of ['.', 'pack.zip', 'pack.tar', 'pack.nxp']) {
+      try { await provider.loadBinary(root, 'missing.dat'); expect.fail('Expected missing file'); }
+      catch (error) { expect(error.kind).to.equal('not-found'); expect(error.retryable).to.equal(false); }
+    }
+    for (const source of ['missing.txt', 'pack.zip/missing.txt', 'pack.tar/missing.txt', 'pack.nxp/missing.txt']) {
+      try { await provider.loadString(source); expect.fail('Expected missing text'); }
+      catch (error) { expect(error.kind).to.equal('not-found'); expect(error.retryable).to.equal(false); }
+    }
+  });
+
   it('normalizes validated entry paths', function() {
     const provider = makeProvider();
     expect(provider._validateEntry('data\\LEVEL000.DAT')).to.equal('data/LEVEL000.DAT');

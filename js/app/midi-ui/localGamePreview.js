@@ -1,3 +1,4 @@
+import { createLiveLocalInstrumentSink, localInstrumentTracks } from './LiveLocalInstrumentSink.js';
 import { MidiEventRouter } from '../../midi/MidiEventRouter.js';
 import { cloneSafeObject } from '../../util/safeObject.js';
 import { createBrowserNotePreview } from './browserNotePreview.js';
@@ -16,8 +17,10 @@ const localConfig = (source) => {
   return config;
 };
 
-const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), immutableConfig = false, onStateChange, audio = createBrowserNotePreview() } = {}) => {
-  let router = null, capture = null;
+const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), immutableConfig = false,
+  onStateChange, resourceBudget = null, audio = createBrowserNotePreview({ resourceBudget, cueVoices: resourceBudget ? 4 : 0, cueCostUnits: resourceBudget ? 16 : 0 }) } = {}) => {
+  let router = null, capture = null, liveInstruments = null, liveInstrumentLease = null, prepareSerial = 0;
+  const instrumentRetirements = new Set();
   let attachedView = null;
   let generation = 0;
   let configKey = null;
@@ -28,12 +31,16 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   let disposed = false;
   let disposePromise = null;
 
+  const outputMessage = observed => observed.performanceLease?.coordination === 'uncoordinated' ? message + ' Tab coordination is unavailable; another tab may also be active.' : message;
   const getState = () => ({
     status,
-    message,
+    message: outputMessage(audio.getState()),
     enabled: (status === 'live' || status === 'suspended') && audio.getState().enabled,
     audio: audio.getState()
   });
+  const getOperationalState = () => { const observed = audio.getOperationalState?.() || audio.getState();
+    return Object.freeze({ status, message: outputMessage(observed), enabled: (status === 'live' || status === 'suspended') && observed.enabled, audio: observed });
+  };
   const report = (nextStatus, nextMessage) => {
     status = nextStatus;
     message = nextMessage;
@@ -41,7 +48,9 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   };
   const detach = () => {
     if (attachedView?.midiPreviewRouter === router) attachedView.setMidiPreviewRouter(null);
-    attachedView = null;
+    attachedView = null; prepareSerial++;
+    const retiring = liveInstrumentLease?.release(); liveInstrumentLease = null; liveInstruments = null;
+    if (retiring) { instrumentRetirements.add(retiring); retiring.completion.then(value => { if (value.outcome === 'complete') instrumentRetirements.delete(retiring); }); }
     router?.dispose();
     router = null;
     configKey = null;
@@ -52,8 +61,20 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     generation += 1;
     status = disposed ? 'disposed' : 'off';
     detach();
-    audio.stop();
+    const receipt = audio.stop();
     if (!disposed) report('off', 'Browser preview is off.');
+    return receipt;
+  };
+  const prepareInstruments = config => {
+    if (!liveInstruments && !localInstrumentTracks(config).length) return Promise.resolve(true);
+    if (!liveInstruments) {
+      if (instrumentRetirements.size >= 4) throw new Error('Earlier local instruments still retain their resources. Stop and resolve the previous output before preparing more.');
+      const owner = createLiveLocalInstrumentSink({ audio, resourceBudget, isCurrent: () => !disposed && liveInstruments === owner,
+        onState: observed => { if (!disposed && liveInstruments === owner && observed.status === 'preparing') report('starting', 'Preparing selected local instruments…'); },
+        onReceipt: receipt => { if (!disposed && liveInstruments === owner && receipt.status === 'rejected') { message = 'Local instrument: ' + receipt.reason + '.'; try { onStateChange?.(getState()); } catch {} } } });
+      liveInstruments = owner; liveInstrumentLease = router.scheduler.bindLocalInstrumentSink(owner);
+    }
+    return liveInstruments.prepare(config);
   };
   const syncConfig = () => {
     if (!router || disposed) return false;
@@ -69,20 +90,23 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     if (audibilityKey != null && audibilityKey !== nextAudibility) router.scheduler.allNotesOff();
     audibilityKey = nextAudibility;
     router.setMapping(config);
-    configKey = nextKey;
+    configKey = nextKey; const request = ++prepareSerial;
+    try { void prepareInstruments(config).then(() => { if (!disposed && request === prepareSerial && router) report('live', 'Listening to game notes with the selected local instruments. No MIDI is sent.'); }, error => { if (!disposed && request === prepareSerial) report('error', error.message); }); }
+    catch (error) { report('error', error.message); }
     return true;
   };
-  const attachView = view => {
+  const attachView = async view => {
+    const request = generation;
     const source = getConfig(), config = localConfig(source);
     router = new MidiEventRouter(config);
     router.setCapture(capture);
-    router.setOutput(audio.output);
-    router.setOutputs([audio.output]);
     configKey = JSON.stringify(config);
     sourceConfig = source;
     attachedView = view;
-    view.setMidiPreviewRouter(router, stop);
-    report('live', 'Listening to game notes in the browser. No MIDI is sent.');
+    const candidate = router; view.setMidiPreviewRouter(candidate, stop);
+    await prepareInstruments(config);
+    if (disposed || request !== generation || router !== candidate || attachedView !== view) return false;
+    report('live', 'Listening to game notes in the browser. No MIDI is sent.'); return true;
   };
   const suspendGame = () => {
     if (disposed || !['live', 'suspended'].includes(status) || !audio.getState().enabled) return false;
@@ -99,10 +123,9 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     try {
       if (view.midiEnabled) await view.setMidiEnabled(false);
       if (disposed || generation !== request || status !== 'suspended' || !audio.getState().enabled || getLemmings() !== view) return false;
-      attachView(view);
-      return true;
-    } catch {
-      if (!disposed && request === generation) { detach(); audio.stop(); report('error', 'Browser preview could not resume. Try again.'); }
+      return await attachView(view);
+    } catch (error) {
+      if (!disposed && request === generation) { detach(); audio.stop(); report('error', error?.message || 'Browser preview could not resume. Try again.'); }
       return false;
     }
   };
@@ -112,7 +135,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     detach();
     report('error', state.message || 'Browser audio stopped. Enable preview again.');
   });
-  const start = async () => {
+  const start = async ({ takeOver = false } = {}) => {
     if (disposed) return false;
     const view = getLemmings();
     if (view?.midiAvailable === false) return false;
@@ -131,7 +154,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     }
     try {
       // Invoke unlock before awaiting anything so the click still authorizes browser audio.
-      const ready = audio.enable();
+      const ready = audio.enable(null, { takeOver });
       if (view.midiEnabled) await view.setMidiEnabled(false);
       if (!await ready) {
         if (!disposed && request === generation) report('error', audio.getState().message);
@@ -143,13 +166,12 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
         report('error', 'The game changed while audio was starting. Try preview again.');
         return false;
       }
-      attachView(view);
-      return true;
-    } catch {
+      return await attachView(view);
+    } catch (error) {
       if (!disposed && request === generation) {
         detach();
         audio.stop();
-        report('error', 'Browser preview could not start. Try again.');
+        report('error', error?.message || 'Browser preview could not start. Try again.');
       }
       return false;
     }
@@ -160,11 +182,11 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     unsubscribe?.();
     stop();
     report('disposed', 'Browser preview is closed.');
-    disposePromise = Promise.resolve(audio.dispose());
+    disposePromise = Promise.all([...instrumentRetirements].map(receipt => receipt.completion)).then(() => audio.dispose());
     return disposePromise;
   };
   const setCapture = observer => { capture = observer; router?.setCapture(capture); audio.setCapture?.(capture); };
-  return { start, stop, panic: stop, suspendGame, resumeGame, dispose, syncConfig, getState, setCapture, audio };
+  return { start, takeOverPerformance: () => start({ takeOver: true }), stop, panic: stop, suspendGame, resumeGame, dispose, syncConfig, getState, getOperationalState, setCapture, audio };
 };
 
 export { createLocalGamePreview };

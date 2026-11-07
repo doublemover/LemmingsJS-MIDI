@@ -1,0 +1,738 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.wind-bodies",
+    "version": "0.1.0",
+    "name": "Breath and modal wind bodies",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "urn:lemmings:original:sealed-modal-wind:v1",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original saturating negative-resistance modal wind models and authored recipes. Not measured clarinet/flute emulations; stability, pitch, register, alias, device and listening qualification remains pending.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "wind.hollow-reed",
+      "revision": 1,
+      "name": "Hollow Reed",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "original",
+        "sealed-modal-wind",
+        "held-gesture",
+        "experimental",
+        "hollow-reed"
+      ],
+      "engine": {
+        "id": "worklet-wind",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:sealed-modal-wind:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original saturating negative-resistance modal wind models and authored recipes. Not measured clarinet/flute emulations; stability, pitch, register, alias, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "windKind": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "airPressure01": {
+              "value": 0.35,
+              "unit": "normalized"
+            },
+            "bite01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "breathLeak01": {
+              "value": 0.25,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "acousticLengthRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "bellOpening01": {
+              "value": 0.35,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.12,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "air",
+          "name": "AIR",
+          "mode": "onset-only",
+          "default01": 0.4594594594594594,
+          "smoothingMs": 0,
+          "perceptualDirection": "More normalized drive on new bodies. Held channel pressure has a zero floor and changes the active nonlinear port.",
+          "targets": [
+            {
+              "parameter": "airPressure01",
+              "minimum": {
+                "value": 0.18,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.55,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "bite",
+          "name": "BITE",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the normalized nonlinear flow slope and authored harmonic injection; not measured reed stiffness.",
+          "targets": [
+            {
+              "parameter": "bite01",
+              "minimum": {
+                "value": 0.35,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.65,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "length",
+          "name": "LENGTH",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes virtual acoustic size and actual onset tuning; never moves the physical route.",
+          "targets": [
+            {
+              "parameter": "acousticLengthRatio",
+              "minimum": {
+                "value": 0.75,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.25,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "leak",
+          "name": "LEAK",
+          "mode": "onset-only",
+          "default01": 0.25,
+          "smoothingMs": 0,
+          "perceptualDirection": "More bounded filtered breath at the private force port.",
+          "targets": [
+            {
+              "parameter": "breathLeak01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 2,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    },
+    {
+      "id": "wind.air-pipe",
+      "revision": 1,
+      "name": "Air Pipe",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "original",
+        "sealed-modal-wind",
+        "held-gesture",
+        "experimental",
+        "air-pipe"
+      ],
+      "engine": {
+        "id": "worklet-wind",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:sealed-modal-wind:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original saturating negative-resistance modal wind models and authored recipes. Not measured clarinet/flute emulations; stability, pitch, register, alias, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "windKind": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "airPressure01": {
+              "value": 0.3,
+              "unit": "normalized"
+            },
+            "bite01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "breathLeak01": {
+              "value": 0.25,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "acousticLengthRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "bellOpening01": {
+              "value": 0.35,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.3,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "air",
+          "name": "AIR",
+          "mode": "onset-only",
+          "default01": 0.4285714285714286,
+          "smoothingMs": 0,
+          "perceptualDirection": "More normalized drive on new bodies. Held channel pressure has a zero floor and changes the active nonlinear port.",
+          "targets": [
+            {
+              "parameter": "airPressure01",
+              "minimum": {
+                "value": 0.15,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.5,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "bite",
+          "name": "BITE",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the normalized nonlinear flow slope and authored harmonic injection; not measured reed stiffness.",
+          "targets": [
+            {
+              "parameter": "bite01",
+              "minimum": {
+                "value": 0.35,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.65,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "length",
+          "name": "LENGTH",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes virtual acoustic size and actual onset tuning; never moves the physical route.",
+          "targets": [
+            {
+              "parameter": "acousticLengthRatio",
+              "minimum": {
+                "value": 0.75,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.25,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "leak",
+          "name": "LEAK",
+          "mode": "onset-only",
+          "default01": 0.25,
+          "smoothingMs": 0,
+          "perceptualDirection": "More bounded filtered breath at the private force port.",
+          "targets": [
+            {
+              "parameter": "breathLeak01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 2,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    },
+    {
+      "id": "wind.overblown-branch",
+      "revision": 1,
+      "name": "Overblown Branch · experimental",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "original",
+        "sealed-modal-wind",
+        "held-gesture",
+        "experimental",
+        "overblown-branch"
+      ],
+      "engine": {
+        "id": "worklet-wind",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:sealed-modal-wind:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original saturating negative-resistance modal wind models and authored recipes. Not measured clarinet/flute emulations; stability, pitch, register, alias, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "windKind": {
+              "value": 2,
+              "unit": "enum"
+            },
+            "airPressure01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "bite01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "breathLeak01": {
+              "value": 0.25,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "acousticLengthRatio": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "bellOpening01": {
+              "value": 0.35,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.12,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "air",
+          "name": "AIR",
+          "mode": "onset-only",
+          "default01": 0.8648648648648648,
+          "smoothingMs": 0,
+          "perceptualDirection": "More normalized drive on new bodies. Held channel pressure has a zero floor and changes the active nonlinear port.",
+          "targets": [
+            {
+              "parameter": "airPressure01",
+              "minimum": {
+                "value": 0.18,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.55,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "bite",
+          "name": "BITE",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes the normalized nonlinear flow slope and authored harmonic injection; not measured reed stiffness.",
+          "targets": [
+            {
+              "parameter": "bite01",
+              "minimum": {
+                "value": 0.35,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.65,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "length",
+          "name": "LENGTH",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Changes virtual acoustic size and actual onset tuning; never moves the physical route.",
+          "targets": [
+            {
+              "parameter": "acousticLengthRatio",
+              "minimum": {
+                "value": 0.75,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1.25,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "leak",
+          "name": "LEAK",
+          "mode": "onset-only",
+          "default01": 0.25,
+          "smoothingMs": 0,
+          "perceptualDirection": "More bounded filtered breath at the private force port.",
+          "targets": [
+            {
+              "parameter": "breathLeak01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 2,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.wind.hollow-reed",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "one-held-actor-source",
+        "held-pressure-supplies-source-work",
+        "zero-pressure-means-no-source-work",
+        "sealed-nonlinear-modal-feedback",
+        "bounded-root-and-positive-loss"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "wind.hollow-reed",
+          "algorithmRevision": "owned-implicit-negative-resistance-modal-wind-v1",
+          "preservedInvariants": [
+            "one-held-actor-source",
+            "held-pressure-supplies-source-work",
+            "zero-pressure-means-no-source-work",
+            "sealed-nonlinear-modal-feedback",
+            "bounded-root-and-positive-loss"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only the original experimental modal source is available. Two storage slots and static cost units are unmeasured admission policy; pressure/pitch stability, register/tone, alias, device and listening qualification remains pending."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.wind.air-pipe",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "one-held-actor-source",
+        "held-pressure-supplies-source-work",
+        "zero-pressure-means-no-source-work",
+        "sealed-nonlinear-modal-feedback",
+        "bounded-root-and-positive-loss"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "wind.air-pipe",
+          "algorithmRevision": "owned-implicit-negative-resistance-modal-wind-v1",
+          "preservedInvariants": [
+            "one-held-actor-source",
+            "held-pressure-supplies-source-work",
+            "zero-pressure-means-no-source-work",
+            "sealed-nonlinear-modal-feedback",
+            "bounded-root-and-positive-loss"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only the original experimental modal source is available. Two storage slots and static cost units are unmeasured admission policy; pressure/pitch stability, register/tone, alias, device and listening qualification remains pending."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.wind.overblown-branch",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "one-held-actor-source",
+        "held-pressure-supplies-source-work",
+        "zero-pressure-means-no-source-work",
+        "sealed-nonlinear-modal-feedback",
+        "bounded-root-and-positive-loss"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "wind.overblown-branch",
+          "algorithmRevision": "owned-implicit-negative-resistance-modal-wind-v1",
+          "preservedInvariants": [
+            "one-held-actor-source",
+            "held-pressure-supplies-source-work",
+            "zero-pressure-means-no-source-work",
+            "sealed-nonlinear-modal-feedback",
+            "bounded-root-and-positive-loss"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only the original experimental modal source is available. Two storage slots and static cost units are unmeasured admission policy; pressure/pitch stability, register/tone, alias, device and listening qualification remains pending."
+    }
+  ]
+}

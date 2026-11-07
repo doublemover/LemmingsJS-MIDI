@@ -131,7 +131,7 @@ describe('native crown headwear replacements', function() {
     setCharacterPreference({ shape: 'classic' });
   });
 
-  it('returns exactly to the approved beret after swapping headwear without changing actor state', async function() {
+  for (const headwear of ['none', 'hat', 'crown']) it('returns exactly to the approved beret after ' + headwear + ' without changing actor state', async function() {
     let preference = { shape: 'mixed' };
     const base = new PixelSpriteSkin(read('assets/hydro/hydro-skin.json'));
     const sprites = new CharacterSpriteSet(base, catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
@@ -139,12 +139,11 @@ describe('native crown headwear replacements', function() {
     const actors = Array.from({ length: 64 }, (_, id) => ({ id, x: 10, y: 20, frameIndex: 3 }));
     const before = JSON.stringify(actors);
     const original = actors.map(actor => [...sprites.skinForActor(actor).getAnimation(SpriteTypes.WALKING, true).getFrame(3).getData()]);
-    for (const headwear of ['none','hat','crown']) {
-      preference = { shape: 'mixed', accessory: headwear, ...eyewearChoice };
-      expect(await sprites.prepare()).to.equal(true);
-      expect(sprites.headwearLayers.size).to.equal(12);
-      expect(sprites.skins.size).to.be.at.most(32);
-    }
+
+    preference = { shape: 'mixed', accessory: headwear, ...eyewearChoice };
+    expect(await sprites.prepare()).to.equal(true);
+    expect(sprites.headwearLayers.size).to.equal(12);
+    expect(sprites.skins.size).to.be.at.most(32);
     preference = { shape: 'mixed' }; expect(await sprites.prepare()).to.equal(true);
     expect(actors.map(actor => [...sprites.skinForActor(actor).getAnimation(SpriteTypes.WALKING, true).getFrame(3).getData()])).to.deep.equal(original);
     expect(JSON.stringify(actors)).to.equal(before);

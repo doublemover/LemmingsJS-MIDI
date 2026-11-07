@@ -11,12 +11,12 @@ describe('bounded work removal', function() {
     const input = createSmallGapFixture();
     let extractions = 0;
     input.getGroundMaskLayer = () => { extractions += 1; return input.groundMask; };
-    const route = planSolverRoute(input);
+    const now = () => 0, route = planSolverRoute(input, { now });
     expect(extractions).to.equal(1);
     const graph = buildReachabilityGraph(input);
     const crowd = analyzeSolverCrowd(input);
     extractions = 0;
-    expect(planSolverRoute(input, { graph, crowd })).to.deep.equal(route);
+    expect(planSolverRoute(input, { graph, crowd, now })).to.deep.equal(route);
     expect(extractions).to.equal(0);
   });
 

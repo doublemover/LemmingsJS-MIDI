@@ -67,12 +67,13 @@ const withGlobalStubs = (fn) => {
 const measureN = (iterations, fn) => {
   const samples = [];
   const allocationSamples = [];
+  const receipts = [];
   for (let i = 0; i < iterations; i += 1) {
     const beforeHeap = typeof process?.memoryUsage === 'function'
       ? process.memoryUsage().heapUsed
       : NaN;
     const start = process.hrtime.bigint();
-    fn();
+    receipts.push(fn());
     samples.push(nsToMs(process.hrtime.bigint() - start));
     const afterHeap = typeof process?.memoryUsage === 'function'
       ? process.memoryUsage().heapUsed
@@ -85,7 +86,8 @@ const measureN = (iterations, fn) => {
   return {
     samplesMs: samples,
     avgMs: total / samples.length,
-    allocationSamples
+    allocationSamples,
+    receipts
   };
 };
 const summarizeSamples = (samplesMs, iterations) => {
@@ -100,6 +102,8 @@ const summarizeSamples = (samplesMs, iterations) => {
   const worst = percentile(clean, 1);
   return {
     samplesMs: clean.map((value) => Number(value.toFixed(2))),
+    sampleCount: clean.length,
+    workIterations: iterations,
     avgMs: Number(avg.toFixed(2)),
     p50Ms: Number(p50.toFixed(2)),
     p95Ms: Number(p95.toFixed(2)),

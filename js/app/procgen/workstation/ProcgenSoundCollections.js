@@ -1,5 +1,6 @@
 const PROCGEN_ROLES = Object.freeze(['lead', 'arp', 'bass', 'percussion', 'drums', 'chords', 'melody', 'texture']);
-// Programs are zero-based General MIDI, shared by hardware and the browser synth.
+// Retained family aliases and performance recipes; zero-based GM programs are migration defaults only.
+// Native definitions live in NativeSoundCollections and never imply a physical world rebuild.
 const families = [
   ['rock', 'Rock', [29, 12, 34, 115, 0, 61, 26, 95], 0, 1.12, 0.64],
   ['holiday-snow', 'Holiday Snow', [9, 10, 32, 112, 0, 48, 8, 89], 12, 0.9, 1.2],

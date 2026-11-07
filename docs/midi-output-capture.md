@@ -32,4 +32,232 @@ With the existing local server at port 8094 and cached Playwright/Edge available
 
 `node scripts/midi-capture-native.js --name=ensemble`
 
-This fresh 1440×900 desktop context installs the repository Web MIDI stub, uses normal main Expert controls, captures actual level events, then captures a 16-cell local audition spaced over 14.4 seconds. It records a demand-render sample and verifies cancellation prevents later schedules. Browser audio is muted; the fixture asserts Web MIDI remains disabled and reports page errors. Artifacts are written to `temp/midi-capture-native/`. Unit fake-clock coverage follows cancellation beyond the complete audition horizon. These fixtures verify APIs, scheduling and rendered graph signal, without claiming acoustic assessment.
+This fresh 1920×1080 desktop context installs the repository Web MIDI stub, uses normal main Expert controls, captures actual level events, then captures a 16-cell local audition spaced over 14.4 seconds. It records a demand-render sample and verifies cancellation prevents later schedules. Browser audio is muted; the fixture asserts Web MIDI remains disabled and reports page errors. Artifacts are written to `temp/midi-capture-native/`. Unit fake-clock coverage follows cancellation beyond the complete audition horizon. These fixtures verify APIs, scheduling and rendered graph signal, without claiming acoustic assessment.
+
+## Workstation recorded-output MIDI plans
+
+MIDI file preparation selects one source layer and one recorded output before
+writing bytes. The current MIDI action prefers API-accepted output when present,
+otherwise it labels authored MIDI intent. Input and forwarded output copies are
+not combined. API callers may request `sourceLayer` explicitly. The planner is
+included in critical checkJs and uses the snapshot producer's bounded route
+inventory; the worker independently rebuilds and validates that inventory. The
+Project menu exposes source and file-timing choices for the next preparation.
+Choose submitted output only, authored intent, or the default preference for
+submitted output. No input/Thru copies are combined with the chosen layer.
+
+If multiple recorded outputs share channels, a nonmodal, searchable16-row chooser
+requires one output per file. The admitted original prefix remains owned while
+choosing. Cancel, source replacement or view retirement retires the request and
+preserves the previous prepared file. Each selected output keeps its original
+channels and all deliberate unisons. A reused output ID is split again by its
+recorded connection epoch and route revision. The chooser names known epochs and
+labels unrecorded connection identity; missing historical identity is not guessed.
+API callers can select the captured route index, while a plain output ID still
+requires a choice when several epochs share it. Notes cannot pair across these
+boundaries. Import separate files onto the intended
+receiver routes; the files do not configure DAW routing.
+
+The embedded `exportPlan` records source layer, selected output hash/ordinal,
+included/excluded message counts, retained absolute beat placement and protocol
+scope. Raw endpoint IDs/names are not embedded. Matching notes are balanced only
+inside the selected output; pending future releases are not invented. Captured
+tempo boundaries determine the initial tempo, preserving all later tempo records.
+If capture starts after beat zero, the manifest names the unobserved silent
+prefix. Without a captured tempo, the caller-declared fallback is explicit.
+Current UI tempo cannot replace a captured boundary. File timing defaults to the
+original absolute beat position. “Start at recording boundary” subtracts the
+earliest captured transport boundary from every selected event and tempo change,
+retaining relative silence and captured tempo values. It refuses an absent
+boundary or selected messages that predate it. The worker recomputes this origin
+from actual tempo rows instead of trusting a host summary. Choices are disabled
+while preparation owns the source; changing a choice does not alter a prepared
+file. Numeric epoch/revision and time-origin choices accompany the manifest.
+
+This is compatibility export of captured MIDI1 channel bytes. Full semantic/UMP
+loss reporting and original-UMP capture/projection remain #1093 work. The file
+codec below consumes original UMP snapshots.
+Physical source-score export uses the separate typed #986 contract.
+
+## Physical take MIDI1 revoice
+
+**Physical take MIDI1** reads the selected finished take through its verified
+owned semantic journal source, then projects it in an admitted worker. This is a
+new realization of captured musical intent, separate from the recorded submitted
+output. Select the new melodic target program1–128; source timbre is replaced.
+
+The bounded source must have covered semantic history, retained empty initial and
+final voice inventories and no remaining page. Select one captured physical-clock
+epoch per file.
+Open note histories, unsupported prepared-body output, missing onsets, unknown
+expression and insufficient channel capacity refuse preparation. No pickups,
+releases, voice stealing or channel merges are invented.
+
+Each concurrent semantic voice owns one of fifteen melodic channels (channel10 is
+excluded). Initial RPN pitch range/program and per-onset expression state precede
+the attack. The retained release and bend reset precede channel reuse, including
+same-tick reuse. Captured sounding pitch and reference frequency determine the
+note address plus bend. Pressure, pan, velocity and pitch precision reductions
+are reported; zero semantic velocity refuses export, while small positive values
+remain nonzero Note Ons with measured promotion error.
+
+The physical timeline determines beats, tempo changes, crop origin/end and
+trailing selected silence. Canonical intent order is a distinct ordering mode;
+original nullable fact sequences remain metadata and are never replaced by
+invented fact identities. Protocol expansion and quantized ties retain capture
+order. Source times are not rewritten with callback arrival or current UI BPM,
+and live lateness repair is not applied. An embedded manifest records source
+take/revision/hash, timing error, capacity/assignment policy and lowering losses.
+The receiver still has to honor the emitted channel/RPN/program messages; no
+historical hardware timbre or submitted-output reproduction is claimed.
+
+This product path bounds input to8192 intents and8192 journal records. When a
+take spans several clock epochs, a searchable chooser selects one independent
+score origin. Epochs from before recording started are excluded. The worker
+validates the initial clock as a value-preserving prefix of its final history and
+replays captured voice lifetimes across the entire source. A note crossing either
+side of the selected epoch cut refuses export; no pickup or release is invented.
+The manifest reports selected/excluded intent counts and the epoch ordinal.
+Arbitrary mid-note crop/state reconstruction, MPE/CI Profile/UMP targets and the
+remaining pause/external-clock/suspension matrix stay separate work. Export/cancellation preserves the live world, project and previous
+prepared artifact.
+
+## Original UMP Clip File codec
+
+The ports owner now captures original `sendEvent({umpWords, ...})` requests once,
+before any MIDI1 lowering or stateful relative-controller resolution. These are
+`umpIntent` rows with `publication: authored-not-submitted`. They retain exact
+owned words, original attribution, output/connection/route identities and explicit
+score beats. A rejected route or lowering policy does not turn authored UMP into
+an accepted output trace. Repeated equal words remain separate requests. MIDI1
+messages produced by lowering retain their separate adapter-accepted evidence.
+
+`ports.getRecording({protocol: 'ump'})` selects these original rows and transport
+boundaries; `protocol: 'midi1'` selects byte observations and boundaries. Default
+`all` retains both artifacts. `getState().originalUmp` reports captured-request
+coverage, drops, unmapped source times and the metadata reservation. That coverage
+does not establish a closed note lifecycle or receiver submission. Missing score
+beats remain null with `source-clock-unmapped`; current tempo is not substituted.
+Original IDs are preserved within explicit bounds or the capture refuses the row,
+rather than truncating an identity. Numeric safe-integer IDs remain numbers.
+
+Original capture shares the recording prefix/cap/clear lifecycle, with an extra
+32MiB metadata/word estimate bound, at most100000 requests and a separately
+charged growing reservation. Clear/disposal require acknowledged retirement;
+unknown retirement stays charged. It copies only the current packet and bounded
+attribution per request. Capture refusal does not change live lowering/delivery.
+Original record and pressure observers run after capture commits. The command
+owns its packet before observers run; route/policy replacement, Panic, flush or
+disposal fences delivery of that old request. A clear starts a fresh capture
+owner. At most32 retained export sources may hold the old owner, and its metadata
+reservation stays charged until all source leases and pending producers release.
+Disposal drops live recording rows before releasing their capture reservation.
+
+The compatibility snapshot tags original UMP separately. A UMP-only source is
+refused as MIDI1 export; mixed byte exports count excluded original intents in
+their manifest. Neither direct nor worker compatibility writers silently treat
+original UMP as an empty successful file. Direct note balancing also respects
+known connection epochs and route revisions.
+
+The Project menu offers **MIDI2 Clip**, **MIDI** (compatible MIDI1), and project
+export. Clip export selects original authored UMP intent only; submitted UMP
+recording is unavailable and is explicitly refused rather than reconstructed from
+MIDI1 observations. `createRecordingExportSource({protocol: 'ump'})` yields a
+bounded owned prefix containing original words, attribution and captured tempo.
+The worker independently validates rows, output/connection/route identity, clock
+order and the selected route. Each Clip contains one endpoint connection; equal
+packets and intentional unisons remain separate. Backwards score clocks require
+a separate clock segment, and unmapped times refuse export. This source is an
+authored score recording, not the physical-take timeline projection.
+
+Choose retained beat positions or recording-boundary rebasing using **MIDI file
+timing**. Clip uses960PPQ and reports nearest-tick quantization. Choose either
+captured transport tempo or original Flex tempo at the file origin. Captured
+transport boundaries create labelled derived Flex tempo packets, rounded to the
+format's10ns-per-quarter unit; the current UI BPM is never substituted. Original
+Flex tempo is preserved exactly and refuses a conflicting transport overlay.
+Initial meter and trailing duration remain unobserved unless retained in the
+source; no meter or release packets are invented to repair note boundaries.
+
+**Save Clip manifest** explicitly downloads optional JSON beside the prepared
+Clip. It contains source identities, per-packet attribution, output identity,
+coverage, quantization, the selected ExportPlan and a SHA-256 binding to the exact
+Clip bytes. Capture completeness and unverified note-boundary coverage are
+separate. This manifest is external to UMP. Downloading it preserves the prepared
+Clip for Retry file; replacement/discard retires both artifacts. Failed or canceled
+preparation keeps the previous pair.
+
+**Inspect Clip** validates a selected file in an admitted worker before exposing
+it as a prepared, unchanged file. Setup, SysEx and notes remain data. Inspection
+does not change the project, physical world or output devices, and does not
+implement playback/project import. Invalid files retain the previous artifact.
+
+`MidiClipFile.js` encodes and decodes the published
+[MIDI Clip File v1.0](https://amei.or.jp/midistandardcommittee/MIDI2.0/MIDI2.0-DOCS/M2-116-U_v1-0_MIDI_Clip_File_Specification.pdf)
+wire structure using the existing
+[UMP v1.1.2](https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-104-UM_v1-1-2_UMP_and_MIDI_2-0_Protocol_Specification.pdf)
+packet codec. These APIs require original UMP words. Promoting a captured MIDI1
+value cannot recover its discarded resolution or establish MIDI2 capture evidence.
+
+`encodeMidiClipFile` accepts explicit `ppq` (1–65535), `configurationEndTick`,
+`endTick`, optional `configuration` and required `sequence`. Each event section
+uses `Float64Array ticks`, `Uint32Array offsets` and `Uint32Array words`; offsets
+have one more entry than ticks and delimit complete packets. Ticks are safe,
+nonnegative, ordered integers. Equal-time presentation order is unchanged.
+The configuration and sequence have separate origins; the latter begins at Start
+of Clip. Explicit end ticks preserve setup duration and trailing sequence silence.
+Tempo/meter Flex words retain their original values, without rewriting ticks or
+using current UI tempo. A configuration tempo, when present, is first at zero;
+its optional meter immediately follows at zero.
+
+The writer owns resolution, clockstamp and Start/End messages. It writes the
+eight-byte file signature followed by big-endian UMP words. Gaps beyond the
+20-bit clockstamp range insert NOOPs between clockstamps, including gaps before
+Start and End. It preserves all packet words, groups, MIDI2 note/release values,
+per-note controls and supported multipart SysEx/Flex data. Unknown packets remain
+opaque data. Attribution and endpoint IDs belong in an external manifest, never
+invented Clip fields. The caller must select one endpoint/epoch before encoding;
+group numbers alone cannot distinguish endpoints.
+
+`decodeMidiClipFile` validates the complete structure before returning owned
+columns and a report. It accepts shared clockstamps for simultaneous payloads,
+requires distinct marker clockstamps, checks section order, packet framing,
+multipart completion and the final file boundary. It never invokes a transport
+or configures hardware. Property Exchange is refused. Untimed Set Profile On
+prefaces are explicitly unsupported; timed copies are refused rather than moved
+or silently omitted. Imported unknown messages are retained as data.
+
+Both APIs snapshot owned fixed buffers before their first yield and reject
+shared/resizable inputs. File size is at most64MiB, with at most262144 decoded
+payload packets including gap NOOPs; callers may lower these limits. Preparation
+preflights exact output growth and charges copied columns, output and a bounded
+multipart workspace. It checks cancellation between yielded slices. The
+`encode-midi-clip` and `decode-midi-clip` jobs require an admitted dedicated worker
+and transfer the resulting byte buffer or six owned columns through the existing
+paged result owner. They do not fall back to parsing large files on the UI thread.
+
+Independent file tests use pinned development-only `jzz-midi-smf@1.9.9` and its
+`jzz@1.9.6` API. Fixtures compare exact UMP words/ticks in both directions, precise
+elapsed tempo timing, multiple groups,16-bit release velocity, per-note bend,
+simultaneous unisons, tempo/meter changes, maximum delta splits, malformed input
+and deterministic re-export. Original authored-source projection, optional
+attribution and desktop Clip controls are now integrated. Physical-take MIDI1
+revoice now covers a single closed semantic epoch. Broader physical-take target
+policies, submitted UMP capture, complete compatibility loss reports and the
+remaining unsupported Clip features/DAW retention still keep #1093 open. No DAW
+or hardware receiver qualification follows from these file-reader checks.
+
+## Automated file-delivery coverage
+
+Playwright drives trusted Save clicks, picker cancellation and retry, unsupported
+picker fallback, and controlled permission/write/close failures. The successful
+file sink is a real browser origin-private FileSystemFileHandle and writable;
+read-back must match the actual anchor download and prepared SHA-256. Failed
+transactions abort without replacing the existing origin-private file. Pending
+write acknowledgements retain their source lease after cancellation until they
+settle. These cases preserve the prepared artifact and live world/project.
+
+Picker outcomes are controlled at the browser API boundary. This qualifies the
+application and real browser filesystem behavior; it does not qualify a native
+operating-system dialog, user filesystem grant, physical disk fault or power-loss
+durability. Automated browser checks use Playwright throughout.

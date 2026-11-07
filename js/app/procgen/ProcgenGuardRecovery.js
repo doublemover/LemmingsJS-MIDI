@@ -59,7 +59,7 @@ class ProcgenGuardRecovery {
       for (const task of world.accessTasks[lane] || []) if (task.owner && !task.owner.removed && !task.owner.failureReason && !task.owner.disabled && !task.owner.terminalReason && task.owner.action === task.action && task.footprint) claims.push(task.footprint);
       world.hazards.nearby(lane, actor.x, { ahead: DISTANCE, behind: DISTANCE }, this.nearby);
       if (this.nearby.length >= 8) failure ||= 'hazard-limit'; hazards.push(...this.nearby);
-      const bucket = world.triggerManager.byLane[lane] || [];
+      const bucket = world.triggerManager.getLaneTriggers(lane);
       if (bucket.length > 64) failure ||= 'blocker-limit'; else triggers.push(...bucket);
     }
     const masks = world.actions[State.BASHING].masks?.get(actor.getDirection());

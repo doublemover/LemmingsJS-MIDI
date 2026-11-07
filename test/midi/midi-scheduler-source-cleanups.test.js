@@ -37,9 +37,9 @@ describe('MIDI rate-accounting work removal', () => {
     const result = scheduler.reserve({ entries: [entry(-1), entry(0), entry(999), entry(1000), entry(1999), entry(2000)] }, meta, 1000);
     expect(result.ok).to.equal(true); expect(prunes).to.equal(1);
     const snapshot = scheduler.getRateSnapshot(1000);
-    expect(snapshot.past.count).to.equal(5); expect(snapshot.next.count).to.equal(3);
-    expect(snapshot.past.byTrack.get('brass')).to.include({ count: 2, bytes: 6, priority: 3, voiceBudget: 5 });
-    expect(snapshot.next.byOutput.get('device')).to.include({ count: 2, bytes: 6, priority: 3, voiceBudget: 5 });
+    expect(snapshot.past.count).to.equal(2); expect(snapshot.next.count).to.equal(6);
+    expect(snapshot.next.byTrack.get('brass')).to.include({ count: 4, bytes: 12, priority: 3, voiceBudget: 5 });
+    expect(snapshot.next.byOutput.get('device')).to.include({ count: 4, bytes: 12, priority: 3, voiceBudget: 5 });
     expect([...scheduler._rateSent, ...scheduler._ratePlanned].every(row => row.timeMs >= 0)).to.equal(true);
     const rejected = scheduler.canSchedule({ on: entry(1100) }, 1000, { maxMessagesPerSecond: 8 });
     expect(rejected.ok).to.equal(false); expect(rejected.reason).to.equal('count-limit');
@@ -57,6 +57,9 @@ describe('MIDI rate-accounting work removal', () => {
     expect(scheduler._rateSent.length + scheduler._ratePlanned.length).to.equal(before);
     scheduler._recordPlanned(entry(3000), 3000);
     expect(scheduler._rateSent.every(row => row.timeMs >= 2000)).to.equal(true);
-    expect(scheduler._ratePlanned).to.deep.equal([entry(3000)]);
+    expect(scheduler._ratePlanned).to.have.length(3);
+    expect(scheduler._rateSent.some(row => row.reservationId === reserved.reservationId)).to.equal(false);
+    scheduler._releaseReservation(reserved.reservationId);
+    expect(scheduler._ratePlanned).to.deep.equal([{ ...entry(3000), budgetScope: 'endpoint:local' }]);
   });
 });

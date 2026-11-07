@@ -1,0 +1,12 @@
+{
+  "schema": "cache-transaction-model/v1",
+  "scope": "Deliberate stale-provider-total mutation after actual native commit, not a claimed historical product reproduction.",
+  "trace": [
+    { "kind": "read", "id": "unrelated-read", "owner": 1, "url": "/missing" },
+    { "kind": "write", "id": "first", "owner": 0, "url": "/asset", "value": "é/🙂 bytes" },
+    { "kind": "write", "id": "other", "owner": 1, "url": "/other", "value": "neighbor bytes" },
+    { "kind": "drain" },
+    { "kind": "dispose", "owner": 0 },
+    { "kind": "dispose", "owner": 1 }
+  ]
+}

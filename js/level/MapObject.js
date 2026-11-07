@@ -1,5 +1,6 @@
 import { Animation } from '../render/Animation.js';
 import { Frame } from '../render/Frame.js';
+import { ColorPalette } from '../render/ColorPalette.js';
 import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { TriggerTypes } from './TriggerTypes.js';
 import { getRuntimeHistory, getRuntimeSoundEvents } from '../game/GameRuntime.js';
@@ -57,7 +58,7 @@ class MapObject {
             frames[i] = f;
             continue;
           }
-          const palLookup = pal._rgbaCache ||= Uint32Array.from({ length: 128 }, (_, j) => pal.getColor(j));
+          const palLookup = ColorPalette.getRgbaLookup(pal);
           for (let y = 0; y < outHeight; y += 1) {
             const srcY = y * srcScaleY;
             for (let x = 0; x < outWidth; x += 1) {

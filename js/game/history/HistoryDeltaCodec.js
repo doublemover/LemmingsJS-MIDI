@@ -60,6 +60,7 @@ const isNoOpDelta = (delta) => {
 };
 
 
+/** @returns {{tick: number, flags: number, lemChanges: {ids: number[], fields: number[], prev: any[], next: any[]}, lemAdded: any[], lemRemoved: any[], timerChanges: {prev: any, next: any} | null, [key: string]: any}} */
 const createDelta = (tick) => ({
   tick,
   flags: 0,

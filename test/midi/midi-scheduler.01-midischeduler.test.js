@@ -71,8 +71,9 @@ describe('MidiScheduler 1', function() {
       scheduler.sendNote({ note: 64, durationTicks: 0 });
       scheduler.sendNote({ note: 65, durationTicks: 0, outputId: 'track-out' });
       scheduler.allNotesOff();
-      expect(projectCalls.some(call => call.type === 'allNotesOff')).to.equal(true);
-      expect(trackCalls.some(call => call.type === 'allNotesOff')).to.equal(true);
+      expect(projectCalls.some(call => call.type === 'noteOff' && call.note === 64)).to.equal(true);
+      expect(trackCalls.some(call => call.type === 'noteOff' && call.note === 65)).to.equal(true);
+      expect([...projectCalls, ...trackCalls].some(call => call.type === 'allNotesOff')).to.equal(false);
     });
   });
 
@@ -250,7 +251,8 @@ describe('MidiScheduler 1', function() {
     scheduler.allNotesOff();
 
     const allNotes = calls.filter(c => c.type === 'allNotesOff').map(c => c.id).sort();
-    expect(allNotes).to.eql([1, 2, 3]);
+    expect(allNotes).to.eql([]);
+    expect(calls.filter(call => call.type === 'noteOff').map(call => call.id)).to.deep.equal([2]);
     expect(scheduler._activeNotes.size).to.equal(0);
     expect(scheduler._activeByChannel.size).to.equal(0);
     expect(scheduler._noteOffTimerId).to.equal(0);
@@ -285,7 +287,7 @@ describe('MidiScheduler 1', function() {
     expect(noteOn.id).to.equal(4);
   });
 
-  it('normalizes invalid limit values and channel configuration', function() {
+  it('normalizes invalid limit values and rejects invalid MPE channel configuration', function() {
     const scheduler = new MidiScheduler({
       limits: {
         maxActiveNotes: 'bad',
@@ -302,8 +304,28 @@ describe('MidiScheduler 1', function() {
 
     expect(scheduler._maxActiveNotes).to.equal(32);
     expect(scheduler._maxMessagesPerSecond).to.equal(1000);
-    expect(scheduler._maxBytesPerSecond).to.equal(3906.25);
-    expect(scheduler._allocateChannel()).to.equal(2);
+    expect(scheduler._maxBytesPerSecond).to.equal(3125);
+    expect(scheduler._allocateChannel()).to.equal(null);
+    expect(scheduler._mpeZonePlan.reason).to.equal('invalid-mpe-channel');
+  });
+
+  it('admits independent endpoint traffic under separate rate windows', function() {
+    const firstCalls = [], secondCalls = [];
+    const first = makeOutput([1], firstCalls, 'first');
+    const second = makeOutput([1], secondCalls, 'second');
+    withFakeClockAndPerformance(() => {
+      const scheduler = new MidiScheduler({ mpe: { enabled: false }, limits: { maxEventsPerSecond: 1,
+        endpointProfiles: { first: { maxBytesPerSecond: 3 }, second: { maxBytesPerSecond: 3 } } } });
+      scheduler.setOutput(first); scheduler.setOutputs([first, second]);
+      expect(scheduler.sendNote({ note: 60, outputId: 'first' })).to.equal(true);
+      expect(scheduler.sendNote({ note: 62, outputId: 'second' })).to.equal(true);
+      expect(scheduler.sendNote({ note: 64, outputId: 'first' })).to.equal(false);
+      expect(firstCalls.filter(call => call.type === 'noteOn')).to.have.length(1);
+      expect(secondCalls.filter(call => call.type === 'noteOn')).to.have.length(1);
+      expect(scheduler.getRateSnapshot(0, false, 'first').past.bytes).to.equal(3);
+      expect(scheduler.getRateSnapshot(0, false, 'second').past.bytes).to.equal(3);
+      scheduler.allNotesOff();
+    });
   });
 
   it('stops active channels and clears scheduled note offs', function() {
@@ -397,7 +419,7 @@ describe('MidiScheduler 1', function() {
     }
   });
 
-  it('skips init when output is missing and ignores missing channels', function() {
+  it('skips MPE setup when the configured member channel is missing', function() {
     const calls = [];
     const scheduler = new MidiScheduler({
       mpe: { enabled: true, masterChannel: 1, memberChannels: [2] }
@@ -405,7 +427,7 @@ describe('MidiScheduler 1', function() {
     scheduler._initMpe();
     scheduler.setOutput(makeOutput([1], calls));
     const bendRangeCalls = calls.filter(c => c.type === 'bendRange');
-    expect(bendRangeCalls.length).to.equal(1);
+    expect(bendRangeCalls.length).to.equal(0);
   });
 
   it('skips stopping channels when output is missing', function() {
@@ -435,7 +457,7 @@ describe('MidiScheduler 1', function() {
     expect(scheduler._activeNotes.size).to.equal(1);
   });
 
-  it('allocates MPE channels and falls back to master', function() {
+  it('allocates MPE members and rejects a master-only zone', function() {
     const calls = [];
     const output = makeOutput([1, 2, 3], calls);
     const scheduler = new MidiScheduler({
@@ -453,7 +475,7 @@ describe('MidiScheduler 1', function() {
     expect(reused).to.equal(2);
 
     const masterOnly = new MidiScheduler({ mpe: { enabled: true, masterChannel: 9 } });
-    expect(masterOnly._allocateChannel()).to.equal(9);
+    expect(masterOnly._allocateChannel()).to.equal(null);
   });
 
   it('aggregates rate entries by sfx id', function() {
@@ -482,10 +504,12 @@ describe('MidiScheduler 1', function() {
     scheduler._pruneRateEntries(1000);
 
     expect(scheduler._rateSent).to.include(keptSent);
-    expect(scheduler._rateSent.some(entry => entry.timeMs === 800)).to.equal(true);
-    expect(scheduler._ratePlanned).to.deep.equal([future]);
+    expect(scheduler._rateSent.some(entry => entry.timeMs === 800)).to.equal(false);
+    expect(scheduler._ratePlanned.map(entry => entry.timeMs)).to.deep.equal([800, 1200]);
 
     scheduler._removePlannedRateEntries(7, 'off');
+    expect(scheduler._ratePlanned).to.have.lengthOf(1);
+    scheduler._removePlannedRateEntries(7, 'on');
     expect(scheduler._ratePlanned).to.have.lengthOf(0);
   });
 
@@ -507,7 +531,7 @@ describe('MidiScheduler 1', function() {
 
   it('sends pitch bend reset when MPE is enabled', function() {
     const calls = [];
-    const output = makeOutput([2], calls);
+    const output = makeOutput([1, 2], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: true, memberChannels: [2] } });
     scheduler.setOutput(output);
     const ok = scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0, pitchBend: 0 });

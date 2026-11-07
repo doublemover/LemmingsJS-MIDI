@@ -18,7 +18,7 @@ describe('Action systems events and draws', function() {
     expect(display.frames.length).to.equal(2);
   });
 
-  it('ActionFryingSystem reports deaths to minimap', function() {
+  it('ActionFryingSystem leaves final death recording to manager removal', function() {
     const miniMap = { deaths: [], addDeath(x, y) { this.deaths.push({ x, y }); } };
     const sys = attachRuntime(new ActionFryingSystem(stubSprites), [], miniMap);
     const level = new StubLevel();
@@ -27,7 +27,7 @@ describe('Action systems events and draws', function() {
 
     sys.process(level, lem);
 
-    expect(miniMap.deaths[0]).to.eql({ x: 0, y: 0 });
+    expect(miniMap.deaths).to.have.length(0);
   });
 
   it('ActionFryingSystem moves when no ground is ahead', function() {
@@ -96,7 +96,7 @@ describe('Action systems events and draws', function() {
 
     restore();
 
-    expect(miniMap.deaths.length).to.equal(2);
+    expect(miniMap.deaths.length).to.equal(0);
     expect(calls[0].type).to.equal(SoundEventTypes.LEMMING_SPLAT);
   });
 

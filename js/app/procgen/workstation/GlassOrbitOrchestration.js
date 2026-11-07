@@ -1,0 +1,34 @@
+import { freezeData, hashData } from '../../../core/CanonicalData.js';
+import { createOriginalAcousticMap, createOriginalAcousticZone } from '../../../midi/content/OriginalAcousticMap.js';
+import { WORLD_ACOUSTIC_RENDERER_REQUIREMENT } from '../../../midi/content/AcousticMap.js';
+import { createOriginalImpulseDescriptor } from '../../../midi/content/ProceduralImpulseMaterial.js';
+import { createTimbreTuningRecipe } from '../../../midi/content/TimbreTuningSet.js';
+import { compileTimbreTuningSet } from '../../../midi/content/TimbreTuningCompiler.js';
+import { validatePerformanceScene } from './PerformanceScene.js';
+
+export async function createGlassOrbitOrchestrations({ sourceHash, scores, spectrumDescriptor = null, signal } = {}) {
+  const output = [], impulse = createOriginalImpulseDescriptor('quarry-hollow-spring'), spatialDependency = { kind: 'renderer', id: WORLD_ACOUSTIC_RENDERER_REQUIREMENT, revision: 1, hash: await hashData({ sourceHash, renderer: WORLD_ACOUSTIC_RENDERER_REQUIREMENT, version: 1 }), description: 'Exact native world-point spatial routes and original shared acoustic returns; fixed listener independent of display camera' };
+  for (const base of scores) {
+    signal?.throwIfAborted(); const original = base.scene, count = original.cost.lanes, height = count * 96;
+    const responses = ['felt', 'glass', 'pipe', 'clearing'], boundaries = [0, 192, 384, 640, 1024], acousticMap = createOriginalAcousticMap({ id: 'glass-orbit.acoustic-fields', listener: { x: 384, y: height / 2 }, zones: responses.map((materialResponseId, index) => createOriginalAcousticZone({ zoneId: 'orbit.' + materialResponseId, materialResponseId, worldRegion: { kind: 'rectangle', bounds: { x1: boundaries[index], x2: boundaries[index + 1], y1: 0, y2: height } } })) }),
+      dependencies = [...base.dependencies, spatialDependency, { kind: 'asset', id: 'sha256:' + impulse.asset.contentHash, revision: 1, hash: impulse.asset.contentHash, description: 'Exact original Glass Arcade shared reflection impulse; no measured room claim' }],
+      scene = validatePerformanceScene({ ...original, id: original.id + '.pocket-cathedral', title: original.title + ' · Pocket cathedral',
+        description: 'The exact dry Glass Orbit route, finite release, five gates and tuning, orchestrated through four original acoustic regions. Short FM glass strikes attach to their observed gate intersection and remain there while the actor continues. Felt, glass and pipe share bounded reflection returns; clearing stays dry and preserves earlier owned tails. This version keeps the original FM source and does not claim terrain-selected modal bodies. Start paused, enable local audio and wait for the shared map preparation before Play. Open Acoustic fields for MATERIAL/ABSORB/CHAMBER/BORDER and explicit listener/attachment choices. Camera pan/zoom does not move the fixed listener. Compare with the dry scene using the identical physical recipe and seed; no map edit supplies another crossing.',
+        causalMappings: { ...original.causalMappings, acousticMap, instruments: original.causalMappings.instruments.map(instrument => ({ ...instrument, spatialAttachment: { kind: 'struck-point', materialMode: 'source-instrument' } })) },
+        requirements: { ...original.requirements, required: dependencies }, expectedLandmarks: [...original.expectedLandmarks, { id: 'orbit-world-listener', observationKind: 'PickupCrossing', sourceObjectId: original.causalMappings.pickups[0].id, consequence: 'One observed gate intersection owns each fixed spatial source and its shared return sends; the moving actor does not drag the ringing strike.', help: 'Compare captured world controls with a fixed listener under camera-only changes, then choose actor attachment explicitly in the field editor. Actual signal and listening qualification remain separate.' }],
+        credits: [...original.credits, { name: 'LemmingsJS-MIDI', role: 'Original shared acoustic orchestration on unchanged Glass Orbit geometry', source: null }] });
+    output.push(freezeData({ ...base, scene, dependencies }));
+  }
+  if (spectrumDescriptor?.maximumVoices >= 8) for (const kind of ['harmonic', 'stretched']) {
+    signal?.throwIfAborted(); const set = await createTimbreTuningRecipe(kind), compiled = await compileTimbreTuningSet(set, { descriptor: spectrumDescriptor, sampleRate: 48000, signal });
+    for (const base of scores.filter(item => item.scene.id.endsWith('.ratios'))) {
+      const original = base.scene, fields = original.patchRefs.map((_, laneId) => ({ id: 'glass-orbit.paired-field.' + laneId, revision: 1, priority: 10000, geometry: { kind: 'band', bounds: { x1: 0, x2: 1024, y1: 0, y2: original.cost.lanes * 96 } }, laneScope: [laneId], tuning: compiled.physicalTuning, heldPolicy: 'retain-onset', deletionPolicy: 'retain', boundary: 'step', width: 0, coordinateMap: { mode: 'nearest' }, slewSeconds: 0.03 })),
+        scene = validatePerformanceScene({ ...original, id: original.id + '.paired-' + kind, title: original.title.replace('220 Hz ratio field', kind === 'harmonic' ? 'Harmonic spectrum / ratio field' : 'Stretched spectrum / non-octave field'),
+          description: 'The original Glass Orbit corridor, finite entrants, five pickup geometries and return junctions stay identical. The spectrum and exact tuning prepare as one paired artifact. This ' + kind + ' set uses partial ratios ' + set.partialRatios.join(', ') + ', degree ratios ' + set.degreeRatios.join(', ') + ', period ratio ' + set.periodRatio + ' (' + (1200 * Math.log2(set.periodRatio)) + ' cents) and reference ' + set.referenceHz + 'Hz. Gate pitch requests select the nearest exact paired degree; five gates need not produce five distinct degrees. Held voices retain their onset spectrum and tuning. Record one complete physical take, then compare prepared pairs through Spectrum / Tuning; matched PRELISTEN uses the actual rendered RMS. Roughness analysis is an explicit offline estimate, not proof of consonance. Route and gate edits remain separate physical changes.',
+          physicalControls: original.physicalControls.filter(control => control.id === 'gate-spread'), causalMappings: { ...original.causalMappings, harmonicFields: fields, ...(original.causalMappings.formations ? { formations: original.causalMappings.formations.map(formation => ({ ...formation, tuning: compiled.physicalTuning })) } : {}) }, patchRefs: original.patchRefs.map((patch, index) => ({ laneId: patch.laneId, reference: compiled.reference, timbreTuningSet: set, timbreTuningFieldId: fields[index].id })),
+          cost: { ...original.cost, maximumVoices: 8 }, credits: [{ name: 'LemmingsJS-MIDI', role: 'Original paired spectrum/tuning experiment on the same Glass Orbit score', source: null }], lessonLevel: 3 });
+      output.push(freezeData({ ...base, scene }));
+    }
+  }
+  return freezeData(output);
+}

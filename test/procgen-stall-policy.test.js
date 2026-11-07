@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { ProcgenStallPolicy } from '../js/app/procgen/ProcgenStallPolicy.js';
 const settings = { secondsWithoutProgress: 10, ticksPerSecond: 10, baseSpawnAllowance: 3, distanceGrowthPixels: 100, additionalSpawnsPerGrowth: 2 };
-const actor = (id, laneIndex, x = 36) => ({ id, laneIndex, x });
+const actor = (id, laneIndex, x = 36) => ({ id, laneIndex, x, spawnOrdinal: id });
 describe('procgen cohort stall policy', () => {
   it('requires both actual spawns and generous simulated time', () => {
     const p = new ProcgenStallPolicy(1, settings), a = [actor(0, 0)];
@@ -31,7 +31,10 @@ describe('procgen cohort stall policy', () => {
     for (let i = 0; i < 7; i++) p.spawn(0);
     const deadline = 1 + p.graceTicks(p.lanes[0]);
     p.update(a, deadline);
-    expect(p.takeDue(deadline)).to.deep.equal([0]); expect(p.takeDue(deadline + 1)).to.deep.equal([1]); expect(p.takeDue(deadline + 2)).to.deep.equal([]); expect(p.takeDue(deadline + 3)).to.deep.equal([2]);
+    const scheduled = p.cascade.map(entry => ({ ...entry }));
+    expect(scheduled[0]).to.deep.equal({ id: 0, tick: deadline });
+    for (let index = 1; index < scheduled.length; index++) expect(scheduled[index].tick - scheduled[index - 1].tick).to.be.oneOf([1, 2]);
+    for (const entry of scheduled) expect(p.takeDue(entry.tick)).to.deep.equal([entry.id]);
   });
   it('gives fresh probes the measured spawn-to-frontier transit time at 7168 pixels and beyond', () => {
     for (const distance of [7168, 15000, 50000]) {
@@ -65,6 +68,26 @@ describe('procgen cohort stall policy', () => {
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 describe('real-action stall cascade', () => {
+  it('keeps cascade decisions seed-relative after resets without recycling durable actor IDs', async () => {
+    const masks = await loadProcgenMasks();
+    for (const previousBirths of [1, 2, 7, 12]) for (const laneCount of [1, 3]) {
+      const reset = new ProcgenLaneWorld({ masks, laneCount, seed: 7, assists: false, cohorts: false, workstation: true });
+      while (reset.nextActorId < previousBirths + laneCount) reset._spawn(0, false);
+      reset.tickIndex = 91; reset._restart([]);
+      const fresh = new ProcgenLaneWorld({ masks, laneCount, seed: reset.seed, assists: false, cohorts: false, workstation: true });
+      // Match run-local populations; the reset world deliberately retains lifetime IDs.
+      for (let lane = 0; lane < laneCount; lane++) reset._spawn(lane, false);
+      for (let lane = 0; lane < laneCount; lane++) {
+        while (reset.stall.lanes[lane].spawned < 12) reset._spawn(lane, false);
+        while (fresh.stall.lanes[lane].spawned < 12) fresh._spawn(lane, false);
+      }
+      reset.stall.update(reset.actors, 691); fresh.stall.update(fresh.actors, 600);
+      expect(reset.actors.map(entry => entry.id)).not.to.deep.equal(fresh.actors.map(entry => entry.id));
+      expect(reset.actors.map(entry => entry.proceduralSeed)).to.deep.equal(fresh.actors.map(entry => entry.proceduralSeed));
+      expect(reset.stall.cascade.map(entry => entry.tick - 691)).to.deep.equal(fresh.stall.cascade.map(entry => entry.tick - 600));
+      reset.dispose(); fresh.dispose();
+    }
+  });
   it('plays OHNO/explosion on integer ticks, waits for all deaths and restarts once with the record', async () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 2, cohorts: true, assists: false,
       maxActors: 2, stallPolicy: { baseSpawnAllowance: 2, secondsWithoutProgress: 1, ticksPerSecond: 10, releaseIntervalTicks: 5 } });

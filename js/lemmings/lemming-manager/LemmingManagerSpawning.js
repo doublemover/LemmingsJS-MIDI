@@ -283,16 +283,16 @@ const lemmingManagerSpawningMethods = {
 
   addNewLemmings() {
     const app = getApp();
-    const endless = app?.endless === true;
-    if (app?.bench === true || app?.bench2 === true || app?.benchReverse === true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
-
-    } else {
-      if (!endless && this.gameVictoryCondition.getLeftCount() <= 0) return;
-    }
+    // Benchmark, endless and explicit extra actors retain their existing semantics.
+    const unlimited = app?.endless === true || app?.bench === true || app?.bench2 === true || app?.benchReverse === true;
+    if (!unlimited && (this.gameVictoryCondition.isFinalize || this.gameVictoryCondition.getLeftCount() <= 0)) return;
     if (++this.releaseTickIndex >= (104 - this.gameVictoryCondition.getCurrentReleaseRate())) {
       this.releaseTickIndex = 0;
       const entrances = this.level.entrances;
       for (let i = 0, l = entrances.length; i < l; i++) {
+        // Admission precedes opening, actor IDs, spawn facts and sounds. A partial
+        // final batch must stop before touching the next entrance.
+        if (!unlimited && this.gameVictoryCondition.getLeftCount() <= 0) break;
         const entrance = entrances[i];
         const spawnX = entrance.x + 24;
         const spawnY = entrance.y + 14;

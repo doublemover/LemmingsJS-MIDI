@@ -65,6 +65,37 @@ describe('musical span editing and lane rectangles', () => {
     } finally { controls.dispose(); }
   });
 
+  it('preserves a backward caret through parent commit refreshes and ignores duplicate or detached changes', () => {
+    const document = new TestDocument(), createElement = document.createElement.bind(document);
+    document.createElement = tag => {
+      const element = createElement(tag);
+      element.setSelectionRange = (start, end, direction) => Object.assign(element, { selectionStart: start, selectionEnd: end, selectionDirection: direction });
+      return element;
+    };
+    const list = document.createElement('div'); document.registerElement('procgenSpanList', list);
+    let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} }), controls; const intents = [];
+    controls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => 8, getRouter: () => null,
+      onIntent: intent => {
+        intents.push(intent); project = reduceMidiProject(project, intent); controls?.render();
+        const active = document.activeElement;
+        if (active?.dataset?.spanProperty === 'name') active.setSelectionRange(active.value.length, active.value.length, 'forward');
+      } });
+    const id = controls.addSpan(), before = intents.length;
+    const name = () => find(find(list, element => element.dataset?.spanId === id), element => element.dataset?.spanProperty === 'name');
+    const original = name(); original.focus(); original.value = 'Studio rise'; original.setSelectionRange(2, 6, 'backward');
+    original.dispatchEvent({ type: 'change', target: original });
+    expect(project.automation.find(entry => entry.id === id).name).to.equal('Studio rise');
+    expect([name().selectionStart, name().selectionEnd, name().selectionDirection]).to.deep.equal([2, 6, 'backward']);
+    expect(document.activeElement).to.equal(name()); expect(intents.length).to.equal(before + 1);
+    name().dispatchEvent({ type: 'change', target: name() }); expect(intents.length).to.equal(before + 1);
+    original.value = 'Detached stale edit'; original.dispatchEvent({ type: 'change', target: original });
+    expect(intents.length).to.equal(before + 1); expect(project.automation.find(entry => entry.id === id).name).to.equal('Studio rise');
+    for (let index = 0; index < 5; index++) controls.render();
+    expect([name().selectionStart, name().selectionEnd, name().selectionDirection]).to.deep.equal([2, 6, 'backward']);
+    const outside = document.createElement('input'); outside.focus(); const current = name(); current.value = 'Blur commit';
+    current.dispatchEvent({ type: 'change', target: current }); expect(document.activeElement).to.equal(outside); controls.dispose();
+  });
+
   it('keeps multiple span editors open, applies one common transaction and retains field focus and names', () => {
     const document = new TestDocument(); document.registerElement('procgenSpanList', document.createElement('div'));
     let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} }); const intents = [];
@@ -124,7 +155,7 @@ describe('musical span editing and lane rectangles', () => {
     } finally { overlay.dispose(); }
   });
 
-  it('keeps original world and lane coordinates through camera follow, zoom and canvas relocation, canceling on generation reset', () => {
+  it('cancels stale canvas drafts after camera projection or generation changes', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
     canvas.width = 160; canvas.height = 192; let box = { left: 10, top: 20 }, captured = null; canvas.getBoundingClientRect = () => box;
     canvas.setPointerCapture = id => { captured = id; }; canvas.hasPointerCapture = id => captured === id; canvas.releasePointerCapture = () => { captured = null; };
@@ -137,20 +168,23 @@ describe('musical span editing and lane rectangles', () => {
     try {
       overlay.sync(); overlay.setEditing(true); pointer('pointerdown', 30, 50);
       renderer.originX = 700; renderer.originY = 192; renderer.viewWidth = 80; renderer.viewHeight = 96; renderer.window.devicePixelRatio = 2; canvas.width = 320; canvas.height = 384; box = { left: 100, top: 100 };
-      pointer('pointermove', 70, 150); expect(overlay.snapshot().rectangles[0]).to.include({ x: 20, width: 40, y: 0, height: 192 });
-      pointer('pointerup', 70, 150); expect(added).to.have.length(1); expect(added[0]).to.include({ start: 120, duration: 40, laneScope: 'group', laneStart: 1, laneEnd: 2 }); expect(captured).to.equal(null);
+      pointer('pointermove', 70, 150); expect(overlay.snapshot().dragging).to.equal(false);
+      pointer('pointerup', 70, 150); expect(added).to.have.length(0); expect(captured).to.equal(null);
+      renderer.render(); overlay.setEditing(true);
       pointer('pointerdown', 120, 120); pointer('pointermove', 140, 140); expect(captured).to.equal(7);
-      renderer.world.generation++; overlay.sync(); pointer('pointerup', 140, 140); expect(captured).to.equal(null); expect(added).to.have.length(1);
+      renderer.world.generation++; overlay.sync(); pointer('pointerup', 140, 140); expect(captured).to.equal(null); expect(added).to.have.length(0);
     } finally { overlay.dispose(); }
   });
 
   it('aligns distance span geometry and drawing with actual144pixel lanes', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
     canvas.width = 720; canvas.height = 432; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
-    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneHeight: 144, laneCount: 4, tickIndex: 0 }, originX: 0, originY: 144, viewWidth: 720, viewHeight: 432, render() {} };
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneHeight: 144, laneCount: 4, tickIndex: 0 }, originX: 0, originY: 144, viewWidth: 720, viewHeight: 432, render() { this.midiSpanOverlay?.draw(context, this, 1); } };
     const span = { ...createMidiSpan('distance'), loop: false, laneScope: 'lane', laneStart: 2, laneEnd: 2 };
     const project = { transport: { bpmBase: 120 }, automation: [{ id: 'height', span, target: 'velocity' }] };
     expect(getMidiSpanRectangles(renderer, project)[0]).to.include({ y: 144, h: 144 });
+    project.automation = [];
     const added = [], overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: value => added.push(value) });
     overlay.sync(); overlay.setEditing(true);
     for (const [type, clientX] of [['pointerdown', 20], ['pointermove', 40], ['pointerup', 40]]) canvas.dispatchEvent({ type, clientX, clientY: 150, preventDefault() {}, stopImmediatePropagation() {} });
@@ -242,7 +276,8 @@ describe('musical span editing and lane rectangles', () => {
   it('keeps pointer input available to game/camera controls until drawing is explicitly enabled', () => {
     const document = new TestDocument(), canvas = document.createElement('canvas'); canvas.id = 'gameCanvas'; document.registerElement('gameCanvas', canvas);
     canvas.width = 1440; canvas.height = 900; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
-    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 480, viewHeight: 300, scale: 3, render() {} };
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 480, viewHeight: 300, scale: 3, render() { this.midiSpanOverlay?.draw(context, this, 1); } };
     const added = [], project = { transport: { bpmBase: 120 }, automation: [] };
     const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project, getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span) }); overlay.sync();
     let claimed = 0; const pointer = (type, x, y) => canvas.dispatchEvent({ type, clientX: x, clientY: y, preventDefault: () => claimed++, stopImmediatePropagation() {} });
@@ -251,6 +286,62 @@ describe('musical span editing and lane rectangles', () => {
     expect(added).to.have.length(1); expect(added[0]).to.include({ domain: 'distance', laneScope: 'group', laneStart: 0, laneEnd: 1, start: 33, duration: 133 });
     overlay.setVisible(false); const previousClaims = claimed; pointer('pointerdown', 100, 200); pointer('pointermove', 500, 450); pointer('pointerup', 500, 450);
     expect(claimed).to.equal(previousClaims); expect(overlay.snapshot()).to.include({ editing: false, visible: false }); overlay.dispose();
+  });
+  it('cannot commit invisible workstation gestures or a draft after the renderer changes mode', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
+    canvas.width = 800; canvas.height = 608; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, laneHeight: 76, generation: 1, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 800, viewHeight: 608,
+      workstationLayout: { firstLane: 0, count: 8 }, render() { if (!this.workstationLayout) this.midiSpanOverlay?.draw(context, this, 1); } };
+    const added = [], project = { transport: { bpmBase: 120 }, automation: [] };
+    const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer } }), getProject: () => project,
+      getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span) });
+    const pointer = type => canvas.dispatchEvent({ type, clientX: type === 'pointerdown' ? 100 : 200, clientY: 50, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    try {
+      overlay.sync(); expect(overlay.setEditing(true)).to.equal(false);
+      expect(overlay.snapshot().inputListeners).to.equal(0); expect(renderer.midiSpanOverlay).not.to.equal(overlay);
+      pointer('pointerdown'); pointer('pointermove'); pointer('pointerup');
+      expect(added).to.have.length(0); expect(overlay.snapshot().editing).to.equal(false); expect(overlay.snapshot().rectangles).to.deep.equal([]);
+      renderer.workstationLayout = null;
+      expect(overlay.setEditing(true)).to.equal(true);
+      expect(overlay.snapshot().inputListeners).to.be.greaterThan(0);
+      pointer('pointerdown'); pointer('pointermove');
+      renderer.workstationLayout = { firstLane: 0, count: 8 }; overlay.sync(); pointer('pointerup');
+      expect(added).to.have.length(0); expect(overlay.snapshot().editing).to.equal(false);
+      expect(overlay.snapshot().inputListeners).to.equal(0); expect(renderer.midiSpanOverlay).to.equal(null);
+      renderer.workstationLayout = null; expect(overlay.setEditing(true)).to.equal(true);
+      pointer('pointerdown'); pointer('pointermove'); renderer.originX = 40; pointer('pointerup');
+      expect(added).to.have.length(0); expect(overlay.snapshot().dragging).to.equal(false);
+      expect(overlay.snapshot().editing).to.equal(false); expect(overlay.snapshot().inputListeners).to.equal(0);
+    } finally { overlay.dispose(); }
+  });
+  it('owns input only after a presented frame and cannot rearm after generation replacement, render loss or disposal', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
+    canvas.width = 800; canvas.height = 608; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} }, added = [], notifications = [], project = { transport: { bpmBase: 120 }, automation: [] };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, laneHeight: 76, generation: 1, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 800, viewHeight: 608, render() {} };
+    let host = renderer;
+    const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer: host } }), getProject: () => project,
+      getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span), onPresentation: state => notifications.push(state) });
+    const pointer = type => canvas.dispatchEvent({ type, clientX: type === 'pointerdown' ? 100 : 200, clientY: 50, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    try {
+      overlay.sync(); expect(overlay.setEditing(true)).to.equal(false); expect(overlay.snapshot().inputListeners).to.equal(0);
+      pointer('pointerdown'); pointer('pointermove'); pointer('pointerup'); expect(added).to.have.length(0);
+      const draw = () => overlay.draw(context, renderer, 1); renderer.render = draw;
+      expect(overlay.setEditing(true)).to.equal(true); const announcements = notifications.length;
+      for (let frame = 0; frame < 4; frame++) renderer.render(); expect(notifications).to.have.length(announcements);
+      pointer('pointerdown'); pointer('pointermove');
+      renderer.world.generation++; overlay.sync(); pointer('pointerup'); expect(overlay.snapshot()).to.include({ editing: false, dragging: false, inputListeners: 0 });
+      expect(overlay.setEditing(true)).to.equal(true); host = null; overlay.sync(); expect(renderer.midiSpanOverlay).to.equal(null); expect(overlay.snapshot().inputListeners).to.equal(0);
+      host = { ...renderer, canvas: document.createElement('canvas') }; overlay.sync(); expect(overlay.setEditing(true)).to.equal(false); expect(overlay.snapshot().inputListeners).to.equal(0);
+      host = renderer; expect(overlay.setEditing(true)).to.equal(true); pointer('pointerdown'); renderer.render = () => { throw new Error('renderer lost'); };
+      expect(() => pointer('pointermove')).to.throw('renderer lost'); expect(overlay.snapshot()).to.include({ editing: false, dragging: false, inputListeners: 0 });
+      renderer.render = draw; expect(overlay.setEditing(true)).to.equal(true); overlay.setVisible(false); expect(overlay.snapshot().inputListeners).to.equal(0);
+      overlay.setVisible(true); expect(overlay.snapshot().editing).to.equal(false);
+      renderer.render = draw; expect(overlay.setEditing(true)).to.equal(true); pointer('pointerdown'); overlay.dispose(); pointer('pointermove'); pointer('pointerup');
+      overlay.sync(); expect(overlay.setEditing(true)).to.equal(false); expect(overlay.snapshot()).to.include({ disposed: true, editing: false, dragging: false, inputListeners: 0 });
+      expect(renderer.midiSpanOverlay).to.equal(null); expect(added).to.have.length(0);
+    } finally { overlay.dispose(); }
   });
   it('projects only resolved note winners and holds their phase/value while the transport and origin observations advance', () => {
     const low = { id: 'low', enabled: true, target: 'velocity', min: 20, max: 100, span: { ...createMidiSpan(), duration: 8 } };

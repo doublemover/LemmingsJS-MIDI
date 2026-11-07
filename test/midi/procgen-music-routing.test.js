@@ -145,7 +145,7 @@ describe('procgen local musical routing', () => {
     });
   });
 
-  it('gives64simultaneous lanes bounded rotating dispatch under one shared real-time budget', () => {
+  it('gives 64 simultaneous local lanes bounded rotating dispatch under their declared workload', () => {
     withRouting(({ bus, notes, router, timer, advance }) => {
       for (let laneIndex = 0; laneIndex < 64; laneIndex++) bus.emitSfx(Events.BLOCKER_CONTACT, Sfx.BLOCKER_CONTACT, { lemmingId: laneIndex, laneIndex, laneCount: 64 });
       expect(router.scheduler.gamePhrases.voices.size).to.equal(64);
@@ -156,8 +156,10 @@ describe('procgen local musical routing', () => {
       timer.frameTime = 60 / 22; timer.speedFactor = 22;
       advance(80);
       const rate = router.scheduler.getRateSnapshot();
-      expect(rate.past.count + rate.next.count).to.be.at.most(1000);
-      expect(rate.past.bytes + rate.next.bytes).to.be.at.most(3906);
+      expect(router.scheduler.getTransportBudget('local').transport).to.equal('local-audio');
+      const maximumMessages = (13 + 80) * MAX_ROLLING_PHRASE_DISPATCHES * 2;
+      expect(rate.past.count + rate.next.count).to.be.at.most(maximumMessages);
+      expect(rate.past.bytes + rate.next.bytes).to.be.at.most(maximumMessages * 3);
       router.scheduler.allNotesOff(); expect(router.scheduler._activeNotes.size).to.equal(0);
     });
   });

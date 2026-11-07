@@ -1,0 +1,182 @@
+import { normalizeProcgenViewport } from './ProcgenPausedProjection.js';
+import { procgenSimulationProfile } from './ProcgenSimulationProfiles.js';
+import { createResourceBudget } from '../resources/ResourceBudget.js';
+import { createBackgroundSnapshotReceiver, encodeBackgroundSnapshotPages, backgroundSnapshotTransfers } from '../resources/BackgroundSnapshotPages.js';
+import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
+import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
+import { prepareProcgenSimulationRealm } from './ProcgenSimulationRealm.js';
+import { PROCGEN_SIMULATION_PROTOCOL, SIMULATION_MAX_CONSUMERS, SIMULATION_PACKET_BYTES, encodeSimulationPacket, isSimulationEnvelope,
+  simulationEnvelope, simulationFailure, simulationInteger, validateSimulationManifest } from './ProcgenSimulationProtocol.js';
+
+export function createProcgenSimulationWorkerEndpoint({ postMessage, close, timers = globalThis, now = () => performance.now(),
+  prepare = prepareProcgenSimulationRealm, identity = getActiveExecutionIdentity, compareIdentity = required => compareActiveExecutionIdentity(required).matched } = {}) {
+  const controller = new AbortController(); let profile = procgenSimulationProfile(), budget = null;
+  let manifest = null, receiver = null, inputSequence = 0, host = null, phase = 'new', timer = null, pumping = null, lastTime = null, elapsed = 0,
+    transferStorage = null, inputStorage = null, inputLimit = null, consumers = [], outputAck = null, closing = null, activeRequest = false,
+    preparingWork = null, activeWork = null, stateSequence = 0, statePending = 0, nextState = null, visual = null, visualTask = null, visualSerial = 0;
+  const send = (type, fields = {}, transfers = []) => postMessage(simulationEnvelope(manifest, type, fields), transfers);
+  const publishState = state => { nextState = state; if (statePending || phase === 'closed' || phase === 'retiring') return; statePending = ++stateSequence; send('state', { state: nextState, sequence: statePending }); nextState = null; };
+  const maybeProject = async () => {
+    const entry = visual;
+    if (!entry?.enabled || visualTask || entry.inFlight || !entry.buffer || now() - entry.lastAt < 250) return;
+    visualTask = (async () => {
+      let projection = null; const started = now();
+      try {
+        projection = await host.project(entry.viewport, { signal: controller.signal, allowRunning: true, cellBuffer: entry.buffer, isCurrent: () => visual === entry && entry.enabled });
+        if (visual !== entry || !entry.enabled || phase !== 'ready') return;
+        const value = projection.read(); entry.lastAt = now(); entry.maximumCaptureMs = Math.max(entry.maximumCaptureMs, entry.lastAt - started); entry.buffer = null; entry.inFlight = ++entry.sequence;
+        send('viewport-frame', { watchId: entry.id, sequence: entry.inFlight, value, maximumCaptureMs: entry.maximumCaptureMs }, [value.cells.buffer]);
+      } catch (error) { if (visual === entry && !controller.signal.aborted) { entry.enabled = false; send('viewport-unavailable', { watchId: entry.id, reason: String(error.message).slice(0, 512) }); } }
+      finally { projection?.release(); }
+    })(); try { await visualTask; } finally { visualTask = null; }
+  };
+  const stopViewport = async () => { const entry = visual; if (!entry) return; entry.enabled = false; await visualTask; if (visual === entry) visual = null; entry.buffer = null; entry.storage.release(); };
+  const pauseTimer = () => { if (timer !== null) timers.clearTimeout(timer); timer = null; lastTime = null; elapsed = 0; };
+  const failure = error => {
+    if (phase === 'closed' || phase === 'retiring') return;
+    pauseTimer(); phase = 'failed-paused'; host?.fail(error);
+    for (const consumer of consumers) if (consumer.pending) { const pending = consumer.pending; consumer.pending = null; timers.clearTimeout(pending.timer); pending.reject(error); }
+    outputAck?.reject(error); outputAck = null;
+    try { send('failed', { state: host?.state() || null, error: { code: error.code || 'worker-failed', message: String(error.message || error).slice(0, 512) } }); } catch {}
+  };
+  const deliver = async packet => {
+    if (phase === 'retiring' || phase === 'closed') throw simulationFailure('worker-retired', 'The simulation generation retired before causal delivery.');
+    await Promise.all(consumers.map(consumer => new Promise((resolve, reject) => {
+      if (consumer.pending || !consumer.buffer) { reject(simulationFailure('consumer-backpressure', 'The previous causal buffer is still leased.')); return; }
+      const buffer = consumer.buffer;
+      try {
+        const bytes = encodeSimulationPacket(packet, buffer);
+        const pending = { sequence: packet.sequence, generation: packet.batch.generation, tick: packet.batch.tick, worldId: packet.batch.worldId, resolve, reject, timer: null };
+        consumer.pending = pending; pending.timer = timers.setTimeout(() => { if (consumer.pending === pending) { consumer.pending = null; reject(simulationFailure('consumer-timeout', 'A required consumer did not acknowledge its causal lease; the authoritative world is paused.')); } }, 3000);
+        consumer.port.postMessage(simulationEnvelope(manifest, 'causal-batch', { sequence: packet.sequence, generation: packet.batch.generation,
+          tick: packet.batch.tick, worldId: packet.batch.worldId, bytes, buffer }), [buffer]); consumer.buffer = null;
+      } catch (error) { if (consumer.pending) timers.clearTimeout(consumer.pending.timer); consumer.pending = null; reject(error); }
+    })));
+  };
+  const connect = ports => {
+    if (!Array.isArray(ports) || !ports.length || ports.length > SIMULATION_MAX_CONSUMERS || new Set(ports).size !== ports.length) throw simulationFailure('consumer-inventory', 'Declare one to four independently owned required consumers.');
+    transferStorage = createOwnedResourceReservation({ budget, owner: 'simulation-causal-transfers', kind: 'exclusive-pool-and-encoding-workspace', category: 'live', bytes: (ports.length + 4) * SIMULATION_PACKET_BYTES });
+    consumers = ports.map(port => {
+      const consumer = { port, buffer: new ArrayBuffer(SIMULATION_PACKET_BYTES), pending: null, receive: null, error: null };
+      consumer.receive = event => {
+        const message = event.data, pending = consumer.pending;
+        if (!isSimulationEnvelope(message, manifest)) return;
+        if (!pending || message.type !== 'causal-ack' || ['sequence', 'generation', 'tick', 'worldId'].some(key => message[key] !== pending[key]) ||
+            !(message.buffer instanceof ArrayBuffer) || message.buffer.byteLength !== SIMULATION_PACKET_BYTES) { failure(simulationFailure('causal-ack-invalid', 'A returned causal buffer does not match its outstanding completed-tick lease.')); return; }
+        consumer.pending = null; timers.clearTimeout(pending.timer); consumer.buffer = message.buffer;
+        if (message.accepted === true) pending.resolve(); else pending.reject(simulationFailure('consumer-refused', message.reason || 'A required causal consumer refused its batch.'));
+      };
+      consumer.error = () => failure(simulationFailure('consumer-message', 'A required consumer port could not decode its message.'));
+      port.addEventListener('message', consumer.receive); port.addEventListener('messageerror', consumer.error); port.start?.(); return consumer;
+    });
+  };
+  const schedule = () => { if (phase === 'ready' && !host.state().paused && !pumping && timer === null) timer = timers.setTimeout(pump, 4); };
+  const pump = () => {
+    timer = null; if (phase !== 'ready' || host.state().paused || pumping) return;
+    const time = now();
+    if (lastTime !== null && time - lastTime > 250) { pauseTimer(); host.pause(); send('suspended', { reason: 'The simulation owner was suspended; explicitly resume from its completed boundary.' }); return; }
+    elapsed += lastTime === null ? 0 : Math.max(0, time - lastTime); lastTime = time;
+    pumping = (async () => {
+      const started = now(); let count = 0;
+      while (phase === 'ready' && !host.state().paused && elapsed >= host.state().tickDurationMs && count < 8) {
+        elapsed -= host.state().tickDurationMs; await host.advance({ steps: 1, timestamp: time, signal: controller.signal }); count++; await maybeProject();
+        if (now() - started >= 8) break;
+      }
+      if (elapsed > 1000) throw simulationFailure('simulation-backlog', 'Authoritative ticks cannot meet the admitted backlog bound; pause rather than skip physical work.');
+    })().catch(failure).finally(() => { pumping = null; schedule(); });
+  };
+  const retire = () => {
+    if (closing) return closing; phase = 'retiring'; controller.abort(); pauseTimer();
+    outputAck?.reject(simulationFailure('checkpoint-retired', 'The checkpoint stream retired.')); outputAck = null;
+    closing = (async () => {
+      if (preparingWork) await Promise.allSettled([preparingWork]);
+      if (pumping) await pumping; await stopViewport(); if (activeWork) await Promise.allSettled([activeWork]);
+      const receipt = host?.dispose(); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') throw simulationFailure('retirement-unknown', 'The authoritative world retained unresolved ownership.'); }
+      receiver?.dispose(); receiver = null;
+      const unresolved = consumers.some(consumer => !consumer.buffer || consumer.pending);
+      for (const consumer of consumers) { consumer.port.removeEventListener('message', consumer.receive); consumer.port.removeEventListener('messageerror', consumer.error); consumer.port.close(); consumer.buffer = null; }
+      consumers = []; if (unresolved) throw simulationFailure('consumer-retirement-unknown', 'A transferred causal buffer has no returned lease acknowledgment.');
+      transferStorage?.release(); inputStorage?.release(); phase = 'closed'; send('retired', { outcome: 'complete' }); close();
+    })().catch(error => { try { send('retired', { outcome: 'unknown', error: String(error.message).slice(0, 512) }); } finally { phase = 'closed'; close(); } }); return closing;
+  };
+  const sendCheckpoint = async (requestId, detached = false, recovery = false) => {
+    let value; try { value = await host.checkpoint({ signal: controller.signal, ...(recovery ? { maxGraphBytes: 4 * 1048576, maxSemanticBytes: 2 * 1048576 } : detached ? { maxGraphBytes: 8 * 1048576, maxSemanticBytes: 8 * 1048576 } : { maxGraphBytes: profile.checkpointGraphBytes, maxSemanticBytes: profile.checkpointSemanticBytes }) });
+      if (detached || recovery) {
+        const { hashData } = await import('../../core/CanonicalData.js'), { hashProcgenContinuationCheckpoint, hashProcgenPhysicsCheckpoint } = await import('./workstation/ProcgenCheckpointProvenance.js');
+        const sourceHash = await hashData(value, { maxBytes: (recovery ? 8 : 16) * 1048576 - 4096, maxNodes: recovery ? 262144 : 1000000 }), continuationHash = await hashProcgenContinuationCheckpoint(value.world), physicsHash = await hashProcgenPhysicsCheckpoint(value.world);
+        controller.signal.throwIfAborted();
+        value = { schema: 'lemmings-owned-simulation-checkpoint/v1', snapshot: value, receipt: { schema: 'lemmings-simulation-checkpoint-receipt/v1', applicationBuildId: identity().buildId,
+          ownerId: manifest.ownerId, ownerEpoch: manifest.ownerEpoch, documentRevision: manifest.documentRevision, worldId: value.boundary.worldId, generation: value.boundary.generation, tick: value.boundary.tick,
+          sourceHash, continuationHash, physicsHash, mode: recovery ? 'independently-retained-recovery-point;worker-may-continue' : 'completed-current-runtime-physical-continuation;not-original-PCM-equivalence', paused: true, audio: false, hardware: false } };
+      }
+    } catch (error) { if (!recovery) throw error; send('response', { requestId, value: { status: 'refused', reason: error.code || error.name, message: String(error.message).slice(0, 512) } }); return; }
+    const transmit = (type, fields, transfers = []) => new Promise((resolve, reject) => {
+      if (outputAck) throw simulationFailure('checkpoint-backpressure', 'A checkpoint packet remains leased.');
+      const timer = timers.setTimeout(() => { if (outputAck?.sequence === fields.sequence) { outputAck = null; reject(simulationFailure('checkpoint-timeout', 'The checkpoint receiver stopped acknowledging its pages.')); } }, 5000);
+      outputAck = { sequence: fields.sequence, resolve: () => { timers.clearTimeout(timer); resolve(); }, reject: error => { timers.clearTimeout(timer); reject(error); } }; send(type, { requestId, ...fields }, transfers);
+    });
+    await transmit('checkpoint-start', { sequence: 0 }); let sequence = 0;
+    for await (const packet of encodeBackgroundSnapshotPages(value, { maxBytes: recovery ? 8 * 1048576 : detached ? 16 * 1048576 : profile.checkpointBytes, maxNodes: recovery ? 262144 : 4000000, estimatedPeakBytes: profile.checkpointPeakBytes, signal: controller.signal })) {
+      sequence = packet.sequence; await transmit('checkpoint-page', { sequence, packet }, backgroundSnapshotTransfers(packet));
+    }
+    send('checkpoint-end', { requestId, sequence });
+  };
+  return Object.freeze({ fail: failure, receive: async request => {
+    try {
+      if (phase === 'closed' || phase === 'retiring') return;
+      if (phase === 'new') {
+        if (request?.protocol !== PROCGEN_SIMULATION_PROTOCOL || request.type !== 'initialize' || !simulationInteger(request.ownerEpoch, 1) || !simulationInteger(request.documentRevision) ||
+            typeof request.ownerId !== 'string' || !request.ownerId || request.ownerId.length > 128 || request.requiredIdentity?.activeExecution !== 'bound' || !compareIdentity(request.requiredIdentity))
+          throw simulationFailure('worker-build-mismatch', 'The authoritative worker requires its executing immutable application generation.');
+        manifest = { ownerId: request.ownerId, ownerEpoch: request.ownerEpoch, documentRevision: request.documentRevision };
+        profile = procgenSimulationProfile(request.resourceProfile); budget = createResourceBudget({ limitBytes: profile.workerLimitBytes });
+        inputLimit = { maxBytes: profile.maxInputBytes, maxNodes: profile.maxInputNodes, estimatedPeakBytes: profile.inputPeakBytes };
+        inputStorage = createOwnedResourceReservation({ budget, owner: 'simulation-source-continuation', kind: 'initial-manifest-and-restore-overlap', category: 'candidate', bytes: profile.inputReservationBytes });
+        receiver = createBackgroundSnapshotReceiver(inputLimit); connect(request.ports); phase = 'receiving'; send('input-ack', { sequence: 0 }); return;
+      }
+      if (!isSimulationEnvelope(request, manifest)) throw simulationFailure('host-envelope-stale', 'A simulation request belongs to a different document or generation.');
+      if (request.type === 'dispose') return retire();
+      if (request.type === 'stop-viewport') { await stopViewport(); send('response', { requestId: request.requestId, value: { status: 'viewport-retired' } }); return; }
+      if (request.type === 'viewport-ack') { const entry = visual; if (entry && request.watchId === entry.id && request.sequence === entry.inFlight && request.cells instanceof Uint8Array && !request.cells.byteOffset && request.cells.byteLength === request.cells.buffer.byteLength && request.cells.length === entry.viewport.pixelWidth * entry.viewport.pixelHeight && !entry.buffer) { entry.buffer = request.cells; entry.inFlight = 0; } return; }
+      if (request.type === 'state-ack') { if (request.sequence === statePending) { statePending = 0; if (nextState) publishState(nextState); } return; }
+      if (request.type === 'checkpoint-ack') { if (!outputAck || request.sequence !== outputAck.sequence) throw simulationFailure('checkpoint-ack-invalid', 'A checkpoint acknowledgment does not match its packet.'); const pending = outputAck; outputAck = null; pending.resolve(); return; }
+      if (phase === 'receiving') {
+        if (request.type === 'input-page') { const receipt = receiver.push(request.packet); inputSequence = receipt.sequence; send('input-ack', { sequence: inputSequence }); return; }
+        if (request.type !== 'input-end' || request.sequence !== inputSequence) throw simulationFailure('manifest-incomplete', 'Complete all owned initialization pages before world preparation.');
+        const input = receiver.finish(request.sequence); receiver = null; validateSimulationManifest(input); if (procgenSimulationProfile(input.resourceProfile).id !== profile.id) throw simulationFailure('resource-profile-stale', 'The received source changed its admitted worker memory profile.');
+        if (!isSimulationEnvelope(simulationEnvelope(input, 'identity'), manifest)) throw simulationFailure('manifest-stale', 'The initialization manifest changed its admitted owner.');
+        manifest = input; phase = 'preparing';
+        preparingWork = Promise.resolve().then(() => prepare({ manifest, resourceBudget: budget, signal: controller.signal, requiredConsumer: deliver,
+          onState: publishState })).then(prepared => { host = prepared.host; return prepared; });
+        const prepared = await preparingWork; controller.signal.throwIfAborted(); inputStorage.release(); inputStorage = null;
+        manifest = { ...manifest, checkpoint: { clock: { speedFactor: manifest.checkpoint.clock.speedFactor } }, semantic: null, graph: null, performance: null, timeline: null };
+        phase = 'ready'; send('ready', { state: host.state(), restoredContinuationHash: prepared.restoredContinuationHash, executionIdentity: identity() }); return;
+      }
+      if (phase !== 'ready' && phase !== 'failed-paused') throw simulationFailure('host-not-ready', 'The authoritative simulation is still preparing.');
+      if (request.type === 'pause') { pauseTimer(); const state = host.pause(); send('response', { requestId: request.requestId, value: state }); return; }
+      if (activeRequest || phase !== 'ready') throw simulationFailure('host-command-busy', 'Finish the active host operation before another mutation.');
+      activeRequest = true;
+      activeWork = (async () => {
+        let value;
+        if (request.type === 'resume') { value = host.resume(); lastTime = null; elapsed = 0; schedule(); }
+        else if (request.type === 'advance') { if (!host.state().paused) throw simulationFailure('step-needs-pause', 'Manual stepping requires a paused host.'); const packet = await host.advance({ steps: request.steps, timestamp: now(), signal: controller.signal }); await maybeProject(); value = { state: host.state(), sequence: packet.sequence }; }
+        else if (request.type === 'command') value = host.submit(request.command);
+        else if (request.type === 'watch-viewport') {
+          if (visual || !simulationInteger(request.watchId, 1) || request.watchId <= visualSerial) throw simulationFailure('viewport-owner', 'Retire the prior live viewport owner before starting another.');
+          let storage; try { const viewport = normalizeProcgenViewport(request.viewport, host.state().laneCount, true); storage = createOwnedResourceReservation({ budget, owner: 'worker-live-viewport', kind: 'exclusive-visual-frame-pool', category: 'checkpoint', bytes: 4 * 1048576 });
+            visualSerial = request.watchId; visual = { id: request.watchId, viewport, storage, buffer: new Uint8Array(viewport.pixelWidth * viewport.pixelHeight), sequence: 0, inFlight: 0, enabled: true, lastAt: -Infinity, maximumCaptureMs: 0 };
+            value = { status: 'watching-completed-frames', watchId: request.watchId, viewport, maximumHz: 4, policy: 'one-exclusive-frame;visual-latest-wins;never-a-required-causal-consumer' }; } catch (error) { storage?.release(); value = { status: 'refused', reason: String(error.message).slice(0, 512) }; }
+        } else if (request.type === 'stop-viewport') { await stopViewport(); value = { status: 'viewport-retired' }; }
+        else if (request.type === 'project') {
+          if (pumping) await pumping;
+          const projection = await host.project(request.viewport, { signal: controller.signal });
+          try { const value = projection.read(); send('projection', { requestId: request.requestId, value }, [value.cells.buffer]); } finally { projection.release(); }
+          return;
+        }
+        else if (['checkpoint', 'checkpoint-detach', 'checkpoint-recovery'].includes(request.type)) { if (pumping) await pumping; await sendCheckpoint(request.requestId, request.type === 'checkpoint-detach', request.type === 'checkpoint-recovery'); return; }
+        else throw simulationFailure('host-command-unsupported', 'Unsupported authoritative simulation command.');
+        send('response', { requestId: request.requestId, value });
+      })(); try { await activeWork; } finally { activeRequest = false; activeWork = null; }
+    } catch (error) { failure(error); }
+  }, dispose: retire });
+}

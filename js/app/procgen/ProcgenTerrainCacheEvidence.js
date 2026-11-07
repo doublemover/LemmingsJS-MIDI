@@ -1,0 +1,185 @@
+import { hashSurveyValue } from './survey/ProcgenSurveyCanonical.js';
+
+const owners = new WeakMap(), proofs = new WeakMap();
+const fail = (code, kind, key) => { throw Object.assign(new Error('Generated terrain ' + kind + ' evidence is unverified at ' + String(key).slice(0, 96) + '.'),
+  { name: 'SurveyStateProjectionError', code, cacheKind: kind, cacheKey: key }); };
+const own = (value, key) => {
+  const field = value && Object.getOwnPropertyDescriptor(value, key);
+  if (field && !Object.hasOwn(field, 'value')) fail('accessor-terrain-evidence', 'data', key);
+  return field?.value;
+};
+const typedPrototype = Object.getPrototypeOf(Uint8Array.prototype);
+const intrinsic = (prototype, key) => Function.prototype.call.bind(Object.getOwnPropertyDescriptor(prototype, key).get);
+const viewType = intrinsic(typedPrototype, Symbol.toStringTag), typedBuffer = intrinsic(typedPrototype, 'buffer'), typedOffset = intrinsic(typedPrototype, 'byteOffset'), typedLength = intrinsic(typedPrototype, 'byteLength');
+const dataBuffer = intrinsic(DataView.prototype, 'buffer'), dataOffset = intrinsic(DataView.prototype, 'byteOffset'), dataLength = intrinsic(DataView.prototype, 'byteLength');
+const bufferLength = intrinsic(ArrayBuffer.prototype, 'byteLength');
+const cacheHash = value => {
+  let first = 0x811c9dc5, second = 0x9e3779b9, ordinal = 0; const seen = new WeakMap();
+  const word = code => { first = Math.imul(first ^ code, 0x01000193); second = Math.imul(second ^ code, 0x85ebca6b); };
+  const text = value => { const string = String(value); word(string.length); for (let index = 0; index < string.length; index++) word(string.charCodeAt(index)); };
+  const bytes = (buffer, offset, length) => { const source = new Uint8Array(buffer, offset, length); word(length); for (let index = 0; index < length; index++) word(source[index]); };
+  const visit = item => {
+    text(typeof item);
+    if (!item || typeof item !== 'object') { text(Object.is(item, -0) ? '-0' : item); return; }
+    if (seen.has(item)) { text('reference'); word(seen.get(item)); return; } seen.set(item, ++ordinal);
+    if (ArrayBuffer.isView(item)) {
+      const type = viewType(item); text(type || 'DataView');
+      if (type) bytes(typedBuffer(item), typedOffset(item), typedLength(item)); else bytes(dataBuffer(item), dataOffset(item), dataLength(item)); return;
+    }
+    if (item instanceof ArrayBuffer) { text('ArrayBuffer'); bytes(item, 0, bufferLength(item)); return; }
+    if (item instanceof Map) { text('Map'); for (const [key, entry] of Map.prototype.entries.call(item)) { visit(key); visit(entry); } text('end'); return; }
+    if (item instanceof Set) { text('Set'); for (const entry of Set.prototype.values.call(item)) visit(entry); text('end'); return; }
+    if (Array.isArray(item)) { text('Array'); word(item.length); for (let index = 0; index < item.length; index++) visit(own(item, index)); return; }
+    for (const key of Object.keys(item).sort()) {
+      const entry = own(item, key); if (typeof entry === 'function') continue; text(key);
+      if (key === 'piece' || key === 'image' || key === 'composite') for (const field of ['id', 'width', 'height']) visit(own(entry, field)); else visit(entry);
+    }
+    text('end');
+  };
+  visit(value); return (first >>> 0).toString(16).padStart(8, '0') + (second >>> 0).toString(16).padStart(8, '0');
+};
+const projection = value => {
+  const seen = new WeakMap();
+  const visit = (item, path) => {
+    if (!item || typeof item !== 'object') return typeof item === 'function' ? undefined : item;
+    if (ArrayBuffer.isView(item) || item instanceof ArrayBuffer) return item;
+    if (seen.has(item)) return { reference: seen.get(item) }; seen.set(item, path);
+    if (item instanceof Map) return Array.from(Map.prototype.entries.call(item), ([key, entry], index) => [visit(key, path + '.key' + index), visit(entry, path + '.value' + index)]);
+    if (item instanceof Set) return Array.from(Set.prototype.values.call(item), (entry, index) => visit(entry, path + '.' + index));
+    if (Array.isArray(item)) return Array.from({ length: item.length }, (_, index) => visit(own(item, index), path + '.' + index));
+    const result = {};
+    for (const key of Object.keys(item).sort()) {
+      const entry = own(item, key);
+      if (key === 'piece' || key === 'image' || key === 'composite') result[key] = { id: own(entry, 'id'), width: own(entry, 'width'), height: own(entry, 'height') };
+      else if (typeof entry !== 'function') result[key] = visit(entry, path + '.' + key);
+    }
+    return result;
+  };
+  return visit(value, 'root');
+};
+const context = terrain => {
+  const recipe = own(terrain, 'recipe');
+  return { recipeId: own(recipe, 'id'), assetSha256: own(recipe, 'assetSha256'), descriptorRevision: own(own(terrain, 'sourceDescriptor'), 'sourceRevision'),
+    assemblyRevision: own(own(terrain, 'assemblyCatalog'), 'sourceRevision'), height: own(terrain, 'height'), chunkWidth: own(terrain, 'chunkWidth'),
+    workstation: own(terrain, 'workstation'), hazardSpacing: own(terrain, 'hazardSpacing'), sharedSpanBudget: own(terrain, 'sharedSpanBudget') };
+};
+const tokenFor = owner => { let token = owners.get(owner); if (!token) { token = {}; owners.set(owner, token); } return token; };
+
+export function initializeTerrainCacheEvidence(owner) { tokenFor(owner); }
+
+const contentHash = (kind, value) => {
+  if (kind === 'authored-source') {
+    if (!Object.isFrozen(value) || !Object.isFrozen(own(value, 'chunks')) || !Object.isFrozen(own(value, 'layout'))) fail('unverified-generated-terrain-cache', kind, 'prepared');
+    return cacheHash(own(value, 'storage'));
+  }
+  // Frozen bindings borrow the already-checked source storage; hash its bytes once.
+  if (kind === 'authored-records') {
+    if (!Object.isFrozen(value) || !Array.prototype.every.call(value, Object.isFrozen)) fail('unverified-generated-terrain-cache', kind, 'bindings');
+    return null;
+  }
+  if (kind === 'authored-row') { if (!Object.isFrozen(value)) fail('unverified-generated-terrain-cache', kind, 'binding'); return null; }
+  return cacheHash(value);
+};
+
+// Proofs follow cache objects weakly; no retained cache entry keeps its world alive.
+export function registerTerrainCacheEvidence(owner, kind, key, value, source = context(owner)) {
+  proofs.set(value, { owner: tokenFor(owner), kind, key, source: hashSurveyValue(source), hash: contentHash(kind, value) });
+  return value;
+}
+
+export function verifyTerrainCacheEvidence(owner, kind, entries, source = context(owner)) {
+  const token = owners.get(owner), sourceHash = hashSurveyValue(source);
+  for (const [key, value] of entries) {
+    const proof = value && proofs.get(value);
+    if (!proof || proof.owner !== token || proof.kind !== kind || proof.key !== key) fail('unverified-generated-terrain-cache', kind, key);
+    if (proof.source !== sourceHash || proof.hash !== contentHash(kind, value)) fail('changed-generated-terrain-cache', kind, key);
+  }
+}
+
+// Source content is projected first; only evicted but still-held entries need another byte check.
+export function verifyGeneratedTerrainChunkBinding(terrain, seed, chunk, value) {
+  if (!owners.has(terrain)) fail('unsupported-terrain-evidence-source', 'alias', 'provider');
+  const base = own(terrain, 'base');
+  if (base && own(own(terrain, 'recipe'), 'sourceKind') === 'original-scene-score') {
+    const views = own(terrain, 'views'), lane = Map.prototype.get.call(own(terrain, 'seedToLane'), seed), shape = own(views, 'shape');
+    if (chunk < own(shape, 'chunksPerLane')) {
+      const expected = own(own(terrain, 'records'), lane * own(shape, 'chunksPerLane') + chunk);
+      if (!Number.isInteger(lane) || !expected) fail('unverified-generated-terrain-cache', 'authored-alias', seed + ':' + chunk);
+      if (expected !== value) {
+        verifyTerrainCacheEvidence(terrain, 'authored-row', [[seed + ':' + chunk, value]], own(terrain, 'sceneTerrainLayoutHash'));
+        for (const key of Object.keys(expected)) if (own(expected, key) !== own(value, key)) fail('unverified-generated-terrain-cache', 'authored-alias', seed + ':' + chunk);
+      }
+      return;
+    }
+    return verifyGeneratedTerrainChunkBinding(base, seed, chunk, value);
+  }
+  const themes = own(terrain, 'themes');
+  if (Array.isArray(themes)) {
+    const index = Map.prototype.get.call(own(terrain, 'assignments'), seed), theme = own(themes, index);
+    if (!theme) fail('unverified-generated-terrain-cache', 'pack-alias', seed);
+    return verifyGeneratedTerrainChunkBinding(own(theme, 'terrain'), seed, chunk, value);
+  }
+  const key = seed + ':' + chunk, proof = value && proofs.get(value);
+  if (!proof || proof.owner !== owners.get(terrain) || proof.kind !== 'collision' || proof.key !== key || proof.source !== hashSurveyValue(context(terrain))) fail('unverified-generated-terrain-cache', 'collision-alias', key);
+  if (Map.prototype.get.call(own(terrain, 'collision'), key) !== value && proof.hash !== cacheHash(value)) fail('changed-generated-terrain-cache', 'collision-alias', key);
+}
+
+function verifyGeneratedTerrainRecordBinding(terrain, seed, chunk, value, kind) {
+  if (!owners.has(terrain)) fail('unsupported-terrain-evidence-source', 'descriptor-alias', 'provider');
+  const base = own(terrain, 'base');
+  if (base && own(own(terrain, 'recipe'), 'sourceKind') === 'original-scene-score') {
+    if (chunk < own(own(own(terrain, 'views'), 'shape'), 'chunksPerLane')) {
+      if (kind !== 'description') fail('unverified-generated-terrain-cache', kind, 'authored-growth');
+      return verifyGeneratedTerrainChunkBinding(terrain, seed, chunk, value);
+    }
+    return verifyGeneratedTerrainRecordBinding(base, seed, chunk, value, kind);
+  }
+  const themes = own(terrain, 'themes');
+  if (Array.isArray(themes)) {
+    const theme = own(themes, Map.prototype.get.call(own(terrain, 'assignments'), seed));
+    if (!theme) fail('unverified-generated-terrain-cache', 'descriptor-pack-alias', seed);
+    return verifyGeneratedTerrainRecordBinding(own(theme, 'terrain'), seed, chunk, value, kind);
+  }
+  verifyTerrainCacheEvidence(terrain, kind, [[seed + ':' + chunk, value]]);
+  if (kind === 'growth-plan') {
+    verifyGeneratedTerrainRecordBinding(terrain, seed, chunk, own(value, 'descriptor'), 'description');
+    return proofs.get(value).hash;
+  }
+  const current = Map.prototype.get.call(own(terrain, 'descriptions'), seed + ':' + chunk);
+  if (current && current !== value && cacheHash(current) !== cacheHash(value)) fail('changed-generated-terrain-cache', 'retained-description', seed + ':' + chunk);
+}
+export const verifyGeneratedTerrainDescriptorBinding = (terrain, seed, chunk, value) => verifyGeneratedTerrainRecordBinding(terrain, seed, chunk, value, 'description');
+export const verifyGeneratedTerrainGrowthBinding = (terrain, seed, chunk, value) => verifyGeneratedTerrainRecordBinding(terrain, seed, chunk, value, 'growth-plan');
+
+export function captureGeneratedTerrainEvidence(terrain) {
+  if (!owners.has(terrain)) return null;
+  const base = own(terrain, 'base');
+  if (base && own(own(terrain, 'recipe'), 'sourceKind') === 'original-scene-score') {
+    const views = own(terrain, 'views'), layoutHash = own(terrain, 'sceneTerrainLayoutHash');
+    if (!views || own(terrain, 'disposed')) fail('unverified-generated-terrain-cache', 'authored-source', 'unavailable');
+    verifyTerrainCacheEvidence(terrain, 'authored-source', [['prepared', views]], layoutHash);
+    const records = own(terrain, 'records'), seeds = own(terrain, 'seedToLane');
+    if (!Array.isArray(records) || (seeds.size ? records.length !== own(views, 'chunks').length : records.length !== 0)) fail('unverified-generated-terrain-cache', 'authored-records', 'bindings');
+    if (seeds.size) verifyTerrainCacheEvidence(terrain, 'authored-records', [['bindings', records]], { layoutHash, seeds: Array.from(Map.prototype.entries.call(seeds)) });
+    const source = captureGeneratedTerrainEvidence(base); if (!source) fail('unsupported-terrain-evidence-source', 'base', 'provider');
+    return { kind: 'authored-scene-v1', layoutHash, storageHash: own(views, 'storageHash'), layout: own(terrain, 'sceneTerrainLayout'),
+      seedToLane: projection(own(terrain, 'seedToLane')), base: source };
+  }
+  const themes = own(terrain, 'themes');
+  if (Array.isArray(themes)) return { kind: 'generated-pack-v1', height: own(terrain, 'height'), chunkWidth: own(terrain, 'chunkWidth'),
+    assignments: projection(own(terrain, 'assignments')), laneAssignments: own(terrain, 'laneAssignments'), laneThemes: own(terrain, 'laneThemes'),
+    themes: themes.map(theme => {
+      const source = captureGeneratedTerrainEvidence(own(theme, 'terrain')); if (!source) fail('unsupported-terrain-evidence-source', 'theme', own(theme, 'familyId'));
+      return { familyId: own(theme, 'familyId'), styleName: own(theme, 'styleName'), terrain: source };
+    }) };
+  const descriptions = own(terrain, 'descriptions'), collision = own(terrain, 'collision'), growthPlans = own(terrain, 'growthPlans');
+  if (!owners.has(terrain) || !(descriptions instanceof Map) || !(collision instanceof Map) || !(growthPlans instanceof Map)) return null;
+  for (const [kind, cache] of [['description', descriptions], ['collision', collision], ['growth-plan', growthPlans]]) verifyTerrainCacheEvidence(terrain, kind, Map.prototype.entries.call(cache));
+  const last = own(terrain, '_lastChunk'), key = own(terrain, '_lastKey');
+  if (last && Map.prototype.get.call(collision, key) !== last) fail('unverified-generated-terrain-cache', 'last-collision', key);
+  for (const field of ['zonePlanner', 'wideZonePlanner']) {
+    const planner = own(terrain, field); if (!planner) continue;
+    verifyTerrainCacheEvidence(planner, 'zone', Map.prototype.entries.call(own(planner, 'cache')), own(planner, 'revisionCode'));
+  }
+  return { kind: 'generated-recipe-v1', ...context(terrain), routeContracts: projection(own(terrain, 'routeContracts')) };
+}

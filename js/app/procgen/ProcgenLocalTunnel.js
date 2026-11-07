@@ -40,7 +40,7 @@ class ProcgenLocalTunnel {
       return removed.has(at) ? 0 : cells.get(at);
     };
     for (let lane = Math.max(0, Math.floor(top / world.laneHeight)); lane <= Math.min(world.laneCount - 1, Math.floor(bottom / world.laneHeight)); lane++) {
-      const owned = world.triggerManager?.byLane[lane] || [];
+      const owned = world.triggerManager?.getLaneTriggers(lane) || [];
       if (owned.length > 64) failure ||= 'blocker-limit'; else triggers.push(...owned);
       for (const task of world.accessTasks[lane] || []) {
         const owner = task.owner, bounds = task.footprint;

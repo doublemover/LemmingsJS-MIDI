@@ -91,6 +91,7 @@ const applyMidiEnsembleRoleToSpec = (spec, role, config, mapping = {}, event = {
     priority: mapping.eventPriority ?? track.priority, outputId: track.outputId, pan, spatialPan: !!spec.explicitPan && spec.spatialPan === true,
     timbre: null, pitchBend: Number.isFinite(mapping.pitchBend) ? spec.pitchBend : null,
     percussion: role.percussion, ensembleRole: role.id,
+    ...(spec.instrumentRef || track.instrumentRef ? { instrumentRef: track.instrumentRef || null, instrumentControls: track.instrumentControls || null } : {}),
     ...(role.percussion ? { arp: null, phrase: null } : {}) };
 };
 

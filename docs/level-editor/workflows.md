@@ -66,5 +66,5 @@ controls, selection actions, validation list, playtest status, header rectangle,
 and viewport. The PNGs are written under ignored `temp/e2e-captures/` and can be
 attached manually to issues or review notes.
 
-For non-desktop checks, run the capture CLI directly with `--viewport=tablet` or
-`--viewport=mobile`.
+The desktop minimum is 1920x1080. For larger desktop captures, use
+`--viewport=qhd` (2560x1440) or `--viewport=uhd` (3840x2160).

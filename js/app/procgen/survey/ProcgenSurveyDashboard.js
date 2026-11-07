@@ -1,5 +1,8 @@
 import { createBrowserSurveyTrial } from './ProcgenSurveyBrowserAssets.js';
-import { compareSurveyReplay, firstSurveyDivergence } from './ProcgenSurveyReplay.js';
+import { compareSurveyCompatibilityReplay, compareSurveyBoundReplay, firstSurveyDivergence } from './ProcgenSurveyReplay.js';
+import { createBrowserSurveyReplaySession } from './ProcgenSurveyReplaySession.js';
+import { compareActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
+import { requestBrowserDownload } from '../../export/BrowserDownload.js';
 
 const renderSurveyPreview = (canvas, telemetry, { cameraX = null, cameraY = 0, width = 512, height = 144 } = {}) => {
   const context = canvas.getContext('2d'), preview = telemetry?.preview || {}, actors = preview.actors || [];
@@ -23,13 +26,49 @@ const surveyReviewOutcome = result => {
   const outcome = !result?.episodeComplete ? 'Incomplete episode' : result.status === 'completed' ? 'Goal met at horizon' : ['failed', 'timeout', 'timed-out', 'timed_out'].includes(result.status) ? 'Goal not met at horizon' : 'Outcome unknown';
   return { outcome, validity, deaths: Number.isInteger(result?.accounting?.deaths) && result.accounting.deaths >= 0 ? result.accounting.deaths : null };
 };
+const describeSurveyStep = state => {
+  const receipt = state?.stepReceipt;
+  if (!receipt) return state?.queued || state?.stepPending ? 'Step queued; waiting for worker admission.' : 'No worker step requested.';
+  const selected = Number.isSafeInteger(receipt.selectedCount) ? receipt.selectedCount : receipt.selected?.length || 0;
+  if (receipt.status === 'pending') return receipt.phase === 'preparing' ?
+    `Step preparing across ${receipt.expectedWorkers ?? 'unknown'} worker(s); no checkpoint confirmed.` :
+    `Step in progress for ${selected} selected trial(s); no checkpoint confirmed.`;
+  if (receipt.status === 'reached' && Number.isSafeInteger(receipt.reachedCheckpoint))
+    return `Reached checkpoint tick ${receipt.reachedCheckpoint} for ${selected} selected trial(s).`;
+  if (receipt.status === 'empty') return 'No eligible trial was selected for this step.';
+  if (receipt.status === 'terminal-before-target') return `Selected trial ended before checkpoint tick ${receipt.targetTick ?? 'unknown'}.`;
+  if (receipt.status === 'timed-out') return `Step timed out; ${receipt.unacknowledgedWorkerCount ?? 'some'} worker outcome(s) remain unconfirmed.`;
+  if (receipt.status === 'failed') return 'Step failed before a confirmed checkpoint.';
+  if (receipt.status === 'superseded') return 'Step was superseded before a confirmed checkpoint.';
+  return `Step ${receipt.status || 'outcome unknown'}; no checkpoint confirmed.`;
+};
+const describeSurveyStepSelection = state => {
+  const receipt = state?.stepReceipt;
+  if (!receipt) return 'No trial selection receipt.';
+  const selected = Array.isArray(receipt.selected) ? receipt.selected : [];
+  const rows = selected.slice(0, 32).map(value =>
+    `${String(value?.trialId || 'unknown trial').slice(0, 96)} · attempt ${String(value?.attemptId || 'unknown').slice(0, 96)} · ${String(value?.status || 'unknown progress').slice(0, 64)} · tick ${Number.isSafeInteger(value?.tick) ? value.tick : 'unconfirmed'}`);
+  if (selected.length > 32) rows.push(`${selected.length - 32} more selected trials omitted from this view.`);
+  if (!receipt.selectionComplete) rows.push('Selection is incomplete; some worker progress is unknown.');
+  return rows.join('\n') || 'No eligible trial was selected.';
+};
 const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fetch.bind(window) }) => {
   const element = id => document.getElementById(id), url = new URL(window.location.href), token = url.searchParams.get('token') || new URLSearchParams(url.hash.slice(1)).get('token');
   const tiles = new Map(), disposedTrials = new WeakSet();
   const releaseTrial = trial => { if (trial && !disposedTrials.has(trial)) { disposedTrials.add(trial); trial.dispose(); } };
-  let report = null, selectedId = null, replay = null, disposed = false, polling = null, paused = false, replayPending = false, pausePending = false, connected = !!token, loadEpoch = 0, replayEpoch = 0, replayAbort = null, manifestIdentity = null, filePending = null, preferredTrial = null;
-  const replayHelp = 'Exact replay verifies implementation consistency. It is not an independent reliability sample.';
+  let report = null, selectedId = null, replay = null, disposed = false, polling = null, paused = false, replayPending = false, pausePending = false, stepPending = false, connected = !!token, loadEpoch = 0, replayEpoch = 0, replayAbort = null, manifestIdentity = null, filePending = null, preferredTrial = null, displayedStep = null;
+  const replayHelp = 'Choose a current-runtime comparison, or exact replay when this application has the recorded immutable build installed.';
   const status = text => { if (!disposed) element('surveyStatus').textContent = text; };
+  const publishStep = state => {
+    if (disposed) return;
+    const receipt = state?.stepReceipt, prior = displayedStep?.stepReceipt;
+    if (!receipt && prior && connected && !state?.queued) return;
+    if (receipt && prior && receipt.runGeneration === prior.runGeneration &&
+        (receipt.controlId < prior.controlId || receipt.controlId === prior.controlId && prior.status !== 'pending' && receipt.status === 'pending')) return;
+    displayedStep = state;
+    element('surveyStepReceipt').textContent = describeSurveyStep(state);
+    element('surveyStepSelection').textContent = describeSurveyStepSelection(state);
+  };
   const syncPause = () => {
     const button = element('surveyPause');
     button.disabled = disposed || pausePending || (!connected && !replay);
@@ -59,7 +98,9 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     const gate = value => value === true ? 'Passed' : value === false ? 'Failed' : 'Unknown';
     const replayState = trial => {
       const receipt = window.__procgenSurveyReplayReceipt?.originalTrialId === trial.trialId ? window.__procgenSurveyReplayReceipt : report.verification?.find(entry => entry.originalTrialId === trial.trialId);
-      return receipt?.matched === true ? 'Matched · consistency only' : receipt?.matched === false ? 'Mismatch' : 'Not recorded';
+      if (receipt?.executionIdentity?.status === 'bound') return receipt.matched ? 'Exact replay matched · build verified' : 'Exact replay differs · build verified';
+      if (receipt?.executionIdentity?.status === 'unbound') return receipt.compatibilityMatch ? 'Fields match · build unverified' : 'Comparison mismatch · build unverified';
+      return receipt?.matched === true ? 'Archived match · build unverified' : receipt?.matched === false ? 'Mismatch' : 'Not recorded';
     };
     const measures = [
       ['Candidate / policy seed', trial => trial.candidateId + ' / ' + (trial.policySeed ?? 'Unknown')],
@@ -92,7 +133,8 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     element('surveyScrub').disabled = !result?.milestones?.length;
     element('surveyReplay').disabled = disposed || replayPending || !!replay || !result?.episodeComplete;
     element('surveyDivergence').disabled = !result || !baseline(result) || baseline(result)?.trialId === result.trialId;
-    element('surveyStep').disabled = !connected && (!result || Number(element('surveyScrub').value) >= Number(element('surveyScrub').max));
+    element('surveyStep').disabled = stepPending || report?.controlState?.stepPending === true ||
+      !connected && (!result || Number(element('surveyScrub').value) >= Number(element('surveyScrub').max));
     if (replay) return;
     if (!result) {
       renderSurveyPreview(element('surveyFocus')); renderSurveyPreview(element('surveyBaseline'));
@@ -196,16 +238,22 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
       connected = false; if (polling) window.clearInterval(polling); polling = null;
     }
     if (!refresh || changed) cancelReplay();
-    if (changed) { for (const tile of tiles.values()) tile.remove(); tiles.clear(); element('surveyScene').replaceChildren(); element('surveyNavigationStatus').textContent = ''; selectedId = null; }
+    if (changed) { for (const tile of tiles.values()) tile.remove(); tiles.clear(); element('surveyScene').replaceChildren(); element('surveyNavigationStatus').textContent = ''; selectedId = null; displayedStep = null; }
     manifestIdentity = identity;
     if (connected && typeof next.controlState?.paused === 'boolean') paused = next.controlState.paused;
+    publishStep(next.controlState);
     syncPause(); element('surveyCancel').disabled = !connected;
     element('surveyMode').textContent = connected ? 'Connected local survey' : 'Saved report review';
     report = next; render(); status('Recorded comparison loaded. Missing validity or truncated evidence stays explicit; no policy winner is claimed.');
   };
   const control = async command => {
     if (!connected) { if (command === 'step') { cancelReplay(); element('surveyScrub').value = Math.min(Number(element('surveyScrub').max), Number(element('surveyScrub').value) + 1); publishFocus(); } return; }
-    const response = await fetchData('/survey-api/control', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Survey-Token': token }, body: JSON.stringify({ command }) }); if (!response.ok) throw new Error('Survey control was rejected');
+    const response = await fetchData('/survey-api/control', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Survey-Token': token }, body: JSON.stringify({ command }) });
+    if (!response.ok) throw new Error('Survey control was rejected');
+    const receipt = await response.json();
+    if (receipt?.accepted !== command) throw new Error('Survey control acknowledgement did not match the command.');
+    if (command === 'step' && receipt?.accepted === 'step') publishStep(receipt.state);
+    return receipt?.state;
   };
   element('surveyFile').addEventListener('change', async event => {
     const file = event.target.files[0]; if (!file) return;
@@ -230,26 +278,42 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
     catch (error) { if (epoch === loadEpoch) status(error.message); }
     finally { pausePending = false; syncPause(); }
   });
-  element('surveyStep').addEventListener('click', () => control('step').catch(error => status(error.message)));
+  element('surveyStep').addEventListener('click', async () => {
+    if (stepPending) return;
+    stepPending = true; element('surveyStep').disabled = true;
+    try { await control('step'); } catch (error) { status(error.message); }
+    finally { stepPending = false; publishFocus(); }
+  });
   element('surveyCancel').disabled = !connected; element('surveyCancel').addEventListener('click', () => control('cancel').catch(error => status(error.message)));
   element('surveyDivergence').addEventListener('click', () => { const result = selected(), pair = baseline(result); const divergence = result && pair && firstSurveyDivergence(pair, result);
     if (!divergence) { status('No physical/event divergence at retained common checkpoints.'); return; }
     cancelReplay(); element('surveyScrub').value = result.milestones.findIndex(entry => entry.tick === divergence.throughTick); publishFocus(); status('First recorded divergence between ticks ' + divergence.fromTick + ' and ' + divergence.throughTick + '. Exact localization needs detailed replay.'); });
-  element('surveyExport').addEventListener('click', () => { if (!report) return; const href = window.URL.createObjectURL(new Blob([JSON.stringify(report)], { type: 'application/json' })); const link = document.createElement('a'); link.href = href; link.download = report.manifest.experimentId + '.json'; link.click(); window.setTimeout(() => window.URL.revokeObjectURL(href), 1000); });
+  element('surveyExport').addEventListener('click', () => {
+    if (!report) return;
+    try {
+      const name = String(report.manifest?.experimentId || 'survey').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 140);
+      const receipt = requestBrowserDownload({ document, windowRef: window, bytes: JSON.stringify(report),
+        filename: `${name}.json`, mediaType: 'application/json' });
+      status(receipt.state === 'delivery-requested' ? 'Survey report download requested.' : 'Survey report could not be downloaded.');
+    } catch (error) { status(`Survey report download failed: ${error.message}`); }
+  });
   element('surveyReplay').addEventListener('click', async () => {
     const original = selected(); if (disposed || !original?.episodeComplete || replay || replayPending) return;
     const epoch = ++replayEpoch, controller = new AbortController(); replayAbort = controller;
     const current = () => !disposed && epoch === replayEpoch;
     let trial = null;
     replayPending = true; delete window.__procgenSurveyReplayReceipt;
-    element('surveyReplay').disabled = true; element('surveyReplayStatus').textContent = 'Checking exact source and assets.';
+    const exact = element('surveyReplayMode')?.value === 'exact';
+    element('surveyReplay').disabled = true; element('surveyReplayStatus').textContent = exact ? 'Checking saved source and asset integrity.' : 'Checking saved physical asset integrity.';
     try {
-      trial = await createBrowserSurveyTrial({ scenario: original.scenario, candidate: original.candidate, sourceManifest: report.manifest.sourceManifest, signal: controller.signal });
+      const options = { scenario: original.scenario, candidate: original.candidate, sourceManifest: report.manifest.sourceManifest, signal: controller.signal };
+      trial = exact ? await createBrowserSurveyReplaySession(options) : await createBrowserSurveyTrial({ ...options, mode: 'compatibility', artifactPolicy: 'saved-assets-only' });
       if (!current()) return;
       replay = trial; if (!connected) paused = false; syncPause();
-      element('surveyReplayStatus').textContent = 'Verifying the selected trial in a muted local replay.';
+      element('surveyReplayStatus').textContent = exact ? 'Replaying the matching build in an isolated, muted worker.' : 'Comparing with the current runtime in a muted local replay. Execution identity remains unverified.';
       while (current() && !trial.done && trial.world.tickIndex < original.scenario.horizonTicks) {
-        if (!paused) trial.step(Math.min(16, original.scenario.horizonTicks - trial.world.tickIndex));
+        if (!paused) await trial.step(Math.min(16, original.scenario.horizonTicks - trial.world.tickIndex));
+        if (!current()) break;
         const tick = trial.world.tickIndex, pair = baseline(original), pairedTelemetry = milestoneAt(pair, tick);
         const camera = renderSurveyPreview(element('surveyFocus'), { ...trial.telemetry(), preview: trial.preview() }, { height: original.scenario.laneHeight });
         renderSurveyPreview(element('surveyBaseline'), pairedTelemetry, element('surveyCamera').value === 'shared' ? camera : { height: pair?.scenario?.laneHeight || 144 });
@@ -257,12 +321,27 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
         element('surveyBaselineStatus').textContent = pairedTelemetry ? 'Recorded baseline at or before replay tick ' + tick + '.' : 'No baseline checkpoint is retained at or before replay tick ' + tick + '.';
         await new Promise(resolve => window.setTimeout(resolve, paused ? 30 : 0));
       }
-      if (current()) { const receipt = compareSurveyReplay(original, trial.result()); element('surveyReplayStatus').textContent = receipt.matched ? 'Exact physics and event hashes match. This rerun is not an independent sample.' : 'Replay mismatch: ' + receipt.differences.join(', '); window.__procgenSurveyReplayReceipt = receipt; }
+      if (current()) {
+        const result = await trial.result(); if (!current()) return;
+        const receipt = exact ? compareSurveyBoundReplay(original, result, trial.sourceVerification, report.manifest.sourceManifest?.executionIdentity) : compareSurveyCompatibilityReplay(original, result, trial.sourceVerification);
+        element('surveyReplayStatus').textContent = exact ? receipt.matched ? 'Exact replay matched under the recorded build in a fresh worker. This checks consistency, not independent reliability.' :
+          'Exact replay differs: ' + [...receipt.reasons, ...receipt.differences].join(', ') : receipt.compatibilityMatch ?
+          'Recorded fields match under the current runtime. The active build is unverified; this is not an exact replay receipt or independent sample.' :
+          'Current-runtime comparison differs: ' + [...receipt.reasons, ...receipt.differences].join(', ');
+        window.__procgenSurveyReplayReceipt = receipt;
+      }
     } catch (error) { if (current()) element('surveyReplayStatus').textContent = 'Could not verify: ' + error.message; }
     finally {
       releaseTrial(trial);
       if (current()) { replay = null; replayPending = false; replayAbort = null; if (!connected) paused = false; syncPause(); publishFocus(); }
     }
+  });
+  element('surveyReplayMode')?.addEventListener('change', () => {
+    cancelReplay();
+    const exact = element('surveyReplayMode').value === 'exact';
+    element('surveyReplay').textContent = exact ? 'Replay matching build' : 'Compare with current runtime';
+    if (exact && !compareActiveExecutionIdentity(report?.manifest?.sourceManifest?.executionIdentity).matched)
+      element('surveyReplayStatus').textContent = 'Exact replay is unavailable for this report and application build. Choose current-runtime comparison to keep its execution guarantee explicit.';
   });
   let pollPending = false;
   const poll = async () => {
@@ -285,4 +364,4 @@ const createSurveyDashboard = ({ document, window, fetch: fetchData = window.fet
   return { load, select, render, getReport: () => report, dispose() { disposed = true; loadEpoch++; if (polling) window.clearInterval(polling); cancelReplay(); } };
 };
 if (typeof document !== 'undefined') { const dashboard = createSurveyDashboard({ document, window }); window.__procgenSurveyDashboard = dashboard; window.addEventListener('pagehide', () => dashboard.dispose(), { once: true }); }
-export { createSurveyDashboard, renderSurveyPreview, surveyReviewOutcome };
+export { createSurveyDashboard, renderSurveyPreview, surveyReviewOutcome, describeSurveyStep, describeSurveyStepSelection };

@@ -1,4 +1,6 @@
 import './bootstrap.js';
+
+document.addEventListener('contextmenu', event => event.preventDefault());
 import { GameView } from '../game/GameView.js';
 import { EditorUiController } from './editorUiController.js';
 import { registerServiceWorker } from './registerServiceWorker.js';

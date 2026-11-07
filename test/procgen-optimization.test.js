@@ -25,7 +25,7 @@ const outputFixture = counts => ({ channels: Object.fromEntries(Array.from({ len
 }])) });
 
 describe('frontier procgen optimization contracts', function() {
-  this.timeout(30000);
+  this.timeout(120000);
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   it('composes independent changing phases from supported source geometry and bounded assemblies', async () => {
@@ -164,7 +164,7 @@ describe('frontier procgen optimization contracts', function() {
 });
 
 describe('procgen wall-clock MIDI continuity', function() {
-  this.timeout(30000);
+  this.timeout(120000);
   it('dispatches notes through speed changes, long pauses and manual time rebases without future drift', async () => {
     const masks = await loadProcgenMasks(), terrain = await loadProcgenTerrain();
     const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout'] });

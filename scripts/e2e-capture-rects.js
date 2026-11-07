@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { DESKTOP_VIEWPORTS } from '../e2e/helpers/desktopViewports.js';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -13,20 +14,7 @@ import { installExternalAssetStubs } from '../e2e/helpers/externalAssets.js';
 import { installWebMidiStub } from '../e2e/helpers/webmidiStub.js';
 import { resolvePlaywrightBaseUrl } from '../playwright.config.js';
 
-const VIEWPORT_PRESETS = Object.freeze({
-  desktop: {
-    viewport: { width: 1280, height: 900 },
-    deviceScaleFactor: 1
-  },
-  tablet: {
-    viewport: { width: 820, height: 1180 },
-    deviceScaleFactor: 1
-  },
-  mobile: {
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 1
-  }
-});
+const VIEWPORT_PRESETS = Object.freeze(Object.fromEntries(['desktop', 'qhd', 'uhd'].map((name, index) => [name, { viewport: DESKTOP_VIEWPORTS[index], deviceScaleFactor: 1 }])));
 
 const npmConfigArgsFromEnv = (env = process.env) => {
   const args = [];
@@ -99,7 +87,7 @@ const usage = () => [
   'Options:',
   '  --base-url=https://localhost:8080',
   '  --out-dir=temp/e2e-captures/my-run',
-  '  --viewport=desktop|tablet|mobile',
+  '  --viewport=desktop|qhd|uhd',
   '  --target=name[,name...]',
   '  --json'
 ].join('\n');

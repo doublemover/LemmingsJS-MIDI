@@ -104,6 +104,116 @@ describe('owned MIDI voice gates', function() {
     });
   });
 
+  it('keeps a held MPE note sounding until a future note actually starts', function() {
+    withFakeClockAndPerformance(clock => {
+      const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] }, limits: { maxActiveNotes: 1 } });
+      scheduler.setOutput(makeOutput([1, 2], calls)); scheduler.setTickMs(10); calls.length = 0;
+      scheduler.sendNote({ note: 60, durationTicks: 100, pitchBend: 0.3 });
+      scheduler.sendNote({ note: 64, timeMs: 200, durationTicks: 20, pitchBend: 0.7 });
+      expect(calls.filter(call => call.type === 'noteOff')).to.have.length(0);
+      expect(scheduler._activeByChannel.get(2).note).to.equal(60);
+      clock.tick(199);
+      expect(calls.filter(call => call.type === 'noteOff')).to.have.length(0);
+      clock.tick(1);
+      expect(calls.filter(call => ['noteOn', 'noteOff'].includes(call.type)).map(call => [call.type, call.note])).to.deep.equal([
+        ['noteOn', 60], ['noteOff', 60], ['noteOn', 64]
+      ]);
+      expect(scheduler._activeByChannel.get(2).note).to.equal(64);
+      scheduler.dispose();
+    });
+  });
+
+  it('cancels a future MPE note without touching the held channel', function() {
+    withFakeClockAndPerformance(clock => {
+      const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
+      scheduler.setOutput(makeOutput([1, 2], calls)); scheduler.setTickMs(10); calls.length = 0;
+      scheduler.sendNote({ note: 60, durationTicks: 100 });
+      scheduler.sendNote({ note: 64, timeMs: 200, durationTicks: 20, phraseVoiceKey: 'later' });
+      expect(scheduler.cancelGamePhrase('later')).to.equal(true);
+      clock.tick(300);
+      expect(calls.filter(call => call.type === 'noteOn').map(call => call.note)).to.deep.equal([60]);
+      expect(calls.filter(call => call.type === 'noteOff')).to.have.length(0);
+      expect(scheduler._activeByChannel.get(2).note).to.equal(60);
+      scheduler.dispose();
+    });
+  });
+
+  it('rejects an empty or reserved MPE member zone without using the master', function() {
+    withFakeClockAndPerformance(() => {
+      for (const memberChannels of [[], [10]]) {
+        const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels }, sfx: { 1: { percussion: true } } });
+        scheduler.setOutput(makeOutput([1, 10], calls));
+        expect(calls).to.deep.equal([]);
+        expect(scheduler.sendNote({ note: 60, pitchBend: 0.5, durationTicks: 0 })).to.equal(false);
+        expect(calls).to.deep.equal([]);
+        expect(scheduler._activeNotes.size).to.equal(0);
+        scheduler.dispose();
+      }
+    });
+  });
+
+  it('does not start an MPE note when receiver setup rejects its range', function() {
+    withFakeClockAndPerformance(() => {
+      const calls = [], output = makeOutput([1, 2], calls), scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
+      output.channels[2].sendPitchBendRange = () => false;
+      scheduler.setOutput(output); calls.length = 0;
+      expect(scheduler.sendNote({ note: 60, pitchBend: 0.5, durationTicks: 0 })).to.equal(false);
+      expect(calls).to.deep.equal([]);
+      scheduler.dispose();
+    });
+  });
+
+  it('retires an old MPE zone before rejecting a noncontiguous replacement and never resurrects its channel', function() {
+    withFakeClockAndPerformance(clock => {
+      const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
+      scheduler.setOutput(makeOutput([1, 2, 3], calls)); scheduler.setTickMs(10); calls.length = 0;
+      scheduler.sendNote({ note: 60, durationTicks: 100 });
+      scheduler.sendNote({ note: 62, timeMs: 200, durationTicks: 20 });
+      scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [3], pitchBendRange: { semitones: 12, cents: 0 } } });
+      expect(calls.find(call => call.type === 'noteOff' && call.note === 60)?.id).to.equal(2);
+      calls.length = 0;
+      expect(scheduler.sendNote({ note: 64, durationTicks: 100 })).to.equal(false);
+      expect(scheduler.sendNote({ note: 67, durationTicks: 100 })).to.equal(false);
+      clock.tick(300);
+      expect(calls.filter(call => call.type === 'noteOn')).to.deep.equal([]);
+      expect(scheduler.getOutputRouteState().mpeFailure).to.equal('noncontiguous-mpe-zone');
+      expect(scheduler._activeNotes.size).to.equal(0);
+      expect(calls.some(call => call.type === 'noteOn' && call.note === 62)).to.equal(false);
+      scheduler.dispose();
+    });
+  });
+
+  it('retries refused frontier setup without poisoning dedup or resurrecting the released victim', function() {
+    withFakeClockAndPerformance(() => {
+      const calls = [], output = makeOutput([1], calls), scheduler = new MidiScheduler({ mpe: { enabled: false } });
+      scheduler.setOutput(output); scheduler.sendNote({ note: 60, durationTicks: 0 });
+      let attempts = 0;
+      output.channels[1].sendControlChange = () => { attempts++; return false; };
+      expect(scheduler.sendNote({ note: 64, timbre: 99, durationTicks: 0 })).to.equal(false);
+      expect(attempts).to.equal(1);
+      expect(calls.filter(call => call.type === 'noteOff').map(call => call.note)).to.deep.equal([60]);
+      expect(scheduler._activeNotes.size).to.equal(0);
+      output.channels[1].sendControlChange = (cc, value) => { attempts++; calls.push({ type: 'cc', cc, value }); return true; };
+      expect(scheduler.sendNote({ note: 65, timbre: 99, durationTicks: 0 })).to.equal(true);
+      expect(attempts).to.equal(2);
+      expect(calls.filter(call => call.type === 'cc').map(call => call.value)).to.deep.equal([99]);
+      expect(scheduler.sendNote({ note: 67, timbre: 99, durationTicks: 0 })).to.equal(true);
+      expect(attempts).to.equal(2);
+      scheduler.dispose();
+    });
+  });
+
+  it('rejects required setup when a channel lacks its method', function() {
+    withFakeClockAndPerformance(() => {
+      const calls = [], output = makeOutput([1], calls), scheduler = new MidiScheduler({ mpe: { enabled: false } });
+      scheduler.setOutput(output);
+      expect(scheduler.sendNote({ note: 60, program: 12, durationTicks: 0 })).to.equal(false);
+      expect(calls.filter(call => call.type === 'noteOn')).to.have.length(0);
+      expect(scheduler._activeNotes.size).to.equal(0);
+      scheduler.dispose();
+    });
+  });
+
   it('retriggering the same MIDI 1 pitch transfers gate ownership', function() {
     withFakeClockAndPerformance(clock => {
       const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: false } });

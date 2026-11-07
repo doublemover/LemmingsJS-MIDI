@@ -67,12 +67,12 @@ class ProcgenAssetManager {
     this._pickCache = new WeakMap();
   }
 
-  async load() {
+  async load(options = {}) {
     const assets = await this.cache.loadStyleAssets(
       this.styleName,
       this.config,
       this.fileProvider,
-      { groundSet: this.groundSetOverride }
+      { ...options, groundSet: this.groundSetOverride }
     );
     this.assets = assets;
     this.styleName = assets?.styleName || this.styleName;
@@ -80,6 +80,15 @@ class ProcgenAssetManager {
     this._buildTerrainCatalog(assets);
     this._buildGadgetCatalog(assets);
     return this;
+  }
+
+  dispose() {
+    const retirement = this.cache.clear();
+    this.assets = null;
+    this.terrainPieces = []; this.groundPieces = []; this.decorPieces = [];
+    this.gadgetDecor = []; this.gadgetHazards = [];
+    this._pickCache = new WeakMap();
+    return retirement;
   }
 
   _buildTerrainCatalog(assets) {

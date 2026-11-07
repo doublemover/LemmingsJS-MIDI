@@ -1,0 +1,66 @@
+import { validateFoundBellSourceReceipt } from '../../../midi/content/FoundBellSourceReceipt.js';
+import { validateSceneSympatheticBody, validateSceneSympatheticMapping, sceneSympatheticBodyModel, SCENE_SYMPATHETIC_REQUIREMENT } from './SceneSympatheticBody.js';
+import { validateScenePreparedSurface, validateScenePreparedSurfaceMapping, SCENE_PREPARED_SURFACE_REQUIREMENT } from './ScenePreparedSurface.js';
+import { prepareSceneEffectRack, sceneEffectSourceBindings, SCENE_EFFECT_RACK_REQUIREMENTS } from './SceneEffectRack.js';
+import { validateSceneMorphMechanism } from './SceneMorphMechanism.js';
+import { validateSceneCavityBody, SCENE_CAVITY_REQUIREMENT } from './SceneCavityBody.js';
+import { validateCavitySoundRegion } from './physical/CavitySoundMap.js';
+import { validateActorBirthAbilities } from '../ActorBirthAbilities.js';
+import { validateProjectJunctions } from './PhysicalJunctionProject.js';
+import { validateSceneTerrainLayout } from '../SceneTerrainLayout.js';
+import { normalizeLaneHeight } from '../ProcgenLaneGeometry.js';
+import { validateReleaseGesture } from '../ReleaseGesture.js';
+import { cloneData, freezeData, canonicalDataText, hashData } from '../../../core/CanonicalData.js';
+import { normalizeWorkerLimits } from '../ProcgenWorkerLimits.js';
+import { normalizePopulationPolicy } from '../ProcgenPopulationPolicy.js';
+import { validatePerformanceScene, performanceSceneHash } from './PerformanceScene.js';
+
+const plain = value => value && Object.getPrototypeOf(value) === Object.prototype;
+const keys = (value, allowed) => plain(value) && Object.keys(value).every(key => allowed.includes(key));
+const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const integer = (value, low, high) => Number.isSafeInteger(value) && value >= low && value <= high;
+const fail = () => { throw Object.assign(new Error('The pinned physical score recipe or scene origin is invalid.'), { code: 'invalid-scene-score-recipe' }); };
+const same = (a, b) => canonicalDataText(a).text === canonicalDataText(b).text;
+export function validatePerformanceSceneRecipe(raw) {
+  const value = cloneData(raw, { maxBytes: 131072, maxNodes: 8192 }), s = value?.settings;
+  if (!keys(value, ['schema', 'id', 'revision', 'sourceHash', 'settings', 'terrainFamilies', 'seedPolicy', 'initialReleaseGesture', 'initialTerrainLayout', 'assistPolicy', 'initialJunctions', 'actorBirthAbilities', 'initialMorphMechanism', 'initialCavityBody', 'initialEffectRack', 'initialPreparedSurface', 'initialSympatheticBody', 'initialFoundBellSource']) || value.schema !== 'lemmings-physical-score-recipe/v1' || typeof value.id !== 'string' || !/^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value.id) || !integer(value.revision, 1, 2147483647) || !hash(value.sourceHash) || value.seedPolicy !== 'scene-seed' ||
+      !keys(s, ['laneCount', 'laneHeight', 'pack', 'speed', 'hazardSpacing', 'decoration', 'workerLimits', 'populationPolicy']) || !integer(s.laneCount, 1, 32) || !integer(s.laneHeight, 64, 512) || !integer(s.pack, 1, 3) || !Number.isFinite(s.speed) || s.speed < 0.1 || s.speed > 12 || !Number.isFinite(s.hazardSpacing) || s.hazardSpacing < 80 || s.hazardSpacing > 1024 || s.decoration !== 'none' ||
+      !plain(s.workerLimits) || !same(s.workerLimits, normalizeWorkerLimits(s.workerLimits)) || !plain(s.populationPolicy) || !same(s.populationPolicy, normalizePopulationPolicy(s.populationPolicy)) || !Array.isArray(value.terrainFamilies) || value.terrainFamilies.length !== s.laneCount || value.terrainFamilies.some(family => !['rock', 'holiday-snow', 'brick', 'snow', 'bubble', 'dirt', 'fire', 'squasher', 'pillar', 'crystal'].includes(family))) fail();
+  if (value.initialMorphMechanism !== undefined && !same(value.initialMorphMechanism, validateSceneMorphMechanism(value.initialMorphMechanism))) fail();
+  if (value.initialCavityBody !== undefined && (value.initialMorphMechanism !== undefined || !same(value.initialCavityBody, validateSceneCavityBody(value.initialCavityBody)))) fail();
+  if (value.initialEffectRack !== undefined && (value.initialMorphMechanism !== undefined || value.initialCavityBody !== undefined || !same(value.initialEffectRack, prepareSceneEffectRack(value.initialEffectRack, 96000).rack))) fail();
+  if (value.initialPreparedSurface !== undefined && (value.initialMorphMechanism !== undefined || value.initialCavityBody !== undefined || value.initialEffectRack !== undefined || !same(value.initialPreparedSurface, validateScenePreparedSurface(value.initialPreparedSurface)))) fail();
+  if (value.initialSympatheticBody !== undefined && (value.initialMorphMechanism !== undefined || value.initialCavityBody !== undefined || value.initialEffectRack !== undefined || value.initialPreparedSurface !== undefined || !same(value.initialSympatheticBody, validateSceneSympatheticBody(value.initialSympatheticBody)))) fail();
+  if (value.initialFoundBellSource !== undefined && !same(value.initialFoundBellSource, validateFoundBellSourceReceipt(value.initialFoundBellSource))) fail();
+  if (value.actorBirthAbilities !== undefined && !same(value.actorBirthAbilities, validateActorBirthAbilities(value.actorBirthAbilities, s.laneCount))) fail();
+  if (value.assistPolicy !== undefined && !['manual-only', 'standard'].includes(value.assistPolicy)) fail();
+  if (value.initialJunctions !== undefined && !same(value.initialJunctions, validateProjectJunctions(value.initialJunctions))) fail();
+  if (value.initialTerrainLayout !== undefined) { const layout = validateSceneTerrainLayout(value.initialTerrainLayout); if (layout.lanes.length !== s.laneCount || layout.laneHeight !== s.laneHeight || normalizeLaneHeight(layout.laneHeight) !== layout.laneHeight || !same(layout, value.initialTerrainLayout)) fail(); }
+  if (value.initialReleaseGesture !== undefined && !same(value.initialReleaseGesture, validateReleaseGesture(value.initialReleaseGesture, s.laneCount))) fail();
+  return freezeData(value);
+}
+export function validatePerformanceSceneOrigin(raw) {
+  const value = cloneData(raw, { maxBytes: 1310720, maxNodes: 73728 });
+  if (!keys(value, ['schema', 'manifest', 'sceneHash', 'recipe', 'variants']) || value.schema !== 'lemmings-performance-scene-origin/v1' || !hash(value.sceneHash) || !Array.isArray(value.variants) || value.variants.length > 256 || value.variants.some(id => typeof id !== 'string' || id.length > 128) || new Set(value.variants).size !== value.variants.length) fail();
+  const manifest = validatePerformanceScene(value.manifest), recipe = validatePerformanceSceneRecipe(value.recipe);
+  if (manifest.worldRecipeRef.id !== recipe.id || manifest.worldRecipeRef.revision !== recipe.revision || manifest.sourceVersion.hash !== recipe.sourceHash || manifest.cost.lanes !== recipe.settings.laneCount || value.variants.some(id => !manifest.requirements.substitutableWithNamedApproximation.some(entry => entry.variantId === id))) fail();
+  if (recipe.initialFoundBellSource && (recipe.settings.laneCount !== 3 || !manifest.requirements.required.some(entry => entry.kind === 'quality-profile' && entry.hash === recipe.initialFoundBellSource.receiptHash) || manifest.causalMappings.instruments.length !== 3 || manifest.causalMappings.instruments.some(row => row.route !== 'local' || row.sourceKind !== 'ContactSpanBegan'))) fail();
+  const rackRequirements = manifest.requirements.required.filter(entry => entry.kind === 'renderer' && SCENE_EFFECT_RACK_REQUIREMENTS.includes(entry.id));
+  if (recipe.initialEffectRack ? rackRequirements.length !== 1 || rackRequirements[0].id !== prepareSceneEffectRack(recipe.initialEffectRack, 96000).requirementId || manifest.cost.sharedBodies !== 0 : rackRequirements.length) fail();
+  if (recipe.initialEffectRack) sceneEffectSourceBindings(prepareSceneEffectRack(recipe.initialEffectRack), manifest.patchRefs.map(patch => patch.laneId));
+  if (!!recipe.initialCavityBody !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_CAVITY_REQUIREMENT)) fail();
+  if (!!recipe.initialPreparedSurface !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_PREPARED_SURFACE_REQUIREMENT)) fail();
+  if (recipe.initialPreparedSurface) { validateScenePreparedSurfaceMapping(recipe.initialPreparedSurface, manifest.causalMappings); if (manifest.cost.sharedBodies !== 1) fail(); }
+  if (!!recipe.initialSympatheticBody !== manifest.requirements.required.some(entry => entry.kind === 'renderer' && entry.id === SCENE_SYMPATHETIC_REQUIREMENT)) fail();
+  if (recipe.initialSympatheticBody) { validateSceneSympatheticMapping(recipe.initialSympatheticBody, manifest.causalMappings, manifest.patchRefs.map(patch => patch.laneId)); if (manifest.cost.sharedBodies !== sceneSympatheticBodyModel(recipe.initialSympatheticBody).bodyCount) fail(); }
+  if (recipe.initialCavityBody) {
+    const map = recipe.initialCavityBody.map, region = manifest.causalMappings.topologyRegions?.find(region => region.id === map.topologyRegionRef.id); if (!region) fail(); validateCavitySoundRegion(map, region);
+    if (manifest.cost.sharedBodies !== (map.bodyRecipe === 'throat-duet' ? 4 : 2) || !manifest.causalMappings.instruments.length || manifest.causalMappings.instruments.some(instrument => instrument.route !== 'local' || instrument.topologyRegionId !== region.id || !['TerrainWorkCommitted', 'ContactSpanBegan', 'ContactResolved'].includes(instrument.sourceKind))) fail();
+  }
+  return freezeData({ ...value, manifest, recipe });
+}
+export async function verifyPerformanceSceneOrigin(raw, { sourceHash = null } = {}) {
+  const value = validatePerformanceSceneOrigin(raw);
+  if (await performanceSceneHash(value.manifest) !== value.sceneHash || await hashData(value.recipe, { maxBytes: 131072, maxNodes: 8192 }) !== value.manifest.worldRecipeRef.hash || sourceHash !== null && value.recipe.sourceHash !== sourceHash) fail();
+  return value;
+}

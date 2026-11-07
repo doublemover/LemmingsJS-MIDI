@@ -44,6 +44,15 @@ class ConfigReader extends BaseLogger {
       let configData = config[c];
       newConfig.name = configData.name;
       newConfig.path = configData.path;
+      if (configData.resourceFallbackPaths != null) {
+        if (!Array.isArray(configData.resourceFallbackPaths) ||
+            configData.resourceFallbackPaths.some(root => typeof root !== 'string' || !root.trim())) throw new Error('resourceFallbackPaths must be an array of pack roots');
+        newConfig.resourceFallbackPaths = [...configData.resourceFallbackPaths];
+      }
+      if (configData.resourcePins != null) {
+        if (typeof configData.resourcePins !== 'object' || Array.isArray(configData.resourcePins)) throw new Error('resourcePins must be a filename map');
+        newConfig.resourcePins = configData.resourcePins;
+      }
       if (configData.spriteSkin != null) {
         if (typeof configData.spriteSkin !== 'string') {
           throw new Error('spriteSkin must be a manifest path');
@@ -62,6 +71,10 @@ class ConfigReader extends BaseLogger {
         newConfig.level.useOddTable = !!oddFlag;
       } else if (oddFlagLegacy != null) {
         newConfig.level.useOddTable = !!oddFlagLegacy;
+      }
+      if (configData['level.oddTableRequired'] != null) {
+        if (typeof configData['level.oddTableRequired'] !== 'boolean') throw new Error('level.oddTableRequired must be a Boolean');
+        newConfig.level.oddTableRequired = configData['level.oddTableRequired'];
       }
       if (configData.mechanics != null) {
         newConfig.mechanics = configData.mechanics;

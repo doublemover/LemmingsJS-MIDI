@@ -174,6 +174,13 @@ describe('HistoryStore cold blocks', function() {
     expect(history.deltas[coldTick]).to.equal(1);
     const delta = history.getDelta(coldTick);
     expect(delta).to.be.ok;
+    const decoded = history.getHistoryStats();
+    expect(decoded.coldBlockDecodes).to.be.greaterThan(stats.coldBlockDecodes);
+    expect(decoded.coldDecodedBytes).to.be.greaterThan(stats.coldDecodedBytes);
+    history.getDelta(coldTick);
+    const cached = history.getHistoryStats();
+    expect(cached.coldBlockDecodes).to.equal(decoded.coldBlockDecodes);
+    expect(cached.coldBlockCacheHits).to.be.greaterThan(decoded.coldBlockCacheHits);
     expect(delta.tick).to.equal(coldTick);
   });
 
@@ -199,6 +206,7 @@ describe('HistoryStore cold blocks', function() {
     history._maybeCompactDeltaBlocks();
     history._maybeCompactDeltaBlocks();
     expect(history._coldBlockCount).to.equal(5);
+    expect(history.getHistoryStats()).to.include({ coldBlocksCreated: 5, coldBlocksThawed: 0, coldBlocksRetired: 0 });
     expect(history.deltas[4]).to.equal(1);
     expect(history.deltas[5]).to.not.equal(1);
   });
@@ -384,5 +392,23 @@ describe('HistoryStore cold blocks', function() {
 
     const after = history.computeReplayHash();
     expect(after).to.equal(baseline);
+  });
+});
+
+
+describe('terminal compaction retirement accounting', () => {
+  it('counts a previously compacted block exactly once after a replay thaw and terminal prune', () => {
+    const { history, timer, manager } = createHistoryFixture();
+    history.configureRetention({ deltaBlockSizeTicks: 4, coldBlockAgeTicks: 1, coldCompactionIntervalTicks: 1, coldCompactionMaxBlocksPerSweep: 64 });
+    for (let tick = 0; tick < 20; tick++) recordTick(history, timer, tick, () => { manager.lemmings[0].x = tick; });
+    const block = [...history._deltaBlocks.values()].find(entry => entry.cold); expect(block).to.exist;
+    history.getDelta(block.startTick); const before = history._coldBlocksRetired;
+    history._thawDeltaBlock(block.startTick); expect(history._coldBlocksRetired).to.equal(before);
+    const last = history.deltas[block.endTick];
+    for (let tick = block.startTick; tick < block.endTick; tick++) history.deltas[tick] = undefined;
+    history._cleanupDeltaBlock(block.startTick); expect(history._coldBlocksRetired).to.equal(before); expect(last).to.exist;
+    history.deltas[block.endTick] = undefined; history._cleanupDeltaBlock(block.startTick);
+    expect(history._coldBlocksRetired).to.equal(before + 1); history._cleanupDeltaBlock(block.startTick); expect(history._coldBlocksRetired).to.equal(before + 1);
+    history.detach();
   });
 });

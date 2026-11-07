@@ -1,0 +1,329 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.ensemble-identities",
+    "version": "0.1.0",
+    "name": "Ensemble identities",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original actor identity pluck variant derived from the project’s Plucked Garden structure. Stable birth-keyed pick position, excitation color, body mix and decay vary within one fixed-pitch family; per-strike sparkle remains separate. Relatedness listening qualification remains pending.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "ensemble.pluck-base",
+      "revision": 1,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "ensemble",
+        "pluck",
+        "actor-identity"
+      ],
+      "engine": {
+        "id": "worklet-pluck",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original first-party plucked-string working recipes. Pitch, decay, spectral and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.04,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.5,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "voicePolicy": {
+        "maxVoices": 16,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      },
+      "dependencies": [],
+      "variation": {
+        "algorithmVersion": "fnv1a32-utf16-le-latents-v1",
+        "seed": 1741,
+        "identityScope": "execution-birth",
+        "amount01": 1,
+        "targets": [
+          {
+            "id": "pick-identity",
+            "parameter": "pluckPosition01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.18,
+            "factors": [
+              {
+                "id": "touch",
+                "weight": 1
+              }
+            ]
+          },
+          {
+            "id": "ring-identity",
+            "parameter": "stringT60Seconds",
+            "unit": "ratio",
+            "composition": "scale",
+            "amount": 0.35,
+            "factors": [
+              {
+                "id": "body-size",
+                "weight": 0.75
+              },
+              {
+                "id": "touch",
+                "weight": 0.25
+              }
+            ]
+          },
+          {
+            "id": "color-identity",
+            "parameter": "excitationBrightness01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.3,
+            "factors": [
+              {
+                "id": "touch",
+                "weight": 0.8
+              },
+              {
+                "id": "body-size",
+                "weight": 0.2
+              }
+            ]
+          },
+          {
+            "id": "body-identity",
+            "parameter": "bodyMix01",
+            "unit": "ratio",
+            "composition": "add",
+            "amount": 0.1,
+            "factors": [
+              {
+                "id": "body-size",
+                "weight": 1
+              }
+            ]
+          }
+        ],
+        "eventTargets": [
+          {
+            "id": "strike-spark",
+            "parameter": "excitationBrightness01",
+            "unit": "normalized",
+            "composition": "add",
+            "amount": 0.02,
+            "factors": [
+              {
+                "id": "stroke",
+                "weight": 1
+              }
+            ]
+          }
+        ]
+      },
+      "causalBindings": []
+    },
+    {
+      "id": "ensemble.timber-pickers",
+      "revision": 1,
+      "extends": "ensemble.pluck-base",
+      "name": "Timber pickers · Identity study",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "pluckPosition01": {
+              "value": 0.25,
+              "unit": "normalized"
+            },
+            "excitationBrightness01": {
+              "value": 0.5,
+              "unit": "normalized"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "stringT60Seconds": {
+              "value": 0.45,
+              "unit": "s"
+            },
+            "bodyMix01": {
+              "value": 0.12,
+              "unit": "ratio"
+            },
+            "bodyT60Seconds": {
+              "value": 0.3,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.4,
+          "smoothingMs": 0,
+          "perceptualDirection": "Blend two bounded sympathetic body modes excited by the same pluck; no extra notes are created.",
+          "targets": [
+            {
+              "parameter": "bodyMix01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 0.3,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "pick",
+          "name": "PICK",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Move the virtual excitation comb position for the next string onset.",
+          "targets": [
+            {
+              "parameter": "pluckPosition01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 0.45,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "damp",
+          "name": "DAMP",
+          "mode": "onset-only",
+          "default01": 0.6654055282408824,
+          "smoothingMs": 0,
+          "perceptualDirection": "Shorten the target fundamental decay for a new pluck; held-voice damping is a separate control.",
+          "targets": [
+            {
+              "parameter": "stringT60Seconds",
+              "minimum": {
+                "value": 4,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.15,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "spark",
+          "name": "SPARK",
+          "mode": "onset-only",
+          "default01": 0.4736842105263158,
+          "smoothingMs": 0,
+          "perceptualDirection": "Brighten the initial seeded excitation under bounded onset-energy normalization.",
+          "targets": [
+            {
+              "parameter": "excitationBrightness01",
+              "minimum": {
+                "value": 0.05,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "ensemble",
+        "pluck",
+        "identity-variation",
+        "fixed-pitch"
+      ]
+    }
+  ]
+}

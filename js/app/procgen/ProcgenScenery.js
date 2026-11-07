@@ -58,16 +58,17 @@ class ProcgenScenery {
     if (changed) this.revision++;
     return changed;
   }
-  drawLane({ lane, left = 0, right = Infinity, top = 0, bottom = Infinity, drawPixel }) {
+  drawLane({ lane, left = 0, right = Infinity, top = 0, bottom = Infinity, drawPixel, reducedMotion = false }) {
     const offset = lane * this.laneHeight;
     for (const entry of this.entries[lane] || []) {
-      if (!entry.progress) continue;
+      const progress = reducedMotion ? 8 : entry.progress;
+      if (!progress) continue;
       const art = this._piece(lane, entry.cell); if (!art) continue;
       const { piece, x, y } = art;
       for (let py = Math.max(0, Math.ceil(top - offset - y)); py < piece.height && offset + y + py < bottom; py++) {
         for (let px = Math.max(0, Math.ceil(left - x)); px < piece.width && x + px < right; px++) {
           const worldX = x + px, worldY = offset + y + py;
-          if (DITHER[(worldY & 3) * 4 + (worldX & 3)] >= entry.progress) continue;
+          if (DITHER[(worldY & 3) * 4 + (worldX & 3)] >= progress) continue;
           const color = piece.frame[py * piece.width + px] >>> 0; if (!(color >>> 24)) continue;
           const r = (color & 255) >>> 2, g = (color >>> 8 & 255) >>> 2, b = (color >>> 16 & 255) >>> 2;
           drawPixel(worldX, worldY, (0xff000000 | b << 16 | g << 8 | r) >>> 0);

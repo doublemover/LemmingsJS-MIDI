@@ -1,6 +1,9 @@
 import { getMidiEnsembleRole } from '../project/MidiEnsemble.js';
 const midiEventRouterAutomationMethods = {
-  getAutomationSpanState(id, lane = 0) { return this.automationSpans.snapshot(id, lane); },
+  getAutomationSpanState(id, lane = 0) {
+    const provider = this._workstationAdapterOwner.automationProvider();
+    return provider ? provider(id, lane) : this.automationSpans.snapshot(id, lane);
+  },
   _releaseAutomationVoices() {
     if (!this.scheduler?._activeNotes?.[Symbol.iterator]) return;
     for (const [token, voice] of this.scheduler._activeNotes) if (voice.automationSpanned) this.scheduler._stopActiveNoteToken(token);

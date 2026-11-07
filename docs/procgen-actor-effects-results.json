@@ -1,0 +1,247 @@
+{
+  "metadata": {
+    "name": "Rook",
+    "date": "2026-10-23T06:49:48.022Z",
+    "node": "v26.12.1",
+    "platform": "win32",
+    "cpu": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+    "commit": "f125c990a65b1618c432fda3a8968248d41110e8",
+    "sourceHashes": {
+      "scripts/bench-procgen-actor-effects.mjs": "bdc679405ae9cf61dbe9892a59b3dd90bb00f3ac56c7ca18a93dc5ebc1ee9c8d",
+      "js/app/procgen/ProcgenLaneRenderer.js": "830cc6bed67cfc024211fe47bbe9fdc149f16d42e162ba767b7c1a1462e189d8",
+      "js/app/procgen/ProcgenActorEffectDisplay.js": "7a1d8183477bab27c486b997ae44c7335dd3c13205cbaac52cea3a9d9b76f120",
+      "js/app/procgen/ProcgenActorEffectPass.js": "16441a79bd4480932b27ceef9c3d4679276a03126c0e6a1542474ca41df3827e",
+      "js/lemmings/Lemming.js": "8c84dd98867ff7bb7e401cdb2fc088ae55204a42346a2c126725a0f9c78fd052"
+    },
+    "sourceArtSha256": "8eb0aec9f370031e347b0299fb75151f1005ddc9f458a11dab52fec424205489",
+    "scope": "Production renderer, real source Lemming art and analytic physical terrain, supplied synthetic effect samples, mocked canvas submissions. Not DSP, browser GPU, acoustics, heap-retention or a universal release gate.",
+    "fixture": "Eight visible rows, sixteen actors per visible row, stationary physical state; off versus supplied bounded X/scale/inner/outer/trail evidence. Same visible density at 8 and 1024 total lanes.",
+    "isolation": "Shared Windows development host with concurrent agent work."
+  },
+  "rows": [
+    {
+      "totalLanes": 8,
+      "visibleLanes": 8,
+      "visibleActors": 128,
+      "enabled": false,
+      "iterations": 160,
+      "frameMs": {
+        "p50": 0.00940000000002783,
+        "p95": 0.025299999999901956,
+        "p99": 0.0402000000000271
+      },
+      "admissionMs": {
+        "p50": 0.00020000000006348273,
+        "p95": 0.0004999999999881766,
+        "p99": 0.0018000000000029104
+      },
+      "terrainRebuilds": 0,
+      "imageAllocations": 0,
+      "effectDrawPasses": 0,
+      "effects": {
+        "epoch": {
+          "worldId": "procgen:42",
+          "generation": 1,
+          "executionEpoch": "fixture",
+          "graphRevision": 1,
+          "routeRevision": 1,
+          "contextEpoch": null,
+          "owner": null
+        },
+        "visible": true,
+        "revision": 2,
+        "actors": 0,
+        "maxActors": 256,
+        "sources": 0,
+        "skipped": 0,
+        "rejected": 0,
+        "aggregateSamples": 0,
+        "estimatedHistoryBytes": 0,
+        "profileEstimatedBytes": 4096,
+        "acousticReceipt": false
+      },
+      "backing": {
+        "estimatedBytes": 6271616,
+        "cachedBitmapBytes": 640,
+        "peakEstimatedBytes": 6272256,
+        "budgetBytes": 67108864,
+        "cacheBudgetBytes": 16777216,
+        "backingStores": 7,
+        "allocations": 2,
+        "evictions": 0,
+        "failures": 0,
+        "retirementFailures": 0,
+        "unreleasedEstimatedBytes": 0
+      },
+      "physicalHash": "f872cecaf7c54cb891e9ef44e0af80d801860d7c77b9d2fc442cf7748d3a2855"
+    },
+    {
+      "totalLanes": 8,
+      "visibleLanes": 8,
+      "visibleActors": 128,
+      "enabled": true,
+      "iterations": 160,
+      "frameMs": {
+        "p50": 1.2893000000001393,
+        "p95": 2.758299999999963,
+        "p99": 3.782799999999952
+      },
+      "admissionMs": {
+        "p50": 0.0003999999998995918,
+        "p95": 1.2595000000000027,
+        "p99": 3.79950000000008
+      },
+      "terrainRebuilds": 0,
+      "imageAllocations": 0,
+      "effectDrawPasses": 86144,
+      "effects": {
+        "epoch": {
+          "worldId": "procgen:42",
+          "generation": 1,
+          "executionEpoch": "fixture",
+          "graphRevision": 1,
+          "routeRevision": 1,
+          "contextEpoch": null,
+          "owner": null
+        },
+        "visible": true,
+        "revision": 35202,
+        "actors": 128,
+        "maxActors": 256,
+        "sources": 640,
+        "skipped": 0,
+        "rejected": 0,
+        "aggregateSamples": 0,
+        "estimatedHistoryBytes": 8388608,
+        "profileEstimatedBytes": 4096,
+        "acousticReceipt": false
+      },
+      "backing": {
+        "estimatedBytes": 14661728,
+        "cachedBitmapBytes": 2144,
+        "peakEstimatedBytes": 14662368,
+        "budgetBytes": 67108864,
+        "cacheBudgetBytes": 16777216,
+        "backingStores": 137,
+        "allocations": 4,
+        "evictions": 0,
+        "failures": 0,
+        "retirementFailures": 0,
+        "unreleasedEstimatedBytes": 0
+      },
+      "physicalHash": "f872cecaf7c54cb891e9ef44e0af80d801860d7c77b9d2fc442cf7748d3a2855"
+    },
+    {
+      "totalLanes": 1024,
+      "visibleLanes": 8,
+      "visibleActors": 128,
+      "enabled": false,
+      "iterations": 160,
+      "frameMs": {
+        "p50": 0.0037999999999556167,
+        "p95": 0.008100000000013097,
+        "p99": 0.01710000000002765
+      },
+      "admissionMs": {
+        "p50": 0.00009999999997489795,
+        "p95": 0.0001999999999497959,
+        "p99": 0.00020000000017716957
+      },
+      "terrainRebuilds": 0,
+      "imageAllocations": 0,
+      "effectDrawPasses": 0,
+      "effects": {
+        "epoch": {
+          "worldId": "procgen:42",
+          "generation": 1,
+          "executionEpoch": "fixture",
+          "graphRevision": 1,
+          "routeRevision": 1,
+          "contextEpoch": null,
+          "owner": null
+        },
+        "visible": true,
+        "revision": 2,
+        "actors": 0,
+        "maxActors": 256,
+        "sources": 0,
+        "skipped": 0,
+        "rejected": 0,
+        "aggregateSamples": 0,
+        "estimatedHistoryBytes": 0,
+        "profileEstimatedBytes": 4096,
+        "acousticReceipt": false
+      },
+      "backing": {
+        "estimatedBytes": 6271616,
+        "cachedBitmapBytes": 640,
+        "peakEstimatedBytes": 6272256,
+        "budgetBytes": 67108864,
+        "cacheBudgetBytes": 16777216,
+        "backingStores": 7,
+        "allocations": 2,
+        "evictions": 0,
+        "failures": 0,
+        "retirementFailures": 0,
+        "unreleasedEstimatedBytes": 0
+      },
+      "physicalHash": "43135e409092d5d906da6af997a0e4df3b133445d9635a15447dc66a2f412cb3"
+    },
+    {
+      "totalLanes": 1024,
+      "visibleLanes": 8,
+      "visibleActors": 128,
+      "enabled": true,
+      "iterations": 160,
+      "frameMs": {
+        "p50": 1.4205000000001746,
+        "p95": 2.053100000000086,
+        "p99": 3.3378999999999905
+      },
+      "admissionMs": {
+        "p50": 0.0003999999998995918,
+        "p95": 0.7990999999999531,
+        "p99": 0.9298999999998614
+      },
+      "terrainRebuilds": 0,
+      "imageAllocations": 0,
+      "effectDrawPasses": 86144,
+      "effects": {
+        "epoch": {
+          "worldId": "procgen:42",
+          "generation": 1,
+          "executionEpoch": "fixture",
+          "graphRevision": 1,
+          "routeRevision": 1,
+          "contextEpoch": null,
+          "owner": null
+        },
+        "visible": true,
+        "revision": 35202,
+        "actors": 128,
+        "maxActors": 256,
+        "sources": 640,
+        "skipped": 0,
+        "rejected": 0,
+        "aggregateSamples": 0,
+        "estimatedHistoryBytes": 8388608,
+        "profileEstimatedBytes": 4096,
+        "acousticReceipt": false
+      },
+      "backing": {
+        "estimatedBytes": 14661728,
+        "cachedBitmapBytes": 2144,
+        "peakEstimatedBytes": 14662368,
+        "budgetBytes": 67108864,
+        "cacheBudgetBytes": 16777216,
+        "backingStores": 137,
+        "allocations": 4,
+        "evictions": 0,
+        "failures": 0,
+        "retirementFailures": 0,
+        "unreleasedEstimatedBytes": 0
+      },
+      "physicalHash": "43135e409092d5d906da6af997a0e4df3b133445d9635a15447dc66a2f412cb3"
+    }
+  ]
+}

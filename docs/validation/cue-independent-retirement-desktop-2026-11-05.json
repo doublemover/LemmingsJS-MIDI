@@ -1,0 +1,398 @@
+{
+  "schema": "lemmings-cue-independent-retirement/v1",
+  "date": "2026-11-05",
+  "agent": "rook",
+  "scope": "Captured cue listener ownership and independent native cleanup; partial/unknown retirement remains charged.",
+  "source": {
+    "parent": "4d9ff89e1ce15f13e3035456a3acecfd81b67680",
+    "browserPaths": 1296,
+    "browserClosureDigest": "38c079968e958777abbca4f484781765bacff82a2881109440d03bf1ac32b5bf",
+    "workerFiles": 308,
+    "workerDigest": "faa29153ba01e6719371b4dc35d1e8fdf8ad9f50a2cab93ffb6f96969540b512",
+    "inputInventory": {
+      "encoding": "sha256-bound-base-plus-upserts/v1",
+      "baseReceipt": {
+        "path": "docs/validation/native-audio-profiles-and-ci-repairs-2026-11-05.json",
+        "bytes": 291461,
+        "sha256": "3e3026165cdc7857425b7e1d1f3bdb63eda950e1b6a751c6208d5c6a1f3e3411"
+      },
+      "baseField": "source.inputInventory",
+      "upsert": [
+        {
+          "path": "e2e/procgen-sound-world-isolation.spec.js",
+          "bytes": 8531,
+          "sha256": "35268853a5f5752732f8f932649083b5e3faf75e9ab3b1eb7b57cfff6e92f673"
+        },
+        {
+          "path": "js/app/midi-ui/OwnedAudioListeners.js",
+          "bytes": 1333,
+          "sha256": "21a87913132597bef829dca9b5f8c544aeff5a1b4a87a383912d4b1f34937626"
+        },
+        {
+          "path": "js/app/midi-ui/OwnedCueRouting.js",
+          "bytes": 13060,
+          "sha256": "edc5596edbca0aab7217eea32de7155ce9d4c06eaf762ec2eff1ec757ca02bbb"
+        },
+        {
+          "path": "scripts/qualify-audio-profiles.mjs",
+          "bytes": 19344,
+          "sha256": "f7bdc1f4bd738b8269d8abff63bc16f140fe7b5f592f2520eaad1f4f25c33306"
+        },
+        {
+          "path": "test/midi/foreground-audition-owner.test.js",
+          "bytes": 3650,
+          "sha256": "2715fa115e58d29a4971709e76b0c8a238245edf457930c5b6d3e5e2524415dc"
+        },
+        {
+          "path": "test/midi/owned-audio-listeners.test.js",
+          "bytes": 2361,
+          "sha256": "a8baace9326c08b82ad21dab01e045c02def7709a73b1d5f5c4dd8ba83494ec6"
+        },
+        {
+          "path": "test/midi/owned-cue-retirement.test.js",
+          "bytes": 7910,
+          "sha256": "e7b283c9e0bb435f90d8afe9dc80428d59480285ed62da781895d7c4c250e837"
+        },
+        {
+          "path": "test/midi/prepared-wave-prelisten.test.js",
+          "bytes": 8816,
+          "sha256": "8ec4500579c2d315f8fe95e405ce14d3285674d2e8ac3ac60024c52f61c1b89d"
+        }
+      ],
+      "removed": [],
+      "pathCount": 1620
+    },
+    "stagedByteAudit": {
+      "paths": 1620,
+      "byteExact": 1608,
+      "untouchedNewlineInputs": [
+        {
+          "path": "css/procgen-world-inspector.css",
+          "workingBytes": 1576,
+          "workingSha256": "117e4d4b077871be05cb761e35322ff1e5b29c234e65588c4568a647f3b2c684",
+          "indexBytes": 1574,
+          "indexSha256": "b293d64556310dd7514e9fa6a4edbc3bbef2b75873c009e99ee5511adcc28cc3"
+        },
+        {
+          "path": "js/app/procgen/ActorEffectVisualProfile.js",
+          "workingBytes": 2855,
+          "workingSha256": "61f52aeeae3efbaab0d8fb95b3ba44d75ab7802d06ada8037a09142434768eb6",
+          "indexBytes": 2827,
+          "indexSha256": "7868ef9bb397d135ca873d0639c9dd6e0a9dfeb79ac41cfd57a6bd3c1092e85d"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectPass.js",
+          "workingBytes": 6019,
+          "workingSha256": "16441a79bd4480932b27ceef9c3d4679276a03126c0e6a1542474ca41df3827e",
+          "indexBytes": 5957,
+          "indexSha256": "cc47893b214d16c1c6237e0331664f8bb940d68f67e4fa08d3ffff07c882a902"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectSource.js",
+          "workingBytes": 1517,
+          "workingSha256": "57a697d8a5d542ddc5daf0ffff0b625f8babe6cc78d9c09582c882ca40cfb9ae",
+          "indexBytes": 1516,
+          "indexSha256": "777a7fd07293f47b7d1df39f41a6e590201d29b088189bab9bd4cf7dba1ba274"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationHost.js",
+          "workingBytes": 9542,
+          "workingSha256": "9d04bf0ac26ede44a694bace0059ba543c3f5df89596d336591b6dfa0c5bac35",
+          "indexBytes": 9441,
+          "indexSha256": "f9a7eb990b4b5fd8939c6619853dc3718cf3b5bbde136c2e259bf73b7668f0c4"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationSnapshot.js",
+          "workingBytes": 11674,
+          "workingSha256": "1e1920ba079a31720bdf7709fa0262262f5eb3ca697505a0c95d713de5ca2e05",
+          "indexBytes": 11543,
+          "indexSha256": "3a9ee413244f7b65bcd7ac003a9e1bdce4724d36e737e27ba7f99acd6d74ddcb"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenCausalJournal.js",
+          "workingBytes": 43603,
+          "workingSha256": "be474b5fcdd7c1a30d6cab05c6aafb343c639becfd2f710b48fdb8246f4775bc",
+          "indexBytes": 43072,
+          "indexSha256": "298d81f7271b179c3141644c0c8757c588ca2faccd4a19ef5347725dbab4e84c"
+        },
+        {
+          "path": "js/app/procgenAssetManager.js",
+          "workingBytes": 6329,
+          "workingSha256": "87ece444038074ededfe1d9e98deeca4be7dacf324d9391b40ea91b29bc0e9b6",
+          "indexBytes": 6127,
+          "indexSha256": "63180bec0443b8a399de2b51b10ff82c5cf86421883ca6a2a79c9ced5867ebc6"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCache.js",
+          "workingBytes": 5902,
+          "workingSha256": "b14828c6cb18a5bf2525abe342c2af7a3fa2d34e3c9a9a636f5ce4a11bbabf5f",
+          "indexBytes": 5751,
+          "indexSha256": "4c77eb850770782b7326f873c303ee9ba8efbe7197dadd0eb9ddfdfbadccc50d"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCore.js",
+          "workingBytes": 5699,
+          "workingSha256": "9f625f7ad2ef7511f66ba9a5c727142f7f0280c24a7b4fc559e0bb6a4c14bafd",
+          "indexBytes": 5582,
+          "indexSha256": "748233dbc3a567c793c6616f68fd4748334e3f4af529b8c67de0e6cfccd5c260"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderStorage.js",
+          "workingBytes": 25667,
+          "workingSha256": "521e7f98c594dcd2aee33ca7d51d02e3257b6bd1c5e13856a7a19627e2cee90e",
+          "indexBytes": 25148,
+          "indexSha256": "2de574ca65a70ede60b7cba120ef88a58eaa0ea8d3a9d4392c517ab2d2309a1e"
+        },
+        {
+          "path": "js/editor/EditorAssetCache.js",
+          "workingBytes": 12316,
+          "workingSha256": "5b5d8eebe2141654b0eddf00f9848ddc8393c410b0e6ffd0692bf0425561a3cd",
+          "indexBytes": 12065,
+          "indexSha256": "78da502737d925d32394ae10c90599bdc6fd1580cbd2a2a3d425ce6939f989ea"
+        }
+      ],
+      "mismatches": []
+    }
+  },
+  "originalCounterexamples": {
+    "schema": "lemmings-original-cue-retirement-faults/v1",
+    "revision": "4d9ff89e1ce15f13e3035456a3acecfd81b67680",
+    "originalSource": {
+      "path": "js/app/midi-ui/OwnedCueRouting.js",
+      "sha256": "9be91ec5b7610c2cdbeb21ef952d65426893218c07ef7c7c789feaa57bc40623"
+    },
+    "normalization": "Only TypeScript-parsed literal import URLs are resolved; production function bodies and current fault assertions are unchanged. No production methods/globals/prototypes are substituted.",
+    "normalizedSourceSha256": "a5e0ef740bcafc56f3949ced3664d31528f279e49eed8f3a567e80413ea43cff",
+    "tests": {
+      "path": "test/midi/owned-cue-retirement.test.js",
+      "sha256": "e7b283c9e0bb435f90d8afe9dc80428d59480285ed62da781895d7c4c250e837"
+    },
+    "stats": {
+      "suites": 1,
+      "tests": 8,
+      "passes": 0,
+      "pending": 0,
+      "failures": 8,
+      "start": "2026-11-06T01:31:16.554Z",
+      "end": "2026-11-06T01:31:16.570Z",
+      "duration": 16
+    },
+    "failures": [
+      {
+        "title": "cue routing independent retirement frontiers continues every independent cleanup frontier when silencing the fader throws",
+        "message": "native fader refused"
+      },
+      {
+        "title": "cue routing independent retirement frontiers cleans partially registered graph listeners before publishing a failed preparation",
+        "message": "expected 1 to equal +0"
+      },
+      {
+        "title": "cue routing independent retirement frontiers removes a partially throwing element registration as well as earlier listeners",
+        "message": "expected 1 to equal +0"
+      },
+      {
+        "title": "cue routing independent retirement frontiers still removes the source attribute and reloads when clearing the native stream refuses",
+        "message": "expected +0 to equal 1"
+      },
+      {
+        "title": "cue routing independent retirement frontiers attempts every owner listener removal when one captured native removal refuses",
+        "message": "expected [ 'element:error', …(4) ] to include 'devices:devicechange'"
+      },
+      {
+        "title": "cue routing independent retirement frontiers attempts all element removals and native cleanup when the first element removal fails",
+        "message": "expected [ 'element:error', …(2) ] to include 'element:pause'"
+      },
+      {
+        "title": "cue routing independent retirement frontiers captures removal methods when installing listeners rather than trusting mutable method slots",
+        "message": "expected 'partial' to equal 'complete'"
+      },
+      {
+        "title": "cue routing independent retirement frontiers disconnects, pauses and clears the native source even when stream enumeration throws",
+        "message": "expected +0 to equal 1"
+      }
+    ],
+    "driverSha256": "e821d2defcaad959ce282391e1ed5c729aa5f39f541ead451380ac592a5f288a",
+    "raw": {
+      "path": ".tmp/rook457-original-cue-failures.json",
+      "bytes": 2673,
+      "sha256": "57ae2b3f42f2824d7dc6ee507d9225c9f4e2d286e17162d935d744e936fdeab4"
+    }
+  },
+  "validation": {
+    "node": {
+      "suites": 18,
+      "tests": 179,
+      "passes": 179,
+      "pending": 0,
+      "failures": 0,
+      "start": "2026-11-06T01:30:10.157Z",
+      "end": "2026-11-06T01:30:10.631Z",
+      "duration": 474
+    },
+    "desktop": {
+      "startTime": "2026-11-06T01:30:26.423Z",
+      "duration": 65795.31000000001,
+      "expected": 3,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "desktopCases": [
+      {
+        "title": "hold preview restores on keyboard release and commits only through the explicit Apply command",
+        "tests": [
+          {
+            "project": "workstation",
+            "status": "expected",
+            "results": [
+              {
+                "status": "passed",
+                "duration": 9596
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "native private Prelisten retains its owner during replacement review until the source Stop control retires it",
+        "tests": [
+          {
+            "project": "workstation",
+            "status": "expected",
+            "results": [
+              {
+                "status": "passed",
+                "duration": 11055
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "real captured physical phrase renders matched A/B through PRELISTEN and applies one kept revision with sound-only Undo",
+        "tests": [
+          {
+            "project": "workstation",
+            "status": "expected",
+            "results": [
+              {
+                "status": "passed",
+                "duration": 14802
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "coverage": {
+      "total": {
+        "lines": {
+          "total": 181,
+          "covered": 181,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 181,
+          "covered": 181,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 46,
+          "covered": 45,
+          "skipped": 0,
+          "pct": 97.82
+        },
+        "branches": {
+          "total": 185,
+          "covered": 164,
+          "skipped": 0,
+          "pct": 88.64
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "js/app/midi-ui/OwnedAudioListeners.js": {
+        "lines": {
+          "total": 22,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 22,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "js/app/midi-ui/OwnedCueRouting.js": {
+        "lines": {
+          "total": 159,
+          "covered": 159,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 41,
+          "covered": 40,
+          "skipped": 0,
+          "pct": 97.56
+        },
+        "statements": {
+          "total": 159,
+          "covered": 159,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 161,
+          "covered": 140,
+          "skipped": 0,
+          "pct": 86.95
+        }
+      }
+    },
+    "format": "passed",
+    "criticalAndStrictTypes": "passed",
+    "undefinedCalls": "passed",
+    "provenance": "10-components-377-files",
+    "fullLocalNodeOrNativeMatrixRepeated": false,
+    "raw": [
+      {
+        "path": ".tmp/rook457-node.json",
+        "bytes": 163931,
+        "sha256": "043e388fdb42c6178c3026966811366f5552cf97d3d4e440911221f12a65e72f"
+      },
+      {
+        "path": ".tmp/rook457-prelisten.json",
+        "bytes": 23062,
+        "sha256": "19f69bb7b633bc20b4bf1f4f9a0d4e628279aa876a8b60c675444415cc7acb93"
+      }
+    ]
+  },
+  "limits": [
+    "The eight original fault counterexamples use independently asserted native-boundary fixtures; they do not claim physical hardware failures were delivered.",
+    "The three actual desktop journeys qualify held preview/replacement/kept A/B and Undo in Chromium at 1920x1080. They do not establish every tool/capture/device cross-product or new listening quality.",
+    "All cleanup resources are attempted independently. Failed native removal/stream inspection/closure remains observable and charged; a partial receipt is not complete retirement.",
+    "The full 51-engine/profile cohort on the preceding source is separate; fresh whole-current-source CI remains required.",
+    "Remaining cue branches include optional/native unsupported APIs, track-capacity refusal and broader failure/device combinations; repository coverage thresholds are unchanged."
+  ]
+}

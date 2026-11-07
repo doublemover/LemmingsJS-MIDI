@@ -136,6 +136,13 @@ class MidiAutomationSpans {
       owners: this.entries.map(entry => entry.owner), ownerSequence: this._ownerSequence, epoch: this.epoch,
       generation: this.generation, tick: this.tick, evaluation: this.evaluation };
   }
+  async exportStateCooperative(collect, options) {
+    const counts = await collect(this.counts.values(), options), lastEvents = await collect(this.lastEvents.values(), options),
+      states = await collect((function*(entries) { for (const [key, value] of entries) yield [key, { ...value, resolution: value.resolution ? { ...value.resolution } : null }]; })(this.states), options),
+      owners = await collect((function*(entries) { for (const entry of entries) yield entry.owner; })(this.entries), options);
+    return { version: 1, key: this.key, counts, lastEvents, states, owners, ownerSequence: this._ownerSequence, epoch: this.epoch,
+      generation: this.generation, tick: this.tick, evaluation: this.evaluation };
+  }
   restoreState(saved) {
     if (saved?.version !== 1 || saved.key !== this.key || saved.counts?.length !== this.counts.length || saved.lastEvents?.length !== this.lastEvents.length) return false;
     this.counts.set(saved.counts); this.lastEvents.set(saved.lastEvents);

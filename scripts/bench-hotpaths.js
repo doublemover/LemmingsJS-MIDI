@@ -4,6 +4,7 @@ import {
   path,
   toPositiveInt
 } from './bench-hotpaths/shared.js';
+import { createBenchmarkReceipt, REQUIRED_SMOKE_HOTPATHS } from './BenchmarkReceipt.js';
 import {
   runDirtyRectBench,
   runTileCompositionBench,
@@ -61,6 +62,7 @@ const buildHotpathSummary = (argv = process.argv.slice(2)) => {
   const gamepadIterations = toPositiveInt(args.get('gamepad-iterations'), smokeRequested ? 360 : 1200);
 
   return {
+    receipt: createBenchmarkReceipt('hotpaths', smokeRequested ? 'smoke' : 'default', REQUIRED_SMOKE_HOTPATHS),
     historyReplayDelta: runHistoryReplayBench({
       ticks: historyTicks,
       seekWindow: historySeekWindow,
@@ -119,7 +121,9 @@ const buildHotpathSummary = (argv = process.argv.slice(2)) => {
       iterations: midiSchedulerIterations,
       notesPerIter: midiSchedulerNotes,
       repeats
-    })
+    }),
+    midiRouterRejected: runMidiRouterBench({ iterations: midiRouterIterations, eventsPerIter: midiRouterEvents, repeats, workload: 'saturated-rate-rejection' }),
+    midiSchedulerRejected: runMidiSchedulerBench({ iterations: midiSchedulerIterations, notesPerIter: midiSchedulerNotes, repeats, workload: 'saturated-rate-rejection' })
   };
 };
 const main = (argv = process.argv.slice(2)) => {

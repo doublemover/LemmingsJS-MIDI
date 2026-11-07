@@ -1,0 +1,1477 @@
+{
+  "schema": "lemmings-full-suite-receipt/v1",
+  "date": "2026-10-27",
+  "command": "npm test",
+  "scope": "One completed full Node/Mocha run after fixing two test-discovery blockers. Includes the uncommitted source snapshot listed below.",
+  "result": {
+    "passed": 6006,
+    "failed": 150,
+    "mochaDuration": "5m",
+    "exitCode": 150,
+    "allPassing": false
+  },
+  "source": {
+    "head": "46c84c975ef39b0cf8befe6e9e5c3d7db020d654",
+    "workingPatchSha256": "f3bbcf6c247bb31d77b2657bb48b04819ad6d5de2526973c28619642498505c9",
+    "files": [
+      {
+        "path": "docs/roadmap.md",
+        "sha256": "ad5dfe36ba17c3d92d4e90dc311a1a759be345f25c7ccef2829967b31a8fda6d",
+        "bytes": 480692
+      },
+      {
+        "path": "js/app/midi-ui/CausalOwnedRender.js",
+        "sha256": "ddea4d1c3ecd05fbcf9741614bf58599679a6fb9a1b43cbff4c6e4b60e87a1f2",
+        "bytes": 60314
+      },
+      {
+        "path": "js/app/midi-ui/CircuitWorkshopPreparation.js",
+        "sha256": "ffa10b2b915703a036b400054b10fc4cbd77bf196a5bae62efba2d0da0b21b05",
+        "bytes": 7259
+      },
+      {
+        "path": "js/app/midi-ui/DrumKitReference.js",
+        "sha256": "60d86fb3c13f589917eaa2668c172773a2715ef3f553a13100fe853a23ed6e2c",
+        "bytes": 2697
+      },
+      {
+        "path": "js/app/midi-ui/NativeInstrumentSchema.js",
+        "sha256": "d609b94c1c888ca4204980a40af4e82408358ca8633ff9f69ae6e137cf1c4e7d",
+        "bytes": 20426
+      },
+      {
+        "path": "js/app/midi-ui/OwnedSamplePlan.js",
+        "sha256": "60e2ff83937861749cbafae20e9cbe941e3156d3534208592bcefdd23fb2e1e5",
+        "bytes": 9193
+      },
+      {
+        "path": "js/app/midi-ui/OwnedSourceControlRender.js",
+        "sha256": "278557fe1b4cdb21b41f24f01bc0f183a446f1b07065a40a58d0e0696f5b93ec",
+        "bytes": 14273
+      },
+      {
+        "path": "js/app/midi-ui/OwnedSourceLayout.js",
+        "sha256": "986d652c094bca7387012f6ce8485a7f420dd85869d546afb578c92424223bc6",
+        "bytes": 5572
+      },
+      {
+        "path": "js/app/midi-ui/OwnedSourceProfiles.js",
+        "sha256": "682f1ee3dcc6f5f18abe318f37adf1f80f673b6e04dfc62bf70c3f377e0e8e77",
+        "bytes": 22188
+      },
+      {
+        "path": "js/app/midi-ui/SoundContentLibrary.js",
+        "sha256": "e08a3509bd4e46fc71be58a5249855b44425ed38fff1346974013383caedeec4",
+        "bytes": 43562
+      },
+      {
+        "path": "js/app/midi-ui/SoundMaterialProvider.js",
+        "sha256": "98d0e5fd1c4e942fc0bba676e8a936e14caab19023d16f01b6f740acf1f90aa7",
+        "bytes": 24367
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedSampleProcessor.js",
+        "sha256": "336a7e82b33a9689d9f46486faf1dee7f525f9e405744a7279daef2f6bd62476",
+        "bytes": 1211
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedSampleSource.js",
+        "sha256": "68bc509d3a34c4571f276626935df91594a1663a7ecec1c0eefb6f1c24b8bcb1",
+        "bytes": 24875
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedSourceState.js",
+        "sha256": "5be405e246f44cb78e5c7becb25e0e166353b75f4a82efeec994a8f85f3188f9",
+        "bytes": 23380
+      },
+      {
+        "path": "js/app/midi-ui/workletInstrumentBackend.js",
+        "sha256": "48f1e3f7500adc7e908aad5a234bf99cbd054a200cdfc6913ec972d373d919f1",
+        "bytes": 81984
+      },
+      {
+        "path": "js/app/procgen/workstation/InstrumentNurseryScore.js",
+        "sha256": "73952f8dbee88ddc456a77d61fa1bed884534571477e14bd18bfbb61e63abced",
+        "bytes": 14575
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformanceSceneWorldAdapter.js",
+        "sha256": "d755dddb6af321d6350a917dc9fc900ca3c6480bcb8c2e6cca94db043aaec095",
+        "bytes": 16583
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKernels.js",
+        "sha256": "4e26c20e9091c8d8708cd9ffa8fa82879f5d4e5940553aaa8e8b5a2e8424fa11",
+        "bytes": 48977
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKinds.js",
+        "sha256": "4e8057830e0faa9a245dc7966dc6d25eff322d4ee9a483d578d7c011aed77e30",
+        "bytes": 1877
+      },
+      {
+        "path": "js/app/resources/CircuitWorkshopBuilder.js",
+        "sha256": "a911001704e1ec81fd1f241df5e189d6ec7bfe66392399ac1eb4ff43b1e450ed",
+        "bytes": 15738
+      },
+      {
+        "path": "js/midi/content/CircuitWorkshopProfile.js",
+        "sha256": "2c6810f98951565fdb39b2ee9063192226bb113571d4165450d8312337cb4deb",
+        "bytes": 2376
+      },
+      {
+        "path": "js/midi/content/DrumKitDefinition.js",
+        "sha256": "5d46d077fcf05532422561092f7c0f584d1d905f4250e05de6235d127078e1c4",
+        "bytes": 7466
+      },
+      {
+        "path": "js/midi/content/SoundContentReference.js",
+        "sha256": "83e6703287b519142499860e18ea275f185af28f892a296fe863f661e2f5221a",
+        "bytes": 4431
+      },
+      {
+        "path": "package-lock.json",
+        "sha256": "087a642b38117725b7084b59c11e951d82d39e53c55f150ab270edb2594feea8",
+        "bytes": 196716
+      },
+      {
+        "path": "package.json",
+        "sha256": "3454ab9ab92600901a3a134ae7c49803ddb721dc19ac2fd487d7222eb905e468",
+        "bytes": 8496
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "sha256": "e138b12b58b34e59be562828dcee0622680e5c8162fb6ea14b6e2687aa317c12",
+        "bytes": 20763
+      },
+      {
+        "path": "test/midi/circuit-workshop.test.js",
+        "sha256": "73f5f93b40ddd90f3ac264453ceebfd3d1a852e1692bc46fa70494989cc8d1c9",
+        "bytes": 11798
+      },
+      {
+        "path": "test/midi/owned-sample-backend.test.js",
+        "sha256": "eea98e1e12badba015ff641f6199352db311bab2d28665eddfec411a043cbb91",
+        "bytes": 16023
+      },
+      {
+        "path": "test/midi/owned-sample-kernel.test.js",
+        "sha256": "cb20b69564b97a5ac9aacac6018ba86f7ea7de3af6b0b5c694f7ab96af41bd9a",
+        "bytes": 12455
+      },
+      {
+        "path": "test/procgen-performance-scene.test.js",
+        "sha256": "276badce1278bf99fb508df6f82895b9e1bc5184582884401ba207d0064dee10",
+        "bytes": 25386
+      }
+    ]
+  },
+  "logSha256": "594e2143719f582fdbb87089cd7082ac92576f5504a53f35cd470f9ab51063b9",
+  "bootstrapRepairs": [
+    "Import verifyOwnedPcmSetPayload from OwnedPcmSetVerification.js.",
+    "Declare jsdom 26.1.0 used by existing headless scene tests."
+  ],
+  "closureEvidence": {
+    "world-anchored pickup geometry and ownership": {
+      "passed": 6,
+      "failed": []
+    },
+    "completed physical encounters and rendezvous": {
+      "passed": 9,
+      "failed": []
+    },
+    "causal keyed probability": {
+      "passed": 3,
+      "failed": []
+    },
+    "versioned scoped causal probability and namespace isolation": {
+      "passed": 8,
+      "failed": []
+    },
+    "conditional physical branch admission stays under actual affordance authority": {
+      "passed": 3,
+      "failed": []
+    },
+    "physical travel articulation": {
+      "passed": 8,
+      "failed": []
+    },
+    "qualified physical support contact spans": {
+      "passed": 4,
+      "failed": []
+    },
+    "causal physical conductors and intervention layers": {
+      "passed": 6,
+      "failed": []
+    },
+    "real-world feedback command ownership and exact command replay": {
+      "passed": 7,
+      "failed": []
+    },
+    "finite physical motif recognition": {
+      "passed": 9,
+      "failed": []
+    },
+    "actor-borne physical phrase cargo": {
+      "passed": 7,
+      "failed": []
+    },
+    "cargo through the real shared walking action": {
+      "passed": 1,
+      "failed": []
+    },
+    "atomic terrain authoring and bounded physical provenance": {
+      "passed": 9,
+      "failed": []
+    },
+    "one-boundary physical authoring publication": {
+      "passed": 6,
+      "failed": []
+    },
+    "completed-source ensemble and route semantics": {
+      "passed": 6,
+      "failed": []
+    },
+    "classic benchmark replay transport transaction (#1257, deferred)": {
+      "passed": 5,
+      "failed": []
+    },
+    "terminal compaction retirement accounting": {
+      "passed": 1,
+      "failed": []
+    }
+  },
+  "failures": [
+    {
+      "index": 1,
+      "group": "exact JSON source byte admission (runtime fixtures deferred)",
+      "test": "accepts precisely the canonical source bytes including separators for {\"unicode\":\"\u00e9\ud83d\ude00\\ud800\",\"minusZero\":0,\"exponent\":1e+30}",
+      "files": [
+        "test/background-json-byte-accounting.test.js"
+      ]
+    },
+    {
+      "index": 2,
+      "group": "finite Builder-Miner contact scores (runtime/listening qualification deferred)",
+      "test": "pins three finite work systems, exact command stations, changed-solid mappings and independent dry recipes",
+      "files": [
+        "test/builder-miner-score.test.js"
+      ]
+    },
+    {
+      "index": 3,
+      "group": "finite Builder-Miner contact scores (runtime/listening qualification deferred)",
+      "test": "authors a real operation-phase/contact-ratio and finite-command fixture without timer onsets",
+      "files": [
+        "test/builder-miner-score.test.js"
+      ]
+    },
+    {
+      "index": 4,
+      "group": "finite Builder-Miner contact scores (runtime/listening qualification deferred)",
+      "test": "keeps modal and FM realizations explicitly named over identical physical score recipes",
+      "files": [
+        "test/builder-miner-score.test.js"
+      ]
+    },
+    {
+      "index": 5,
+      "group": "finite Dub Quarry routes and explicit saved echo (qualification deferred)",
+      "test": "\"before all\" hook for \"installs distinct route lengths, actual junctions, finite sources and zero-send defaults without a hidden loop\"",
+      "files": [
+        "test/dub-quarry-score.test.js"
+      ]
+    },
+    {
+      "index": 6,
+      "group": "FileProvider runtime lease transfer",
+      "test": "keeps prepared resources alive and releases the final lease after another retirement step fails",
+      "files": [
+        "test/fileprovider-runtime-lease.test.js"
+      ]
+    },
+    {
+      "index": 7,
+      "group": "Bow Orchard authored score (runtime/browser/listening qualification deferred)",
+      "test": "pins the two original bodies, long route, finite cohort, manual policy and complete source closure",
+      "files": [
+        "test/friction-performance-score.test.js"
+      ]
+    },
+    {
+      "index": 8,
+      "group": "Bow Orchard authored score (runtime/browser/listening qualification deferred)",
+      "test": "does not install an approximate replacement when the required source is absent",
+      "files": [
+        "test/friction-performance-score.test.js"
+      ]
+    },
+    {
+      "index": 9,
+      "group": "finite Glacier Choir descents (runtime and listening qualification deferred)",
+      "test": "pins one/two/three finite sources, birth abilities and a separately named Prism realization of the same physical score",
+      "files": [
+        "test/glacier-choir-score.test.js"
+      ]
+    },
+    {
+      "index": 10,
+      "group": "Glass Orbit finite spatial-harp scores (qualification deferred)",
+      "test": "installs all nine exact source-bound arrangements with finite cohorts, physical return and reviewed requirements",
+      "files": [
+        "test/glass-orbit-score.test.js"
+      ]
+    },
+    {
+      "index": 11,
+      "group": "Instrument Nursery original pair (authored unrun; physical/audio qualification pending)",
+      "test": "\"before all\" hook for \"installs exact procedural body/template ancestry with two finite routes and four existing atomic macros\"",
+      "files": [
+        "test/instrument-nursery-score.test.js"
+      ]
+    },
+    {
+      "index": 12,
+      "group": "three-template Nursery from an exact prepared finite strike (authored unrun)",
+      "test": "\"before all\" hook for \"retains the exact strike/calibration/sample map and adds only an actual safe-landing route\"",
+      "files": [
+        "test/instrument-nursery-strike.test.js"
+      ]
+    },
+    {
+      "index": 13,
+      "group": "shared-body scene rehearsal (real DSP fixtures authored, qualification deferred)",
+      "test": "renders actual private route intents and the complete same-body tail at 44100",
+      "files": [
+        "test/metamorphic-bridge-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 14,
+      "group": "shared-body scene rehearsal (real DSP fixtures authored, qualification deferred)",
+      "test": "renders actual private route intents and the complete same-body tail at 48000",
+      "files": [
+        "test/metamorphic-bridge-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 15,
+      "group": "shared-body scene rehearsal (real DSP fixtures authored, qualification deferred)",
+      "test": "renders actual private route intents and the complete same-body tail at 96000",
+      "files": [
+        "test/metamorphic-bridge-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 16,
+      "group": "shared-body scene rehearsal (real DSP fixtures authored, qualification deferred)",
+      "test": "renders both independently owned blend endpoints with the same real source at 44100",
+      "files": [
+        "test/metamorphic-bridge-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 17,
+      "group": "shared-body scene rehearsal (real DSP fixtures authored, qualification deferred)",
+      "test": "renders both independently owned blend endpoints with the same real source at 48000",
+      "files": [
+        "test/metamorphic-bridge-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 18,
+      "group": "shared-body scene rehearsal (real DSP fixtures authored, qualification deferred)",
+      "test": "renders both independently owned blend endpoints with the same real source at 96000",
+      "files": [
+        "test/metamorphic-bridge-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 19,
+      "group": "Metamorphic Bridge score and initial canonical body (qualification deferred)",
+      "test": "pins the original reviewed proof and complete finite score closure",
+      "files": [
+        "test/metamorphic-bridge-score.test.js"
+      ]
+    },
+    {
+      "index": 20,
+      "group": "Metamorphic Bridge score and initial canonical body (qualification deferred)",
+      "test": "prepares the explicitly named two-body strategy with unchanged world, source and signed travel",
+      "files": [
+        "test/metamorphic-bridge-score.test.js"
+      ]
+    },
+    {
+      "index": 21,
+      "group": "owner Stop retires autonomous creative effects",
+      "test": "waits for only the stopped owner and prevents enable from racing its producer retirement",
+      "files": [
+        "test/midi/browser-note-preview.test.js"
+      ]
+    },
+    {
+      "index": 22,
+      "group": "original Circuit Workshop prepared-source edition (deferred qualification)",
+      "test": "\"before all\" hook for \"retains all named GM strikes, component counts, source clocks and exact source-data ancestry\"",
+      "files": [
+        "test/midi/circuit-workshop.test.js"
+      ]
+    },
+    {
+      "index": 23,
+      "group": "canonical directed-route circular coordinates (deferred qualification)",
+      "test": "declines missing entry, teleports, foreign identities and a segment-precision claim",
+      "files": [
+        "test/midi/circular-route.test.js"
+      ]
+    },
+    {
+      "index": 24,
+      "group": "travel-owned octave circular spectra (deferred runtime qualification)",
+      "test": "compiles the original four-control recipes and renders the same canonical circular history through a state cut",
+      "files": [
+        "test/midi/circular-spectrum.test.js"
+      ]
+    },
+    {
+      "index": 25,
+      "group": "compiler/pack artifact admission closure (#1131, deferred)",
+      "test": "admits every emitted artifact from every shipped recipe family through the same published pack schema",
+      "files": [
+        "test/midi/compiler-artifact-admission.test.js"
+      ]
+    },
+    {
+      "index": 26,
+      "group": "original finite FM excitation and ordinary body graft (qualification deferred)",
+      "test": "compiles exact finite support, independent dry/body controls and positive wood loss",
+      "files": [
+        "test/midi/finite-fm-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 27,
+      "group": "original finite FM excitation and ordinary body graft (qualification deferred)",
+      "test": "compares fixed-gain dry/body readouts without changing excitation, loss or the immutable patch",
+      "files": [
+        "test/midi/finite-fm-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 28,
+      "group": "original finite FM excitation and ordinary body graft (qualification deferred)",
+      "test": "stages a private generated pack atomically and retains the last patch on a failed preparation",
+      "files": [
+        "test/midi/finite-fm-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 29,
+      "group": "owned fixed fractional graph alignment (deferred qualification)",
+      "test": "admits exact alignment storage and binds used algorithm revisions into the graph identity",
+      "files": [
+        "test/midi/fractional-alignment.test.js"
+      ]
+    },
+    {
+      "index": 30,
+      "group": "atomic four-readout graft take comparisons (synthetic DSP fixture)",
+      "test": "uses sequential ordinary render owners, one take/frame domain and exact unchanged material references",
+      "files": []
+    },
+    {
+      "index": 31,
+      "group": "atomic four-readout graft take comparisons (synthetic DSP fixture)",
+      "test": "retains the prior complete set on a later source/build/frame mismatch or failed body render",
+      "files": []
+    },
+    {
+      "index": 32,
+      "group": "atomic four-readout graft take comparisons (synthetic DSP fixture)",
+      "test": "holds admitted work through a late canceled producer and never publishes its partial files",
+      "files": []
+    },
+    {
+      "index": 33,
+      "group": "atomic four-readout graft take comparisons (synthetic DSP fixture)",
+      "test": "refuses to replace an actively borrowed last-good set, including a reader acquired during preparation",
+      "files": []
+    },
+    {
+      "index": 34,
+      "group": "atomic four-readout graft take comparisons (synthetic DSP fixture)",
+      "test": "freezes admitted references and rejects a stale request after an uncooperative old render completes",
+      "files": []
+    },
+    {
+      "index": 35,
+      "group": "atomic four-readout graft take comparisons (synthetic DSP fixture)",
+      "test": "attempts every independent renderer retirement and retains the budget when one producer is unknown",
+      "files": []
+    },
+    {
+      "index": 36,
+      "group": "typed effective onset controls",
+      "test": "takes world height only from the completed position and excludes camera or substitute payload coordinates",
+      "files": [
+        "test/midi/instrument-performance.test.js"
+      ]
+    },
+    {
+      "index": 37,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 1-channel IR analysis and simultaneous native taps at 44100",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 38,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 1-channel IR analysis and simultaneous native taps at 48000",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 39,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 1-channel IR analysis and simultaneous native taps at 96000",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 40,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 2-channel IR analysis and simultaneous native taps at 44100",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 41,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 2-channel IR analysis and simultaneous native taps at 48000",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 42,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 2-channel IR analysis and simultaneous native taps at 96000",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 43,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 4-channel IR analysis and simultaneous native taps at 44100",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 44,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 4-channel IR analysis and simultaneous native taps at 48000",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 45,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "binds 4-channel IR analysis and simultaneous native taps at 96000",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 46,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "gates a complete mixed graph on render-thread readiness and terminal receipts: valid",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 47,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "gates a complete mixed graph on render-thread readiness and terminal receipts: missing-ready",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 48,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "gates a complete mixed graph on render-thread readiness and terminal receipts: missing-complete",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 49,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "gates a complete mixed graph on render-thread readiness and terminal receipts: late-fault",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 50,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "gates a complete mixed graph on render-thread readiness and terminal receipts: bad-abi",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 51,
+      "group": "native shared convolution rendering (API/codec fixtures, no acoustic qualification)",
+      "test": "gates a complete mixed graph on render-thread readiness and terminal receipts: bad-parameter",
+      "files": [
+        "test/midi/native-convolution-render.test.js"
+      ]
+    },
+    {
+      "index": 52,
+      "group": "native offline producer ownership (API doubles, no PCM qualification)",
+      "test": "routes a carried mapped sample through scheduled native lanes without retriggering its onset",
+      "files": [
+        "test/midi/native-offline-ownership.test.js"
+      ]
+    },
+    {
+      "index": 53,
+      "group": "native offline producer ownership (API doubles, no PCM qualification)",
+      "test": "keeps the running slot and PCM charged until an unabortable native render settles",
+      "files": [
+        "test/midi/native-offline-ownership.test.js"
+      ]
+    },
+    {
+      "index": 54,
+      "group": "independent native sound collection aliases",
+      "test": "keeps the returned definition charged after retiring worker results and refuses unknown worker retirement",
+      "files": [
+        "test/helpers/native-sound-candidates.js",
+        "test/midi/native-sound-collections.test.js"
+      ]
+    },
+    {
+      "index": 55,
+      "group": "original procedural graft ancestry (authored unrun; listening qualification pending)",
+      "test": "compiles Tin pollen, Glass breath and a sealed bowed body without a fabricated PCM asset or source take",
+      "files": [
+        "test/midi/original-graft-origin.test.js"
+      ]
+    },
+    {
+      "index": 56,
+      "group": "owned bowed/friction source integration (runtime/browser/listening qualification deferred)",
+      "test": "compiles three ordinary recipes and renders their explicit control movement/rest through the owned source",
+      "files": [
+        "test/midi/owned-friction-source.test.js"
+      ]
+    },
+    {
+      "index": 57,
+      "group": "owned bowed/friction source integration (runtime/browser/listening qualification deferred)",
+      "test": "revoices committed movement, rest and reversal as one held source without a hidden onset",
+      "files": [
+        "test/midi/owned-friction-source.test.js"
+      ]
+    },
+    {
+      "index": 58,
+      "group": "owned sample host preparation and command ownership (deferred integration fixtures)",
+      "test": "allocates exact one/16-voice instances and requires a new renderer for a changed prepared capacity",
+      "files": [
+        "test/midi/owned-sample-backend.test.js"
+      ]
+    },
+    {
+      "index": 59,
+      "group": "owned sample host preparation and command ownership (deferred integration fixtures)",
+      "test": "prepares every attack/release asset, retains a real child through its envelope and acknowledges private state retirement",
+      "files": [
+        "test/midi/owned-sample-backend.test.js"
+      ]
+    },
+    {
+      "index": 60,
+      "group": "owned sample host preparation and command ownership (deferred integration fixtures)",
+      "test": "requires a fresh renderer for a changed map and refuses missing material before activation",
+      "files": [
+        "test/midi/owned-sample-backend.test.js"
+      ]
+    },
+    {
+      "index": 61,
+      "group": "owned sample host preparation and command ownership (deferred integration fixtures)",
+      "test": "forces cleanup of an already playing release child without retriggering its articulation",
+      "files": [
+        "test/midi/owned-sample-backend.test.js"
+      ]
+    },
+    {
+      "index": 62,
+      "group": "owned sample host preparation and command ownership (deferred integration fixtures)",
+      "test": "chokes the original kit with a forced all-layer fade while retaining the next logical onset",
+      "files": [
+        "test/midi/owned-sample-backend.test.js"
+      ]
+    },
+    {
+      "index": 63,
+      "group": "owned sample host preparation and command ownership (deferred integration fixtures)",
+      "test": "admits observed position segments through the execution wrapper without adding a second onset",
+      "files": [
+        "test/midi/owned-sample-backend.test.js"
+      ]
+    },
+    {
+      "index": 64,
+      "group": "owned sample host preparation and command ownership (deferred integration fixtures)",
+      "test": "admits canonical outbound/rest/return observations without retriggering and releases at the final observed endpoint",
+      "files": [
+        "test/midi/owned-sample-backend.test.js"
+      ]
+    },
+    {
+      "index": 65,
+      "group": "owned sample host preparation and command ownership (deferred integration fixtures)",
+      "test": "rejects a pending source inspection when its concrete processor owner retires",
+      "files": [
+        "test/midi/owned-sample-backend.test.js"
+      ]
+    },
+    {
+      "index": 66,
+      "group": "owned multi-asset sample control references (deferred runtime fixtures)",
+      "test": "renders selected forward controls and the original release child at each output rate",
+      "files": [
+        "test/midi/owned-sample-control-render.test.js"
+      ]
+    },
+    {
+      "index": 67,
+      "group": "owned multi-asset sample control references (deferred runtime fixtures)",
+      "test": "renders selected reverse controls and the original release child at each output rate",
+      "files": [
+        "test/midi/owned-sample-control-render.test.js"
+      ]
+    },
+    {
+      "index": 68,
+      "group": "owned multi-asset sample control references (deferred runtime fixtures)",
+      "test": "renders selected positionDriven controls and the original release child at each output rate",
+      "files": [
+        "test/midi/owned-sample-control-render.test.js"
+      ]
+    },
+    {
+      "index": 69,
+      "group": "owned multi-asset sample control references (deferred runtime fixtures)",
+      "test": "replays the real canonical traversal history through identical forward and state-cut render paths",
+      "files": [
+        "test/midi/owned-sample-control-render.test.js"
+      ]
+    },
+    {
+      "index": 70,
+      "group": "Owned worklet host lifecycle",
+      "test": "owns circular phase through canonical travel updates and defers release through the completed observation",
+      "files": [
+        "test/midi/owned-sine-worklet.test.js"
+      ]
+    },
+    {
+      "index": 71,
+      "group": "Owned worklet host lifecycle",
+      "test": "prepares every non-PCM source with the real resource owner and retains runtime storage through disposal",
+      "files": [
+        "test/midi/owned-sine-worklet.test.js"
+      ]
+    },
+    {
+      "index": 72,
+      "group": "Owned worklet host lifecycle",
+      "test": "carries completed physical controls through the real host queue into each owned source without a new attack",
+      "files": [
+        "test/midi/owned-sine-worklet.test.js"
+      ]
+    },
+    {
+      "index": 73,
+      "group": "owned modal wind integration (runtime/browser/listening qualification deferred)",
+      "test": "keeps same-pitch expression independent and closes the existing cancel/Panic owners",
+      "files": [
+        "test/midi/owned-wind-source.test.js"
+      ]
+    },
+    {
+      "index": 74,
+      "group": "owned modal wind integration (runtime/browser/listening qualification deferred)",
+      "test": "compiles and control-renders three ordinary recipes without PCM or an external feedback graph",
+      "files": [
+        "test/midi/owned-wind-source.test.js"
+      ]
+    },
+    {
+      "index": 75,
+      "group": "canonical paired modal body graph (live/device qualification deferred)",
+      "test": "does not accept stale endpoints, a forged profile identity or a silent policy upgrade",
+      "files": [
+        "test/midi/paired-modal-body-graph.test.js"
+      ]
+    },
+    {
+      "index": 76,
+      "group": "mapped shared-surface preparation ownership",
+      "test": "restores logical contact continuation and rejects another map without mutating the old mapper",
+      "files": [
+        "test/midi/prepared-surfaces.test.js"
+      ]
+    },
+    {
+      "index": 77,
+      "group": "prepared rendered-wave prelisten (synthetic lifetime fixtures; listening unqualified)",
+      "test": "rejects stale source/route results and preserves the prepared file for another explicit request",
+      "files": [
+        "test/midi/prepared-wave-prelisten.test.js"
+      ]
+    },
+    {
+      "index": 78,
+      "group": "reviewed named resonator correspondence (render/listening qualification deferred)",
+      "test": "rejects stale endpoints, duplicate anchors, changed maps, invalid bands/weights and fake prepared objects",
+      "files": [
+        "test/midi/resonator-morph.test.js"
+      ]
+    },
+    {
+      "index": 79,
+      "group": "finite sample excitation into an owned modal body (runtime qualification deferred)",
+      "test": "\"before all\" hook for \"waits silently for actual cursor input beyond finite support and retains only the admitted body tail at rest\"",
+      "files": [
+        "test/midi/sample-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 80,
+      "group": "intact feedback source into a private outer body (qualification deferred)",
+      "test": "preserves internal feedback state, independent same-pitch bodies and exact cuts at worklet-wind/44100",
+      "files": [
+        "test/midi/sealed-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 81,
+      "group": "intact feedback source into a private outer body (qualification deferred)",
+      "test": "preserves internal feedback state, independent same-pitch bodies and exact cuts at worklet-wind/48000",
+      "files": [
+        "test/midi/sealed-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 82,
+      "group": "intact feedback source into a private outer body (qualification deferred)",
+      "test": "preserves internal feedback state, independent same-pitch bodies and exact cuts at worklet-wind/96000",
+      "files": [
+        "test/midi/sealed-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 83,
+      "group": "intact feedback source into a private outer body (qualification deferred)",
+      "test": "preserves internal feedback state, independent same-pitch bodies and exact cuts at worklet-friction/44100",
+      "files": [
+        "test/midi/sealed-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 84,
+      "group": "intact feedback source into a private outer body (qualification deferred)",
+      "test": "preserves internal feedback state, independent same-pitch bodies and exact cuts at worklet-friction/48000",
+      "files": [
+        "test/midi/sealed-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 85,
+      "group": "intact feedback source into a private outer body (qualification deferred)",
+      "test": "preserves internal feedback state, independent same-pitch bodies and exact cuts at worklet-friction/96000",
+      "files": [
+        "test/midi/sealed-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 86,
+      "group": "intact feedback source into a private outer body (qualification deferred)",
+      "test": "compiles ordinary wind/friction patches with exact body ancestry and four honest controls",
+      "files": [
+        "test/midi/sealed-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 87,
+      "group": "contact-owned seed travel admission (deferred runtime fixtures)",
+      "test": "\"before all\" hook for \"retains one actual contact begin through movement, rest, physical reversal, checkpoint and contact end\"",
+      "files": [
+        "test/midi/seed-layer-contact.test.js"
+      ]
+    },
+    {
+      "index": 88,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "privately copies the plan descriptor, pins both banks and never uses the original as playback material",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 89,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "rejects mismatched reconstruction, component coordinates and undeclared contact lifetimes before admission",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 90,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps one semantic onset and independently resumes all hammer-cloud children at 44100",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 91,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps one semantic onset and independently resumes all hammer-cloud children at 48000",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 92,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps one semantic onset and independently resumes all hammer-cloud children at 96000",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 93,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps one semantic onset and independently resumes all hollow-tool children at 44100",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 94,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps one semantic onset and independently resumes all hollow-tool children at 48000",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 95,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps one semantic onset and independently resumes all hollow-tool children at 96000",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 96,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "force-closes every child, cancels future controls, and does not revive the source after its finite material end",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 97,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps Bowed Scrap births inside observed spans, snapshots mid-span and rests across gaps at 44100",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 98,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps Bowed Scrap births inside observed spans, snapshots mid-span and rests across gaps at 48000",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 99,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "keeps Bowed Scrap births inside observed spans, snapshots mid-span and rests across gaps at 96000",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 100,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "extends an unreleased composite lease and refuses to revive a source after release",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 101,
+      "group": "aligned seed composite source (authored runtime qualification deferred)",
+      "test": "rejects a state cut from a different residual loss or modal-fit recipe without mutating the target",
+      "files": [
+        "test/midi/seed-layer-source.test.js"
+      ]
+    },
+    {
+      "index": 102,
+      "group": "explicit frozen-material branch rebuilds (runtime acceptance deferred)",
+      "test": "prepares a new isolated branch, retains the old seed and fences stale target or plan publication",
+      "files": [
+        "test/midi/seed-rebuild.test.js"
+      ]
+    },
+    {
+      "index": 103,
+      "group": "owned finite warp material workflows (synthetic DSP fixture; acceptance deferred)",
+      "test": "publishes actual output-rate/body/tail material only after input/core retirement",
+      "files": [
+        "test/midi/seed-warp-workflow.test.js"
+      ]
+    },
+    {
+      "index": 104,
+      "group": "owned finite warp material workflows (synthetic DSP fixture; acceptance deferred)",
+      "test": "preserves the previous frozen warp while a delayed completed result is canceled",
+      "files": [
+        "test/midi/seed-warp-workflow.test.js"
+      ]
+    },
+    {
+      "index": 105,
+      "group": "owned finite warp material workflows (synthetic DSP fixture; acceptance deferred)",
+      "test": "selects fixed-rate prepared material explicitly and fences stale controls without enabling audio",
+      "files": []
+    },
+    {
+      "index": 106,
+      "group": "immutable selected-voice source buses",
+      "test": "shares set identity across order, overlaps a lane tap and excludes same-lane unrelated voices",
+      "files": [
+        "test/midi/selected-voice-sources.test.js"
+      ]
+    },
+    {
+      "index": 107,
+      "group": "overlapping token-fenced source masks in the production kernel",
+      "test": "releases ended routing cost without clearing the next slot token",
+      "files": [
+        "test/midi/selected-voice-sources.test.js"
+      ]
+    },
+    {
+      "index": 108,
+      "group": "captured lane identity across live and offline sources",
+      "test": "uses recorded routing changes at onset without guessing stable IDs from lane numbers",
+      "files": [
+        "test/midi/selected-voice-sources.test.js"
+      ]
+    },
+    {
+      "index": 109,
+      "group": "sound ancestry bytes separate from playable PCM (authored unrun)",
+      "test": "verifies complete original model and contract bytes while producing zero decoded sample pins",
+      "files": [
+        "test/midi/sound-material-ancestry.test.js"
+      ]
+    },
+    {
+      "index": 110,
+      "group": "sound ancestry bytes separate from playable PCM (authored unrun)",
+      "test": "rejects altered data bytes, missing closure members and absent ancestry payload without publishing availability",
+      "files": [
+        "test/midi/sound-material-ancestry.test.js"
+      ]
+    },
+    {
+      "index": 111,
+      "group": "sound ancestry bytes separate from playable PCM (authored unrun)",
+      "test": "prepares a data-backed procedural lane with zero PCM pins while retaining its exact immutable reference",
+      "files": [
+        "test/midi/sound-material-ancestry.test.js"
+      ]
+    },
+    {
+      "index": 112,
+      "group": "sound ancestry bytes separate from playable PCM (authored unrun)",
+      "test": "joins a canceled in-flight ancestry reader before releasing its reservation",
+      "files": [
+        "test/midi/sound-material-ancestry.test.js"
+      ]
+    },
+    {
+      "index": 113,
+      "group": "sound ancestry bytes separate from playable PCM (authored unrun)",
+      "test": "retains unresolved model-reader ownership and charges instead of treating a rejected release as successful disposal",
+      "files": [
+        "test/midi/sound-material-ancestry.test.js"
+      ]
+    },
+    {
+      "index": 114,
+      "group": "saved three-child sound-seed recipes (runtime and listening acceptance deferred)",
+      "test": "compiles the entire hammer-cloud source inventory with one owned onset and explicit creative ancestry",
+      "files": [
+        "test/midi/sound-seed-layer-recipe.test.js"
+      ]
+    },
+    {
+      "index": 115,
+      "group": "saved three-child sound-seed recipes (runtime and listening acceptance deferred)",
+      "test": "compiles the entire bowed-scrap source inventory with one owned onset and explicit creative ancestry",
+      "files": [
+        "test/midi/sound-seed-layer-recipe.test.js"
+      ]
+    },
+    {
+      "index": 116,
+      "group": "saved three-child sound-seed recipes (runtime and listening acceptance deferred)",
+      "test": "compiles the entire hollow-tool source inventory with one owned onset and explicit creative ancestry",
+      "files": [
+        "test/midi/sound-seed-layer-recipe.test.js"
+      ]
+    },
+    {
+      "index": 117,
+      "group": "frozen sound-seed recipes and instrument preparation (runtime acceptance deferred)",
+      "test": "compiles fixed-rate hammer and phrase seeds with playable PCM independent from raw ancestors",
+      "files": [
+        "test/midi/sound-seed-recipe.test.js"
+      ]
+    },
+    {
+      "index": 118,
+      "group": "frozen sound-seed recipes and instrument preparation (runtime acceptance deferred)",
+      "test": "keeps granular root and control ranges explicit and binds recipe identity to transform and pitch",
+      "files": [
+        "test/midi/sound-seed-recipe.test.js"
+      ]
+    },
+    {
+      "index": 119,
+      "group": "frozen sound-seed recipes and instrument preparation (runtime acceptance deferred)",
+      "test": "verifies a private seed pack, fences stale compilation and retires its artifact readers",
+      "files": [
+        "test/midi/sound-seed-recipe.test.js"
+      ]
+    },
+    {
+      "index": 120,
+      "group": "owned spatial procedural textures (runtime and listening qualification deferred)",
+      "test": "compiles the four ordinary saved recipes and uses the same renderer for explicit motion/rest control WAVs",
+      "files": [
+        "test/midi/spatial-texture.test.js"
+      ]
+    },
+    {
+      "index": 121,
+      "group": "owned spatial procedural textures (runtime and listening qualification deferred)",
+      "test": "revoices actual canonical movement/rest/reversal as one source with texture-specific manifest evidence",
+      "files": [
+        "test/midi/spatial-texture.test.js"
+      ]
+    },
+    {
+      "index": 122,
+      "group": "spatial texture into a private calibrated modal body (runtime qualification deferred)",
+      "test": "compiles all four exciters with explicit EXCITE/BODY/DAMP/MIX and no audio sample playback",
+      "files": [
+        "test/midi/texture-body-graft.test.js"
+      ]
+    },
+    {
+      "index": 123,
+      "group": "observed physical lessons (runtime/browser acceptance deferred)",
+      "test": "uses all five actual pinned catalog scenes and retains an independent actor-free control",
+      "files": [
+        "test/physical-lessons.test.js"
+      ]
+    },
+    {
+      "index": 124,
+      "group": "observed physical lessons (runtime/browser acceptance deferred)",
+      "test": "resolves every lesson and exact scene reference beyond the first sixty-four inventory rows",
+      "files": [
+        "test/physical-lessons.test.js"
+      ]
+    },
+    {
+      "index": 125,
+      "group": "authored work, path and formation practice scores (runtime qualification deferred)",
+      "test": "\"before all\" hook for \"pins three distinct initial sources, manual policies, exact junction geometry and all five lesson manifests\"",
+      "files": [
+        "test/physical-practice-scores.test.js"
+      ]
+    },
+    {
+      "index": 126,
+      "group": "procgenBoot helpers",
+      "test": "continues runtime retirement after a throwing early owner",
+      "files": [
+        "test/procgen-boot.test.js"
+      ]
+    },
+    {
+      "index": 127,
+      "group": "installed crossing scores and the existing world candidate adapter",
+      "test": "ships exact-build four/eight-lane physical scores with distinct per-corridor gates and inspectable unavailable source mode",
+      "files": [
+        "test/procgen-performance-scene.test.js"
+      ]
+    },
+    {
+      "index": 128,
+      "group": "installed crossing scores and the existing world candidate adapter",
+      "test": "compiles actual patches and authoring into an unadvanced real world before the publication fence",
+      "files": [
+        "test/procgen-performance-scene.test.js"
+      ]
+    },
+    {
+      "index": 129,
+      "group": "installed crossing scores and the existing world candidate adapter",
+      "test": "pins finite practice releases before the first cohort and rehearses an actor-free control without phantom attacks",
+      "files": [
+        "test/procgen-performance-scene.test.js"
+      ]
+    },
+    {
+      "index": 130,
+      "group": "installed crossing scores and the existing world candidate adapter",
+      "test": "keeps source-build mismatch unavailable instead of converting the score silently",
+      "files": [
+        "test/procgen-performance-scene.test.js"
+      ]
+    },
+    {
+      "index": 131,
+      "group": "installed crossing scores and the existing world candidate adapter",
+      "test": "renders no onset from an empty private source and preserves the authored per-lane mix receipt",
+      "files": [
+        "test/procgen-performance-scene.test.js"
+      ]
+    },
+    {
+      "index": 132,
+      "group": "ProcGen display resource lifecycle",
+      "test": "cleans partial renderer construction after an owned canvas cannot be created",
+      "files": [
+        "test/procgen-render-lifecycle.test.js"
+      ]
+    },
+    {
+      "index": 133,
+      "group": "owned initial scene terrain provider (runtime/renderer qualification deferred)",
+      "test": "installs geometry before any physics, restores its exact source profile and continues real world state",
+      "files": [
+        "test/procgen-scored-terrain.test.js"
+      ]
+    },
+    {
+      "index": 134,
+      "group": "ProcGen workstation orchestration",
+      "test": "preserves a real 1000-tick physical trace across six prepared renderer changes with the pattern path disabled",
+      "files": [
+        "test/helpers/native-sound-candidates.js",
+        "test/procgen-workstation-controller.test.js"
+      ]
+    },
+    {
+      "index": 135,
+      "group": "ProcGen workstation orchestration",
+      "test": "owns shared macro gestures while paused, commits one undo entry and never replaces the physical world",
+      "files": [
+        "test/helpers/native-sound-candidates.js",
+        "test/procgen-workstation-controller.test.js"
+      ]
+    },
+    {
+      "index": 136,
+      "group": "runtime provenance gate",
+      "test": "accepts the reviewed inventory and fails a modified vendored byte",
+      "files": [
+        "test/runtime-provenance.test.js"
+      ]
+    },
+    {
+      "index": 137,
+      "group": "native scene rehearsal preparation (mechanical PCM doubles; synthesis acceptance deferred)",
+      "test": "keeps actual native PCM reserved through explicit input handoff and retires metadata independently afterwards",
+      "files": [
+        "test/scene-native-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 138,
+      "group": "native scene rehearsal preparation (mechanical PCM doubles; synthesis acceptance deferred)",
+      "test": "worker-encodes a bound native lane and refuses missing or mismatched native history before substituting anything",
+      "files": [
+        "test/scene-native-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 139,
+      "group": "native scene rehearsal preparation (mechanical PCM doubles; synthesis acceptance deferred)",
+      "test": "retains an in-progress native producer through cancellation and cleans earlier lanes when later preparation fails",
+      "files": [
+        "test/scene-native-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 140,
+      "group": "native scene rehearsal preparation (mechanical PCM doubles; synthesis acceptance deferred)",
+      "test": "attempts all independent native PCM releases and does not retry an unknown release as if it had succeeded",
+      "files": [
+        "test/scene-native-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 141,
+      "group": "pinned owned scene rehearsal (authored unrun; listening/device qualification pending)",
+      "test": "keeps private source copies through handoff and returns matching worker receipts and nonzero sampled output",
+      "files": [
+        "test/scene-owned-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 142,
+      "group": "pinned owned scene rehearsal (authored unrun; listening/device qualification pending)",
+      "test": "refuses absent/changed PCM, unrelated lane indices and incomplete verified ancestry",
+      "files": [
+        "test/scene-owned-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 143,
+      "group": "pinned owned scene rehearsal (authored unrun; listening/device qualification pending)",
+      "test": "supports verified data-only procedural ancestry without inventing PCM or opening audio",
+      "files": [
+        "test/scene-owned-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 144,
+      "group": "pinned owned scene rehearsal (authored unrun; listening/device qualification pending)",
+      "test": "bounds simultaneous source lanes and joins canceled acquisition before releasing the complete preparation",
+      "files": [
+        "test/scene-owned-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 145,
+      "group": "pinned owned scene rehearsal (authored unrun; listening/device qualification pending)",
+      "test": "retains charges when input references are dropped but their material retirement cannot be acknowledged",
+      "files": [
+        "test/scene-owned-rehearsal.test.js"
+      ]
+    },
+    {
+      "index": 146,
+      "group": "scene source-rate PCM pin preparation (authored unrun; audible scene qualification pending)",
+      "test": "\"before all\" hook for \"holds exact 44.1k source pins without audio-context decoding until a fenced paused commit and candidate retirement\"",
+      "files": [
+        "test/scene-sound-material.test.js"
+      ]
+    },
+    {
+      "index": 147,
+      "group": "finite dry FM Switchyard scores (runtime and listening qualification deferred)",
+      "test": "pins distinct physical systems, finite crew, complete station ownership and separate dry/echo controls",
+      "files": [
+        "test/switchyard-score.test.js"
+      ]
+    },
+    {
+      "index": 148,
+      "group": "finite dry FM Switchyard scores (runtime and listening qualification deferred)",
+      "test": "authors actual safe-landing, changed-build and blocker-contact cause fixtures without periodic filler",
+      "files": [
+        "test/switchyard-score.test.js"
+      ]
+    },
+    {
+      "index": 149,
+      "group": "finite dry FM Switchyard scores (runtime and listening qualification deferred)",
+      "test": "authors physical spacing and sound-only control comparisons without changing or replaying missed causes",
+      "files": [
+        "test/switchyard-score.test.js"
+      ]
+    },
+    {
+      "index": 150,
+      "group": "Breathing Stairwell authored held-action score (runtime/device/listening qualification deferred)",
+      "test": "\"before all\" hook for \"pins its source/geometry/abilities/content closure before any actors and starts paused\"",
+      "files": [
+        "test/wind-performance-score.test.js"
+      ]
+    }
+  ],
+  "additionalHistoryProbe": {
+    "scope": "bounded real HistoryStore cap/future pruning plus actual active-work gate; synthetic monotonic observation clock, not measured throughput or browser soak",
+    "cap": {
+      "before": {
+        "validTelemetry": true,
+        "running": true,
+        "tickIndex": 0,
+        "clockMs": 0,
+        "historyDeltaCount": 0,
+        "coldBlocksCreated": 0,
+        "coldBlocksThawed": 0,
+        "coldBlocksRetired": 0
+      },
+      "after": {
+        "validTelemetry": true,
+        "running": true,
+        "tickIndex": 40,
+        "clockMs": 2000,
+        "historyDeltaCount": 10,
+        "coldBlocksCreated": 14,
+        "coldBlocksThawed": 12,
+        "coldBlocksRetired": 7
+      },
+      "retainedDeltas": 10,
+      "gateFailures": [],
+      "noTurnoverFailures": [
+        "history_turnover_below_minimum"
+      ]
+    },
+    "future": {
+      "before": 0,
+      "after": 5,
+      "partialBoundaryDeltaRetained": true,
+      "duplicateRetirement": false
+    }
+  },
+  "notExecuted": [
+    "Playwright browser suite",
+    "listening review",
+    "native MIDI hardware qualification",
+    "sustained performance/soak benchmark"
+  ]
+}

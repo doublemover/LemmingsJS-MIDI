@@ -4,6 +4,10 @@ import { ProcgenRecipeTerrain } from './ProcgenRecipeTerrain.js';
 import { fingerprintTerrainImages, getPackTerrainWidthLimit, selectTerrainDescriptor } from './ProcgenTerrainDescriptors.js';
 import { fingerprintObjectImages, selectAuthoredAssemblyCatalog } from './ProcgenAuthoredAssemblies.js';
 import { selectThemeRecipe } from './ProcgenTerrainRecipes.js';
+import { prepareAssetCollections } from '../../data/file-provider/AssetPreparationScope.js';
+import { ResourceLoadError } from '../../data/file-provider/ResourceLoadError.js';
+import { createProcgenRetirementScope } from './ProcgenRetirement.js';
+import { initializeTerrainCacheEvidence } from './ProcgenTerrainCacheEvidence.js';
 
 const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return (n ^ (n >>> 16)) >>> 0; };
 const procgenThemeOrder = (count, seed) => {
@@ -28,8 +32,10 @@ class ProcgenPackTerrain {
     this.recipe = { id: `pack:${themes.map(theme => theme.terrain.recipe.id).join(',')}` };
     this.objects = themes.flatMap(theme => theme.terrain.objects); this.pieces = themes.flatMap(theme => theme.terrain.pieces);
     this.assignments = new Map(); this.laneThemes = [];
+    this.retirement = createProcgenRetirementScope();
     const owner = this;
     this.collision = { *values() { for (const theme of owner.themes) yield* theme.terrain.collision.values(); } };
+    initializeTerrainCacheEvidence(this);
   }
   registerLanes(seeds, runSeed, generation = 1) {
     this.assignments.clear(); this.laneThemes.length = seeds.length;
@@ -53,6 +59,12 @@ class ProcgenPackTerrain {
   forSeed(seed) { return this.themes[this.assignments.get(seed) ?? mix(seed) % this.themes.length].terrain; }
   configure(lanes, maxActors = 16384, options = {}) { for (const theme of this.themes) theme.terrain.configure(lanes, Math.ceil(maxActors / this.themes.length), options); this.height = this.themes[0].terrain.height; }
   reset() { for (const theme of this.themes) theme.terrain.reset(); this.assignments.clear(); }
+  dispose() {
+    return this.retirement.retire(this.themes.flatMap((theme, index) => [
+      { name: 'terrain-' + index, run: () => theme.terrain.reset() },
+      { name: 'terrain-assets-' + index, run: () => theme.releaseAssets?.() }
+    ]).concat([{ name: 'terrain-references', run: () => { this.assignments.clear(); this.laneThemes.length = 0; this.objects = []; this.pieces = []; this.themes = []; } }]));
+  }
   retainDescriptors(interests) {
     const grouped = new Map(this.themes.map(theme => [theme.terrain, new Map()]));
     for (const [seed, chunks] of interests) grouped.get(this.forSeed(seed)).set(seed, chunks);
@@ -69,6 +81,7 @@ class ProcgenPackTerrain {
   isFlat(seed, x) { return this.forSeed(seed).isFlat(seed, x); }
   sample(seed, x, y) { return this.forSeed(seed).sample(seed, x, y); }
   collisionAt(seed, x, y, steel = false) { return this.forSeed(seed).collisionAt(seed, x, y, steel); }
+  peekCollisionAt(seed, x, y, steel = false, state = null) { return this.forSeed(seed).peekCollisionAt?.(seed, x, y, steel, state) ?? null; }
   get memoryMB() { return this.themes.reduce((total, theme) => total + theme.terrain.memoryMB, 0); }
   getDebugState() {
     const sources = this.themes.map(theme => ({ styleName: theme.styleName, ...theme.terrain.getDebugState() }));
@@ -79,39 +92,68 @@ class ProcgenPackTerrain {
   }
 }
 
-const loadProcgenPackTerrain = async ({ styleNames, config, fileProvider, book, initialAssets = null, random = Math.random } = {}) => {
-  const names = [...new Set(styleNames)].slice(0, 16);
-  const results = await Promise.allSettled(names.map(async styleName => {
+const assertPreparationLive = (signal, id) => {
+  if (signal?.aborted) throw new ResourceLoadError('cancelled', id);
+};
+
+const loadProcgenPackTerrain = async ({ styleNames, config, fileProvider, book, initialAssets = null, random = Math.random,
+  signal, onProgress, maxConcurrentCollections = 3, operationId = null } = {}) => {
+  if (!Array.isArray(styleNames) || !styleNames.length || styleNames.length > 16) throw new TypeError('Expected 1 to 16 terrain styles');
+  const names = [...new Set(styleNames)];
+  const results = await prepareAssetCollections(names.map(styleName => ({ id: styleName, prepare: async ({ signal, registerCleanup }) => {
     const assets = initialAssets?.styleName === styleName ? initialAssets : new ProcgenAssetManager({ styleName, config, fileProvider, random });
-    if (assets !== initialAssets) await assets.load();
+    if (assets !== initialAssets) { registerCleanup(() => assets.dispose()); await assets.load({ signal, operationId }); }
+    assertPreparationLive(signal, styleName);
     const recipe = selectThemeRecipe(book, { packPath: config.path, groundSet: assets.groundSet });
     if (!recipe) throw new Error(`No source recipe for ${styleName}`);
-    const assetSha256 = await fingerprintTerrainImages(assets.assets.terrainImages);
+    const assetSha256 = assets.assets.assetSha256 || await fingerprintTerrainImages(assets.assets.terrainImages);
+    assertPreparationLive(signal, styleName);
     const sourceDescriptor = selectTerrainDescriptor(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256 });
     const routeContracts = selectProcgenRouteContracts(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256 });
-    const objectSha256 = await fingerprintObjectImages(assets.assets.gadgetImages);
+    const objectSha256 = assets.assets.objectSha256 || await fingerprintObjectImages(assets.assets.gadgetImages);
+    assertPreparationLive(signal, styleName);
     const assemblyCatalog = selectAuthoredAssemblyCatalog(book, { packPath: config.path, groundSet: assets.groundSet, assetSha256, objectSha256 });
     const objectPieces = (assets.assets?.gadgetImages || []).map((image, id) => ({ ...assets.assets.gadgets[id], id, image }));
-    return { styleName, terrain: new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, routeContracts, packWidthLimit: getPackTerrainWidthLimit(book, config.path) }) };
-  }));
-  const themes = results.filter(result => result.status === 'fulfilled').map(result => result.value);
-  const terrain = new ProcgenPackTerrain(themes);
-  terrain.unavailableThemes = results.flatMap((result, index) => result.status === 'rejected' ? [names[index]] : []);
+    const terrain = new ProcgenRecipeTerrain({ recipe, terrainPieces: assets.terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, routeContracts, packWidthLimit: getPackTerrainWidthLimit(book, config.path) });
+    registerCleanup(() => terrain.reset());
+    return { styleName, terrain, releaseAssets: assets !== initialAssets ? () => assets.dispose() : null };
+  } })), { signal, onProgress, concurrency: maxConcurrentCollections, operationId });
+  const terrain = new ProcgenPackTerrain(results.map(result => result.value));
+  terrain.unavailableThemes = [];
   return terrain;
 };
-const loadProcgenMixedTerrain = async ({ configs, fileProvider, book, laneAssignments = DEFAULT_PROCGEN_LANE_THEMES, random = Math.random } = {}) => {
+const loadProcgenMixedTerrain = async (options = {}) => {
+  const { configs, fileProvider, book, laneAssignments = DEFAULT_PROCGEN_LANE_THEMES, random = Math.random,
+    signal, onProgress, maxConcurrentCollections = 3, operationId = null, requiredFamilies = null, prepareAll = false } = options;
+  if (!Array.isArray(laneAssignments) || !laneAssignments.length || laneAssignments.length > 1024 || laneAssignments.some(id => !PROCGEN_THEME_FAMILIES.some(family => family.id === id))) {
+    throw new TypeError('Unavailable required lane theme assignment');
+  }
+  if (requiredFamilies != null && (!Array.isArray(requiredFamilies) || !requiredFamilies.length || requiredFamilies.length > PROCGEN_THEME_FAMILIES.length ||
+      new Set(requiredFamilies).size !== requiredFamilies.length || requiredFamilies.some(id => !PROCGEN_THEME_FAMILIES.some(family => family.id === id)) ||
+      laneAssignments.some(id => !requiredFamilies.includes(id)))) throw new TypeError('Checkpoint required terrain families do not cover the lane assignments');
+  const required = new Set(requiredFamilies || laneAssignments);
+  const all = prepareAll || !Object.hasOwn(options, 'laneAssignments') && requiredFamilies == null;
+  const selected = requiredFamilies ? requiredFamilies.map(id => PROCGEN_THEME_FAMILIES.find(family => family.id === id))
+    : PROCGEN_THEME_FAMILIES.filter(family => all || required.has(family.id));
   const available = configs instanceof Map ? [...configs.values()] : Array.isArray(configs) ? configs : Object.values(configs || {});
-  const results = await Promise.allSettled(PROCGEN_THEME_FAMILIES.map(async family => {
+  const results = await prepareAssetCollections(selected.map(family => ({ id: family.id, required: required.has(family.id), prepare: async ({ signal, registerCleanup }) => {
     const config = available.find(config => String(config.path).replace(/\\/g, '/').split('/').filter(Boolean).at(-1) === family.pack);
-    if (!config) throw new Error(`Pack unavailable: ${family.pack}`);
-    const assets = await new ProcgenAssetManager({ styleName: family.styleName, groundSet: family.groundSet, config, fileProvider, random }).load();
-    const loaded = await loadProcgenPackTerrain({ styleNames: [family.styleName], config, fileProvider, book, random, initialAssets: assets });
+    if (!config) throw new ResourceLoadError('not-found', family.pack);
+    const assets = new ProcgenAssetManager({ styleName: family.styleName, groundSet: family.groundSet, config, fileProvider, random });
+    registerCleanup(() => assets.dispose());
+    await assets.load({ signal, operationId });
+    assertPreparationLive(signal, family.id);
+    const loaded = await loadProcgenPackTerrain({ styleNames: [family.styleName], config, fileProvider, book, random, initialAssets: assets, signal, operationId });
+    registerCleanup(() => loaded.dispose());
     const theme = loaded.themes[0];
-    return { ...theme, familyId: family.id, styleName: family.id, provenance: { pack: family.pack, groundSet: family.groundSet, recipeId: theme.terrain.recipe.id, assetSha256: theme.terrain.recipe.assetSha256 } };
-  }));
+    return { ...theme, releaseAssets: () => assets.dispose(), familyId: family.id, styleName: family.id, provenance: Object.freeze({ pack: family.pack, groundSet: family.groundSet,
+      recipeId: theme.terrain.recipe.id, assetSha256: theme.terrain.recipe.assetSha256, resourceSources: assets.assets.resourceSources }) };
+  } })), { signal, onProgress, concurrency: maxConcurrentCollections, operationId });
   const terrain = new ProcgenPackTerrain(results.filter(result => result.status === 'fulfilled').map(result => result.value));
-  terrain.unavailableThemes = results.flatMap((result, index) => result.status === 'rejected' ? [PROCGEN_THEME_FAMILIES[index].id] : []);
+  terrain.unavailableThemes = results.flatMap((result, index) => result.status === 'rejected' ? [selected[index].id] : []);
+  terrain.unpreparedThemes = PROCGEN_THEME_FAMILIES.filter(family => !selected.includes(family)).map(family => family.id);
   terrain.setLaneAssignments(laneAssignments);
   return terrain;
 };
+
 export { ProcgenPackTerrain, procgenThemeOrder, loadProcgenPackTerrain, loadProcgenMixedTerrain, PROCGEN_THEME_FAMILIES, DEFAULT_PROCGEN_LANE_THEMES };

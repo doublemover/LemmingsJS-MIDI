@@ -8,6 +8,16 @@ import { ColorPalette } from '../js/render/ColorPalette.js';
 describe('Frame', function () {
   useGlobalLemmings({ game: { showDebug: false } });
 
+  it('draws shared immutable palettes without adding cache properties', function () {
+    const palette = new ColorPalette();
+    palette.setColorRGB(0, 10, 20, 30);
+    Object.freeze(palette);
+    const frame = new Frame(2, 1);
+    frame.drawPaletteImage(Uint8Array.of(0, 128), 2, 1, palette);
+    expect(Array.from(frame.data)).to.deep.equal([palette.getColor(0), ColorPalette.black]);
+    expect(Array.from(frame.mask)).to.deep.equal([1, 0]);
+  });
+
   it('fills entire frame with a color', function () {
     const frame = new Frame(2, 2);
     frame.fill(1, 2, 3);

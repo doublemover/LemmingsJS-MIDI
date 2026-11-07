@@ -1,0 +1,82 @@
+import { cloneData, canonicalDataText, freezeData } from '../../../core/CanonicalData.js';
+import { inspectResonatorMorphMap } from '../../../midi/content/ResonatorMorph.js';
+import { createSceneMorphActorMotion } from './SceneMorphActorMotion.js';
+import { travelColorationValue } from '../../../midi/content/TravelColorationRecipes.js';
+import { createResonatorMorphGraph } from '../../../midi/content/ResonatorMorphGraph.js';
+import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { captureSceneBodyContinuation, restoreSceneBodyContinuation } from './SceneBodyContinuation.js';
+
+const fail = message => Object.assign(new Error(message), { code: 'scene-morph-unavailable' });
+export function validateSceneMorphMechanism(raw) {
+  const value = cloneData(raw, { maxBytes: 49152, maxNodes: 6000 });
+  if (!value || Object.keys(value).some(key => !['schema', 'instrumentId', 'map', 'a', 'b', 'travelPixels', 'wet01', 'controlSource'].includes(key)) || !['lemmings-scene-morph-route/v1', 'lemmings-scene-morph-route/v2', 'lemmings-scene-morph-route/v3'].includes(value.schema) || typeof value.instrumentId !== 'string' || !/^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value.instrumentId) || !Number.isFinite(value.travelPixels) || value.travelPixels < 128 || value.travelPixels > 1024 || !Number.isFinite(value.wet01) || value.wet01 < 0 || value.wet01 > 0.35) throw fail('The initial morph route needs exact bounded sources, instrument and real travel domain.');
+  if (value.schema === 'lemmings-scene-morph-route/v3' ? value.controlSource !== 'first-accepted-pickup-actor-signed-x' : value.controlSource !== undefined) throw fail('Choose the explicit first accepted gate actor control policy.');
+  const inspected = inspectResonatorMorphMap(value.map, value.a, value.b), blend = inspected.map.transitionPolicy === 'prepared-dual-body-blend';
+  if (blend ? !['lemmings-scene-morph-route/v2', 'lemmings-scene-morph-route/v3'].includes(value.schema) || inspected.a.modes.length > 8 || inspected.b.modes.length > 8 : inspected.map.transitionPolicy !== 'paired-synthetic-held' || inspected.slots.length > 8) throw fail('Use reviewed held pairing within eight modes, or an explicit v2 prepared blend with at most eight modes in each of its two bodies.'); return freezeData(value);
+}
+export function sceneMorphMechanismCost(raw) {
+  const value = validateSceneMorphMechanism(raw), blend = value.map.transitionPolicy === 'prepared-dual-body-blend';
+  return Object.freeze({ bodyCount: blend ? 2 : 1, strategy: blend ? 'prepared-endpoint-audio-blend' : 'paired-synthetic-modes', modeCount: blend ? value.a.modes.length + value.b.modes.length : inspectResonatorMorphMap(value.map, value.a, value.b).slots.length });
+}
+export async function verifySceneMorphMechanism(value, instruments) {
+  const mechanism = validateSceneMorphMechanism(value), matches = instruments.filter(instrument => instrument.id === mechanism.instrumentId), instrument = matches[0];
+  if (matches.length !== 1 || instrument.route !== 'local' || (mechanism.controlSource ? instrument.sourceKind !== 'PickupCrossing' || instruments.some(row => row.route !== 'local' || row.sourceKind !== 'PickupCrossing') : instrument.sourceKind !== 'MotionCommitted' || !instrument.articulation?.sustain || instrument.articulation.orientation !== 'signedX' || instrument.articulation.phaseMode !== 'direction-reversing' || instrument.articulation.lifetimeScope !== 'actorJourney')) throw fail('The score must own the exact local sustained signed-X journey used by MORPH.');
+  await createResonatorMorphGraph(mechanism); return mechanism;
+}
+let ordinal = 0;
+export function createSceneMorphMechanism({ mechanism: raw, prepareGraph, travelEffects, updateGraph, toFrame, scoreTimeFor, getContext, getOwnerState, resourceBudget, onState = () => {} } = {}) {
+  const mechanism = validateSceneMorphMechanism(raw), cost = sceneMorphMechanismCost(mechanism), id = 'scene-morph-' + (++ordinal), metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-morph-source', category: 'audio', bytes: canonicalDataText(mechanism).bytes.length * 8 + 8192 }), scope = createProcgenRetirementScope();
+  let restoredContext = null, disposed = false, pending = null, expected = null, model = null, context = null, used = false, unknown = false, error = null;
+  const actorMotion = mechanism.controlSource ? createSceneMorphActorMotion({ instrumentId: mechanism.instrumentId, scoreTimeFor }) : null;
+  let lastActorValue = null, lastActorFrame = -1;
+  const active = () => { try { const state = getOwnerState(); return !!expected && state?.revision === expected.ownerRouteRevision && state.activeGraph?.hash === expected.graphDefinitionHash && ['active', 'mute'].includes(state.mode); } catch { return false; } };
+  const state = () => Object.freeze({ prepared: !!expected && context === getContext(), preparing: !!pending, bound: used, active: active(), error, unknownRetirement: unknown, instrumentId: mechanism.instrumentId, mapHash: mechanism.map.hash, ...cost });
+  const report = () => { if (!disposed) try { onState(state()); } catch {} };
+  return Object.freeze({ state, isPrepared: () => !!expected && context === getContext(),
+    async ensure() {
+      if (disposed || unknown) return Promise.reject(fail('The score body owner has retired or retains unknown storage.'));
+      if (pending) return pending.promise; if (restoredContext === getContext() || expected && context === getContext()) return Promise.resolve(state());
+      const selected = getContext(); if (selected?.state !== 'running') return Promise.reject(fail('Explicitly enable browser audio before preparing the score body.'));
+      let workspace; try { workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-morph-preparation', category: 'candidate', bytes: 2 * 1048576 }); } catch (caught) { error = caught.message; report(); throw caught; }
+      const operation = { controller: new AbortController(), workspace, promise: null }; pending = operation; error = null;
+      const check = () => { operation.controller.signal.throwIfAborted(); if (disposed || pending !== operation || getContext() !== selected || selected.state !== 'running') throw fail('The score or audio clock changed during body preparation.'); };
+      operation.promise = (async () => { try { check(); const candidate = await createResonatorMorphGraph(mechanism, selected.sampleRate); check(); const result = await prepareGraph(candidate.graph, { signal: operation.controller.signal, isCurrent: () => { try { check(); return true; } catch { return false; } } }); check(); model = candidate; context = selected; expected = Object.freeze({ ownerRouteRevision: result.revision, graphDefinitionHash: result.activeGraph.hash }); used = false; return state(); }
+      catch (caught) { if (!operation.reset) error = caught.message; throw caught; }
+      finally { try { operation.workspace.release(); } catch (caught) { unknown = true; error = caught.message; throw caught; } finally { pending = null; report(); } } })(); report(); return operation.promise;
+    },
+    consume(intents, admissions, batch, executionEpoch) {
+      if (actorMotion) {
+        if (disposed || !expected || context !== getContext() || !active()) return;
+        try {
+          for (const control of actorMotion.consume(batch, intents, admissions)) {
+            const value = travelColorationValue(model.control, control.signedDistancePixels); if (value === lastActorValue) continue;
+            const frame = toFrame(control.scoreTime, executionEpoch); if (!Number.isSafeInteger(frame) || frame < 0 || frame < lastActorFrame) throw fail('The actor body-control clock is unavailable or out of order.');
+            const receipt = updateGraph(model.control.nodeId, { [model.control.parameter]: value }, frame, expected, { sourceEventIds: control.sourceEventIds });
+            if (receipt?.status !== 'accepted') throw fail('The actor body control was not admitted.');
+            lastActorValue = value; lastActorFrame = frame; used = true;
+          }
+        } catch (caught) { actorMotion.stop(); error = caught.message; } report(); return;
+      }
+      if (disposed || used || !expected || context !== getContext() || !active()) return;
+      const intent = intents.find(value => value.kind === 'begin' && value.mappingId === mechanism.instrumentId && admissions.get(value.intentId) === 'accepted'); if (!intent) return;
+      try { travelEffects.bind({ voiceId: intent.voiceId, generation: intent.generation, instrumentId: mechanism.instrumentId, control: model.control, expected }); used = true; report(); } catch (caught) { error = caught.message; report(); }
+    },
+    snapshot({ audioFrame = null } = {}) { if (actorMotion && lastActorFrame > audioFrame) throw fail('The common audio cut precedes the actor body control.'); return captureSceneBodyContinuation({ mechanism, expected, context, pending, active: active(), metadata: { model, used, actorMotion: actorMotion?.snapshot() || null, lastActorValue, lastActorFrame } }); },
+    restore(value, frontier) {
+      if (disposed || pending || expected || context) throw fail('Restore only a fresh scene morph owner.');
+      const selected = getContext(), restored = restoreSceneBodyContinuation(value, mechanism, selected, frontier);
+      if (typeof restored.metadata?.used !== 'boolean' || restored.expected && !restored.metadata.model?.control) throw fail('The morph model or first-onset ownership is missing.');
+      if (!!actorMotion !== !!restored.metadata.actorMotion) throw fail('The body motion control inventory is incomplete.');
+      if (actorMotion) {
+        if (!Number.isSafeInteger(restored.metadata.lastActorFrame) || restored.metadata.lastActorFrame < -1 || restored.metadata.lastActorFrame > frontier.sourceAudioFrame || restored.metadata.lastActorValue !== null && (!Number.isFinite(restored.metadata.lastActorValue) || restored.metadata.lastActorValue < 0 || restored.metadata.lastActorValue > 1)) throw fail('The body motion frontier is invalid.');
+        actorMotion.restore(restored.metadata.actorMotion, frontier); lastActorValue = restored.metadata.lastActorValue;
+        lastActorFrame = restored.metadata.lastActorFrame < 0 ? -1 : Math.max(0, frontier.audioFrame - (frontier.sourceAudioFrame - restored.metadata.lastActorFrame));
+      }
+      model = restored.metadata.model; used = restored.metadata.used; expected = restored.expected; context = selected; restoredContext = restored.retainedRoute ? selected : null; report(); return state();
+    },
+    cancel() { pending?.controller.abort(fail('Score body preparation canceled.')); },
+    reset() { if (pending) { pending.reset = true; pending.controller.abort(fail('Score body preparation stopped.')); } expected = model = context = restoredContext = null; used = false; actorMotion?.reset(); lastActorValue = null; lastActorFrame = -1; error = null; report(); },
+    dispose() { if (scope.getReceipt()) return scope.getReceipt(); disposed = true; pending?.controller.abort(fail('Score body owner retired.')); const settled = pending?.promise; return scope.retire([{ name: 'scene-morph-preparation', run: async () => { try { await settled; } catch {} if (unknown) throw fail('Score preparation storage remains unresolved.'); metadata.release(); model = expected = null; } }]); }
+  });
+}
