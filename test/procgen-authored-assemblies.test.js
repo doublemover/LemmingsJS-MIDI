@@ -94,7 +94,7 @@ describe('authored assembly catalog', function() {
   });
 
   it('mines every configured tile scope deterministically and retains the measured chameleon pair with supported authored variants', async function() {
-    this.timeout(20000);
+    this.timeout(60000);
     const book = await mineTerrainRecipes(); validateAuthoredAssemblyCatalogs(book.assemblies);
     expect(book.assemblies).to.have.length(16);
     expect(book.assemblies.reduce((sum, c) => sum + c.sourceLevelIds.length, 0)).to.equal(280);

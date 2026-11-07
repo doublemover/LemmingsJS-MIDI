@@ -16,13 +16,14 @@ const withTempDir = (fn) => {
 };
 const runCheck = (args = [], options = {}) => {
   const argList = Array.isArray(args) ? args : [args];
-  return spawnSync('node', [script, ...argList], {
-    encoding: 'utf8',
+  return spawnSync(process.execPath, [script, ...argList], {
+    encoding: 'utf8', timeout: 15000,
     ...options
   });
 };
 
 describe('scripts/check-undefined.js', function () {
+  this.timeout(20000);
   it('detects undefined inline HTML references', function () {
     withTempDir((dir) => {
       const html = '<html><body><script>missingCall();</script></body></html>';

@@ -905,5 +905,169 @@
     "coverageScope": "HTML startup failure/retry executes under the actual immutable generation CSP; interrupted module and explicit navigation covered. Delayed late-load/BFCache branches are source-reviewed, not additional native timing qualifications.",
     "newFullNodeRun": false,
     "ci": "Pending automatic qualification after push"
+  },
+  "finalConsolidatedNode676": {
+    "sourceCommit": "4f69f26f62a9f459e10bf5ca5b8226337b90c00e",
+    "stats": {
+      "suites": 1053,
+      "tests": 8326,
+      "passes": 8320,
+      "pending": 0,
+      "failures": 6,
+      "start": "2026-11-07T22:39:51.039Z",
+      "end": "2026-11-07T23:05:36.401Z",
+      "duration": 1545362
+    },
+    "coverage": {
+      "lines": {
+        "total": 194775,
+        "covered": 169421,
+        "skipped": 0,
+        "pct": 86.98
+      },
+      "statements": {
+        "total": 194775,
+        "covered": 169421,
+        "skipped": 0,
+        "pct": 86.98
+      },
+      "functions": {
+        "total": 16067,
+        "covered": 13545,
+        "skipped": 0,
+        "pct": 84.3
+      },
+      "branches": {
+        "total": 112597,
+        "covered": 93869,
+        "skipped": 0,
+        "pct": 83.36
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "reportSha256": "192ff5651c8702cfac8d35af2e40a27bb85e851770b12ef81b86f132b18d5049",
+    "failureClass": "six timing failures under complete coverage; no assertion mismatches",
+    "failures": [
+      {
+        "title": "native character accessory layers keeps mixed-body identity stable and bounds independently colored accessory variants",
+        "file": "character-accessories.test.js",
+        "message": "Timeout of 2000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\character-accessories.test.js)"
+      },
+      {
+        "title": "scripts/check-undefined.js returns success when all calls are defined",
+        "file": "check-undefined.test.js",
+        "message": "Timeout of 2000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\check-undefined.test.js)"
+      },
+      {
+        "title": "authored assembly catalog mines every configured tile scope deterministically and retains the measured chameleon pair with supported authored variants",
+        "file": "procgen-authored-assemblies.test.js",
+        "message": "Timeout of 20000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\procgen-authored-assemblies.test.js)"
+      },
+      {
+        "title": "versioned scoped causal probability and namespace isolation records bounded negative why-not-play decisions independently from raw-source coverage",
+        "file": "procgen-causal-probability-policy.test.js",
+        "message": "Timeout of 2000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\procgen-causal-probability-policy.test.js)"
+      },
+      {
+        "title": "shared procgen lanes runs 1024 real actors with bounded sparse edits and no render dependency",
+        "file": "procgen-lanes.test.js",
+        "message": "spawnSync C:\\Users\\sneak\\AppData\\Local\\npm-cache\\_npx\\185e25162edaacfb\\node_modules\\node\\bin\\node.exe ETIMEDOUT"
+      },
+      {
+        "title": "semantic swarm reduction before backend capacity uses source group fairness rather than input order while preserving authored structural priority",
+        "file": "procgen-swarm-reducer.test.js",
+        "message": "Timeout of 2000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\procgen-swarm-reducer.test.js)"
+      }
+    ],
+    "followthrough": "Five functional workloads have explicit bounded fixture allowances. The1024-actor/3,000tick benchmark explicitly sets NODE_V8_COVERAGE to empty because Node re-inherits an omitted key. Original15s child process deadline retained,20s parent guard, plus explicit measured simulation below15s.",
+    "initialFocusedFollowup": {
+      "stats": {
+        "suites": 6,
+        "tests": 6,
+        "passes": 5,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-07T23:09:11.041Z",
+        "end": "2026-11-07T23:09:52.070Z",
+        "duration": 41029
+      },
+      "remaining": "1024-actor process deadline; five functional cases pass",
+      "classification": "Deleted coverage key was still automatically inherited by Node child_process; the remaining case was instrumented. Native CPU profile independently measured10,386.51ms simulation.",
+      "profile": {
+        "simulationMs": 10386.509999999998,
+        "importMs": 1042.8607,
+        "wallProfileMs": 11540.922,
+        "alive": 1024,
+        "terrainMemoryMB": 7.254341125488281
+      }
+    },
+    "coverageInheritanceProof": {
+      "deletedKeyChildCoverageEnabled": true,
+      "explicitEmptyKeyChildCoverageEnabled": false,
+      "productionCodeChanged": false,
+      "originalChildDeadlineMs": 15000,
+      "parentFixtureDeadlineMs": 20000
+    },
+    "secondFocusedFollowup": {
+      "stats": {
+        "suites": 6,
+        "tests": 6,
+        "passes": 5,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-07T23:13:43.105Z",
+        "end": "2026-11-07T23:14:33.542Z",
+        "duration": 50437
+      },
+      "remaining": "Same instrumented child; measured17,860.67ms is not an uninstrumented native sample"
+    },
+    "finalAffectedFollowup": {
+      "stats": {
+        "suites": 6,
+        "tests": 6,
+        "passes": 6,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T23:18:04.906Z",
+        "end": "2026-11-07T23:18:43.908Z",
+        "duration": 39002
+      },
+      "reportSha256": "71d10c60395a0226c9a47724b40ce86790e81cacf06838e09fb59062af3222b1",
+      "cases": [
+        {
+          "title": "native character accessory layers keeps mixed-body identity stable and bounds independently colored accessory variants",
+          "durationMs": 1654
+        },
+        {
+          "title": "scripts/check-undefined.js returns success when all calls are defined",
+          "durationMs": 1091
+        },
+        {
+          "title": "authored assembly catalog mines every configured tile scope deterministically and retains the measured chameleon pair with supported authored variants",
+          "durationMs": 21495
+        },
+        {
+          "title": "versioned scoped causal probability and namespace isolation records bounded negative why-not-play decisions independently from raw-source coverage",
+          "durationMs": 434
+        },
+        {
+          "title": "shared procgen lanes runs 1024 real actors with bounded sparse edits and no render dependency",
+          "durationMs": 11977
+        },
+        {
+          "title": "semantic swarm reduction before backend capacity uses source group fairness rather than input order while preserving authored structural priority",
+          "durationMs": 2333
+        }
+      ],
+      "allOriginalCasesCleared": 8326,
+      "completeFreshOneShot": false,
+      "productionCodeUnchangedSince": "4f69f26f",
+      "scope": "Original8320passes plus all6failed timing cases passing together after bounded fixture/child instrumentation corrections; unchanged production code and coverage thresholds."
+    }
   }
 }

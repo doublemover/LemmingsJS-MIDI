@@ -110,6 +110,7 @@ describe('native character accessory layers', function() {
   });
 
   it('keeps mixed-body identity stable and bounds independently colored accessory variants', async function() {
+    this.timeout(15000);
     let preference = { shape: 'mixed', ...selected };
     const sprites = new CharacterSpriteSet(new PixelSpriteSkin(hydro), catalog, file => fs.readFileSync(file, 'utf8'), () => preference);
     expect(await sprites.prepare()).to.equal(true);

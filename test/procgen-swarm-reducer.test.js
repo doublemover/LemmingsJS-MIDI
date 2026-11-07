@@ -17,7 +17,8 @@ describe('semantic swarm reduction before backend capacity', () => {
     expect(right).to.deep.equal(left); expect(left.intents.filter(value => value.kind === 'begin')).to.have.length.at.most(64); expect(left.summary.requestedEventCount).to.equal(4096); expect(left.summary.rawFactsModified).to.equal(false); expect(JSON.stringify(source)).to.equal(before); expect(left.intents.filter(value => value.kind === 'begin').some(value => value.role === 'accent')).to.equal(true); expect(a.snapshot().audible).to.have.length(0);
     if (representation !== 'individual') expect(left.intents.every(value => value.swarm.exactIndividualReplay === false)).to.equal(true);
   });
-  it('uses source group fairness rather than input order while preserving authored structural priority', () => {
+  it('uses source group fairness rather than input order while preserving authored structural priority', function() {
+    this.timeout(15000);
     const reducer = make(policy('representativeStrikes', { groupBy: ['lane'], maxVoices: 64 })), coverage = new Set();
     for (let tick = 1; tick <= 32; tick++) { const result = reducer.reduce(batch(tick), strikes(tick)); for (const item of result.intents.filter(value => value.kind === 'begin')) coverage.add(item.laneId); expect(result.summary.fallbackReasons).to.include('group-capacity'); }
     expect(coverage.size).to.equal(1024); expect(reducer.snapshot().groups.length).to.be.at.most(SWARM_REDUCER_LIMITS.groups);
