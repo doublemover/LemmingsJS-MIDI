@@ -1023,8 +1023,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalMarkerCheckpoint) await causalMarkerCheckpoint.catch(() => {});
     if (causalTakeStop) return causalTakeStop;
     if (!causalTake) return lastCausalTake;
-    const recorder = causalTake;
-    if (ownedSourceCommands?.recorder === recorder) { const receipt = ownedSourceCommands.close(); await receipt.completion; if (receipt.outcome !== 'complete') { const world = runtime()?.world; recorder.markGap({ kind: 'owned-source-commands', firstTick: world?.tickIndex || 0, lastTick: world?.tickIndex || 0, generation: world?.generation || 0, reason: 'source-command-terminal-fence-unavailable' }); } else ownedSourceCommands = null; }
+    const recorder = causalTake; let ownedAudioClock = null;
+    if (ownedSourceCommands?.recorder === recorder) { const receipt = ownedSourceCommands.close(); await receipt.completion; if (receipt.outcome !== 'complete') { const world = runtime()?.world; recorder.markGap({ kind: 'owned-source-commands', firstTick: world?.tickIndex || 0, lastTick: world?.tickIndex || 0, generation: world?.generation || 0, reason: 'source-command-terminal-fence-unavailable' }); } else { ownedAudioClock = ownedSourceCommands.state().audioClock; ownedSourceCommands = null; physicalPlayback?.audioContinuation.setCommandCapture(false); } }
     let finalCheckpoint = null;
     try {
       const world = runtime()?.world;
@@ -1039,7 +1039,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       catch { /* The recorder still owns its pending durable prefix. */ }
       status('Causal take final checkpoint unavailable: ' + error.message);
     }
-    causalTakeStop = recorder.stop({ boundaryState: causalBoundary(), finalCheckpoint, reason }).then(receipt => {
+    causalTakeStop = recorder.stop({ boundaryState: { ...causalBoundary(), ...(ownedAudioClock ? { 'owned-audio-clock': ownedAudioClock } : {}) }, finalCheckpoint, reason }).then(receipt => {
       lastCausalTake = receipt;
       selectedCausalTakeId = receipt.takeId;
       physicalAuthoringAbort?.abort(); physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
@@ -1104,6 +1104,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           mapping: sourceProject.procgen.physicalGraph, assetRefs: session.world.assets || [], boundaryState: { ...causalBoundary(), 'owned-audio': image.metadata() } });
       },
       prepareCommandCapture: async options => {
+        physicalPlayback.audioContinuation.setCommandCapture(true);
         ownedSourceCommands = await preparePhysicalSourceCommandCapture({ ...options, getBoundary: () => ({ tick: sourceWorld.tickIndex, generation: sourceWorld.generation }),
           onGap: () => { causalClockBlocked = true; Promise.resolve().then(() => { if (causalTake === options.recorder && !disposed) transport.pause(); }); } }); return ownedSourceCommands;
       },

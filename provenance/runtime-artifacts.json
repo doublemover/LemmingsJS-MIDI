@@ -154,6 +154,7 @@
         "js/app/midi-ui/CapturedEffectReplay.js",
         "js/app/midi-ui/CapturedSpectralReplay.js",
         "js/app/midi-ui/CausalEffectSelection.js",
+        "js/app/midi-ui/CausalOwnedImageRender.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalRenderTiming.js",
         "js/app/midi-ui/CausalSineRender.js",
@@ -481,8 +482,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 333,
-      "sha256": "abec11f4460f31ab67825acf34f42fcd36bad9c706fe84b17f00fc248ff04102"
+      "fileCount": 334,
+      "sha256": "df4e967beeefd32f14b704b1007c6a6f87840e46fa4ba5f5e8b509221c9756fe"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -652,6 +653,7 @@
         "js/app/midi-ui/CapturedEffectLifecycle.js",
         "js/app/midi-ui/CapturedEffectReplay.js",
         "js/app/midi-ui/CapturedSpectralReplay.js",
+        "js/app/midi-ui/CausalOwnedImageRender.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalRenderTiming.js",
         "js/app/midi-ui/EffectRenderPlan.js",
@@ -1179,8 +1181,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 557,
-      "sha256": "04d925401613bab33f4ccd0307546877bc2dd14ff80693c315e4c1d971b65c33"
+      "fileCount": 558,
+      "sha256": "a03fd59d9f9358713d61e7086dbcaef3e9dcd85d84c8ff1d30cacee47f12f587"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1207,6 +1209,7 @@
         "js/app/midi-ui/CapturedEffectLifecycle.js",
         "js/app/midi-ui/CapturedEffectReplay.js",
         "js/app/midi-ui/CapturedSpectralReplay.js",
+        "js/app/midi-ui/CausalOwnedImageRender.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalRenderTiming.js",
         "js/app/midi-ui/EffectRenderPlan.js",
@@ -1536,8 +1539,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 341,
-      "sha256": "150dc47b4b61d8d29ba919922fd16fe8d5ce0b8d3905206a4c07ac21b8a24c6d"
+      "fileCount": 342,
+      "sha256": "f19ebe7a8290f8a3f83164c2a8cc98b17588901e9e28cce8b8b1f0c628ced770"
     }
   ]
 }

@@ -412,13 +412,13 @@ class OwnedSineProcessor extends ProcessorBase {
         this.port.postMessage({ type: 'processor-retired', protocol: PROTOCOL, retirementProtocol: 1, retirementId: data.retirementId, stage: 'processor-state-released', frame, renderingContinues: false }); return;
       }
       if (data?.type === 'source-transport-observe' && Number.isSafeInteger(data.captureId) && data.captureId > 0 && Number.isSafeInteger(data.audioFrame) && data.audioFrame >= globalThis.currentFrame && !this.sourceTransport) {
-        this.sourceTransport = { id: data.captureId, audioFrame: data.audioFrame, sequence: 0, acknowledged: 0, overflow: false };
-        this.port.postMessage({ type: 'source-transport-started', captureId: data.captureId, frame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, startAudioFrame: data.audioFrame, lastPacket: this.kernel.lastPacket }); return;
+        this.sourceTransport = { id: data.captureId, audioFrame: data.audioFrame, sequence: 0, acknowledged: 0, overflow: false, blockFrames: this.lastAudioBlockFrames };
+        this.port.postMessage({ type: 'source-transport-started', captureId: data.captureId, frame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, startAudioFrame: data.audioFrame, lastPacket: this.kernel.lastPacket, blockFrames: this.lastAudioBlockFrames }); return;
       }
       if (data?.type === 'source-transport-ack' && data.captureId === this.sourceTransport?.id && data.sequence === this.sourceTransport.acknowledged + 1 && data.sequence <= this.sourceTransport.sequence) { this.sourceTransport.acknowledged = data.sequence; return; }
       if (data?.type === 'source-transport-stop' && data.captureId === this.sourceTransport?.id) {
         const capture = this.sourceTransport; this.sourceTransport = null;
-        this.port.postMessage({ type: 'source-transport-stopped', captureId: capture.id, sequence: capture.sequence, frame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, lastPacket: this.kernel.lastPacket, overflow: capture.overflow }); return;
+        this.port.postMessage({ type: 'source-transport-stopped', captureId: capture.id, sequence: capture.sequence, frame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, lastPacket: this.kernel.lastPacket, overflow: capture.overflow, blockFrames: capture.blockFrames, counters: Array.from(this.kernel.counters), nonfinite: this.kernel.nonfinite }); return;
       }
       if (data?.type === 'source-state-restore' && data.stateTransferProtocol === 1 && Number.isSafeInteger(data.requestId) && data.requestId > 0) {
         if (this.stateCut || this.stateRestore || this.kernel.queueLength || this.kernel.active.some(value => value !== 0) || !(data.bytes instanceof Uint8Array) || !(data.bytes.buffer instanceof ArrayBuffer) || data.bytes.byteOffset || data.bytes.length !== this.kernel.stateByteLength() || data.bytes.length !== data.bytes.buffer.byteLength || data.bytes.length > 16 * 1048576 || data.validation !== 'worker-restored-exact-pinned-kernel' || !Number.isSafeInteger(data.checksum) || data.checksum < 0 || data.checksum > 0xffffffff) {
@@ -518,6 +518,7 @@ class OwnedSineProcessor extends ProcessorBase {
 
   process(_inputs, outputs) {
     this.lastAudioBlockFrame = globalThis.currentFrame; this.lastAudioBlockFrames = outputs[0]?.[0]?.length || 0;
+    const transport = this.sourceTransport; if (transport && !transport.overflow && globalThis.currentFrame >= transport.audioFrame && transport.blockFrames !== this.lastAudioBlockFrames) { transport.overflow = true; this.port.postMessage({ type: 'source-transport-overflow', captureId: transport.id, reason: 'render-quantum-size-changed', frame: this.kernel.lastFrame, audioFrame: globalThis.currentFrame, sequence: transport.sequence }); }
     if (this.retired) { for (const output of outputs) for (const channel of output) channel.fill(0); return false; }
     if (this.stateRestore) {
       const restore = this.stateRestore;

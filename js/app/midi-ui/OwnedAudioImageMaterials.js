@@ -70,3 +70,11 @@ export const openMaterializedAudioImage = (options = {}) => openWithMaterials(op
 export const prepareMaterializedAudioImage = (options = {}, prepare) => {
   if (typeof prepare !== 'function') fail('A complete image continuation preparer is required.'); return openWithMaterials(options, prepare);
 };
+
+export async function computeMaterializedAudioImage(options = {}, work) {
+  if (typeof work !== 'function') fail('An image computation requires its owned complete material consumer.');
+  const inspection = await inspectOwnedAudioImage(options); let result = null, failure = null;
+  try { result = await withMaterials(inspection.references(), options, sources => work(sources.map(({ sourceId, pcm }) => ({ sourceId, pcm })), inspection.metadata())); } catch (error) { failure = error; }
+  try { await join(inspection.release()); } catch (error) { failure ||= error; }
+  if (failure) { if (result?.release) try { await join(result.release()); } catch (error) { failure.resultRetirement = error; } throw failure; } return result;
+}

@@ -46,10 +46,11 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
     throw new TypeError('Causal rendering requires owned journal sources, shared budgets and worker execution.');
   const ownerId = 'causal-audio-render-' + (++nextOwner), retirement = createProcgenRetirementScope(), unresolved = new Set(), bundles = new Set();
   const materialResources = createAudioResourceLeases({ resourceBudget, ownerPrefix: ownerId + '-material' });
+  let imageRenderer = null, imageLoading = null, useImage = false, imageSerial = 0;
   let disposed = false, active = null, prepared = null, serial = 0, phase = 'idle', progress = null, lastError = null, lastFailure = null;
-  const state = () => Object.freeze({ schema: 'lemmings-causal-render-state/v1', phase, disposed, active: !!active, progress,
-    prepared: prepared?.metadata() || null, materialResources: materialResources.diagnostics(), unresolvedRetirement: unresolved.size, error: lastError, failure: lastFailure,
-    capabilities: Object.freeze({ intentSine: true, intentOwnedSources: OWNED_SOURCE_IDS, intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', ownedEffects: Object.freeze(['gain', 'feedback-delay', 'nonlinear-chain']), nativeEffects: true, nativeConvolution: true, nativeConvolutionSources: Object.freeze([...OWNED_SOURCE_IDS, ...NATIVE_OFFLINE_SOURCE_IDS]), nativeConvolutionTopology: 'one-full-native-and-owned-worklet-graph-with-offline-completion-fences', maxSharedEffectTaps: 8, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
+  const state = () => Object.freeze({ schema: 'lemmings-causal-render-state/v1', phase: useImage ? imageLoading && !imageRenderer ? 'preparing-image-renderer' : imageRenderer?.state().phase || phase : phase, disposed, active: !!active || !!imageLoading || !!imageRenderer?.state().active, progress: useImage ? imageRenderer?.state().progress || null : progress,
+    prepared: (useImage ? imageRenderer?.getPrepared() : prepared)?.metadata() || null, materialResources: materialResources.diagnostics(), unresolvedRetirement: unresolved.size + (imageRenderer?.state().unresolvedRetirement || 0), error: useImage ? imageRenderer?.state().error || null : lastError, failure: lastFailure,
+    capabilities: Object.freeze({ capturedOwnedSourceImage: true, intentSine: true, intentOwnedSources: OWNED_SOURCE_IDS, intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', ownedEffects: Object.freeze(['gain', 'feedback-delay', 'nonlinear-chain']), nativeEffects: true, nativeConvolution: true, nativeConvolutionSources: Object.freeze([...OWNED_SOURCE_IDS, ...NATIVE_OFFLINE_SOURCE_IDS]), nativeConvolutionTopology: 'one-full-native-and-owned-worklet-graph-with-offline-completion-fences', maxSharedEffectTaps: 8, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
   const report = () => { try { onState(state()); } catch { /* Rendering ownership does not depend on view callbacks. */ } };
   const discardArtifact = async artifact => {
     artifact.discard(); await artifact.digest();
@@ -71,12 +72,13 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
     tail = { mode: 'exact-crop' }, stemLaneIds = [], includeAllLaneStems = false, timeTransformMode = 'captured-live', extendGrooveOutput = false, restorationMode = 'forward-preroll', effectGraph = null, effectReturnNodeIds = [], capturedEffects = false, includeCapturedReturn = true, graftComparison = null, signal: externalSignal, isCurrent = () => true } = {}) => {
     externalSignal?.throwIfAborted();
     if (capturedEffects && timeTransformMode !== 'captured-live') return Promise.reject(failure('captured-effect-retiming-unavailable', 'Choose captured causal groove for historical FX commands, or select a new static effect realization when changing timing.'));
-    if (!['captured-live', 'literal', 'offline-bidirectional'].includes(timeTransformMode) || typeof extendGrooveOutput !== 'boolean' || capturedEffects && timeTransformMode !== 'captured-live' || graftComparison !== null && !['exciter-only', 'body-only'].includes(graftComparison) || typeof capturedEffects !== 'boolean' || typeof includeCapturedReturn !== 'boolean' || capturedEffects && (effectGraph !== null || restorationMode !== 'forward-preroll') || !['forward-preroll', 'owned-state-cut'].includes(restorationMode) || disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
+    if (!['captured-live', 'literal', 'offline-bidirectional'].includes(timeTransformMode) || typeof extendGrooveOutput !== 'boolean' || capturedEffects && timeTransformMode !== 'captured-live' || graftComparison !== null && !['exciter-only', 'body-only'].includes(graftComparison) || typeof capturedEffects !== 'boolean' || typeof includeCapturedReturn !== 'boolean' || capturedEffects && (effectGraph !== null || restorationMode !== 'forward-preroll') || !['forward-preroll', 'owned-state-cut'].includes(restorationMode) || disposed || active || imageLoading || imageRenderer?.state().active || imageRenderer?.state().unresolvedRetirement || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
         !Number.isFinite(startSeconds) || startSeconds < 0 || startSeconds >= 120 || !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds > 120 ||
         !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(lane => typeof lane !== 'string' || !lane || lane.length > 128) ||
         new Set(stemLaneIds).size !== stemLaneIds.length || typeof includeAllLaneStems !== 'boolean' || typeof isCurrent !== 'function' || effectGraph != null && (!effectGraph || Object.getPrototypeOf(effectGraph) !== Object.prototype) ||
         !Array.isArray(effectReturnNodeIds) || effectReturnNodeIds.length > 8 || new Set(effectReturnNodeIds).size !== effectReturnNodeIds.length || effectReturnNodeIds.some(id => typeof id !== 'string' || !id || id.length > 128) || !effectGraph && effectReturnNodeIds.length)
       return Promise.reject(failure('render-unavailable', 'Choose a bounded causal source, effect graph and tap inventory.'));
+    useImage = false;
     const requestedEndSeconds = endSeconds;
     const ordinal = ++serial, controller = new AbortController(), operation = { controller, source: null, job: null, sourceHanded: false, sourceSettled: null,
       workspace: null, material: null, native: null, pcmJob: null, producerState: null, promise: null, retirement: null };
@@ -267,12 +269,20 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
       if (!disposed) { phase = 'prepared'; progress = null; lastError ||= null; report(); } return result;
     })().finally(() => { if (active === operation) { active = null; report(); } }); return operation.promise;
   };
-  return Object.freeze({ prepare, state, getPrepared: () => prepared,
-    cancel() { if (!active) return false; active.controller.abort(failure('render-canceled', 'Causal audio render canceled.')); phase = 'retiring'; report(); return true; },
+  const prepareCaptured = options => {
+    if (disposed || active || imageLoading || imageRenderer?.state().active || unresolved.size) return Promise.reject(failure('render-unavailable', 'Finish the current render before preparing captured owned sound.'));
+    useImage = true; const imageRequest = ++imageSerial;
+    imageLoading = import('./CausalOwnedImageRenderOwner.js').then(({ createCausalOwnedImageRenderer }) => {
+      if (disposed || imageRequest !== imageSerial) throw failure('owner-retired', 'The captured render request retired.');
+      imageRenderer ||= createCausalOwnedImageRenderer({ journal, resourceBudget, jobs, getCatalog, getMaterialProvider, onState: report }); return imageRenderer.prepare(options);
+    }).finally(() => { imageLoading = null; report(); }); report(); return imageLoading;
+  };
+  return Object.freeze({ prepare, prepareCaptured, state, getPrepared: () => useImage ? imageRenderer?.getPrepared() || null : prepared,
+    cancel() { const captured = !!imageLoading, canceled = imageRenderer?.cancel(); imageSerial++; if (!active) return captured || !!canceled; active.controller.abort(failure('render-canceled', 'Causal audio render canceled.')); phase = 'retiring'; report(); return true; },
     dispose() {
-      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; const pending = active;
+      if (retirement.getReceipt()) return retirement.getReceipt(); imageRenderer?.cancel(); imageSerial++; disposed = true; const pending = active;
       pending?.controller.abort(failure('owner-retired', 'Causal audio render owner retired.')); phase = 'disposed'; report();
-      return retirement.retire([{ name: 'accepted-render', run: async () => { await pending?.promise.catch(() => {}); if (pending?.retirement?.outcome !== 'complete') {
+      return retirement.retire([{ name: 'captured-owned-image-renderer', run: async () => { await imageLoading?.catch(() => {}); return imageRenderer?.dispose(); } }, { name: 'accepted-render', run: async () => { await pending?.promise.catch(() => {}); if (pending?.retirement?.outcome !== 'complete') {
         if (pending) throw failure('render-retirement-unknown', 'Accepted render ownership is unresolved.'); } } },
       ...[...bundles].map((bundle, index) => ({ name: 'prepared-render-' + index, run: () => bundle.discard() })),
       { name: 'material-cache-reservations', run: async () => { await pending?.promise.catch(() => {}); return materialResources.dispose(); } },

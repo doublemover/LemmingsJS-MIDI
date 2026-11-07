@@ -85,7 +85,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
     presentationDelayMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ (presentationDelayMs), maxHorizonMs: /** @type {import('./AudioClockContracts.js').DurationMilliseconds} */ (5000) });
   /** @type {import('./AudioClockContracts.js').ExecutionEpoch | null} */
   let executionEpoch = null;
-  let disposed = false, prepared = false, armEnabled = true, enableLease = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
+  let commandCapture = false, disposed = false, prepared = false, armEnabled = true, enableLease = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
   let sourceTempoBpm = null, qualitySampledAt = null, qualityContextEpoch = null, qualitySeries = null;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, pendingAdmissions = 0, leaseFailures = 0;
   let surfaceBodies = null, sceneMorph = null;
@@ -396,7 +396,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       }
     }
     synchronizeLaneMix(); synchronizePerformance();
-    const runtimeObservation = laneInstruments?.needsRealizationObservation() ? audio?.getAudioRuntimeObservation?.() : null, statistics = runtimeObservation?.playbackStats;
+    const runtimeObservation = !commandCapture && laneInstruments?.needsRealizationObservation() ? audio?.getAudioRuntimeObservation?.() : null, statistics = runtimeObservation?.playbackStats;
     if (statistics?.metrics && (statistics.sampledAtHostMs !== qualitySampledAt || runtimeObservation.contextEpoch !== qualityContextEpoch || runtimeObservation.series !== qualitySeries) &&
         ['observed-no-browser-timestamp', 'unchanged-no-browser-timestamp'].includes(statistics.freshness)) {
       qualitySampledAt = statistics.sampledAtHostMs; qualityContextEpoch = runtimeObservation.contextEpoch; qualitySeries = runtimeObservation.series; laneInstruments.observeRealizationPressure({
@@ -446,7 +446,7 @@ function createPhysicalPlayback({ audio, getGraph, scoreTimeline, now, getScoreC
       provider: () => audio?.getSoundMaterialProvider?.(), createSource: options => session?.createWorkletInstrumentBackend?.(options),
       capabilities: () => { const sources = session?.instrumentSources?.() || [], owned = sources.filter(row => typeof row.backend.detachSourceState === 'function'), uncovered = sources.some(row => !owned.includes(row) && row.backend.sourceCaptureStatus?.().quiescent !== true), ready = !!session?.getState().enabled && !!executionEpoch && !initialMorphMechanism && !initialCavityBody && !externalEnabled() && owned.length > 0 && owned.length <= 16 && !uncovered && owned.every(row => row.backend.sourceContentReference?.() && row.backend.renderDiagnostics().readiness === 'ready');
         return Object.freeze({ ready, externalOutput: externalEnabled(), sceneBody: !!initialMorphMechanism || !!initialCavityBody, ownedSources: owned.length, uncoveredSources: uncovered, sourceEpoch: executionEpoch }); },
-      activate: () => { continuationStaging = false; return true; }, sources: () => session?.instrumentSources?.() || [], capture: captureAudioState, captureImage: captureAudioImage, encode: options => session?.encodeAudioImage?.(options), prepare: options => session?.prepareAudioCutContinuation?.(options), prepareImage: options => session?.prepareAudioImageContinuation?.(options), restore: options => session?.restoreAudioState?.({ ...options, route: 'owner-live' }) }),
+      setCommandCapture: value => { commandCapture = value === true; }, activate: () => { continuationStaging = false; return true; }, sources: () => session?.instrumentSources?.() || [], capture: captureAudioState, captureImage: captureAudioImage, encode: options => session?.encodeAudioImage?.(options), prepare: options => session?.prepareAudioCutContinuation?.(options), prepareImage: options => session?.prepareAudioImageContinuation?.(options), restore: options => session?.restoreAudioState?.({ ...options, route: 'owner-live' }) }),
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
     isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, synchronizePerformance,
     performanceView: laneId => Object.freeze({ status: lastPerformancePublication?.status || 'unavailable', acousticReceipt: false, outcomes: Object.freeze((lastPerformancePublication?.outcomes || []).filter(outcome => outcome.laneId === laneId)) }), travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: externalEnabled() || permitted() && !!session?.getState().enabled }),
