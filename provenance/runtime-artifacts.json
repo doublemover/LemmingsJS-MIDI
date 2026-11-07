@@ -154,6 +154,7 @@
         "js/app/midi-ui/CapturedEffectReplay.js",
         "js/app/midi-ui/CapturedSpectralReplay.js",
         "js/app/midi-ui/CausalEffectSelection.js",
+        "js/app/midi-ui/CausalOwnedImageRack.js",
         "js/app/midi-ui/CausalOwnedImageRender.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalRenderTiming.js",
@@ -483,8 +484,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 335,
-      "sha256": "2587202a3452dc5a3910c70646ce8137f577eaa6eb0f9b3b1ab03db4de0c5b27"
+      "fileCount": 336,
+      "sha256": "455d6f25a7b4b1a99beda3d784b051c2b4814f1fa7c3908117f0fb1c7b5ded79"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -654,6 +655,7 @@
         "js/app/midi-ui/CapturedEffectLifecycle.js",
         "js/app/midi-ui/CapturedEffectReplay.js",
         "js/app/midi-ui/CapturedSpectralReplay.js",
+        "js/app/midi-ui/CausalOwnedImageRack.js",
         "js/app/midi-ui/CausalOwnedImageRender.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalRenderTiming.js",
@@ -1212,8 +1214,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 588,
-      "sha256": "1b583b4394878a366c3cba49971933a8fe43774e50f9affd0f6ef34549897f08"
+      "fileCount": 589,
+      "sha256": "f03ed1f075c02df8977991526aff75e4f72ff120d0c8985ed43899aadebc9810"
     },
     {
       "id": "lemmings-buffered-warp-streaming-source",
@@ -1240,6 +1242,7 @@
         "js/app/midi-ui/CapturedEffectLifecycle.js",
         "js/app/midi-ui/CapturedEffectReplay.js",
         "js/app/midi-ui/CapturedSpectralReplay.js",
+        "js/app/midi-ui/CausalOwnedImageRack.js",
         "js/app/midi-ui/CausalOwnedImageRender.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalRenderTiming.js",
@@ -1571,8 +1574,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 343,
-      "sha256": "9e6517b0f8f03c6bc248dd0ce71a5cca1035fd473286680f3e3cf1b3819ab173"
+      "fileCount": 344,
+      "sha256": "078455cc807edcf350e323f3889c76cc5451fb47603802334a960d9f04ae3fff"
     },
     {
       "id": "lemmings-independent-native-simulation-output",

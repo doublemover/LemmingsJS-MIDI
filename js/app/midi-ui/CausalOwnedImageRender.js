@@ -1,3 +1,4 @@
+import { createCausalOwnedImageRack } from './CausalOwnedImageRack.js';
 import { decodeOwnedAudioImage } from '../resources/OwnedAudioImageCodec.js';
 import { createOwnedControlKernel } from '../resources/OwnedControlKernel.js';
 import { getOwnedSourceProfile } from './OwnedSourceProfiles.js';
@@ -35,9 +36,9 @@ const remapLanes = (kernel, previous, current) => {
 
 export async function renderCausalOwnedImage(input, options = {}) {
   check(options);
-  const { checkpoint, source, materials = [], startSeconds = 0, endSeconds } = input || {};
+  const { checkpoint, source, materials = [], startSeconds = 0, endSeconds, includeRack = false } = input || {};
   if (source?.schema !== 'lemmings-owned-source-history/v1' || typeof source.takeId !== 'string' || !source.takeId || !natural(source.takeRevision) || source.takeRevision < 1 || !hash(source.sourceCanonicalHash) || source.coverage !== 'complete' || !Array.isArray(source.events) || source.events.length > 65536 ||
-      !Number.isFinite(startSeconds) || startSeconds < 0 || !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds > 120 || !Array.isArray(materials) || !hash(options.applicationBuildId)) fail('A faithful dry continuation needs one complete image-bound source command history and a bounded audio-clock crop.');
+      !Number.isFinite(startSeconds) || startSeconds < 0 || !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds > 120 || !Array.isArray(materials) || typeof includeRack !== 'boolean' || !hash(options.applicationBuildId)) fail('A faithful dry continuation needs one complete image-bound source command history and a bounded audio-clock crop.');
   const decoded = await decodeOwnedAudioImage({ mode: 'decode-checkpoint', image: checkpoint, materials }, options); check(options);
   const rate = decoded.metadata.sampleRate, first = Math.round(startSeconds * rate), end = Math.round(endSeconds * rate), frames = end - first, outputBytes = frames * 8;
   if (!natural(frames) || frames < 1 || outputBytes + 262208 > 64 * 1048576 || decoded.sources.length < 1) fail('Choose a nonempty dry output within the admitted WAV profile.');
@@ -63,9 +64,12 @@ export async function renderCausalOwnedImage(input, options = {}) {
   }
   for (const row of materials) { const pcm = row.pcm; for (const bank of Array.isArray(pcm?.banks) ? pcm.banks : pcm ? [pcm] : []) for (const plane of bank.planes || []) materialBytes += plane.byteLength; }
   const historyBytes = canonicalDataText(source, { maxBytes: 24 * 1048576, maxNodes: 2000000 }).bytes.byteLength;
-  const required = outputBytes * 4 + stateBytes * 4 + materialBytes * 4 + historyBytes * 4 + 64 * 1048576;
+  if (includeRack && !decoded.rack) fail('This take has no captured creative rack. Choose the explicit dry projection.');
+  if (includeRack) stateBytes += decoded.rack.components.reduce((sum, row) => sum + row.bytes.byteLength, 0);
+  const rackWorkspace = includeRack ? end * 8 + 32 * 1048576 : 0;
+  const required = outputBytes * 4 + rackWorkspace + stateBytes * 4 + materialBytes * 4 + historyBytes * 4 + 64 * 1048576;
   if (end > coveredFrames || !natural(required) || required > (options.maxWorkingBytes || 384 * 1048576)) fail('The crop exceeds complete captured audio-clock coverage or its admitted source/PCM workspace.');
-  const output = new Float32Array(frames * 2), sourceReceipts = []; let sourceIndex = 0;
+  const output = new Float32Array(frames * 2), bus = includeRack ? new Float32Array(end * 2) : output, busFirst = includeRack ? 0 : first, sourceReceipts = []; let sourceIndex = 0;
   for (const inventory of inventories.values()) {
     check(options); const { source: row, activation, started, stopped, events } = inventory, profile = getOwnedSourceProfile(row.reference.engineRequirement.engineId), descriptor = options.descriptors.find(value => value.engineId === profile.id && value.engineVersion === row.reference.engineRequirement.engineVersion);
     const pcm = materials.find(value => value.sourceId === row.sourceId)?.pcm ?? null;
@@ -90,13 +94,26 @@ export async function renderCausalOwnedImage(input, options = {}) {
       if (boundary > stopped.frame || cursor < events.length && events[cursor].frame < boundary) fail('A source render advanced beyond a recorded processor boundary.');
       kernel.render(left, right, boundary); kernel.receiptCount = 0;
       const offset = boundary - origin;
-      for (let index = 0; index < blockFrames; index++) { const frame = offset + index; if (frame < first || frame >= end) continue; const publication = gain(frame);
-        const at = (frame - first) * 2; output[at] = Math.fround(output[at] + Math.fround(left[index] * publication)); output[at + 1] = Math.fround(output[at + 1] + Math.fround(right[index] * publication)); }
+      for (let index = 0; index < blockFrames; index++) { const frame = offset + index; if (frame < busFirst || frame >= end) continue; const publication = gain(frame);
+        const at = (frame - busFirst) * 2; bus[at] = Math.fround(bus[at] + Math.fround(left[index] * publication)); bus[at + 1] = Math.fround(bus[at + 1] + Math.fround(right[index] * publication)); }
       rendered += blockFrames;
       if (rendered >= 16384) { rendered = 0; options.onProgress?.({ phase: 'restoring-recorded-owned-sources', completedUnits: sourceIndex * coveredFrames + Math.min(offset, coveredFrames), totalUnits: inventories.size * coveredFrames }); await options.yieldControl?.(); check(options); }
     }
     if (cursor !== events.length || kernel.lastPacket !== stopped.lastPacket || kernel.nonfinite !== stopped.nonfinite || Array.from(kernel.counters).some((value, index) => value !== stopped.counters[index])) fail('The reconstructed source differs from its actual closing processor frontier or containment counters.');
     sourceReceipts.push({ sourceId: row.sourceId, engineRequirement: row.reference.engineRequirement, definitionHash: row.reference.definitionHash, initialSourceFrame: origin, finalSourceFrame: stopped.frame, blockFrames, commandPackets: lastPacket - row.metadata.host.packetSequence, observedEvents: events.length, counters: stopped.counters, initialHeldVoices: row.metadata.host.voices.filter(voice => !voice.released).length, initialSourceVoices: row.metadata.host.voices.length }); sourceIndex++;
+  }
+  let rackReceipt = null;
+  if (includeRack) {
+    const activationFrames = [...inventories.values()].map(row => row.activation.audioFrame);
+    if (new Set(activationFrames).size !== 1) fail('The complete source/rack activation did not share one audio frame.');
+    const rack = await createCausalOwnedImageRack({ rack: decoded.rack, sampleRate: rate, activationAudioFrame: activationFrames[0], endFrame: end, effectEvents: source.effectEvents, effectCoverage: source.effectCoverage });
+    try {
+      for (let frame = 0; frame < end; frame++) {
+        rack.sample(bus[frame * 2], bus[frame * 2 + 1]); if (frame >= first) { const at = (frame - first) * 2; output[at] = rack.leftSample; output[at + 1] = rack.rightSample; }
+        if (frame % 16384 === 16383) { options.onProgress?.({ phase: 'continuing-saved-creative-rack', completedUnits: frame + 1, totalUnits: end }); await options.yieldControl?.(); check(options); }
+      }
+      rackReceipt = rack.finish();
+    } finally { rack.dispose(); }
   }
   const pcmBytes = new Uint8Array(output.byteLength), view = new DataView(pcmBytes.buffer); let peak = 0, sum = 0;
   for (let firstSample = 0; firstSample < output.length; firstSample += 65536) { for (let index = firstSample, stop = Math.min(output.length, firstSample + 65536); index < stop; index++) { const value = output[index]; if (!Number.isFinite(value)) fail('The owned source sum contains nonfinite output.'); peak = Math.max(peak, Math.abs(value)); sum += value * value; view.setFloat32(index * 4, value, true); } await options.yieldControl?.(); check(options); }
@@ -104,7 +121,7 @@ export async function renderCausalOwnedImage(input, options = {}) {
   const manifest = { schema: 'lemmings-causal-audio-render/v1', version: 1, applicationBuildId: options.applicationBuildId, takeId: source.takeId, takeRevision: source.takeRevision, sourceCanonicalHash: source.sourceCanonicalHash,
     mode: 'captured-owned-source-image-and-actual-command-history', imageSha256: checkpoint.sha256, historyHash, sampleRate: rate, channels: 2, frames, timelineZeroSourceFrame: first, exactEndSourceFrame: end, availableAudioFrames: coveredFrames,
     clock: 'owned-source-render-frames-from-initial-image;independent-of-physical-score-speed', restoration: { mode: 'initial-owned-image', initialHeldVoices: sourceReceipts.reduce((sum, row) => sum + row.initialHeldVoices, 0), sourceOnsetsSynthesized: false, sources: sourceReceipts },
-    realization: { scope: 'complete-captured-owned-source-dry-sum-with-retained-publication-curves', creativeRack: 'excluded-explicit-dry-source-projection', sourceOrder: sourceReceipts.map(row => row.sourceId), masterProtection: 'excluded', normalization: 'none', peak, rms: Math.sqrt(sum / output.length) },
+    realization: { scope: includeRack ? 'captured-owned-source-and-fixed-creative-rack-continuation' : 'complete-captured-owned-source-dry-sum-with-retained-publication-curves', creativeRack: rackReceipt || 'excluded-explicit-dry-source-projection', sourceOrder: sourceReceipts.map(row => row.sourceId), masterProtection: 'excluded', normalization: 'none', peak, rms: Math.sqrt(sum / output.length) },
     tail: { mode: 'exact-crop', inventedRelease: false }, pcmHash, acousticReceipt: false, originalRecordMutated: false, qualification: 'source-frontiers-and-containment-counters-compared;PCM-equivalence-awaiting-consolidated-validation' };
-  const bytes = encodeCausalRenderWave(pcmBytes, frames, rate, manifest); return { schema: manifest.schema, manifest, files: [{ id: 'owned-dry', bytes, manifest }] };
+  const bytes = encodeCausalRenderWave(pcmBytes, frames, rate, manifest); return { schema: manifest.schema, manifest, files: [{ id: includeRack ? 'owned-rack' : 'owned-dry', bytes, manifest }] };
 }

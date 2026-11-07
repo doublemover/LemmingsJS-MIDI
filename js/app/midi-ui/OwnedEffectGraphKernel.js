@@ -213,7 +213,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     scheduleNativeUpdate(nodeId, values, targetFrame) { if (!nativeCut || frame) fail('effect-native-cut-staging', 'Stage the complete captured automation before rendering a native cut.'); update(nodeId, values, false); nativeCut.automation.scheduleUpdate(nodeId, values, targetFrame); },
     enqueueNativeBodyStrike(nodeId, command) {
       const record = records[indices.get(nodeId)];
-      if (!nativeCut || frame || !record?.entry.membrane || !Number.isSafeInteger(command?.frame) || command.frame < 0 || !record.kernel.enqueueStrike({ ...command, frame: command.frame + record.native.logicalAudioFrame })) fail('effect-native-body-strike', 'Stage each finite strike against its saved body logical frame before rendering.');
+      if (!nativeCut || !record?.entry.membrane || !Number.isSafeInteger(command?.frame) || command.frame < frame || !record.kernel.enqueueStrike({ ...command, frame: command.frame + record.native.logicalAudioFrame })) fail('effect-native-body-strike', 'Stage each finite strike against its saved body logical frame before rendering.');
     },
     nativeCutReceipt: () => nativeCut?.automation.receipt() || null,
     validateDetachedComponentStates(components, hostState = null, audioFrame = null) {
