@@ -1,9 +1,8 @@
-import { canonicalDataText } from '../../../core/CanonicalData.js';
+import { physicalLessonPolicy } from './PhysicalLessonPolicy.js';
 
-const stamp = value => canonicalDataText(value, { maxBytes: 262144, maxNodes: 16384 }).text;
 export function createBodyTailLessonObservation({ definition, graph, releaseGesture, soundIdentity, assists }) {
   if (definition.success.kind !== 'body-outlives-actor' || assists !== false) throw new Error('The shared-body lesson requires the manual prepared-surface scene.');
-  const policy = stamp({ graph, releaseGesture }), baseline = [], changed = [];
+  const policy = physicalLessonPolicy(graph, releaseGesture), baseline = [], changed = [];
   let phase = 'observe-baseline', reason = null, body = null;
   const result = () => ({ phase, reason, baseline: [...baseline], changed: [...changed], journey: {
     kind: 'body-outlives-actor', bodyInstanceId: body?.bodyInstanceId ?? null, sourceActorId: baseline[0]?.actorId ?? null,
@@ -13,7 +12,7 @@ export function createBodyTailLessonObservation({ definition, graph, releaseGest
   } });
   return Object.freeze({ state: result, observe({ batch, intents, context }) {
     if (phase === 'physical-evidence-observed') return result();
-    if (context.assists !== false || context.soundIdentity !== soundIdentity || stamp({ graph: context.graph, releaseGesture: context.releaseGesture }) !== policy)
+    if (context.assists !== false || context.soundIdentity !== soundIdentity || physicalLessonPolicy(context.graph, context.releaseGesture) !== policy)
       throw new Error('Keep the same prepared body, physical surface and entry policy throughout this comparison.');
     const bodies = context.preparedBodyResidency || [], facts = new Map(batch.facts.map(fact => [fact.eventId, fact]));
     if (!baseline.length) {

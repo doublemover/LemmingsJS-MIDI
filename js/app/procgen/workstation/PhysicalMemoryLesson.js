@@ -1,15 +1,14 @@
-import { canonicalDataText } from '../../../core/CanonicalData.js';
+import { physicalLessonPolicy } from './PhysicalLessonPolicy.js';
 import { validateSampleTraversalBinding } from '../../../midi/content/SampleTraversal.js';
 
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const finite = value => Number.isFinite(value) && Math.abs(value) <= 1e9;
-const stamp = value => canonicalDataText(value, { maxBytes: 262144, maxNodes: 16384 }).text;
 export function createMemoryLessonObservation({ definition, graph, releaseGesture, assists }) {
   if (definition.success.kind !== 'move-memory' || assists !== false) throw new Error('Move the memory requires the manual signed-travel route.');
-  const physical = stamp({ graph, releaseGesture }), baseline = [], changed = [];
+  const physical = physicalLessonPolicy(graph, releaseGesture), baseline = [], changed = [];
   let phase = 'prepare-memory', reason = null, seed = null, prediction = '', track = null, rest = null, lastPosition = null, lastTick = -1, coordinate = null;
-  const samePhysical = context => context.assists === false && stamp({ graph: context.graph, releaseGesture: context.releaseGesture }) === physical;
+  const samePhysical = context => context.assists === false && physicalLessonPolicy(context.graph, context.releaseGesture) === physical;
   const result = () => ({ phase, reason, baseline: [...baseline], changed: [...changed], journey: {
     kind: 'move-memory', assetSaved: !!seed, assetHash: seed?.assetHash ?? null, definitionHash: seed?.definitionHash ?? null,
     declaredMetric: seed?.binding.metric ?? null, orientation: seed?.binding.orientation ?? null, framesPerWorldPixel: seed?.binding.framesPerWorldPixel ?? null,

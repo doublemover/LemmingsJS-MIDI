@@ -2,7 +2,7 @@ import { scopeQuarryThrowToVoices, createQuarryEcho, createQuarryDuck, createQua
 import { ORIGINAL_IMPULSE_PRESETS } from '../../midi/content/ProceduralImpulseMaterial.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createQuarryEchoView({ document, window, getPlayback, getSavedRack, saveRack, onCrossExcitation = null, onTravelColoration = null, onSpectralFreeze = null, onSympatheticMap = null, onRectangularMembrane = null, onStatus = () => {} } = {}) {
+export function createQuarryEchoView({ document, window, getPlayback, getSavedRack, saveRack, onCrossExcitation = null, onTravelColoration = null, onSpectralFreeze = null, onSympatheticMap = null, onRectangularMembrane = null, onPerformanceReceipt = () => {}, onStatus = () => {} } = {}) {
   if (!document?.createElement || typeof getPlayback !== 'function' || typeof getSavedRack !== 'function' || typeof saveRack !== 'function') throw new TypeError('Quarry Echo needs the physical owner and saved project settings.');
   const listeners = [], retirement = createProcgenRetirementScope(); let disposed = false, pending = null, held = null, revision = 0, springBlend01 = 0.15, inspectionTimer = null, preparedToken = null, preparedVoices = null, selectableVoices = [];
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
@@ -58,13 +58,19 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
     return ['echo', 'duck', 'tape', 'tape-spring'].includes(preset.value) ? (preset.value === 'tape-spring' ? createQuarryTapeSpring : preset.value === 'tape' ? createQuarryTape : preset.value === 'duck' ? createQuarryDuck : createQuarryEcho)({ revision, delaySeconds: time.value() / 1000, feedback: feedback.value(), return01: level.value(), send01: space.value(), mode: mode.value, ...(['tape', 'tape-spring'].includes(preset.value) ? { age01: age.value() } : {}), ...(preset.value === 'tape-spring' ? { springBlend01 } : {}) }) :
       createQuarryBody({ revision, bodyId: preset.value, return01: level.value(), send01: space.value() });
   };
+  const reportThrow = (kind, receipt) => {
+    if (receipt?.status !== 'accepted' || !['echo', 'duck', 'tape', 'tape-spring'].includes(preset.value)) return;
+    try { onPerformanceReceipt(Object.freeze({ kind, status: receipt.status, stage: receipt.stage, graphDefinitionHash: receipt.graphDefinitionHash,
+      ownerRouteRevision: receipt.ownerRouteRevision, targetFrame: receipt.targetFrame, delaySeconds: time.value() / 1000,
+      space01: space.value(), throw01: amount.value(), return01: level.value(), sourceScope: preparedVoices ? 'selected-voices' : 'physical-owner-sum' })); } catch { /* Lesson observation does not own a successful control. */ }
+  };
   const release = () => {
     const previous = held; held = null; if (!previous) return;
-    try { live('send', { gain01: space.value() }, previous.receipt); say('THROW released to SPACE ' + space.value() + '; the admitted return tail can decay.'); }
+    try { const receipt = live('send', { gain01: space.value() }, previous.receipt); reportThrow('echo-throw-released', receipt); say('THROW released to SPACE ' + space.value() + '; the admitted return tail can decay.'); }
     catch (error) { if (error.code !== 'stale-effect-control') say(error.message); }
   };
   const throwButton = node('button', 'Hold THROW'); throwButton.type = 'button'; throwButton.setAttribute('aria-label', 'Hold to send physical voices into the Quarry return'); actions.append(throwButton);
-  const press = source => { if (disposed || pending || held) return; try { if (!preparedToken) throw new Error('Prepare this Quarry rack before performing a throw.'); if (preparedVoices && !preparedVoices.some(member => getPlayback()?.isEffectSourceVoiceAvailable?.(member))) throw new Error('The selected voices ended. Refresh and prepare a new selection.'); held = { source, receipt: live('send', { gain01: Math.max(space.value(), amount.value()) }) }; say(preparedVoices ? 'Sending only the prepared causal voice selection into Quarry Echo.' : 'Sending physical owner audio into Quarry Echo.'); } catch (error) { say(error.message); } };
+  const press = source => { if (disposed || pending || held) return; try { if (!preparedToken) throw new Error('Prepare this Quarry rack before performing a throw.'); if (preparedVoices && !preparedVoices.some(member => getPlayback()?.isEffectSourceVoiceAvailable?.(member))) throw new Error('The selected voices ended. Refresh and prepare a new selection.'); held = { source, receipt: live('send', { gain01: Math.max(space.value(), amount.value()) }) }; reportThrow('echo-throw-pressed', held.receipt); say(preparedVoices ? 'Sending only the prepared causal voice selection into Quarry Echo.' : 'Sending physical owner audio into Quarry Echo.'); } catch (error) { say(error.message); } };
   listen(throwButton, 'pointerdown', event => { if (event.button !== 0) return; event.preventDefault(); throwButton.focus(); press('pointer'); if (held) throwButton.setPointerCapture?.(event.pointerId); });
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) listen(throwButton, event, release);
   listen(throwButton, 'keydown', event => { if ([' ', 'Enter'].includes(event.key)) { event.preventDefault(); if (!event.repeat) press('keyboard'); } });

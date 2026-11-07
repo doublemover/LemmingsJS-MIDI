@@ -1,12 +1,11 @@
-import { canonicalDataText } from '../../../core/CanonicalData.js';
+import { physicalLessonPolicy } from './PhysicalLessonPolicy.js';
 import { cropCausalOnsetCoverage } from '../../../midi/content/CausalOnsetCoverage.js';
 import { readLessonPickupCrossing } from './PhysicalLessonCause.js';
 
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
-const stamp = value => canonicalDataText(value, { maxBytes: 262144, maxNodes: 16384 }).text;
 export function createFossilLessonObservation({ definition, graph, releaseGesture, soundIdentity, assists }) {
   if (definition.success.kind !== 'hear-fossil' || assists !== false) throw new Error('Hear the fossil requires the manual one-contact practice scene.');
-  const physical = stamp({ graph, releaseGesture }), baseline = [], changed = [];
+  const physical = physicalLessonPolicy(graph, releaseGesture), baseline = [], changed = [];
   let phase = 'observe-baseline', reason = null, seed = null;
   const result = () => ({ phase, reason, baseline: [...baseline], changed: [...changed], journey: {
     kind: 'hear-fossil', assetSaved: !!seed, seedRegionContainsBaseline: !!seed, assetHash: seed?.assetHash || null,
@@ -14,7 +13,7 @@ export function createFossilLessonObservation({ definition, graph, releaseGestur
     summary: 'Saved frozen asset: ' + (seed ? 'yes' : 'pending') + '; original contact in selected material: ' + (seed ? 'source-linked' : 'unverified') +
       '; new physical playback onsets: ' + changed.length + '/2. Baked sample transients are ancestry, not additional new notes.'
   } });
-  const samePhysical = context => context.assists === false && stamp({ graph: context.graph, releaseGesture: context.releaseGesture }) === physical;
+  const samePhysical = context => context.assists === false && physicalLessonPolicy(context.graph, context.releaseGesture) === physical;
   return Object.freeze({
     state: result,
     material(receipt, context) {

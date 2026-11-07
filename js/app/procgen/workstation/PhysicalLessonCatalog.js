@@ -71,5 +71,17 @@ export async function createInstalledPhysicalLessons(catalog) {
     permittedActions: ['finite-release', 'play-pause', 'remove-striker', 'inspect-prepared-body'],
     success: { kind: 'body-outlives-actor', surfaceId: 'three-hands-surface', mappingIds: ['three-hands-striker'], minimumActors: 1 },
     resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
+  const echoSetup = resolve('dub-quarry.tight-tunnel.journey-echo');
+  if (echoSetup) lessons.push(validatePhysicalLessonDefinition({ schema: 'lemmings-physical-lesson/v1', id: 'lesson.journey-or-echo', version: 1, title: 'A journey or an echo?',
+    setupScene: await reference(echoSetup), zeroNoteScene,
+    prediction: 'Predict which delay needs an actor to travel and which delay stores audio. A route arrival uses world ticks; an echo uses a declared audio delay in seconds.',
+    intervention: 'Before a fresh carrier, request stepped for dub-quarry-reply-route in Junctions and observe safe application. Let the carrier remember its two pickups and deliver at the real route end. Keep that route fixed. Open Quarry Echo, choose plain Echo, SPACE0 and a positive RETURN, then Prepare. Hold THROW while a fresh finite actor makes a real arrival; release, then observe a complete physical batch without a new onset.',
+    expectedPhysicalEvidence: 'An actually applied manual junction, one actor-owned cargo delivery with capture/arrival ancestry and two simultaneous response onsets, a submitted positive echo send over new source-linked input, its release to zero SPACE and a later quiet physical batch.',
+    expectedMusicalDifference: 'The physical reply exists only at actual carrier arrival and creates its declared two-note dyad. Stored echo state may repeat admitted audio after send release; effect repeats add no semantic cause or note.',
+    audibleEvidence: 'The lesson verifies actual physical causes and accepted control/source submissions. It does not measure echo PCM, acoustic delay or heard repetitions. Reported hearing remains separate from those receipts.',
+    hint: 'A pending junction, timer-only delivery, empty throw, stale rack, new source-less note or another route cannot substitute for the required evidence. A jammed/lost carrier has no replacement reply. Repeat with a fresh finite entrant after the safe switch; do not change release spacing to fake a route comparison.',
+    permittedActions: ['request-junction', 'finite-release', 'play-pause', 'prepare-echo', 'perform-throw'],
+    success: { kind: 'journey-versus-echo', junctionId: 'dub-quarry-reply-route', configurationId: 'stepped', deliveryMappingId: 'quarry-courier.arrival', mappingIds: echoSetup.causalMappings.instruments.map(value => value.id), minimumActors: 1 },
+    resetCheckpoint: 'fresh-zero-tick-setup-via-existing-scene-owner', accessibility: 'semantic-controls;keyboard-touch-controller-actions-shared;sound-off-physical-evidence;no-microphone' }));
   return Object.freeze(lessons);
 }

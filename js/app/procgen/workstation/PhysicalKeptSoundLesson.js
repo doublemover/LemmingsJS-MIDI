@@ -1,21 +1,20 @@
 import { readLessonPickupCrossing } from './PhysicalLessonCause.js';
-import { canonicalDataText } from '../../../core/CanonicalData.js';
+import { physicalLessonPolicy } from './PhysicalLessonPolicy.js';
 
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const integer = value => Number.isSafeInteger(value) && value >= 0;
-const stamp = value => canonicalDataText(value, { maxBytes: 262144, maxNodes: 16384 }).text;
 
 // This predicate observes existing edits/storage/causes; it executes no lesson actions.
 export function createKeptSoundLessonObservation({ definition, graph, releaseGesture, soundIdentity, assists }) {
   if (definition.success.kind !== 'make-and-keep' || assists !== false) throw new Error('Make and keep requires the manual practice scene.');
-  const physical = stamp({ graph, releaseGesture }), baseline = [], changed = [];
+  const physical = physicalLessonPolicy(graph, releaseGesture), baseline = [], changed = [];
   let phase = 'observe-baseline', reason = null, kept = null, saved = null, reopened = false, nextPrediction = '';
   const result = () => ({ phase, reason, baseline: [...baseline], changed: [...changed], journey: {
     kind: 'make-and-keep', forkKept: !!kept, projectSaved: !!saved, exactProjectReopened: reopened,
     definitionHash: kept?.definitionHash || null, packHash: kept?.packHash || null, documentId: saved?.documentId || null,
     storedRevision: saved?.storedRevision ?? null, nextPrediction, materialEvidence: 'exact-kept-reference-and-named-storage-commit;hearing-separate'
   } });
-  const samePhysical = context => context.assists === false && stamp({ graph: context.graph, releaseGesture: context.releaseGesture }) === physical;
+  const samePhysical = context => context.assists === false && physicalLessonPolicy(context.graph, context.releaseGesture) === physical;
   const exactMaterial = context => Array.isArray(context.soundReferences) && context.soundReferences.some(ref =>
     ref.laneId === kept?.laneId && ref.definitionHash === kept.definitionHash && ref.packHash === kept.packHash &&
     ref.patchId === kept.patchId && ref.revision === kept.revision);

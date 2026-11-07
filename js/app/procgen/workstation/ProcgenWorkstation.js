@@ -2593,7 +2593,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     openQuarryEcho(request = null) {
       if (disposed || !physicalPlayback) { status('Physical owner effects are unavailable.'); return; }
       return toolGate.open('Quarry Echo', () => import('../../midi-ui/QuarryEchoView.js'), ({ createQuarryEchoView }) => {
-        quarryEchoView ||= createQuarryEchoView({ document, window, onRectangularMembrane: () => handlers.openRectangularMembrane(), onSympatheticMap: () => handlers.openSympatheticMap(), onSpectralFreeze: () => handlers.openSpectralFreeze(), onTravelColoration: () => handlers.openTravelColoration(), onCrossExcitation: () => handlers.openCrossExcitation(), getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
+        quarryEchoView ||= createQuarryEchoView({ document, window, onPerformanceReceipt: receipt => physicalLessonView?.observeEffect(receipt, lessonContext()), onRectangularMembrane: () => handlers.openRectangularMembrane(), onSympatheticMap: () => handlers.openSympatheticMap(), onSpectralFreeze: () => handlers.openSpectralFreeze(), onTravelColoration: () => handlers.openTravelColoration(), onCrossExcitation: () => handlers.openCrossExcitation(), getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
           saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
         quarryEchoView.open(request);
       });
