@@ -79,6 +79,7 @@ export interface PhysicalPlaybackOptions {
   initialMorphMechanism?: unknown;
   initialCavityBody?: unknown;
   initialPreparedSurface?: unknown;
+  initialSympatheticBody?: unknown;
   continuationStaging?: boolean;
   presentationDelayMs?: number;
   documentEpoch?: string;

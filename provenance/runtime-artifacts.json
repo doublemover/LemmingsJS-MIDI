@@ -414,6 +414,7 @@
         "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
+        "js/app/procgen/workstation/SceneSympatheticBody.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
         "js/app/procgen/workstation/TravelAccumulator.js",
         "js/app/procgen/workstation/physical/ActionVoicePolicy.js",
@@ -684,6 +685,7 @@
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/StretchImageProfile.js",
+        "js/midi/content/SympatheticMapRecipes.js",
         "js/midi/content/SympatheticNetworkProfile.js",
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
@@ -733,8 +735,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 579,
-      "sha256": "ea1cc0efd443d56c074e1da0204dc76288d750c15e231b599c3d7be5a09b60bc",
+      "fileCount": 581,
+      "sha256": "c9031a13b5265b307f60fbfb6587248b926015e2398a8dfbf6f49a8219ba4492",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1138,6 +1140,7 @@
         "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
+        "js/app/procgen/workstation/SceneSympatheticBody.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
         "js/app/procgen/workstation/SinkAdmissionRegistry.js",
         "js/app/procgen/workstation/TravelAccumulator.js",
@@ -1408,6 +1411,7 @@
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/StretchImageProfile.js",
+        "js/midi/content/SympatheticMapRecipes.js",
         "js/midi/content/SympatheticNetworkProfile.js",
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
@@ -1490,8 +1494,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 612,
-      "sha256": "75bdc27a8faeebd51e9aaf95d05aa13d918f5931141a46f2ea2079d6c6893f5f",
+      "fileCount": 614,
+      "sha256": "e77118ec8fc5ff0d2250ef9a86f6a802533978d1404f376518e3b400522959ae",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -1775,6 +1779,7 @@
         "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
+        "js/app/procgen/workstation/SceneSympatheticBody.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
         "js/app/procgen/workstation/TravelAccumulator.js",
         "js/app/procgen/workstation/physical/ActionVoicePolicy.js",
@@ -2050,6 +2055,7 @@
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/StretchImageProfile.js",
+        "js/midi/content/SympatheticMapRecipes.js",
         "js/midi/content/SympatheticNetworkProfile.js",
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
@@ -2097,8 +2103,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 590,
-      "sha256": "9c74b35cc72ade3b5733936c81fb18ed29dad032f651f78173b5a4b463d0da19",
+      "fileCount": 592,
+      "sha256": "707b5347fd74411bad78f3c366e1c21b35bae728b722f8d339cf63f561570e92",
       "inventoryScope": "first-party-artifact"
     },
     {
@@ -2528,6 +2534,7 @@
         "js/app/procgen/workstation/ScenePreparedSurfaceRehearsal.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
         "js/app/procgen/workstation/SceneStationPolicy.js",
+        "js/app/procgen/workstation/SceneSympatheticBody.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
         "js/app/procgen/workstation/SinkAdmissionRegistry.js",
         "js/app/procgen/workstation/TravelAccumulator.js",
@@ -2805,6 +2812,7 @@
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/StretchImageProfile.js",
+        "js/midi/content/SympatheticMapRecipes.js",
         "js/midi/content/SympatheticNetworkProfile.js",
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
@@ -2863,8 +2871,8 @@
         "js/util/Range.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 663,
-      "sha256": "68b504abda83ecfff15350520b345405c84b2d6dd0b2cbda1346565629c4ea5c",
+      "fileCount": 665,
+      "sha256": "815d829a6ab3445abc868bfa59dba0e4e74c889fb0ffac743f364dc0ece2bbdb",
       "inventoryScope": "first-party-artifact"
     }
   ]

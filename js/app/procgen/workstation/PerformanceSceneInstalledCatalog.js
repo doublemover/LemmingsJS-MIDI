@@ -1,3 +1,4 @@
+import { createResonanceTerrariumScores } from './ResonanceTerrariumScore.js';
 import { createPocketFoundryScore } from './PocketFoundryScore.js';
 import { createThreeHandsScores } from './ThreeHandsScore.js';
 import { createBentLadderScores } from './BentLadderScore.js';
@@ -158,6 +159,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   };
   await registerAuthoredScores([await createPhysicalMusicStarter({ sourceHash, reference })]);
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createThreeHandsScores({ sourceHash, descriptor, signal }));
+  if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createResonanceTerrariumScores({ sourceHash, descriptor, signal }));
   const texture = catalog.descriptors.find(value => value.engineId === 'worklet-texture');
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
   if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
