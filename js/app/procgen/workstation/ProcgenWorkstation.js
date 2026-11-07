@@ -2522,7 +2522,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     openRectangularMembrane() {
       if (disposed || !physicalPlayback) { status('The shared skin is unavailable.'); return; }
       return toolGate.open('Shared skin', () => import('../../midi-ui/RectangularMembraneView.js'), ({ createRectangularMembraneView }) => {
-        rectangularMembraneView ||= createRectangularMembraneView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
+        rectangularMembraneView ||= createRectangularMembraneView({ document, resourceBudget, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
           saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
         rectangularMembraneView.open();
       });
