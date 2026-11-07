@@ -11730,3 +11730,9 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Carry current observed revision through held-contact mapping, native body ownership and exact continuation. Unknown contact still releases; map/body replacement keeps original contribution ownership. The fixed map does not claim a terrain-derived physical geometry or measured strike site.
 - Author three Shared felt bench variants with the original successful-operation sources, finite geometry/stations and one shared bar. Actual supported blockers supply loss masks; actual supported travel supplies a separately owned left pickup, without new onsets or damping props.
 - Feed the declared owner sidechain in private prepared-bar rehearsal as well as the ordinary dry input, and retain exact source-binding/map-policy receipts. This also supplies the existing Felt Bridge’s actual private excitation. Functional/native/audio/browser/performance/listening qualification remains deferred.
+
+### Continuation 634 — Quarry dry/open world fields
+
+- Add three explicitly named native modal Quarry orchestrations on the unchanged original finite routes, pickups and junctions. Keep source transposition and real arrival timing; distinguish these authored low modal bass/reply/wood bodies from the original pluck edition instead of silently substituting engines.
+- The courtyard uses a real dry/open clearing after its felt entrance; tunnel/gallery world fields use shared original central reflections and a dry end. Each observed gate intersection owns its fixed source and sends, with a fixed camera-independent listener. Earlier return tails survive clearing.
+- Reuse complete native private spatial rehearsal, source capture/export and saved ABSORB/CHAMBER controls. Creative Tape/Room/THROW racks remain separately named prepared arrangements. Functional/native/audio/browser/performance/listening qualification remains deferred.

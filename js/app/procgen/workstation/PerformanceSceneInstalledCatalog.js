@@ -1,3 +1,4 @@
+import { createQuarryWorldScores } from './QuarryWorldScore.js';
 import { createWorkshopSharedBodyScores } from './WorkshopSharedBodyScore.js';
 import { createPreparedWorkshopScores } from './PreparedWorkshopScore.js';
 import { createWorkshopCourierScores } from './WorkshopCourierScore.js';
@@ -68,6 +69,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
       cost: { lanes: laneCount, maximumVoices: laneCount * 8, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing'], density: laneCount === 4 ? 'sparse' : 'medium', lessonLevel: 1 });
     await registry.register(scene); signal?.throwIfAborted();
   }
+  let quarryScores = [];
   const pluck = catalog.descriptors.find(value => value.engineId === 'worklet-pluck');
   if (pluck && pluck.maximumVoices >= 8) {
     put('engine', pluck.engineId, pluck.engineVersion, pluck.artifactHash); put('parameter-schema', pluck.engineId, pluck.engineVersion, pluck.parameterSchemaHash);
@@ -109,7 +111,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     }
   }
   if (pluck?.maximumVoices >= 12) {
-    const quarryScores = await createDubQuarryScores({ sourceHash, descriptor: pluck, signal });
+    quarryScores = await createDubQuarryScores({ sourceHash, descriptor: pluck, signal });
     for (const item of [...quarryScores, ...await createQuarryJourneyScores({ sourceHash, scores: quarryScores, signal })]) {
       recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
@@ -177,6 +179,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     }
   };
   await registerAuthoredScores([await createPhysicalMusicStarter({ sourceHash, reference })]);
+  if (modal?.capabilities.worldSpatialControl && modal.capabilities.sharedAcousticZoneSends && quarryScores.length) await registerAuthoredScores(await createQuarryWorldScores({ sourceHash, descriptor: modal, scores: quarryScores, signal }));
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createThreeHandsScores({ sourceHash, descriptor, signal }));
   if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createResonanceTerrariumScores({ sourceHash, descriptor, signal }));
   if (modal?.maximumVoices >= 3) await registerAuthoredScores([await createFoundBellScore({ sourceHash, descriptor: modal, signal })]);
