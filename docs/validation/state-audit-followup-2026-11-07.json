@@ -1219,5 +1219,30 @@
       "whitespace": "passed"
     },
     "newFullLocalSuite": false
+  },
+  "recordingCancellationFollowthrough680": {
+    "baseCommit": "bd4c6df3814836ab6b793ad3d38aa0249ff78d82",
+    "issue": 1300,
+    "repair": "Preserve synchronous owned-arm cancellation for every non-user Stop before returning an existing shared finalization operation. Shared Stop ownership remains established before awaits.",
+    "sourceSha256": "8c50dd5f328e5c1007770da7e6598439cb22425ecc8aa449025e344e570224f8",
+    "qualification": {
+      "stats": {
+        "suites": 1,
+        "tests": 143,
+        "passes": 143,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T00:27:49.810Z",
+        "end": "2026-11-08T00:27:57.005Z",
+        "duration": 7195
+      },
+      "reportSha256": "15cac471d0f040af0b1d204eae25d84474fb69272c660e3902954ca084cb2548",
+      "scope": "Complete143-case controller cohort after the cancellation-preservation change"
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed"
+    },
+    "newFullLocalSuite": false
   }
 }

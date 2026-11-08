@@ -1043,13 +1043,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } finally { if (!adopted) retireCausalRead(prepared); }
   };
   const stopCausalTake = async ({ reason = 'user-stop' } = {}) => {
+    if (ownedCausalArm?.state().busy && reason !== 'user-stop') ownedCausalArm.cancel();
     if (causalTakeStop) return causalTakeStop;
     /** @type {(value: any) => void} */ let resolveStop = () => {};
     /** @type {(reason: any) => void} */ let rejectStop = () => {};
     const operation = new Promise((resolve, reject) => { resolveStop = resolve; rejectStop = reject; });
     causalTakeStop = operation;
     const run = async () => {
-      if (ownedCausalArm?.state().busy && reason !== 'user-stop') ownedCausalArm.cancel();
       if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
       if (causalMarkerCheckpoint) await causalMarkerCheckpoint.catch(() => {});
       if (!causalTake) return lastCausalTake;
