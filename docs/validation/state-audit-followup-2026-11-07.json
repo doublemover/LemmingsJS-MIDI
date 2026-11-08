@@ -1180,5 +1180,44 @@
       "changedLineWhitespace": "passed"
     },
     "ci": "Pending after publication"
+  },
+  "recordingCutAdmissionFollowthrough679": {
+    "baseCommit": "2acc206e47256f3ca965ce04fa9abfab43fe14db",
+    "issue": 1300,
+    "baseline": {
+      "stats": {
+        "suites": 1,
+        "tests": 1,
+        "passes": 0,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-08T00:15:51.497Z",
+        "end": "2026-11-08T00:15:51.956Z",
+        "duration": 459
+      },
+      "error": "expected [ false, true ] to deeply equal [ true, false ]",
+      "scope": "Accepted Pause during recovery-quiescing Stop was omitted from actual journal"
+    },
+    "repair": "Pending Stop operation is distinct from recorder.captureStopped. Continue accepted transport input admission before the actual cut; exclude it afterward. Status is read only while Stop is pending.",
+    "qualification": {
+      "stats": {
+        "suites": 1,
+        "tests": 143,
+        "passes": 143,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T00:17:26.227Z",
+        "end": "2026-11-08T00:17:33.862Z",
+        "duration": 7635
+      },
+      "reportSha256": "8368f58839cbf4a5fbdc40491d81a297fb4fa0b5163d29fa39b1b1e930c9ed19",
+      "scope": "Complete143-case controller cohort; existing recovery/concurrent-Stop regression also verifies accepted Play/Pause edges while quiescing"
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "whitespace": "passed"
+    },
+    "newFullLocalSuite": false
   }
 }

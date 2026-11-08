@@ -791,11 +791,16 @@ describe('ProcGen workstation orchestration', () => {
       await waitForController(() => f.studio.getPhysicalDiagnostics()?.resources.activeOperation === true);
       const graph = f.studio.getProject().procgen.physicalGraph;
       f.studio.dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1, instruments: [{ id: 'recorded-gate', sourceKind: 'MotionCommitted', gateX: 40, crossingDirection: 'positive', pitchCents: 6000, velocity01: 0.5, role: 'crossing', route: 'local' }] } });
+      f.studio.play();
       const first = f.studio.stopCausalTake(), second = f.studio.stopCausalTake();
+      f.studio.transport.pause();
       const [stopped, repeated] = await Promise.all([first, second]);
       expect(stopped.complete, JSON.stringify(stopped)).to.equal(true); expect(repeated).to.equal(stopped);
       const journal = createProcgenCausalJournal({ storage }), saved = await journal.openTake(takeId);
       expect(saved.complete).to.equal(true); expect((await journal.verify(takeId)).status).to.equal('complete');
+      const records = (await journal.query({ takeId })).records;
+      const edges = records.filter(record => record.kind === 'input-observation' && record.payload.kind === 'transport-state');
+      expect(edges.slice(-2).map(record => record.payload.playing)).to.deep.equal([true, false]);
       expect(f.runtime.world).to.equal(world); expect(world.tickIndex).to.equal(1);
     } finally { await recovering; await f.studio.dispose().completion; world.dispose(); }
     expect(budget.diagnostics().accountedBytes).to.equal(0);

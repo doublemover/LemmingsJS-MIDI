@@ -800,7 +800,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   let pageLifecycle = null;
   function recordAcceptedCausalTransport(position) {
-    if (!lastCausalTransport || !causalTake || causalTakeStop) return true;
+    if (!lastCausalTransport || !causalTake || (causalTakeStop && causalTake.status().captureStopped)) return true;
     if (causalClockBlocked) return false;
     const previous = lastCausalTransport;
     if (previous.bpm !== position.bpm && !recordCausalControl('timeline', { version: 1, kind: 'tempo', bpm: position.bpm })) { causalClockBlocked = true; return false; }
