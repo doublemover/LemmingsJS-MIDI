@@ -1244,5 +1244,45 @@
       "criticalAndBoundaryTypes": "passed"
     },
     "newFullLocalSuite": false
+  },
+  "qualificationAdmissionFollowthrough681": {
+    "baseCommit": "a4cd3901658260b25258643fa350cce9a97fad4f",
+    "issue": 1275,
+    "productionChanged": false,
+    "ciBaseline": {
+      "run": 42428190721,
+      "job": 128570953713,
+      "source": "2acc206e47256f3ca965ce04fa9abfab43fe14db",
+      "node": {
+        "passes": 8318,
+        "pending": 10,
+        "failures": 1
+      },
+      "failure": "100setImmediate turns exhausted before two asynchronous hash validations reached getAssets; expected calls1, observed0",
+      "desktop": "31boundaries and325workstation smoke passed",
+      "coverage": {
+        "lines": 86.91,
+        "branches": 83.35,
+        "functions": 84.08
+      }
+    },
+    "repair": "Await explicit asset-admission handshake or early render settlement instead of an event-loop-turn count. Finally release the held asset gate, join the first render and dispose its owner on assertion failure. Preserve original exclusivity, reservations and retry assertions.",
+    "qualification": {
+      "stats": {
+        "suites": 1,
+        "tests": 4,
+        "passes": 4,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T01:21:10.181Z",
+        "end": "2026-11-08T01:21:10.992Z",
+        "duration": 811
+      },
+      "reportSha256": "b40dadf6edac75e676b41658d14fd316c8f10963c5edcdf5a27bfcd596fdc61f"
+    },
+    "checks": {
+      "format": "passed"
+    },
+    "newFullLocalSuite": false
   }
 }

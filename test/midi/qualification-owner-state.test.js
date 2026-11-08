@@ -5,18 +5,20 @@ import { createSharedSoundQualificationRenderer } from '../../js/midi/qualificat
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { compileSoundContent } from '../../js/midi/content/SoundContentCompiler.js';
 import { createSoundQualificationPlan } from '../../js/midi/qualification/SoundQualificationPlan.js';
-const turn = () => new Promise(resolve => setImmediate(resolve));
 const source = async () => { const value = {}, digest = await hashData(value); return { plan: { definition: value, definitionHash: digest, fixtures: [{ id: 'audit', revoice: value, durationSeconds: 1 }] }, selected: { id: 'case', fixtureId: 'audit', fixtureHash: digest, sampleRate: 48000 } }; };
 const failure = promise => promise.then(() => null, error => error);
 describe('exclusive qualification-render ownership (#1275)', () => {
   it('admits one simultaneous request and releases a refused owner before retry', async () => {
-    let release, calls = 0; const gate = new Promise(resolve => { release = resolve; }), { plan, selected } = await source();
-    const renderer = createSharedSoundQualificationRenderer({ getAssets: async () => { calls++; await gate; throw new Error('asset refused'); } });
+    let release, entered, calls = 0; const ready = new Promise(resolve => { entered = resolve; }), gate = new Promise(resolve => { release = resolve; }), { plan, selected } = await source();
+    const renderer = createSharedSoundQualificationRenderer({ getAssets: async () => { calls++; entered(); await gate; throw new Error('asset refused'); } });
     const first = failure(renderer.render(plan, selected)), second = failure(renderer.render(plan, selected));
-    const refused = await second; expect(refused.message).to.include('busy');
-    for (let count = 0; count < 100 && !calls; count++) await turn(); expect(calls).to.equal(1); expect(renderer.diagnostics().resources.reservations).to.equal(1);
-    release(); expect((await first).message).to.equal('asset refused'); expect(renderer.diagnostics().active).to.equal(false); expect(renderer.diagnostics().resources.reservations).to.equal(0);
-    expect((await failure(renderer.render(plan, selected))).message).to.equal('asset refused'); expect(calls).to.equal(2); renderer.dispose();
+    try {
+      const refused = await second; expect(refused.message).to.include('busy');
+      await Promise.race([ready, first.then(error => { throw error || new Error('Render settled before asset admission.'); })]);
+      expect(calls).to.equal(1); expect(renderer.diagnostics().resources.reservations).to.equal(1);
+      release(); expect((await first).message).to.equal('asset refused'); expect(renderer.diagnostics().active).to.equal(false); expect(renderer.diagnostics().resources.reservations).to.equal(0);
+      expect((await failure(renderer.render(plan, selected))).message).to.equal('asset refused'); expect(calls).to.equal(2);
+    } finally { release(); await first; renderer.dispose(); }
   });
   it('does not publish or reserve after disposal during asynchronous source validation', async () => {
     const { plan, selected } = await source(), renderer = createSharedSoundQualificationRenderer();
