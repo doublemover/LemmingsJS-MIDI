@@ -1284,5 +1284,311 @@
       "format": "passed"
     },
     "newFullLocalSuite": false
+  },
+  "nativeTerminalReasonFollowthrough682": {
+    "baseCommit": "f327ff06607438242684c69dfbdc1b0f49c8944c",
+    "implementationCommit": "dfc8cea39796ddfffb46d61ff79978afa5301ea9",
+    "issue": 1301,
+    "baseline": {
+      "run": 42430089195,
+      "job": 128576840236,
+      "desktop": {
+        "boundariesPassed": 31,
+        "smokePassed": 324,
+        "smokeFailed": 1
+      },
+      "confirmed": "Valid END→ENDED/reason1was decoded as invalid-command; panic ENDED/reason2was decoded inconsistently as queue-full/panic",
+      "independentDeadlineObservation": {
+        "targetFrame": 385274,
+        "appliedFrame": 385280,
+        "lateSamples": 6,
+        "result": "correct original-frame refusal; scheduling/PCM assertions remain unchanged"
+      }
+    },
+    "implementation": "Decode terminal reason by receipt status once; reuse for destruction, lease/refusal handling and emitted outcomes. Preserve rejection reason namespaces, kernel ABI and execution, deadlines and PCM thresholds.",
+    "node": {
+      "stats": {
+        "suites": 5,
+        "tests": 49,
+        "passes": 49,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T01:35:41.216Z",
+        "end": "2026-11-08T01:35:44.204Z",
+        "duration": 2988
+      },
+      "reportSha256": "8274f8869e726bde685133285d0202cfc3046f98c86fbcfc7c62eb2afefa900b",
+      "backendCoverage": {
+        "lines": {
+          "total": 995,
+          "covered": 806,
+          "skipped": 0,
+          "pct": 81
+        },
+        "functions": {
+          "total": 139,
+          "covered": 92,
+          "skipped": 0,
+          "pct": 66.18
+        },
+        "statements": {
+          "total": 995,
+          "covered": 806,
+          "skipped": 0,
+          "pct": 81
+        },
+        "branches": {
+          "total": 853,
+          "covered": 597,
+          "skipped": 0,
+          "pct": 69.98
+        }
+      },
+      "scope": "49actual host/kernel, sample-owner and qualification-owner cases; one new regression covers ordinary release, panic and genuine malformed-command refusal with zero retained reservations"
+    },
+    "desktop": {
+      "stats": {
+        "startTime": "2026-11-08T01:33:11.555Z",
+        "duration": 123382.966,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "reportSha256": "63341a333f85c3631098823c34553dc11a9e610890e2391bf93843c048b7f4f1",
+      "recipes": [
+        {
+          "recipe": "Clay chamber",
+          "phases": [
+            {
+              "ticks": [
+                0,
+                120
+              ],
+              "pcmPeak": 0.000014543533325195312,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 2,
+                "applied": 2,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 1,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                158,
+                318
+              ],
+              "pcmPeak": 0.000014781951904296875,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 4,
+                "applied": 4,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 2,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                350,
+                510
+              ],
+              "pcmPeak": 0.000014543533325195312,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 6,
+                "applied": 6,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 3,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            }
+          ]
+        },
+        {
+          "recipe": "Throat duet",
+          "phases": [
+            {
+              "ticks": [
+                0,
+                120
+              ],
+              "pcmPeak": 0.000010371208190917969,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 2,
+                "applied": 2,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 1,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                164,
+                324
+              ],
+              "pcmPeak": 0.000010371208190917969,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 4,
+                "applied": 4,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 2,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                384,
+                544
+              ],
+              "pcmPeak": 0.000010371208190917969,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 6,
+                "applied": 6,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 3,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            }
+          ]
+        },
+        {
+          "recipe": "Crumbled chimes",
+          "phases": [
+            {
+              "ticks": [
+                0,
+                120
+              ],
+              "pcmPeak": 0.000011801719665527344,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 2,
+                "applied": 2,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 1,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                153,
+                313
+              ],
+              "pcmPeak": 0.000014185905456542969,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 4,
+                "applied": 4,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 2,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                344,
+                504
+              ],
+              "pcmPeak": 0.000011801719665527344,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 6,
+                "applied": 6,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 3,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            }
+          ]
+        }
+      ],
+      "scope": "All3fresh-actor cavity journeys;9live phases, complete journals and original source-bound WAV assertions, no retries or weaker timing/PCM criteria"
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "15components/2774files passed",
+      "whitespace": "passed"
+    },
+    "sourceSha256": "756802059af0840fa43a0cd9aa88bef9d08af6f60c6c96da91b8e59094f2ceca",
+    "newFullLocalSuite": false
   }
 }
