@@ -37,5 +37,6 @@ certs/
 test/processhtmlfile.test.js
 test/processhtmlfile.test.js
 playwright-report/
+blob-report/
 test-results/
 temp/

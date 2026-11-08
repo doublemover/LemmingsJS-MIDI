@@ -1,4 +1,10 @@
 import { expect } from 'chai';
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { checkBrowserResults } from '../scripts/check-browser-results.js';
 import { WORKSTATION_TEST_MATCH, REQUIRED_WORKSTATION_CATEGORIES, collectBrowserCases, validateWorkstationCollection, qualifyWorkstationResults } from '../scripts/BrowserTestCatalog.js';
 import { inferCategoriesFromChangedFiles, buildMochaArgsForCategories } from '../scripts/runTests.js';
 
@@ -49,5 +55,29 @@ describe('required workstation browser collection', () => {
     specs.push({ file: 'procgen-workstation-view.spec.js', title: 'opt-in latency', tags: ['benchmark'], tests: [{ projectName: 'workstation', expectedStatus: 'skipped', results: [{ status: 'skipped' }] }] });
     expect(qualifyWorkstationResults(report).skipped).to.deep.equal(['opt-in latency']);
     specs.at(-1).tags = []; expect(() => qualifyWorkstationResults(report)).to.throw('did not pass');
+  });
+});
+
+
+describe('browser cohort source verification', () => {
+  it('checks the real revision and file hashes without qualifying missing results', function() {
+    this.timeout(10000);
+    const root = fileURLToPath(new URL('../', import.meta.url)), parent = path.resolve(root, '.tmp'); fs.mkdirSync(parent, { recursive: true });
+    const temporary = fs.mkdtempSync(path.join(parent, 'browser-source-'));
+    try {
+      const revision = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }); expect(revision.status).to.equal(0);
+      fs.mkdirSync(path.join(temporary, '.tmp')); fs.writeFileSync(path.join(temporary, 'source.txt'), 'original');
+      const selection = { source: { head: revision.stdout.trim(), files: [{ file: 'source.txt', sha256: createHash('sha256').update('original').digest('hex') }] } };
+      const save = () => fs.writeFileSync(path.join(temporary, '.tmp/browser-category-selection.json'), JSON.stringify(selection)); save();
+      expect(checkBrowserResults({ rootDir: temporary, sourceOnly: true })).to.deep.equal({ sourceOnly: true, source: selection.source });
+      expect(fs.existsSync(path.join(temporary, '.tmp/workstation-result-qualification.json'))).to.equal(false);
+      expect(() => checkBrowserResults({ rootDir: temporary, smoke: true })).to.throw('ENOENT');
+      fs.writeFileSync(path.join(temporary, 'source.txt'), 'changed'); expect(() => checkBrowserResults({ rootDir: temporary, sourceOnly: true })).to.throw('source changed after collection');
+      fs.writeFileSync(path.join(temporary, 'source.txt'), 'original'); selection.source.head = '0'.repeat(40); save();
+      expect(() => checkBrowserResults({ rootDir: temporary, sourceOnly: true })).to.throw('revision changed after collection');
+    } finally {
+      if (path.dirname(path.resolve(temporary)) !== parent) throw new Error('Temporary source fixture escaped its workspace.');
+      fs.rmSync(temporary, { recursive: true, force: true });
+    }
   });
 });

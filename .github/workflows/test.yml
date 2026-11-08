@@ -10,13 +10,13 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
           node-version: 20
           cache: npm
@@ -25,12 +25,12 @@ jobs:
       - run: npm run provenance:check
       - name: Build source-bound CycloneDX SBOM
         run: npm run --silent provenance:sbom > runtime-sbom.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: runtime-sbom
           path: runtime-sbom.json
+          overwrite: true
       - run: npm audit --audit-level=moderate
-      - run: npx playwright install --with-deps chromium
       - name: Check changed-line whitespace
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -44,24 +44,153 @@ jobs:
       - run: npm run release-readiness
       - run: npm run depcheck
       - run: npm run check-mcp-clients
+  unit-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run coverage
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: coverage
+          path: coverage
+          if-no-files-found: error
+          overwrite: true
+  browser-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: npm run test-e2e:boundaries
-      - run: npm run test-e2e:workstation:smoke
-        id: workstation_smoke
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.workstation_smoke.outcome != 'skipped' && steps.workstation_smoke.outcome != ''
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: failure()
+        with:
+          name: browser-boundary-failures-attempt-${{ github.run_attempt }}
+          path: test-results
+          retention-days: 7
+  workstation:
+    name: workstation (${{ matrix.shard }}/${{ matrix.total }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          - 7
+          - 8
+        total:
+          - 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check:browser-categories
+      - name: Run workstation cohort
+        run: node scripts/run-browser-boundaries.js --project=workstation --grep @boundary --workers=1 --shard=${{ matrix.shard }}/${{ matrix.total }} --reporter=line,blob
+        id: workstation_cohort
+      - name: Verify cohort source after execution
+        if: always() && steps.workstation_cohort.outcome != 'skipped' && steps.workstation_cohort.outcome != ''
+        run: node scripts/check-browser-results.js --source-only
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: workstation-source-${{ matrix.shard }}
+          path: .tmp/browser-category-selection.json
+          if-no-files-found: error
+          overwrite: true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: workstation-blob-${{ matrix.shard }}
+          path: blob-report
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: failure()
+        with:
+          name: workstation-failures-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: test-results
+          retention-days: 7
+  workstation-results:
+    runs-on: ubuntu-latest
+    needs:
+      - workstation
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run check:browser-categories
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: workstation-blob-*
+          path: .tmp/workstation-blobs
+          merge-multiple: true
+      - name: Merge workstation cohort reports
+        run: npx playwright merge-reports --reporter=json .tmp/workstation-blobs
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .tmp/workstation-results.json
+      - name: Qualify the complete workstation catalog
+        run: node scripts/check-browser-results.js --smoke
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
           name: workstation-browser-receipts
-          path: |
+          path: |-
             .tmp/browser-category-selection.json
             .tmp/workstation-results.json
             .tmp/workstation-result-qualification.json
           if-no-files-found: error
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: failure()
+          overwrite: true
+  mcp-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          name: browser-boundary-failures
-          path: test-results
-          retention-days: 7
+          fetch-depth: 0
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - name: Create localhost HTTPS cert
         run: |
           mkdir -p certs
@@ -92,11 +221,34 @@ jobs:
               fi
             fi
           fi
-      - run: npm run coverage
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+  test:
+    runs-on: ubuntu-latest
+    needs:
+      - checks
+      - unit-coverage
+      - browser-boundaries
+      - workstation
+      - workstation-results
+      - mcp-smoke
+      - native-midi-codec
+      - lifecycle-engines
+    if: ${{ always() }}
+    steps:
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a
         with:
-          name: coverage
-          path: coverage
+          node-version: 20
+      - name: Require every validation cohort
+        env:
+          NEEDS_RESULTS: ${{ toJSON(needs) }}
+        run: |-
+          node --input-type=module -e '
+          const results = Object.entries(JSON.parse(process.env.NEEDS_RESULTS));
+          if (!results.length) throw new Error("No validation results were received.");
+          const failed = results.filter(([, job]) => job.result !== "success");
+          for (const [name, job] of failed) console.error(`${name}: ${job.result}`);
+          if (failed.length) process.exit(1);
+          console.log("Every validation cohort passed.");
+          '
 
   native-midi-codec:
     strategy:
