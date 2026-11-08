@@ -346,6 +346,7 @@ class MidiMapping {
       voiceBudget: sfx.voiceBudget ?? null,
       outputId: sfx.outputId ?? null,
       trackId: sfx.trackId ?? null,
+      ...(sfx.instrumentRef ? { instrumentRef: sfx.instrumentRef, instrumentControls: sfx.instrumentControls } : {}),
       arp: sfx.arp ?? null,
       phrase: sfx.phrase ?? null
     }, event, percussion ? { ...cfg, ensemble: null } : cfg, sfx);

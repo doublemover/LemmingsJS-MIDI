@@ -12,10 +12,12 @@ const IDB_STORE_ENTRIES = 'entries';
 const IDB_STORE_PAYLOADS = 'payloads';
 const IDB_STORE_META = 'meta';
 const IDB_MAX_BYTES = 50 * 1024 * 1024;
+const CACHE_FORMAT_VERSION = 2;
 
 export {
   BaseLogger,
   BinaryReader,
+  CACHE_FORMAT_VERSION,
   IDB_MAX_BYTES,
   IDB_NAME,
   IDB_STORE_ENTRIES,

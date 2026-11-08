@@ -159,7 +159,7 @@ describe('FileProvider', function () {
   const cacheKey = (url) => `lem-cache:${url}`;
 
   const setCacheEntry = (url, entry) => {
-    global.localStorage.setItem(cacheKey(url), JSON.stringify(entry));
+    global.localStorage.setItem(cacheKey(url), JSON.stringify({ formatVersion: 2, ...entry }));
   };
 
   const setCacheRaw = (url, raw) => {
@@ -205,7 +205,7 @@ describe('FileProvider', function () {
     origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
       getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }
@@ -256,7 +256,7 @@ describe('FileProvider', function () {
     if (origFetch) {
       global.fetch = origFetch;
     }
-    provider.clearCache();
+    provider.dispose();
     setDependency('BinaryReader', origBR);
     setDependency('LogHandler', origLog);
   });
@@ -285,16 +285,18 @@ describe('FileProvider', function () {
   it('loadBinary caches identical requests', async function () {
     const p1 = provider.loadBinary('data', 'file.bin');
     const p2 = provider.loadBinary('data', 'file.bin');
-    assert.strictEqual(p1, p2);
+    assert.notStrictEqual(p1, p2);
     assert.strictEqual(requests.length, 1);
 
     const buffer = new ArrayBuffer(0);
     requests[0].respond(200, buffer);
     const result = await p1;
+    const second = await p2;
     assert.ok(result instanceof MockBinaryReader);
+    assert.notStrictEqual(result, second);
 
     const p3 = provider.loadBinary('data', 'file.bin');
-    assert.strictEqual(p1, p3);
+    assert.notStrictEqual(p1, p3);
     assert.strictEqual(requests.length, 1);
   });
 
@@ -302,7 +304,7 @@ describe('FileProvider', function () {
     const url = makeUrl('text.txt');
     const p1 = provider.loadString(url);
     const p2 = provider.loadString(url);
-    assert.strictEqual(p1, p2);
+    assert.notStrictEqual(p1, p2);
     assert.strictEqual(requests.length, 1);
 
     requests[0].respond(200, 'hello');
@@ -310,7 +312,7 @@ describe('FileProvider', function () {
     assert.strictEqual(result, 'hello');
 
     const p3 = provider.loadString(url);
-    assert.strictEqual(p1, p3);
+    assert.notStrictEqual(p1, p3);
     assert.strictEqual(requests.length, 1);
   });
 
@@ -340,7 +342,9 @@ describe('FileProvider', function () {
     assert.deepStrictEqual(provider.getCacheStats(), {
       memoryEntries: 1,
       localStorageBytes: 12,
-      indexedDbBytes: 34
+      indexedDbBytes: 34,
+      ownedRequests: 0,
+      resourceLeases: 0
     });
   });
 
@@ -349,12 +353,13 @@ describe('FileProvider', function () {
     const p1 = provider.loadString(url);
     requests[0].respond(200, 'hello');
     const result1 = await p1;
+    await provider.waitForCacheWrites();
     assert.strictEqual(result1, 'hello');
     const stored = global.localStorage.getItem(cacheKey(url));
     assert.ok(stored, 'entry stored');
 
     // new provider simulating page reload
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const p2 = provider.loadString(url);
     assert.strictEqual(requests.length, 1, 'no new XHR');
     const result2 = await p2;
@@ -362,11 +367,12 @@ describe('FileProvider', function () {
   });
 
   it('loadBinary uses cached binary entries from localStorage', async function () {
-    provider = new FileProvider(rootPath);
+    provider = new FileProvider(rootPath, { cacheLockManager: { request: async (name, options, callback) => callback({ name }) } });
     const data = Uint8Array.from([1, 2, 3]).buffer;
     const url = makeUrl('data/file.bin');
-    setBinaryCache(url, data, 'h');
+    setBinaryCache(url, data);
 
+    provider._scheduleCacheValidation = () => {};
     const result = await provider.loadBinary('data', 'file.bin');
     assert.ok(result instanceof MockBinaryReader);
     assert.strictEqual(requests.length, 0);
@@ -376,6 +382,7 @@ describe('FileProvider', function () {
     const url = makeUrl('bad.txt');
     setCacheRaw(url, '{bad');
     const promise = provider.loadString(url);
+    await new Promise(resolve => setTimeout(resolve, 0));
     requests[0].respond(200, 'ok');
     const result = await promise;
     assert.strictEqual(result, 'ok');
@@ -401,7 +408,7 @@ describe('FileProvider', function () {
     await p1;
 
     const p2 = provider.loadBinary('data', 'file.bin');
-    assert.strictEqual(p2, p1);
+    assert.notStrictEqual(p2, p1);
     assert.strictEqual(calls, 1);
     await p2;
 
@@ -410,7 +417,10 @@ describe('FileProvider', function () {
     assert.strictEqual(calls, 2);
     await p3;
 
-    assert.strictEqual(provider._cache.get(url), p1);
+    assert.ok(provider._cache.has(`binary:${url}`));
+    const p4 = provider.loadBinary('data', 'file.bin');
+    await p4;
+    assert.strictEqual(calls, 2);
   });
 
   it('loadBinary uses indexedDB path when enabled and uncached', async function () {

@@ -1,0 +1,9 @@
+{
+  "schema": "background-admission-counterexample/v1",
+  "source": "6ad52db030462786c3ab1e9bd525aba25204daab",
+  "failure": "Cancellation acknowledged during retained-budget resize resurrected a released job as computed with zero reserved bytes.",
+  "trace": [
+    { "kind": "acquire", "id": "source", "priority": "recovery", "inputBytes": 64, "peak": 1048576 },
+    { "kind": "finish", "id": "source", "retained": 4096, "interrupt": "abort", "budget": "external", "when": "after" }
+  ]
+}

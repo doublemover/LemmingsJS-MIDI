@@ -80,3 +80,7 @@ Runtime profiles (`classic`, `midi`, `editor`, `e2e`, `perf`) exist to avoid
 paying for subsystems that are not needed in a given mode. Legacy
 `profile=gameplay` URLs normalize to `classic`. Keep new mode-sensitive
 features profile-aware in `js/app/boot.js` and `js/game/GameView.js`.
+
+## Browser generation status ownership
+
+A status request observes a pending installer without starting an empty-cache restore before its install event. A cold active or waiting worker may restore its stored complete generation; a terminal failure stays observable. Installation owns its progress independently of any earlier restoration. A superseded restoration cannot publish progress, success or failure over that installation. Entry clients accept only bounded immutable error code/message fields; a durable cache marker, install acknowledgment and executable-generation identity remain separate observations.

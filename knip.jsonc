@@ -1,10 +1,11 @@
 {
   // c8 report is a c8 subcommand; Knip 6.40 treats its positional argument as an executable.
-  "ignoreBinaries": ["report"],
+  "ignoreBinaries": ["report", "where.exe"],
   // Browser-side imports in Playwright evaluations resolve from the web root.
   "paths": {
     "/js/*": ["./js/*"],
-    "/test/*": ["./test/*"]
+    "/test/*": ["./test/*"],
+    "/e2e/*": ["./e2e/*"]
   },
   "entry": [
     "js/**/*.js",

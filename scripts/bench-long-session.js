@@ -1,6 +1,10 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runLongSessionReplayProbe } from './LongSessionReplayProbe.js';
+import { evaluateLongSessionWork } from './LongSessionWorkGates.js';
+import { readLongSessionSample } from './LongSessionSample.js';
 
 const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
 
@@ -97,6 +101,8 @@ const PROFILE_PRESETS = Object.freeze({
     durationMs: 15000,
     sampleMs: 1000,
     replayChecks: 2,
+    minimumForwardTicks: 2000, minimumColdBlocksCreated: 0, minimumColdBlocksRetired: 0,
+    minimumActiveFraction: 0.85, minimumProgressFraction: 0.8, minimumObservedFraction: 0.85, maximumStalledMs: 3000,
     maxHeapGrowthBytes: 128 * 1024 * 1024,
     maxHeapChurnBytes: 256 * 1024 * 1024,
     maxSoundQueueRatio: 1.0,
@@ -109,6 +115,8 @@ const PROFILE_PRESETS = Object.freeze({
     durationMs: 90000,
     sampleMs: 1000,
     replayChecks: 6,
+    minimumForwardTicks: 8000, minimumColdBlocksCreated: 1, minimumColdBlocksRetired: 0,
+    minimumActiveFraction: 0.85, minimumProgressFraction: 0.8, minimumObservedFraction: 0.85, maximumStalledMs: 3000,
     maxHeapGrowthBytes: 256 * 1024 * 1024,
     maxHeapChurnBytes: 768 * 1024 * 1024,
     maxSoundQueueRatio: 1.0,
@@ -121,6 +129,8 @@ const PROFILE_PRESETS = Object.freeze({
     durationMs: 300000,
     sampleMs: 1000,
     replayChecks: 12,
+    minimumForwardTicks: 12000, minimumColdBlocksCreated: 4, minimumColdBlocksRetired: 1,
+    minimumActiveFraction: 0.85, minimumProgressFraction: 0.8, minimumObservedFraction: 0.85, maximumStalledMs: 3000,
     maxHeapGrowthBytes: 512 * 1024 * 1024,
     maxHeapChurnBytes: 1536 * 1024 * 1024,
     maxSoundQueueRatio: 1.0,
@@ -252,6 +262,7 @@ const evaluateLongSessionGates = ({
 
   const historySpanEnd = toNumberOrNaN(last?.historySpanTicks || 0);
   const replayMismatchCount = replay.filter(check => check.hashMatch === false).length;
+  const activity = evaluateLongSessionWork({ samples: clean, replayChecks: replay, thresholds: { ...PROFILE_PRESETS.smoke, ...thresholds, minimumReplayChecks: thresholds.minimumReplayChecks ?? thresholds.replayChecks ?? PROFILE_PRESETS.smoke.replayChecks } });
 
   const failures = [];
   if (tickProgress <= 0) {
@@ -278,6 +289,7 @@ const evaluateLongSessionGates = ({
   if (replayMismatchCount > 0) {
     failures.push('replay_hash_mismatch');
   }
+  failures.push(...activity.failures);
 
   return {
     metrics: {
@@ -290,7 +302,8 @@ const evaluateLongSessionGates = ({
       soundQueueGrowth,
       historySpanEnd,
       triggerDrift,
-      replayMismatchCount
+      replayMismatchCount,
+      ...activity.metrics
     },
     failures
   };
@@ -361,7 +374,7 @@ const run = async () => {
       args: ['--allow-insecure-localhost', '--ignore-certificate-errors']
     }), opTimeoutMs, 'chromium.launch');
     context = await withTimeout(
-      browser.newContext({ ignoreHTTPSErrors: true }),
+      browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT, ignoreHTTPSErrors: true }),
       opTimeoutMs,
       'browser.newContext'
     );
@@ -378,98 +391,41 @@ const run = async () => {
       'waitForReady'
     );
 
-    await withTimeout(page.evaluate(() => window.__E2E__.resume()), opTimeoutMs, 'resume');
-    const samples = [];
-    const replayChecks = [];
-    const replayEveryMs = Math.max(sampleMs, Math.trunc(durationMs / replayChecksTarget));
-    let lastReplayAtMs = -Infinity;
+    await withTimeout(page.evaluate(() => {
+      const api = window.__E2E__;
+      if (api.resume() !== true || api.getState()?.game?.timer?.running !== true) throw new Error('The benchmark could not own a running forward transport.');
+    }), opTimeoutMs, 'resume');
+    const samples = [], replayChecks = [];
+    const replayEveryMs = Math.max(sampleMs, Math.trunc(durationMs / (replayChecksTarget + 1)));
+    const minimumHistoryTicks = Math.max(64, Math.min(512, Math.floor(preset.minHistorySpanTicks / 4)));
+    let lastReplayAtMs = 0, warmupSkippedProbes = 0, workloadFailure = null;
     const start = Date.now();
-
+    const sample = async () => {
+      const raw = await withTimeout(page.evaluate(readLongSessionSample, Date.now() - start), opTimeoutMs, 'sampleState');
+      samples.push({ ...raw, ...normalizeLongSessionSample(raw) });
+      if (!raw.validTelemetry || raw.running !== true) workloadFailure = 'forward_workload_stopped_or_telemetry_missing';
+      return raw;
+    };
     while (Date.now() - start < durationMs) {
       assertRuntimeBudget('sampling');
-      const elapsedMs = Date.now() - start;
-      const rawSample = await withTimeout(page.evaluate((elapsed) => {
-        const state = window.__E2E__?.getState?.() || {};
-        const game = state.game || {};
-        const history = game.history || {};
-        const sound = game.soundEvents || {};
-        const triggers = game.triggers || {};
-        const memory = typeof performance !== 'undefined' ? performance.memory : null;
-        return {
-          elapsedMs: Number(elapsed || 0),
-          tickIndex: Number(game.timer?.tickIndex || 0),
-          historySpanTicks: Number(history.spanTicks || 0),
-          coldBlockCount: Number(history.coldBlockCount || 0),
-          soundQueued: Number(sound.queuedCount || 0),
-          soundQueueLimit: Number(sound.queueLimit || 0),
-          triggerCount: Number(triggers.totalCount || 0),
-          heapUsedBytes: Number(memory?.usedJSHeapSize || 0)
-        };
-      }, elapsedMs), opTimeoutMs, 'sampleState');
-      const sample = normalizeLongSessionSample(rawSample);
-      samples.push(sample);
-
-      if (elapsedMs - lastReplayAtMs >= replayEveryMs) {
-        lastReplayAtMs = elapsedMs;
-        const replayCheck = await withTimeout(page.evaluate(() => {
-          const api = window.__E2E__;
-          const state = api?.getState?.();
-          const history = state?.game?.history;
-          if (!api?.getDelta || !history) {
-            return { hashMatch: true, hashBefore: null, hashAfter: null, checked: false };
-          }
-          const minTick = Number.isFinite(history.minTick) ? Math.trunc(history.minTick) : 0;
-          const maxTick = Number.isFinite(history.maxTick) ? Math.trunc(history.maxTick) : minTick;
-          const current = Number.isFinite(state?.game?.timer?.tickIndex)
-            ? Math.trunc(state.game.timer.tickIndex)
-            : maxTick;
-          const hashFn = () => {
-            let hash = 2166136261;
-            const pushByte = (value) => {
-              hash ^= value & 0xff;
-              hash = Math.imul(hash, 16777619);
-            };
-            const pushAscii = (value) => {
-              const text = String(value);
-              for (let i = 0; i < text.length; i += 1) {
-                pushByte(text.charCodeAt(i));
-              }
-              pushByte(124);
-            };
-            for (let tick = minTick; tick <= maxTick; tick += 1) {
-              const delta = api.getDelta(tick);
-              if (!delta) continue;
-              pushAscii(tick);
-              pushAscii(delta.flags ?? 0);
-              pushAscii(delta.soundEvents?.length || 0);
-              pushAscii(delta.minimapDeaths?.length || 0);
-              pushByte(10);
-            }
-            return (hash >>> 0).toString(16).padStart(8, '0');
-          };
-          const hashBefore = hashFn();
-          const span = Math.max(1, maxTick - minTick);
-          const target = Math.max(minTick, current - Math.max(1, Math.trunc(span * 0.25)));
-          api.seek(target);
-          api.seek(current);
-          const hashAfter = hashFn();
-          return {
-            checked: true,
-            hashBefore,
-            hashAfter,
-            hashMatch: hashBefore === hashAfter
-          };
-        }), opTimeoutMs, 'replayCheck');
-        replayChecks.push(replayCheck);
+      const raw = await sample(); if (workloadFailure) break;
+      if (replayChecks.length < replayChecksTarget && raw.elapsedMs - lastReplayAtMs >= replayEveryMs) {
+        const check = await withTimeout(page.evaluate(runLongSessionReplayProbe, { minimumHistoryTicks }), opTimeoutMs, 'replayCheck');
+        if (check.status === 'warming-history') warmupSkippedProbes++;
+        else {
+          replayChecks.push(check); lastReplayAtMs = Date.now() - start;
+          if (check.status !== 'complete' || check.transportRestored !== true) { workloadFailure = 'replay_transaction_failed'; break; }
+        }
       }
-
-      await sleep(sampleMs);
+      await sleep(Math.min(sampleMs, Math.max(0, durationMs - (Date.now() - start))));
     }
-
-    await withTimeout(page.evaluate(() => window.__E2E__.pause()), opTimeoutMs, 'pause');
+    if (!workloadFailure) await sample();
+    await withTimeout(page.evaluate(() => {
+      const api = window.__E2E__; if (api.pause() !== true || api.getState()?.game?.timer?.running !== false) throw new Error('The benchmark failed to stop its transport.');
+    }), opTimeoutMs, 'pause');
 
     const thresholds = {
-      ...preset,
+      ...preset, durationMs, sampleMs, minimumReplayChecks: replayChecksTarget,
       maxHeapGrowthBytes: toPositiveNumber(
         args.get('maxHeapGrowthBytes') || process.env.LONG_SESSION_MAX_HEAP_GROWTH_BYTES,
         preset.maxHeapGrowthBytes
@@ -500,7 +456,9 @@ const run = async () => {
       replayChecks,
       thresholds
     });
+    if (workloadFailure) evaluation.failures.push(workloadFailure);
     const summary = {
+      workload: 'classic-game-forward-with-transactional-replay-probes', warmupSkippedProbes, workloadFailure,
       profile: requestedProfile,
       url: buildBenchUrl(baseUrl),
       durationMs,

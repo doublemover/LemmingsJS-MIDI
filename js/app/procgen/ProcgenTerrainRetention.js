@@ -11,6 +11,19 @@ class ProcgenTerrainEdits extends Map {
   }
   get size() { return super.size + this.cold.size; }
   has(key) { return super.has(key) || this.cold.has(key); }
+  peekValue(key, index) {
+    if (!Number.isInteger(index) || index < 0 || index >= this.chunkLength) return undefined;
+    const resident = super.get(key); if (resident) return resident[index];
+    const record = this.cold.get(key); if (!record) return 0; if (record.raw) return record.raw[index];
+    let low = 0, high = record.values.length;
+    while (low < high) {
+      const middle = low + high >>> 1, start = record.runs[middle * 2];
+      if (index < start) high = middle;
+      else if (index >= start + record.runs[middle * 2 + 1]) low = middle + 1;
+      else return record.values[middle];
+    }
+    return 0;
+  }
   get(key) {
     if (key === this._lastKey) return this._lastChunk;
     let chunk = super.get(key);
@@ -80,8 +93,9 @@ class ProcgenTerrainRevisions extends Map {
     for (const key of super.keys()) { if (super.size <= this.maxEntries) break; if (!this.interests.has(key)) this._retire(key); }
   }
   set(key, revision) { super.delete(key); super.set(key, revision); this._limit(); return this; }
+  peek(key) { return super.has(key) ? super.get(key) : -(this.epochs[Math.floor(key / TILE_LANE_STRIDE)] || 0); }
   read(key) {
-    const revision = super.has(key) ? super.get(key) : -(this.epochs[Math.floor(key / TILE_LANE_STRIDE)] || 0);
+    const revision = this.peek(key);
     this.set(key, revision); return revision;
   }
   retain(interests) {
@@ -101,4 +115,5 @@ class ProcgenTerrainRevisions extends Map {
   snapshot() { return { ...this.stats, entries: this.size, maxEntries: this.maxEntries, interests: this.interests.size, recentTilesPerLane: RECENT_TILES_PER_LANE }; }
 }
 const procgenTileRevision = (world, key) => world.getTerrainTileRevision?.(key) ?? world.terrainTileRevisions?.get(key) ?? 0;
-export { ProcgenTerrainEdits, ProcgenTerrainRevisions, procgenTileRevision, RECENT_TILES_PER_LANE };
+const peekProcgenTileRevision = (world, key) => world.peekTerrainTileRevision?.(key) ?? world.terrainTileRevisions?.peek?.(key) ?? world.terrainTileRevisions?.get(key) ?? world.getTerrainTileRevision?.(key) ?? 0;
+export { ProcgenTerrainEdits, ProcgenTerrainRevisions, procgenTileRevision, peekProcgenTileRevision, RECENT_TILES_PER_LANE };

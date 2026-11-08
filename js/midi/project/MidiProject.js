@@ -1,3 +1,7 @@
+import { validateMidiLocalInstrumentMigration } from '../content/MidiLocalInstrumentMigration.js';
+import { validateSoundContentReference } from '../content/SoundContentReference.js';
+import { validateInstrumentControls } from '../content/InstrumentPerformance.js';
+import { recordProcgenProjectChange } from '../../app/procgen/workstation/ProcgenProjectIndex.js';
 import { sanitizeClipVoices, sanitizeClipTransformLayers } from './MidiClipTransforms.js';
 import { sanitizeMidiAutomationSpan, clampMidiAutomationSpanValue, MAX_MIDI_AUTOMATION_SPANS } from './MidiAutomationSpan.js';
 import { sanitizeMidiEnsemble, buildMidiEnsembleConfig } from './MidiEnsemble.js';
@@ -5,9 +9,12 @@ import { sanitizeMidiLaneMusic } from './MidiLaneMusic.js';
 import { DEFAULT_CONFIG, mergeConfig } from '../midi-mapping/MidiMappingDomain.js';
 import { getPlayableMidiClipSteps as activeClipSteps } from './MidiClipPlayback.js';
 import { cloneSafeObject, isPlainObject, safeObjectEntries } from '../../util/safeObject.js';
-import { sanitizeProcgenWorkstation, reduceProcgenWorkstationProject } from '../../app/procgen/workstation/ProcgenWorkstationProject.js';
+import { sanitizeProcgenWorkstation, reduceProcgenWorkstationProject, reduceCanonicalProcgenProject } from '../../app/procgen/workstation/ProcgenWorkstationProject.js';
 
 const MIDI_PROJECT_VERSION = 1;
+const canonicalMidiProjects = new WeakSet();
+const markCanonicalMidiProject = project => { canonicalMidiProjects.add(project); return project; };
+const isCanonicalMidiProject = project => !!project && canonicalMidiProjects.has(project);
 const DEFAULT_TRACK_ID = 'track-1';
 const DEFAULT_TEMPLATE_ID = 'midi-mapping';
 const MIDI_PROJECT_EXPORT_KIND = 'lemmings.midi.project';
@@ -400,6 +407,7 @@ const createDefaultMidiTrack = (overrides = {}) => ({
   channel: overrides.channel ?? 1,
   program: overrides.program ?? null,
   instrumentLabel: overrides.instrumentLabel || 'General MIDI',
+  ...(overrides.instrumentRef ? { instrumentRef: validateSoundContentReference(overrides.instrumentRef), instrumentControls: validateInstrumentControls(overrides.instrumentControls || { macros: {} }) } : {}),
   mute: overrides.mute ?? overrides.muted ?? false,
   solo: overrides.solo ?? false,
   arm: overrides.arm ?? false,
@@ -421,6 +429,7 @@ const sanitizeTrack = (track, fallbackIndex, usedIds) => {
     channel: sanitizeChannel(track?.channel, fallback.channel),
     program: track?.program == null || track.program === '' ? null : clamp(toInteger(track.program, 0), 0, 127),
     instrumentLabel: sanitizeId(track?.instrumentLabel, fallback.instrumentLabel),
+    ...(track?.instrumentRef ? { instrumentRef: validateSoundContentReference(track.instrumentRef), instrumentControls: validateInstrumentControls(track.instrumentControls || { macros: {} }) } : {}),
     mute: sanitizeBoolean(track?.mute ?? track?.muted, false),
     solo: sanitizeBoolean(track?.solo, false),
     arm: sanitizeBoolean(track?.arm, false),
@@ -670,7 +679,7 @@ function sanitizeMidiProject(project = {}) {
     ? source.ui.selectedClipId
     : null;
 
-  return {
+  return markCanonicalMidiProject({
     version: MIDI_PROJECT_VERSION,
     id: sanitizeId(source.id, 'midi-project'),
     name: sanitizeId(source.name, 'MIDI Project'),
@@ -685,7 +694,8 @@ function sanitizeMidiProject(project = {}) {
     },
     transport: sanitizeTransport(source.transport),
     global: sanitizeGlobal(source.global),
-    ...(source.procgen ? { procgen: sanitizeProcgenWorkstation(source.procgen) } : {}),
+    ...(project?.procgen ? { procgen: sanitizeProcgenWorkstation(project.procgen) } : {}),
+    ...(source.localInstrumentMigration ? { localInstrumentMigration: validateMidiLocalInstrumentMigration(source.localInstrumentMigration) } : {}),
     ...(sanitizeMidiEnsemble(source.ensemble, trackIds) ? { ensemble: sanitizeMidiEnsemble(source.ensemble, trackIds) } : {}),
     tracks,
     sources,
@@ -698,7 +708,7 @@ function sanitizeMidiProject(project = {}) {
       selectedClipId,
       activeRegion: sanitizeId(source.ui?.activeRegion, 'setup')
     }
-  };
+  });
 }
 
 const parseMidiProjectPayload = (payload) => {
@@ -778,6 +788,7 @@ const importMidiProjectPayload = (payload) => {
   let projectPayload = null;
   let templateId = null;
   if (parsed.kind === MIDI_TEMPLATE_EXPORT_KIND) {
+    if (parsed.template?.version != null && parsed.template.version !== MIDI_PROJECT_VERSION) throw new Error('Unsupported MIDI template version.');
     projectPayload = parsed.template?.project ?? parsed.project;
     templateId = parsed.template?.id ?? parsed.templateId ?? projectPayload?.templateId ?? null;
   } else if (parsed.kind === MIDI_PROJECT_EXPORT_KIND) {
@@ -984,6 +995,11 @@ const updateAutomationLane = (automation, automationId, patch, tracks) => {
 };
 
 function reduceMidiProject(project, intent = {}) {
+  if (isCanonicalMidiProject(project) && ['procgen/materialPalette', 'procgen/timbreTuning', 'procgen/sceneMacro', 'procgen/sceneFocus', 'procgen/worldTheme', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+    'procgen/nativeRoutes', 'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch'].includes(intent.type)) {
+    const next = reduceCanonicalProcgenProject(project, intent);
+    return next === project ? project : recordProcgenProjectChange(project, markCanonicalMidiProject(touchProject(next)), intent);
+  }
   const current = sanitizeMidiProject(project);
   if (intent.type?.startsWith('procgen/')) return sanitizeMidiProject(touchProject(reduceProcgenWorkstationProject(current, intent)));
   let next = current;
@@ -1155,6 +1171,7 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
   if (mapping.priority != null) out.eventPriority = mapping.priority;
   out.voiceBudget = track.voiceBudget;
   out.trackId = track.id;
+  if (track.instrumentRef) { out.instrumentRef = track.instrumentRef; out.instrumentControls = track.instrumentControls; }
   out.outputId = track.outputId;
   if (track.velocityScale !== 1) {
     const velocity = Number.isFinite(out.velocity) ? out.velocity : globalVelocityDefault;
@@ -1553,7 +1570,7 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
 };
 
 function projectToMidiConfig(project, factoryConfig = {}) {
-  const clean = sanitizeMidiProject(project);
+  const clean = isCanonicalMidiProject(project) ? project : sanitizeMidiProject(project);
   const base = mergeConfig(DEFAULT_CONFIG, factoryConfig || {});
   const positionMappings = automationToPositionMappings(clean.automation);
   const config = mergeConfig(base, {
@@ -1610,8 +1627,18 @@ function projectToMidiConfig(project, factoryConfig = {}) {
       config.sfx[source.sourceKey] = mapping;
     }
   }
+  if (clean.procgen?.lanes) config.localInstruments = clean.procgen.lanes.filter(lane => lane.mode === 'pattern' && lane.instrumentRef).map(lane => ({ trackId: 'procgen:' + lane.id, instrumentRef: lane.instrumentRef, instrumentControls: lane.instrumentControls }));
   return config;
 }
+
+const sameLocalPatternInstruments = (left, right) => {
+  const a = left.procgen?.lanes || [], b = right.procgen?.lanes || []; if (a === b) return true;
+  const selectedA = a.filter(lane => lane.mode === 'pattern' && lane.instrumentRef), selectedB = b.filter(lane => lane.mode === 'pattern' && lane.instrumentRef);
+  return selectedA.length === selectedB.length && selectedA.every((lane, index) => lane.id === selectedB[index].id && lane.instrumentRef === selectedB[index].instrumentRef && lane.instrumentControls === selectedB[index].instrumentControls);
+};
+const sameMidiRuntimeInputs = (left, right) => left.enabled === right.enabled && sameLocalPatternInstruments(left, right) &&
+  ['global', 'transport', 'devices', 'tracks', 'clips', 'sources', 'automation', 'ensemble']
+    .every(key => left[key] === right[key]);
 
 export {
   AUTOMATION_AXES,
@@ -1636,7 +1663,10 @@ export {
   createMidiSourceFromMapping,
   importMidiProjectPayload,
   projectToMidiConfig,
+  sameMidiRuntimeInputs,
   reduceMidiProject,
   sanitizeMidiProject,
+  isCanonicalMidiProject,
+  markCanonicalMidiProject,
   stringifyMidiProjectExport
 };

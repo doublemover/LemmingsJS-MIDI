@@ -94,7 +94,7 @@ describe('scripts/runTests', function () {
 
   it('builds focused args for bench category', function () {
     const args = buildMochaArgsForCategories(['bench']);
-    expect(args).to.deep.equal(['test/*bench*.test.js']);
+    expect(args).to.deep.equal(['test/*bench*.test.js', 'test/browser-work-observation.test.js', 'test/history-replay-evidence.test.js']);
   });
 
   it('builds focused args for game category', function () {
@@ -214,6 +214,25 @@ describe('scripts/runTests', function () {
     expect(pkg.scripts['test-tools']).to.equal('node scripts/runTests.js tools');
     expect(pkg.scripts['test-offline-tools']).to.equal('node scripts/runTests.js offline-tools');
     expect(pkg.scripts['test-editor']).to.equal('node scripts/runTests.js editor');
+    expect(pkg.scripts['test:work-removal']).to.equal('node scripts/runTests.js work-removal');
+    expect(pkg.scripts['test-procgen-long']).to.equal('node scripts/runTests.js procgen-long');
+    const bypasses = Object.entries(pkg.scripts).filter(([name, command]) => /^test/.test(name) && !/^test:raw:/.test(name) && /\bmocha\b/.test(command));
+    expect(bypasses.map(([name]) => name)).to.deep.equal([]);
+  });
+
+  it('preserves the maintained work-removal subset and shared guard order', function () {
+    const spawned = [], exits = [];
+    main(['work-removal'], { spawn: (command, args) => { spawned.push({ command, args }); return { status: 0 }; },
+      log: { log() {}, warn() {}, error() {} }, exit: code => exits.push(code) });
+    expect(spawned[0].args).to.include('--max-warnings=0'); expect(spawned[1].args).to.include('tsconfig.checkjs.json');
+    const selected = spawned[2].args.slice(1);
+    expect(selected).to.have.length(12);
+    expect(selected).to.include.members(['test/work-removal.test.js', 'test/solver-runner.test.js', 'test/solver-tactical.test.js',
+      'test/solver-integration.test.js', 'test/displayimage-coverage.test.js', 'test/history-store.diffing.test.js',
+      'test/history-store.replay-apply.test.js', 'test/time-travel-controller.seek.test.js', 'test/midi/midi-ui-controller.test.js',
+      'test/midi/local-game-preview.test.js', 'test/midi/game-spatial-sounds.test.js', 'test/midi/browser-note-preview.test.js']);
+    expect(buildMochaArgsForCategories(['procgen-long'])).to.deep.equal(['integration/procgen-source-long.test.js']);
+    expect(exits).to.deep.equal([0]);
   });
 
   it('falls back to full suite when no safe base ref can be resolved', function () {
@@ -242,18 +261,17 @@ describe('scripts/runTests', function () {
     expect(exits).to.deep.equal([0]);
   });
 
-  it('falls back to full suite when changed-file collection fails for a resolved base', function () {
+  it('falls back to full suite when changed-file collection fails for an explicit base', function () {
     const logs = { warn: [], error: [], log: [] };
     const spawned = [];
     const exits = [];
     const runGitCommand = createRunGitStub({
-      'rev-parse --verify --quiet origin/master': { status: 0, stdout: 'abc123' },
       'diff --name-only --diff-filter=ACMRD origin/master...HEAD': {
         status: 1,
         stdout: ''
       }
     });
-    main(['--changed'], {
+    main(['--changed', '--base=origin/master'], {
       spawn: (cmd, args) => {
         spawned.push({ cmd, args });
         return { status: 0 };

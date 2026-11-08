@@ -111,14 +111,17 @@ const historyStoreStatsMethods = {
       spanTicks: span,
       coldBlockCount: this._coldBlockCount,
       coldBlockBytes: this._coldBlockBytes,
+      coldBlocksCreated: this._coldBlocksCreated, coldBlocksThawed: this._coldBlocksThawed, coldBlocksRetired: this._coldBlocksRetired,
+      coldBlockDecodes: this._coldBlockDecodes, coldBlockCacheHits: this._coldBlockCacheHits, coldDecodedBytes: this._coldDecodedBytes,
       retention: this.getRetentionPolicy()
     };
   },
 
+  /** @param {number | null} fromTick @param {number | null} toTick */
   computeReplayHash(fromTick = null, toTick = null) {
     if (this.minDeltaTick == null || this.maxDeltaTick == null) return null;
-    const start = Number.isFinite(fromTick) ? Math.max(this.minDeltaTick, Math.trunc(fromTick)) : this.minDeltaTick;
-    const end = Number.isFinite(toTick) ? Math.min(this.maxDeltaTick, Math.trunc(toTick)) : this.maxDeltaTick;
+    const start = fromTick != null && Number.isFinite(fromTick) ? Math.max(this.minDeltaTick, Math.trunc(fromTick)) : this.minDeltaTick;
+    const end = toTick != null && Number.isFinite(toTick) ? Math.min(this.maxDeltaTick, Math.trunc(toTick)) : this.maxDeltaTick;
     if (start > end) return null;
     let hash = 2166136261;
     const pushByte = (value) => {

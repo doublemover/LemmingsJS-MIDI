@@ -56,7 +56,7 @@ class ProcgenSupportedDescent {
     // reusing a decision, and keep actual blocker owners out of private replay.
     const bounds = { x1: left, x2: right + 1, y1: startY - 12, y2: startY + 34 }, triggers = [];
     for (let lane = Math.max(0, firstLane - 1); lane <= Math.min(world.laneCount - 1, lastLane + 1); lane++) {
-      const bucket = world.triggerManager?.byLane[lane] || [];
+      const bucket = world.triggerManager?.getLaneTriggers(lane) || [];
       if (bucket.length > 64) return { proposal: null, probes: 0, actionSteps: 0, failure: 'blocker-observation-limit' };
       for (const trigger of bucket) {
         const owner = trigger.owner;

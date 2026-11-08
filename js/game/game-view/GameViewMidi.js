@@ -1,3 +1,4 @@
+import { subscribeMidiPreviewRouter, notifyMidiPreviewRouter } from '../../midi/MidiPreviewSubscriptions.js';
 import {
   BaseLogger,
   DEFAULT_RUNTIME_PROFILE,
@@ -53,11 +54,14 @@ const gameViewMidiMethods = {
     this._localAudioStop = typeof handler === 'function' ? handler : null;
   },
 
+  subscribeMidiPreviewRouter(listener) { return subscribeMidiPreviewRouter(this, listener); },
+
   setMidiPreviewRouter(router, onDispose = null) {
     this._detachMidiPreview();
     this.midiPreviewRouter = this._midiPreviewDisposed || this.midiAvailable === false ? null : (router || null);
     this._midiPreviewOnDispose = this.midiPreviewRouter && typeof onDispose === 'function' ? onDispose : null;
     this._attachMidiPreview(this.game);
+    notifyMidiPreviewRouter(this);
   },
 
   _attachMidiPreview(game = this.game) {

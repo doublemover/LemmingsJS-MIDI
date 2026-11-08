@@ -1,0 +1,323 @@
+{
+  "schema": "checked-operational-presentation/v1",
+  "date": "2026-11-05",
+  "agent": "rook",
+  "source": {
+    "parent": "96a253ba5c07598907341e635d4229fff656c599",
+    "browserPaths": 1296,
+    "browserClosureDigest": "a50d5e827b12497546863fd246d2044e715f6a040c30aea95ea82120c30d3634",
+    "workerFiles": 308,
+    "workerDigest": "0b226c0f0ebbf75d7bc9fe9730a0ca4028ccfdf7aa33e6fb7cf30e00432beb95",
+    "inputInventory": {
+      "encoding": "sha256-bound-base-plus-upserts/v1",
+      "baseReceipt": {
+        "path": "docs/validation/owned-output-presentation-desktop-2026-11-05.json",
+        "bytes": 16841,
+        "sha256": "dd1e4a2dfd115e63374c927729c553554c50643b9d5b362f6eacdcf36bc32245"
+      },
+      "baseField": "source.inputInventory",
+      "upsert": [
+        {
+          "path": "js/app/procgen/workstation/ProcgenOperationalContracts.d.ts",
+          "bytes": 6950,
+          "sha256": "7dee70205fffd54f349b221675ff1ad785805319f949b42b38ea324f548230b5"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenOperationalState.js",
+          "bytes": 15445,
+          "sha256": "39b12421e3d185fc2728be661dfcdd45804773dec39f854f31ad088687bb5b2f"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenOperationalView.js",
+          "bytes": 11482,
+          "sha256": "814b8f225ab11f3e5a016943cadab4517fdc58bab97f7f389b59fc28a96170c4"
+        },
+        {
+          "path": "test/procgen-operational-state.test.js",
+          "bytes": 12040,
+          "sha256": "8ec117dce6a72d24cfee87d3a7826a9d3433d85e8ce0d825a39b692da4524753"
+        },
+        {
+          "path": "test/procgen-operational-view.test.js",
+          "bytes": 11066,
+          "sha256": "13d5fe17ecfedfa61565fcbc5a526f364c541bbac63af360a4e0964a47e6f352"
+        },
+        {
+          "path": "test/types/operational-state-boundaries.ts",
+          "bytes": 4808,
+          "sha256": "f9f07e846d0568cc2a05a07c98c7ec9b7f84613b163a22321caaf151461ee3fc"
+        },
+        {
+          "path": "tsconfig.checkjs.json",
+          "bytes": 3206,
+          "sha256": "6fa3814a7cb4498deee263822e12baf7ee0da44f88644cc50b6bd95f887a1916"
+        }
+      ],
+      "removed": [],
+      "pathCount": 1656
+    },
+    "stagedByteAudit": {
+      "paths": 1656,
+      "byteExact": 1644,
+      "untouchedNewlineInputs": [
+        {
+          "path": "css/procgen-world-inspector.css",
+          "workingBytes": 1576,
+          "workingSha256": "117e4d4b077871be05cb761e35322ff1e5b29c234e65588c4568a647f3b2c684",
+          "indexBytes": 1574,
+          "indexSha256": "b293d64556310dd7514e9fa6a4edbc3bbef2b75873c009e99ee5511adcc28cc3"
+        },
+        {
+          "path": "js/app/procgen/ActorEffectVisualProfile.js",
+          "workingBytes": 2855,
+          "workingSha256": "61f52aeeae3efbaab0d8fb95b3ba44d75ab7802d06ada8037a09142434768eb6",
+          "indexBytes": 2827,
+          "indexSha256": "7868ef9bb397d135ca873d0639c9dd6e0a9dfeb79ac41cfd57a6bd3c1092e85d"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectPass.js",
+          "workingBytes": 6019,
+          "workingSha256": "16441a79bd4480932b27ceef9c3d4679276a03126c0e6a1542474ca41df3827e",
+          "indexBytes": 5957,
+          "indexSha256": "cc47893b214d16c1c6237e0331664f8bb940d68f67e4fa08d3ffff07c882a902"
+        },
+        {
+          "path": "js/app/procgen/ProcgenActorEffectSource.js",
+          "workingBytes": 1517,
+          "workingSha256": "57a697d8a5d542ddc5daf0ffff0b625f8babe6cc78d9c09582c882ca40cfb9ae",
+          "indexBytes": 1516,
+          "indexSha256": "777a7fd07293f47b7d1df39f41a6e590201d29b088189bab9bd4cf7dba1ba274"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationHost.js",
+          "workingBytes": 9542,
+          "workingSha256": "9d04bf0ac26ede44a694bace0059ba543c3f5df89596d336591b6dfa0c5bac35",
+          "indexBytes": 9441,
+          "indexSha256": "f9a7eb990b4b5fd8939c6619853dc3718cf3b5bbde136c2e259bf73b7668f0c4"
+        },
+        {
+          "path": "js/app/procgen/ProcgenPresentationSnapshot.js",
+          "workingBytes": 11674,
+          "workingSha256": "1e1920ba079a31720bdf7709fa0262262f5eb3ca697505a0c95d713de5ca2e05",
+          "indexBytes": 11543,
+          "indexSha256": "3a9ee413244f7b65bcd7ac003a9e1bdce4724d36e737e27ba7f99acd6d74ddcb"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenCausalJournal.js",
+          "workingBytes": 43603,
+          "workingSha256": "be474b5fcdd7c1a30d6cab05c6aafb343c639becfd2f710b48fdb8246f4775bc",
+          "indexBytes": 43072,
+          "indexSha256": "298d81f7271b179c3141644c0c8757c588ca2faccd4a19ef5347725dbab4e84c"
+        },
+        {
+          "path": "js/app/procgenAssetManager.js",
+          "workingBytes": 6329,
+          "workingSha256": "87ece444038074ededfe1d9e98deeca4be7dacf324d9391b40ea91b29bc0e9b6",
+          "indexBytes": 6127,
+          "indexSha256": "63180bec0443b8a399de2b51b10ff82c5cf86421883ca6a2a79c9ced5867ebc6"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCache.js",
+          "workingBytes": 5902,
+          "workingSha256": "b14828c6cb18a5bf2525abe342c2af7a3fa2d34e3c9a9a636f5ce4a11bbabf5f",
+          "indexBytes": 5751,
+          "indexSha256": "4c77eb850770782b7326f873c303ee9ba8efbe7197dadd0eb9ddfdfbadccc50d"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderCore.js",
+          "workingBytes": 5699,
+          "workingSha256": "9f625f7ad2ef7511f66ba9a5c727142f7f0280c24a7b4fc559e0bb6a4c14bafd",
+          "indexBytes": 5582,
+          "indexSha256": "748233dbc3a567c793c6616f68fd4748334e3f4af529b8c67de0e6cfccd5c260"
+        },
+        {
+          "path": "js/data/file-provider/FileProviderStorage.js",
+          "workingBytes": 25667,
+          "workingSha256": "521e7f98c594dcd2aee33ca7d51d02e3257b6bd1c5e13856a7a19627e2cee90e",
+          "indexBytes": 25148,
+          "indexSha256": "2de574ca65a70ede60b7cba120ef88a58eaa0ea8d3a9d4392c517ab2d2309a1e"
+        },
+        {
+          "path": "js/editor/EditorAssetCache.js",
+          "workingBytes": 12316,
+          "workingSha256": "5b5d8eebe2141654b0eddf00f9848ddc8393c410b0e6ffd0692bf0425561a3cd",
+          "indexBytes": 12065,
+          "indexSha256": "78da502737d925d32394ae10c90599bdc6fd1580cbd2a2a3d425ce6939f989ea"
+        }
+      ],
+      "mismatches": []
+    }
+  },
+  "implementation": [
+    "Operational source/snapshot/presenter owners now join critical checkJs with explicit readonly route, controller-observation, simulation, clock, pressure, recovery-action, condition and canonical-operation contracts.",
+    "Actions and blockers use the actual closed vocabulary. Measured fields remain numeric-or-unavailable; opaque host errors narrow before reading message. Native output admission does not certify receiver or acoustic state.",
+    "Typed DOM construction and borrowed-button leases preserve exact node kinds and original ownership attributes. Non-button placeholders remain in their original host and use the recovery action button.",
+    "The Ready fallback now explicitly has priority0; its prior info-severity behavior is preserved. Numeric guards explicitly narrow unknown values without coercion.",
+    "Strict consumers reject22 invalid uses, including asynchronous readers, partial snapshots, incorrect nested values/discriminators, invented commands, and mutations of nested operations/arrays/conditions. No broad any, ts-ignore or new suppression was introduced."
+  ],
+  "validation": {
+    "functionalNode": {
+      "suites": 5,
+      "tests": 232,
+      "passes": 232,
+      "pending": 0,
+      "failures": 0,
+      "start": "2026-11-06T02:56:44.289Z",
+      "end": "2026-11-06T02:56:49.375Z",
+      "duration": 5086,
+      "raw": {
+        "path": ".tmp/rook460-node.json",
+        "bytes": 210137,
+        "sha256": "87ccb77738b29cf5e139fcf8c65977bfa345b5fb5080c9b8b42230f8936dfa0f"
+      },
+      "log": {
+        "path": ".tmp/rook460-node.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "newRegressions": 4,
+      "retainedInitialFailure": {
+        "raw": {
+          "path": ".tmp/rook460-node-initial.json",
+          "bytes": 211005,
+          "sha256": "b50f4f4f0c730563187b34efc851c31af986ba913014d918acc3302236e2b001"
+        },
+        "passes": 231,
+        "failures": 1,
+        "cause": "New cancellation fixture omitted explicit cancelable:true. The production operation view correctly defaults cancellation off; the fixture now explicitly arms it and all232cases rerun together."
+      }
+    },
+    "scopedCoverage": {
+      "invocationExitCode": 0,
+      "thresholds": "Existing71% lines/statements,72%functions,81%branches unchanged.",
+      "scope": "Only the two changed runtime operational modules; this is not full-repository coverage.",
+      "totals": {
+        "lines": {
+          "total": 214,
+          "covered": 212,
+          "skipped": 0,
+          "pct": 99.06
+        },
+        "statements": {
+          "total": 214,
+          "covered": 212,
+          "skipped": 0,
+          "pct": 99.06
+        },
+        "functions": {
+          "total": 19,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 89.47
+        },
+        "branches": {
+          "total": 353,
+          "covered": 320,
+          "skipped": 0,
+          "pct": 90.65
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "files": [
+        {
+          "path": "js/app/procgen/workstation/ProcgenOperationalState.js",
+          "coverage": {
+            "lines": {
+              "total": 93,
+              "covered": 91,
+              "skipped": 0,
+              "pct": 97.84
+            },
+            "functions": {
+              "total": 7,
+              "covered": 7,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 93,
+              "covered": 91,
+              "skipped": 0,
+              "pct": 97.84
+            },
+            "branches": {
+              "total": 241,
+              "covered": 220,
+              "skipped": 0,
+              "pct": 91.28
+            }
+          }
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenOperationalView.js",
+          "coverage": {
+            "lines": {
+              "total": 121,
+              "covered": 121,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 12,
+              "covered": 10,
+              "skipped": 0,
+              "pct": 83.33
+            },
+            "statements": {
+              "total": 121,
+              "covered": 121,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 112,
+              "covered": 100,
+              "skipped": 0,
+              "pct": 89.28
+            }
+          }
+        }
+      ],
+      "summary": {
+        "path": ".tmp/rook460-coverage/coverage-summary.json",
+        "bytes": 1056,
+        "sha256": "b6e8c9f56480d5a199019304fe538219f9f0cfc66c9659b12927e0b1fa2a3717"
+      }
+    },
+    "nativeDesktop": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "startTime": "2026-11-06T02:56:40.945Z",
+      "duration": 17592.073,
+      "expected": 4,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "raw": {
+        "path": ".tmp/rook460-native.json",
+        "bytes": 7993,
+        "sha256": "6140c8da50047e2aaa040c7cab665aa14301582604e28bf6acc116b59a760c66"
+      },
+      "scope": "Original four production MIDI parameter/route/receiver-evidence cases without changing their readiness helper, receiver assertions or deadlines."
+    },
+    "criticalAndStrictBoundaryTypes": "passed;22negative directives consumed",
+    "dependencies": "passed",
+    "format": "passed;fullnpmformat then changed-file fixes",
+    "undefinedCalls": "passed",
+    "whitespace": "passed",
+    "provenance": "passed",
+    "fullLocalSuiteRepeated": false
+  },
+  "limits": [
+    "The new interfaces type the existing observed domain. Numeric times/epochs here are not nominally branded, and readonly types do not establish device capability or physical delivery.",
+    "Opaque native errors remain unknown until narrowed. This is not the complete authored/runtime checkpoint schema and imported-owner audit required by1089.",
+    "Four current-source native cases qualify Windows Chromium desktop behavior; prior22broader native cases retain their separate source-bound receipt. Whole-branch Linux/fullcoverage CI follows publication."
+  ]
+}

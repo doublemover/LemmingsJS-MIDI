@@ -19,6 +19,7 @@ describe('bench long-session gates', function () {
       maxSoundQueueRatio: 0.75,
       maxSoundQueueGrowth: 4,
       minHistorySpanTicks: 100,
+      durationMs: 2000, minimumForwardTicks: 100, minimumReplayChecks: 1,
       maxTriggerDrift: 0
     };
 
@@ -48,8 +49,8 @@ describe('bench long-session gates', function () {
           historySpanTicks: 240,
           triggerCount: 7
         }
-      ],
-      replayChecks: [{ checked: true, hashMatch: true }],
+      ].map((sample, index) => ({ ...sample, validTelemetry: true, running: true, clockMs: index * 1000, historyDeltaCount: sample.historySpanTicks, coldBlocksCreated: 0, coldBlocksThawed: 0, coldBlocksRetired: 0 })),
+      replayChecks: [{ checked: true, hashMatch: true, status: 'complete', wasRunning: true, transportRestored: true, startedAtMs: 500, endedAtMs: 600 }],
       thresholds
     });
 

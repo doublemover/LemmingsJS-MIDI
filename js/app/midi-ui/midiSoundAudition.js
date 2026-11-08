@@ -34,10 +34,13 @@ const createSoundAuditionPlan = (source, project, frameMs = 60, eventIndex = 0, 
   if (config.ensemble?.enabled && spec.trackId === config.ensemble.sourceTrackId && !Number.isInteger(event.lemmingId)) notices.push('Choose a preview actor or ensemble role to test automatic instrument routing.');
   if (config.ensemble?.tension?.enabled || config.automationSpans?.length || m.phrase?.rolling?.enabled) notices.push('Standalone test does not evaluate live crowd tension, automation spans or rolling crowd evolution.');
   if (config.position?.mappings?.some(entry => entry.enabled !== false) && (!Number.isFinite(event.x) || !Number.isFinite(event.y))) notices.push('Spatial modulation needs explicit actor coordinates and view context; this test uses the available context only.');
-  const metadata = item => ({ channel: item.channel, program: item.program, ensembleRole: item.ensembleRole, percussion: item.percussion,
-    pitchBendRange: config.mpe?.enabled ? (config.mpe.pitchBendRange?.semitones ?? 2) + (config.mpe.pitchBendRange?.cents ?? 0) / 100 : 2,
-    trackId: item.trackId, priority: item.priority, voiceBudget: item.voiceBudget, laneIndex, laneCount: event.laneCount,
-    previewContextSource: explicitRole ? 'explicit-role' : Number.isInteger(previewContext.lemmingId) ? 'explicit-actor' : 'source-only' });
+  const metadata = item => {
+    const localTrack = project.tracks.find(track => track.id === item.trackId);
+    return { ...(localTrack?.instrumentRef ? { instrumentRef: localTrack.instrumentRef, instrumentControls: localTrack.instrumentControls } : {}), channel: item.channel, program: item.program, ensembleRole: item.ensembleRole, percussion: item.percussion,
+      pitchBendRange: config.mpe?.enabled ? (config.mpe.pitchBendRange?.semitones ?? 2) + (config.mpe.pitchBendRange?.cents ?? 0) / 100 : 2,
+      trackId: item.trackId, priority: item.priority, voiceBudget: item.voiceBudget, laneIndex, laneCount: event.laneCount,
+      previewContextSource: explicitRole ? 'explicit-role' : Number.isInteger(previewContext.lemmingId) ? 'explicit-actor' : 'source-only' };
+  };
   const playback = (item = spec) => ({ sourceId: source.id, sourceKind: source.kind, sourceKey: source.sourceKey,
     clipId: m.clipSequence?.id ?? null, originTick: counters.tick ?? null, eventType: 'local-audition', sfxId: event.sfxId, triggerType: event.triggerType, laneIndex, laneCount: event.laneCount, lemmingId: previewContext.lemmingId ?? null,
     ensembleRole: item.ensembleRole, program: item.program, channel: item.channel, percussion: item.percussion });

@@ -3,6 +3,7 @@ import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
+import { recordPhysicalWork } from './PhysicalWorkFacts.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const scaleIntensity = (removed, maxCount) => {
@@ -20,6 +21,8 @@ class ActionDiggSystem extends ActionBaseSystem {
     if (level.isSteelGround(lem.x, lem.y) ||
                 level.isSteelGround(lem.x, lem.y - 1) ||
                 level.isSteelGround(lem.x, lem.y - 2)) {
+      recordPhysicalWork(level, lem, { operationKind: 'dig', phase: 'steel', cycleOrdinal: lem.frameIndex,
+        attemptedCells: 0, outcome: 'protected', revisionBefore: Number.isFinite(level.terrainRevision) ? level.terrainRevision : null });
       const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.STEEL_HIT,
@@ -48,8 +51,11 @@ class ActionDiggSystem extends ActionBaseSystem {
   }
   digRow(level, lem, y) {
     this.characterParticles?.sampleRow(level, lem.x - 4, y, 9);
+    const revisionBefore = Number.isFinite(level.terrainRevision) ? level.terrainRevision : null;
     if (typeof level.clearGroundRow === 'function') {
       const removed = level.clearGroundRow(lem.x - 4, y, 9);
+      recordPhysicalWork(level, lem, { operationKind: 'dig', phase: 'row', cycleOrdinal: lem.frameIndex,
+        attemptedCells: 9, changedSolidCells: removed, changedAppearanceCells: removed, revisionBefore, targetX: lem.x - 4, targetY: y });
       this.characterParticles?.emitTerrain(lem, 'digging');
       const intensity = scaleIntensity(removed, 9);
       if (removed > 0) {
@@ -75,6 +81,8 @@ class ActionDiggSystem extends ActionBaseSystem {
         removeCount++;
       }
     }
+    recordPhysicalWork(level, lem, { operationKind: 'dig', phase: 'row', cycleOrdinal: lem.frameIndex,
+      attemptedCells: 9, changedSolidCells: removeCount, changedAppearanceCells: removeCount, revisionBefore, targetX: lem.x - 4, targetY: y });
     this.characterParticles?.emitTerrain(lem, 'digging');
     const intensity = scaleIntensity(removeCount, 9);
     if (removeCount > 0) {

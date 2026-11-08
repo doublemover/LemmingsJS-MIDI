@@ -1,0 +1,19 @@
+import { createOwnedEffectGraphKernel } from '../../js/app/midi-ui/OwnedEffectGraphKernel.js';
+import { readOwnedStateBundle } from '../../js/app/midi-ui/worklet/OwnedStateBundle.js';
+import { createSmoothedAudioParameter } from '../../js/app/midi-ui/SmoothedAudioParameter.js';
+export const effectEdge = (from,to) => ({from:{nodeId:from,port:'audio'},to:{nodeId:to,port:'audio'},gain01:1});
+export const gainGraph = (gain01=0.5,revision=1) => ({schema:'lemmings-effect-graph/v1',id:'fixture.native-cut-gain-'+revision,revision,latencyPolicy:'align-declared',maximumLatencyFrames:0,maximumTailSeconds:0,nodes:[{id:'source',kind:'bus-in',parameters:{}},{id:'gain',kind:'gain',parameters:{gain01,gainMaximum01:1}},{id:'output',kind:'bus-out',parameters:{}}],edges:[effectEdge('source','gain'),effectEdge('gain','output')]});
+export const cutAdapter = ({value,smoothingSeconds=0,maxEvents=128,min=0,max=1}) => createSmoothedAudioParameter({param:{setValueAtTime(){},cancelScheduledValues(){},linearRampToValueAtTime(){}},initialValue:value,startTime:0,smoothingSeconds,maxEvents,valueMinimum:min,valueMaximum:max});
+export async function ownedRackFixture(definition,{sampleRate=48000,prefix=2048,audioFrame=8192,drive=(frame)=>[frame===2016?1:0,frame===1960?-0.5:0],configure=null,dry=0,input=1}={}){
+  const reference=await createOwnedEffectGraphKernel({definition,sampleRate});for(let frame=0;frame<prefix;frame++){const [left,right]=drive(frame);reference.sample(left,right);}
+  const bytes=new Uint8Array(reference.stateByteLength());reference.snapshotInto(bytes);
+  const inventory=reference.componentStateInventory(),keys=inventory.map(row=>'node:'+reference.plan.nodes.findIndex(node=>node.id===row.nodeId));
+  const bundle=readOwnedStateBundle(bytes,{abi:'owned-effect-graph-cut-v1',hash:reference.hash,sampleRate,frameOrigin:0,returnNodeIds:[]},keys),adapters=new Map();
+  for(const node of reference.plan.nodes){const p=node.parameters;if(node.kind==='gain')adapters.set('gain:'+node.id,cutAdapter({value:p.gain01,smoothingSeconds:.008,max:p.gainMaximum01}));
+    if(node.kind==='feedback-delay')for(const[name,value,min,max]of[['delayFrames',p.delaySeconds*sampleRate,p.interpolation==='lagrange3'?2:1,p.maxDelaySeconds*sampleRate],['feedback',p.feedback,-p.feedbackMaximum,p.feedbackMaximum],['wet',p.wet01,0,1],['feedbackLowpassHz',p.feedbackLowpassHz,200,sampleRate*.4]])adapters.set('parameter:'+JSON.stringify([node.id,name]),cutAdapter({value,min,max}));}
+  configure?.(adapters,audioFrame/sampleRate);
+  const controlState={schema:'lemmings-native-effect-control-cut/v1',graphHash:reference.hash,sampleRate,frame:audioFrame,controlSequence:0,controls:Object.fromEntries(reference.plan.nodes.map(node=>[node.id,node.parameters])),curves:[...adapters].sort(([a],[b])=>a<b?-1:a>b?1:0).map(([key,adapter])=>({key,state:adapter.snapshot(audioFrame/sampleRate)}))};
+  const components=inventory.map((row,index)=>({...row,sourceFrame:prefix,audioFrame,logicalAudioFrame:audioFrame,blockFrames:128,bytes:bundle.components[index].bytes.slice(),hostState:row.kind==='feedback-delay'?{lastRequestedDelay:reference.plan.nodes.find(node=>node.id===row.nodeId).parameters.delaySeconds*sampleRate}:{}}));
+  const rack={definition:reference.plan.definition,metadata:{schema:'lemmings-owner-effect-cut/v1',graphHash:reference.hash,sampleRate,audioFrame,sourceOwnerRouteRevision:3,mode:'active',dry:cutAdapter({value:dry,smoothingSeconds:.02,maxEvents:32}).snapshot(audioFrame/sampleRate),input:cutAdapter({value:input,smoothingSeconds:.02,maxEvents:32}).snapshot(audioFrame/sampleRate),outputGain01:1,supportedBoundary:'one-stable-owner-rack;no-retained-topology-transition'},graphMetadata:{schema:'lemmings-live-effect-cut/v1',graphHash:reference.hash,sampleRate,audioFrame,controlState,hostState:{schema:'lemmings-native-effect-host-cut/v1',audioFrame,bodies:[]}},components};
+  return{rack,reference,adapters};
+}

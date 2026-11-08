@@ -150,6 +150,22 @@ describe('EditorPreviewCache', () => {
     expect(document.renderCount).to.equal(2);
   });
 
+  it('caches frozen decoded images without adding private properties', () => {
+    const document = createCanvasDocument();
+    const cache = new EditorPreviewCache({ document, storage: new FakeStorage() });
+    const image = Object.freeze(buildImage([0, 1, 2, 3]));
+    image.frames[0].version = 1;
+    const first = cache.getPreviewUrl({ type: 'terrain', id: 1, image });
+    expect(cache.getPreviewUrl({ type: 'terrain', id: 1, image })).to.equal(first);
+    expect(document.renderCount).to.equal(1);
+    expect(Object.hasOwn(image, '_previewHash')).to.equal(false);
+    image.frames[0][0] = 3;
+    image.frames[0].version++;
+    expect(cache.getPreviewUrl({ type: 'terrain', id: 1, image })).not.to.equal(first);
+    expect(document.renderCount).to.equal(2);
+    cache.dispose();
+  });
+
   it('reports cache stats and clears memory state on dispose', () => {
     const document = createCanvasDocument();
     const storage = new FakeStorage();

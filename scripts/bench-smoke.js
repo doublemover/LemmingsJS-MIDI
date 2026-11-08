@@ -2,6 +2,22 @@
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { admitSmokeMeasurements } from './BenchmarkReceipt.js';
+import { createHistoryBenchConfig } from './bench-history-stress.js';
+
+const createSmokeRunPlan = ({ soakRequested = false, timeoutMs = null, env = process.env } = {}) => {
+  if (timeoutMs !== null && (!Number.isFinite(timeoutMs) || timeoutMs <= 0)) throw new RangeError('Benchmark timeout must be positive and finite.');
+  const perfArgs = soakRequested
+    ? ['--soak', '--profile=soak', '--maxRuntime=300000']
+    : ['--smoke', '--profile=smoke', '--duration=6000', '--warmup=1500', '--sample=500', '--maxRuntime=25000'];
+  const historyArgs = soakRequested
+    ? ['--soak', '--profile=soak']
+    : ['--smoke', '--profile=smoke', '--duration=7000', '--sample=500', '--speeds=30,60', '--maxRuntime=25000'];
+  const history = createHistoryBenchConfig({ argv: historyArgs, env, log: { warn() {} } });
+  return { perfArgs, historyArgs, performanceTimeoutMs: timeoutMs ?? (soakRequested ? 330000 : 70000),
+    historyTimeoutMs: timeoutMs ?? (soakRequested ? history.maxRuntimeMs + 30000 : 70000),
+    hotpathsTimeoutMs: Math.min(timeoutMs ?? 60000, 60000) };
+};
 
 const parseArgs = (argv) => {
   const out = new Map();
@@ -62,70 +78,31 @@ const runNodeScript = (scriptPath, scriptArgs, timeoutMs, label) => {
   };
 };
 
-const evaluateSmokeResults = ({ performance, history, hotpaths }, thresholds) => {
-  const failures = [];
-
-  const perfP95Frame = Number(performance?.filteredFrameStats?.p95 ?? performance?.frameStats?.p95 ?? 0);
-  const perfP50Tps = Number(performance?.filteredTpsStats?.p50 ?? performance?.tpsStats?.p50 ?? 0);
-  if (perfP95Frame > thresholds.perfP95FrameMsMax) {
-    failures.push(`perf frame p95 ${perfP95Frame.toFixed(2)}ms > ${thresholds.perfP95FrameMsMax.toFixed(2)}ms`);
-  }
-  if (perfP50Tps < thresholds.perfP50TpsMin) {
-    failures.push(`perf TPS p50 ${perfP50Tps.toFixed(2)} < ${thresholds.perfP50TpsMin.toFixed(2)}`);
-  }
-
-  const historyResults = Array.isArray(history?.results) ? history.results : [];
-  const historyRatio = historyResults.length
-    ? historyResults.reduce((acc, item) => {
-      const target = Number(item?.targetSpanTicks || 0);
-      const span = Number(item?.maxSpanTicks || 0);
-      if (!Number.isFinite(target) || target <= 0) return acc;
-      return Math.max(acc, span / target);
-    }, 0)
-    : 0;
-  if (historyRatio < thresholds.historySpanRatioMin) {
-    failures.push(`history span ratio ${historyRatio.toFixed(3)} < ${thresholds.historySpanRatioMin.toFixed(3)}`);
-  }
-
-  const antsAvgMs = Number(hotpaths?.marchingAnts?.avgMs ?? 0);
-  if (antsAvgMs > thresholds.antsAvgMsMax) {
-    failures.push(`marching ants avg ${antsAvgMs.toFixed(2)}ms > ${thresholds.antsAvgMsMax.toFixed(2)}ms`);
-  }
-  const tileCompositionAvgMs = Number(hotpaths?.tileComposition?.avgMs ?? 0);
-  if (tileCompositionAvgMs > thresholds.tileCompositionAvgMsMax) {
-    failures.push(`tile composition avg ${tileCompositionAvgMs.toFixed(2)}ms > ${thresholds.tileCompositionAvgMsMax.toFixed(2)}ms`);
-  }
-
-  const overlayPlaneAvgMs = Number(hotpaths?.overlayPlane?.avgMs ?? 0);
-  if (overlayPlaneAvgMs > thresholds.overlayPlaneAvgMsMax) {
-    failures.push(`overlay plane avg ${overlayPlaneAvgMs.toFixed(2)}ms > ${thresholds.overlayPlaneAvgMsMax.toFixed(2)}ms`);
-  }
-
-  const scaledBlitAvgMs = Number(hotpaths?.scaledBlit?.avgMs ?? 0);
-  if (scaledBlitAvgMs > thresholds.scaledBlitAvgMsMax) {
-    failures.push(`scaled blit avg ${scaledBlitAvgMs.toFixed(2)}ms > ${thresholds.scaledBlitAvgMsMax.toFixed(2)}ms`);
-  }
-
-  return {
-    ok: failures.length === 0,
-    failures,
-    metrics: {
-      perfP95Frame,
-      perfP50Tps,
-      historyRatio,
-      antsAvgMs,
-      tileCompositionAvgMs,
-      overlayPlaneAvgMs,
-      scaledBlitAvgMs
+const evaluateSmokeResults = (results, thresholds, options = {}) => {
+  const admitted = admitSmokeMeasurements(results, options), diagnostics = [...admitted.diagnostics];
+  const compare = (value, threshold, path, minimum = false) => {
+    if (typeof threshold !== 'number' || !Number.isFinite(threshold) || threshold <= 0) {
+      diagnostics.push({ kind: 'invalid-threshold', path, reason: 'expected a finite positive threshold' }); return;
     }
+    if (value != null && (minimum ? value < threshold : value > threshold))
+      diagnostics.push({ kind: 'performance-regression', path, reason: `${value} ${minimum ? '<' : '>'} ${threshold}` });
   };
+  const metrics = admitted.metrics;
+  compare(metrics.perfP95Frame, thresholds.perfP95FrameMsMax, 'performance.frameStats.p95');
+  compare(metrics.perfP50Tps, thresholds.perfP50TpsMin, 'performance.tpsStats.p50', true);
+  for (const scenario of admitted.scenarios) compare(scenario.ratio, thresholds.historySpanRatioMin, `history.speed:${scenario.speed}.spanRatio`, true);
+  for (const [metric, threshold] of [['antsAvgMs', 'antsAvgMsMax'], ['tileCompositionAvgMs', 'tileCompositionAvgMsMax'],
+    ['overlayPlaneAvgMs', 'overlayPlaneAvgMsMax'], ['scaledBlitAvgMs', 'scaledBlitAvgMsMax']]) compare(metrics[metric], thresholds[threshold], `hotpaths.${metric}`);
+  return { ok: diagnostics.length === 0, failures: diagnostics.map(item => `${item.kind}: ${item.path}: ${item.reason}`),
+    diagnostics, metrics, measurementValid: admitted.valid, scenarios: admitted.scenarios };
 };
 
 const main = (argv = process.argv.slice(2)) => {
   const args = parseArgs(argv);
   const soakRequested = args.has('soak') || process.env.BENCH_SOAK === '1';
+  const timeoutInput = args.get('timeoutMs') || process.env.BENCH_SMOKE_TIMEOUT_MS;
   const timeoutMs = toPositiveNumber(
-    args.get('timeoutMs') || process.env.BENCH_SMOKE_TIMEOUT_MS,
+    timeoutInput,
     soakRequested ? 300000 : 70000
   );
   const perfP95FrameMsMax = toPositiveNumber(args.get('perfP95FrameMsMax') || process.env.BENCH_SMOKE_PERF_P95_MAX, 250);
@@ -149,25 +126,20 @@ const main = (argv = process.argv.slice(2)) => {
   const hotpathsScript = path.join(root, 'scripts', 'bench-hotpaths.js');
 
   const started = Date.now();
-  const perfArgs = soakRequested
-    ? ['--soak', '--profile=soak', '--maxRuntime=300000']
-    : ['--smoke', '--profile=smoke', '--duration=6000', '--warmup=1500', '--sample=500', '--maxRuntime=25000'];
-  const historyArgs = soakRequested
-    ? ['--soak', '--profile=soak', '--maxRuntime=300000']
-    : ['--smoke', '--profile=smoke', '--duration=6000', '--sample=500', '--speeds=30,60', '--maxRuntime=25000'];
+  const plan = createSmokeRunPlan({ soakRequested, timeoutMs: timeoutInput == null ? null : timeoutMs });
   const performance = runNodeScript(perfScript, [
-    ...perfArgs,
+    ...plan.perfArgs,
     ...commonArgs
-  ], timeoutMs, 'bench-performance');
+  ], plan.performanceTimeoutMs, 'bench-performance');
 
   const history = runNodeScript(historyScript, [
-    ...historyArgs,
+    ...plan.historyArgs,
     ...commonArgs
-  ], timeoutMs, 'bench-history-stress');
+  ], plan.historyTimeoutMs, 'bench-history-stress');
 
   const hotpaths = runNodeScript(hotpathsScript, [
     '--smoke'
-  ], Math.min(timeoutMs, 60000), 'bench-hotpaths');
+  ], plan.hotpathsTimeoutMs, 'bench-hotpaths');
 
   const thresholds = {
     perfP95FrameMsMax,
@@ -182,7 +154,7 @@ const main = (argv = process.argv.slice(2)) => {
     performance: performance.data,
     history: history.data,
     hotpaths: hotpaths.data
-  }, thresholds);
+  }, thresholds, { profile: soakRequested ? 'soak' : 'smoke' });
 
   const summary = {
     ok: gate.ok,
@@ -195,7 +167,8 @@ const main = (argv = process.argv.slice(2)) => {
       benchHotpaths: hotpaths.durationMs
     },
     metrics: gate.metrics,
-    failures: gate.failures
+    failures: gate.failures,
+    diagnostics: gate.diagnostics, measurementValid: gate.measurementValid, scenarios: gate.scenarios
   };
 
   console.log(JSON.stringify(summary, null, 2));
@@ -221,4 +194,4 @@ if (isMain) {
   }
 }
 
-export { evaluateSmokeResults };
+export { evaluateSmokeResults, createSmokeRunPlan };

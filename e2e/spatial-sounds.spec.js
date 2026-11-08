@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
+
+test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 import { waitForHarnessReady } from './helpers/harness.js';
@@ -13,7 +17,7 @@ test('pan mode persists, live local audio is 48 kHz and studio restores focus', 
       constructor(options) { super(options); window.__audioContexts.push(this); }
     };
   });
-  await page.goto('/?e2e=1&midi=1');
+  await page.goto('/dist/browser/index.html?e2e=1&midi=1');
   await waitForHarnessReady(page);
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.locator('#midiGlobalPanMode').selectOption('level');
@@ -23,6 +27,8 @@ test('pan mode persists, live local audio is 48 kHz and studio restores focus', 
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await expect(page.locator('#midiGlobalPanMode')).toHaveValue('level');
   await page.locator('#midiViewSounds').click();
+  await page.getByRole('button', { name: 'Use native defaults', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__E2E__.midiGetProject().tracks.every(track => !!track.instrumentRef))).toBe(true);
   await page.locator('#midiLocalListenButton').click();
   await expect(page.locator('#midiOutputSummary')).toContainText('Listening to game locally');
   expect(await page.evaluate(() => window.__audioContexts.map(context => context.sampleRate))).toEqual([48000]);

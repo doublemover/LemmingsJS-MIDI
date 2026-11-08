@@ -46,7 +46,7 @@ describe('Game completed music observations', function () {
     game.triggerManager = new TriggerManager(game.gameTimer, level.width, level.height);
     if (trigger != null) game.triggerManager.add(new Trigger(trigger, 20, 60, 24, 78));
     game.lemmingManager = new LemmingManager(level, null, game.triggerManager, game.gameVictoryCondition, masks, null);
-    game.musicObservations = new GameMusicObservations({ maxActorPositions: positions });
+    game.musicObservations = new GameMusicObservations({ maxActorPositions: positions }); game.gameGui = {};
     game.gameTimer.onGameTick.on(game._boundTick); game.start();
     return game;
   };

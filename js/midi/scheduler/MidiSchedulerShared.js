@@ -1,6 +1,6 @@
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const MIDI_BITS_PER_SECOND = 31250;
-const MIDI_BYTES_PER_SECOND = MIDI_BITS_PER_SECOND / 8;
+const MIDI_BYTES_PER_SECOND = MIDI_BITS_PER_SECOND / 10;
 const MIDI_MESSAGE_BYTES = 3;
 const MAX_RATE_ENTRIES = 4096;
 const toFiniteNumber = (value, fallback) => {

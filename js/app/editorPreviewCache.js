@@ -213,7 +213,6 @@ class EditorPreviewCache {
         frameHash,
         signature
       });
-      image._previewHash = signature;
     }
     return signature;
   }

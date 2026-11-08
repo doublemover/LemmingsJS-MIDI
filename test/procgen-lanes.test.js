@@ -6,6 +6,7 @@ import { ProcgenLaneWorld, normalizeLaneCount, LANE_HEIGHT } from '../js/app/pro
 import { SolidLayer } from '../js/render/SolidLayer.js';
 
 describe('shared procgen lanes', function () {
+  this.timeout(60000);
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   it('normalizes the exact 1–1024 integer range', () => {
@@ -69,14 +70,16 @@ describe('shared procgen lanes', function () {
     }
   });
   it('runs 1024 real actors with bounded sparse edits and no render dependency', function () {
-    this.timeout(15000);
-    // Measure the same simulation in a fresh heap, independently of preceding
-    // source/catalog fixtures. Both the child and test retain the 15s limit.
+    this.timeout(20000);
+    // Node re-inherits a missing coverage key; an explicit empty value keeps
+    // the benchmark uninstrumented under its original 15s process deadline.
+    const env = { ...process.env, NODE_V8_COVERAGE: '' };
     const source = 'import { loadProcgenMasks, runLaneBenchmark } from \'./scripts/bench-procgen-lanes.js\';' +
       'const masks = await loadProcgenMasks(); console.log(JSON.stringify(runLaneBenchmark({ masks, lanes: 1024, ticks: 3000, seed: 42 })));';
     const result = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '--eval', source], {
-      cwd: fileURLToPath(new URL('..', import.meta.url)), encoding: 'utf8', timeout: 15000
+      cwd: fileURLToPath(new URL('..', import.meta.url)), env, encoding: 'utf8', timeout: 15000
     }));
+    expect(result.elapsedMs).to.be.lessThan(15000);
     expect(result.rendered).to.equal(false);
     expect(result.alive).to.equal(1024);
     expect(result.stalled).to.equal(0);

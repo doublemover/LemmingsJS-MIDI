@@ -30,6 +30,7 @@ class UnpackFilePart extends BaseLogger {
   #fileReader;
   /** @type {boolean} Unpacking done flag */
   #unpackingDone = false;
+  #disposed = false;
 
   /**
    * @param {BinaryReader} fileReader - The container file's BinaryReader (positioned at this part).
@@ -83,13 +84,20 @@ class UnpackFilePart extends BaseLogger {
    * @returns {BinaryReader}
    */
   unpack() {
+    if (this.#disposed) throw new Error('Compressed file part has been disposed');
     if (!this.#unpackingDone) {
       this.#fileReader = this.#doUnpacking(this.#fileReader);
       this.#unpackingDone = true;
-      return this.#fileReader;
     }
     // Return a new BinaryReader over the decompressed buffer for repeat access
-    return new BinaryReader(this.#fileReader);
+    return new BinaryReader(this.#fileReader, 0, null, this.#fileReader.filename, this.#fileReader.foldername);
+  }
+
+  dispose() {
+    if (this.#disposed) return;
+    this.#disposed = true;
+    if (this.#unpackingDone) this.#fileReader.release();
+    this.#fileReader = null;
   }
 
   /**
@@ -99,6 +107,7 @@ class UnpackFilePart extends BaseLogger {
    * @returns {BinaryReader}
    */
   #doUnpacking(fileReader) {
+    let bitReader;
     const endMeasure = this.startMeasure('doUnpacking', {
       track: 'UnpackFilePart',
       trackGroup: 'IO',
@@ -106,7 +115,7 @@ class UnpackFilePart extends BaseLogger {
       tooltipText: `doUnpacking ${fileReader.filename}`
     });
     try {
-      const bitReader = new BitReader(
+      bitReader = new BitReader(
         fileReader,
         this.#offset,
         this.#compressedSize,
@@ -150,8 +159,12 @@ class UnpackFilePart extends BaseLogger {
         this.log.log(`doUnpacking(${fileReader.filename}): Checksum mismatch!`);
       }
       // Create a BinaryReader over the decompressed buffer
-      return outBuffer.getFileReader(`${fileReader.filename}[${this.#index}]`);
+      const decoded = outBuffer.getFileReader(`${fileReader.filename}[${this.#index}]`);
+      decoded.foldername = fileReader.foldername;
+      if (fileReader.sourceIdentity) Object.defineProperty(decoded, 'sourceIdentity', { value: fileReader.sourceIdentity });
+      return decoded;
     } finally {
+      bitReader?.release();
       endMeasure();
     }
   }

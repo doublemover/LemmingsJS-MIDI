@@ -414,19 +414,49 @@ describe('Game', function() {
     });
   });
 
-  it('start emits sound events when available', function() {
+  it('start emits sound events when available', async function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
+    await game.loadLevel(1, 2);
     const calls = [];
     game.soundEvents = {
       emitSfx(...args) { calls.push(args); }
     };
-    game.gameTimer = { continue() {} };
     game.levelIndex = 2;
     game.levelGroupIndex = 1;
     game.level = { name: 'Test' };
     game.start();
     expect(calls.length).to.equal(1);
     expect(calls[0][2].levelName).to.equal('Test');
+    game.stop();
+  });
+
+  it('only publishes the newest out-of-order level request (#1274)', async function() {
+    const resources = new Lemmings.GameResources(), requests = [], game = new Game(resources);
+    resources.getLevel = (group, index) => new Promise(resolve => requests.push({ index, resolve }));
+    const first = game.loadLevel(0, 1), second = game.loadLevel(0, 2), level = { timeLimit: 5, colorPalette: 0, triggers: [], objects: [] };
+    requests[1].resolve({ ...level, name: 'new' }); await second; const timer = game.gameTimer;
+    requests[0].resolve({ ...level, name: 'old' }); expect(await first).to.equal(null); expect(game.level.name).to.equal('new'); expect(game.levelIndex).to.equal(2); expect(game.gameTimer).to.equal(timer); game.stop();
+  });
+  it('does not mix managers when sprite preparation completes out of order (#1274)', async function() {
+    const resources = new Lemmings.GameResources(), gates = [], game = new Game(resources), level = { timeLimit: 5, colorPalette: 0, triggers: [], objects: [] };
+    resources.getMasks = () => new Promise(resolve => gates.push(resolve));
+    const first = game.loadCustomLevel({ ...level, name: 'old' }); const oldTimer = game.gameTimer;
+    const second = game.loadCustomLevel({ ...level, name: 'new' }); gates[1]([]); await second;
+    const timer = game.gameTimer, manager = game.lemmingManager, gui = game.gameGui; gates[0]([]);
+    expect(await first).to.equal(null); expect(oldTimer.stopCalled).to.equal(1); expect(game.level.name).to.equal('new'); expect(game.gameTimer).to.equal(timer); expect(game.lemmingManager).to.equal(manager); expect(game.gameGui).to.equal(gui); game.stop();
+  });
+  it('cannot revive managers or a timer after stop during initialization (#1274)', async function() {
+    const resources = new Lemmings.GameResources(), game = new Game(resources); let release;
+    resources.getMasks = () => new Promise(resolve => { release = resolve; });
+    const pending = game.loadCustomLevel({ timeLimit: 5, colorPalette: 0, triggers: [], objects: [] }), timer = game.gameTimer;
+    game.stop(); release([]); expect(await pending).to.equal(null); game.start(); expect(game.level).to.equal(null); expect(game.gameTimer).to.equal(null); expect(game.lemmingManager).to.equal(null); expect(game.gameGui).to.equal(null); expect(timer.continueCalled).to.equal(0); expect(await game.loadLevel(0, 0)).to.equal(null);
+  });
+  it('retires a failed initializer and allows a clean retry (#1274)', async function() {
+    const resources = new Lemmings.GameResources(), game = new Game(resources), level = { timeLimit: 5, colorPalette: 0, triggers: [], objects: [] }; let fail = true;
+    resources.getSkillPanelSprite = async () => { if (fail) throw new Error('sprite refused'); return {}; };
+    let error; try { await game.loadCustomLevel(level); } catch (failure) { error = failure; }
+    expect(error.message).to.equal('sprite refused'); expect(game.gameTimer).to.equal(null); expect(game.lemmingManager).to.equal(null); fail = false;
+    expect(await game.loadCustomLevel(level)).to.equal(game); expect(game.gameGui).to.be.instanceOf(Lemmings.GameGui); game.stop();
   });
 });

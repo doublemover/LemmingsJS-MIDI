@@ -1,0 +1,40 @@
+import { expect } from 'chai';
+import fs from 'node:fs/promises';
+import { createResonatorMorphMap } from '../../js/midi/content/ResonatorMorph.js';
+import { prepareResonatorMorphKernelProfile, ResonatorMorphKernel } from '../../js/app/midi-ui/worklet/ResonatorMorphKernel.js';
+import { renderResonatorMorphReference } from '../../js/app/resources/ResonatorMorphReference.js';
+import { inspectOwnedCueWave } from '../../js/app/midi-ui/OwnedPcmCue.js';
+
+const fixture = async (rate = 48000, transitionPolicy = 'paired-synthetic-held') => { const { input } = JSON.parse(await fs.readFile(new URL('../../content/morphs/dry-bright-proof.json', import.meta.url), 'utf8')), map = await createResonatorMorphMap({ a: input.a, b: input.b, pairs: input.anchors, siteCorrespondence: input.siteCorrespondence, reviewed: true, transitionPolicy }); return { input, map, profile: await prepareResonatorMorphKernelProfile(map, input.a, input.b, rate) }; };
+const render = (kernel, count, { excite = true, move = true } = {}) => { const values = new Float64Array(count * 2), first = kernel.state[0] + 1; for (let index = 0; index < count; index++) { const frame = first + index, u = move ? (Math.sin(frame / 300) + 1) * 0.5 : kernel.state[1]; kernel.sample(excite && frame < 192 ? 0.25 * Math.sin(Math.PI * frame / 191) ** 2 : 0, frame, u); values[index * 2] = kernel.leftSample; values[index * 2 + 1] = kernel.rightSample; } return values; };
+const snapshot = kernel => kernel.snapshotInto(new Uint8Array(kernel.snapshotBytes));
+const reseal = bytes => { let crc = 0xffffffff; for (let at = 0; at < bytes.length; at++) { crc ^= at >= 28 && at < 32 ? 0 : bytes[at]; for (let bit = 0; bit < 8; bit++) crc = crc >>> 1 ^ (crc & 1 ? 0xedb88320 : 0); } new DataView(bytes.buffer).setUint32(28, (crc ^ 0xffffffff) >>> 0, true); return bytes; };
+describe('paired retained modal body (runtime/device/listening qualification deferred)', function() {
+  this.timeout(60000);
+  for (const rate of [44100, 48000, 96000]) it('retains positive-loss body energy under rapid reversals and independent exact cuts at ' + rate, async () => {
+    const { profile } = await fixture(rate), original = new ResonatorMorphKernel(profile); render(original, 4096); const d = original.diagnostics(); expect(d.faults).to.equal(0); expect(d.peak).to.be.greaterThan(0); expect(Math.abs(d.energy + d.positiveLoss - d.inputWork)).to.be.lessThan(1e-9 * (1 + d.inputWork)); const restored = new ResonatorMorphKernel(profile); restored.restoreFrom(snapshot(original)); expect(render(restored, 2048)).to.deep.equal(render(original, 2048)); expect(restored.modes.buffer).not.to.equal(original.modes.buffer); expect(restored.state).to.deep.equal(original.state); expect(restored.diagnostics().semanticOnsetsAdded).to.equal(0);
+  });
+  it('creates no body work from morph alone and retains unforced ringing through unmatched-mode reversals', async () => {
+    const { profile } = await fixture(), still = new ResonatorMorphKernel(profile); expect(render(still, 4096, { excite: false }).every(value => value === 0)).to.equal(true); expect(still.state[3]).to.equal(0); const ringing = new ResonatorMorphKernel(profile); render(ringing, 192); const work = ringing.state[3], energy = ringing.state[2]; render(ringing, 4096, { excite: false }); expect(ringing.state[3]).to.equal(work); expect(ringing.state[2]).to.be.lessThan(energy); expect(ringing.state[7]).to.equal(0);
+  });
+  it('cuts a prepared pending control independently from its prior readout frontier', async () => {
+    const { profile } = await fixture(), original = new ResonatorMorphKernel(profile); render(original, 513); original.setMorph(0.9); const restored = new ResonatorMorphKernel(profile); restored.restoreFrom(snapshot(original)); expect(render(restored, 1024, { move: false })).to.deep.equal(render(original, 1024, { move: false }));
+  });
+  it('does not upgrade onset-only maps, blends or missing/out-of-capacity sources into held DSP', async () => {
+    const f = await fixture(48000, 'next-onset-only'), kernel = new ResonatorMorphKernel(f.profile); kernel.setMorph(0.5); kernel.sample(0.1, 0); expect(() => kernel.setMorph(0.6)).to.throw('explicitly reviewed'); let error; try { await renderResonatorMorphReference({ map: f.map, a: f.input.a, b: f.input.b }); } catch (value) { error = value; } expect(error?.message).to.include('cannot upgrade'); expect(() => new ResonatorMorphKernel({ ...f.profile })).to.throw('Prepare');
+    const blend = await createResonatorMorphMap({ ...f.input, pairs: f.input.anchors, reviewed: true, transitionPolicy: 'prepared-dual-body-blend' }); try { await prepareResonatorMorphKernelProfile(blend, f.input.a, f.input.b); } catch (value) { error = value; } expect(error?.message).to.include('dual-body');
+  });
+  it('rejects checksum, identity, positive-loss, energy, signed weights and reserved state before mutation', async () => {
+    const { profile } = await fixture(), original = new ResonatorMorphKernel(profile); render(original, 513); const bytes = snapshot(original), target = new ResonatorMorphKernel(profile); render(target, 20); const before = snapshot(target), corruptions = [view => view.setFloat64(128 + 2 * 8, 100, true), view => view.setFloat64(128 + 3 * 8, -1, true), view => view.setFloat64(128 + 16 * 8 + 2 * 8, 1.5, true), view => view.setFloat64(128 + 16 * 8 + 4 * 8, 1, true), view => view.setUint8(32, view.getUint8(32) ^ 1), view => view.setUint8(100, 1)];
+    for (const corrupt of corruptions) { const bad = bytes.slice(); corrupt(new DataView(bad.buffer)); expect(() => target.restoreFrom(reseal(bad))).to.throw(); expect(snapshot(target)).to.deep.equal(before); } const bad = bytes.slice(); bad[bad.length - 1] ^= 1; expect(() => target.restoreFrom(bad)).to.throw('checksum'); expect(() => target.snapshotInto(new Uint8Array(target.modes.buffer))).to.throw();
+  });
+  it('uses explicit Panic and keeps a corrupt body isolated before emitting output', async () => {
+    const { profile } = await fixture(), bad = new ResonatorMorphKernel(profile), good = new ResonatorMorphKernel(profile); render(bad, 192); render(good, 192); bad.modes[2] = 1.5; bad.sample(0, 192); expect(bad.state[7]).to.equal(1); expect(bad.leftSample).to.equal(0); render(good, 128); expect(good.state[7]).to.equal(0); good.panic(); expect(render(good, 256, { excite: false }).every(value => value === 0)).to.equal(true); const copy = new ResonatorMorphKernel(profile); copy.restoreFrom(snapshot(bad)); expect(copy.state[7]).to.equal(1);
+  });
+  it('authors one bounded six-second Float32 WAV control reference with explicit excitation and no physical-take claim', async () => {
+    const { input, map } = await fixture(), value = await renderResonatorMorphReference({ map, a: input.a, b: input.b, sampleRate: 48000 }, { yieldControl: async () => {} }); const layout = inspectOwnedCueWave(value.bytes, value.manifest); expect(layout).to.exist; expect(value.manifest.frames).to.equal(288000); expect(value.manifest.statistics.peak).to.be.greaterThan(0); expect(value.manifest.body.faults).to.equal(0); expect(value.manifest.excitation.strikes).to.have.length(2); expect(value.manifest.physicalTakeEvidence).to.equal(false); expect(value.manifest.acousticQualification).to.equal(false); expect(value.manifest.statePolicy).to.include('retained');
+  });
+  it('cancels/stales reference preparation without an output and rejects unadmitted workspaces', async () => {
+    const { input, map } = await fixture(), args = { map, a: input.a, b: input.b }; let error; const controller = new AbortController(); controller.abort(); try { await renderResonatorMorphReference(args, { signal: controller.signal }); } catch (value) { error = value; } expect(error?.name).to.equal('AbortError'); try { await renderResonatorMorphReference(args, { estimatedPeakBytes: 4096 }); } catch (value) { error = value; } expect(error?.message).to.include('overlap'); let chunks = 0; try { await renderResonatorMorphReference(args, { current: () => chunks < 1, onProgress() { chunks++; }, yieldControl: async () => {} }); } catch (value) { error = value; } expect(error?.message).to.include('changed');
+  });
+});

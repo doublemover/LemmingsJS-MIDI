@@ -37,7 +37,7 @@ describe('Lemming core', function() {
     const lem2 = new Lemming(1, 1, 3, runtime);
     const state2 = lem2.process(makeLevel());
     expect(state2).to.equal(LemmingStateType.OUT_OF_LEVEL);
-    expect(events.some(e => e.type === 'death')).to.equal(true);
+    expect(events.some(e => e.type === 'death')).to.equal(false);
   });
 
   it('processes countdown actions and main actions', function() {

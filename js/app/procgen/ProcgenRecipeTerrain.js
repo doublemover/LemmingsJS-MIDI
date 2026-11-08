@@ -18,6 +18,7 @@ import { planOpenBankBasin, basinVoidAt } from './ProcgenOpenBankBasins.js';
 import { planTerrainChallenge, challengeSurface } from './ProcgenTerrainChallenges.js';
 import { hazardType } from './ProcgenHazards.js';
 import { procgenObjectImage } from './ProcgenObjectPresentation.js';
+import { initializeTerrainCacheEvidence, registerTerrainCacheEvidence } from './ProcgenTerrainCacheEvidence.js';
 
 const TERRAIN_CHUNK_WIDTH = 128;
 const TERRAIN_HEIGHT = 96;
@@ -99,6 +100,7 @@ class ProcgenRecipeTerrain {
     this.selectedTerrainIds = new Set();
     this.selectedObjectIds = new Set();
     this._lastKey = null; this._lastChunk = null;
+    initializeTerrainCacheEvidence(this);
   }
   configure(laneCount, maxActors = 16384, { laneHeight = this.height, sharedSpanBudget = this.sharedSpanBudget, workstation = this.workstation, hazardSpacing = workstation ? 160 : 0 } = {}) {
     const height = normalizeLaneHeight(laneHeight);
@@ -144,7 +146,7 @@ class ProcgenRecipeTerrain {
     // Evict aligned units together; rebuilding one half never replaces a cached
     // sibling with geometry chosen through a different descriptor request order.
     this.descriptorResidency.trim(this.descriptionLimit, 2);
-    this.descriptions.set(keyFor(seed, first), pair[0]); this.descriptions.set(keyFor(seed, first + 1), pair[1]);
+    for (let index = 0; index < pair.length; index++) { const key = keyFor(seed, first + index); registerTerrainCacheEvidence(this, 'description', key, pair[index]); this.descriptions.set(key, pair[index]); }
     return pair[chunk % 2];
   }
   _describeSingle(seed, chunk, reserved = false) {
@@ -280,7 +282,7 @@ class ProcgenRecipeTerrain {
     const descriptor = this.describe(seed, chunk), pattern = this.patterns[mix(descriptor.phaseCode ^ descriptor.code) % this.patterns.length];
     const route = this.routes.find(route => route.id === pattern.routeId), pieces = new Map(this.pieces.map(piece => [piece.id, piece]));
     const plan = createTerrainGrowthPlan({ descriptor, pattern, route, pieces, height: this.height, assemblies: this.assemblySources, sourceRevision: this.sourceDescriptor?.sourceRevision || this.recipe.assetSha256, piecewise });
-    this.growthPlans.set(key, plan); return plan;
+    registerTerrainCacheEvidence(this, 'growth-plan', key, plan); this.growthPlans.set(key, plan); return plan;
   }
   _activePlan(seed, chunk, state) { return state && !state.complete ? state.plan || this.growthPlan(seed, chunk) : null; }
   objectsAt(seed, chunk) { return this.describe(seed, chunk).objects; }
@@ -531,7 +533,7 @@ class ProcgenRecipeTerrain {
       if (!result) {
         result = composed; result.pixels = null;
         while (this.collision.size >= this.collisionLimit) { this.collision.delete(this.collision.keys().next().value); this.stats.evicted++; }
-        this.collision.set(key, result); this.stats.generated++;
+        registerTerrainCacheEvidence(this, 'collision', key, result); this.collision.set(key, result); this.stats.generated++;
         const pattern = this.patterns[mix(result.phaseCode ^ result.code) % this.patterns.length];
         for (const p of pattern.placements) this.selectedTerrainIds.add(p.id);
         this.stats.assemblyPlacements += result.assemblies.length;
@@ -556,6 +558,18 @@ class ProcgenRecipeTerrain {
     const p = this.getChunk(seed, Math.floor(x / TERRAIN_CHUNK_WIDTH));
     const index = y * TERRAIN_CHUNK_WIDTH + x % TERRAIN_CHUNK_WIDTH;
     return !!((steel ? p.steel : p.solid)[index >>> 5] & (1 << (index & 31)));
+  }
+  peekCollisionAt(seed, x, y, steel = false, state = null) {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || y >= this.height) return false;
+    const chunk = Math.floor(x / TERRAIN_CHUNK_WIDTH), key = keyFor(seed, chunk);
+    if (!state || state.complete) {
+      const cached = this.collision.get(key);
+      if (cached) { const at = y * TERRAIN_CHUNK_WIDTH + x % TERRAIN_CHUNK_WIDTH; return !!((steel ? cached.steel : cached.solid)[at >>> 5] & (1 << (at & 31))); }
+    }
+    const descriptor = state && !state.complete ? state.plan?.descriptor : this.descriptions.get(key);
+    if (!descriptor) return null;
+    const sample = this._sampleTerrain(seed, chunk, x % TERRAIN_CHUNK_WIDTH, y, descriptor, state);
+    return steel ? sample.steel : sample.solid;
   }
   surface(seed, x) { return this.getChunk(seed, Math.floor(x / TERRAIN_CHUNK_WIDTH)).topProfile[x % TERRAIN_CHUNK_WIDTH]; }
   isFlat(seed, x) { const y = this.surface(seed, x); return y >= 0 && this.surface(seed, x + 8) === y; }

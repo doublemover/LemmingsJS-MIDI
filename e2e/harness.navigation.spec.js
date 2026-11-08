@@ -11,6 +11,7 @@ test.describe('harness navigation', () => {
   });
 
   test('Selecting level group and level updates state', async ({ page }) => {
+    await page.locator('.level-tools > summary').click();
     const groupSelect = page.locator('#levelGroupSelect');
     await page.waitForFunction(() => {
       const select = document.getElementById('levelGroupSelect');
@@ -32,6 +33,7 @@ test.describe('harness navigation', () => {
     await page.waitForFunction(() => {
       return window.__E2E__.getState().view.levelIndex === 1;
     });
+    await page.waitForFunction(() => window.__E2E__?.getState()?.game?.level);
 
     const state = await page.evaluate(() => window.__E2E__.getState());
     expect(state.game.level).toBeTruthy();

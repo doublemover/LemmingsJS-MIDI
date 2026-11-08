@@ -133,9 +133,9 @@ describe('procgen spawn MIDI policy', function() {
         router.scheduler.allNotesOff({ preserveRateHistory: true });
         expect(router.scheduler._activeNotes.size).to.equal(0);
         expect(router.scheduler._pendingNoteOns.size).to.equal(0);
-        expect(router.scheduler.getRateSnapshot().past.count + router.scheduler.getRateSnapshot().next.count)
-          .to.be.at.least(used.past.count + used.next.count);
-        expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+        expect(router.scheduler.getRateSnapshot().past.count).to.equal(used.past.count + 1);
+        expect(router.scheduler.getRateSnapshot().next.count).to.equal(0);
+        expect(calls.filter(call => call.type === 'noteOff')).to.have.length(calls.filter(call => call.type === 'noteOn').length);
       } finally { router.dispose(); }
     });
   });

@@ -16,6 +16,7 @@ describe('owned browser boundary server', () => {
       origins.push(origin);
       const response = await fetch(origin + '/package.json');
       expect(response.status).to.equal(200); expect((await response.json()).name).to.equal('lemmings-js-midi');
+      expect(response.headers.get('cache-control')).to.equal('no-cache, must-revalidate');
     })));
     expect(new Set(origins).size).to.equal(2);
     await Promise.all(origins.map(closed));

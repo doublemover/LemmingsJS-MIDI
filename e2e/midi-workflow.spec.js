@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
+
+test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 import { waitForHarnessReady } from './helpers/harness.js';
@@ -27,6 +31,7 @@ test('sound editing is primary and device choices explain their disconnected sta
 
 test('simple Exit editing changes the effective trigger voice and shows the active key', async ({ page }) => {
   await page.locator('#midiViewProject').click();
+  await page.locator('.midi-starting-palettes > summary').click();
   await page.locator('#midiGamePresetSelect').selectOption('game-minor');
   await page.locator('#midiGamePresetApply').click();
   await page.locator('#midiViewSounds').click();
@@ -41,7 +46,11 @@ test('simple Exit editing changes the effective trigger voice and shows the acti
 });
 
 test('local game listening remains independent of WebMIDI permission and stops cleanly', { tag: '@boundary' }, async ({ page }) => {
+  await page.goto('/dist/browser/index.html?e2e=1&midi=1'); await waitForHarnessReady(page);
+  if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   expect(await page.evaluate(() => window.WebMidi.enabled)).toBe(false);
+  await page.getByRole('button', { name: 'Use native defaults', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__E2E__.midiGetProject().tracks.every(track => !!track.instrumentRef))).toBe(true);
   await page.locator('#midiLocalListenButton').click();
   await expect(page.locator('#midiOutputSummary')).toContainText('Listening to game locally · MIDI off');
   expect(await page.evaluate(() => window.WebMidi.enabled)).toBe(false);

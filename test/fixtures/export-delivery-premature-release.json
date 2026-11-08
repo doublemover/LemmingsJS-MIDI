@@ -1,0 +1,44 @@
+{
+  "schema": "export-delivery-model/v1",
+  "scope": "Deliberate premature-source-release-on-abort adapter fault, not a claimed historical product-source reproduction.",
+  "trace": [
+    {
+      "kind": "start"
+    },
+    {
+      "kind": "borrow-neighbor"
+    },
+    {
+      "kind": "mutate-input"
+    },
+    {
+      "kind": "resolve-open"
+    },
+    {
+      "kind": "cancel"
+    },
+    {
+      "kind": "resolve-abort"
+    },
+    {
+      "kind": "resolve-write"
+    },
+    {
+      "kind": "release-neighbor"
+    },
+    {
+      "kind": "discard"
+    }
+  ],
+  "minimum": [
+    {
+      "kind": "start"
+    },
+    {
+      "kind": "resolve-open"
+    },
+    {
+      "kind": "discard"
+    }
+  ]
+}

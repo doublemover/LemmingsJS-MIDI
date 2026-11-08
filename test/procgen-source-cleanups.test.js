@@ -124,8 +124,8 @@ describe('source-level procgen work removal', function() {
     renderer.camera.update(false, true);
     expect(visits).to.equal(4); expect(renderer.cameraX).to.be.greaterThan(firstX);
     world.tickIndex++; renderer.camera.update(false, true); expect(visits).to.equal(8);
-    world.actors[0].failureReason = 'test'; renderer.camera.update(); expect(visits).to.equal(12);
-    world._spawn(0, false); renderer.camera.update(false, true); expect(visits).to.equal(17);
+    world.actors[0].failureReason = 'test'; renderer.camera.update(); expect(visits).to.equal(8);
+    world._spawn(0, false); renderer.camera.update(false, true); expect(visits).to.equal(13);
     renderer.camera.followFrontier(); expect(renderer.follow).to.equal(true);
     renderer.dispose(); world.dispose();
   });
@@ -140,9 +140,13 @@ describe('source-level procgen work removal', function() {
     for (const time of [4, 8, 12, 16]) callbacks.shift()(time);
     expect(canvas.context.blits).to.equal(initial); expect(runtime.renderer.frameCacheHits).to.equal(4);
     callbacks.shift()(20); expect(runtime.world.tickIndex).to.equal(1); expect(canvas.context.blits).to.equal(initial + 1);
-    runtime.pause(); callbacks.shift()(40); callbacks.shift()(60);
-    expect(runtime.world.tickIndex).to.equal(1); expect(canvas.context.blits).to.equal(initial + 1);
-    runtime.renderer.camera.pan(12, 0); expect(canvas.context.blits).to.equal(initial + 2);
+    runtime.pause(); callbacks.shift()(40);
+    expect(canvas.context.blits).to.equal(initial + 2);
+    const pausedHits = runtime.renderer.frameCacheHits;
+    callbacks.shift()(60);
+    expect(runtime.world.tickIndex).to.equal(1); expect(canvas.context.blits).to.equal(initial + 2);
+    expect(runtime.renderer.frameCacheHits).to.equal(pausedHits + 1);
+    runtime.renderer.camera.pan(12, 0); expect(canvas.context.blits).to.equal(initial + 3);
     runtime.resume(); callbacks.shift()(80); callbacks.shift()(100);
     expect(runtime.world.tickIndex).to.equal(2);
     runtime.step(); expect(runtime.world.tickIndex).to.equal(3);

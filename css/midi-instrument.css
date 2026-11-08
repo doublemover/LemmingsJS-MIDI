@@ -206,7 +206,12 @@ body.game-page.studio-open[data-midi-layout=overlay] .midi-sequencer { grid-colu
 .game, .studio-open .game { padding-left: 4px; }
 
 .midi-layout-choices > button { font-size: 10px; gap: 3px; padding: 4px 5px; }
-@media (min-width: 1000px) and (max-width: 1599px) { .midi-instrument-head { gap: 7px; } .midi-headunit-readout { box-sizing: border-box; width: 110px; min-width: 90px; } }
+@media (min-width: 1000px) and (max-width: 1599px) {
+  body.game-page, body.game-page.studio-open { grid-template-rows: auto minmax(0, 1fr); }
+  .game-chrome { flex-wrap: wrap; }
+  .midi-instrument-head { flex: 1 1 650px; flex-wrap: wrap; gap: 7px; }
+  .midi-headunit-readout { box-sizing: border-box; width: 110px; min-width: 90px; }
+}
 
 .game-chrome:has(.midi-starting-palettes[open], .level-tools[open], .midi-instrument-menus details[open]) { z-index: 60; }
 

@@ -313,12 +313,13 @@ const historyStoreApplyDeltaMethods = {
     if (spans?.starts?.length) {
       const starts = spans.starts;
       const lengths = spans.lengths;
-      let valueIndex = 0;
-      for (let i = 0; i < starts.length; i += 1) {
-        let index = starts[i];
+      // Previous values form an undo log: overlapping writes must unwind last first.
+      const direction = useNext ? 1 : -1;
+      let valueIndex = useNext ? 0 : maskValues.length - 1;
+      for (let i = useNext ? 0 : starts.length - 1; i >= 0 && i < starts.length; i += direction) {
+        let index = starts[i] + (useNext ? 0 : lengths[i] - 1);
         let imgIndex = index << 2;
-        const valueEnd = valueIndex + lengths[i];
-        for (; valueIndex < valueEnd; valueIndex += 1, index += 1, imgIndex += 4) {
+        for (let remaining = lengths[i]; remaining > 0; remaining -= 1, valueIndex += direction, index += direction, imgIndex += direction * 4) {
           mask[index] = maskValues[valueIndex];
           img[imgIndex] = redValues[valueIndex];
           img[imgIndex + 1] = greenValues[valueIndex];
@@ -329,7 +330,8 @@ const historyStoreApplyDeltaMethods = {
     }
     const indices = changes.indices;
     if (!indices?.length) return;
-    for (let i = 0; i < indices.length; i += 1) {
+    const direction = useNext ? 1 : -1;
+    for (let i = useNext ? 0 : indices.length - 1; i >= 0 && i < indices.length; i += direction) {
       const index = indices[i];
       const imgIndex = index << 2;
       mask[index] = maskValues[i];

@@ -1,0 +1,1594 @@
+{
+  "schema": "lemmings-validation-campaign/v1",
+  "date": "2026-11-07",
+  "continuation": 669,
+  "sourceParent": "201e4b0469b48d10a52fc627daef50e92bf001b8",
+  "sourceSha256": {
+    "content/sounds/tactile-contacts.json": "ebbcf9cc3c6820215478419fc90bbdecc83f55f9bc184c1b9d5f5ca09d791c86",
+    "js/app/midi-ui/AudioResourceLeases.js": "cad92cca8846bdb7d092e03f1592d8e8397a5cc24c7e8319b910d471f1ce21b5",
+    "js/app/midi-ui/LiveLocalInstrumentSink.js": "56e7cf178717ff1693ea3c01a16421a5db2e5917c1cdf8afc64e3d0439ce4244",
+    "js/app/midi-ui/SmoothedAudioParameter.js": "0e9c1ae2c7dd3d17a90ed3ff28947ac9b1f520d5f84d5c1be4a4bde2c6cb33ab",
+    "js/app/midi-ui/browserNotePreview.js": "ada338822d5ad5f4fe125c5af49f7fdbc2b4eecf6704568a26d5901aa218041d",
+    "js/app/midi-ui/localGamePreview.js": "f98f7243c968a52b9cb760160f416a560d5805f0e1e67a67b610f10425509f19",
+    "js/app/procgen/TerrainAuthoringAdapter.js": "31150bce82a0eb5b9832836e127b707f7c5d4fc7e30ee52fed3ede0e582959cb",
+    "js/app/procgen/workstation/PhysicalMusicStudy.js": "15696412e075a04e9e0434b07e346010805a50cfd71c376b4a0ecf125a1abd8e"
+  },
+  "issues": [
+    1279,
+    1280,
+    1281,
+    1282,
+    1283,
+    1284
+  ],
+  "fullNode": {
+    "command": "npm test",
+    "passing": 8278,
+    "failing": 12,
+    "reporterDuration": "16m",
+    "currentOneShotGreen": false
+  },
+  "followups": [
+    {
+      "scope": "known changed-area development batch",
+      "stats": {
+        "suites": 52,
+        "tests": 535,
+        "passes": 519,
+        "pending": 0,
+        "failures": 16,
+        "start": "2026-11-07T17:46:42.359Z",
+        "end": "2026-11-07T17:50:37.894Z",
+        "duration": 235535
+      }
+    },
+    {
+      "scope": "all full-run failed areas plus new readiness/native/cache regressions",
+      "stats": {
+        "suites": 27,
+        "tests": 355,
+        "passes": 353,
+        "pending": 0,
+        "failures": 2,
+        "start": "2026-11-07T18:12:41.852Z",
+        "end": "2026-11-07T18:14:15.493Z",
+        "duration": 93641
+      }
+    },
+    {
+      "scope": "complete intervention and finite musical-study files after final trace/report repair",
+      "stats": {
+        "suites": 2,
+        "tests": 6,
+        "passes": 6,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T18:28:45.649Z",
+        "end": "2026-11-07T18:29:55.228Z",
+        "duration": 69579
+      }
+    }
+  ],
+  "result": {
+    "allTwelveFullRunFailuresClearedByFollowups": true,
+    "additionalCompleteNodeRun": false,
+    "desktopBrowserCampaign": "pending",
+    "ci": "not-claimed"
+  },
+  "coverage": {
+    "scope": "AudioResourceLeases, LiveLocalInstrumentSink, SmoothedAudioParameter, BrowserNotePreview, localGamePreview, TerrainAuthoringAdapter",
+    "lines": 90.08,
+    "branches": 79.31,
+    "functions": 82.58,
+    "remaining": "Additional hardware/context error paths, live lane combinations and terrain edit/protection combinations; separate native/device/listening qualification."
+  },
+  "previewMigration": {
+    "portedScenarios": 17,
+    "retiredObsoleteLocalMidiFacadeScenarios": 35,
+    "policy": "Retain prepared semantic/native owner coverage and external hardware byte/retrigger coverage; no restored local GM/channel facade."
+  },
+  "artifactSha256": {
+    ".tmp/rook-full-669-node.log": "4b9982e8a066d6c4affd278b4a917c49a8d9820d33daed147507d940214a9ce8",
+    ".tmp/rook-grouped-669.json": "aa26645781a50535d7886db1032c162abc2efbcfcbd360ecc5fac708e8a0fe50",
+    ".tmp/rook-full-669-followup.json": "4c6f21b6c6b5e83b1df21b93cffe1e167b243d3b6c6b4b3a625f062661221eab",
+    ".tmp/rook-full-669-study-packed.json": "ede7e2be199d4cb3138bcb8bbf453ec2a0d354268d4ede1cd46d9fbeab07926f",
+    ".tmp/rook-669-coverage/coverage-summary.json": "88b4437ca01cd3df4003355f9e224d295c5a517499c1007302722575e81042a5"
+  },
+  "desktopFollowthrough": {
+    "continuation": 670,
+    "sourceParent": "4b73c0a4cfbe90d7e8e787336cb09660d0248f7d",
+    "issues": [
+      1285,
+      1286,
+      1287,
+      1288,
+      1289,
+      1290,
+      1291
+    ],
+    "sourceSha256": {
+      "js/app/controls/AnchoredControlPosition.js": "012b9ed63ceb3fb21648e7f4c73893dbab24c7908cdc3b615daf601704c3064d",
+      "js/app/midi-ui/CausalTakeAudioRenderView.js": "4bd0c638d06efad045bc9c58bd47aace7f3611056d989b8192dfa24693c1c1ca",
+      "js/app/midi-ui/CausalTakeRealtimePrint.js": "b83c90db0b737a7f441b161495fadaae8cc6bfdc06e6c9425f3b3af98d63ff9f",
+      "js/app/midi-ui/MidiLocalInstrumentMigration.js": "1e805f1552d6b3da66217a149c4c3429740008d051b3bfd92e8610901ce5424a",
+      "js/app/midi-ui/localGamePreview.js": "6082e725eff7647e1d8dcb995b236fdd0f9cac4e34d2820567525022f72f48e7",
+      "js/app/procgen/ProcgenSimulationProfiles.js": "18126f3ec8b32bc3b709d644fe117fb579b98650a6b69c045fea067a1f548d62",
+      "js/app/procgen/ProcgenSimulationProtocol.js": "d419802a1065ac74c73243a09deda23eed12e33abd258e8f964ee4437b11581e",
+      "js/app/procgen/ProcgenUiController.js": "0653fb1c708d9bf234a305d14a0d0a38b1efd38bd938863a151a595568f80656",
+      "js/app/procgen/workstation/ProcgenTimingDriver.js": "2be17d6da065cc2b363fea344a483591c5584a52a40d05c5f3c460dba0843aeb",
+      "js/app/procgen/workstation/ProcgenTimingWorker.js": "9caadeaefc5617ae4753190fb1f249c14457ca85fe46a0ad2387751d50622c68",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "fbbd08042ed88ef52be4085689bd5bc1a8d70811ef95ee946bf7958f7658d851",
+      "js/app/resources/BackgroundJobKernels.js": "c86d00967d7ec521d6b586e496527588da7584435e878d58ef51b42aea1f7d1a"
+    },
+    "node": {
+      "initial": {
+        "suites": 19,
+        "tests": 265,
+        "passes": 264,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-07T19:19:00.090Z",
+        "end": "2026-11-07T19:19:31.776Z",
+        "duration": 31686
+      },
+      "followup": {
+        "suites": 1,
+        "tests": 3,
+        "passes": 3,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T19:21:34.315Z",
+        "end": "2026-11-07T19:21:34.324Z",
+        "duration": 9
+      },
+      "remainingFailures": 0,
+      "uniqueCurrentCases": 265,
+      "note": "The initial sole failure was the new structural-byte-capacity fixture using a binary payload; corrected text fixture passes. No second complete Node suite was run."
+    },
+    "coverage": {
+      "scope": "single-lane profile plus simulation protocol admission, not repository-wide coverage",
+      "profileLines": 100,
+      "combined": {
+        "lines": {
+          "total": 50,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 66
+        },
+        "statements": {
+          "total": 50,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 66
+        },
+        "functions": {
+          "total": 8,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 50
+        },
+        "branches": {
+          "total": 19,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 89.47
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      },
+      "commandExit": 1,
+      "note": "All three tests pass. The isolated report inherits repository-wide coverage thresholds; unexercised general protocol encoders make that threshold inappropriate for this tiny admission cohort. Existing full protocol/core suites passed in the grouped run."
+    },
+    "browser": {
+      "baseline": {
+        "schema": "rook-interrupted-browser-checkpoint/v1",
+        "buildId": "83b8364fb83e288f81a63eb016b312f442c6a9cbb3e25bd1eaa0098ca651ec1e",
+        "completedPassing": 249,
+        "excludedPassing": 221,
+        "failures": [
+          {
+            "ordinal": 104,
+            "case": "[desktop] › e2e\\main-audio-runtime-transitions.spec.js:108:1 › built desktop audio settings preserve the authored project and reprepare the physical output after replacement @boundary (26.5s)"
+          },
+          {
+            "ordinal": 133,
+            "case": "[desktop] › e2e\\midi-workflow.spec.js:48:1 › local game listening remains independent of WebMIDI permission and stops cleanly @boundary (16.0s)"
+          },
+          {
+            "ordinal": 164,
+            "case": "[desktop] › e2e\\procgen-world-inspection.spec.js:28:3 › world inspection at DPR 1 › matches actual cropped source art with pointer and keyboard inspection without issuing edits (30.8s)"
+          },
+          {
+            "ordinal": 165,
+            "case": "[desktop] › e2e\\procgen-world-inspection.spec.js:28:3 › world inspection at DPR 2 › matches actual cropped source art with pointer and keyboard inspection without issuing edits (31.3s)"
+          },
+          {
+            "ordinal": 186,
+            "case": "[desktop] › e2e\\spatial-sounds.spec.js:11:1 › pan mode persists, live local audio is 48 kHz and studio restores focus (14.7s)"
+          },
+          {
+            "ordinal": 191,
+            "case": "[workstation] › e2e\\causal-take-audio-render.spec.js:11:59 › an immutable worker renders a real captured physical phrase and dry stem without enabling live audio or hardware @boundary (1.2m)"
+          },
+          {
+            "ordinal": 192,
+            "case": "[workstation] › e2e\\causal-take-audio-render.spec.js:11:59 › an immutable worker renders a real captured physical phrase and dry stem without enabling live audio or hardware with owned seed-state receipts @boundary (1.3m)"
+          },
+          {
+            "ordinal": 193,
+            "case": "[workstation] › e2e\\causal-take-audio-render.spec.js:70:1 › a prepared real-time print realizes a frozen physical take in a silent private context and preserves the paused world @boundary (1.2m)"
+          },
+          {
+            "ordinal": 210,
+            "case": "[workstation] › e2e\\procgen-lane-display.spec.js:64:1 › paging real desktop lane displays bounds mounted rows and restores the manual page without replaying output @boundary (34.5s)"
+          },
+          {
+            "ordinal": 222,
+            "case": "[workstation] › e2e\\procgen-operational-status.spec.js:111:1 › a real suspended browser context updates paused status and requires explicit resume without MIDI access @boundary (9.0s)"
+          },
+          {
+            "ordinal": 251,
+            "case": "[workstation] › e2e\\procgen-workstation-authoritative-audio.spec.js:10:1 › explicit owned worker performance advances through a desktop UI stall and parks with its private native context closed @boundary @workstation-local-audio @workstation-physical-music (53.3s)"
+          },
+          {
+            "ordinal": 252,
+            "case": "[workstation] › e2e\\procgen-workstation-axis-rulers.spec.js:19:1 › accepted world ruler follows native pan and zoom while paused musical position and physical history stay fixed @boundary (31.7s)"
+          },
+          {
+            "ordinal": 254,
+            "case": "[workstation] › e2e\\procgen-workstation-axis-rulers.spec.js:45:1 › recorded source and ordinal rulers remain historical after live tempo and camera changes @boundary (31.4s)"
+          },
+          {
+            "ordinal": 261,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Clay chamber size 8 @boundary @workstation-physical-music (15.7s)"
+          },
+          {
+            "ordinal": 262,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Clay chamber size 16 @boundary @workstation-physical-music (16.7s)"
+          },
+          {
+            "ordinal": 263,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Throat duet size 8 throat 0 @boundary @workstation-physical-music (16.2s)"
+          },
+          {
+            "ordinal": 264,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Throat duet size 8 throat 1 @boundary @workstation-physical-music (17.0s)"
+          },
+          {
+            "ordinal": 265,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Crumbled chimes size 8 @boundary @workstation-physical-music (17.8s)"
+          },
+          {
+            "ordinal": 266,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:29:4 › native cavity rendering: Crumbled chimes size 16 @boundary @workstation-physical-music (16.6s)"
+          },
+          {
+            "ordinal": 267,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:36:55 › native changing cavity retains tails and exact captured history: Clay chamber @boundary @workstation-physical-music (18.3s)"
+          },
+          {
+            "ordinal": 268,
+            "case": "[workstation] › e2e\\procgen-workstation-cavity-sound.spec.js:36:55 › native changing cavity retains tails and exact captured history: Throat duet @boundary @workstation-physical-music (16.2s)"
+          }
+        ],
+        "plannedCases": 547,
+        "interrupted": true,
+        "reason": "Frontload grouped confirmed source fixes; run unexecuted and affected cases together afterwards."
+      },
+      "current": {
+        "buildId": "e77068610b0baffacda633a510ae1e4cef9438886fad730d28f5d0d006aaf560",
+        "files": 1555,
+        "bytes": 36705463,
+        "plannedCases": 326,
+        "excludedAlreadyPassingUnaffectedCases": 221,
+        "status": "running",
+        "finalJson": ".tmp/rook-grouped-670-browser.json",
+        "scope": "native Chromium, desktop minimum1920x1080; no mobile qualification"
+      }
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": {
+        "components": 15,
+        "files": 2774
+      },
+      "diffWhitespace": "passed"
+    },
+    "publication": {
+      "issues": "implemented; final native validation pending",
+      "ci": "pending",
+      "oneShotCompleteSuiteGreen": false
+    }
+  },
+  "desktopConcurrencyFollowthrough": {
+    "continuation": 671,
+    "sourceParent": "b069c717",
+    "issues": [
+      1289,
+      1291
+    ],
+    "sourceSha256": {
+      "js/app/midi-ui/CausalTakeRealtimePrint.js": "3c04c360dfee43d75a2b7a53b787e3daa29efb585f116e148ca55d3c4171bf40",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "7a72650bc868fb6a71ccd2ac0c5a0e47e070658d27226c7fe70484174d103a2c"
+    },
+    "node": {
+      "initial": {
+        "suites": 6,
+        "tests": 163,
+        "passes": 161,
+        "pending": 0,
+        "failures": 2,
+        "start": "2026-11-07T19:35:06.845Z",
+        "end": "2026-11-07T19:35:29.014Z",
+        "duration": 22169
+      },
+      "correctedRealWorldFollowup": {
+        "suites": 1,
+        "tests": 2,
+        "passes": 2,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T19:36:48.264Z",
+        "end": "2026-11-07T19:36:48.489Z",
+        "duration": 225
+      },
+      "remainingFailures": 0,
+      "note": "The new two quiescence tests initially used an unready fake world; real paused-world fixtures pass, including actual stale stepping. No second full Node suite."
+    },
+    "browser": {
+      "priorGeneration": "e77068610b0baffacda633a510ae1e4cef9438886fad730d28f5d0d006aaf560",
+      "previousBatch": {
+        "interrupted": true,
+        "completedPassing": 43,
+        "reason": "Frontload the confirmed routing-facade and joined-autosave fixes; exclude every completed passing case."
+      },
+      "alreadyPassingExcluded": 264,
+      "plannedRemaining": 283,
+      "workers": 2,
+      "buildId": "da100c053fd950f210fc8eac7befc2425d9676c330b023ef0f0d36888005bc0a",
+      "status": "running",
+      "confirmedPassing": [
+        "World inspection keyboard/pointer DPR1",
+        "World inspection keyboard/pointer DPR2"
+      ],
+      "newlyExposed": [
+        "Private print duplicate lease renewal at same audio frame (stale-execution-lease)",
+        "Worker relative text asset root (#1292)",
+        "Combined cancellation capture reports Partial rather than fixture-expected Ready",
+        "Knob observer counts legitimate text-node mutations; investigating captured evidence"
+      ]
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "immutableBuild": "passed",
+      "diffWhitespace": "passed"
+    },
+    "closedIssues": [
+      1285,
+      1286,
+      1287,
+      1288,
+      1290
+    ],
+    "pendingIssues": [
+      1289,
+      1291,
+      1292
+    ],
+    "ci": "no workflow runs returned at first remote commit snapshot"
+  },
+  "desktopGroupedFollowthrough": {
+    "continuation": 672,
+    "sourceParent": "cca0cb6f",
+    "sourceSha256": {
+      "js/data/file-provider/FileProviderFetch.js": "b1fa5b1be970228312df03ad60d2d96b43d53a4c3b67f66ba3e41a364f626ddf",
+      "js/app/controls/ParameterKnob.js": "49148911ad96ae321e26ce32231e3c2edeb3d291e21fed67aefa73c128163159",
+      "js/app/midi-ui/CausalTakeRealtimePrint.js": "d90655f8ca005569a01ee430d964347173e92ca8830996a36c48e19993b2be4a",
+      "js/app/procgen/ProcgenSimulationProfiles.js": "283145deb4c852af38fb7a58e9ece9431843794b33a53050097f4d661f4252c9",
+      "js/app/procgen/workstation/PhysicalMusicStudyWorkbench.js": "0ff18564b1d7dc8bdbec06cc7e5ddb933e2ec0fb5fe4d2e0efef1e1ef40bb1b4",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "8aefb5fc08b0dc7ac141f791a6f4e93b1a316e1a5d4568ea25cd435187405073"
+    },
+    "node": {
+      "suites": 21,
+      "tests": 341,
+      "passes": 341,
+      "pending": 0,
+      "failures": 0,
+      "start": "2026-11-07T20:04:52.059Z",
+      "end": "2026-11-07T20:06:41.487Z",
+      "duration": 109428
+    },
+    "coverage": {
+      "scoped": true,
+      "checkCoverage": false,
+      "total": {
+        "lines": {
+          "total": 4166,
+          "covered": 3117,
+          "skipped": 0,
+          "pct": 74.81
+        },
+        "statements": {
+          "total": 4166,
+          "covered": 3117,
+          "skipped": 0,
+          "pct": 74.81
+        },
+        "functions": {
+          "total": 608,
+          "covered": 370,
+          "skipped": 0,
+          "pct": 60.85
+        },
+        "branches": {
+          "total": 2853,
+          "covered": 1895,
+          "skipped": 0,
+          "pct": 66.42
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "browser": {
+      "buildId": "7257eb0fe6b268c81fc5e25c601eb67305b35b3892bac110d041398b1cd34769",
+      "selected": 149,
+      "previouslyPassingExcluded": 398,
+      "stats": {
+        "startTime": "2026-11-07T20:05:43.669Z",
+        "duration": 1149153.1949999998,
+        "expected": 120,
+        "skipped": 7,
+        "unexpected": 22,
+        "flaky": 0
+      },
+      "jsonSha256": "131bbc184f24484e9e63ed0a2c6b3314bb38355fdf79b33b86037c64fdfbff57",
+      "confirmedPassing": [
+        "Private real-time print returns exact owned PCM and closes native context",
+        "Knob native DPR1 and DPR2 gestures preserve zero redundant child-list writes",
+        "Combined-output cancellation retains truthful partial clock receipt",
+        "Replacement review opens its exact owned JSON input"
+      ],
+      "remainingGroups": [
+        "Independent worker: constrained terrain decode admission and headless ParticleTable Buffer reference",
+        "Composition: foreground resource owner overlap before admission",
+        "Ten live-clock cleanup fixtures assume one native sink; runtime declares two",
+        "Actual history BFCache inhibited by no-store server policy",
+        "Legacy pattern/sound-selection fixture contract and sound-library audition capacity",
+        "Gesture teardown and browser zoom boot failures require trace classification"
+      ]
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "passed:15 components/2774 files",
+      "lint": "passed",
+      "undefined": "passed",
+      "releaseReadiness": "passed",
+      "dependencyAudit": "0 vulnerabilities",
+      "diffWhitespace": "passed before final fixture/config edits"
+    },
+    "pendingIssues": [
+      1291,
+      1293,
+      1295,
+      1296
+    ],
+    "note": "No second complete Node suite. 341/341 grouped Node cases pass; remaining native failures are explicit. Profile changes preserve bounded refusal and do not establish full worker/composition qualification.",
+    "closedIssues": [
+      1289,
+      1292,
+      1294
+    ]
+  },
+  "desktopBoundedPreparationFollowthrough": {
+    "continuation": 673,
+    "sourceParent": "68ed0752",
+    "sourceCommit": "ee48e7027c225ddefd19f5172fa1775e7ee379b0",
+    "issues": [
+      1291,
+      1293,
+      1295,
+      1296,
+      1297
+    ],
+    "sourceSha256": {
+      "js/app/procgen/ProcgenSimulationHost.js": "03078326d22ae9964dd473a0cd9e2bbb43acd4c2e81cad1d36a2fb8c71c02e89",
+      "js/app/procgen/ProcgenSimulationCore.js": "24c90c2f7138f5bc16b1746d6d6f96c47c8f3b37b352f74a88f9e38d8d9f1a47",
+      "js/app/procgen/ProcgenSimulationProfiles.js": "7a75b3b52773a043c7b24c69c41760edbc08fd8a3d794bf4edd99b40fed3c78f",
+      "js/app/procgen/ProcgenSimulationProtocol.js": "482f03d094c7ac3662fafc72c0f7802912aa8250227035ad512b3926a9ef44e9",
+      "js/app/procgen/ProcgenSimulationConsumer.js": "dc305a3fbe336d2eaa161426aa14bd94e26238d47f26cd0da47281e91f21e042",
+      "js/app/procgen/ProcgenSimulationWorkerEndpoint.js": "5d01317fa4217c6c44cd78624b53b899acd2b5521d28de6e62f15d508e8204b7",
+      "js/app/procgen/workstation/CausalMusicEngine.js": "3ae5ab19aee835967f85f0ad9ba2c594ec7166e7517f11341c27fe277c2d427d",
+      "js/app/procgen/workstation/CausalObserverResources.js": "e7c351ab91895a0aefd3aa40cc9a3a339cdf9929edddd6daa5a5d5f430d0c1ed",
+      "js/app/procgen/workstation/PhysicalMusicStudy.js": "577230328cbab7ca72c7507e7b9f5a573a107722f4b2a1ecf39de4f2c43fc336",
+      "js/app/procgen/workstation/PhysicalMusicStudyWorkbench.js": "2dd515f5a9acf336365325fa938d48930f120b024e222e38c74a90021e320fb7",
+      "js/app/resources/GroundAssetDecode.js": "f726222acf206ba38eb6c532f6730fa58e01658d565676b36c329f38e61ee762",
+      "js/app/resources/GroundAssetRegistry.js": "78451abd526a91c1ff2db299aa739b72e62628fda122c378b469ca0f68e169d0",
+      "js/render/ParticleTable.js": "4de3c2690c504b1514fd03d71f6707b937d77fbd9b5cab5c36c6b5d9f643658a"
+    },
+    "node": {
+      "initial": {
+        "suites": 11,
+        "tests": 68,
+        "passes": 64,
+        "pending": 0,
+        "failures": 4,
+        "start": "2026-11-07T20:40:36.710Z",
+        "end": "2026-11-07T20:40:58.074Z",
+        "duration": 21364
+      },
+      "intermediate": {
+        "suites": 5,
+        "tests": 25,
+        "passes": 24,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-07T20:46:27.375Z",
+        "end": "2026-11-07T20:47:56.735Z",
+        "duration": 89360
+      },
+      "final": {
+        "suites": 15,
+        "tests": 88,
+        "passes": 88,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T20:55:20.501Z",
+        "end": "2026-11-07T20:56:30.524Z",
+        "duration": 70023
+      },
+      "remainingFailures": 0,
+      "scope": "11 affected test files, including actual physical studies and bounded copy/protocol ownership; no second full suite"
+    },
+    "coverage": {
+      "scoped": true,
+      "checkCoverage": false,
+      "total": {
+        "lines": {
+          "total": 1804,
+          "covered": 1469,
+          "skipped": 0,
+          "pct": 81.43
+        },
+        "statements": {
+          "total": 1804,
+          "covered": 1469,
+          "skipped": 0,
+          "pct": 81.43
+        },
+        "functions": {
+          "total": 198,
+          "covered": 159,
+          "skipped": 0,
+          "pct": 80.3
+        },
+        "branches": {
+          "total": 1445,
+          "covered": 820,
+          "skipped": 0,
+          "pct": 56.74
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "note": "Host/consumer/endpoint native ownership is covered by the real browser journey, not this Node coverage total. Broader physical graph feature combinations and unknown hardware retirement remain extension areas."
+    },
+    "browser": {
+      "buildId": "e2ec6ab70cca36583594e29340d73ee89976741c971cd403894152832e88125d",
+      "stats": {
+        "startTime": "2026-11-07T21:02:41.394Z",
+        "duration": 457437.19700000004,
+        "expected": 26,
+        "skipped": 0,
+        "unexpected": 5,
+        "flaky": 0
+      },
+      "passed": 26,
+      "remainingFailures": [
+        {
+          "file": "procgen-workstation-compose.spec.js",
+          "title": "desktop Compose searches an authored finite crew, keeps selection private and queues one reversible command transaction"
+        },
+        {
+          "file": "procgen-workstation-native-lifecycle.spec.js",
+          "title": "actual BFCache retains dirty edits while unavailable storage stays explicit and output remains stopped"
+        },
+        {
+          "file": "procgen-workstation-transport.spec.js",
+          "title": "sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices"
+        },
+        {
+          "file": "sound-content-workstation.spec.js",
+          "title": "liquid tables and drawbars use real worklet audition before installing the chosen source revision"
+        },
+        {
+          "file": "sound-content-workstation.spec.js",
+          "title": "Artificial Choir stages four recipes and only applies a real auditioned worklet revision"
+        }
+      ],
+      "catalog": 547,
+      "uniquePassingAcrossCheckpoints": 535,
+      "explicitExtendedOrBenchmarkSkipped": 7
+    },
+    "portable": {
+      "selected": 12,
+      "stats": {
+        "startTime": "2026-11-07T21:02:24.198Z",
+        "duration": 505575.006,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 8,
+        "flaky": 0
+      },
+      "passed": 4,
+      "failed": 8,
+      "note": "Three Firefox scheduled-clock cases and WebKit semantic context-transition pass. Chromium needs the controlled local TLS flag; old future targets exceed the8s bound; Windows WebKit cold installation exceeds60s. These are separate from measured native clock thresholds."
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "passed:15 components/2774 files",
+      "gitIndexProvenance": "passed:15 components/2774 component files/841 unique exact Git-index blobs",
+      "diffWhitespace": "passed",
+      "masterFetch": "up to date:810 ahead/0 behind"
+    },
+    "ci": {
+      "head": "68ed07526474e10dc4a6006adcf3ab963e919dba",
+      "run": 42411553535,
+      "status": "failed prior generation",
+      "mainCause": "local CRLF provenance versus canonical Git LF bytes (#1297)",
+      "lifecycleAdditionalCause": "portable context-transition fixture still used removed output.channels facade; migrated to actual prepared semantic owner",
+      "nativeCodecWindows": "success",
+      "nativeCodecUbuntu": "success",
+      "dependencyReview": "success",
+      "adaptivePolicy": "success"
+    },
+    "pendingIssues": [
+      1293,
+      1296,
+      1298
+    ],
+    "closedIssues": [
+      1291,
+      1295,
+      1297
+    ]
+  },
+  "desktopPublicationFollowthrough": {
+    "continuation": 674,
+    "sourceParent": "ee48e702",
+    "sourceSha256": {
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "ccc4263e767f3e06166b7e0a13464988247419a8aad6f58fdc8cc820e7584484",
+      "js/app/procgen/workstation/CausalNativeMidiSink.js": "1a498b68d921a4c795cfe0d5986b03b764cdfffaf2beed12274943f4663cee6e",
+      "js/midi/content/MidiLocalInstrumentMigration.js": "853a0d6cbe06dc650d442009b88f99dc88f750e27ff419f60f85c902951d4b1d",
+      "playwright.lifecycle.config.js": "dbc2e2c8938ab0b2dd175d61e6175351473434ecc1d76dd88fb56bfd38edb37b",
+      "e2e-portable/audio-clock.spec.js": "8323293f865d79cb8e284e0523525580c6a5cbcfb36e2e07047336401609f0fa",
+      "e2e-portable/pcm-capabilities.spec.js": "9da4fc3a042dd977f472fc7421ceb06de34a75c56e17a349626ec611b4788ccd",
+      "e2e/procgen-workstation-transport.spec.js": "ff3aa554efa6e899c5eba059573fccd49d12ef5f3ea222d12f6c2a859068968f",
+      "e2e/sound-content-workstation.spec.js": "ec248f5cd3135d143a544bc3217eb29b51dec58f4436448723799f755a8fd4bd",
+      "scripts/run-lifecycle-engines.js": "3a316988f756992833aea3a2d844c1aab485f834eae07090d753b2607f61b544"
+    },
+    "node": {
+      "suites": 1,
+      "tests": 140,
+      "passes": 140,
+      "pending": 0,
+      "failures": 0,
+      "start": "2026-11-07T21:16:52.340Z",
+      "end": "2026-11-07T21:16:58.310Z",
+      "duration": 5970
+    },
+    "coverage": {
+      "scoped": true,
+      "checkCoverage": false,
+      "total": {
+        "lines": {
+          "total": 3432,
+          "covered": 2452,
+          "skipped": 0,
+          "pct": 71.44
+        },
+        "statements": {
+          "total": 3432,
+          "covered": 2452,
+          "skipped": 0,
+          "pct": 71.44
+        },
+        "functions": {
+          "total": 514,
+          "covered": 298,
+          "skipped": 0,
+          "pct": 57.97
+        },
+        "branches": {
+          "total": 2225,
+          "covered": 1411,
+          "skipped": 0,
+          "pct": 63.41
+        },
+        "branchesTrue": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": "Unknown"
+        }
+      }
+    },
+    "browser": {
+      "buildId": "de01efb04366707d2197be553db61e24ae3c20c9c541ab8a4941138bb3512644",
+      "stats": {
+        "startTime": "2026-11-07T21:17:48.360Z",
+        "duration": 106349.005,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "confirmedPassing": [
+        "Complete finite-crew Compose/search/private selection/reviewed Apply/Undo",
+        "BFCache dirty unavailable-storage state and paused retry",
+        "Shipped drawbar worklet audition/Install/Apply/current control scopes",
+        "Artificial Choir worklet audition/Install/Apply/current control scopes"
+      ],
+      "remainingFailure": "Sustained fixture setup/legacy activity counters; corrected semantic/native-tail assertions pass in final one-case follow-up"
+    },
+    "portable": {
+      "selected": 8,
+      "status": "running"
+    },
+    "issues": [
+      1293,
+      1296,
+      1298
+    ],
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "passed:15components/2774files",
+      "allPRChangedLineWhitespace": "passed against origin/master including current working changes"
+    },
+    "ci": {
+      "previousHead": "ee48e702",
+      "run": 42413862261,
+      "provenance": "passed",
+      "changedLineWhitespace": "failed on two older lines; both corrected",
+      "nativeCodecs": "Windows and Ubuntu passed",
+      "dependencyReview": "passed",
+      "adaptivePolicy": "passed",
+      "nativeLifecycle": "pending further portable fixture follow-through"
+    },
+    "closedIssues": [
+      1293,
+      1296,
+      1298
+    ],
+    "pendingIssues": []
+  },
+  "desktopCampaignCompletion": {
+    "sourceCommit": "ab95be39",
+    "catalog": 547,
+    "distinctExecutedPassing": 540,
+    "explicitExtendedBenchmarkOrLegacySkipped": 7,
+    "completeFreshOneShot": false,
+    "finalFocusedSustainedCase": {
+      "startTime": "2026-11-07T21:27:28.626Z",
+      "duration": 38231.03,
+      "expected": 1,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "scope": "Combined source-bound complete/partial cohorts and failed-area follow-ups; no second full Node suite or one-shot current-build547-case run",
+    "finalSustainedSemantics": "Configure native pattern route before output activation; observe the real native voice owner; retain one semantic held voice across checkpoint/tempo change separately from retiring native tails; Panic joins all native cleanup.",
+    "finalSustainedFixtureSourceSha256": "4f9c57f6b16612aba2c6d5f15ccd5997c15ba98f99cf723b930944834dfe539b",
+    "finalSourceBuildId": "de01efb04366707d2197be553db61e24ae3c20c9c541ab8a4941138bb3512644",
+    "allAuditIssuesClosed": {
+      "count": 32,
+      "first": 1267,
+      "last": 1298
+    }
+  },
+  "ciSmokeCollectionFollowthrough": {
+    "previousHead": "ab95be39",
+    "run": 42415295557,
+    "mainBoundaryCasesPassed": 31,
+    "blockedBeforeWorkstationExecution": "Existing acoustic field publication regression lacks @boundary; add its smoke/typed-controls metadata",
+    "scope": "Preserve existing case assertions; no gate weakening or new synthetic passing case",
+    "resolution": {
+      "existingCaseTagged": "workstation-acoustic-field-state.spec.js:acoustic draft stays editable through publication, reload and repeated typed edits",
+      "fullWorkstation": 357,
+      "smoke": 324,
+      "files": 86,
+      "categories": 14,
+      "selection": "passed with all required files/capabilities represented"
+    }
+  },
+  "ciQualification675": {
+    "sourceCommit": "e84f8dcb1816349a73599ad96f85d993daf0abfb",
+    "run": 42416256466,
+    "mainJob": 128534888857,
+    "desktopBoundaries": {
+      "passed": 31
+    },
+    "workstationSmoke": {
+      "passed": 321,
+      "failed": 3,
+      "minutes": 49.5,
+      "failures": [
+        {
+          "file": "procgen-workstation-export-ownership.spec.js",
+          "cause": "Client module fetch aborted; startup remained Loading without recovery",
+          "issue": 1299
+        },
+        {
+          "file": "procgen-workstation-seed-rebuild.spec.js",
+          "cause": "Two independent valid capacity guards; fixture required only source-count refusal"
+        },
+        {
+          "file": "procgen-workstation-transport.spec.js",
+          "cause": "Queued phrase could be consumed by the initial clock boundary before capture"
+        }
+      ]
+    },
+    "lifecycle": {
+      "job": 128534888945,
+      "passed": 51,
+      "engines": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "measuredProfilesPerEngine": 3,
+      "qualification": "matching physics, causal and asset identities; qualified native clock receipts"
+    },
+    "nativeMidiCodec": {
+      "platforms": [
+        "ubuntu-latest",
+        "windows-latest"
+      ],
+      "commandsPerPlatform": 8829,
+      "boundedFailureCasesPerPlatform": 4
+    },
+    "overall": "failed; all three failures cleared by the grouped4/4 native follow-up"
+  },
+  "startupAndCiFollowthrough676": {
+    "baseCommit": "e84f8dcb1816349a73599ad96f85d993daf0abfb",
+    "issue": 1299,
+    "browser": {
+      "stats": {
+        "startTime": "2026-11-07T22:35:10.336Z",
+        "duration": 104401.34400000001,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceBuildId": "87de9ab9628627f93ebea6a2700ed146e602811200c5ae415b70b4ff127122e6",
+      "protocol": "Native Chromium on the same loopback HTTP boundary server as CI,1920x1080",
+      "startupReceipt": {
+        "interrupted": {
+          "url": "http://127.0.0.1:51541/dist/browser/87de9ab9628627f93ebea6a2700ed146e602811200c5ae415b70b4ff127122e6/procgen.html?e2e=1&seed=42&lanes=2#retained-startup",
+          "studio": false,
+          "phase": "failed",
+          "message": "The application files could not finish loading. Retry loading to reopen this session."
+        },
+        "restoredUrl": "http://127.0.0.1:51541/dist/browser/87de9ab9628627f93ebea6a2700ed146e602811200c5ae415b70b4ff127122e6/procgen.html?e2e=1&seed=42&lanes=2#retained-startup",
+        "scope": "Native Chromium page-request block after independent generation installation; explicit full-document retry preserves entry and consent."
+      },
+      "tests": [
+        "Permission/unsupported picker and actual anchor retry",
+        "Blocked module graph and explicit same-entry retry",
+        "Durable rebuild with exact bounded-capacity refusal",
+        "Held semantic voice and queued phrase restoration/Panic"
+      ]
+    },
+    "checks": {
+      "format": "passed",
+      "provenance": "15components/2774files passed",
+      "changedLineWhitespace": "passed"
+    },
+    "coverageScope": "HTML startup failure/retry executes under the actual immutable generation CSP; interrupted module and explicit navigation covered. Delayed late-load/BFCache branches are source-reviewed, not additional native timing qualifications.",
+    "newFullNodeRun": false,
+    "ci": "Pending automatic qualification after push"
+  },
+  "finalConsolidatedNode676": {
+    "sourceCommit": "4f69f26f62a9f459e10bf5ca5b8226337b90c00e",
+    "stats": {
+      "suites": 1053,
+      "tests": 8326,
+      "passes": 8320,
+      "pending": 0,
+      "failures": 6,
+      "start": "2026-11-07T22:39:51.039Z",
+      "end": "2026-11-07T23:05:36.401Z",
+      "duration": 1545362
+    },
+    "coverage": {
+      "lines": {
+        "total": 194775,
+        "covered": 169421,
+        "skipped": 0,
+        "pct": 86.98
+      },
+      "statements": {
+        "total": 194775,
+        "covered": 169421,
+        "skipped": 0,
+        "pct": 86.98
+      },
+      "functions": {
+        "total": 16067,
+        "covered": 13545,
+        "skipped": 0,
+        "pct": 84.3
+      },
+      "branches": {
+        "total": 112597,
+        "covered": 93869,
+        "skipped": 0,
+        "pct": 83.36
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "reportSha256": "192ff5651c8702cfac8d35af2e40a27bb85e851770b12ef81b86f132b18d5049",
+    "failureClass": "six timing failures under complete coverage; no assertion mismatches",
+    "failures": [
+      {
+        "title": "native character accessory layers keeps mixed-body identity stable and bounds independently colored accessory variants",
+        "file": "character-accessories.test.js",
+        "message": "Timeout of 2000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\character-accessories.test.js)"
+      },
+      {
+        "title": "scripts/check-undefined.js returns success when all calls are defined",
+        "file": "check-undefined.test.js",
+        "message": "Timeout of 2000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\check-undefined.test.js)"
+      },
+      {
+        "title": "authored assembly catalog mines every configured tile scope deterministically and retains the measured chameleon pair with supported authored variants",
+        "file": "procgen-authored-assemblies.test.js",
+        "message": "Timeout of 20000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\procgen-authored-assemblies.test.js)"
+      },
+      {
+        "title": "versioned scoped causal probability and namespace isolation records bounded negative why-not-play decisions independently from raw-source coverage",
+        "file": "procgen-causal-probability-policy.test.js",
+        "message": "Timeout of 2000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\procgen-causal-probability-policy.test.js)"
+      },
+      {
+        "title": "shared procgen lanes runs 1024 real actors with bounded sparse edits and no render dependency",
+        "file": "procgen-lanes.test.js",
+        "message": "spawnSync C:\\Users\\sneak\\AppData\\Local\\npm-cache\\_npx\\185e25162edaacfb\\node_modules\\node\\bin\\node.exe ETIMEDOUT"
+      },
+      {
+        "title": "semantic swarm reduction before backend capacity uses source group fairness rather than input order while preserving authored structural priority",
+        "file": "procgen-swarm-reducer.test.js",
+        "message": "Timeout of 2000ms exceeded. For async tests and hooks, ensure \"done()\" is called; if returning a Promise, ensure it resolves. (C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test\\procgen-swarm-reducer.test.js)"
+      }
+    ],
+    "followthrough": "Five functional workloads have explicit bounded fixture allowances. The1024-actor/3,000tick benchmark explicitly sets NODE_V8_COVERAGE to empty because Node re-inherits an omitted key. Original15s child process deadline retained,20s parent guard, plus explicit measured simulation below15s.",
+    "initialFocusedFollowup": {
+      "stats": {
+        "suites": 6,
+        "tests": 6,
+        "passes": 5,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-07T23:09:11.041Z",
+        "end": "2026-11-07T23:09:52.070Z",
+        "duration": 41029
+      },
+      "remaining": "1024-actor process deadline; five functional cases pass",
+      "classification": "Deleted coverage key was still automatically inherited by Node child_process; the remaining case was instrumented. Native CPU profile independently measured10,386.51ms simulation.",
+      "profile": {
+        "simulationMs": 10386.509999999998,
+        "importMs": 1042.8607,
+        "wallProfileMs": 11540.922,
+        "alive": 1024,
+        "terrainMemoryMB": 7.254341125488281
+      }
+    },
+    "coverageInheritanceProof": {
+      "deletedKeyChildCoverageEnabled": true,
+      "explicitEmptyKeyChildCoverageEnabled": false,
+      "productionCodeChanged": false,
+      "originalChildDeadlineMs": 15000,
+      "parentFixtureDeadlineMs": 20000
+    },
+    "secondFocusedFollowup": {
+      "stats": {
+        "suites": 6,
+        "tests": 6,
+        "passes": 5,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-07T23:13:43.105Z",
+        "end": "2026-11-07T23:14:33.542Z",
+        "duration": 50437
+      },
+      "remaining": "Same instrumented child; measured17,860.67ms is not an uninstrumented native sample"
+    },
+    "finalAffectedFollowup": {
+      "stats": {
+        "suites": 6,
+        "tests": 6,
+        "passes": 6,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-07T23:18:04.906Z",
+        "end": "2026-11-07T23:18:43.908Z",
+        "duration": 39002
+      },
+      "reportSha256": "71d10c60395a0226c9a47724b40ce86790e81cacf06838e09fb59062af3222b1",
+      "cases": [
+        {
+          "title": "native character accessory layers keeps mixed-body identity stable and bounds independently colored accessory variants",
+          "durationMs": 1654
+        },
+        {
+          "title": "scripts/check-undefined.js returns success when all calls are defined",
+          "durationMs": 1091
+        },
+        {
+          "title": "authored assembly catalog mines every configured tile scope deterministically and retains the measured chameleon pair with supported authored variants",
+          "durationMs": 21495
+        },
+        {
+          "title": "versioned scoped causal probability and namespace isolation records bounded negative why-not-play decisions independently from raw-source coverage",
+          "durationMs": 434
+        },
+        {
+          "title": "shared procgen lanes runs 1024 real actors with bounded sparse edits and no render dependency",
+          "durationMs": 11977
+        },
+        {
+          "title": "semantic swarm reduction before backend capacity uses source group fairness rather than input order while preserving authored structural priority",
+          "durationMs": 2333
+        }
+      ],
+      "allOriginalCasesCleared": 8326,
+      "completeFreshOneShot": false,
+      "productionCodeUnchangedSince": "4f69f26f",
+      "scope": "Original8320passes plus all6failed timing cases passing together after bounded fixture/child instrumentation corrections; unchanged production code and coverage thresholds."
+    }
+  },
+  "recordingOwnershipFollowthrough678": {
+    "baseCommit": "17c75e9a9dd331cff8287cc50a113217718c9d6a",
+    "issue": 1300,
+    "confirmedBaseline": {
+      "message": "Causal observer staging is already active.",
+      "stack": "Error: Causal observer staging is already active.\n    at admitStage (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/CausalObserverResources.js:46:41)\n    at Object.stage (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/CausalObserverResources.js:51:38)\n    at Object.snapshot (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/CausalMusicEngine.js:584:33)\n    at causalBoundary (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/ProcgenWorkstation.js:845:47)\n    at Object.stopCausalTake (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/ProcgenWorkstation.js:1067:58)\n    at Context.<anonymous> (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/test/procgen-workstation-controller.test.js:794:30)",
+      "scope": "Real controller, world, journal and cooperative observer; accepted graph publication invalidates cached snapshot before concurrent Stop"
+    },
+    "previousCi": {
+      "runtimeSource": "4f69f26f",
+      "mainRun": 42421525122,
+      "mainJob": 128550776044,
+      "desktopBoundaryPassed": 31,
+      "workstationPassed": 324,
+      "workstationFailed": 1,
+      "failure": "500ms host gap take finalization; UI reports active observer staging",
+      "nativeRun": 42424729856,
+      "nativeJob": 128560455483,
+      "nativePassed": 50,
+      "nativeFailed": 1,
+      "nativeFailure": "Probe-header reload reaches actual Retry loading UI before any native measurement"
+    },
+    "implementation": [
+      "Shared Stop operation acquired before every await",
+      "Background persistence cancellation/retirement joined before foreground take arm/final snapshots",
+      "Source runtime rechecked after quiescence",
+      "Explicit Pause fences arm resume; initial replay intent matches capture, and late Pause is recorded once",
+      "Single opt-in trusted same-entry Retry loading before native measurement, with receipt and isolation checks"
+    ],
+    "node": {
+      "stats": {
+        "suites": 1,
+        "tests": 143,
+        "passes": 143,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T00:01:31.733Z",
+        "end": "2026-11-08T00:01:39.227Z",
+        "duration": 7494
+      },
+      "reportSha256": "bb674cec0dbfe8b323c933b2873ac0f5f34d6594498bd88a0d76f9808c22a7d2",
+      "orchestrationCoverage": {
+        "lines": {
+          "total": 3454,
+          "covered": 2470,
+          "skipped": 0,
+          "pct": 71.51
+        },
+        "functions": {
+          "total": 518,
+          "covered": 301,
+          "skipped": 0,
+          "pct": 58.1
+        },
+        "statements": {
+          "total": 3454,
+          "covered": 2470,
+          "skipped": 0,
+          "pct": 71.51
+        },
+        "branches": {
+          "total": 2256,
+          "covered": 1444,
+          "skipped": 0,
+          "pct": 64
+        }
+      },
+      "newRegressions": [
+        "Recovery copy plus accepted graph edit and concurrent Stop",
+        "Recovery before arm, refused duplicate arm, explicit Pause before capture",
+        "Explicit Pause during pending initial durable checkpoint, with exactly one input observation"
+      ],
+      "scope": "143/143 complete controller file; no additional full local Node run"
+    },
+    "desktop": {
+      "stats": {
+        "startTime": "2026-11-07T23:54:08.071Z",
+        "duration": 67700.339,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceBuildId": "76f548fa70b444814152610a643548542d42c042e3a22f817f102b0b46db42a8",
+      "cases": [
+        "Explicit blocked-module startup retry through shared helper",
+        "Captured tempo/speed/Step and MIDI crops",
+        "500ms suspended host gap, complete source and MIDI clock export"
+      ]
+    },
+    "nativeClock": {
+      "stats": {
+        "startTime": "2026-11-07T23:59:50.211Z",
+        "duration": 35274.865999999995,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceBuildId": "b8198477dcc30c2c191ac41f1bc9f527f5a8afc1d223a1a4c40a028228866b41",
+      "case": "Chromium scheduled cancellation qualifies already rendered source frames",
+      "scope": "Actual native frame measurement; original bounds unchanged. Controlled Retry helper separately forced through the actual UI."
+    },
+    "checks": {
+      "format": "passed (full formatter plus scoped final edits)",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "15components/2774files passed",
+      "changedLineWhitespace": "passed"
+    },
+    "ci": "Pending after publication"
+  },
+  "recordingCutAdmissionFollowthrough679": {
+    "baseCommit": "2acc206e47256f3ca965ce04fa9abfab43fe14db",
+    "issue": 1300,
+    "baseline": {
+      "stats": {
+        "suites": 1,
+        "tests": 1,
+        "passes": 0,
+        "pending": 0,
+        "failures": 1,
+        "start": "2026-11-08T00:15:51.497Z",
+        "end": "2026-11-08T00:15:51.956Z",
+        "duration": 459
+      },
+      "error": "expected [ false, true ] to deeply equal [ true, false ]",
+      "scope": "Accepted Pause during recovery-quiescing Stop was omitted from actual journal"
+    },
+    "repair": "Pending Stop operation is distinct from recorder.captureStopped. Continue accepted transport input admission before the actual cut; exclude it afterward. Status is read only while Stop is pending.",
+    "qualification": {
+      "stats": {
+        "suites": 1,
+        "tests": 143,
+        "passes": 143,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T00:17:26.227Z",
+        "end": "2026-11-08T00:17:33.862Z",
+        "duration": 7635
+      },
+      "reportSha256": "8368f58839cbf4a5fbdc40491d81a297fb4fa0b5163d29fa39b1b1e930c9ed19",
+      "scope": "Complete143-case controller cohort; existing recovery/concurrent-Stop regression also verifies accepted Play/Pause edges while quiescing"
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "whitespace": "passed"
+    },
+    "newFullLocalSuite": false
+  },
+  "recordingCancellationFollowthrough680": {
+    "baseCommit": "bd4c6df3814836ab6b793ad3d38aa0249ff78d82",
+    "issue": 1300,
+    "repair": "Preserve synchronous owned-arm cancellation for every non-user Stop before returning an existing shared finalization operation. Shared Stop ownership remains established before awaits.",
+    "sourceSha256": "8c50dd5f328e5c1007770da7e6598439cb22425ecc8aa449025e344e570224f8",
+    "qualification": {
+      "stats": {
+        "suites": 1,
+        "tests": 143,
+        "passes": 143,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T00:27:49.810Z",
+        "end": "2026-11-08T00:27:57.005Z",
+        "duration": 7195
+      },
+      "reportSha256": "15cac471d0f040af0b1d204eae25d84474fb69272c660e3902954ca084cb2548",
+      "scope": "Complete143-case controller cohort after the cancellation-preservation change"
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed"
+    },
+    "newFullLocalSuite": false
+  },
+  "qualificationAdmissionFollowthrough681": {
+    "baseCommit": "a4cd3901658260b25258643fa350cce9a97fad4f",
+    "issue": 1275,
+    "productionChanged": false,
+    "ciBaseline": {
+      "run": 42428190721,
+      "job": 128570953713,
+      "source": "2acc206e47256f3ca965ce04fa9abfab43fe14db",
+      "node": {
+        "passes": 8318,
+        "pending": 10,
+        "failures": 1
+      },
+      "failure": "100setImmediate turns exhausted before two asynchronous hash validations reached getAssets; expected calls1, observed0",
+      "desktop": "31boundaries and325workstation smoke passed",
+      "coverage": {
+        "lines": 86.91,
+        "branches": 83.35,
+        "functions": 84.08
+      }
+    },
+    "repair": "Await explicit asset-admission handshake or early render settlement instead of an event-loop-turn count. Finally release the held asset gate, join the first render and dispose its owner on assertion failure. Preserve original exclusivity, reservations and retry assertions.",
+    "qualification": {
+      "stats": {
+        "suites": 1,
+        "tests": 4,
+        "passes": 4,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T01:21:10.181Z",
+        "end": "2026-11-08T01:21:10.992Z",
+        "duration": 811
+      },
+      "reportSha256": "b40dadf6edac75e676b41658d14fd316c8f10963c5edcdf5a27bfcd596fdc61f"
+    },
+    "checks": {
+      "format": "passed"
+    },
+    "newFullLocalSuite": false
+  },
+  "nativeTerminalReasonFollowthrough682": {
+    "baseCommit": "f327ff06607438242684c69dfbdc1b0f49c8944c",
+    "implementationCommit": "dfc8cea39796ddfffb46d61ff79978afa5301ea9",
+    "issue": 1301,
+    "baseline": {
+      "run": 42430089195,
+      "job": 128576840236,
+      "desktop": {
+        "boundariesPassed": 31,
+        "smokePassed": 324,
+        "smokeFailed": 1
+      },
+      "confirmed": "Valid END→ENDED/reason1was decoded as invalid-command; panic ENDED/reason2was decoded inconsistently as queue-full/panic",
+      "independentDeadlineObservation": {
+        "targetFrame": 385274,
+        "appliedFrame": 385280,
+        "lateSamples": 6,
+        "result": "correct original-frame refusal; scheduling/PCM assertions remain unchanged"
+      }
+    },
+    "implementation": "Decode terminal reason by receipt status once; reuse for destruction, lease/refusal handling and emitted outcomes. Preserve rejection reason namespaces, kernel ABI and execution, deadlines and PCM thresholds.",
+    "node": {
+      "stats": {
+        "suites": 5,
+        "tests": 49,
+        "passes": 49,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T01:35:41.216Z",
+        "end": "2026-11-08T01:35:44.204Z",
+        "duration": 2988
+      },
+      "reportSha256": "8274f8869e726bde685133285d0202cfc3046f98c86fbcfc7c62eb2afefa900b",
+      "backendCoverage": {
+        "lines": {
+          "total": 995,
+          "covered": 806,
+          "skipped": 0,
+          "pct": 81
+        },
+        "functions": {
+          "total": 139,
+          "covered": 92,
+          "skipped": 0,
+          "pct": 66.18
+        },
+        "statements": {
+          "total": 995,
+          "covered": 806,
+          "skipped": 0,
+          "pct": 81
+        },
+        "branches": {
+          "total": 853,
+          "covered": 597,
+          "skipped": 0,
+          "pct": 69.98
+        }
+      },
+      "scope": "49actual host/kernel, sample-owner and qualification-owner cases; one new regression covers ordinary release, panic and genuine malformed-command refusal with zero retained reservations"
+    },
+    "desktop": {
+      "stats": {
+        "startTime": "2026-11-08T01:33:11.555Z",
+        "duration": 123382.966,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "reportSha256": "63341a333f85c3631098823c34553dc11a9e610890e2391bf93843c048b7f4f1",
+      "recipes": [
+        {
+          "recipe": "Clay chamber",
+          "phases": [
+            {
+              "ticks": [
+                0,
+                120
+              ],
+              "pcmPeak": 0.000014543533325195312,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 2,
+                "applied": 2,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 1,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                158,
+                318
+              ],
+              "pcmPeak": 0.000014781951904296875,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 4,
+                "applied": 4,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 2,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                350,
+                510
+              ],
+              "pcmPeak": 0.000014543533325195312,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 6,
+                "applied": 6,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 3,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            }
+          ]
+        },
+        {
+          "recipe": "Throat duet",
+          "phases": [
+            {
+              "ticks": [
+                0,
+                120
+              ],
+              "pcmPeak": 0.000010371208190917969,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 2,
+                "applied": 2,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 1,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                164,
+                324
+              ],
+              "pcmPeak": 0.000010371208190917969,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 4,
+                "applied": 4,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 2,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                384,
+                544
+              ],
+              "pcmPeak": 0.000010371208190917969,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 6,
+                "applied": 6,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 3,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            }
+          ]
+        },
+        {
+          "recipe": "Crumbled chimes",
+          "phases": [
+            {
+              "ticks": [
+                0,
+                120
+              ],
+              "pcmPeak": 0.000011801719665527344,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 2,
+                "applied": 2,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 1,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                153,
+                313
+              ],
+              "pcmPeak": 0.000014185905456542969,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 4,
+                "applied": 4,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 2,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            },
+            {
+              "ticks": [
+                344,
+                504
+              ],
+              "pcmPeak": 0.000011801719665527344,
+              "wallContacts": 1,
+              "sourceCounters": {
+                "queued": 6,
+                "applied": 6,
+                "late": 0,
+                "rejected": 0,
+                "faults": 0,
+                "ended": 3,
+                "producerCancelled": 0,
+                "kernelCancelled": 0,
+                "stopRequests": 0,
+                "stopQueued": 0
+              },
+              "terminalReasons": [
+                "release-complete"
+              ]
+            }
+          ]
+        }
+      ],
+      "scope": "All3fresh-actor cavity journeys;9live phases, complete journals and original source-bound WAV assertions, no retries or weaker timing/PCM criteria"
+    },
+    "checks": {
+      "format": "passed",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "15components/2774files passed",
+      "whitespace": "passed"
+    },
+    "sourceSha256": "756802059af0840fa43a0cd9aa88bef9d08af6f60c6c96da91b8e59094f2ceca",
+    "newFullLocalSuite": false
+  }
+}

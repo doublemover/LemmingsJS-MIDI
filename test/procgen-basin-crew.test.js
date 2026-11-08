@@ -24,7 +24,7 @@ const makeScene = async (masks, count = 8, { scout = false, lanes = 1 } = {}) =>
     if (scout && index === 6) world.setPopulationPolicy({ scoutsEvery: 0 });
     const actor = world._spawn(0); actors.push(actor);
   }
-  const owner = actors[scout ? 5 : 0];
+  const owner = actors[scout ? 2 : 0];
   for (const actor of actors) {
     actor.x = actor === owner ? 1939 : actor === actors[scout ? 0 : 1] ? scout ? 1929 : 1931 : 1923;
     actor.y = 124; actor.furthestX = actor.x; actor.setAction(world.actions[State.WALKING]); world.lanePolicy.projects.observe(actor);
@@ -52,7 +52,7 @@ describe('actual source open-bank staged ordinary crew route', function() {
     const run = async () => {
       const scene = await makeScene(masks, count, { scout: true }), { world, owner, actors, events, basin } = scene;
       try {
-        expect(owner).to.include({ scout: true, scoutAbilities: 1, spawnOrdinal: 5, canClimb: false, hasParachute: false });
+        expect(owner).to.include({ scout: true, scoutAbilities: 2, spawnOrdinal: 2, canClimb: false, hasParachute: false });
         expect(actors.filter(actor => !actor.scout)).to.have.length(count);
         let previous = owner.action, shrugs = 0, endpoints = 0;
         while (!events.length && world.tickIndex < 1200) {

@@ -77,6 +77,8 @@ class Game extends BaseLogger {
     this.showDebug      = false;
 
     this._boundTick = this.onGameTimerTick.bind(this);
+    this._loadEpoch = 0;
+    this._stopped = false;
   }
 
   setGameDisplay (display) {
@@ -117,11 +119,14 @@ class Game extends BaseLogger {
     this.history         = null;
     this.timeTravel      = null;
     this.runtime         = null;
+    this.level           = null;
 
     this.finalGameState  = GameStateTypes.UNKNOWN;
   }
 
   async loadLevel (levelGroupIndex, levelIndex) {
+    if (this._stopped) return null;
+    const epoch = ++this._loadEpoch;
     const endMeasure = this.startMeasure('Game loadLevel', {
       track: 'Game',
       trackGroup: 'Game State',
@@ -130,7 +135,8 @@ class Game extends BaseLogger {
     });
     try {
       const level = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
-      await this._initLevel(level, { levelGroupIndex, levelIndex });
+      if (this._stopped || epoch !== this._loadEpoch) return null;
+      if (!await this._initLevel(level, { levelGroupIndex, levelIndex }, epoch)) return null;
       return this;
     } finally {
       endMeasure();
@@ -138,96 +144,106 @@ class Game extends BaseLogger {
   }
 
   async loadCustomLevel(level, options = {}) {
-    if (!level) return null;
-    await this._initLevel(level, options);
+    if (!level || this._stopped) return null;
+    if (!await this._initLevel(level, options, ++this._loadEpoch)) return null;
     return this;
   }
 
-  async _initLevel(level, options = {}) {
-    this._disposeCurrentLevel();
+  async _initLevel(level, options = {}, epoch = ++this._loadEpoch) {
+    if (this._stopped || epoch !== this._loadEpoch) return false;
+    try {
+      this._disposeCurrentLevel();
 
-    // Record indices for HUD etc.
-    this.levelGroupIndex = Number.isFinite(options.levelGroupIndex)
-      ? options.levelGroupIndex
-      : 0;
-    this.levelIndex = Number.isFinite(options.levelIndex)
-      ? options.levelIndex
-      : 0;
-    this.level = level;
+      // Record indices for HUD etc.
+      this.levelGroupIndex = Number.isFinite(options.levelGroupIndex)
+        ? options.levelGroupIndex
+        : 0;
+      this.levelIndex = Number.isFinite(options.levelIndex)
+        ? options.levelIndex
+        : 0;
+      this.level = level;
 
-    const Timer = getDependency('GameTimer', GameTimer);
-    this.gameTimer = new Timer(level);
-    this.gameTimer.onGameTick.on(this._boundTick);
-    const History = getDependency('HistoryStore', HistoryStore);
-    this.history = new History();
-    this.history.attach(this, { captureBaseline: false });
-    const SoundBus = getDependency('SoundEventBus', SoundEventBus);
-    this.soundEvents = new SoundBus(this.gameTimer);
-    this.soundEvents.setHistoryStore?.(this.history);
-    const TimeTravel = getDependency('TimeTravelController', TimeTravelController);
-    this.timeTravel = new TimeTravel(this, this.history);
-    this.gameTimer?.setTimeTravelController?.(this.timeTravel);
-    this.runtime = createGameRuntime(this, getApp());
-    level.setRuntime?.(this.runtime);
+      const Timer = getDependency('GameTimer', GameTimer);
+      this.gameTimer = new Timer(level);
+      this.gameTimer.onGameTick.on(this._boundTick);
+      const History = getDependency('HistoryStore', HistoryStore);
+      this.history = new History();
+      this.history.attach(this, { captureBaseline: false });
+      const SoundBus = getDependency('SoundEventBus', SoundEventBus);
+      this.soundEvents = new SoundBus(this.gameTimer);
+      this.soundEvents.setHistoryStore?.(this.history);
+      const TimeTravel = getDependency('TimeTravelController', TimeTravelController);
+      this.timeTravel = new TimeTravel(this, this.history);
+      this.gameTimer?.setTimeTravelController?.(this.timeTravel);
+      this.runtime = createGameRuntime(this, getApp());
+      level.setRuntime?.(this.runtime);
 
-    const CommandMgr = getDependency('CommandManager', CommandManager);
-    const Skills = getDependency('GameSkills', GameSkills);
-    const Victory = getDependency('GameVictoryCondition', GameVictoryCondition);
-    const Triggers = getDependency('TriggerManager', TriggerManager);
-    this.commandManager       = new CommandMgr(this, this.gameTimer);
-    this.skills               = new Skills(level);
-    this.gameVictoryCondition = new Victory(level);
-    this.triggerManager       = new Triggers(this.gameTimer, level.width, level.height, 16, this.runtime);
-    this.triggerManager.addRange(level.triggers);
+      const CommandMgr = getDependency('CommandManager', CommandManager);
+      const Skills = getDependency('GameSkills', GameSkills);
+      const Victory = getDependency('GameVictoryCondition', GameVictoryCondition);
+      const Triggers = getDependency('TriggerManager', TriggerManager);
+      this.commandManager       = new CommandMgr(this, this.gameTimer);
+      this.skills               = new Skills(level);
+      this.gameVictoryCondition = new Victory(level);
+      this.triggerManager       = new Triggers(this.gameTimer, level.width, level.height, 16, this.runtime);
+      this.triggerManager.addRange(level.triggers);
 
-    const [masks, lemSprite] = await Promise.all([
-      this.gameResources.getMasks(),
-      this.gameResources.getLemmingsSprite(level.colorPalette),
-    ]);
+      const [masks, lemSprite] = await Promise.all([
+        this.gameResources.getMasks(),
+        this.gameResources.getLemmingsSprite(level.colorPalette),
+      ]);
 
-    const Particle = getDependency('ParticleTable', ParticleTable);
-    const LemmingMgr = getDependency('LemmingManager', LemmingManager);
-    const particleTable  = new Particle(level.colorPalette);
-    this.lemmingManager  = new LemmingMgr(
-      level,
-      lemSprite,
-      this.triggerManager,
-      this.gameVictoryCondition,
-      masks,
-      particleTable,
-      this.runtime
-    );
+      if (this._stopped || epoch !== this._loadEpoch) return false;
+      const Particle = getDependency('ParticleTable', ParticleTable);
+      const LemmingMgr = getDependency('LemmingManager', LemmingManager);
+      const particleTable  = new Particle(level.colorPalette);
+      this.lemmingManager  = new LemmingMgr(
+        level,
+        lemSprite,
+        this.triggerManager,
+        this.gameVictoryCondition,
+        masks,
+        particleTable,
+        this.runtime
+      );
 
-    const skillPanelSprites = await this.gameResources.getSkillPanelSprite(level.colorPalette);
-    const Gui = getDependency('GameGui', GameGui);
-    this.gameGui = new Gui(
-      this,
-      skillPanelSprites,
-      this.skills,
-      this.gameTimer,
-      this.gameVictoryCondition,
-    );
+      const skillPanelSprites = await this.gameResources.getSkillPanelSprite(level.colorPalette);
+      if (this._stopped || epoch !== this._loadEpoch) return false;
+      const Gui = getDependency('GameGui', GameGui);
+      this.gameGui = new Gui(
+        this,
+        skillPanelSprites,
+        this.skills,
+        this.gameTimer,
+        this.gameVictoryCondition,
+      );
 
-    const ObjManager = getDependency('ObjectManager', ObjectManager);
-    this.objectManager = new ObjManager(this.gameTimer);
-    this.objectManager.addRange(level.objects);
+      const ObjManager = getDependency('ObjectManager', ObjectManager);
+      this.objectManager = new ObjManager(this.gameTimer);
+      this.objectManager.addRange(level.objects);
 
-    const Display = getDependency('GameDisplay', GameDisplay);
-    this.gameDisplay = new Display(
-      this,
-      level,
-      this.lemmingManager,
-      this.objectManager,
-      this.triggerManager,
-    );
-    if (this.display) this.gameDisplay.setGuiDisplay(this.display);
-    if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
+      const Display = getDependency('GameDisplay', GameDisplay);
+      this.gameDisplay = new Display(
+        this,
+        level,
+        this.lemmingManager,
+        this.objectManager,
+        this.triggerManager,
+      );
+      if (this.display) this.gameDisplay.setGuiDisplay(this.display);
+      if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
-    this.musicObservations.bind(this);
-    this.history?.start?.();
+      this.musicObservations.bind(this);
+      this.history?.start?.();
+      return true;
+    } catch (error) {
+      if (!this._stopped && epoch === this._loadEpoch) this._disposeCurrentLevel();
+      throw error;
+    }
   }
 
   start () {
+    if (this._stopped || !this.lemmingManager || !this.gameGui) return;
     this.musicObservations.bind(this);
     if (this.soundEvents) {
       this.soundEvents.emitSfx(
@@ -244,6 +260,8 @@ class Game extends BaseLogger {
   }
 
   stop () {
+    this._stopped = true;
+    this._loadEpoch++;
     this._disposeCurrentLevel();
     this.onGameEnd?.dispose();
     this.onGameEnd = null;

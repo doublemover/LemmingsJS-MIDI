@@ -124,3 +124,29 @@ Focused unit coverage lives in:
 Playwright coverage for the visible workspace lives in `e2e/midi-ui.spec.js`.
 Disposable visual captures use `npm run capture:e2e:midi` and write under
 `temp/e2e-captures/`.
+
+## Parked UMP codec foundation (2026-10-25)
+
+The separate `protocol/UmpPacketCodec.js` boundary frames all sixteen message-type
+widths, distinguishes MIDI1-in-UMP from MIDI2, and retains typed unsigned/relative
+values and source-resolution receipts. Utility and Stream have no invented group.
+Wire bytes are explicitly big-endian; JavaScript host words are unsigned numeric
+values, not platform-endian byte casts. Unknown packets are diagnostic-only.
+A malformed complete batch throws rather than becoming an empty successful send.
+
+`UmpStreamDecoder` retains at most fifteen split-frame bytes, caps each input and
+unknown diagnostics, and requires explicit reset after malformed/truncated input.
+`UmpPayloadCollector` validates packet words again, bounds streams/bytes/packets and
+expiry, and reassembles SysEx7/8 and text independently by their routing identity.
+These modules are not connected to a production hardware endpoint yet.
+
+This edit was parked at the user's request. Full typed Flex/Stream semantics,
+complete normative reserved-field/errata review, the selected native dependency
+wrapper and executable cross-library/fuzz qualification remain development. The
+literal regression vectors derive from inspected ni-midi2 commit
+`26e008c10b18e2397d7b65e184b71da3327e78d1` and cmidi2 commit
+`49d4fb19a8e79b287e472b0a6d3a0e083fe77c53`; they are not claimed to be executed
+independent parity evidence. The official core collection lists UMP v1.1.2 and
+its change history lists MIDI-CI v1.2.1; inaccessible normative documents have not
+been inferred from dependency README labels. No hardware/MIDI2 qualification is
+claimed. All newly authored fixtures remain unrun.

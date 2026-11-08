@@ -107,7 +107,7 @@ describe('screen-bounded procedural decoration layer', () => {
       const oldDraws = artworkDraws(layer), oldBitmap = oldDraws[0]?.args[0], oldColor = layer.context.fills[0]?.color, reads = renderer.frontierReads();
       layer.pack = { ...pack, pieces: pack.pieces.map(piece => ({ ...piece, image: { ...piece.image, palette: { getColor: () => 0xff00ff00 } } })) };
       layer.draw(renderer);
-      expect(layer.context.clears).to.equal(2); expect(layer.maskContext.uploads).to.have.length(1);
+      expect(layer.context.clears).to.equal(2); expect(layer.maskContext.uploads).to.have.length(2);
       expect(renderer.frontierReads()).to.be.greaterThan(reads);
       if (step === 1) {
         const bitmap = artworkDraws(layer)[oldDraws.length].args[0];

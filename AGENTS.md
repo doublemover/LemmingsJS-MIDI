@@ -18,6 +18,7 @@ support. These notes are written for Codex-5.2 and Devstral 2 style agents.
 - `npm run depcheck` reports unused dependencies.
 
 ## Codebase constraints
+- The product targets desktop at a minimum of 1920x1080. Do not add phone/tablet layouts, mobile device emulation, orientation cases, or browser viewport tests below that minimum.
 - The `js/` directory runs in the browser; avoid Node-only modules there.
 - External libraries live in `js/vendor/`; do not modify or reformat them.
 - Keep code comments rare and focused when logic is non-obvious.

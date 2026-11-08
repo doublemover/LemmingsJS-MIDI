@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import { createProcgenTransport } from '../js/app/procgen/workstation/ProcgenTransport.js';
 import { createProcgenTimingDriver } from '../js/app/procgen/workstation/ProcgenTimingDriver.js';
+import { runInNewContext } from 'node:vm';
+import { readFileSync } from 'node:fs';
 
 function fixture(options = {}) {
   let time = 0, callback = null;
@@ -14,6 +16,20 @@ function fixture(options = {}) {
 }
 
 describe('ProcGen workstation independent transport', () => {
+  it('retains a nominal step rate while pause or external-clock waiting keeps effective speed zero', () => {
+    const f = fixture({ linked: true, speedMode: 'bpm', bpm: 180 });
+    expect(f.transport.getState()).to.include({ nominalSpeed: 1.5, effectiveSpeed: 0 }); f.transport.play();
+    expect(f.transport.getState()).to.include({ nominalSpeed: 1.5, effectiveSpeed: 1.5 }); f.transport.pause();
+    expect(f.transport.getState()).to.include({ nominalSpeed: 1.5, effectiveSpeed: 0 }); f.transport.configure({ clockSource: 'external' }); f.transport.play();
+    expect(f.transport.getState()).to.include({ nominalSpeed: 1.5, effectiveSpeed: 0 }); f.transport.dispose();
+  });
+  it('retires the timing driver after a flushing callback fails', () => {
+    const f = fixture({ onFlush() { throw new Error('flush refused'); } });
+    const receipt = f.transport.dispose();
+    expect(f.driver.disposed).to.equal(true);
+    expect(f.transport.dispose()).to.equal(receipt);
+    expect(receipt.resources.find(resource => resource.name === 'transport-halt')).to.include({ status: 'failed', error: 'flush refused' });
+  });
   it('timestamps a phase-stable 24 PPQN clock separately from physical game speed', () => {
     const f = fixture(); f.transport.play(); f.advance(500);
     const clocks = f.output.messages.filter(event => event.data[0] === 0xf8);
@@ -70,8 +86,17 @@ describe('ProcGen workstation independent transport', () => {
     f.wake(2000);
     expect(f.beats).to.have.length(count);
     expect(f.transport.getState()).to.include({ playing: false, clockStatus: 'suspended' });
+    expect(f.transport.getState().lastDiscontinuity).to.include({ source: 'host-wake-gap', timeDomain: 'performance-ms', gapMs: 2000, limitMs: 250 });
+    expect(Object.isFrozen(f.transport.getState().lastDiscontinuity)).to.equal(true);
     f.wake(2010); expect(f.beats).to.have.length(count);
-    f.transport.play(); expect(f.transport.getState().playing).to.equal(true); f.transport.dispose();
+    f.transport.play(); expect(f.transport.getState()).to.include({ playing: true, lastDiscontinuity: null }); f.transport.dispose();
+  });
+  it('distinguishes a failed timing driver from an external message delivered beyond the wake limit', () => {
+    const local = fixture(); local.transport.play(); const count = local.beats.length;
+    local.transport.pump({ suspended: true, reason: 'worker-runtime-failure' });
+    expect(local.transport.getState().lastDiscontinuity).to.include({ source: 'timing-driver-suspended', driverReason: 'worker-runtime-failure', gapMs: 0 }); expect(local.beats).to.have.length(count); local.transport.dispose();
+    const external = fixture({ clockSource: 'external' }); external.transport.play(); external.time(300);
+    expect(external.transport.receiveMidi([0xf8], 0)).to.equal(false); expect(external.transport.getState().lastDiscontinuity).to.include({ source: 'external-message-delay', gapMs: 300, messageDelayMs: 300, limitMs: 250 }); expect(external.beats).to.have.length(0); external.transport.dispose();
   });
 
   it('external clock locks tempo, consumes SPP, estimates jitter, and never echoes clock or transport', () => {
@@ -162,6 +187,7 @@ describe('ProcGen workstation independent transport', () => {
     expect(f.beats).to.have.length(30);
     f.time(831); f.transport.receiveMidi([0xf8], 831);
     expect(f.transport.getState()).to.include({ playing: false, clockStatus: 'suspended' });
+    expect(f.transport.getState().lastDiscontinuity).to.include({ source: 'host-wake-gap', gapMs: 251, messageDelayMs: 0, limitMs: 250 });
     expect(f.beats).to.have.length(30); f.transport.dispose();
   });
 
@@ -176,14 +202,34 @@ describe('ProcGen workstation independent transport', () => {
 });
 
 describe('ProcGen background timing driver', () => {
-  it('uses a Worker, detects worker failure, and revokes its Blob URL', () => {
-    const created = [], revoked = [], signals = [];
-    class FakeWorker { constructor(url) { this.url = url; created.push(this); } postMessage(value) { this.interval = value; } terminate() { this.terminated = true; } }
-    const host = { Worker: FakeWorker, Blob: class {}, URL: { createObjectURL: () => 'blob:clock', revokeObjectURL: value => revoked.push(value) } };
+  it('uses its pinned module worker, acknowledges a single wake, and contains runtime failure (#1285)', () => {
+    const created = [], signals = [];
+    class FakeWorker { constructor(url, options) { this.url = url; this.options = options; this.messages = []; created.push(this); } postMessage(value) { this.messages.push(value); } terminate() { this.terminated = true; } }
+    const host = { Worker: FakeWorker, performance: { now: () => 30 },
+      Blob: class { constructor() { throw new Error('Dynamic worker source is forbidden.'); } },
+      URL: { createObjectURL() { throw new Error('Blob workers are forbidden.'); }, revokeObjectURL() { throw new Error('No dynamic URL is owned.'); } } };
     const driver = createProcgenTimingDriver({ host }); driver.start(value => signals.push(value));
-    created[0].onmessage(); created[0].onerror();
-    expect(created[0].interval).to.equal(10); expect(created[0].terminated).to.equal(true);
-    expect(signals).to.deep.equal([undefined, { suspended: true }]); expect(revoked).to.deep.equal(['blob:clock']);
+    expect(created[0].url.href).to.equal(new URL('../js/app/procgen/workstation/ProcgenTimingWorker.js', import.meta.url).href);
+    expect(created[0].options).to.deep.equal({ type: 'module', name: 'procgen-clock' });
+    const start = created[0].messages[0];
+    created[0].onmessage({ data: { epoch: start.epoch, sequence: 1, sourceTimeMs: 0 } });
+    created[0].onmessage({ data: { epoch: start.epoch, sequence: 1, sourceTimeMs: 0 } });
+    expect(start).to.include({ kind: 'start', intervalMs: 10 });
+    expect(created[0].messages[1]).to.deep.equal({ kind: 'ack', epoch: start.epoch, sequence: 1 });
+    expect(driver.diagnostics()).to.include({ mode: 'worker', wakes: 1, lateWakes: 1 });
+    created[0].onerror();
+    expect(created[0].terminated).to.equal(true);
+    expect(signals).to.deep.equal([{ epoch: start.epoch, sequence: 1, sourceTimeMs: 0 },
+      { suspended: true, reason: 'worker-runtime-failure', epoch: start.epoch }]);
+
+  });
+
+  it('falls back after module-worker construction refusal and retires its interval', () => {
+    let wake; const cleared = [], values = [];
+    const host = { Worker: class { constructor() { throw new Error('Worker unavailable'); } }, setInterval(callback) { wake = callback; return 9; }, clearInterval(id) { cleared.push(id); } };
+    const driver = createProcgenTimingDriver({ host }); driver.start(value => values.push(value)); wake();
+    expect(values).to.have.length(1); expect(driver.diagnostics()).to.include({ mode: 'fallback-timer', lastError: 'worker-construction-failure' });
+    driver.stop(); expect(cleared).to.deep.equal([9]);
   });
 
   it('falls back to interval wakeups and clears them on stop', () => {
@@ -191,5 +237,46 @@ describe('ProcGen background timing driver', () => {
     const driver = createProcgenTimingDriver({ host: { setInterval(fn) { wake = fn; return 7; }, clearInterval(id) { cleared.push(id); } } });
     let calls = 0; driver.start(() => calls++); wake(); driver.stop();
     expect(calls).to.equal(1); expect(cleared).to.deep.equal([7]);
+  });
+  it('rejects retired worker messages and errors after rapid restart', () => {
+    const workers = [], signals = [];
+    class FakeWorker { constructor() { workers.push(this); this.messages = []; } postMessage(value) { this.messages.push(value); } terminate() { this.terminated = true; } }
+    const host = { Worker: FakeWorker, performance: { now: () => 200 } };
+    const driver = createProcgenTimingDriver({ host });
+    driver.start(value => signals.push(['old', value]));
+    const oldEpoch = workers[0].messages[0].epoch;
+    driver.start(value => signals.push(['new', value]));
+    const newEpoch = workers[1].messages[0].epoch;
+    workers[0].onmessage({ data: { epoch: oldEpoch, sequence: 1, sourceTimeMs: 100 } });
+    workers[0].onerror();
+    workers[1].onmessage({ data: { epoch: newEpoch, sequence: 1, sourceTimeMs: 190 } });
+    expect(signals).to.deep.equal([['new', { epoch: newEpoch, sequence: 1, sourceTimeMs: 190 }]]);
+    expect(driver.diagnostics()).to.include({ mode: 'worker', wakes: 1 });
+    driver.stop(); workers[1].onmessage({ data: { epoch: newEpoch, sequence: 2, sourceTimeMs: 200 } });
+    expect(signals).to.have.length(1);
+  });
+  it('keeps only one unacknowledged wake during a long main-thread stall', () => {
+    let workerTick, worker;
+    const queued = [], delivered = [], workerSource = readFileSync(new URL('../js/app/procgen/workstation/ProcgenTimingWorker.js', import.meta.url), 'utf8');
+    class FakeWorker {
+      constructor() {
+        worker = this;
+        const workerHost = { performance: { now: () => 100 }, postMessage: value => queued.push(value),
+          setInterval: callback => { workerTick = callback; return 1; }, clearInterval() {} };
+        runInNewContext(workerSource, workerHost);
+        this.workerHost = workerHost;
+      }
+      postMessage(value) { this.workerHost.onmessage({ data: value }); }
+      terminate() {}
+    }
+    const host = { Worker: FakeWorker, performance: { now: () => 150 } };
+    const driver = createProcgenTimingDriver({ host }); driver.start(value => delivered.push(value.sequence));
+    for (let i = 0; i < 100; i++) workerTick();
+    expect(queued).to.have.length(1);
+    worker.onmessage({ data: queued.shift() });
+    workerTick(); expect(queued).to.have.length(1);
+    worker.onmessage({ data: queued.shift() });
+    expect(delivered).to.deep.equal([1, 2]);
+    driver.dispose();
   });
 });

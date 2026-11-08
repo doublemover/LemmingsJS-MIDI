@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import fs from 'node:fs/promises';
 import { chromium } from '@playwright/test';
 import { installWebMidiStub } from '../e2e/helpers/webmidiStub.js';
@@ -7,7 +8,7 @@ import { writeMidiCaptureArtifacts } from './midi-capture-fixture.js';
 const url = process.argv.find(arg => arg.startsWith('--url='))?.slice(6) || 'http://localhost:8094/?e2e=1&midi=1';
 const directory = process.argv.find(arg => arg.startsWith('--out-dir='))?.slice(10) || 'temp/midi-capture-native';
 const browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--mute-audio'] });
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT });
 const page = await context.newPage(), errors = [];
 page.setDefaultTimeout(5000);
 page.on('pageerror', error => errors.push(error.message));

@@ -66,7 +66,8 @@ describe('MIDI lifecycle callback ownership', function() {
         clock.tick(500); scheduler.gamePhrases.advance(1, spec => scheduler.sendNote(spec));
         expect(onNotes(calls)).to.deep.equal([60, 64]);
         scheduler.allNotesOff();
-        expect(calls.some(call => call.type === 'cc' && call.cc === 120)).to.equal(true);
+        expect(calls.filter(call => call.type === 'noteOff').map(call => call.note)).to.deep.equal([60, 64]);
+        expect(calls.some(call => call.type === 'cc' && call.cc === 120)).to.equal(false);
         expect(scheduler._activeNotes.size).to.equal(0);
       } finally { scheduler.dispose(); }
     });

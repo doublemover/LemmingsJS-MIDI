@@ -98,6 +98,20 @@ describe('procgen survey constrained design and honest paired evidence', () => {
     const pins = selectProcgenSurveyExemplars([original, normal], { baselineId: 'baseline', capacities: { success: 0, failure: 0, normal: 0, context: 0 }, pinnedTrialIds: [original.trialId, normal.trialId] });
     expect(pins.selected).to.have.length(2); expect(pins.requiresAdmissionStop).to.equal(true);
   });
+  it('archives a held-out-only observed success with explicit unavailable independent qualification', () => {
+    const input = qualificationInput(), original = { ...input.original, scenarioId: 'heldout', environmentSeed: 2 };
+    const scene = { id: 'heldout', environmentSeed: 2 };
+    expect(() => createProcgenSuccessQualification({ ...input, original, scenario: scene })).to.throw('distinct');
+    const plan = createProcgenSuccessQualification({ ...input, original, scenario: scene, competitors: [], nearbyScenarios: [],
+      holdoutScenarios: [], holdoutUnavailableReason: 'original-selected-from-holdout' });
+    expect(plan.jobs).to.have.length(6); expect(plan.jobs.some(job => job.stage === 'independent-holdout')).to.equal(false);
+    expect(plan.deferred).to.deep.equal([{ stage: 'independent-holdout', reason: 'original-selected-from-holdout' }]);
+    expect(plan.completeDeclaration).to.equal(false);
+    const report = summarizeProcgenSuccessQualification(plan, original, []);
+    expect(report.interpretation).to.equal('unresolved'); expect(report.incomplete).to.equal(true);
+    expect(createProcgenSuccessQualification({ ...input, competitors: [], nearbyScenarios: [] }).jobs).to.have.length(8);
+    expect(() => createProcgenSuccessQualification({ ...input, holdoutScenarios: [{ id: 'same-world-new-label', environmentSeed: 1 }] })).to.throw('unseen');
+  });
   it('predeclares exact, competing, policy-randomness, nearby and independent verification; a storage/compute cap cannot split a paired block', () => {
     const input = qualificationInput(), full = createProcgenSuccessQualification(input);
     expect(full.jobs).to.have.length(15); expect(full.jobs[0].stage).to.equal('exact'); expect(full.automaticExecution).to.equal(false);

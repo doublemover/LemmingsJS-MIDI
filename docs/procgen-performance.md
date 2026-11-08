@@ -57,3 +57,242 @@ Live Chromium/Playwright QA was blocked by cloud execution restrictions, and the
 available cloud browser rejected loopback navigation. No restrictions were
 bypassed. The updated E2E and capture targets still need a permitted preview
 run; screenshots, audible listening and live frame times remain unverified.
+
+### Completed actor publication
+
+The shared actor projection publishes immutable scalar DTOs with separate physical
+rows and musical lane membership, stable identity, numeric actions, draw bounds,
+and the exact pending physical batch identity. Live render objects remain private
+and may be resolved only against the current completed revision. Camera, CCTV,
+observation and drawing readers use explicit leases. A retired version stays
+charged until its last lease releases, including renderer disposal. Four versions,
+16 readers and a 16 MiB local ceiling bound retention; admission failures are
+reported as dropped publications, never as a partially updated frame.
+
+`scripts/bench-actor-projections.js` contains deterministic 8/128/1024-lane
+reference/indexed comparisons and a dirty-row candidate measurement. It reports
+p50/p95/p99 and owner counters. Draw rows and the bounded wide-sprite list are
+constructed in the same actor publication pass. Camera-only queries use those
+immutable rows; diagnostic retained counts do not traverse all lanes. Rejected
+publication after an appearance, geometry or world change cannot expose the old
+frame as current. Existing leases retain their original immutable facts.
+
+The 1,000-iteration run after 100 warmup publications visits 32 draw candidates
+(33 at p99 in one sparse-dirty case) for eight visible rows at every lane count.
+Draw-query p50/p95/p99 in milliseconds for the fully dirty cases is
+8 lanes: 0.0026/0.0064/0.0141, 128: 0.0036/0.0058/0.0088, and
+1,024: 0.0053/0.0072/0.0100. Those timings include counter reads. Draw queries
+publish zero additional projection versions. Estimated retained bytes are
+55,488/872,448/6,972,416, with twice those amounts during publication replacement.
+These are conservative admission estimates and publication counts, not sampled
+V8 allocation counts or browser frame-rate guarantees. The dirty-row candidate
+remains experimental.
+
+The grouped 61-case Node cohort passes geometry, reference leaders/actions,
+lease pressure, restore, camera/CCTV and real batch/intent/checkpoint equivalence.
+Six native desktop cases pass unchanged recovery/effect pixel behavior and a
+live actor iterator trap during rendering and CCTV queries. Native dimensions
+are at least 1920x1080. The source-bound continuation329 receipt records commands,
+results and limits; acoustic behavior remains separate qualification.
+
+Continuation330 adds non-materializing contact reads through resident/cold edits,
+retained source descriptors, partial growth and authored score masks. Source
+generation/restoration traps pass in actual Node worlds and the native instrument.
+The follow-up also exercises a real worker round trip of a held projection and
+resource-adapter failures; copied worker data cannot mutate the held source, and
+failed retirement remains charged. Projection, edit retention and lane observation
+reach100% scoped lines/functions. The77 distinct affected Node cases pass across
+the final grouped run and one added cache-pressure regression; two native desktop
+cases pass. V8 allocation profiling and browser frame-time gates remain future
+performance investigations, separate from the reported publication counters.
+
+### Authored edit propagation
+
+Canonical commands carry non-retaining source identity and changed-lane metadata.
+ID-to-position indexes survive nonstructural lane-array replacements; document
+and touched-lane revisions advance independently. Scalar edits preserve pattern,
+instrument and automation identity, and semantic no-ops retain the original
+project. Pattern derivation updates solo state and routing only for relevant
+changes; causal performance recording builds sparse lane upserts. Visible row
+patching leaves unrelated controls and gestures mounted.
+
+The plain lane-array container still copies up to 1024 references per edit. It is
+not a persistent-vector implementation or a measured constant-time guarantee.
+Import, structural edits, history movement and explicit full exports intentionally
+retain whole-document validation. Ordinary preferences coalesce at 250 ms and
+encode through admitted background jobs; one active revision and the latest
+pending revision are retained. Worker structured-clone and localStorage native
+write costs remain measurable boundaries, not claimed zero-cost operations.
+
+Continuation332 carries non-retaining trusted lane-change identity into physical
+mix synchronization. Unrelated canonical edits reuse mix states and source
+declarations; gain/pan/mute/solo edits update only affected rows while the global
+solo-suppression mode is unchanged. Entering/leaving that mode, structural edits,
+unproven collections and skipped ancestry still perform full validation/rebuild.
+Unchanged lane views retain current global revision metadata. Macro performance
+capture is derived only while a take is arming, recording or finalizing.
+
+The1000-edit mechanical8/128/1024-lane probe alternates500 label edits with500
+actual gain/pan changes. Every size creates500 mix-state rows, skips500 unrelated
+collections and performs no full rebuild after warmup. Indexed mix p50/p95/p99
+milliseconds are0.0005/0.0017/0.0043,0.0005/0.0007/0.0010 and
+0.0006/0.0009/0.0013; the1024-lane full reference is0.0983/0.1636/0.2282.
+These are reducer/mix-owner measurements and counted state-row allocations,
+not end-to-end controller/view/persistence latency or V8 allocation profiles.
+All144 affected Node cases and six desktop browser cases pass, including actual
+8/128-lane ownership, solo transitions, unchanged physics/output and existing
+field/IME/row/launch behavior. #985 remains open for navigation/view and full
+controller/persistence measurement against its named task budget.
+
+Continuation333 fixes large authored startup ownership without increasing the
+small journal metadata quota. The project uses an owned copy through the existing
+authored snapshot verifier (four million object nodes, depth48,262144 properties
+per node); only verified immutable subtrees may be shared. Unsealed input remains
+mutable and detached. Metadata retains its8MiB/300000-value bound. No intermediate
+whole-project JSON string is needed for this ownership transfer.
+
+Both128- and1024-lane projects with four64-step patterns per lane now resolve,
+and172 grouped snapshot/startup/controller/recovery cases plus four native
+startup/recipe/document/recovery journeys pass. The explicit browser benchmark
+also completes all three lane counts. Controller-edit p50/p95/p99 milliseconds
+are0.4/0.5/0.5,0.5/0.6/0.9 and1.4/2.1/2.4 for8/128/1024lanes. MIDI-capture
+p99 is1.6/1.7/3.9; simultaneous-launch p99 is10.0/8.6/13.6, with one sample over
+16ms in each smaller launch case. The browser reducer/view and synthetic host
+exclude real audio, IndexedDB and120Hz scheduling; heap readings were unavailable.
+These observations do not close #985's production/controller/persistence gate.
+
+Continuation334 runs the actual instrument controller at8/128/1024lanes with
+four64-step patterns per lane and480 scheduled edit/input iterations targeting
+120Hz. Every size accepts and records all960 supplied MIDI packets, preserves
+physical state and leaves output disabled. Mix state creates only480 changed
+rows during those480 gain changes. The target cadence is not a sustained-rate
+claim: the1024-lane run accumulates substantial scheduling lateness. Browser
+long-task observations also include setup and the deliberately unyielded launch
+batch; individual operation timings do not describe the entire main-thread load.
+
+The profile finds actual persistence failures:128lanes exceed the admitted
+snapshot-transport footprint, while1024lanes cannot reserve the candidate peak
+against the remaining shared budget. These remain failures under #985. Writer
+diagnostics now retain requested revision and bounded current-generation error
+details; no old document's durability/pending/failure is presented as current.
+Missing storage cannot claim a durable write.128 distinct affected Node cases
+pass across the grouped controller cohort and added lifecycle regression. The
+writer has100% scoped lines; further cleanup-fault paths remain branch followups.
+
+`scripts/profile-procgen-editing.mjs` measures 8/128/1024 lanes with 64-step
+patterns, 120 Hz scalar/cell input, actual MIDI ingress/capture and batched launch
+acknowledgments. Reports separate latency percentiles, long tasks, heap observations,
+index counters and preference durability. This harness is implemented but has not
+been run; no 16 ms reference-machine qualification is asserted.
+
+### Incremental recovery
+
+The active world now owns a bounded input/step journal rooted in a checkpoint
+captured while its unpublished candidate is quiescent. The checkpoint walker
+shares the portable graph codec and yields through named assets, graph nodes and
+typed-array elements; it rejects any tick, generation, terrain, command-sequence
+or clock mutation across a yield. Later recovery does not walk the live world:
+it pins immutable completed journal pages, the accepted authored revision and
+current musical state. Accepted and canceled interventions are recorded at their
+input boundary, and every step retains its actual event clock, speed and checked
+physical identity frontier. Recovery replays into an isolated candidate and
+rejects divergence before publishing it.
+
+Base and completed pages encode once in admitted workers. Gzip/UTF-8 binary
+chunks carry SHA-256 and declared expansion bounds; only worker-owned encoded
+buffers transfer. Two manifests and all newly referenced chunks commit in one
+IndexedDB transaction. Readers pin one readonly transaction, then hold decoded
+source leases; replaced generation chunks retire only when neither manifest uses
+them. A full journal reports an explicit pause-to-compact requirement rather than
+claiming an unrecorded tick is durable. Recovery errors preserve the previous
+complete generation. The shared browser storage cap may refuse large candidate
+or decode peaks, and that refusal remains visible.
+
+The compression APIs are available in workers ([CompressionStream](https://developer.mozilla.org/en-US/docs/Web/API/CompressionStream),
+[DecompressionStream](https://developer.mozilla.org/en-US/docs/Web/API/DecompressionStream)).
+The implementation has a 4 ms cooperative target, not a measured hard deadline:
+individual object enumeration, final component metadata, browser structured-clone,
+and an isolated replay physics step are non-preemptible boundaries.
+`scripts/profile-procgen-recovery.mjs` separates capture slices, encoding, commit,
+reuse, scheduling lateness, heap observations and long tasks for 8/128/1024 lanes.
+The new fault-injection and 1000-tick continuation fixtures are written but not
+executed; no latency or replay qualification is claimed.
+
+### Indexed physical instruments and completed ensemble evidence
+
+`physical/PickupGates.js` compiles authored world-space segments, polylines and
+rectangular bands into bounded 128-pixel cells. A sweep visits candidate cells,
+not the actor × gate Cartesian product. Shared vertices have one observation;
+arrival owns the boundary, departure and collinear/zero displacement are silent.
+A band can enter and exit during one tick. Crossing fractions are derived endpoint
+interpolation, never measured sub-tick physics. Occupancy owns an actor/gate voice
+until real exit, actor loss, source reset or geometry retirement. Mapping edits
+retire old ownership and default to silent membership; explicit edit retrigger
+has empty physical ancestry and a named edit cause. Hysteresis, alternating
+polarity, ordered crossings, local-coordinate tuning and revisions are portable.
+The query and state caps fail explicitly rather than dropping arbitrary actors.
+
+Birth cohort IDs include world, generation and the actual scheduled cohort.
+Successful births, missed admission slots and bounded recent cohort records are
+separate. Crew origins attach at the real admission boundary. Completed actor
+snapshots carry these scalar identities and abilities. Ensemble selectors are
+bounded data ASTs, not callbacks; fixed rosters retain missing historical members,
+dynamic membership follows completed source coverage, and overflow/exclusive
+conflict is not a first-N selection. Fixed roster restore never recaptures a new
+actor that happens to reuse a numeric ID. Unknown route predicates remain unknown.
+
+The route atlas requires observed ordered directional markers before using a
+segment coordinate. Authored/trace geometry is not itself traversal proof. Shared
+entry ambiguity, omitted markers, discontinuity and changed dependent terrain
+invalidate comparisons. Qualified route arc pixels, elapsed lap ticks and measured
+movement remain separate quantities. Coordinate and marker state is included in
+causal engine checkpoints; take preflight requests physical-domain boundary data.
+The implementation is bounded and source-reviewed, **not runtime-qualified**.
+`bench-physical-query-plan.mjs` implements an all-gates reference comparison and
+16/256/1024-gate candidate/tail profile; it has deliberately not been executed.
+
+### Physical rhythm responses
+
+`physical/RhythmicResponses.js` interprets observed arrivals, canonical blocker
+contacts, actual work operations and flight arcs. Arrival estimators use simulation
+ticks (fractional pickup interpolation is labeled), keep opposing streams apart,
+and retain typed route-distance unknowns rather than substituting screen distance.
+A declared density clamp suppresses arrivals without filling gaps. Local one-shot
+gates can follow measured intervals; the current four-second sink contract reports
+any duration truncation in the sink receipt instead of rewriting source timing.
+
+Work facts now distinguish numeric action frame, operation phase, actual completed
+cycle ordinal, attempted/changed cells, protected work and builder warnings.
+Action cycles are counted at real frame wrap, not inferred from SFX count. The
+three initial dig rows remain three facts; phase grouping preserves all source IDs.
+Scraped work owns one action-scoped voice and coalesces unchanged intensity.
+Blocker response state can alternate, mirror or apply a modulo motif, with separate
+walker/blocker roles rooted in one canonical contact and no physical fan-out.
+
+Flight state begins at the actual falling transition, carries through parachute
+opening (including upward travel), and ends on safe landing, interruption or
+terminal loss. It records distance proxies, not mass/energy claims. Continuous
+pitch uses bounded actor-owned updates; landing strikes are separately selectable.
+All estimator, motif and arc interpretation state travels with causal checkpoints.
+Candidate restores validate all interpretation owners before swapping live state.
+These regressions are authored but not run; acoustic, dense-scene and lifecycle
+qualification remains deferred. Ratio-fold/delayed arrival modes and the deeper
+performer editors are separate remaining implementation work, not claimed here.
+
+Action voices now declare entry/motion/contact admission, same-action reentry,
+release/legato/crossfade transitions, tick-based maximum hold, and bounded changed
+expression mappings. Deferred admission retains the original action cause and the
+actual triggering motion/contact. Legato preserves onset identity and links action
+instances; crossfade lowers to owned native/sample/worklet attack and release
+ramps (linear envelope transition, not an equal-loudness claim). Maximum hold is a
+safety release, never a periodic retrigger. Pending admission and held expression
+state participate in transactional checkpoint restore.
+
+Canonical lane transfers support carry, revoice, release-and-attack and silent
+handoff. They retain actor identity and ancestry, release the prior route before
+replacement, and silence unavailable/muted destinations. Repeated crossings use a
+bounded root voice identity rather than an ever-growing chain of IDs. Physical
+multi-stripe movement publishes one synchronized destination, not inferred swept
+stripe crossings. Native transition behavior is implemented but unqualified;
+external endpoint capability negotiation and the full mix/visual controls remain
+separate work.

@@ -1,0 +1,13 @@
+{
+  "schema": "lemmings-native-sdk-dependencies/v1",
+  "windowsMidiServices": {
+    "version": "1.0.15-rc.2.15",
+    "url": "https://github.com/microsoft/MIDI/releases/download/rc-2/Microsoft.Windows.Devices.Midi2.1.0.15-rc.2.15.nupkg",
+    "bytes": 1017399,
+    "sha256": "fb0bb2896c749691ad7e11a6a05bf9f1d7d2c61318391cc6e491cd35ab041084",
+    "source": "Pinned libremidi 291c7b9154b54a10f69bed9691fc0dca9dc6eeab selects this SDK interface. Runtime service availability is probed separately."
+  },
+  "cppwinrt": {
+    "source": "Installed Windows SDK; automatic unversioned NuGet download disabled."
+  }
+}

@@ -13,6 +13,7 @@ describe('bounded canonical co-occurrence zones', () => {
     const planner = create();
     for (const seed of [1, 42, 2026]) for (const index of [0, 1, 20, 10000]) {
       const zone = planner.zoneAt(seed, index * planner.widthFor(seed));
+      expect(Object.isFrozen(zone)).to.equal(true); expect(Object.isFrozen(zone.groups)).to.equal(true);
       expect(zone.width).to.be.at.most(1600); expect(zone.width % 128).to.equal(0);
       expect(zone.start).to.equal(index * zone.width); expect(zone.end).to.equal((index + 1) * zone.width);
       expect(zone.pack).to.equal('lemmings'); expect(zone.groundSet).to.equal(1); expect(zone.sourceRevision).to.equal(descriptor.sourceRevision);

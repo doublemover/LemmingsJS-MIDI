@@ -10,6 +10,7 @@ import { UnpackFilePart } from './UnpackFilePart.js';
 class FileContainer extends BaseLogger {
   /** @type {UnpackFilePart[]} */
   #parts;
+  #source = null;
 
 
   /**
@@ -50,6 +51,10 @@ class FileContainer extends BaseLogger {
    * @param {BinaryReader} fileReader - Input file reader.
    */
   read(fileReader) {
+    const ownedReader = fileReader instanceof BinaryReader ? new BinaryReader(fileReader, 0, null, fileReader.filename, fileReader.foldername) : null;
+    this.dispose();
+    this.#source = ownedReader;
+    fileReader = ownedReader || fileReader;
     const endMeasure = this.startMeasure('FileContainer.read', {
       track: 'FileContainer',
       trackGroup: 'IO',
@@ -86,9 +91,17 @@ class FileContainer extends BaseLogger {
         pos += size;
       }
       this.log.debug(`${fileReader.filename} has ${this.#parts.length} file-parts.`);
+    } catch (error) {
+      this.dispose(); throw error;
     } finally {
       endMeasure();
     }
+  }
+
+  dispose() {
+    for (const part of this.#parts) part.dispose();
+    this.#parts.length = 0;
+    this.#source?.release(); this.#source = null;
   }
 
   /** @returns {UnpackFilePart[]} Array of all file parts (read-only view). */

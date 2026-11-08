@@ -177,7 +177,7 @@ const historyStoreColdBlockCodecMethods = {
 
   _decodeColdBlock(block) {
     if (!block?.cold || !block.encodedBytes) return null;
-    if (block.decoded) return block.decoded;
+    if (block.decoded) { this._coldBlockCacheHits++; return block.decoded; }
     const bytes = block.encoding === 'rle'
       ? rleDecodeBytes(block.encodedBytes)
       : block.encodedBytes;
@@ -192,6 +192,7 @@ const historyStoreColdBlockCodecMethods = {
       deltaMap,
       noOpCache: new Map()
     };
+    this._coldBlockDecodes++; this._coldDecodedBytes += bytes.byteLength;
     return block.decoded;
   },
 

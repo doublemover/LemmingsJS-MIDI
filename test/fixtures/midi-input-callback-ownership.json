@@ -1,0 +1,77 @@
+{
+  "schema": "midi-input-recording-model/v1",
+  "sourceParent": "581a28760702431ad4b63b2ec55a183d52d994be",
+  "traces": [
+    {
+      "kind": "null-source-dispose-during-monitor",
+      "commands": [
+        {
+          "kind": "arm"
+        },
+        {
+          "kind": "learn"
+        },
+        {
+          "kind": "packet",
+          "data": [
+            144,
+            60,
+            90
+          ],
+          "hook": {
+            "boundary": "monitor",
+            "action": "dispose"
+          }
+        }
+      ],
+      "minimum": [
+        {
+          "kind": "packet",
+          "data": [
+            144,
+            60,
+            90
+          ],
+          "hook": {
+            "boundary": "monitor",
+            "action": "dispose"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "caller-packet-mutated-during-monitor",
+      "commands": [
+        {
+          "kind": "arm"
+        },
+        {
+          "kind": "packet",
+          "data": [
+            144,
+            60,
+            90
+          ],
+          "hook": {
+            "boundary": "monitor",
+            "action": "mutate-original"
+          }
+        }
+      ],
+      "minimum": [
+        {
+          "kind": "packet",
+          "data": [
+            144,
+            60,
+            90
+          ],
+          "hook": {
+            "boundary": "monitor",
+            "action": "mutate-original"
+          }
+        }
+      ]
+    }
+  ]
+}

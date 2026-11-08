@@ -1,3 +1,4 @@
+import { createMidiWorkstationAdapterOwner } from './MidiWorkstationAdapter.js';
 import { midiEventRouterDirectionMethods } from './MidiEventRouterDirectionMethods.js';
 import { MidiAutomationSpans } from './MidiAutomationSpans.js';
 import { midiEventRouterAutomationMethods } from './MidiEventRouterAutomationMethods.js';
@@ -12,6 +13,7 @@ import { midiEventRouterPhraseMethods } from './MidiEventRouterPhraseMethods.js'
 
 class MidiEventRouter {
   constructor(mapping = null) {
+    this._workstationAdapterOwner = createMidiWorkstationAdapterOwner();
     this.mapping = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
     this.scheduler = new MidiScheduler(this.mapping.config);
     this.musicTension = new MidiLaneMusicTension(this.mapping.config?.ensemble?.tension);
@@ -37,6 +39,9 @@ class MidiEventRouter {
     this._boundPhraseTick = this._advanceGamePhrases.bind(this);
     this._phraseTimer = null;
   }
+
+  /** @param {import('./MidiWorkstationAdapter.js').WorkstationAdapter} adapter */
+  bindWorkstationAdapter(adapter) { return this._workstationAdapterOwner.bind(adapter); }
 }
 
 Object.assign(

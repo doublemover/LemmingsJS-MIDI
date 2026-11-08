@@ -26,7 +26,7 @@ const midiEventRouterEventMethods = {
     try {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
-      if (typeof this.workstationEventHandler === 'function' && this.workstationEventHandler(event) === true) return;
+      if (this._workstationAdapterOwner.handleEvent(event)) return;
       if ((event.sfxId === SoundEffectIds.SPAWN || event.sfxId === SoundEffectIds.LAND || event.sfxId === SoundEffectIds.PROCGEN_ROUTE_COMPLETE) && !this.mapping.getSfxConfig(event.sfxId, event)) return;
       if (event.reverse || (Number.isInteger(event.tick) && this._tickCounter.tick != null && event.tick < this._tickCounter.tick)) {
         this.musicTension.reset(); this._releaseTensionVoices();
@@ -308,10 +308,12 @@ const midiEventRouterEventMethods = {
         return;
       }
       this._hasTickBudget(tick, event.laneIndex, event.laneCount, true);
-      for (const note of activeNotes) {
-        specWithTime.note = note;
-        this.scheduler.sendNote(specWithTime, meta);
-      }
+      try {
+        for (let index = 0; index < activeNotes.length; index++) {
+          specWithTime.note = activeNotes[index];
+          this.scheduler.sendNote(specWithTime, { ...meta, reservationPartCount: activeNotes.length, reservationPartIndex: index });
+        }
+      } finally { this.scheduler._releaseReservation?.(meta.reservationId, true); }
       this._lastAcceptedBySfx.set(event.sfxId, sendTimeMs);
     } finally {
       if (perfEnabled) {
@@ -324,6 +326,7 @@ const midiEventRouterEventMethods = {
   },
 
   dispose() {
+    this._workstationAdapterOwner.dispose();
     this.detach();
     this.scheduler.dispose();
   },

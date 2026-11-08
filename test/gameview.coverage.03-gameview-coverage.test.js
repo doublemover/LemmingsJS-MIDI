@@ -178,6 +178,21 @@ describe('GameView coverage', function() {
     expect(none3).to.equal(null);
   });
 
+  it('builds and expands the requested direct benchmark scene without a sequence list', async function() {
+    setDependency('TriggerTypes', { DROWN: 1, FRYING: 2, KILL: 3, TRAP: 4 });
+    setDependency('Lemming', class { static LEM_MAX_FALLING = 200; });
+    const view = new GameView(), timer = { speedFactor: 1, getGameTime: () => 0, eachGameSecond: new EventHandler() };
+    const manager = { spawnCount: 0 };
+    view.loadLevel = async () => {}; view._getSavedLevelEntries = () => []; view._getGroupNames = () => [];
+    view.game = { level: { name: 'Direct scene', width: 800, height: 120, entrances: [{ x: 16, y: 0 }], triggers: [],
+      getGroundMaskLayer: () => ({ hasGroundAt: (x, y) => y >= 100 }) },
+    getLemmingManager: () => manager, getGameTimer: () => timer };
+    view._benchCounts = [];
+    await view.benchStart(30); expect(view.game.level.entrances).to.have.length(30); expect(manager.spawnCount).to.equal(30);
+    await view.benchStart(50); expect(view.game.level.entrances).to.have.length(50); expect(manager.spawnCount).to.equal(50);
+    await view.benchStart(10); expect(view.game.level.entrances).to.have.length(10);
+  });
+
   it('covers bench routines and sequence setup', async function() {
     setDependency('TriggerTypes', {
       DROWN: 1,

@@ -380,6 +380,7 @@ const getViewState = (view) => {
     gameType: view.gameType,
     levelGroupIndex: view.levelGroupIndex,
     levelIndex: view.levelIndex,
+    navigationPending: !!view.inMoveToLevel,
     gameSpeedFactor: view.gameSpeedFactor,
     scale: view.scale,
     bench: !!view.bench,
@@ -470,6 +471,9 @@ const getGameState = (view) => {
     timer: timer
       ? {
         tickIndex: timer.tickIndex,
+        counterExhausted: timer.counterExhausted === true,
+        maxTicksPerFrame: timer.maxTicksPerFrame ?? null,
+        pendingCatchupTicks: timer.pendingCatchupTicks ?? null,
         speedFactor: timer.speedFactor,
         frameTime: timer.frameTime,
         tps: timer.tps,

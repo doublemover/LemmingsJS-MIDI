@@ -1,0 +1,524 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.native-foundation",
+    "version": "1.2.0",
+    "name": "Native oscillator foundation",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original declarative oscillator recipes; redistribution terms have not been assigned.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "foundation.base",
+      "revision": 2,
+      "abstract": true,
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "oscillator",
+        "physical-facts"
+      ],
+      "engine": {
+        "id": "native-oscillator",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original native oscillator recipes",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.008,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.08,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.6,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.08,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.55,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "voicePolicy": {
+        "maxVoices": 16,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      },
+      "dependencies": []
+    },
+    {
+      "id": "foundation.soft-triangle",
+      "revision": 3,
+      "extends": "foundation.base",
+      "name": "Soft triangle",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "waveform": {
+              "value": 1,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.04,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Choose the authored oscillator waveform or its contrasting endpoint at the next onset; no held oscillator is switched.",
+          "targets": [
+            {
+              "parameter": "waveform",
+              "minimum": {
+                "value": 1,
+                "unit": "enum"
+              },
+              "maximum": {
+                "value": 3,
+                "unit": "enum"
+              },
+              "curve": "step",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.6,
+          "smoothingMs": 0,
+          "perceptualDirection": "Set the held envelope plateau for future notes, independently of master gain.",
+          "targets": [
+            {
+              "parameter": "sustain01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "rise",
+          "name": "RISE",
+          "mode": "onset-only",
+          "default01": 0.5630948279448165,
+          "smoothingMs": 0,
+          "perceptualDirection": "Lengthen the actual amplitude attack of future notes; physical onset times do not move.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "minimum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.7,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.46275642631951835,
+          "smoothingMs": 0,
+          "perceptualDirection": "Lengthen the owned release after the physical voice ends; no autonomous note is added.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foundation.short-sine",
+      "revision": 3,
+      "extends": "foundation.base",
+      "name": "Short sine",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "waveform": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.002,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.11,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.05,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.035,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Choose the authored oscillator waveform or its contrasting endpoint at the next onset; no held oscillator is switched.",
+          "targets": [
+            {
+              "parameter": "waveform",
+              "minimum": {
+                "value": 0,
+                "unit": "enum"
+              },
+              "maximum": {
+                "value": 3,
+                "unit": "enum"
+              },
+              "curve": "step",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.05,
+          "smoothingMs": 0,
+          "perceptualDirection": "Set the held envelope plateau for future notes, independently of master gain.",
+          "targets": [
+            {
+              "parameter": "sustain01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "rise",
+          "name": "RISE",
+          "mode": "onset-only",
+          "default01": 0.10580654565509198,
+          "smoothingMs": 0,
+          "perceptualDirection": "Lengthen the actual amplitude attack of future notes; physical onset times do not move.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "minimum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.7,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.3247803827854718,
+          "smoothingMs": 0,
+          "perceptualDirection": "Lengthen the owned release after the physical voice ends; no autonomous note is added.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foundation.held-sine",
+      "revision": 2,
+      "extends": "foundation.base",
+      "name": "Held worklet sine",
+      "engine": {
+        "id": "worklet-sine",
+        "version": 1
+      },
+      "components": [
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.18,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0.8,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.6,
+              "unit": "s"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "foundation.short-square",
+      "revision": 3,
+      "extends": "foundation.base",
+      "name": "Short square",
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "waveform": {
+              "value": 3,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.3,
+              "unit": "amplitude-linear"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "sustain01": {
+              "value": 0.25,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.025,
+              "unit": "s"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "edge",
+          "name": "EDGE",
+          "mode": "onset-only",
+          "default01": 0,
+          "smoothingMs": 0,
+          "perceptualDirection": "Choose the authored oscillator waveform or its contrasting endpoint at the next onset; no held oscillator is switched.",
+          "targets": [
+            {
+              "parameter": "waveform",
+              "minimum": {
+                "value": 3,
+                "unit": "enum"
+              },
+              "maximum": {
+                "value": 0,
+                "unit": "enum"
+              },
+              "curve": "step",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.25,
+          "smoothingMs": 0,
+          "perceptualDirection": "Set the held envelope plateau for future notes, independently of master gain.",
+          "targets": [
+            {
+              "parameter": "sustain01",
+              "minimum": {
+                "value": 0,
+                "unit": "ratio"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "ratio"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "rise",
+          "name": "RISE",
+          "mode": "onset-only",
+          "default01": 0.317419636965276,
+          "smoothingMs": 0,
+          "perceptualDirection": "Lengthen the actual amplitude attack of future notes; physical onset times do not move.",
+          "targets": [
+            {
+              "parameter": "attackSeconds",
+              "minimum": {
+                "value": 0.001,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.7,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.26862178684024085,
+          "smoothingMs": 0,
+          "perceptualDirection": "Lengthen the owned release after the physical voice ends; no autonomous note is added.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 2,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

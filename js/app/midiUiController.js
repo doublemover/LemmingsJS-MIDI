@@ -14,6 +14,7 @@ import { getPlayableMidiClipSteps, describeMidiClipPlayback } from '../midi/proj
 import { resolveMidiAvailability, applyMidiAvailability } from './midiAvailability.js';
 import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
 import { resolveGameSoundSource, GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch, transposeEventPitch, soundNoteName } from './midi-ui/midiSoundEditor.js';
+import { createResourceBudget } from './resources/ResourceBudget.js';
 import { createBrowserNotePreview } from './midi-ui/browserNotePreview.js';
 import { createLocalGamePreview } from './midi-ui/localGamePreview.js';
 import { GAME_EVENT_MIDI_PRESETS, applyGameEventMidiPreset } from '../midi/project/GameEventMidiPresets.js';
@@ -37,8 +38,11 @@ import {
   TEMPLATE_STORAGE_KEY,
   cleanupLegacyMidiProjectStorage,
   readStoredMidiProject,
+  readStoredMidiProjectOutcome,
+  readStoredMidiProjectTemplatesOutcome,
   readStoredMidiProjectTemplates,
   resetMidiProjectStorage,
+  resetProtectedMidiStorage,
   saveMidiProject,
   saveMidiProjectWithOutcome,
   saveMidiProjectTemplateWithOutcome
@@ -152,7 +156,7 @@ const setText = (element, value) => {
   if (element && element.textContent !== String(value)) element.textContent = value;
 };
 
-const setInputValue = (element, value) => {
+const writeInputValue = (element, value) => {
   if (!element) return;
   const next = value == null ? '' : String(value);
   if (element.value !== next) element.value = next;
@@ -261,7 +265,8 @@ const createMidiUiController = ({
   freshProjectPresetId = null,
   downloadTextFile = downloadTextFileDefault,
   readTextFile = readTextFileDefault,
-  createPreviewAudio = createBrowserNotePreview
+  createPreviewAudio = createBrowserNotePreview,
+  resourceBudget = createResourceBudget()
 } = {}) => {
   const available = resolveMidiAvailability({ windowRef: window });
   applyMidiAvailability(document, available);
@@ -284,6 +289,12 @@ const createMidiUiController = ({
   const domListeners = [];
   const outputLog = [];
   let project = null;
+  let renderedProject = null, preserveFocusedInput = false;
+  const setInputValue = (element, value) => {
+    if (preserveFocusedInput && element === document?.activeElement &&
+        (element?.tagName === 'TEXTAREA' || element?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'file', 'color'].includes(element.type))) return;
+    writeInputValue(element, value);
+  };
   let projectNeedsFactory = false;
   let bound = false;
   let activeMidiInput = null;
@@ -309,6 +320,8 @@ const createMidiUiController = ({
   let localAudioGraph = null;
   let localAudio = null;
   let auditionAudio = null;
+  let localInstrumentLibrary = null, localInstrumentLibraryLoading = null, localInstrumentTarget = null, localDocumentEpoch = 0;
+  let localInstrumentMigration = null, localMigrationPending = false;
   let masterVolume = DEFAULT_MASTER_VOLUME;
   const auditionSteps = new Map();
   let localGamePreview = null;
@@ -449,14 +462,16 @@ const createMidiUiController = ({
 
     const factory = getFactoryConfig();
     const factoryProject = factory ? captureFactoryProject(factory) : null;
-    const stored = readStoredMidiProject(storage);
-    if (stored) {
+    const stored = readStoredMidiProjectOutcome(storage);
+    if (!['ready', 'absent'].includes(stored.state)) projectPersisted = false;
+    if (stored.project) {
       projectNeedsFactory = false;
-      return stored;
+      return stored.project;
     }
     if (factoryProject) {
       projectNeedsFactory = false;
-      return saveMidiProject(storage, freshProjectPresetId ? applyGameEventMidiPreset(factoryProject, freshProjectPresetId) : factoryProject);
+      const saved = saveMidiProjectWithOutcome(storage, freshProjectPresetId ? applyGameEventMidiPreset(factoryProject, freshProjectPresetId) : factoryProject);
+      projectPersisted = saved.persisted; return saved.project;
     }
     projectNeedsFactory = true;
     const fresh = createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} });
@@ -659,6 +674,7 @@ const createMidiUiController = ({
 
   const commitProject = (nextProject, { persist = true, apply = true, renderUi = true } = {}) => {
     const next = sanitizeMidiProject(nextProject);
+    if (auditionPending || auditionAudio?.getState?.().activeVoices) { localInteraction++; auditionPending = false; auditionAudio?.stop?.(); }
     editHistory.record(project, next);
     project = next;
     if (persist) {
@@ -727,7 +743,7 @@ const createMidiUiController = ({
       status: lastStatus,
       error: document?.getElementById('errorDisplay')?.textContent || '',
       scheduler: getSchedulerPressure(),
-      persistence: { persisted: projectPersisted },
+      persistence: { persisted: projectPersisted, protected: protectedStorage().map(({ key, state, diagnostic }) => ({ key, state, diagnostic })) },
       outputLog: outputLog.slice(),
       recovery: {
         resetAvailable: true,
@@ -767,9 +783,28 @@ const createMidiUiController = ({
     renderTransport();
     const message = outcome.persisted
       ? 'Saved template ' + template.name + (projectPersisted ? '' : '; project identity is session-only')
-      : 'Template was not saved; changes are session-only. Export to keep them.';
+      : outcome.reason === 'protected-storage' ? 'Saved template data is protected. Export stored data before explicitly resetting it; current changes remain in this session.'
+        : 'Template was not saved; changes are session-only. Export to keep them.';
     setStatus(message); logOutput(message);
     return template;
+  };
+
+  const protectedStorage = () => [readStoredMidiProjectOutcome(storage), readStoredMidiProjectTemplatesOutcome(storage)]
+    .filter(outcome => ['unsupported', 'corrupt', 'unavailable'].includes(outcome.state));
+  const exportStoredData = () => {
+    const records = protectedStorage().filter(outcome => typeof outcome.raw === 'string');
+    if (!records.length) { setStatus('No readable protected data is available to export.'); return false; }
+    downloadTextFile(document, JSON.stringify({ schema: 'lemmings-midi-storage-recovery', version: 1,
+      records: records.map(({ key, state, raw }) => ({ key, state, raw })) }, null, 2), 'midi-stored-data-recovery.json', 'application/json');
+    setStatus('Requested an export of the original stored data. Review it before resetting protected storage.'); return true;
+  };
+  const resetProtectedStorage = () => {
+    const records = protectedStorage().filter(outcome => typeof outcome.raw === 'string');
+    if (!records.length || !window?.confirm?.('Permanently reset the protected saved project/template records? This removes all entries in each affected record, including valid templates. Export stored data first.')) return false;
+    const results = records.map(record => resetProtectedMidiStorage(storage, { key: record.key, expectedRaw: record.raw }));
+    const complete = results.every(result => result.reset);
+    setStatus(complete ? 'Protected storage reset. Current session changes remain available; save again when ready.' : 'Storage changed or could not be reset. Original data remains protected.');
+    renderTransport(); return complete;
   };
 
   const exportProject = (options = {}) => {
@@ -1188,6 +1223,7 @@ const createMidiUiController = ({
   const hasRecordCapture = () => recordState.active || recordState.notes.length > 0 || recordState.activeNotes.size > 0;
 
   const clearTransientProjectState = () => {
+    localDocumentEpoch++; localInstrumentTarget = null;
     workbench?.clearPlayback(); editHistory.endGesture();
     learnState.active = false; learnState.pending = null; learnState.sourceId = null; learnState.trackId = null; learnState.conflicts = [];
     clearLearnCapture(); clearRecordCapture(); resetRecordState();
@@ -2419,7 +2455,7 @@ const createMidiUiController = ({
   const createLocalAudioOwner = owner => {
     const callbacks = { onStateChange: renderLocalSummary, onPlayback: event => workbench?.onPlayback({ ...event, owner }) };
     if (!localAudioGraph) {
-      const audio = createPreviewAudio({ masterVolume, ...callbacks, onStateChange: () => { if (!localAudioGraph) renderLocalSummary(); } });
+      const audio = createPreviewAudio({ masterVolume, resourceBudget, cueVoices: 4, cueCostUnits: 32, ...callbacks, onStateChange: () => { if (!localAudioGraph) renderLocalSummary(); } });
       // Existing injected adapters may lack sessions; the built-in synth always shares one graph.
       if (typeof audio.createSession !== 'function') return audio;
       localAudioGraph = audio;
@@ -2431,7 +2467,7 @@ const createMidiUiController = ({
     getLemmings()?.setLocalAudioStopHandler?.(stopLocalPreview);
     if (!localAudio) localAudio = createLocalAudioOwner('game');
     if (!localGamePreview) localGamePreview = createLocalGamePreview({
-      getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, onStateChange: renderLocalSummary
+      getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, resourceBudget, onStateChange: renderLocalSummary
     });
     localGamePreview.setCapture(outputCapture.getState().active ? outputCapture : null);
     localAudio.setCapture?.(outputCapture.getState().active ? outputCapture : null, captureContext);
@@ -2455,12 +2491,49 @@ const createMidiUiController = ({
     renderLocalSummary();
   };
 
+  const localInstrumentTrack = () => {
+    const current = ensureProject(), source = selectedSource(), roleId = document?.getElementById('midiSoundPreviewRole')?.value;
+    return current.tracks.find(track => track.id === (roleId || source?.trackId)) || null;
+  };
+  const convertLocalInstrumentDefaults = async () => {
+    if (disposed || localMigrationPending) return false;
+    const source = ensureProject(), epoch = localDocumentEpoch; localMigrationPending = true;
+    const button = document?.getElementById('midiLocalInstrumentConvert'); if (button) button.disabled = true;
+    try {
+      const { createMidiLocalInstrumentMigration } = await import('./midi-ui/MidiLocalInstrumentMigration.js');
+      if (disposed || localDocumentEpoch !== epoch || ensureProject() !== source) return false;
+      const fetchSource = window?.fetch ? window.fetch.bind(window) : globalThis.fetch?.bind(globalThis);
+      localInstrumentMigration ||= createMidiLocalInstrumentMigration({ fetch: fetchSource, resourceBudget });
+      setStatus('Preparing authored native defaults…');
+      const converted = await localInstrumentMigration.prepare(source, { isCurrent: () => !disposed && localDocumentEpoch === epoch && ensureProject() === source });
+      if (disposed || localDocumentEpoch !== epoch || ensureProject() !== source) return false;
+      if (converted.changed) commitProject(converted.project);
+      const approximate = converted.plan.entries.filter(entry => entry.notices.length).length;
+      setStatus(converted.changed ? 'Native defaults assigned as one edit. External MIDI programs and event timing are preserved.' + (approximate ? ' ' + approximate + ' tracks use declared native timbre approximations; choose a prepared kit for distinct drum articulations.' : '') : 'Every track already has a selected local instrument.'); return true;
+    } finally { localMigrationPending = false; if (button && !disposed) button.disabled = false; }
+  };
+  const openLocalInstrumentLibrary = async () => {
+    const source = selectedSource(), track = localInstrumentTrack(); if (!source || !track || disposed) return false;
+    if (!auditionAudio) auditionAudio = createLocalAudioOwner('audition');
+    const target = { documentEpoch: localDocumentEpoch, sourceId: source.id, trackId: track.id }; localInstrumentTarget = target;
+    if (!localInstrumentLibraryLoading) localInstrumentLibraryLoading = import('./midi-ui/SoundContentLibrary.js');
+    const { createSoundContentLibrary } = await localInstrumentLibraryLoading;
+    if (disposed || localInstrumentTarget !== target || localDocumentEpoch !== target.documentEpoch) return false;
+    if (!localAudioGraph) throw new Error('This audio adapter cannot prepare authored local instruments.');
+    localInstrumentLibrary ||= createSoundContentLibrary({ document, window, audio: localAudioGraph, resourceBudget, targetLabel: 'selected track', allowLivePreview: false, onStatus: setStatus,
+      onApply: async (candidate, { signal, hold = false } = {}) => {
+        signal?.throwIfAborted(); const bound = localInstrumentTarget;
+        if (hold || disposed || !bound || bound.documentEpoch !== localDocumentEpoch || selectedSource()?.id !== bound.sourceId || localInstrumentTrack()?.id !== bound.trackId) throw new Error('The selected sound target changed. Open its local instrument library again.');
+        dispatchProjectIntent({ type: 'track.update', trackId: bound.trackId, patch: { instrumentRef: candidate.reference, instrumentControls: { macros: {} } } });
+      } });
+    localInstrumentLibrary.open(); return true;
+  };
   const testSelectedSound = async (previewContext = {}) => {
     const source = selectedSource();
     if (!source) return false;
     if (!auditionAudio) auditionAudio = createLocalAudioOwner('audition');
     auditionAudio.setCapture?.(outputCapture.getState().active ? outputCapture : null, captureContext);
-    const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback]);
+    const key = JSON.stringify([source.mapping, source.clipId, ensureProject().clips.find(clip => clip.id === source.clipId)?.playback, ensureProject().tracks.map(track => [track.id, track.instrumentRef?.definitionHash, track.instrumentControls])]);
     settleAuditionPasses();
     const previous = auditionSteps.get(source.id);
     const index = previous?.key === key ? previous.index : 0;
@@ -2470,6 +2543,7 @@ const createMidiUiController = ({
     const plan = createSoundAuditionPlan(source, ensureProject(), tickMs, index, { completedPasses, tick: timer?.getGameTicks?.() ?? timer?.tickIndex, tickMs: timer?.TIME_PER_FRAME_MS || 60 }, { roleTrackId: document?.getElementById('midiSoundPreviewRole')?.value || undefined, ...previewContext });
     const advance = () => auditionSteps.set(source.id, { key, index: index + 1, completedPasses, completionAt: plan.completionMs == null ? null : nowMs() + plan.completionMs });
     if (plan.advance || plan.notes.length) settleAuditionPasses(true);
+    if (plan.notes.some(note => !note.instrumentRef)) { localInteraction++; auditionPending = false; auditionAudio.stop?.(); setStatus('Choose a local instrument or use native defaults before testing this sound.'); renderLocalSummary(); return false; }
     if (!plan.notes.length) { if (plan.advance) { localInteraction += 1; auditionPending = false; auditionAudio.stop?.(); advance(); renderLocalSummary(); } setStatus(plan.reason); return false; }
     const interaction = ++localInteraction;
     auditionPending = true; renderLocalSummary();
@@ -2479,7 +2553,8 @@ const createMidiUiController = ({
     if (interaction !== localInteraction || disposed) return false;
     if (ok) {
       advance();
-      setStatus([plan.omitted ? plan.omitted + ' notes omitted by the local audition/expansion cap. Shorten repeats or test fewer cells.' : '', plan.notice].filter(Boolean).join(' '));
+      const observedPreview = auditionAudio.getState().preparedPreview;
+      setStatus([observedPreview?.rejected ? observedPreview.rejected + ' notes could not be realized by the selected local instrument.' : '', plan.omitted ? plan.omitted + ' notes omitted by the local audition/expansion cap. Shorten repeats or test fewer cells.' : '', plan.notice].filter(Boolean).join(' '));
     } else setStatus(auditionAudio.getState().message || 'Local audio could not start');
     renderLocalSummary();
     return ok;
@@ -2567,6 +2642,11 @@ const createMidiUiController = ({
       }
       previewRole.value = Array.from(previewRole.children).some(option => option.value === selected) ? selected : '';
     }
+    const localTrack = localInstrumentTrack(), localDefinition = localTrack?.instrumentRef?.definition;
+    setText(document?.getElementById('midiLocalInstrumentName'), localDefinition ? localDefinition.name + ' · revision ' + localDefinition.revision : 'Choose a local instrument');
+    const clearLocal = document?.getElementById('midiLocalInstrumentClear'); if (clearLocal) clearLocal.hidden = !localDefinition;
+    const chooseLocal = document?.getElementById('midiLocalInstrument'); if (chooseLocal) chooseLocal.disabled = !source;
+    const convertLocal = document?.getElementById('midiLocalInstrumentConvert'); if (convertLocal) { convertLocal.hidden = current.tracks.every(track => !!track.instrumentRef); convertLocal.disabled = localMigrationPending; }
     setText(document?.getElementById('midiSoundTitle'), source ? `${eventLabel} sound` : eventLabel);
     setText(document?.getElementById('midiActiveKeySummary'), `Key: ${KEY_ROOT_LABELS[current.global.scale.root] || 'C'} ${SCALE_LABELS[current.global.scale.name] || current.global.scale.name}`);
     setChecked(document?.getElementById('midiSoundEnabled'), source?.enabled);
@@ -2644,6 +2724,12 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiSwing'), current.transport.swing);
     setChecked(document?.getElementById('midiReversePanicToggle'), current.global.reverse.allNotesOffOnToggle);
     renderTemplateOptions();
+    const protection = protectedStorage(), blocked = protection.length > 0;
+    setText(document?.getElementById('midiStorageProtection'), blocked
+      ? 'Saved data is protected or unavailable. Current session work and project export remain available. ' + protection.map(item => item.diagnostic).filter(Boolean).join(' ') : '');
+    for (const id of ['midiStoredDataExportButton', 'midiStoredDataResetButton']) {
+      const control = document?.getElementById(id); if (control) { control.hidden = !blocked; control.disabled = !protection.some(item => typeof item.raw === 'string'); }
+    }
     document?.body?.classList?.toggle('midi-disabled', !current.enabled);
     renderConnectionControls();
     if (lastStatus === 'Project loading') setStatus('Project ready');
@@ -2664,6 +2750,7 @@ const createMidiUiController = ({
     try {
       syncRuntimeSources();
       applyProjectToRuntime();
+      preserveFocusedInput = project === renderedProject;
       renderTransport();
       renderSourceList();
       renderTrackList();
@@ -2677,6 +2764,8 @@ const createMidiUiController = ({
       localGamePreview?.syncConfig?.();
       if (getWebMidi()?.enabled) refreshDeviceLists({ preserveSelection: true });
     } finally {
+      renderedProject = project;
+      preserveFocusedInput = false;
       rendering = false;
       uiMetrics.renderCount += 1;
       uiMetrics.lastRenderAt = Date.now();
@@ -2891,6 +2980,7 @@ const createMidiUiController = ({
     bindById('midiMasterVolume', 'input', updateMasterVolume);
     bindById('midiMasterVolume', 'change', updateMasterVolume);
     bindById('midiLocalListenButton', 'click', async () => {
+      if (!localOwnershipState().stopping) { const current = ensureProject(), needed = new Set(current.sources.filter(source => source.enabled).map(source => source.trackId)); if (current.ensemble?.enabled) for (const role of current.ensemble.roles) needed.add(role.trackId); if (current.tracks.some(track => needed.has(track.id) && !track.mute && !track.instrumentRef)) { setStatus('Choose local instruments or use native defaults before listening to this project.'); return; } }
       if (localOwnershipState().stopping) { stopLocalPreview(); return; }
       const preview = ensureLocalPreview();
       const interaction = ++localInteraction;
@@ -2904,6 +2994,10 @@ const createMidiUiController = ({
       renderLocalSummary();
     });
     bindById('midiSoundPreview', 'click', () => testSelectedSound());
+    bindById('midiLocalInstrumentConvert', 'click', () => { void convertLocalInstrumentDefaults().catch(error => { if (!disposed) setStatus(error.message); }); });
+    bindById('midiLocalInstrument', 'click', () => { void openLocalInstrumentLibrary().catch(error => { if (!disposed) setStatus(error.message); }); });
+    bindById('midiLocalInstrumentClear', 'click', () => { const track = localInstrumentTrack(); if (track) dispatchProjectIntent({ type: 'track.update', trackId: track.id, patch: { instrumentRef: null, instrumentControls: null } }); });
+    bindById('midiSoundPreviewRole', 'change', () => { localInteraction++; auditionPending = false; auditionAudio?.stop?.(); renderSoundEditor(); renderLocalSummary(); });
     const presetSelect = document?.getElementById('midiGamePresetSelect');
     const presetMode = document?.getElementById('midiGamePresetMode');
     if (presetMode) presetMode.value = 'phrase';
@@ -3039,6 +3133,8 @@ const createMidiUiController = ({
     bindById('midiTemplateSaveButton', 'click', () => saveProjectTemplate());
     bindById('midiTemplateSaveAsButton', 'click', () => saveProjectTemplate({ asNew: true }));
     bindById('midiProjectExportButton', 'click', () => exportProject());
+    bindById('midiStoredDataExportButton', 'click', exportStoredData);
+    bindById('midiStoredDataResetButton', 'click', resetProtectedStorage);
     bindById('midiProjectImportButton', 'click', () => document?.getElementById('midiProjectImportInput')?.click?.());
     bindById('midiProjectImportInput', 'change', async event => {
       const file = event.target?.files?.[0] || null;
@@ -3495,6 +3591,8 @@ const createMidiUiController = ({
     workbench?.dispose(); eventClipEditor?.dispose(); gameEventRows.clear();
     localInteraction += 1;
     getLemmings()?.setLocalAudioStopHandler?.(null);
+    localInstrumentMigration?.dispose();
+    if (localInstrumentLibrary) void Promise.resolve(localInstrumentLibrary.dispose()).catch(() => {});
     auditionAudio?.dispose?.();
     auditionSteps.clear();
     localGamePreview?.dispose?.();

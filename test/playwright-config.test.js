@@ -23,6 +23,7 @@ describe('playwright.config', function () {
 
   it('starts its own server with the configured loopback port and protocol without implicit reuse', () => {
     const plain = resolvePlaywrightWebServer('http://127.0.0.1:43821');
+    expect(plain.command).to.include(' -c0 '); // Revalidate files without disabling actual BFCache eligibility.
     expect(plain.url).to.equal('http://127.0.0.1:43821'); expect(plain.command).to.include('-p 43821');
     expect(plain.command).not.to.include(' -S'); expect(plain.reuseExistingServer).to.equal(false);
     const secure = resolvePlaywrightWebServer('https://localhost:43822');

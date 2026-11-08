@@ -1,0 +1,997 @@
+{
+  "schema": "lemmings-sound-recipes/v1",
+  "pack": {
+    "id": "lemmings.procedural-textures",
+    "version": "0.1.0",
+    "name": "Procedural material textures",
+    "author": "LemmingsJS-MIDI contributors",
+    "sourceUrl": "urn:lemmings:original:spatial-material-textures:v1",
+    "licenseId": "NOASSERTION",
+    "licenseUrl": null,
+    "attribution": "Original actor-owned spatial-hash texture recipes; numerical, statistical, device and listening qualification remains pending.",
+    "modifications": [],
+    "redistributionPolicy": "unknown",
+    "licenses": []
+  },
+  "files": [],
+  "recipes": [
+    {
+      "id": "texture.sand-drag",
+      "revision": 1,
+      "name": "Sand drag",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "procedural-texture",
+        "unpitched",
+        "observed-travel",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-texture",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:spatial-material-textures:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original actor-owned spatial-hash texture recipes; numerical, statistical, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "textureKind": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "roughnessPerPixel": {
+              "value": 0.4,
+              "unit": "inverse-world-pixel"
+            },
+            "dragSlope": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "shade01": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "textureScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "textureAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "textureRequireSegments": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "textureBodySeconds": {
+              "value": 0.05,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.4,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "grain",
+          "name": "GRAIN",
+          "mode": "onset-only",
+          "default01": 0.3333333333333333,
+          "smoothingMs": 0,
+          "perceptualDirection": "Pulse cell density per world pixel.",
+          "targets": [
+            {
+              "parameter": "roughnessPerPixel",
+              "minimum": {
+                "value": 0.2,
+                "unit": "inverse-world-pixel"
+              },
+              "maximum": {
+                "value": 0.8,
+                "unit": "inverse-world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "drag",
+          "name": "DRAG",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Exciter response=min(1,observed speed in world pixels/second times DRAG/64); no motion supplies no new noise or pulse births.",
+          "targets": [
+            {
+              "parameter": "dragSlope",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "shade",
+          "name": "SHADE",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Nominal lowpass cutoff=2500+3500*SHADE Hz, reduced by the positive spatial coefficient field; pulse length=1+4*SHADE milliseconds.",
+          "targets": [
+            {
+              "parameter": "shade01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.6,
+          "smoothingMs": 0,
+          "perceptualDirection": "Positive modal amplitude T60 for new voices.",
+          "targets": [
+            {
+              "parameter": "textureBodySeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.07,
+                "unit": "s"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    },
+    {
+      "id": "texture.cloth-rub",
+      "revision": 1,
+      "name": "Cloth rub",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "procedural-texture",
+        "unpitched",
+        "observed-travel",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-texture",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:spatial-material-textures:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original actor-owned spatial-hash texture recipes; numerical, statistical, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "textureKind": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "roughnessPerPixel": {
+              "value": 0.3,
+              "unit": "inverse-world-pixel"
+            },
+            "dragSlope": {
+              "value": 0.5,
+              "unit": "normalized"
+            },
+            "shade01": {
+              "value": 0.45,
+              "unit": "normalized"
+            },
+            "textureScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "textureAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "textureRequireSegments": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "textureBodySeconds": {
+              "value": 0.06,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.4,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "grain",
+          "name": "GRAIN",
+          "mode": "onset-only",
+          "default01": 0.1666666666666666,
+          "smoothingMs": 0,
+          "perceptualDirection": "Noise knots per pixel = 320 times GRAIN; cloth creates no pulse rhythm.",
+          "targets": [
+            {
+              "parameter": "roughnessPerPixel",
+              "minimum": {
+                "value": 0.2,
+                "unit": "inverse-world-pixel"
+              },
+              "maximum": {
+                "value": 0.8,
+                "unit": "inverse-world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "drag",
+          "name": "DRAG",
+          "mode": "onset-only",
+          "default01": 0.5,
+          "smoothingMs": 0,
+          "perceptualDirection": "Exciter response=min(1,observed speed in world pixels/second times DRAG/64); no motion supplies no new noise or pulse births.",
+          "targets": [
+            {
+              "parameter": "dragSlope",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "shade",
+          "name": "SHADE",
+          "mode": "onset-only",
+          "default01": 0.45,
+          "smoothingMs": 0,
+          "perceptualDirection": "Nominal lowpass cutoff=2500+3500*SHADE Hz, reduced by the positive spatial coefficient field; pulse length=1+4*SHADE milliseconds.",
+          "targets": [
+            {
+              "parameter": "shade01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.17391304347826084,
+          "smoothingMs": 0,
+          "perceptualDirection": "Positive modal amplitude T60 for new voices.",
+          "targets": [
+            {
+              "parameter": "textureBodySeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.25,
+                "unit": "s"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    },
+    {
+      "id": "texture.crackle-skin",
+      "revision": 1,
+      "name": "Crackle skin",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "procedural-texture",
+        "unpitched",
+        "observed-travel",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-texture",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:spatial-material-textures:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original actor-owned spatial-hash texture recipes; numerical, statistical, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "textureKind": {
+              "value": 2,
+              "unit": "enum"
+            },
+            "roughnessPerPixel": {
+              "value": 0.3,
+              "unit": "inverse-world-pixel"
+            },
+            "dragSlope": {
+              "value": 0.6,
+              "unit": "normalized"
+            },
+            "shade01": {
+              "value": 0.7,
+              "unit": "normalized"
+            },
+            "textureScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "textureAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "textureRequireSegments": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "textureBodySeconds": {
+              "value": 0.08,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.4,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "grain",
+          "name": "GRAIN",
+          "mode": "onset-only",
+          "default01": 0.1666666666666666,
+          "smoothingMs": 0,
+          "perceptualDirection": "Pulse cell density per world pixel.",
+          "targets": [
+            {
+              "parameter": "roughnessPerPixel",
+              "minimum": {
+                "value": 0.2,
+                "unit": "inverse-world-pixel"
+              },
+              "maximum": {
+                "value": 0.8,
+                "unit": "inverse-world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "drag",
+          "name": "DRAG",
+          "mode": "onset-only",
+          "default01": 0.6,
+          "smoothingMs": 0,
+          "perceptualDirection": "Exciter response=min(1,observed speed in world pixels/second times DRAG/64); no motion supplies no new noise or pulse births.",
+          "targets": [
+            {
+              "parameter": "dragSlope",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "shade",
+          "name": "SHADE",
+          "mode": "onset-only",
+          "default01": 0.7,
+          "smoothingMs": 0,
+          "perceptualDirection": "Nominal lowpass cutoff=2500+3500*SHADE Hz, reduced by the positive spatial coefficient field; pulse length=1+4*SHADE milliseconds.",
+          "targets": [
+            {
+              "parameter": "shade01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.2608695652173913,
+          "smoothingMs": 0,
+          "perceptualDirection": "Positive modal amplitude T60 for new voices.",
+          "targets": [
+            {
+              "parameter": "textureBodySeconds",
+              "minimum": {
+                "value": 0.02,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.25,
+                "unit": "s"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    },
+    {
+      "id": "texture.foam-air",
+      "revision": 1,
+      "name": "Foam air",
+      "author": "LemmingsJS-MIDI contributors",
+      "tags": [
+        "procedural-texture",
+        "unpitched",
+        "observed-travel",
+        "unqualified-content"
+      ],
+      "engine": {
+        "id": "worklet-texture",
+        "version": 1
+      },
+      "rights": {
+        "kind": "patch-recipe",
+        "creator": "LemmingsJS-MIDI contributors",
+        "sourceUrl": "urn:lemmings:original:spatial-material-textures:v1",
+        "licenseId": "NOASSERTION",
+        "licenseUrl": null,
+        "attribution": "Original actor-owned spatial-hash texture recipes; numerical, statistical, device and listening qualification remains pending.",
+        "modifications": [],
+        "declaredUse": "unknown"
+      },
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "textureKind": {
+              "value": 3,
+              "unit": "enum"
+            },
+            "roughnessPerPixel": {
+              "value": 0.25,
+              "unit": "inverse-world-pixel"
+            },
+            "dragSlope": {
+              "value": 0.7,
+              "unit": "normalized"
+            },
+            "shade01": {
+              "value": 0.3,
+              "unit": "normalized"
+            },
+            "textureScope": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "textureAxis": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "textureRequireSegments": {
+              "value": 0,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "resonator",
+          "role": "resonator",
+          "parameters": {
+            "textureBodySeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 1,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.16,
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": "output",
+          "role": "output",
+          "parameters": {
+            "gain01": {
+              "value": 0.6,
+              "unit": "amplitude-linear"
+            },
+            "pan01": {
+              "value": 0,
+              "unit": "normalized"
+            }
+          }
+        }
+      ],
+      "macros": [
+        {
+          "id": "grain",
+          "name": "GRAIN",
+          "mode": "onset-only",
+          "default01": 0.0833333333333333,
+          "smoothingMs": 0,
+          "perceptualDirection": "Pulse cell density per world pixel.",
+          "targets": [
+            {
+              "parameter": "roughnessPerPixel",
+              "minimum": {
+                "value": 0.2,
+                "unit": "inverse-world-pixel"
+              },
+              "maximum": {
+                "value": 0.8,
+                "unit": "inverse-world-pixel"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "drag",
+          "name": "DRAG",
+          "mode": "onset-only",
+          "default01": 0.7,
+          "smoothingMs": 0,
+          "perceptualDirection": "Exciter response=min(1,observed speed in world pixels/second times DRAG/64); no motion supplies no new noise or pulse births.",
+          "targets": [
+            {
+              "parameter": "dragSlope",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "shade",
+          "name": "SHADE",
+          "mode": "onset-only",
+          "default01": 0.3,
+          "smoothingMs": 0,
+          "perceptualDirection": "Nominal lowpass cutoff=2500+3500*SHADE Hz, reduced by the positive spatial coefficient field; pulse length=1+4*SHADE milliseconds.",
+          "targets": [
+            {
+              "parameter": "shade01",
+              "minimum": {
+                "value": 0,
+                "unit": "normalized"
+              },
+              "maximum": {
+                "value": 1,
+                "unit": "normalized"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "name": "BODY",
+          "mode": "onset-only",
+          "default01": 0.4705882352941177,
+          "smoothingMs": 0,
+          "perceptualDirection": "Gain correlation seconds; two low-Q bands retain fixed damping; source release has its separate owned envelope.",
+          "targets": [
+            {
+              "parameter": "textureBodySeconds",
+              "minimum": {
+                "value": 0.08,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 0.25,
+                "unit": "s"
+              },
+              "curve": "linear",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        }
+      ],
+      "sampleRefs": [],
+      "dependencies": [],
+      "voicePolicy": {
+        "maxVoices": 8,
+        "steal": "reject"
+      },
+      "mix": {
+        "gain01": 0.6,
+        "pan01": 0
+      }
+    }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.texture.sand-drag",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "actual-distance-owns-excitation",
+        "one-held-semantic-source",
+        "no-time-based-birth-clock",
+        "bounded-children-and-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "texture.sand-drag",
+          "algorithmRevision": "owned-spatial-hash-texture-excitation-v1",
+          "preservedInvariants": [
+            "actual-distance-owns-excitation",
+            "one-held-semantic-source",
+            "no-time-based-birth-clock",
+            "bounded-children-and-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity or qualified crossfade is asserted. Exact kernel-state cuts await PCM-equivalence qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.texture.cloth-rub",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "actual-distance-owns-excitation",
+        "one-held-semantic-source",
+        "no-time-based-birth-clock",
+        "bounded-children-and-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "texture.cloth-rub",
+          "algorithmRevision": "owned-spatial-hash-texture-excitation-v1",
+          "preservedInvariants": [
+            "actual-distance-owns-excitation",
+            "one-held-semantic-source",
+            "no-time-based-birth-clock",
+            "bounded-children-and-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity or qualified crossfade is asserted. Exact kernel-state cuts await PCM-equivalence qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.texture.crackle-skin",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "actual-distance-owns-excitation",
+        "one-held-semantic-source",
+        "no-time-based-birth-clock",
+        "bounded-children-and-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "texture.crackle-skin",
+          "algorithmRevision": "owned-spatial-hash-texture-excitation-v1",
+          "preservedInvariants": [
+            "actual-distance-owns-excitation",
+            "one-held-semantic-source",
+            "no-time-based-birth-clock",
+            "bounded-children-and-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity or qualified crossfade is asserted. Exact kernel-state cuts await PCM-equivalence qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.texture.foam-air",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "actual-distance-owns-excitation",
+        "one-held-semantic-source",
+        "no-time-based-birth-clock",
+        "bounded-children-and-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "texture.foam-air",
+          "algorithmRevision": "owned-spatial-hash-texture-excitation-v1",
+          "preservedInvariants": [
+            "actual-distance-owns-excitation",
+            "one-held-semantic-source",
+            "no-time-based-birth-clock",
+            "bounded-children-and-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity or qualified crossfade is asserted. Exact kernel-state cuts await PCM-equivalence qualification."
+    }
+  ]
+}

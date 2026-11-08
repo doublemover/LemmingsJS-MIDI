@@ -70,8 +70,7 @@ class Frame {
   drawPaletteImage (srcImg, srcWidth, srcHeight, palette, left = 0, top = 0) {
     const dest      = this.data;
     const dMask     = this.mask;
-    const palLookup = palette._rgbaCache ||= /* build once */
-      Uint32Array.from({ length: 128 }, (_, i) => palette.getColor(i));
+    const palLookup = ColorPalette.getRgbaLookup(palette);
 
     const dstStride = this.width;
     const baseX     = left  | 0;
