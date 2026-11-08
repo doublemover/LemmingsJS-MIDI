@@ -779,6 +779,67 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.handlers.retryExport()).to.include({ artifactId: originalId, state: 'delivery-requested' });
     deliveryTimers.shift()(); await f.studio.dispose().completion;
   });
+  it('joins an active recovery observer copy before finalizing a complete causal take', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), budget = createResourceBudget();
+    const storage = { ...memory.storage, close() {} }, f = setup({ storageOverride: storage, resourceBudget: budget, physicalOnly: true,
+      worldFactory: () => new ProcgenLaneWorld({ masks, assists: false, seed: 7, laneCount: 1 }) });
+    f.studio.bindRuntime(); f.studio.transport.pause(); const world = f.runtime.world; f.runtime.lanes.step = () => world.step(); let recovering;
+    try {
+      const takeId = (await f.studio.handlers.startCausalTake()).takeId;
+      expect(f.physicalOwner.step()).to.equal(true);
+      recovering = f.studio.recover();
+      await waitForController(() => f.studio.getPhysicalDiagnostics()?.resources.activeOperation === true);
+      const graph = f.studio.getProject().procgen.physicalGraph;
+      f.studio.dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1, instruments: [{ id: 'recorded-gate', sourceKind: 'MotionCommitted', gateX: 40, crossingDirection: 'positive', pitchCents: 6000, velocity01: 0.5, role: 'crossing', route: 'local' }] } });
+      const first = f.studio.stopCausalTake(), second = f.studio.stopCausalTake();
+      const [stopped, repeated] = await Promise.all([first, second]);
+      expect(stopped.complete, JSON.stringify(stopped)).to.equal(true); expect(repeated).to.equal(stopped);
+      const journal = createProcgenCausalJournal({ storage }), saved = await journal.openTake(takeId);
+      expect(saved.complete).to.equal(true); expect((await journal.verify(takeId)).status).to.equal('complete');
+      expect(f.runtime.world).to.equal(world); expect(world.tickIndex).to.equal(1);
+    } finally { await recovering; await f.studio.dispose().completion; world.dispose(); }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('joins recovery before take arm and preserves an intervening explicit Pause', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), budget = createResourceBudget();
+    const f = setup({ storageOverride: { ...memory.storage, close() {} }, resourceBudget: budget, physicalOnly: true,
+      worldFactory: () => new ProcgenLaneWorld({ masks, assists: false, seed: 7, laneCount: 1 }) });
+    f.studio.bindRuntime(); f.studio.play(); const world = f.runtime.world; let recovering;
+    try {
+      recovering = f.studio.recover();
+      await waitForController(() => f.studio.getPhysicalDiagnostics()?.resources.activeOperation === true);
+      const arming = f.studio.handlers.startCausalTake(); f.studio.transport.pause();
+      expect(await f.studio.handlers.startCausalTake()).to.equal(false);
+      const armed = await arming; expect(armed).to.include({ state: 'recording' });
+      const journal = createProcgenCausalJournal({ storage: memory.storage }), manifest = await journal.openTake(armed.takeId);
+      expect((await journal.readCheckpoint(manifest.initialCheckpoint)).replay.playing).to.equal(false);
+      expect(f.studio.transport.getState().playing).to.equal(false);
+      expect((await f.studio.stopCausalTake()).complete).to.equal(true);
+      expect(f.runtime.world).to.equal(world); expect(world.tickIndex).to.equal(0);
+    } finally { await recovering; await f.studio.dispose().completion; world.dispose(); }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('records an explicit Pause accepted after the initial take checkpoint is captured', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), budget = createResourceBudget();
+    let release, entered = false, held = false; const gate = new Promise(resolve => { release = resolve; });
+    const storage = { ...memory.storage, close() {}, async commitCausalTake(input) {
+      if (!held) { held = true; entered = true; await gate; } return memory.storage.commitCausalTake(input);
+    } };
+    const f = setup({ storageOverride: storage, resourceBudget: budget, physicalOnly: true,
+      worldFactory: () => new ProcgenLaneWorld({ masks, assists: false, seed: 7, laneCount: 1 }) });
+    f.studio.bindRuntime(); f.studio.play(); const world = f.runtime.world;
+    try {
+      const arming = f.studio.handlers.startCausalTake(); await waitForController(() => entered);
+      f.studio.transport.pause(); release(); const armed = await arming;
+      expect(armed).to.include({ state: 'recording' }); expect(f.studio.transport.getState().playing).to.equal(false);
+      expect((await f.studio.stopCausalTake()).complete).to.equal(true);
+      const journal = createProcgenCausalJournal({ storage }), saved = await journal.openTake(armed.takeId), records = (await journal.query({ takeId: armed.takeId })).records;
+      expect((await journal.readCheckpoint(saved.initialCheckpoint)).replay.playing).to.equal(true);
+      expect(records.filter(record => record.kind === 'input-observation' && record.payload.kind === 'transport-state' && record.payload.playing === false)).to.have.length(1);
+      expect((await journal.verify(armed.takeId)).status).to.equal('complete'); expect(world.tickIndex).to.equal(0);
+    } finally { release(); await f.studio.dispose().completion; world.dispose(); }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('retries a paused recovery after an actual edit invalidates its cooperative capture (#1298)', async () => {
     const timers = [], f = await setupRecovery({ windowTimers: {
       setTimeout(callback, delay) { callback.delay = delay; timers.push(callback); return timers.length; },

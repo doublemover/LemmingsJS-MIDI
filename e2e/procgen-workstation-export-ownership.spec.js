@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { revealWorkstationControl } from './helpers/workstationChrome.js';
+import { pauseWorkstationWhenReady } from './helpers/workstationReady.js';
 
 test.use({ permissions: [] });
 
@@ -212,11 +213,11 @@ test('an interrupted module graph offers an explicit retry of the same immutable
   expect(interrupted.studio).toBe(false); expect(['failed', 'delayed']).toContain(interrupted.phase);
   expect(new URL(interrupted.url).pathname).toMatch(/\/dist\/browser\/[a-f0-9]{64}\/procgen\.html$/);
   await protocol.send('Network.setBlockedURLs', { urls: [] });
-  await Promise.all([page.waitForEvent('domcontentloaded'), retry.click()]);
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
+  const recovery = await pauseWorkstationWhenReady(page, { timeout: 60000, retryLoading: true });
+  expect(recovery.retried).toBe(true);
   expect(page.url()).toBe(interrupted.url); await expect(retry).toHaveCount(0);
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(false);
-  await testInfo.attach('explicit-module-startup-retry', { body: JSON.stringify({ interrupted, restoredUrl: page.url(),
+  await testInfo.attach('explicit-module-startup-retry', { body: JSON.stringify({ interrupted, restoredUrl: page.url(), recovery,
     scope: 'Native Chromium page-request block after independent generation installation; explicit full-document retry preserves entry and consent.' }), contentType: 'application/json' });
   await protocol.detach();
 });

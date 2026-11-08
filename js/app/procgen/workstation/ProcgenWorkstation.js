@@ -1043,38 +1043,56 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } finally { if (!adopted) retireCausalRead(prepared); }
   };
   const stopCausalTake = async ({ reason = 'user-stop' } = {}) => {
-    if (ownedCausalArm?.state().busy && reason !== 'user-stop') ownedCausalArm.cancel();
-    if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
-    if (causalMarkerCheckpoint) await causalMarkerCheckpoint.catch(() => {});
     if (causalTakeStop) return causalTakeStop;
-    if (!causalTake) return lastCausalTake;
-    const recorder = causalTake; let ownedAudioClock = null;
-    if (ownedSourceCommands?.recorder === recorder) { const receipt = ownedSourceCommands.close(); await receipt.completion; if (receipt.outcome !== 'complete') { const world = runtime()?.world; recorder.markGap({ kind: 'owned-source-commands', firstTick: world?.tickIndex || 0, lastTick: world?.tickIndex || 0, generation: world?.generation || 0, reason: 'source-command-terminal-fence-unavailable' }); } else { ownedAudioClock = ownedSourceCommands.state().audioClock; ownedSourceCommands = null; physicalPlayback?.audioContinuation.setCommandCapture(false); } }
-    let finalCheckpoint = null;
-    try {
-      const world = runtime()?.world;
-      if (!world) throw new Error('The recorded world is no longer available.');
-      sampleMacroPerformance({ tick: world.tickIndex, generation: world.generation });
-      if (!recorder.status().captureStopped) finalCheckpoint = { world: captureCheckpoint(world), engine: physicalPlayback?.engine.snapshot() || null,
-        timeline: physicalScoreClock.snapshot(), replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: transport.getState().playing } };
-    } catch (error) {
-      const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
-      const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
-      try { recorder.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'final-checkpoint-unavailable' }); }
-      catch { /* The recorder still owns its pending durable prefix. */ }
-      status('Causal take final checkpoint unavailable: ' + error.message);
-    }
-    causalTakeStop = recorder.stop({ boundaryState: { ...causalBoundary(), ...(ownedAudioClock ? { 'owned-audio-clock': ownedAudioClock } : {}) }, finalCheckpoint, reason }).then(receipt => {
-      lastCausalTake = receipt;
-      selectedCausalTakeId = receipt.takeId;
-      physicalAuthoringAbort?.abort(); physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
-      if (!recorder.canReplaceDocument()) throw new Error('Causal take saving needs recovery. Retry saving, or explicitly discard the unsaved tail before replacing the world.');
-      if (causalTake === recorder) causalTake = null;
-      status(receipt.complete ? `Causal take ${receipt.takeId} saved.` :
-        `Causal take ${receipt.takeId} saved as partial. Inspect its coverage before relying on it.`);
-      return receipt;
-    }).finally(() => { causalTakeStop = null; if (!disposed) view?.renderInspector?.(); });
-    return causalTakeStop;
+    /** @type {(value: any) => void} */ let resolveStop = () => {};
+    /** @type {(reason: any) => void} */ let rejectStop = () => {};
+    const operation = new Promise((resolve, reject) => { resolveStop = resolve; rejectStop = reject; });
+    causalTakeStop = operation;
+    const run = async () => {
+      if (ownedCausalArm?.state().busy && reason !== 'user-stop') ownedCausalArm.cancel();
+      if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
+      if (causalMarkerCheckpoint) await causalMarkerCheckpoint.catch(() => {});
+      if (!causalTake) return lastCausalTake;
+      const recorder = causalTake, sourceRuntime = runtime(), persistenceHold = holdBackgroundPersistence(); let ownedAudioClock = null;
+      try {
+        await persistenceHold.completion;
+        if (causalTake !== recorder || runtime() !== sourceRuntime) throw new Error('The recorded source changed before final checkpoint capture.');
+        const commands = ownedSourceCommands;
+        if (commands?.recorder === recorder) {
+          const receipt = commands.close(); await receipt.completion;
+          if (receipt.outcome !== 'complete') { const world = runtime()?.world; recorder.markGap({ kind: 'owned-source-commands', firstTick: world?.tickIndex || 0, lastTick: world?.tickIndex || 0, generation: world?.generation || 0, reason: 'source-command-terminal-fence-unavailable' }); }
+          else { ownedAudioClock = commands.state().audioClock; if (ownedSourceCommands === commands) ownedSourceCommands = null; physicalPlayback?.audioContinuation.setCommandCapture(false); }
+        }
+        let finalCheckpoint = null;
+        try {
+          const world = runtime()?.world;
+          if (!world) throw new Error('The recorded world is no longer available.');
+          sampleMacroPerformance({ tick: world.tickIndex, generation: world.generation });
+          if (!recorder.status().captureStopped) finalCheckpoint = { world: captureCheckpoint(world), engine: physicalPlayback?.engine.snapshot() || null,
+            timeline: physicalScoreClock.snapshot(), replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: transport.getState().playing } };
+        } catch (error) {
+          const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
+          const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
+          try { recorder.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'final-checkpoint-unavailable' }); }
+          catch { /* The recorder still owns its pending durable prefix. */ }
+          status('Causal take final checkpoint unavailable: ' + error.message);
+        }
+        const receipt = await recorder.stop({ boundaryState: { ...causalBoundary(), ...(ownedAudioClock ? { 'owned-audio-clock': ownedAudioClock } : {}) }, finalCheckpoint, reason });
+        lastCausalTake = receipt; selectedCausalTakeId = receipt.takeId;
+        physicalAuthoringAbort?.abort(); physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
+        if (!recorder.canReplaceDocument()) throw new Error('Causal take saving needs recovery. Retry saving, or explicitly discard the unsaved tail before replacing the world.');
+        if (causalTake === recorder) causalTake = null;
+        status(receipt.complete ? `Causal take ${receipt.takeId} saved.` : `Causal take ${receipt.takeId} saved as partial. Inspect its coverage before relying on it.`);
+        return receipt;
+      } finally { persistenceHold.release(); }
+    };
+    const finish = (success, value) => {
+      if (causalTakeStop === operation) causalTakeStop = null;
+      try { if (!disposed) view?.renderInspector?.(); } catch (error) { rejectStop(error); return; }
+      if (success) resolveStop(value); else rejectStop(value);
+    };
+    void run().then(value => finish(true, value), error => finish(false, error));
+    return operation;
   };
   const discardCausalTail = async () => {
     if (!causalTake?.status().captureStopped || causalTakeStop) throw new Error('Finish the current saving attempt before discarding its unsaved tail.');
@@ -1163,35 +1181,39 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (ownedAudio) return startOwnedCausalTake({ takeName });
     if (ownedCausalArm) throw new Error('Restore or discard retained owned sound before starting another take.');
     const wasPlaying = transport.getState().playing;
-    beforeRestart();
-    causalTakeArmCanceled = false;
-    const sourceRuntime = runtime();
-    try {
+    beforeRestart(); causalTakeArmCanceled = false;
+    const sourceRuntime = runtime(), resumeStopGeneration = transportStopGeneration, persistenceHold = holdBackgroundPersistence();
+    const operation = (async () => {
+      await persistenceHold.completion;
+      if (disposed || causalTakeArmCanceled || runtime() !== sourceRuntime) throw new Error('The causal take source changed before capture.');
+      view?.renderInspector?.();
+      const replayPlaying = wasPlaying && resumeStopGeneration === transportStopGeneration, sourceBpm = transport.getState().bpm;
       const capturedWorld = captureCheckpoint(sourceRuntime.world);
       const physical = physicalPlayback.engine.snapshot(), timeline = physicalScoreClock.snapshot();
       const takeId = createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:');
       const sourceVersions = causalRuntimeSourceVersions(sourceRuntime.world, project.procgen.physicalGraph.revision, capturedWorld.version);
       const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
-      const pending = createCausalTakeRecorder({ journal, takeId, takeName, documentId: documentId || `unsaved:${takeId}`,
+      const recorder = await createCausalTakeRecorder({ journal, takeId, takeName, documentId: documentId || `unsaved:${takeId}`,
         sourceVersions, initialCheckpoint: { world: capturedWorld, engine: physical, timeline,
-          replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: wasPlaying } },
+          replay: { version: 2, bpm: sourceBpm, scoreTimeline: true, playing: replayPlaying } },
         mapping: project.procgen.physicalGraph, assetRefs: capturedWorld.assets || [], boundaryState: causalBoundary() });
-      causalTakeStart = pending;
-      view?.renderInspector?.();
-      const recorder = await pending;
       if (disposed || causalTakeArmCanceled || runtime() !== sourceRuntime) {
         await recorder.stop({ boundaryState: causalBoundary(), reason: 'source-replaced-during-arm' });
         throw new Error(causalTakeArmCanceled ? 'Causal take arming was canceled.' : 'The world changed while the causal take was arming.');
       }
       causalTake = recorder; causalClockBlocked = false; sampledMacroPerformance = captureCausalPerformanceState(project.procgen.lanes, project.procgen.actorTimbreLocks); sampledMacroRevision = macroGestures.revision();
-      lastCausalTransport = { playing: wasPlaying, bpm: transport.getState().bpm, speedFactor: sourceRuntime.world.timer.speedFactor };
-      lastCausalInspection = null;
-      causalTakeErrorReported = false;
+      lastCausalTransport = { playing: replayPlaying, bpm: sourceBpm, speedFactor: sourceRuntime.world.timer.speedFactor };
+      if (!wasPlaying || resumeStopGeneration !== transportStopGeneration) recordAcceptedCausalTransport(transport.getState());
+      lastCausalInspection = null; causalTakeErrorReported = false;
       status(`Causal take ${takeId} recording committed world facts and musical intents.`);
       return recorder.status();
-    } finally {
-      causalTakeStart = null;
-      if (wasPlaying && !disposed && runtime() === sourceRuntime) play();
+    })();
+    causalTakeStart = operation;
+    try { return await operation; }
+    finally {
+      if (causalTakeStart === operation) causalTakeStart = null;
+      persistenceHold.release();
+      if (wasPlaying && !disposed && runtime() === sourceRuntime && resumeStopGeneration === transportStopGeneration) play();
       if (!disposed) view?.renderInspector?.();
     }
   };

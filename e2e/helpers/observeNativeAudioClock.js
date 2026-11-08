@@ -1,3 +1,5 @@
+import { pauseWorkstationWhenReady } from './workstationReady.js';
+
 export async function isolateAudioClockProbe(page) {
   const receipt = await page.evaluate(async () => {
     const url = new URL(location.href); url.search = ''; url.hash = '';
@@ -33,8 +35,8 @@ export async function isolateAudioClockProbe(page) {
     await route.fulfill({ response, headers: { ...response.headers(), 'cross-origin-embedder-policy': 'require-corp', 'cross-origin-resource-policy': 'same-origin' } });
   });
   await page.reload();
-  await page.waitForFunction(() => { if (!window.__PROCGEN_STUDIO__ || !window.__PROCGEN_LANES__?.world?.terrain) return false; window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); return true; });
-  await page.evaluate(receipt => { if (!window.crossOriginIsolated) throw new Error('Native probe document did not enter its isolated observer environment.'); window.__nativeClockHeaderReceipt = receipt; }, receipt);
+  const startup = await pauseWorkstationWhenReady(page, { timeout: 60000, retryLoading: true });
+  await page.evaluate(receipt => { if (!window.crossOriginIsolated) throw new Error('Native probe document did not enter its isolated observer environment.'); window.__nativeClockHeaderReceipt = receipt; }, { ...receipt, startup });
 }
 
 export async function observeNativeAudioClock(page) {

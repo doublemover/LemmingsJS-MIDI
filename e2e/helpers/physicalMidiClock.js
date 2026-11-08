@@ -41,7 +41,7 @@ export async function armActualPhysicalClock(page, { external = false, speed = 3
 export async function finishActualPhysicalClock(page, takeId) {
   return page.evaluate(async takeId => {
     const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.transport.pause(); api.pause();
-    const stopped = await studio.handlers.stopCausalTake(); if (!stopped?.complete) throw new Error('Actual clock take is incomplete.');
+    const stopped = await studio.handlers.stopCausalTake(); if (!stopped?.complete) throw new Error('Actual clock take is incomplete: ' + JSON.stringify({ stopped, state: studio.handlers.causalTakeState(), resources: studio.getPhysicalDiagnostics()?.resources }).slice(0, 8192));
     const root = new URL('./', location.href), [{ createProcgenSessionStorage }, { createProcgenCausalJournal }] = await Promise.all([
       import(new URL('js/app/procgen/workstation/ProcgenSessionStorage.js', root)), import(new URL('js/app/procgen/workstation/ProcgenCausalJournal.js', root))]);
     let storage = createProcgenSessionStorage();

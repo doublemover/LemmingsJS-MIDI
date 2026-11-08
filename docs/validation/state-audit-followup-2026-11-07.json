@@ -1069,5 +1069,116 @@
       "productionCodeUnchangedSince": "4f69f26f",
       "scope": "Original8320passes plus all6failed timing cases passing together after bounded fixture/child instrumentation corrections; unchanged production code and coverage thresholds."
     }
+  },
+  "recordingOwnershipFollowthrough678": {
+    "baseCommit": "17c75e9a9dd331cff8287cc50a113217718c9d6a",
+    "issue": 1300,
+    "confirmedBaseline": {
+      "message": "Causal observer staging is already active.",
+      "stack": "Error: Causal observer staging is already active.\n    at admitStage (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/CausalObserverResources.js:46:41)\n    at Object.stage (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/CausalObserverResources.js:51:38)\n    at Object.snapshot (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/CausalMusicEngine.js:584:33)\n    at causalBoundary (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/ProcgenWorkstation.js:845:47)\n    at Object.stopCausalTake (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/js/app/procgen/workstation/ProcgenWorkstation.js:1067:58)\n    at Context.<anonymous> (file:///C:/Users/sneak/Development/LemmingsJS-MIDI-issues/test/procgen-workstation-controller.test.js:794:30)",
+      "scope": "Real controller, world, journal and cooperative observer; accepted graph publication invalidates cached snapshot before concurrent Stop"
+    },
+    "previousCi": {
+      "runtimeSource": "4f69f26f",
+      "mainRun": 42421525122,
+      "mainJob": 128550776044,
+      "desktopBoundaryPassed": 31,
+      "workstationPassed": 324,
+      "workstationFailed": 1,
+      "failure": "500ms host gap take finalization; UI reports active observer staging",
+      "nativeRun": 42424729856,
+      "nativeJob": 128560455483,
+      "nativePassed": 50,
+      "nativeFailed": 1,
+      "nativeFailure": "Probe-header reload reaches actual Retry loading UI before any native measurement"
+    },
+    "implementation": [
+      "Shared Stop operation acquired before every await",
+      "Background persistence cancellation/retirement joined before foreground take arm/final snapshots",
+      "Source runtime rechecked after quiescence",
+      "Explicit Pause fences arm resume; initial replay intent matches capture, and late Pause is recorded once",
+      "Single opt-in trusted same-entry Retry loading before native measurement, with receipt and isolation checks"
+    ],
+    "node": {
+      "stats": {
+        "suites": 1,
+        "tests": 143,
+        "passes": 143,
+        "pending": 0,
+        "failures": 0,
+        "start": "2026-11-08T00:01:31.733Z",
+        "end": "2026-11-08T00:01:39.227Z",
+        "duration": 7494
+      },
+      "reportSha256": "bb674cec0dbfe8b323c933b2873ac0f5f34d6594498bd88a0d76f9808c22a7d2",
+      "orchestrationCoverage": {
+        "lines": {
+          "total": 3454,
+          "covered": 2470,
+          "skipped": 0,
+          "pct": 71.51
+        },
+        "functions": {
+          "total": 518,
+          "covered": 301,
+          "skipped": 0,
+          "pct": 58.1
+        },
+        "statements": {
+          "total": 3454,
+          "covered": 2470,
+          "skipped": 0,
+          "pct": 71.51
+        },
+        "branches": {
+          "total": 2256,
+          "covered": 1444,
+          "skipped": 0,
+          "pct": 64
+        }
+      },
+      "newRegressions": [
+        "Recovery copy plus accepted graph edit and concurrent Stop",
+        "Recovery before arm, refused duplicate arm, explicit Pause before capture",
+        "Explicit Pause during pending initial durable checkpoint, with exactly one input observation"
+      ],
+      "scope": "143/143 complete controller file; no additional full local Node run"
+    },
+    "desktop": {
+      "stats": {
+        "startTime": "2026-11-07T23:54:08.071Z",
+        "duration": 67700.339,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceBuildId": "76f548fa70b444814152610a643548542d42c042e3a22f817f102b0b46db42a8",
+      "cases": [
+        "Explicit blocked-module startup retry through shared helper",
+        "Captured tempo/speed/Step and MIDI crops",
+        "500ms suspended host gap, complete source and MIDI clock export"
+      ]
+    },
+    "nativeClock": {
+      "stats": {
+        "startTime": "2026-11-07T23:59:50.211Z",
+        "duration": 35274.865999999995,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceBuildId": "b8198477dcc30c2c191ac41f1bc9f527f5a8afc1d223a1a4c40a028228866b41",
+      "case": "Chromium scheduled cancellation qualifies already rendered source frames",
+      "scope": "Actual native frame measurement; original bounds unchanged. Controlled Retry helper separately forced through the actual UI."
+    },
+    "checks": {
+      "format": "passed (full formatter plus scoped final edits)",
+      "criticalAndBoundaryTypes": "passed",
+      "provenance": "15components/2774files passed",
+      "changedLineWhitespace": "passed"
+    },
+    "ci": "Pending after publication"
   }
 }
