@@ -197,6 +197,37 @@ const setupHost = (engineId = 'worklet-sine') => {
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('keeps completed release and panic reasons distinct from invalid-command refusals', async () => {
+    for (const mode of ['release', 'panic', 'invalid']) {
+      const { backend, nodes, patch, intent, preview, context } = setupHost();
+      try {
+        await expectReady(backend.prepare(patch)); backend.renewExecutionLease(1, 'live', 48000);
+        if (mode === 'invalid') {
+          const send = nodes[0].port.postMessage;
+          nodes[0].port.postMessage = data => { if (data.type === 'commands') for (let index = 0; index < data.count; index++) if (data.data[index * WIDTH + 3] === BEGIN) data.data[index * WIDTH + 6] = NaN; send(data); };
+        }
+        expect(backend.begin(intent('terminal'), 100).status).to.equal('accepted');
+        if (mode === 'release') expect(backend.end('terminal', { seconds: 0.001 }, 300).status).to.equal('accepted');
+        await Promise.resolve(); nodes[0].render(256);
+        if (mode === 'panic') { context.currentTime = 256 / 48000; backend.onOwnerStop(); }
+        nodes[0].render(512, 256);
+        const diagnostics = backend.renderDiagnostics({ includeTraces: true });
+        if (mode === 'invalid') {
+          expect(diagnostics.traces.some(trace => trace.stage === 'render-kernel-outcome' && trace.status === 'rejected' && trace.reason === 'invalid-command')).to.equal(true);
+          expect(diagnostics.counters.rejected).to.equal(1);
+        } else {
+          const ended = diagnostics.traces.filter(trace => trace.stage === 'render-kernel-ended');
+          expect(ended).to.have.length(2); expect(ended.map(trace => trace.reason)).to.deep.equal(mode === 'release' ? ['release-complete', 'release-complete'] : ['panic', 'panic']);
+          expect(diagnostics.counters.rejected).to.equal(0);
+        }
+        expect(diagnostics.counters.faults).to.equal(0); expect(preview._voices.size).to.equal(0);
+      } finally {
+        context.state = 'closed'; await backend.dispose().completion;
+        expect(preview._audioResources.diagnostics().reservations).to.equal(0);
+      }
+    }
+  });
+
   it('owns circular phase through canonical travel updates and defers release through the completed observation', async () => {
     const { backend, nodes, patch, preview } = setupHost('worklet-spectrum'); patch.patch.parameters = { sourceMode: 2, attackSeconds: 0.005, decaySeconds: 0, sustain01: 1, releaseSeconds: 0.01 };
     const engine = createCausalMusicEngine({ getGraph: () => sampleTravelGraph() });

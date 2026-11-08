@@ -248,6 +248,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     for (let index = 0; index < data.count; index++) {
       const at = index * RECEIPT_WIDTH, code = data.data[at], serial = data.data[at + 1], slot = data.data[at + 2], token = data.data[at + 3];
       const frame = data.data[at + 4], reason = data.data[at + 5], original = inFlight.get(serial);
+      const reasonName = code === ENDED && reason === 1 ? 'release-complete' : reason === 2 && code !== REJECTED ? 'panic' :
+        code === ENDED && reason === 0 ? 'worklet-source-ended' : kernelReasons[reason] || null;
       const voice = slots[slot]?.slotToken === token ? slots[slot] : null;
       if (code === SCHEDULED) {
         if (reason === 2 && slot === -1) { counters.stopQueued++; record({ status: 'accepted', stage: 'kernel-stop-queued', appliedFrame: null, targetFrame: frame }); }
@@ -270,16 +272,16 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       } else if (code === ENDED || code === FAULTED) {
         counters.ended++; if (code === FAULTED) counters.faults++;
         if (voice) { voice.kernelEnded = true; voice.appliedFrame = frame;
-          preview._destroyVoice(voice, kernelReasons[reason] || 'worklet-source-ended'); slots[slot] = null; }
+          preview._destroyVoice(voice, reasonName || 'worklet-source-ended'); slots[slot] = null; }
         inFlight.delete(serial);
       } else if (code === REJECTED || code === CANCELLED) {
         if (code === REJECTED) counters.rejected++;
         if (reason === 4) counters.late++; if (code === CANCELLED) counters.kernelCancelled++;
         if (voice && original?.opcode === LEASE) {
-          voice.pendingLeases.delete(serial); voice.leaseFailure = kernelReasons[reason] || 'lease-not-applied'; reconcileLease(voice);
+          voice.pendingLeases.delete(serial); voice.leaseFailure = reasonName || 'lease-not-applied'; reconcileLease(voice);
         }
         if (voice && (original?.opcode === BEGIN || reason === 9)) {
-          voice.kernelEnded = true; voice.pendingOnsetCanceled = code === CANCELLED && original?.opcode === BEGIN; preview._destroyVoice(voice, kernelReasons[reason] || 'kernel-rejected'); slots[slot] = null;
+          voice.kernelEnded = true; voice.pendingOnsetCanceled = code === CANCELLED && original?.opcode === BEGIN; preview._destroyVoice(voice, reasonName || 'kernel-rejected'); slots[slot] = null;
         }
         inFlight.delete(serial);
         if (code === REJECTED && original?.opcode === MIX && original.data[6]) markFault('source-lane-transfer-rejected');
@@ -292,7 +294,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         generation: voice?.semanticGeneration ?? original?.generation ?? null, sequence: serial, appliedFrame: frame,
         targetFrame: original?.frame ?? null,
         ...(original?.opcode === LEASE ? { operation: 'execution-lease', requestedLeaseEndFrame: original.data[16],
-          effectiveLeaseEndFrame: voice?.effectiveLeaseEndFrame ?? null, renewalSemantics: 'per-voice' } : {}), reason: reason === 2 && code !== REJECTED ? 'panic' : kernelReasons[reason] || null });
+          effectiveLeaseEndFrame: voice?.effectiveLeaseEndFrame ?? null, renewalSemantics: 'per-voice' } : {}), reason: reasonName });
     }
   };
   const validate = resolution => {
